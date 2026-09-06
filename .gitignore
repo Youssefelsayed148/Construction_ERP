@@ -7,3 +7,5 @@ frontend/.env.local
 backend/uploads/
 frontend/build/
 .DS_Store
+db_dump/
+.env.docker

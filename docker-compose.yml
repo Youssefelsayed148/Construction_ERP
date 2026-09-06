@@ -1,0 +1,54 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-construction_erp}
+      POSTGRES_USER: ${DB_USER:-construction_erp_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      # First-boot only: postgres auto-runs any .sql file found here when the
+      # data directory is empty. Drop the handed-off dump at db_dump/init.sql
+      # before first `docker compose up` if you want the seeded/test data
+      # loaded; omit it for a schema-only fresh start.
+      - ./db_dump:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-construction_erp_user} -d ${DB_NAME:-construction_erp}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 5000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-construction_erp}
+      DB_USER: ${DB_USER:-construction_erp_user}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+    volumes:
+      - backend_uploads:/app/uploads
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    # Local testing only — in production on the VPS, remove this and instead
+    # attach this service to the shared Dokploy/Traefik network with the
+    # routing labels that box's other apps use (this repo has no visibility
+    # into that box's exact Traefik label/network convention).
+    ports:
+      - "8090:80"
+
+volumes:
+  db_data:
+  backend_uploads:
