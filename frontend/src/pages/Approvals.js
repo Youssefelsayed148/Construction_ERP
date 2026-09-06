@@ -300,7 +300,7 @@ function Approvals() {
                 {pending.map(r => (
                   <tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => openDetail(r)}>
                     <td style={{ fontWeight: 500 }}>{moduleLabel(r.module_name)}</td>
-                    <td>{r.request_type} #{r.request_id}</td>
+                    <td><RequestTypeCell r={r} /></td>
                     <td>{r.requester_name || '-'}</td>
                     <td><span className="badge badge-warning">{stageLabel(r.stage)}</span></td>
                     <td style={{ fontFamily: 'monospace', fontSize: '13px' }}>{formatDate(r.created_at)}</td>
@@ -350,7 +350,7 @@ function Approvals() {
                 {mine.map(r => (
                   <tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => openDetail(r)}>
                     <td style={{ fontWeight: 500 }}>{moduleLabel(r.module_name)}</td>
-                    <td>{r.request_type} #{r.request_id}</td>
+                    <td><RequestTypeCell r={r} /></td>
                     <td>
                       <span className={`badge ${statusBadgeClass(r.status)}`}>
                         {r.status === 'pending' ? stageLabel(r.stage) : statusLabel(r.status)}
@@ -386,7 +386,7 @@ function Approvals() {
                 {audit.map(r => (
                   <tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => openDetail(r)}>
                     <td style={{ fontWeight: 500 }}>{moduleLabel(r.module_name)}</td>
-                    <td>{r.request_type} #{r.request_id}</td>
+                    <td><RequestTypeCell r={r} /></td>
                     <td>{r.requester_name || '-'}</td>
                     <td><span className={`badge ${statusBadgeClass(r.status)}`}>{statusLabel(r.status)}</span></td>
                     <td>{r.manager_name || '-'}</td>
@@ -604,6 +604,17 @@ function ApprovalDetailModal({ detail, tab, locale, t, moduleLabel, statusLabel,
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function RequestTypeCell({ r }) {
+  const ref = `${r.request_type} #${r.request_id}`;
+  if (!r.summary) return <span>{ref}</span>;
+  return (
+    <div>
+      <div style={{ fontWeight: 500 }}>{r.summary}</div>
+      <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>{ref}</div>
     </div>
   );
 }

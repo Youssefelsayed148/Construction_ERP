@@ -17,6 +17,65 @@ const MODULE_MANAGER_ROLES = {
   sub_contracts: ['project_manager'],
 };
 
+// Short human-readable summary of the underlying record, shown in list rows
+// instead of the bare "expense #19" foreign-key pointer.
+const fmtMoney = (v) => `${Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EGP`;
+
+const SUMMARY_QUERIES = {
+  expenses: {
+    sql: 'SELECT id, amount, category, description FROM expenses WHERE id = ANY($1)',
+    format: (r) => `${fmtMoney(r.amount)} · ${r.category || r.description || ''}`.replace(/ · $/, ''),
+  },
+  payroll: {
+    sql: 'SELECT id, period_name, month, year, total_net_salary FROM payroll_periods WHERE id = ANY($1)',
+    format: (r) => `${r.period_name || `${r.month || '?'}/${r.year || '?'}`} · ${fmtMoney(r.total_net_salary)}`,
+  },
+  legal: {
+    sql: 'SELECT id, title, document_type FROM legal_documents WHERE id = ANY($1)',
+    format: (r) => r.title || r.document_type || '',
+  },
+  project_budgets: {
+    sql: `SELECT b.id, b.budget_amount, c.name AS cost_code_name
+          FROM project_budgets b LEFT JOIN cost_codes c ON b.cost_code_id = c.id
+          WHERE b.id = ANY($1)`,
+    format: (r) => `${fmtMoney(r.budget_amount)} · ${r.cost_code_name || ''}`.replace(/ · $/, ''),
+  },
+  sub_contracts: {
+    sql: 'SELECT id, contract_number, contract_value FROM sub_contracts WHERE id = ANY($1)',
+    format: (r) => `${r.contract_number || ''} · ${fmtMoney(r.contract_value)}`.replace(/^ · /, ''),
+  },
+  assets: {
+    sql: 'SELECT id, name, code FROM assets WHERE id = ANY($1)',
+    format: (r) => r.name || r.code || '',
+  },
+  maintenance: {
+    sql: 'SELECT id, title FROM maintenance_reminders WHERE id = ANY($1)',
+    format: (r) => r.title || '',
+  },
+};
+
+// Adds a `summary` string to each approval row by batch-fetching from the source tables.
+async function enrichApprovalRows(rows) {
+  if (!rows || rows.length === 0) return rows;
+  const idsByModule = {};
+  for (const r of rows) {
+    if (!SUMMARY_QUERIES[r.module_name]) continue;
+    (idsByModule[r.module_name] = idsByModule[r.module_name] || new Set()).add(r.request_id);
+  }
+  const summaryMap = {};
+  for (const [mod, idSet] of Object.entries(idsByModule)) {
+    try {
+      const res = await query(SUMMARY_QUERIES[mod].sql, [Array.from(idSet)]);
+      for (const srcRow of res.rows) {
+        summaryMap[`${mod}:${srcRow.id}`] = SUMMARY_QUERIES[mod].format(srcRow);
+      }
+    } catch (e) {
+      console.error(`enrichApprovalRows: summary fetch failed for ${mod}:`, e.message);
+    }
+  }
+  return rows.map((r) => ({ ...r, summary: summaryMap[`${r.module_name}:${r.request_id}`] || null }));
+}
+
 // Shared stage-transition logic — used by this file and external modules
 async function advanceApproval({ approvalId, userId, userName, role, notes, action }) {
   const pending = await query('SELECT * FROM approval_requests WHERE id = $1', [approvalId]);
@@ -172,7 +231,8 @@ router.get('/pending', authenticate, authorize(
       `, [modulesForRole]) : { rows: [] };
     }
 
-    res.json({ success: true, count: result.rows.length, requests: result.rows });
+    const enriched = await enrichApprovalRows(result.rows);
+    res.json({ success: true, count: enriched.length, requests: enriched });
   } catch (error) {
     console.error('Error fetching pending approvals:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -219,7 +279,8 @@ router.get('/my-requests', authenticate, async (req, res) => {
       LEFT JOIN users manager ON ar.manager_id = manager.id
       WHERE ar.requester_id = $1 ORDER BY ar.created_at DESC LIMIT $2
     `, [req.user.id, limit]);
-    res.json({ success: true, count: result.rows.length, requests: result.rows });
+    const enriched = await enrichApprovalRows(result.rows);
+    res.json({ success: true, count: enriched.length, requests: enriched });
   } catch (error) {
     console.error('Error fetching my requests:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -246,7 +307,8 @@ router.get('/audit', authenticate, authorize('owner', 'admin'), async (req, res)
       LEFT JOIN users manager ON ar.manager_id = manager.id
       WHERE ${conditions.join(' AND ')} ORDER BY ar.updated_at DESC LIMIT $${idx}
     `, params);
-    res.json({ success: true, count: result.rows.length, records: result.rows });
+    const enriched = await enrichApprovalRows(result.rows);
+    res.json({ success: true, count: enriched.length, records: enriched });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
