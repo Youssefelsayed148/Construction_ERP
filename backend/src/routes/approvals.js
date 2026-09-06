@@ -269,6 +269,121 @@ router.get('/check/:module/:requestId', authenticate, async (req, res) => {
   }
 });
 
+// GET /api/approvals/:id/details - Full detail of one approval request + its underlying record
+const SOURCE_DETAIL_QUERIES = {
+  expenses: `SELECT e.*, u.name AS created_by_name,
+                    p.name_ar AS project_name_ar, p.name_en AS project_name_en, p.code AS project_code
+             FROM expenses e
+             LEFT JOIN users u ON e.created_by = u.id
+             LEFT JOIN projects p ON e.project_id = p.id
+             WHERE e.id = $1`,
+  payroll: `SELECT pp.*, u.name AS created_by_name,
+                   (SELECT COUNT(*) FROM payroll_details d WHERE d.payroll_id = pp.id) AS employee_lines
+            FROM payroll_periods pp
+            LEFT JOIN users u ON pp.created_by = u.id
+            WHERE pp.id = $1`,
+  legal: `SELECT l.*, u.name AS verified_by_name
+          FROM legal_documents l
+          LEFT JOIN users u ON l.verified_by = u.id
+          WHERE l.id = $1`,
+  project_budgets: `SELECT b.*, p.name_ar AS project_name_ar, p.name_en AS project_name_en, p.code AS project_code,
+                           c.code AS cost_code, c.name AS cost_code_name
+                    FROM project_budgets b
+                    LEFT JOIN projects p ON b.project_id = p.id
+                    LEFT JOIN cost_codes c ON b.cost_code_id = c.id
+                    WHERE b.id = $1`,
+  sub_contracts: `SELECT s.*, p.name_ar AS project_name_ar, p.name_en AS project_name_en, p.code AS project_code,
+                         sc.name AS subcontractor_name
+                  FROM sub_contracts s
+                  LEFT JOIN projects p ON s.project_id = p.id
+                  LEFT JOIN subcontractors sc ON s.subcontractor_id = sc.id
+                  WHERE s.id = $1`,
+  assets: `SELECT * FROM assets WHERE id = $1`,
+  maintenance: `SELECT m.*, a.name AS asset_name, a.code AS asset_code
+                FROM maintenance_reminders m
+                LEFT JOIN assets a ON m.asset_id = a.id
+                WHERE m.id = $1`,
+};
+
+const PRIVILEGED_APPROVAL_ROLES = ['owner', 'admin', 'finance_manager', 'purchasing_mgr', 'project_manager', 'legal_mgr', 'maintenance_mgr'];
+
+function buildApprovalTimeline(ar) {
+  const directToOwner = DIRECT_TO_OWNER_MODULES.includes(ar.module_name);
+  const steps = [{
+    stage: 'submitted', state: 'done',
+    actor_name: ar.requester_name || null, actor_role: ar.requester_role || null,
+    at: ar.created_at, notes: null,
+  }];
+
+  if (!directToOwner) {
+    let mgr;
+    if (ar.manager_approved_at) {
+      mgr = { state: 'done', actor_name: ar.manager_name, actor_role: ar.manager_role, at: ar.manager_approved_at, notes: ar.manager_notes };
+    } else if (ar.status === 'rejected') {
+      mgr = { state: 'rejected', actor_name: ar.approver_name, actor_role: ar.approver_role, at: ar.updated_at, notes: ar.notes };
+    } else if (ar.status === 'pending' && ar.stage === 'manager_review') {
+      mgr = { state: 'current', actor_name: null, actor_role: null, at: null, notes: null };
+    } else {
+      mgr = { state: 'upcoming', actor_name: null, actor_role: null, at: null, notes: null };
+    }
+    steps.push({ stage: 'manager_review', ...mgr });
+  }
+
+  let own;
+  if (ar.status === 'approved') {
+    own = { state: 'done', actor_name: ar.approver_name, actor_role: ar.approver_role, at: ar.updated_at, notes: ar.notes };
+  } else if (ar.status === 'rejected' && (directToOwner || ar.manager_approved_at)) {
+    own = { state: 'rejected', actor_name: ar.approver_name, actor_role: ar.approver_role, at: ar.updated_at, notes: ar.notes };
+  } else if (ar.status === 'pending' && ar.stage === 'owner_review') {
+    own = { state: 'current', actor_name: null, actor_role: null, at: null, notes: null };
+  } else {
+    own = { state: 'upcoming', actor_name: null, actor_role: null, at: null, notes: null };
+  }
+  steps.push({ stage: 'owner_review', ...own });
+  return steps;
+}
+
+router.get('/:id/details', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const arRes = await query(`
+      SELECT ar.*,
+             requester.name AS requester_name, requester.email AS requester_email, requester.role AS requester_role,
+             manager.name AS manager_name, manager.role AS manager_role,
+             approver.name AS approver_name, approver.role AS approver_role
+      FROM approval_requests ar
+      LEFT JOIN users requester ON ar.requester_id = requester.id
+      LEFT JOIN users manager ON ar.manager_id = manager.id
+      LEFT JOIN users approver ON ar.approver_id = approver.id
+      WHERE ar.id = $1
+    `, [id]);
+    if (arRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Request not found' });
+    }
+    const ar = arRes.rows[0];
+
+    if (ar.requester_id !== req.user.id && !PRIVILEGED_APPROVAL_ROLES.includes(req.user.role)) {
+      return res.status(403).json({ success: false, error: 'Not authorized to view this request' });
+    }
+
+    let source = null;
+    const sql = SOURCE_DETAIL_QUERIES[ar.module_name];
+    if (sql) {
+      try {
+        const sRes = await query(sql, [ar.request_id]);
+        source = sRes.rows[0] || null;
+      } catch (e) {
+        console.error(`approval detail: source fetch failed for ${ar.module_name}#${ar.request_id}:`, e.message);
+      }
+    }
+
+    res.json({ success: true, request: ar, source, timeline: buildApprovalTimeline(ar) });
+  } catch (error) {
+    console.error('Error fetching approval details:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 async function updateRecordStatus(ar) {
   try {
     switch (ar.module_name) {
