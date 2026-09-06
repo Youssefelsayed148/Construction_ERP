@@ -38,6 +38,56 @@ const STEP_TITLES = {
   ar: { submitted: 'تقديم الطلب', manager_review: 'مراجعة المدير', owner_review: 'مراجعة المالك' },
 };
 
+// request_type is free-form text set by the module that raised the request.
+const REQUEST_TYPE_LABELS = {
+  en: {
+    expense: 'Expense', payroll: 'Payroll', payroll_period: 'Payroll Period', legal_document: 'Legal Document',
+    purchase_order: 'Purchase Order', grn: 'Goods Receipt', budget: 'Budget', project_budget: 'Budget',
+    sub_contract: 'Sub-Contract', asset: 'Asset', maintenance: 'Maintenance',
+  },
+  ar: {
+    expense: 'مصروف', payroll: 'رواتب', payroll_period: 'فترة رواتب', legal_document: 'مستند قانوني',
+    purchase_order: 'أمر شراء', grn: 'إشعار استلام', budget: 'ميزانية', project_budget: 'ميزانية',
+    sub_contract: 'عقد من الباطن', asset: 'أصل', maintenance: 'صيانة',
+  },
+};
+
+// Expense categories — mirror of frontend/src/pages/Expenses.js CATEGORY_LABELS.
+const EXPENSE_CATEGORY_LABELS = {
+  en: {
+    materials: 'Materials', labor: 'Labor', equipment: 'Equipment', fuel: 'Fuel',
+    maintenance: 'Maintenance', transport: 'Transport', utilities: 'Utilities',
+    rent: 'Rent', office: 'Office', legal: 'Legal', insurance: 'Insurance', other: 'Other',
+  },
+  ar: {
+    materials: 'مواد', labor: 'عمالة', equipment: 'معدات', fuel: 'وقود',
+    maintenance: 'صيانة', transport: 'نقل', utilities: 'مرافق',
+    rent: 'إيجار', office: 'مكتب', legal: 'قانوني', insurance: 'تأمين', other: 'أخرى',
+  },
+};
+
+const ROLE_LABELS = {
+  en: {
+    owner: 'Owner', admin: 'Admin', finance_manager: 'Finance Manager', purchasing_mgr: 'Purchasing Manager',
+    project_manager: 'Project Manager', legal_mgr: 'Legal Manager', maintenance_mgr: 'Maintenance Manager',
+  },
+  ar: {
+    owner: 'المالك', admin: 'مدير النظام', finance_manager: 'المدير المالي', purchasing_mgr: 'مدير المشتريات',
+    project_manager: 'مدير المشروع', legal_mgr: 'المدير القانوني', maintenance_mgr: 'مدير الصيانة',
+  },
+};
+
+const RECORD_STATUS_LABELS = {
+  en: {
+    pending: 'Pending', approved: 'Approved', rejected: 'Rejected', verified: 'Verified',
+    active: 'Active', draft: 'Draft', terminated: 'Terminated', paid: 'Paid', posted: 'Posted',
+  },
+  ar: {
+    pending: 'معلق', approved: 'معتمد', rejected: 'مرفوض', verified: 'مُوثّق',
+    active: 'نشط', draft: 'مسودة', terminated: 'منتهٍ', paid: 'مدفوع', posted: 'مُرحّل',
+  },
+};
+
 const STATUS_LABELS = {
   en: { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' },
   ar: { pending: 'معلق', approved: 'معتمد', rejected: 'مرفوض' },
@@ -141,6 +191,14 @@ function statusBadgeClass(status) {
   return 'badge-warning';
 }
 
+function formatMoney(v, locale) {
+  const n = Number(v);
+  if (v === null || v === undefined || v === '' || isNaN(n)) return null;
+  return `${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${locale === 'ar' ? 'ج.م' : 'EGP'}`;
+}
+
+const requestTypeLabel = (type, locale) => REQUEST_TYPE_LABELS[locale]?.[type] || type;
+
 function sourceFieldValue(field, source, locale) {
   let v;
   if (field.k === 'project_label') {
@@ -151,12 +209,10 @@ function sourceFieldValue(field, source, locale) {
     v = source[field.k];
   }
   if (v === null || v === undefined || v === '') return '-';
-  if (field.type === 'currency') {
-    const n = Number(v);
-    if (isNaN(n)) return String(v);
-    return `${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${locale === 'ar' ? 'ج.م' : 'EGP'}`;
-  }
+  if (field.type === 'currency') return formatMoney(v, locale) || String(v);
   if (field.type === 'date') return formatDate(v);
+  if (field.type === 'status') return RECORD_STATUS_LABELS[locale]?.[v] || v;
+  if (field.k === 'category') return EXPENSE_CATEGORY_LABELS[locale]?.[v] || v;
   return String(v);
 }
 
@@ -300,7 +356,7 @@ function Approvals() {
                 {pending.map(r => (
                   <tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => openDetail(r)}>
                     <td style={{ fontWeight: 500 }}>{moduleLabel(r.module_name)}</td>
-                    <td><RequestTypeCell r={r} /></td>
+                    <td><RequestTypeCell r={r} locale={locale} /></td>
                     <td>{r.requester_name || '-'}</td>
                     <td><span className="badge badge-warning">{stageLabel(r.stage)}</span></td>
                     <td style={{ fontFamily: 'monospace', fontSize: '13px' }}>{formatDate(r.created_at)}</td>
@@ -350,7 +406,7 @@ function Approvals() {
                 {mine.map(r => (
                   <tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => openDetail(r)}>
                     <td style={{ fontWeight: 500 }}>{moduleLabel(r.module_name)}</td>
-                    <td><RequestTypeCell r={r} /></td>
+                    <td><RequestTypeCell r={r} locale={locale} /></td>
                     <td>
                       <span className={`badge ${statusBadgeClass(r.status)}`}>
                         {r.status === 'pending' ? stageLabel(r.stage) : statusLabel(r.status)}
@@ -386,7 +442,7 @@ function Approvals() {
                 {audit.map(r => (
                   <tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => openDetail(r)}>
                     <td style={{ fontWeight: 500 }}>{moduleLabel(r.module_name)}</td>
-                    <td><RequestTypeCell r={r} /></td>
+                    <td><RequestTypeCell r={r} locale={locale} /></td>
                     <td>{r.requester_name || '-'}</td>
                     <td><span className={`badge ${statusBadgeClass(r.status)}`}>{statusLabel(r.status)}</span></td>
                     <td>{r.manager_name || '-'}</td>
@@ -435,7 +491,7 @@ function TimelineStep({ step, locale }) {
         </div>
         <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
           {step.actor_name ? step.actor_name : (step.state === 'current' ? (locale === 'ar' ? '—' : '—') : '')}
-          {step.actor_role ? ` · ${step.actor_role}` : ''}
+          {step.actor_role ? ` · ${ROLE_LABELS[locale]?.[step.actor_role] || step.actor_role}` : ''}
           {step.at ? `  ·  ${formatDateTime(step.at)}` : ''}
         </div>
         {step.notes ? (
@@ -496,7 +552,7 @@ function ApprovalDetailModal({ detail, tab, locale, t, moduleLabel, statusLabel,
       <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '640px', width: '100%' }}>
         <div className="modal-header">
           <h3 className="modal-title">
-            {moduleLabel(moduleName)} — {req.request_type} #{req.request_id}
+            {moduleLabel(moduleName)} — {requestTypeLabel(req.request_type, locale)} #{req.request_id}
           </h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
@@ -608,13 +664,36 @@ function ApprovalDetailModal({ detail, tab, locale, t, moduleLabel, statusLabel,
   );
 }
 
-function RequestTypeCell({ r }) {
-  const ref = `${r.request_type} #${r.request_id}`;
-  if (!r.summary) return <span>{ref}</span>;
+function RequestTypeCell({ r, locale }) {
+  const typeLabel = requestTypeLabel(r.request_type, locale);
+  const ref = `${typeLabel} #${r.request_id}`;
+  const s = r.summary;
+
+  // Known module whose source record was deleted.
+  if (s && s.missing) {
+    return (
+      <div>
+        <div>{ref}</div>
+        <div style={{ fontSize: '11px', color: 'var(--color-danger, #dc2626)' }}>
+          {locale === 'ar' ? 'السجل الأصلي محذوف' : 'Source record deleted'}
+        </div>
+      </div>
+    );
+  }
+
+  // Module with no summary mapping — just the localized pointer.
+  if (!s) return <span>{ref}</span>;
+
+  const parts = [];
+  const money = formatMoney(s.amount, locale);
+  if (money) parts.push(money);
+  if (s.category) parts.push(EXPENSE_CATEGORY_LABELS[locale]?.[s.category] || s.category);
+  if (s.text) parts.push(s.text);
+
   return (
     <div>
-      <div style={{ fontWeight: 500 }}>{r.summary}</div>
-      <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>{ref}</div>
+      <div style={{ fontWeight: 500 }}>{parts.length ? parts.join(' · ') : ref}</div>
+      <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', fontFamily: 'monospace', direction: 'ltr' }}>{ref}</div>
     </div>
   );
 }

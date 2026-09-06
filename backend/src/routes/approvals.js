@@ -17,44 +17,47 @@ const MODULE_MANAGER_ROLES = {
   sub_contracts: ['project_manager'],
 };
 
-// Short human-readable summary of the underlying record, shown in list rows
-// instead of the bare "expense #19" foreign-key pointer.
-const fmtMoney = (v) => `${Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EGP`;
-
+// Structured summary of the underlying record, attached to each list row so the
+// client can render/localize it instead of the bare "expense #19" FK pointer.
+// Each `extract` returns { amount, category, text } — all optional; the client
+// formats the money + translates the category for the active locale.
 const SUMMARY_QUERIES = {
   expenses: {
     sql: 'SELECT id, amount, category, description FROM expenses WHERE id = ANY($1)',
-    format: (r) => `${fmtMoney(r.amount)} · ${r.category || r.description || ''}`.replace(/ · $/, ''),
+    extract: (r) => ({ amount: r.amount, category: r.category || null, text: r.description || null }),
   },
   payroll: {
     sql: 'SELECT id, period_name, month, year, total_net_salary FROM payroll_periods WHERE id = ANY($1)',
-    format: (r) => `${r.period_name || `${r.month || '?'}/${r.year || '?'}`} · ${fmtMoney(r.total_net_salary)}`,
+    extract: (r) => ({ amount: r.total_net_salary, category: null, text: r.period_name || (r.month && r.year ? `${r.month}/${r.year}` : null) }),
   },
   legal: {
     sql: 'SELECT id, title, document_type FROM legal_documents WHERE id = ANY($1)',
-    format: (r) => r.title || r.document_type || '',
+    extract: (r) => ({ amount: null, category: null, text: r.title || r.document_type || null }),
   },
   project_budgets: {
     sql: `SELECT b.id, b.budget_amount, c.name AS cost_code_name
           FROM project_budgets b LEFT JOIN cost_codes c ON b.cost_code_id = c.id
           WHERE b.id = ANY($1)`,
-    format: (r) => `${fmtMoney(r.budget_amount)} · ${r.cost_code_name || ''}`.replace(/ · $/, ''),
+    extract: (r) => ({ amount: r.budget_amount, category: null, text: r.cost_code_name || null }),
   },
   sub_contracts: {
     sql: 'SELECT id, contract_number, contract_value FROM sub_contracts WHERE id = ANY($1)',
-    format: (r) => `${r.contract_number || ''} · ${fmtMoney(r.contract_value)}`.replace(/^ · /, ''),
+    extract: (r) => ({ amount: r.contract_value, category: null, text: r.contract_number || null }),
   },
   assets: {
     sql: 'SELECT id, name, code FROM assets WHERE id = ANY($1)',
-    format: (r) => r.name || r.code || '',
+    extract: (r) => ({ amount: null, category: null, text: r.name || r.code || null }),
   },
   maintenance: {
     sql: 'SELECT id, title FROM maintenance_reminders WHERE id = ANY($1)',
-    format: (r) => r.title || '',
+    extract: (r) => ({ amount: null, category: null, text: r.title || null }),
   },
 };
 
-// Adds a `summary` string to each approval row by batch-fetching from the source tables.
+// Attaches `summary` to each approval row by batch-fetching from the source tables.
+// summary = { amount, category, text }  when the source record exists
+//         = { missing: true }           when a known module's source row was deleted
+//         = null                        when the module has no summary mapping
 async function enrichApprovalRows(rows) {
   if (!rows || rows.length === 0) return rows;
   const idsByModule = {};
@@ -67,13 +70,16 @@ async function enrichApprovalRows(rows) {
     try {
       const res = await query(SUMMARY_QUERIES[mod].sql, [Array.from(idSet)]);
       for (const srcRow of res.rows) {
-        summaryMap[`${mod}:${srcRow.id}`] = SUMMARY_QUERIES[mod].format(srcRow);
+        summaryMap[`${mod}:${srcRow.id}`] = SUMMARY_QUERIES[mod].extract(srcRow);
       }
     } catch (e) {
       console.error(`enrichApprovalRows: summary fetch failed for ${mod}:`, e.message);
     }
   }
-  return rows.map((r) => ({ ...r, summary: summaryMap[`${r.module_name}:${r.request_id}`] || null }));
+  return rows.map((r) => {
+    if (!SUMMARY_QUERIES[r.module_name]) return { ...r, summary: null };
+    return { ...r, summary: summaryMap[`${r.module_name}:${r.request_id}`] || { missing: true } };
+  });
 }
 
 // Shared stage-transition logic — used by this file and external modules
