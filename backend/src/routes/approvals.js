@@ -1,0 +1,333 @@
+const express = require('express');
+const router = express.Router();
+const { query } = require('../config/database');
+const { authenticate, authorize } = require('../middleware/auth');
+const { logActivity, fireEvent } = require('../utils/activity');
+
+// Module roles mapping - who handles Stage 1 (manager_review) for each module
+const DIRECT_TO_OWNER_MODULES = ['purchase_orders', 'grn'];
+
+const MODULE_MANAGER_ROLES = {
+  expenses: ['finance_manager'],
+  payroll: ['finance_manager'],
+  legal: ['legal_mgr'],
+  assets: ['maintenance_mgr'],
+  maintenance: ['maintenance_mgr'],
+  project_budgets: ['project_manager'],
+  sub_contracts: ['project_manager'],
+};
+
+// Shared stage-transition logic — used by this file and external modules
+async function advanceApproval({ approvalId, userId, userName, role, notes, action }) {
+  const pending = await query('SELECT * FROM approval_requests WHERE id = $1', [approvalId]);
+  if (pending.rows.length === 0) {
+    return { statusCode: 404, body: { success: false, error: 'Request not found' } };
+  }
+  const ar = pending.rows[0];
+
+  if (ar.status !== 'pending') {
+    return { statusCode: 400, body: { success: false, error: 'Request already processed' } };
+  }
+
+  if (ar.requester_id === userId && role !== 'owner' && role !== 'admin') {
+    return { statusCode: 403, body: { success: false, error: 'You cannot approve or reject your own request' } };
+  }
+
+  if (action === 'approve') {
+    if (ar.stage === 'manager_review') {
+      const allowedRoles = MODULE_MANAGER_ROLES[ar.module_name] || [];
+      if (role !== 'owner' && role !== 'admin' && !allowedRoles.includes(role)) {
+        return { statusCode: 403, body: { success: false, error: 'Not authorized to approve this module at manager stage' } };
+      }
+      const result = await query(
+        `UPDATE approval_requests
+         SET stage = 'owner_review', manager_id = $1, manager_approved_at = NOW(), manager_notes = $2, updated_at = NOW()
+         WHERE id = $3 RETURNING *`,
+        [userId, notes || null, approvalId]
+      );
+      await logActivity({
+        userId, userName, userRole: role, action: 'approve', module: ar.module_name,
+        description: `Manager approved ${ar.request_type} #${ar.request_id} — forwarded to owner`,
+        entityId: approvalId, entityType: 'approval_request'
+      });
+      return { statusCode: 200, body: { success: true, stage: 'forwarded_to_owner', request: result.rows[0] } };
+    }
+
+    if (ar.stage === 'owner_review') {
+      if (role !== 'owner' && role !== 'admin') {
+        return { statusCode: 403, body: { success: false, error: 'Only owner or admin can approve at this stage' } };
+      }
+      const result = await query(
+        `UPDATE approval_requests
+         SET status = 'approved', approver_id = $1, notes = COALESCE($2, notes), updated_at = NOW()
+         WHERE id = $3 RETURNING *`,
+        [userId, notes || null, approvalId]
+      );
+      await logActivity({
+        userId, userName, userRole: role, action: 'approve', module: ar.module_name,
+        description: `Owner approved ${ar.request_type} #${ar.request_id}`,
+        entityId: approvalId, entityType: 'approval_request'
+      });
+      await updateRecordStatus(result.rows[0]);
+      return { statusCode: 200, body: { success: true, stage: 'fully_approved', request: result.rows[0] } };
+    }
+
+    return { statusCode: 400, body: { success: false, error: 'Unknown stage' } };
+  }
+
+  // action === 'reject'
+  if (ar.stage === 'manager_review') {
+    const allowedRoles = MODULE_MANAGER_ROLES[ar.module_name] || [];
+    if (role !== 'owner' && role !== 'admin' && !allowedRoles.includes(role)) {
+      return { statusCode: 403, body: { success: false, error: 'Not authorized to reject this module at manager stage' } };
+    }
+  } else if (ar.stage === 'owner_review') {
+    if (role !== 'owner' && role !== 'admin') {
+      return { statusCode: 403, body: { success: false, error: 'Only owner or admin can reject at this stage' } };
+    }
+  }
+
+  const result = await query(
+    `UPDATE approval_requests
+     SET status = 'rejected', approver_id = $1, notes = COALESCE($2, notes), updated_at = NOW()
+     WHERE id = $3 RETURNING *`,
+    [userId, notes || null, approvalId]
+  );
+
+  await rejectRecordStatus(ar);
+
+  await logActivity({
+    userId, userName, userRole: role, action: 'reject', module: ar.module_name,
+    description: `Rejected ${ar.request_type} #${ar.request_id} at ${ar.stage} stage`,
+    entityId: approvalId, entityType: 'approval_request'
+  });
+
+  return { statusCode: 200, body: { success: true, request: result.rows[0] } };
+}
+
+// POST /api/approvals/request - Create approval request
+router.post('/request', authenticate, async (req, res) => {
+  try {
+    const { module_name, request_type, request_id, notes } = req.body;
+
+    const existing = await query(
+      `SELECT * FROM approval_requests
+       WHERE module_name = $1 AND request_id = $2 AND request_type = $3 AND status = 'pending'`,
+      [module_name, request_id, request_type]
+    );
+    if (existing.rows.length > 0) {
+      return res.json({ success: true, requires_approval: true, request: existing.rows[0], message: 'Approval request already exists' });
+    }
+
+    const stage = DIRECT_TO_OWNER_MODULES.includes(module_name) ? 'owner_review' : 'manager_review';
+
+    const result = await query(
+      `INSERT INTO approval_requests (module_name, request_type, request_id, requester_id, notes, status, stage)
+       VALUES ($1, $2, $3, $4, $5, 'pending', $6) RETURNING *`,
+      [module_name, request_type, request_id, req.user.id, notes, stage]
+    );
+
+    await logActivity({
+      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+      action: 'request_approval', module: module_name,
+      description: `Approval requested for ${request_type} #${request_id}`,
+      entityId: result.rows[0].id, entityType: 'approval_request'
+    });
+
+    res.json({ success: true, requires_approval: true, request: result.rows[0] });
+  } catch (error) {
+    console.error('Error creating approval request:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/approvals/pending
+router.get('/pending', authenticate, authorize(
+  'owner', 'admin', 'finance_manager', 'purchasing_mgr', 'project_manager', 'legal_mgr', 'maintenance_mgr'
+), async (req, res) => {
+  try {
+    const { role } = req.user;
+    let result;
+
+    if (role === 'owner' || role === 'admin') {
+      result = await query(`
+        SELECT ar.*, u.name as requester_name, u.email as requester_email, m.name as manager_name
+        FROM approval_requests ar
+        LEFT JOIN users u ON ar.requester_id = u.id
+        LEFT JOIN users m ON ar.manager_id = m.id
+        WHERE ar.status = 'pending' AND ar.stage IN ('manager_review', 'owner_review')
+        ORDER BY ar.updated_at DESC
+      `);
+    } else {
+      const modulesForRole = Object.entries(MODULE_MANAGER_ROLES)
+        .filter(([, roles]) => roles.includes(role))
+        .map(([mod]) => mod);
+
+      result = modulesForRole.length > 0 ? await query(`
+        SELECT ar.*, u.name as requester_name, u.email as requester_email, false::boolean as read_only
+        FROM approval_requests ar
+        LEFT JOIN users u ON ar.requester_id = u.id
+        WHERE ar.status = 'pending' AND ar.stage = 'manager_review' AND ar.module_name = ANY($1)
+        ORDER BY ar.created_at DESC
+      `, [modulesForRole]) : { rows: [] };
+    }
+
+    res.json({ success: true, count: result.rows.length, requests: result.rows });
+  } catch (error) {
+    console.error('Error fetching pending approvals:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /api/approvals/:id/approve
+router.put('/:id/approve', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+    const { role, id: userId, name: userName } = req.user;
+    const result = await advanceApproval({ approvalId: id, userId, userName, role, notes, action: 'approve' });
+    return res.status(result.statusCode).json(result.body);
+  } catch (error) {
+    console.error('Error approving:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /api/approvals/:id/reject
+router.put('/:id/reject', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+    const { role, id: userId, name: userName } = req.user;
+    const result = await advanceApproval({ approvalId: id, userId, userName, role, notes, action: 'reject' });
+    return res.status(result.statusCode).json(result.body);
+  } catch (error) {
+    console.error('Error rejecting:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/approvals/my-requests
+router.get('/my-requests', authenticate, async (req, res) => {
+  try {
+    const { limit = 100 } = req.query;
+    const result = await query(`
+      SELECT ar.*, approver.name as approver_name, approver.role as approver_role,
+             manager.name as manager_name, manager.role as manager_role
+      FROM approval_requests ar
+      LEFT JOIN users approver ON ar.approver_id = approver.id
+      LEFT JOIN users manager ON ar.manager_id = manager.id
+      WHERE ar.requester_id = $1 ORDER BY ar.created_at DESC LIMIT $2
+    `, [req.user.id, limit]);
+    res.json({ success: true, count: result.rows.length, requests: result.rows });
+  } catch (error) {
+    console.error('Error fetching my requests:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/approvals/audit
+router.get('/audit', authenticate, authorize('owner', 'admin'), async (req, res) => {
+  try {
+    const { limit = 100, module_name, status } = req.query;
+    let conditions = ['ar.status != \'pending\''];
+    const params = [];
+    let idx = 1;
+    if (module_name && module_name !== 'all') { conditions.push(`ar.module_name = $${idx++}`); params.push(module_name); }
+    if (status && status !== 'all') { conditions.push(`ar.status = $${idx++}`); params.push(status); }
+    params.push(limit);
+    const result = await query(`
+      SELECT ar.*, requester.name as requester_name, requester.email as requester_email, requester.role as requester_role,
+             approver.name as approver_name, approver.role as approver_role,
+             manager.name as manager_name, manager.role as manager_role
+      FROM approval_requests ar
+      LEFT JOIN users requester ON ar.requester_id = requester.id
+      LEFT JOIN users approver ON ar.approver_id = approver.id
+      LEFT JOIN users manager ON ar.manager_id = manager.id
+      WHERE ${conditions.join(' AND ')} ORDER BY ar.updated_at DESC LIMIT $${idx}
+    `, params);
+    res.json({ success: true, count: result.rows.length, records: result.rows });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/approvals/check/:module/:requestId
+router.get('/check/:module/:requestId', authenticate, async (req, res) => {
+  try {
+    const { module, requestId } = req.params;
+    const approval = await query(
+      `SELECT * FROM approval_requests WHERE module_name = $1 AND request_id = $2::integer ORDER BY created_at DESC LIMIT 1`,
+      [module, requestId]
+    );
+    if (approval.rows.length > 0 && approval.rows[0].status === 'approved') {
+      return res.json({ requires_approval: false, approved: true });
+    }
+    res.json({ requires_approval: true, pending: approval.rows[0]?.status === 'pending' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+async function updateRecordStatus(ar) {
+  try {
+    switch (ar.module_name) {
+      case 'purchase_orders':
+        await query('UPDATE purchase_orders SET status = $1 WHERE id = $2', ['approved', ar.request_id]);
+        break;
+      case 'grn':
+        await query('UPDATE goods_receipt_notes SET status = $1 WHERE id = $2', ['approved', ar.request_id]);
+        break;
+      case 'payroll':
+        await query('UPDATE payroll_periods SET status = $1 WHERE id = $2', ['approved', ar.request_id]);
+        break;
+      case 'expenses':
+        await query('UPDATE expenses SET status = $1 WHERE id = $2', ['approved', ar.request_id]);
+        break;
+      case 'legal':
+        await query('UPDATE legal_documents SET status = $1 WHERE id = $2', ['verified', ar.request_id]);
+        break;
+      case 'project_budgets':
+        await query('UPDATE project_budgets SET status = $1 WHERE id = $2', ['approved', ar.request_id]);
+        break;
+      case 'sub_contracts':
+        await query('UPDATE sub_contracts SET status = $1 WHERE id = $2', ['active', ar.request_id]);
+        break;
+    }
+  } catch (error) {
+    console.error('Error updating record status after approval:', error);
+  }
+}
+
+async function rejectRecordStatus(ar) {
+  try {
+    switch (ar.module_name) {
+      case 'purchase_orders':
+        await query('UPDATE purchase_orders SET status = $1 WHERE id = $2', ['rejected', ar.request_id]);
+        break;
+      case 'grn':
+        await query('UPDATE goods_receipt_notes SET status = $1 WHERE id = $2', ['rejected', ar.request_id]);
+        break;
+      case 'payroll':
+        await query('UPDATE payroll_periods SET status = $1 WHERE id = $2', ['rejected', ar.request_id]);
+        break;
+      case 'expenses':
+        await query('UPDATE expenses SET status = $1 WHERE id = $2', ['rejected', ar.request_id]);
+        break;
+      case 'legal':
+        await query('UPDATE legal_documents SET status = $1 WHERE id = $2', ['rejected', ar.request_id]);
+        break;
+      case 'project_budgets':
+        await query('UPDATE project_budgets SET status = $1 WHERE id = $2', ['rejected', ar.request_id]);
+        break;
+      case 'sub_contracts':
+        await query('UPDATE sub_contracts SET status = $1 WHERE id = $2', ['terminated', ar.request_id]);
+        break;
+    }
+  } catch (error) {
+    console.error('Error updating record status after rejection:', error);
+  }
+}
+
+module.exports = router;
+module.exports.advanceApproval = advanceApproval;

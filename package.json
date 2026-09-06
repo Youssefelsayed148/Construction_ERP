@@ -1,0 +1,20 @@
+{
+  "name": "@osiris-labs/construction-erp",
+  "version": "1.0.0",
+  "description": "Construction ERP by Osiris Labs",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm start",
+    "build": "concurrently \"npm run build:frontend\"",
+    "build:frontend": "cd frontend && npm run build",
+    "setup:db": "cd backend && node src/scripts/setupDb.js"
+  },
+  "keywords": ["construction", "erp", "osiris-labs"],
+  "author": "Osiris Labs",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "concurrently": "^8.0.0"
+  }
+}
