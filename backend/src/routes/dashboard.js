@@ -115,4 +115,157 @@ router.get('/alerts', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// Owner overview - one compact summary row per module.
+// Every sub-query is wrapped so a single failing module never blanks the page.
+router.get('/overview', authenticate, async (req, res) => {
+  const zero = (rows) => ({ rows });
+  const [
+    projAgg, projRisk, portfolio, finance, invoiceAgg, expenseAgg,
+    inventory, hrAgg, assetAgg, maintDue, approvalAgg, miscAgg,
+  ] = await Promise.all([
+    query(`SELECT
+             COUNT(*)::int AS total,
+             COUNT(*) FILTER (WHERE status = 'active')::int   AS active,
+             COUNT(*) FILTER (WHERE status = 'planning')::int AS planning,
+             COUNT(*) FILTER (WHERE status = 'completed')::int AS completed,
+             COALESCE(ROUND(AVG(completion_percentage) FILTER (WHERE status = 'active'), 0), 0)::int AS avg_completion
+           FROM projects`).catch(() => zero([{ total: 0, active: 0, planning: 0, completed: 0, avg_completion: 0 }])),
+
+    query(`SELECT COUNT(*)::int AS at_risk
+           FROM projects p
+           WHERE p.status = 'active'
+             AND (
+               (p.completion_percentage < 50
+                 AND p.expected_completion IS NOT NULL
+                 AND p.expected_completion < CURRENT_DATE + INTERVAL '30 days')
+               OR (
+                 (SELECT COALESCE(SUM(amount), 0) FROM project_costs WHERE project_id = p.id) > p.budget
+                 AND p.budget > 0
+               )
+             )`).catch(() => zero([{ at_risk: 0 }])),
+
+    query(`SELECT
+             COALESCE((SELECT SUM(budget) FROM projects), 0) AS budget_total,
+             COALESCE((SELECT SUM(amount) FROM project_costs), 0) AS actual_total`).catch(() => zero([{ budget_total: 0, actual_total: 0 }])),
+
+    // Mirrors GET /api/finance/summary exactly so the two views never disagree.
+    query(`SELECT
+             COALESCE((SELECT SUM(amount) FROM payments), 0) AS collected,
+             COALESCE((SELECT SUM(amount) FROM invoices), 0) AS invoiced,
+             COALESCE((SELECT SUM(amount) FROM expenses), 0) AS expenses,
+             (SELECT COUNT(*) FROM invoices
+               WHERE status = 'overdue'
+                  OR (due_date IS NOT NULL AND due_date < CURRENT_DATE AND status != 'paid'))::int AS overdue`).catch(
+      () => zero([{ collected: 0, invoiced: 0, expenses: 0, overdue: 0 }])),
+
+    query(`SELECT
+             COUNT(*)::int AS total,
+             COUNT(*) FILTER (WHERE status = 'sent')::int AS sent,
+             COUNT(*) FILTER (WHERE status = 'paid')::int AS paid,
+             COUNT(*) FILTER (WHERE status = 'overdue'
+                OR (due_date IS NOT NULL AND due_date < CURRENT_DATE AND status != 'paid'))::int AS overdue
+           FROM invoices`).catch(() => zero([{ total: 0, sent: 0, paid: 0, overdue: 0 }])),
+
+    query(`SELECT
+             COUNT(*) FILTER (WHERE status = 'pending')::int AS pending,
+             COALESCE(SUM(amount) FILTER (WHERE date >= date_trunc('month', CURRENT_DATE)), 0) AS month_total
+           FROM expenses`).catch(() => zero([{ pending: 0, month_total: 0 }])),
+
+    query(`SELECT
+             (SELECT COUNT(*) FROM item_master WHERE is_active = true)::int AS items,
+             (SELECT COUNT(*) FROM warehouses)::int AS warehouses,
+             (SELECT COUNT(*) FROM warehouse_stock
+               WHERE quantity <= reorder_level AND reorder_level > 0)::int AS low_stock`).catch(
+      () => zero([{ items: 0, warehouses: 0, low_stock: 0 }])),
+
+    query(`SELECT
+             COUNT(*) FILTER (WHERE status = 'active')::int AS active_employees,
+             (SELECT COUNT(*) FROM attendance
+               WHERE date = CURRENT_DATE AND status IN ('present', 'late'))::int AS present_today,
+             (SELECT COUNT(*) FROM leave_requests WHERE status = 'pending')::int AS pending_leaves
+           FROM employees`).catch(() => zero([{ active_employees: 0, present_today: 0, pending_leaves: 0 }])),
+
+    query(`SELECT
+             COUNT(*)::int AS total,
+             COUNT(*) FILTER (WHERE status = 'active')::int AS active,
+             COUNT(*) FILTER (WHERE status IN ('maintenance', 'repair', 'out_of_service'))::int AS down
+           FROM assets`).catch(() => zero([{ total: 0, active: 0, down: 0 }])),
+
+    query(`SELECT COUNT(*)::int AS due
+           FROM maintenance_reminders
+           WHERE status NOT IN ('completed', 'cancelled')
+             AND next_due_date IS NOT NULL AND next_due_date <= CURRENT_DATE`).catch(() => zero([{ due: 0 }])),
+
+    query(`SELECT
+             COUNT(*) FILTER (WHERE status = 'pending')::int AS pending,
+             COUNT(*) FILTER (WHERE status = 'pending' AND stage = 'owner_review')::int AS awaiting_owner,
+             MIN(created_at) FILTER (WHERE status = 'pending') AS oldest_pending_at
+           FROM approval_requests`).catch(() => zero([{ pending: 0, awaiting_owner: 0, oldest_pending_at: null }])),
+
+    query(`SELECT
+             (SELECT COUNT(*) FROM clients WHERE is_active = true)::int AS clients,
+             (SELECT COUNT(*) FROM suppliers WHERE is_active = true)::int AS suppliers,
+             (SELECT COUNT(*) FROM subcontractors WHERE is_active = true)::int AS subcontractors,
+             (SELECT COUNT(*) FROM legal_documents)::int AS legal_total,
+             (SELECT COUNT(*) FROM legal_documents WHERE status = 'pending')::int AS legal_pending`).catch(
+      () => zero([{ clients: 0, suppliers: 0, subcontractors: 0, legal_total: 0, legal_pending: 0 }])),
+  ]);
+
+  const num = (v) => parseFloat(v) || 0;
+  const p = projAgg.rows[0], f = finance.rows[0], pf = portfolio.rows[0], ap = approvalAgg.rows[0];
+  const collected = num(f.collected), invoiced = num(f.invoiced), expenses = num(f.expenses);
+  const budgetTotal = num(pf.budget_total), actualTotal = num(pf.actual_total);
+  const oldestDays = ap.oldest_pending_at
+    ? Math.max(0, Math.floor((Date.now() - new Date(ap.oldest_pending_at).getTime()) / 86400000))
+    : 0;
+
+  res.json({
+    success: true,
+    data: {
+      health: {
+        projects_active: p.active,
+        projects_total: p.total,
+        projects_at_risk: projRisk.rows[0].at_risk,
+        portfolio_budget: budgetTotal,
+        portfolio_actual: actualTotal,
+        portfolio_variance: budgetTotal - actualTotal,
+        revenue_collected: collected,
+        net_profit: collected - expenses,
+        total_outstanding: invoiced - collected,
+        pending_approvals: ap.pending,
+      },
+      modules: {
+        projects: {
+          active: p.active, planning: p.planning, completed: p.completed,
+          at_risk: projRisk.rows[0].at_risk, avg_completion: p.avg_completion,
+        },
+        finance: {
+          revenue_collected: collected, total_invoiced: invoiced, total_expenses: expenses,
+          outstanding: invoiced - collected, net_profit: collected - expenses,
+          overdue_invoices: f.overdue,
+        },
+        invoices: invoiceAgg.rows[0],
+        expenses: {
+          pending: expenseAgg.rows[0].pending,
+          month_total: num(expenseAgg.rows[0].month_total),
+        },
+        inventory: inventory.rows[0],
+        hr: hrAgg.rows[0],
+        assets: {
+          total: assetAgg.rows[0].total, active: assetAgg.rows[0].active,
+          down: assetAgg.rows[0].down, maintenance_due: maintDue.rows[0].due,
+        },
+        approvals: {
+          pending: ap.pending, awaiting_owner: ap.awaiting_owner, oldest_days: oldestDays,
+        },
+        suppliers: {
+          suppliers: miscAgg.rows[0].suppliers, subcontractors: miscAgg.rows[0].subcontractors,
+        },
+        clients: { total: miscAgg.rows[0].clients },
+        legal: { total: miscAgg.rows[0].legal_total, pending: miscAgg.rows[0].legal_pending },
+      },
+    },
+  });
+});
+
 module.exports = router;
