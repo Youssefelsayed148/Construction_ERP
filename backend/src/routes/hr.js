@@ -6,6 +6,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 
 // -- Employees --
+// TODO(phase-4): employees are a company-wide directory; all authenticated users can read (HR uses this widely). Owner|admin can read is_active=false.
 router.get('/employees', authenticate, async (req, res) => {
   try {
     const { department, status, search, is_manager, limit = 100 } = req.query;
@@ -20,6 +21,7 @@ router.get('/employees', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// TODO(phase-4): same policy as GET /employees (directory read).
 router.get('/employees/:id', authenticate, async (req, res) => {
   try {
     const r = await query('SELECT * FROM employees WHERE id = $1', [req.params.id]);
@@ -98,6 +100,7 @@ router.delete('/employees/:id', authenticate, authorize('owner', 'admin'), async
 });
 
 // -- Attendance --
+// TODO(phase-4): site engineers see rows for their project only; HR sees all. Filter at the SQL layer using user_project_roles joined via attendance.project_id.
 router.get('/attendance', authenticate, async (req, res) => {
   try {
     const { employee_id, date, from_date, to_date, limit = 100 } = req.query;
@@ -111,6 +114,7 @@ router.get('/attendance', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// TODO(phase-4): site engineers may post attendance for their project; HR may post for any. Joi should accept project_id (column added in migrate-16.js).
 router.post('/attendance', authenticate, async (req, res) => {
   try {
     const schema = Joi.object({
@@ -133,6 +137,7 @@ router.post('/attendance', authenticate, async (req, res) => {
 });
 
 // -- Leave Requests --
+// TODO(phase-4): employees see their own; managers see their team (employees.is_manager=true chain); HR sees all.
 router.get('/leaves', authenticate, async (req, res) => {
   try {
     const { employee_id, status } = req.query;
@@ -145,6 +150,7 @@ router.get('/leaves', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// TODO(phase-4): an employee may file a leave for themselves; an HR user may file for anyone. Otherwise reject.
 router.post('/leaves', authenticate, async (req, res) => {
   try {
     const schema = Joi.object({
@@ -180,6 +186,7 @@ router.put('/leaves/:id', authenticate, authorize('owner', 'admin'), async (req,
 });
 
 // -- Daily Laborers --
+// TODO(phase-4): directory read — open to all authenticated users (used by site engineers to pick a worker for a labour payment).
 const SKILLS = ['mason', 'carpenter', 'electrician', 'steel_fixer', 'plumber', 'painter', 'tiler', 'general'];
 
 router.get('/laborers', authenticate, async (req, res) => {
@@ -195,8 +202,10 @@ router.get('/laborers', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// TODO(phase-4): static enum read — open to all authenticated users.
 router.get('/laborers/skills', authenticate, (req, res) => res.json({ success: true, data: SKILLS }));
 
+// TODO(phase-4): directory read — open to all authenticated users.
 router.get('/laborers/:id', authenticate, async (req, res) => {
   try {
     const r = await query('SELECT * FROM daily_laborers WHERE id = $1', [req.params.id]);
@@ -205,6 +214,7 @@ router.get('/laborers/:id', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// TODO(phase-4): owner|admin|hr_manager (or site_engineer for new roster additions on the day).
 router.post('/laborers', authenticate, async (req, res) => {
   try {
     const schema = Joi.object({
@@ -233,6 +243,7 @@ router.post('/laborers', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// TODO(phase-4): owner|admin|hr_manager.
 router.put('/laborers/:id', authenticate, async (req, res) => {
   try {
     const existing = await query('SELECT * FROM daily_laborers WHERE id = $1', [req.params.id]);
@@ -259,6 +270,7 @@ router.put('/laborers/:id', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// TODO(phase-4): owner|admin only; soft-deactivate (is_active=false) to preserve labor_payments history rather than DELETE.
 router.delete('/laborers/:id', authenticate, async (req, res) => {
   try {
     const r = await query('DELETE FROM daily_laborers WHERE id = $1 RETURNING code', [req.params.id]);
@@ -268,6 +280,7 @@ router.delete('/laborers/:id', authenticate, async (req, res) => {
 });
 
 // -- Labor Payments --
+// TODO(phase-4): site engineers see their project's payments; owner|admin|finance_manager see all.
 router.get('/labor-payments', authenticate, async (req, res) => {
   try {
     const { project_id, laborer_id, limit = 100 } = req.query;
@@ -280,6 +293,7 @@ router.get('/labor-payments', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// TODO(phase-4): site engineers may post payments on their project; finance_manager can post any; verify laborer is in the project's daily roster.
 router.post('/labor-payments', authenticate, async (req, res) => {
   try {
     const schema = Joi.object({
@@ -314,6 +328,7 @@ router.post('/labor-payments', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// TODO(phase-4): owner|admin|finance_manager only; a deleted payment must fire a compensating event so project_costs can be unwound.
 router.delete('/labor-payments/:id', authenticate, async (req, res) => {
   try {
     const r = await query('DELETE FROM labor_payments WHERE id = $1 RETURNING id', [req.params.id]);

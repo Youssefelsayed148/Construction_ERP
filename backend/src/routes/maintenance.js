@@ -6,6 +6,7 @@ const { authenticate } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 
 // Maintenance Reminders (linked to assets)
+// TODO(phase-4): add scoped check — owner|admin|maintenance_mgr see all; site engineers see rows where project_id = their project.
 router.get('/', authenticate, async (req, res) => {
   try {
     const { asset_id, status, limit = 100 } = req.query;
@@ -18,6 +19,7 @@ router.get('/', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// TODO(phase-4): same policy as GET /, evaluated against the row's project_id.
 router.get('/:id', authenticate, async (req, res) => {
   try {
     const r = await query('SELECT mr.*, a.code as asset_code FROM maintenance_reminders mr LEFT JOIN assets a ON mr.asset_id = a.id WHERE mr.id = $1', [req.params.id]);
@@ -26,6 +28,7 @@ router.get('/:id', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// TODO(phase-4): owner|admin|maintenance_mgr; verify project_id (when supplied) is in user_project_roles.
 router.post('/', authenticate, async (req, res) => {
   try {
     const schema = Joi.object({
@@ -49,6 +52,7 @@ router.post('/', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// TODO(phase-4): owner|admin|maintenance_mgr or the assigned technician; row must be in a project the caller can write to.
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const existing = await query('SELECT * FROM maintenance_reminders WHERE id = $1', [req.params.id]);
@@ -77,6 +81,7 @@ router.put('/:id', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// TODO(phase-4): owner|admin only; row must be in a project the caller can delete from.
 router.delete('/:id', authenticate, async (req, res) => {
   try {
     const r = await query('DELETE FROM maintenance_reminders WHERE id = $1 RETURNING id', [req.params.id]);

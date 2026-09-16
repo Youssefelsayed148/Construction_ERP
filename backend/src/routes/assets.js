@@ -8,10 +8,12 @@ const { logActivity } = require('../utils/activity');
 const EQUIPMENT_TYPES = ['owned', 'rented'];
 const EQUIPMENT_CATEGORIES = ['earthmoving', 'lifting', 'concrete', 'compaction', 'transport', 'generator', 'tool', 'pump', 'scaffolding', 'other'];
 
+// TODO(phase-4): this endpoint exposes equipment classification lists; should remain readable by every authenticated user (no project scoping). Add an audit note that no scoped check is required.
 router.get('/categories', authenticate, (req, res) => {
   res.json({ success: true, data: { types: EQUIPMENT_TYPES, categories: EQUIPMENT_CATEGORIES } });
 });
 
+// TODO(phase-4): every project sees only assets whose current_project_id is in their project list, plus assets with current_project_id IS NULL when org policy allows. Owner|admin|maintenance_mgr see all.
 router.get('/', authenticate, async (req, res) => {
   try {
     const { category, equipment_type, status, search, limit = 100, offset = 0 } = req.query;
@@ -31,6 +33,7 @@ router.get('/', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// TODO(phase-4): same policy as GET /, evaluated against assets.current_project_id.
 router.get('/:id', authenticate, async (req, res) => {
   try {
     const result = await query(
@@ -43,6 +46,7 @@ router.get('/:id', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// TODO(phase-4): owner|admin|maintenance_mgr write access; verify current_project_id (when supplied) is in user_project_roles.
 router.post('/', authenticate, async (req, res) => {
   try {
     const schema = Joi.object({
@@ -74,6 +78,7 @@ router.post('/', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// TODO(phase-4): owner|admin|maintenance_mgr; verify assets.current_project_id is in user_project_roles (after the update too).
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const existing = await query('SELECT * FROM assets WHERE id = $1', [req.params.id]);
@@ -103,6 +108,7 @@ router.put('/:id', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// TODO(phase-4): owner|admin only; soft-deactivate rather than DELETE to preserve FK integrity, and respect maintenance reminder history.
 router.delete('/:id', authenticate, async (req, res) => {
   try {
     const r = await query('DELETE FROM assets WHERE id = $1 RETURNING code', [req.params.id]);
@@ -113,6 +119,7 @@ router.delete('/:id', authenticate, async (req, res) => {
 });
 
 // -- Assignments --
+// TODO(phase-4): scoped check — same as GET /:id (the asset's current_project_id governs the assignments list visibility).
 router.get('/:id/assignments', authenticate, async (req, res) => {
   try {
     const data = await query('SELECT * FROM equipment_assignments WHERE equipment_id = $1 ORDER BY assigned_from DESC', [req.params.id]);
@@ -120,6 +127,7 @@ router.get('/:id/assignments', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// TODO(phase-4): owner|admin|maintenance_mgr; verify the assigned project_id is in user_project_roles.
 router.post('/:id/assignments', authenticate, async (req, res) => {
   try {
     const schema = Joi.object({
@@ -140,6 +148,7 @@ router.post('/:id/assignments', authenticate, async (req, res) => {
 });
 
 // -- Usage Logs --
+// TODO(phase-4): scoped check — every project member sees logs whose equipment is assigned to their project; owner|admin|maintenance_mgr see all.
 router.get('/:id/usage-logs', authenticate, async (req, res) => {
   try {
     const data = await query('SELECT * FROM equipment_usage_logs WHERE equipment_id = $1 ORDER BY log_date DESC', [req.params.id]);
@@ -147,6 +156,7 @@ router.get('/:id/usage-logs', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// TODO(phase-4): site engineers may log usage on assets assigned to their project; verify equipment_assignments history covers project_id at log_date.
 router.post('/:id/usage-logs', authenticate, async (req, res) => {
   try {
     const schema = Joi.object({
