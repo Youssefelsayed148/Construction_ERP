@@ -1,0 +1,64 @@
+openapi: 3.1.0
+info:
+  title: Construction ERP API
+  version: 1.0.0
+servers:
+  - url: https://construction-erp.theosirislabs.com/api/v1
+paths:
+  /projects:
+    get:
+      summary: List projects visible to the authenticated principal
+      responses:
+        '200': { description: OK }
+  /projects/{projectId}:
+    get:
+      summary: Get project
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+        '403': { description: Forbidden }
+        '404': { description: Not found }
+  /projects/{projectId}/actions:
+    get:
+      summary: List project actions visible to the authenticated principal
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+  /observations:
+    post:
+      summary: Create a project/site observation
+      responses:
+        '201': { description: Created }
+  /purchase-requisitions:
+    post:
+      summary: Create a purchase requisition or draft according to permission
+      responses:
+        '201': { description: Created }
+  /rfis:
+    post:
+      summary: Create an RFI
+      responses:
+        '201': { description: Created }
+components:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://construction-erp.theosirislabs.com/oauth/authorize
+          tokenUrl: https://construction-erp.theosirislabs.com/oauth/token
+          scopes:
+            projects.read: Read authorized projects
+            projects.write: Write authorized project data
+            finance.read: Read authorized financial data
+            finance.write: Perform authorized finance drafts/actions
+security:
+  - oauth2: [projects.read]

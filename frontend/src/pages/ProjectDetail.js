@@ -59,7 +59,7 @@ function ProjectDetail() {
   const [milestones, setMilestones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [users, setUsers] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [managers, setManagers] = useState([]);
   const [clients, setClients] = useState([]);
   const [finance, setFinance] = useState(null);
@@ -89,10 +89,10 @@ function ProjectDetail() {
     }
   }, [id]);
 
-  const loadUsers = useCallback(async () => {
+  const loadEmployees = useCallback(async () => {
     try {
-      const res = await fetchApi(`${API_URL}/users?limit=200`);
-      if (res.success) setUsers(res.data || []);
+      const res = await fetchApi(`${API_URL}/hr/employees?limit=200`);
+      if (res.success) setEmployees(res.data || []);
     } catch (e) { console.error(e); }
   }, []);
 
@@ -320,7 +320,7 @@ function ProjectDetail() {
       <div className="card">
         <div className="card-header">
           <h3 className="card-title">{locale === 'ar' ? 'فريق المشروع' : 'Project Team'}</h3>
-          <button className="btn btn-primary" style={{ padding: '6px 14px', fontSize: '13px' }} onClick={() => { loadUsers(); setTeamModal(true); }}>
+          <button className="btn btn-primary" style={{ padding: '6px 14px', fontSize: '13px' }} onClick={() => { loadEmployees(); setTeamModal(true); }}>
             <Plus size={14} />
             {locale === 'ar' ? 'إضافة عضو' : 'Add Member'}
           </button>
@@ -340,16 +340,27 @@ function ProjectDetail() {
                 </tr>
               </thead>
               <tbody>
-                {team.map(tm => (
-                  <tr key={tm.id || tm.user_id}>
-                    <td>{tm.user_name || tm.user?.name || '-'}</td>
+                {team.map(tm => {
+                  const memberName = (locale === 'ar'
+                    ? (tm.employee_name_ar || tm.employee_name)
+                    : (tm.employee_name_en || tm.employee_name)) || '-';
+                  return (
+                  <tr key={tm.id}>
+                    <td>
+                      {memberName}
+                      {tm.designation && (
+                        <span style={{ color: 'var(--color-text-secondary)', fontSize: '12px', marginInlineStart: '8px' }}>
+                          {tm.designation}
+                        </span>
+                      )}
+                    </td>
                     <td>
                       <span className="badge badge-info">{teamRoleLabel(tm.role)}</span>
                     </td>
                     <td>
                       <button className="btn btn-danger" style={{ padding: '4px 8px' }} onClick={async () => {
                         try {
-                          await fetchApi(`${API_URL}/projects/${id}/team/${tm.id || tm.user_id}`, { method: 'DELETE' });
+                          await fetchApi(`${API_URL}/projects/${id}/team/${tm.id}`, { method: 'DELETE' });
                           loadProject();
                         } catch (e) { alert(e.message); }
                       }}>
@@ -357,7 +368,8 @@ function ProjectDetail() {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -449,7 +461,7 @@ function ProjectDetail() {
         <TeamModal
           locale={locale}
           t={t}
-          users={users}
+          employees={employees}
           projectId={id}
           onClose={() => setTeamModal(false)}
           onSave={loadProject}
@@ -744,8 +756,8 @@ function PhaseModal({ phase, locale, t, projectId, onClose, onSave }) {
   );
 }
 
-function TeamModal({ locale, t, users, projectId, onClose, onSave }) {
-  const [form, setForm] = useState({ user_id: '', role: 'project_manager' });
+function TeamModal({ locale, t, employees, projectId, onClose, onSave }) {
+  const [form, setForm] = useState({ employee_id: '', role: 'project_manager' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -756,7 +768,7 @@ function TeamModal({ locale, t, users, projectId, onClose, onSave }) {
     setSaving(true);
     setError('');
     try {
-      const body = { user_id: Number(form.user_id), role: form.role };
+      const body = { employee_id: Number(form.employee_id), role: form.role };
       const res = await fetchApi(`${API_URL}/projects/${projectId}/team`, { method: 'POST', body: JSON.stringify(body) });
       if (res.success) { onSave(); onClose(); }
       else { setError(res.error || 'Failed to add member'); }
@@ -775,12 +787,19 @@ function TeamModal({ locale, t, users, projectId, onClose, onSave }) {
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'المستخدم' : 'User'}</label>
-                <select className="form-select" value={form.user_id} onChange={e => handleChange('user_id', e.target.value)} required>
-                  <option value="">-- {locale === 'ar' ? 'اختر المستخدم' : 'Select User'} --</option>
-                  {users.map(u => (
-                    <option key={u.id} value={u.id}>{u.name || u.username}</option>
-                  ))}
+                <label className="form-label">{locale === 'ar' ? 'الموظف' : 'Employee'}</label>
+                <select className="form-select" value={form.employee_id} onChange={e => handleChange('employee_id', e.target.value)} required>
+                  <option value="">-- {locale === 'ar' ? 'اختر الموظف' : 'Select Employee'} --</option>
+                  {employees.map(emp => {
+                    const nm = locale === 'ar'
+                      ? (emp.name_ar || emp.name || emp.name_en)
+                      : (emp.name_en || emp.name || emp.name_ar);
+                    return (
+                      <option key={emp.id} value={emp.id}>
+                        {nm}{emp.designation ? ` — ${emp.designation}` : ''}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
               <div className="form-group">

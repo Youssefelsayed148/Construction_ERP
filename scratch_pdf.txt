@@ -1,0 +1,3639 @@
+Construction Company ERP
+
+Full Product, Workflow, Calculation, Portal, API & Agentic
+Implementation Specification
+
+Version: 1.0
+Target: Production-grade construction company operating system
+Architecture benchmark: 2026 construction-management and agentic-software standards
+
+1. PRODUCT OBJECTIVE
+
+The objective is not simply to build a project-management application.
+
+The system should become the complete operating system for a construction company
+covering:
+
+     Company management
+     Employees and organizational structure
+     CRM and clients
+     Consultants
+     Main contractor operations
+     Subcontractors
+     Suppliers
+     Tendering and estimation
+     Projects
+     Project teams
+     Site organization
+     Buildings/floors/zones
+     BOQ and quantity takeoff
+     Materials and inventory
+     Procurement
+     Site execution
+     Daily works
+     Inspections
+     Consultant observations
+     RFIs
+     Submittals
+     Drawings and documents
+     QA/QC
+     HSE
+     Scheduling
+     Cost control
+     Client contracts
+     Subcontracts
+     Variations
+     Invoicing
+     Collections
+     Supplier/subcontractor payments
+     Equipment
+     Labour
+     Handover
+     Warranty
+     Company reporting
+     Project reporting
+     Notifications/reminders
+     AI assistance
+     REST/API integration
+     MCP connectivity
+     Fully auditable agent actions
+
+The current system already contains a meaningful execution foundation including project setup,
+phases, teams, milestones, BOQ, work orders, site reporting, QHSE, RFIs, submittals,
+documents and property sales.
+
+The target is to expand the existing system rather than create disconnected modules
+around it.
+
+2. CORE ARCHITECTURAL PRINCIPLE
+
+Everything should answer:
+
+        Which company?  Which project?  Which location?  Which work
+        package?  Which responsible party?  What quantity/cost?  What
+        approval state?  What action is required?
+
+The basic data structure should therefore be:
+
+Company
+
+ Departments
+ Employees
+ Clients
+ Consultants
+ Subcontractors
+ Suppliers
+ Equipment
+ Warehouses
+
+ Projects
+
+   
+    Project Team
+    Organizations / Participants
+    Contracts
+    WBS
+    Locations
+    BOQ
+    Schedule
+    Procurement
+    Inventory
+    Site Execution
+    Commercial
+    Documents
+    Quality
+    Safety
+    Correspondence
+    Handover
+
+Do not duplicate information separately for consultant/client/subcontractor apps.
+
+They should all use the same project database with different permissions and interfaces.
+
+3. MULTI-ORGANIZATION MODEL
+
+Create a first-class Organization object.
+
+Organization types:
+
+Internal Company
+Client / Owner
+PMC / Construction Manager
+Consultant
+Architect
+Structural Consultant
+MEP Consultant
+QS Consultant
+Subcontractor
+Supplier
+Labor Contractor
+Testing Laboratory
+Authority
+Broker
+Other Third Party
+
+Each organization contains:
+
+     Legal name
+     Trade name
+     Registration
+     Tax number
+     Address
+     Contacts
+     Bank information
+     Documents
+     Certifications
+     Insurance
+     Commercial registration
+     VAT registration
+     Trade/speciality
+     Qualification status
+     Performance history
+     Blacklist status
+     Active/inactive
+     Associated projects
+     Users
+
+Individual users belong to organizations.
+4. COMPANY ORGANIZATIONAL
+
+STRUCTURE
+
+The ERP should support the full company hierarchy.
+
+Example:
+
+CEO / Managing Director
+
+ COO
+
+ Projects Director
+  Construction Managers
+  Project Managers
+  Site Managers
+  Site Engineers
+  Supervisors
+
+ Technical Office
+  Technical Manager
+  Planning Engineers
+  Quantity Surveyors
+  BIM Engineers
+
+ Commercial
+  Commercial Manager
+  Contract Manager
+  Quantity Surveyors
+
+ Procurement
+  Procurement Manager
+  Procurement Officers
+
+ Finance
+  CFO
+  Accountants
+  AR
+  AP
+
+ Stores
+  Storekeepers
+
+ QA/QC
+
+ HSE
+
+ Plant & Equipment
+
+ HR
+
+ Document Control
+
+ Business Development / Tendering
+
+The hierarchy must be configurable.
+
+5. ROLE AND PERMISSION ENGINE
+
+Do not hard-code only:
+
+Admin
+Manager
+Employee
+
+Permission should be calculated using:
+
+Company
++
+Organization
++
+Project
++
+Role
++
+Module
++
+Record
++
+Action
+
+Actions:
+View
+Create
+Edit
+Delete
+Submit
+Review
+Approve
+Reject
+Return
+Assign
+Close
+Reopen
+Export
+Download
+See Financial Values
+See Internal Costs
+See Client Price
+See Subcontractor Price
+
+For example:
+
+Project Manager
+
+Project A
+
+RFIs        FULL
+
+Submittals FULL
+
+Budget        VIEW
+
+Internal Cost VIEW
+
+Payments VIEW
+
+Consultant
+
+Project A
+
+RFIs        REVIEW + RESPOND
+
+Submittals REVIEW + APPROVE
+
+Budget        NONE
+
+Internal Cost NONE
+
+Client
+
+Project A
+
+Progress VIEW
+
+Milestones VIEW
+
+Photos        VIEW
+
+Variations REVIEW/APPROVE
+
+Internal Cost NONE
+6. PROJECT CREATION MUST BECOME A
+WIZARD
+
+Creating a project should configure the entire project environment.
+
+Step 1 -- Basic information
+
+Fields:
+
+     Project number
+     Arabic name
+     English name
+     Project type
+     Client
+     Contract type
+     Location
+     GPS location
+     Country
+     Currency
+     Tax configuration
+     Contract value
+     Project budget
+     Planned start
+     Planned finish
+     Defects liability period
+     Retention rules
+     Advance payment
+     Status
+
+Step 2 -- Project physical structure
+
+Configure:
+
+Project
+ Sites
+ Buildings / Blocks
+ Zones
+ Floors
+ Areas / Apartments / Rooms
+
+For infrastructure:
+
+Project
+ Sections
+ Zones
+ Chainage
+
+Step 3 -- Project WBS
+
+Example:
+
+1 Preliminaries
+2 Substructure
+3 Superstructure
+4 Architectural
+5 MEP
+6 External Works
+7 Testing & Commissioning
+8 Handover
+
+Allow import from template.
+
+Step 4 -- Project team
+
+While creating the project, assign:
+
+     Project Director
+     Construction Manager
+     Project Manager
+     Site Manager
+     Planning Engineer
+     QS
+     Technical Office
+     QA/QC
+     HSE
+     Procurement responsible
+     Accountant
+     Storekeeper
+     Document Controller
+     Engineers
+     Supervisors
+
+Each assignment automatically affects permissions, notifications and dashboards.
+
+The existing project module already supports assigning project-team members and roles, but
+this should now become part of structured project creation and access control.
+
+Step 5 -- External project participants
+
+Add:
+
+     Client
+     PMC
+     Lead consultant
+     Architect
+     Structural consultant
+     MEP consultant
+     QS consultant
+     Primary subcontractors
+     Suppliers
+
+Invite users immediately or later.
+
+Step 6 -- Approval matrix
+
+Example:
+
+RFI:
+Site Engineer
+ PM
+ Consultant
+
+Submittal:
+Technical Office
+ PM
+ Consultant
+
+Purchase > 100k:
+Procurement
+ PM
+ Commercial
+ GM
+
+Variation > 500k:
+PM
+ Commercial Manager
+ Director
+ Client
+
+Step 7 -- Cost structure
+
+Import/create:
+     Cost codes
+     BOQ
+     Budget
+     CBS
+     Work packages
+
+Step 8 -- Schedule template
+
+Import:
+     Project schedule
+     WBS
+     activities
+     milestones
+
+or create manually.
+
+Step 9 -- Project document structure
+Automatically create standard folders/registers.
+
+Step 10 -- Notifications
+
+Configure:
+     SLA
+     reminders
+     escalation rules
+     email/push/in-app rules
+
+Step 11 -- Finish
+
+System generates the complete Project Workspace automatically.
+There must never be a half-created project.
+
+7. PROJECT DIGITAL FILE
+
+Every project needs one unified digital project file.
+Navigation:
+01 Overview
+02 Team
+03 Participants
+04 Locations
+05 WBS & Schedule
+06 BOQ / Quantities
+07 Budget & Cost
+08 Contracts
+09 Procurement
+10 Materials & Inventory
+11 Subcontractors
+12 Work Packages
+13 Site Execution
+14 Daily Reports
+15 Consultant Visits
+16 Observations
+17 RFIs
+18 Submittals
+19 Inspections
+20 QA/QC
+21 HSE
+22 Drawings
+23 Documents
+24 Correspondence
+25 Meetings
+26 Variations
+27 Payment Certificates
+28 Client Invoices
+29 Supplier Invoices
+30 Photos
+31 Equipment
+32 Labour
+33 Reports
+34 Handover
+35 Warranty
+36 Audit Log
+
+One project = one complete file.
+
+8. LOCATION-BASED PROJECT CONTROL
+
+Every important project object must optionally contain:
+
+Site
+Building
+Zone
+Floor
+Area
+Room
+Work Package
+WBS Activity
+
+Example:
+Project: Tower Development
+Site: Main Site
+Building: Tower A
+Floor: Floor 8
+Zone: East
+Room: Apartment 803
+Activity: Ceramic Flooring
+
+Then the system can answer exactly what happened there.
+
+9. QUANTITY MODULE
+
+This is a critical enhancement.
+Every BOQ item receives a physical quantity allocation.
+Example:
+
+Location Planned Execute Approved Remaining
+                                    d
+
+Basemen 1,250 m³ 1,250            1,250  0
+
+t
+
+Ground 620   620                  600    0
+
+Floor 1 510  400                  380    110
+
+Floor 2 510  100                  80     410
+
+Calculations:
+
+Remaining Quantity
+=
+BOQ Quantity - Executed Quantity
+
+Certified Quantity
+=
+Consultant Approved Quantity
+
+Physical Progress %
+=
+Approved Quantity / Planned Quantity × 100
+
+Project totals roll upward:
+
+Area
+ Floor
+ Building
+ Site
+ Project
+
+The current work-order system already supports reporting and approving quantities against
+BOQ items.
+
+The new design must add the location and cost dimensions.
+
+10. MATERIAL RECIPE / CONSUMPTION
+ENGINE
+
+Activities should support standard material recipes.
+
+Example:
+1 m³ Reinforced Concrete:
+
+Concrete C35 1.00 m³
+
+Rebar     125 kg
+
+Binding Wire 1.5 kg
+
+Formwork  3.8 m²
+
+Spacer Blocks 10 pcs
+
+Include configurable:
+
+     wastage %
+     conversion factors
+     alternative materials
+     project-specific ratios
+If Floor 4 requires 500 m³:
+
+Concrete:
+500 × 1.00 = 500 m³
+
+Rebar:
+500 × 125 = 62,500 kg
+
+Binding Wire:
+500 × 1.5 = 750 kg
+
+System calculates requirements automatically.
+
+11. FLOOR / LOCATION DASHBOARD
+
+Every floor/location should have its own dashboard.
+Display:
+
+Progress
+
+     planned %
+     actual %
+     approved %
+     schedule status
+
+Quantities
+
+     planned
+     executed
+     certified
+     remaining
+
+Materials
+
+     required
+     reserved
+     issued
+     consumed
+     returned
+     waste
+     remaining
+
+Site
+
+     active work
+     manpower
+     equipment
+
+Consultant
+
+     inspections
+     comments
+     open observations
+
+Quality
+
+     WIR
+     MIR
+     NCR
+     tests
+
+Information
+
+     drawings
+     RFIs
+     submittals
+
+Photos
+
+     latest progress photos
+
+Commercial
+
+     budget
+     actual cost
+     committed cost
+     forecast
+
+12. MATERIAL PLANNING
+Calculate:
+
+Required Quantity
+- Consumed
+= Remaining Requirement
+
+Then:
+
+Remaining Requirement
+- Stock Available
+- Confirmed Incoming
+=
+Procurement Requirement
+
+Material planning should also consider schedule dates.
+Example:
+Material: Blockwork
+
+Need next 30 days 45,000
+
+Stock              12,000
+
+Confirmed PO       15,000
+
+Shortage           18,000
+
+Required date      25 Sep
+
+Click shortage:
+
+Tower A / Floor 5  6,500
+Tower A / Floor 6  5,500
+Tower B / Floor 2  6,000
+
+13. INVENTORY MODULE
+
+Warehouses:
+
+Central Warehouse
+Project Warehouse
+Site Store
+Temporary Store
+Floor/Zone Holding Area
+
+Every transaction should create a stock movement.
+
+Movement types:
+
+     GRN
+     Issue
+     Return
+     Transfer
+     Adjustment
+     Waste
+     Damage
+     Supplier return
+
+Calculation:
+
+Physical Stock
+=
+Opening
++ Receipts
++ Returns
++ Transfers In
+- Issues
+- Transfers Out
+- Waste
+
+Also track:
+
+Available Stock
+=
+Physical Stock - Reserved Stock
+
+The current guide allows warehouse material use through work orders, but site delivery
+information is still largely free text.
+That should become fully transactional.
+
+14. AUTOMATIC REORDERING
+Material master fields:
+
+     Minimum stock
+     Maximum stock
+     Safety stock
+     Reorder point
+     Lead time
+     Daily usage
+     Preferred supplier
+     Purchase unit
+     order multiple
+     latest rate
+     framework price
+
+Calculate:
+
+Reorder Point
+=
+Lead-Time Consumption + Safety Stock
+
+Forecast:
+
+Projected Inventory
+=
+Current Stock
++ Confirmed Incoming
+- Reserved Quantity
+- Planned Consumption
+
+When:
+
+Projected Inventory <= Reorder Point
+
+trigger replenishment.
+
+Levels:
+
+Mode A
+
+Automatically create Purchase Requisition.
+
+Mode B
+Automatically create draft PO for approved framework supplier.
+
+Mode C
+
+Automatically issue PO below configured financial authority.
+
+Example:
+
+Auto PO <= EGP 20,000
+
+20,001­100,000
+ Procurement Manager
+
+100,001­500,000
+ Procurement + PM
+
+>500,000
+ Commercial Director
+
+Never allow uncontrolled automatic purchasing.
+
+15. PROCUREMENT MODULE
+
+Workflow:
+
+Material Requirement
+
+Purchase Requisition
+
+Approval
+
+RFQ
+
+Supplier Quotations
+
+Technical Comparison
+
+Commercial Comparison
+
+Selection
+
+Purchase Order
+
+Delivery
+
+MIR
+
+GRN
+
+Inventory
+
+Supplier Invoice
+
+Payment
+
+Documents:
+
+     PR
+     RFQ
+     quotation
+     comparison sheet
+     technical evaluation
+     commercial evaluation
+     approval form
+     PO
+     delivery note
+     MIR
+     GRN
+     supplier invoice
+     payment voucher
+     return note
+
+Calculations:
+
+Total Purchase
+=
+Qty × Unit Rate
+
+plus:
+
+     discount
+     VAT
+     freight
+     customs where applicable
+     retention
+     advance
+     other charges
+
+16. SUPPLIER PORTAL
+
+Supplier sees:
+
+     RFQs
+     quotation submission
+     POs
+     delivery dates
+     documents
+     required certifications
+     invoices
+     payment status
+
+No internal company financial information.
+
+17. SUBCONTRACTOR MODULE
+
+Subcontractors become first-class companies.
+
+Master data:
+
+     classification
+     trade
+     qualification
+     documents
+     insurance
+     certifications
+     bank details
+     performance
+     blacklist
+     projects
+
+Each subcontract contains:
+Package
+BOQ
+Original Amount
+Approved Variations
+Revised Amount
+Executed
+Certified
+Retention
+Advance
+Advance Recovery
+Paid
+Outstanding
+
+Calculation:
+
+Revised Subcontract
+=
+Original Amount + Approved Changes
+
+18. SUBCONTRACTOR PORTAL
+
+Subcontractor sees:
+
+     scope
+     BOQ
+     drawings
+     work packages
+     programme
+     RFIs
+     submittals
+     WIR
+     MIR
+     NCR
+     consultant observations
+     progress quantities
+     manpower
+     equipment
+     variation requests
+     payment applications
+     payment status
+     snags
+     warranty tasks
+
+19. CLIENT CONTRACT
+
+Maintain:
+
+     contract amount
+     contract type
+     BOQ/SOV
+     commencement date
+     completion date
+     retention
+     advance
+     performance bond
+     advance guarantee
+     insurance
+     liquidated damages
+     taxes
+     variations
+     extensions
+     payment terms
+
+Documents:
+
+     signed contract
+     LOA
+     BOQ
+     drawings
+     conditions
+     addenda
+     guarantees
+     insurance
+     amendments
+
+20. COST CONTROL
+The existing project display currently uses collected payments and expenses to derive project
+profit.
+
+For construction control, that must become a much richer commercial model.
+
+Revenue
+
+Original Contract
++ Approved Client Variations
+=
+Revised Contract Value
+
+Then:
+
+     Work Executed
+     Certified
+     Invoiced
+     Collected
+     Retention Receivable
+     Outstanding AR
+
+Cost
+
+Original Budget
++ Budget Adjustments
+=
+Current Budget
+
+Then:
+
+Committed Cost
+Actual Cost
+Accrued Cost
+Forecast Cost to Complete
+Forecast Final Cost
+
+Margin
+
+Forecast Profit
+=
+Forecast Revenue - Forecast Final Cost
+Forecast Margin %
+=
+Forecast Profit / Forecast Revenue × 100
+
+Oracle's current Primavera Unifier platform similarly treats cost management, controls,
+documentation and project processes as connected enterprise functions rather than merely
+comparing cash receipts to recorded expenses.
+
+21. CLIENT INVOICING / ACCOUNTS
+RECEIVABLE
+
+Invoice creation:
+
+     client
+     project
+     contract
+     valuation
+     billing period
+     certified amount
+     retention
+     advance recovery
+     taxes
+     deductions
+     previous certified
+     current certified
+
+Calculation example:
+
+Gross Certified
+- Retention
+- Advance Recovery
+- Other Deductions
++ Tax
+=
+Invoice Amount
+
+Statuses:
+
+Draft
+Approved
+Issued
+Partially Paid
+Paid
+Overdue
+Cancelled
+
+Reminder engine:
+
+7 days before due date
+Due today
+7 days overdue
+14 days overdue
+30 days overdue
+
+Escalate according to configured rules.
+
+22. ACCOUNTS PAYABLE
+
+Supplier/subcontractor invoice flow:
+
+Invoice Received
+
+PO/Subcontract Match
+
+Quantity Verification
+
+Commercial Verification
+
+Approval
+
+Due
+
+Payment
+
+Support three-way matching:
+
+PO
+
+GRN
+
+Supplier Invoice
+
+Exceptions are flagged automatically.
+
+23. FINANCE MODULE
+
+Company-wide finance dashboard:
+
+     AR
+     AP
+     cash
+     project profitability
+     invoices
+     collections
+     supplier liabilities
+     subcontract liabilities
+     retention
+     VAT/tax
+     cash flow
+
+Optionally integrate later with accounting packages rather than recreate a full statutory general
+ledger if not required.
+
+Every transaction should carry:
+
+Company
+Project
+Cost Code
+Department
+Supplier/Client
+Date
+Currency
+Tax
+Approver
+Attachments
+24. CONSULTANT PORTAL
+
+Consultants get real login credentials.
+
+Their interface should be significantly simpler than the internal ERP.
+
+Home:
+
+Project Summary
+Milestones
+Overall Progress
+Today's Inspections
+Pending Reviews
+New Work Ready for Inspection
+Open Observations
+RFIs
+Submittals
+Latest Drawings
+Site Visits
+Daily Progress
+Messages
+Notes
+
+Autodesk currently uses enhanced RFI workflows with coordinators and expert reviewers rather
+than only basic sender/receiver flows, which is a useful model for this portal.
+
+25. CONSULTANT DAILY DASHBOARD
+
+Display:
+
+TODAY
+
+4 WIRs awaiting inspection
+2 MIRs
+3 RFIs requiring reply
+5 Submittals awaiting review
+2 previous observations awaiting closure
+1 planned site visit
+The consultant does not need to navigate the full ERP.
+
+26. CONSULTANT SITE VISIT
+
+Fields:
+
+     visit number
+     visitor
+     organization
+     discipline
+     project
+     site
+     building
+     floor
+     exact location
+     date/time
+     attendees
+     purpose
+     activities inspected
+     drawings referenced
+     photos
+     notes
+
+The existing site-visit module already supports visitor information, notes, follow-up items and
+photographs.
+
+Expand it into a formal observation process.
+
+27. CONSULTANT OBSERVATION
+
+Each comment must become a record.
+
+Example:
+
+OBS-000341
+
+Project:
+Tower Development
+Tower:
+A
+
+Floor:
+06
+
+Area:
+Apartment 603
+
+Raised By:
+Structural Consultant
+
+Priority:
+High
+
+Comment:
+Rebar spacing differs from approved drawing.
+
+Reference:
+STR-601 Rev 04
+
+Attach photos.
+
+28. OBSERVATION WORKFLOW
+
+Consultant Creates Observation
+
+Project Manager Notification
+
+PM Acknowledges
+
+PM Assigns Responsible Engineer/Subcontractor
+
+Rectification
+
+Before/After Photos Uploaded
+
+PM Reviews
+
+Submitted to Consultant
+
+Consultant Approves or Rejects
+
+Closed
+
+Rejection restarts correction.
+
+Every status change retains:
+
+     user
+     company
+     timestamp
+     comments
+     photographs
+     attachments
+
+29. PHOTO MANAGEMENT
+
+Every photo should contain metadata:
+
+Project
+Building
+Floor
+Location
+Work Package
+Uploader
+Organization
+Date
+Linked Record
+
+Enable annotations:
+
+     arrow
+     circle
+     box
+     text
+     measurements
+
+Maintain:
+BEFORE
+DURING
+AFTER
+
+30. STICKY NOTES / PERSONAL NOTES
+
+Every dashboard should support lightweight notes.
+Types:
+
+Personal note
+
+Only user sees it.
+
+Project note
+
+Shared with selected project team.
+
+Location note
+
+Attached to floor/location.
+
+Record note
+
+Attached to RFI/submittal/etc.
+Functions:
+
+     sticky/pin
+     colour/category
+     due date
+     reminder
+     convert to action
+     assign person
+Sticky notes must not replace formal project correspondence.
+
+31. CLIENT PORTAL
+Client login should be extremely clean.
+
+Dashboard:
+
+     project progress
+     planned vs actual
+     milestones
+     photographs
+     schedule summary
+     approved changes
+     pending client decisions
+     certified values
+     invoices
+     payments
+     key documents
+     major RFIs if permitted
+     reports
+     handover status
+
+They should never accidentally see:
+
+     internal margins
+     subcontractor rates
+     supplier rates
+     confidential correspondence
+
+32. CLIENT PORTAL MUST ALWAYS
+WORK
+
+Critical product requirement:
+
+The Client Dashboard route must render even if:
+
+     project has no client assigned
+     client has no portal user
+     no invoices exist
+     no progress exists
+
+Use proper empty states:
+
+No client assigned yet
+[Assign Client]
+
+Never:
+null
+undefined
+500
+blank page
+
+Same for:
+     consultant portal
+     subcontractor portal
+     supplier portal
+     every dashboard
+
+Components must accept empty datasets.
+
+33. DEMO / PREVIEW MODE
+
+Admin should be able to:
+        Preview as Client
+        Preview as Consultant
+        Preview as Subcontractor
+        Preview as Site Engineer
+
+without creating temporary fake accounts.
+This allows QA and demonstrations.
+
+34. WORK PACKAGE ENGINE
+
+Create a reusable Work Package entity.
+Example:
+WP-ARCH-004
+Tower A ­ Floor 04 Finishes
+
+It connects:
+
+ WBS
+ BOQ
+ location
+ subcontractor
+ schedule
+ materials
+ drawings
+ RFIs
+ submittals
+ inspections
+ budget
+ quantities
+
+Dashboard:
+
+Progress      68%
+
+Schedule variance -5 days
+
+Budget consumed 63%
+
+Material readiness 92%
+
+Open inspections 4
+
+Open consultant comments 2
+
+NCR           1
+
+35. SCHEDULING
+
+Add:
+
+     WBS
+     activities
+     predecessors
+     successors
+     FS / SS / FF / SF
+     lags
+     calendars
+     baseline
+     planned start
+     planned finish
+     actual start
+     actual finish
+     remaining duration
+     progress %
+     critical path
+     float
+     resources
+
+Views:
+
+     Gantt
+     2-week lookahead
+     4-week lookahead
+     6-week lookahead
+     milestones
+     delayed activities
+
+Support eventual import/export with Primavera/MS Project rather than trying to recreate all
+Primavera capabilities initially.
+
+36. SCHEDULE CALCULATIONS
+
+Schedule Variance
+=
+Actual Progress - Planned Progress
+
+Earned-value options:
+
+SPI = EV / PV
+CPI = EV / AC
+
+Show only where project controls use earned value.
+
+37. DAILY SITE OPERATIONS
+Site engineer home screen:
+
+TODAY
+
+Activities
+Inspections
+Materials
+Deliveries
+Manpower
+Equipment
+Consultant comments
+Safety items
+Drawings
+Daily Report
+Photos
+
+Mobile-first.
+
+38. DAILY REPORT
+
+Connect daily reporting directly to data.
+
+Do not ask staff to retype everything.
+
+Auto-populate:
+
+     date
+     weather where integration available
+     manpower
+     equipment
+     material deliveries
+     work orders
+     executed quantities
+     inspections
+     photographs
+
+Engineer adds narrative and exceptions.
+39. RFI
+
+Current RFI capability exists but should be enhanced.
+
+Workflow:
+
+Draft
+Submitted
+Coordinator Review
+Consultant Review
+Additional Reviewer
+Official Response
+Contractor Acknowledgement
+Closed
+
+Fields:
+
+     project
+     location
+     work package
+     discipline
+     subject
+     question
+     drawing references
+     specifications
+     photos
+     due date
+     responsible party
+     schedule impact
+     cost impact
+
+Autodesk's current RFI implementation includes coordinator/reviewer roles, references to files,
+photos, submittals, schedules and other records.
+
+40. SUBMITTALS
+
+Types:
+
+     material
+     shop drawing
+     sample
+     method statement
+     technical data
+     mock-up
+     test certificate
+
+Workflow:
+
+Subcontractor
+
+Technical Office
+
+PM
+
+Consultant
+
+Specialist Reviewers
+
+Response
+
+Responses:
+
+A ­ Approved
+B ­ Approved with Comments
+C ­ Revise & Resubmit
+D ­ Rejected
+
+Keep revision history.
+
+Autodesk currently supports submittal packages categorized by physical elements such as
+floors or rooms, which fits the location-based model proposed here.
+
+41. DOCUMENT CONTROL
+
+Create controlled registers:
+
+     drawings
+     specifications
+     contracts
+     reports
+     technical documents
+     correspondence
+     method statements
+     as-built documents
+     O&M
+
+Document fields:
+
+Document Number
+Title
+Discipline
+Type
+Revision
+Status
+Project
+Location
+Package
+Originator
+Recipient
+Issue Date
+Review Date
+
+42. REVISION CONTROL
+
+Only one current revision.
+
+Example:
+
+STR-001
+Rev 01 ­ Superseded
+Rev 02 ­ Superseded
+Rev 03 ­ Current
+
+Superseded documents need a prominent visual warning.
+
+The existing document library already maintains version history and resets approval when a
+new revision is uploaded.
+
+Keep that logic and make it enterprise-grade.
+43. TRANSMITTALS
+
+Support:
+
+     incoming
+     outgoing
+     recipients
+     documents
+     purpose
+     acknowledgement
+     response due date
+
+Generate formal PDF transmittal automatically.
+
+44. QA/QC
+
+Modules:
+
+ITP
+WIR
+MIR
+Checklists
+Tests
+Hold Points
+Witness Points
+Quality Observations
+NCR
+Corrective Actions
+Preventive Actions
+Mock-ups
+Calibration
+Certificates
+Punch Lists
+
+45. WIR
+
+Work Inspection Request.
+Fields:
+
+     project
+     exact location
+     BOQ item
+     work package
+     subcontractor
+     activity
+     inspection date
+     checklist
+     drawings
+     method statement
+     photographs
+
+Workflow:
+
+Site Engineer
+ QA/QC
+ PM where required
+ Consultant
+
+Result:
+
+Approved
+Approved with Comments
+Rejected
+Reinspect
+
+46. MIR
+
+Material Inspection Request.
+
+Link:
+
+PO
+Delivery
+GRN
+Material
+Supplier
+Submittal
+Certificates
+Test Results
+
+Material should not become unrestricted usable inventory until the configured inspection status
+allows it.
+
+47. NCR
+
+Existing NCR functionality should remain but receive:
+
+     location
+     responsible party
+     root cause
+     corrective action
+     preventive action
+     cost impact
+     schedule impact
+     attachments
+     verification
+
+The current module already supports severity and state progression.
+
+48. HSE
+
+Add:
+
+     induction
+     toolbox talks
+     JSA
+     risk assessment
+     permit to work
+     hot work
+     lifting
+     excavation
+     confined spaces
+     observations
+     near misses
+     incidents
+     PPE
+     equipment inspections
+     corrective actions
+     emergency drills
+
+Dashboard:
+
+Man Hours
+Days Without LTI
+Open Observations
+Overdue Safety Actions
+Near Misses
+Incidents
+
+49. VARIATION / CHANGE MANAGEMENT
+
+Workflow:
+
+Change Event
+
+Potential Variation
+
+Technical Review
+
+Subcontractor/Supplier RFQ
+
+Cost Build-Up
+
+Schedule Impact
+
+Internal Approval
+
+Consultant Recommendation
+
+Client Approval
+
+Variation Order
+
+Causes:
+     design change
+     RFI response
+     client request
+     consultant instruction
+     unforeseen condition
+     authority
+     scope omission
+
+50. VARIATION CALCULATIONS
+
+Direct Cost
++ Labour
++ Equipment
++ Subcontract
++ Overhead
++ Profit
+=
+Variation Value
+
+Track:
+
+Submitted Value
+Recommended Value
+Approved Value
+
+51. PAYMENT CERTIFICATES
+
+Client side:
+
+Previous Certified
+Current Gross
+Retention
+Advance Recovery
+Variations
+Deductions
+Tax
+Net Certificate
+Subcontractor side uses the same concept.
+
+All certificates should produce formal generated documents.
+
+52. RESOURCE / LABOUR
+
+Track:
+
+     employee
+     subcontract labour
+     discipline
+     attendance
+     project
+     floor/location
+     work package
+     hours
+     overtime
+     cost rate
+
+Calculation:
+
+Labour Cost
+=
+Regular Hours × Rate
++
+Overtime Hours × OT Rate
+
+53. EQUIPMENT
+
+Equipment master:
+
+     code
+     type
+     serial
+     ownership
+     purchase/rental
+     rate
+     maintenance
+     insurance
+     certificates
+
+Project usage:
+
+Equipment
+Hours
+Location
+Operator
+Activity
+Fuel
+Cost
+
+54. EQUIPMENT COST
+
+Equipment Cost
+=
+Usage Hours × Internal/Rental Rate
+
+plus configurable:
+
+     fuel
+     mobilization
+     maintenance
+
+55. MEETINGS
+
+Meeting types:
+
+     progress
+     technical
+     commercial
+     safety
+     coordination
+     client
+     consultant
+Minutes contain:
+Agenda
+Attendees
+Discussion
+Decision
+Action
+Owner
+Due Date
+
+Actions automatically feed into the universal Action Center.
+
+56. CORRESPONDENCE
+
+Maintain formal:
+     letters
+     notices
+     instructions
+     claims
+     contractual notifications
+
+Every communication:
+     numbered
+     revision-safe
+     searchable
+     linked to project records
+     auditable
+
+57. UNIVERSAL ACTION SYSTEM
+
+This is one of the most important shared components.
+Create:
+ActionItem
+Fields:
+
+Project
+Source Type
+Source ID
+Location
+Title
+Assigned User
+Assigned Organization
+Priority
+Due Date
+Status
+Description
+Attachments
+Comments
+Reminder
+Escalation
+
+An action may originate from:
+
+Site Visit
+Observation
+RFI
+Submittal
+Meeting
+NCR
+Inspection
+Safety
+Procurement
+Material Shortage
+Schedule Delay
+Client Comment
+
+Everyone gets one My Actions screen.
+
+58. NOTIFICATION ENGINE
+
+Channels:
+
+     in-app
+     email
+     push
+     optional SMS
+     optional WhatsApp provider
+
+Types:
+
+     assignment
+     due soon
+     overdue
+     approval requested
+     approval completed
+     rejected
+     consultant comment
+     material shortage
+     delivery
+     inspection
+     payment
+     expiring document
+
+59. REMINDERS AND ESCALATION
+
+Example:
+
+Consultant Observation
+
+Immediately
+ Notify PM
+
+After 4h not acknowledged
+ Reminder
+
+After 24h
+ Construction Manager
+
+Due date missed
+ Projects Director
+
+Everything configurable per project/template.
+60. NOTIFICATION PREFERENCES
+
+Users may configure:
+
+Immediate
+Daily Digest
+Weekly Digest
+Mute optional
+
+Critical notices cannot be completely muted where company policy forbids it.
+
+61. DASHBOARD -- CEO / OWNER
+
+Display company-level:
+
+     total projects
+     contract backlog
+     revenue
+     collections
+     receivables
+     payables
+     cash requirement
+     total budgets
+     committed cost
+     actual cost
+     forecast cost
+     forecast profit
+     project margins
+     approved variations
+     pending variations
+     projects delayed
+     procurement exposure
+     overdue approvals
+     major quality issues
+     safety issues
+62. DASHBOARD -- PROJECTS
+DIRECTOR
+
+     project health
+     PM performance
+     progress
+     schedule delay
+     commercial position
+     major RFIs
+     major NCRs
+     resource constraints
+     material shortages
+     major client decisions
+
+63. DASHBOARD -- CONSTRUCTION
+MANAGER
+
+     today's site activities
+     lookahead
+     floors in progress
+     labour
+     equipment
+     inspections
+     consultant observations
+     blocked works
+     delays
+     safety
+     materials
+
+64. DASHBOARD -- PROJECT MANAGER
+
+Main command centre:
+
+My Actions
+Project Progress
+Milestones
+Schedule
+Quantities
+Material Readiness
+Procurement
+Consultant Comments
+RFIs
+Submittals
+WIR/MIR
+NCR
+Variations
+Cost
+Invoices
+Subcontractors
+Risks
+
+65. DASHBOARD -- SITE ENGINEER
+
+Mobile-oriented:
+
+My Work Today
+Location
+Current Drawings
+Activities
+Work Orders
+Materials Available
+Inspections
+Consultant Comments
+Photos
+Daily Report
+Notes
+
+66. DASHBOARD -- PLANNING
+ENGINEER
+     baseline
+     actual
+     delayed activities
+     critical path
+     lookahead
+     resource curve
+     S-curve
+     SPI
+     activity updates
+
+67. DASHBOARD -- QS / COMMERCIAL
+
+     BOQ
+     quantities
+     measurement
+     client valuation
+     subcontractor valuation
+     variations
+     commitments
+     budget
+     forecast
+     margin
+
+68. DASHBOARD -- PROCUREMENT
+
+     PR pending
+     RFQ
+     quotations
+     comparisons
+     approvals
+     POs
+     delivery dates
+     shortages
+     delayed suppliers
+69. DASHBOARD -- STOREKEEPER
+
+     receiving today
+     MIR pending
+     GRNs
+     stock
+     stock below minimum
+     reserved materials
+     issues
+     transfers
+     returns
+     waste
+
+70. DASHBOARD -- QA/QC
+
+     inspections today
+     WIR pending
+     MIR pending
+     tests
+     NCR
+     overdue corrective actions
+     consultant quality comments
+
+71. DASHBOARD -- HSE
+
+     permits
+     inspections
+     incidents
+     near misses
+     open observations
+     toolbox talks
+     overdue corrective actions
+72. DASHBOARD -- DOCUMENT
+CONTROLLER
+
+     documents incoming
+     transmittals
+     review due
+     overdue reviews
+     new revisions
+     superseded drawings
+     correspondence
+     acknowledgement outstanding
+
+73. DASHBOARD -- FINANCE
+
+     AR
+     AP
+     invoices
+     collections
+     due payments
+     project cashflow
+     retention
+     taxes
+     overdue invoices
+
+74. DASHBOARD -- CLIENT
+
+Simple:
+
+Progress
+Milestones
+Major Schedule
+Photos
+Client Decisions
+Variations
+Payment Status
+Reports
+Documents
+Handover
+
+75. DASHBOARD -- CONSULTANT
+
+Simple:
+
+Project Progress
+Milestones
+Today's Inspection
+WIR
+MIR
+RFIs
+Submittals
+Observations
+NCR Closures
+New Works Ready for Inspection
+Latest Drawings
+Daily Progress
+Sticky Notes
+
+76. DASHBOARD -- SUBCONTRACTOR
+
+My Scope
+Today's Work
+Drawings
+Materials
+Inspections
+Comments
+RFIs
+Submittals
+Quantities
+Payment
+Variations
+Snags
+77. REPORTING ENGINE
+
+Every list/dashboard should support:
+
+     filters
+     saved views
+     Excel
+     PDF
+     scheduled report
+     email distribution
+     charts
+     drilldown
+
+Reports must respect permissions.
+
+78. PROJECT REPORT
+
+Generate automatically:
+
+Executive Summary
+Progress
+Schedule
+Milestones
+Manpower
+Equipment
+Quantities
+Procurement
+Materials
+Quality
+Safety
+RFIs
+Submittals
+Consultant Observations
+Variations
+Financial Status
+Photos
+Key Risks
+Actions
+
+Weekly/monthly templates.
+79. HANDOVER
+
+Workflow:
+
+Pre-Handover
+
+Punch List
+
+Rectification
+
+Inspection
+
+Testing & Commissioning
+
+As-Built
+
+O&M
+
+Training
+
+Taking Over
+
+80. WARRANTY / DLP
+
+Track:
+
+     asset
+     location
+     supplier/subcontractor
+     warranty start
+     warranty end
+     defect
+     responsible party
+     SLA
+     rectification
+     approval
+81. PROPERTY SALES
+
+The current system includes buildings, units, reservations and contracts.
+
+Keep this as an optional Property Development module rather than forcing it onto every
+construction company.
+
+Expand eventually with:
+
+     installment schedules
+     collections
+     broker commission
+     reservations
+     cancellations
+     handover
+     customer care
+
+82. PRECONSTRUCTION / CRM
+
+Company flow:
+
+Lead
+ Opportunity
+ Tender
+ Go/No-Go
+ Estimation
+ Supplier/Subcontract RFQs
+ Estimate
+ Proposal
+ Negotiation
+ Award
+ Contract
+ Project
+
+83. TENDER / ESTIMATION
+
+Support:
+     cost library
+     assemblies
+     quantities
+     subcontract quotations
+     supplier quotations
+     preliminaries
+     overhead
+     margin
+     contingencies
+     revisions
+
+Calculation:
+
+Direct Cost
++ Preliminaries
++ Overhead
++ Contingency
++ Profit
+=
+Tender Price
+
+84. PROJECT TEMPLATES
+
+Admin creates templates:
+
+Residential Tower
+Villa Compound
+Commercial Building
+Infrastructure
+Fit-Out
+MEP
+Industrial
+
+Template includes:
+
+     WBS
+     folders
+     workflows
+     roles
+     approval rules
+     document numbering
+     QA checklists
+     HSE checklists
+     dashboard configuration
+     notifications
+
+Creating projects becomes much faster.
+
+85. DOCUMENT TEMPLATES REQUIRED
+
+The development agent should create configurable templates for:
+
+Project
+
+     Project Charter
+     Project Team Sheet
+     Project Execution Plan
+
+Procurement
+
+     PR
+     RFQ
+     Bid Comparison
+     PO
+     GRN
+     MIR
+
+Commercial
+
+     Contract
+     Subcontract
+     Variation
+     Payment Certificate
+     Invoice
+
+Technical
+
+     RFI
+     Submittal
+     Transmittal
+     Drawing Register
+     Document Register
+     Method Statement
+
+Site
+
+     Daily Report
+     Site Instruction
+     Visit Report
+     Observation
+
+Quality
+
+     ITP
+     WIR
+     NCR
+     Test Report
+     Punch List
+
+HSE
+
+     Inspection
+     JSA
+     Permit
+     Incident
+     Toolbox Talk
+
+Meetings
+
+     MOM
+     Action Register
+
+Handover
+
+     Handover Checklist
+     Asset Register
+     Warranty Certificate Register
+
+Each should support company branding and PDF export.
+
+86. AUTOMATIC DOCUMENT NUMBERING
+Admin configures patterns.
+Example:
+PROJECT-DISCIPLINE-TYPE-SEQUENCE-REV
+
+Output:
+OSI-STR-RFI-0042
+OSI-ARC-SUB-0018
+OSI-QA-WIR-0231
+
+87. SEARCH
+
+Global search:
+RFI-42
+Tower A Floor 5
+C35
+ABC Contractor
+Invoice 0082
+Observation waterproofing
+
+Search across permitted:
+     records
+     documents
+     comments
+     projects
+     organizations
+
+88. MOBILE / RESPONSIVE
+
+Critical site functions must work well on mobile.
+Prioritize:
+     photos
+     daily report
+     inspection
+     WIR
+     MIR
+     consultant observations
+     action centre
+     drawings
+     material issues
+     labour
+     safety
+
+89. OFFLINE MODE
+
+Eventually support offline field work:
+
+     cache latest drawings
+     create observations
+     fill inspections
+     take photos
+     complete checklist
+
+Sync when online.
+
+Conflict resolution must be explicit.
+
+90. AUDIT LOG
+
+Every material action must be immutable/auditable.
+
+Record:
+
+User
+Organization
+Timestamp
+IP/session where appropriate
+Action
+Before
+After
+Project
+Source
+
+Especially:
+
+     approvals
+     payments
+     contracts
+     quantities
+     document revisions
+     agent actions
+
+91. WORKFLOW ENGINE
+
+Do not hard-code separate logic for every process.
+
+Create:
+
+WorkflowTemplate
+WorkflowStep
+WorkflowInstance
+WorkflowAction
+Approval
+EscalationRule
+
+Steps support:
+
+     user
+     role
+     organization type
+     amount condition
+     project condition
+     SLA
+     required attachments
+     required comments
+     parallel approval
+     sequential approval
+92. API-FIRST ARCHITECTURE
+
+Everything important should be accessible through an authenticated API.
+
+Suggested API families:
+
+/api/v1/companies
+/api/v1/users
+/api/v1/organizations
+
+/api/v1/projects
+/api/v1/projects/{id}/team
+/api/v1/projects/{id}/locations
+/api/v1/projects/{id}/wbs
+
+/api/v1/boq
+/api/v1/materials
+/api/v1/inventory
+/api/v1/procurement
+
+/api/v1/contracts
+/api/v1/subcontracts
+/api/v1/variations
+/api/v1/invoices
+/api/v1/payments
+
+/api/v1/rfis
+/api/v1/submittals
+/api/v1/inspections
+/api/v1/observations
+/api/v1/ncrs
+
+/api/v1/documents
+/api/v1/actions
+/api/v1/notifications
+/api/v1/reports
+
+Procore's developer platform currently exposes construction objects such as RFIs, submittals,
+drawings and cost codes through OAuth-protected APIs; this is a good benchmark for making
+your own domain objects first-class API resources.
+93. API REQUIREMENTS
+
+Implement:
+
+     OAuth/OIDC
+     scoped API tokens
+     service accounts
+     pagination
+     filters
+     sorting
+     versioning
+     idempotency keys
+     webhooks
+     rate limiting
+     API audit logs
+     OpenAPI specification
+     sandbox/test environment
+
+Never expose direct unrestricted database access.
+
+94. WEBHOOKS
+
+Events:
+
+project.created
+rfi.created
+rfi.overdue
+submittal.submitted
+observation.created
+observation.closed
+
+inventory.low
+purchase_order.approved
+delivery.received
+
+invoice.created
+invoice.overdue
+payment.received
+
+inspection.requested
+inspection.completed
+
+variation.approved
+action.overdue
+
+External automation tools can subscribe.
+
+95. MCP SERVER
+
+Build a remote MCP server over the same application service layer as the REST API.
+Do not write business logic separately inside MCP.
+Architecture:
+Web / Mobile
+
+     
+REST API
+
+     
+Business Services
+
+     
+Database
+
+     
+MCP Adapter
+
+     
+ChatGPT / Agents / Other MCP Clients
+
+As of September 2026, the MCP 2026-07-28 specification introduced a stateless protocol core,
+strengthened authorization and an extension model; legacy HTTP+SSE is on a deprecation
+path. Build against the current specification rather than older MCP tutorials.
+
+96. MCP AUTHENTICATION
+
+Use strong user authorization.
+Agent permissions must inherit:
+User
+Organization
+Project
+Role
+
+If a consultant asks:
+        What is Tower A margin?
+
+the MCP layer should return:
+Forbidden
+
+because consultant permissions do not allow internal costs.
+
+97. MCP READ TOOLS
+
+Examples:
+list_projects
+get_project
+
+get_project_progress
+get_project_team
+get_project_milestones
+
+list_locations
+get_floor_status
+
+get_boq
+get_quantities
+calculate_remaining_quantities
+
+get_material_requirements
+get_inventory_status
+get_material_shortages
+
+list_rfis
+get_rfi
+list_submittals
+list_inspections
+list_observations
+list_ncrs
+get_project_cost_summary
+list_invoices
+list_payments
+search_documents
+get_my_actions
+
+98. MCP WRITE TOOLS
+
+Examples:
+create_rfi
+reply_to_rfi
+create_site_observation
+add_observation_comment
+upload_observation_photo
+create_purchase_requisition
+create_inspection_request
+update_daily_report
+assign_action
+complete_action
+create_invoice_draft
+create_variation_draft
+99. HIGH-RISK AGENT ACTIONS
+
+Do not allow autonomous financial/destructive execution without policy.
+
+Examples requiring approval:
+
+issue_purchase_order
+approve_variation
+send_client_invoice
+record_payment
+approve_subcontract_certificate
+delete_document
+close_project
+
+The agent can prepare them automatically, but the configured authority must approve.
+
+OpenAI's current ChatGPT documentation supports custom MCP applications with write/modify
+actions, subject to workspace permissions and confirmation behaviour, making this architecture
+suitable for direct ChatGPT integration where enabled.
+
+The Apps SDK is also built on MCP, so the same integration can eventually provide interactive
+ChatGPT-native UI rather than only text tool calls.
+
+100. AGENT EXAMPLES
+
+Project Manager
+
+User:
+
+        What do I need to handle today?
+
+Agent retrieves:
+
+My actions
+Overdue RFIs
+Consultant comments
+Material shortages
+Inspections
+Schedule delay
+Invoices
+and returns prioritized work.
+
+Procurement
+
+User:
+        What materials will become short within the next 14 days?
+
+Agent calculates:
+schedule demand
+inventory
+reserved inventory
+incoming PO
+lead time
+
+and returns shortages.
+Then:
+
+        Create PRs for all critical shortages.
+Agent creates draft PRs.
+
+Consultant
+
+Consultant:
+        Show everything awaiting my inspection on Tower A.
+
+Agent returns permitted WIR/MIR records.
+Consultant:
+
+        Approve WIR-331 with comment that curing must continue for 5 days.
+Tool executes the approved action.
+Owner
+
+        Which projects have the worst forecast margin?
+
+Agent calculates portfolio results using permitted finance data.
+
+101. AI ASSISTANCE INSIDE ERP
+
+AI should assist--not silently control contractual records.
+
+Potential features:
+
+     summarize project status
+     summarize consultant comments
+     draft RFI
+     suggest RFI categorization
+     extract information from uploaded document
+     summarize meeting minutes
+     draft progress report
+     detect overdue work
+     identify material shortage
+     identify unusual consumption
+     compare BOQ vs actual
+     flag commercial exposure
+     summarize NCR trends
+     search documents conversationally
+
+Autodesk currently allows AI-assisted creation of RFI fields but still requires the user to review
+generated information before relying on it; that human-review principle should also apply here.
+
+102. DATA MODEL -- CORE ENTITIES
+
+At minimum:
+
+Company
+Department
+User
+Employee
+Role
+Permission
+
+Organization
+OrganizationUser
+
+Project
+ProjectParticipant
+ProjectTeamMember
+
+ProjectLocation
+LocationType
+
+WBS
+ScheduleActivity
+Milestone
+WorkPackage
+
+BOQSection
+BOQItem
+BOQLocationAllocation
+
+Material
+MaterialRecipe
+MaterialRequirement
+
+Warehouse
+InventoryStock
+StockReservation
+StockMovement
+
+PurchaseRequisition
+RFQ
+RFQVendor
+SupplierQuotation
+BidComparison
+PurchaseOrder
+Delivery
+GRN
+
+Contract
+ContractLine
+Subcontract
+SubcontractLine
+Variation
+PaymentCertificate
+
+Invoice
+Payment
+Expense
+
+DailyReport
+SiteVisit
+Observation
+ObservationComment
+
+RFI
+RFIResponse
+Submittal
+SubmittalRevision
+
+ITP
+WIR
+MIR
+Inspection
+Test
+NCR
+
+Document
+DocumentRevision
+Transmittal
+Correspondence
+
+Meeting
+MeetingAction
+
+Equipment
+EquipmentUsage
+Timesheet
+
+ActionItem
+Notification
+
+WorkflowTemplate
+WorkflowInstance
+WorkflowStep
+
+AuditEvent
+103. EMPTY-STATE STANDARD
+
+This is mandatory.
+Every module must work with zero records.
+Required states:
+Loading
+Empty
+Populated
+Error
+Permission Denied
+Offline
+
+No module may assume data exists.
+This directly solves the requirement that:
+
+        Client dashboard should work even before a client exists.
+Same for consultant dashboard and all other views.
+
+104. USER EXPERIENCE STANDARD
+
+UI should follow:
+
+Executive
+
+minimal + KPI-driven.
+
+Office team
+
+dense + efficient.
+
+Site/mobile
+large actions + minimal typing.
+
+Consultant
+
+review-oriented.
+
+Client
+
+simple + executive.
+
+Subcontractor
+
+scope/action-oriented.
+Avoid exposing 30 menu items to every person.
+
+105. GLOBAL COMMAND CENTRE
+
+Top bar should provide:
+Search
+My Actions
+Notifications
+Quick Create
+Project Switcher
+Help
+Profile
+
+Quick Create changes according to user role.
+
+106. PROJECT SWITCHER
+
+When a user belongs to multiple projects:
+Project A
+Project B
+Project C
+Selecting project scopes the whole workspace.
+
+No accidental cross-project data.
+
+107. DEVELOPER/AGENT BUILD
+SEQUENCE
+
+The following sequence should be followed.
+
+Do not jump randomly between modules.
+
+PHASE 1 -- Audit the Existing Codebase
+
+Agent must:
+
+    1. Inspect frontend.
+    2. Inspect backend.
+    3. Inspect database.
+    4. Inspect routes.
+    5. Inspect API.
+    6. Inspect authentication.
+    7. Inspect current permissions.
+    8. Map every current table.
+    9. Map every current module.
+    10.Map every current workflow.
+
+Deliver documents:
+
+     CURRENT_SYSTEM_ARCHITECTURE.md
+     CURRENT_DATABASE_SCHEMA.md
+     CURRENT_MODULE_MATRIX.md
+     CURRENT_API_MATRIX.md
+     CURRENT_PERMISSION_MATRIX.md
+     GAP_ANALYSIS.md
+Acceptance:
+
+No new architecture work starts until existing functionality is mapped.
+
+PHASE 2 -- Core Data Architecture
+
+Build:
+     organizations
+     participants
+     enhanced roles
+     project locations
+     WBS
+     work packages
+     cost codes
+
+Documents:
+
+     TARGET_DATA_MODEL.md
+     ENTITY_RELATIONSHIP_DIAGRAM.md
+     MIGRATION_PLAN.md
+Acceptance:
+Existing records migrate without loss.
+
+PHASE 3 -- Permission Engine
+
+Build:
+     role permissions
+     project permissions
+     organization access
+     financial restrictions
+
+Documents:
+
+     RBAC_MATRIX.md
+     PERMISSION_TEST_CASES.md
+Acceptance:
+Automated security tests prove external parties cannot access internal data.
+
+PHASE 4 -- Project Creation Wizard
+
+Build the full 11-step project wizard.
+Documents:
+
+     PROJECT_CREATION_SPEC.md
+     PROJECT_TEMPLATE_SPEC.md
+Acceptance:
+Creating one project produces:
+     locations
+     workspace
+     permissions
+     team
+     folders
+     workflows
+     dashboards
+without manual database configuration.
+
+PHASE 5 -- Universal Workflow Engine
+
+Build configurable workflows.
+Documents:
+
+     WORKFLOW_ENGINE.md
+     APPROVAL_MATRIX.md
+Acceptance:
+RFI, Submittal and purchase approval can all use the same engine.
+PHASE 6 -- Action / Reminder / Notification Engine
+
+Build:
+     actions
+     reminders
+     escalation
+     notifications
+     digests
+
+Documents:
+     NOTIFICATION_RULES.md
+     ESCALATION_MATRIX.md
+
+Acceptance:
+All important records can create actionable tasks.
+
+PHASE 7 -- Location + Quantity Engine
+
+Build:
+     site/building/floor/area
+     BOQ allocations
+     physical progress
+     roll-ups
+
+Documents:
+     QUANTITY_CALCULATION_RULES.md
+     LOCATION_MODEL.md
+
+Acceptance:
+User can calculate quantities from floor  building  project.
+
+PHASE 8 -- Material Planning
+
+Build recipes and demand.
+Documents:
+
+     MATERIAL_RECIPE_SPEC.md
+     MATERIAL_DEMAND_FORMULAS.md
+Acceptance:
+Selecting a floor/activity correctly calculates its material demand.
+
+PHASE 9 -- Inventory
+
+Build:
+     warehouse
+     stock
+     reserve
+     issue
+     transfer
+     return
+     waste
+
+Documents:
+
+     INVENTORY_RULES.md
+Acceptance:
+Every unit of inventory can be traced.
+
+PHASE 10 -- Auto-Replenishment
+
+Build:
+     min/max
+     safety
+     lead time
+     reorder point
+     projected stock
+     auto PR
+
+Documents:
+     REPLENISHMENT_FORMULAS.md
+     AUTOPURCHASE_POLICY.md
+Acceptance:
+Test shortage automatically creates correct draft procurement action.
+
+PHASE 11 -- Procurement
+
+Implement complete PR  PO  GRN flow.
+Documents:
+
+     PROCUREMENT_WORKFLOW.md
+     document templates.
+Acceptance:
+Full procurement test completes without manual database editing.
+
+PHASE 12 -- Commercial / Contracts
+
+Implement:
+     client contract
+     subcontract
+     variations
+     commitments
+     payment certificates
+
+Documents:
+     COMMERCIAL_RULES.md
+     CONTRACT_CALCULATIONS.md
+
+Acceptance:
+Budget, commitments, actual and forecast reconcile correctly.
+PHASE 13 -- Finance & Invoicing
+
+Implement:
+
+     AR
+     AP
+     client invoices
+     supplier invoices
+     collections
+     reminders
+
+Documents:
+
+     FINANCIAL_CALCULATION_RULES.md
+     INVOICE_WORKFLOW.md
+
+Acceptance:
+
+Invoice/payment scenarios reconcile exactly.
+
+PHASE 14 -- Consultant Portal
+
+Implement:
+
+     login
+     dashboard
+     inspections
+     observations
+     RFIs
+     submittals
+     drawings
+     notes
+
+Documents:
+
+     CONSULTANT_PORTAL_SPEC.md
+
+Acceptance:
+
+Consultant can complete their daily role without entering internal ERP screens.
+PHASE 15 -- Client Portal
+
+Implement simple owner dashboard.
+Documents:
+
+     CLIENT_PORTAL_SPEC.md
+Acceptance:
+Works with:
+
+     client
+     no client
+     no records
+     full project.
+
+PHASE 16 -- Subcontractor Portal
+
+Implement trade-partner workflow.
+Documents:
+
+     SUBCONTRACTOR_PORTAL_SPEC.md
+
+PHASE 17 -- QA/QC
+
+Implement ITP/WIR/MIR/NCR.
+Documents:
+
+     QAQC_WORKFLOW.md
+     templates/checklists.
+
+PHASE 18 -- HSE
+
+Implement full safety system.
+Documents:
+     HSE_WORKFLOW.md.
+
+PHASE 19 -- Document Control
+
+Implement:
+     register
+     revisions
+     transmittals
+     superseded protection
+     correspondence
+
+Documents:
+     DOCUMENT_CONTROL_STANDARD.md
+     NUMBERING_STANDARD.md.
+
+PHASE 20 -- Planning
+
+Implement project schedule + lookaheads.
+Documents:
+
+     PLANNING_CALCULATIONS.md.
+
+PHASE 21 -- Dashboards
+
+Create every role dashboard listed earlier.
+Documents:
+
+     DASHBOARD_MATRIX.md.
+Acceptance:
+Login as every role and verify the dashboard.
+PHASE 22 -- Reports
+
+Create:
+     daily
+     weekly
+     monthly
+     commercial
+     procurement
+     management
+
+Documents:
+     REPORT_CATALOG.md.
+
+PHASE 23 -- API
+
+Build versioned external API.
+Documents:
+
+     OpenAPI specification
+     integration guide
+     authentication guide
+Acceptance:
+Automated API tests.
+
+PHASE 24 -- MCP
+
+Build remote MCP server.
+Documents:
+
+     MCP_SERVER_SPEC.md
+     MCP_TOOL_CATALOG.md
+     MCP_PERMISSION_MAP.md
+     MCP_SECURITY.md
+Acceptance:
+External MCP client can securely:
+Read Project
+Read Actions
+Create RFI
+Create Draft PR
+Add Observation Comment
+
+according to permissions.
+
+PHASE 25 -- Agent Layer
+
+Build agent workflows:
+PM Assistant
+Procurement Assistant
+Commercial Assistant
+Consultant Assistant
+Executive Assistant
+Document Assistant
+
+Every agent uses the same API/MCP security model.
+
+PHASE 26 -- Mobile Optimization
+
+Test all field functions.
+
+PHASE 27 -- Automated Testing
+
+Must include:
+
+Unit tests
+calculations.
+
+Integration tests
+
+workflow connections.
+
+Permission tests
+
+every role.
+
+E2E
+
+complete construction scenarios.
+
+Financial reconciliation
+
+all amounts.
+
+Empty-state tests
+
+zero-data projects.
+
+Mobile tests
+
+site flows.
+
+Agent tests
+
+MCP permissions/actions.
+
+108. MASTER END-TO-END TEST
+PROJECT
+
+Developer should seed one realistic project.
+Example:
+Residential Towers
+2 Buildings
+12 Floors Each
+4 Units/Floor
+Multiple Subcontractors
+Consultant
+Client
+Project Team
+Warehouse
+BOQ
+Schedule
+
+Run complete scenario:
+
+Tender
+
+Award
+
+Project Creation
+
+Team
+
+BOQ
+
+Budget
+
+Quantities
+
+Material Requirement
+
+PR
+
+PO
+
+Delivery
+
+MIR
+
+GRN
+
+Stock
+
+Issue
+
+Work
+
+WIR
+
+Consultant Observation
+
+Rectification
+
+Consultant Approval
+
+Progress
+
+Client Certificate
+
+Invoice
+
+Collection
+
+Variation
+
+Subcontract Payment
+
+Handover
+
+Warranty
+
+The current guide already provides an end-to-end test scenario through projects, BOQ, work
+orders, site, quality, documents, invoices and unit sales; retain that idea and extend it into the
+company-wide scenario above.
+
+109. DEFINITION OF DONE FOR EVERY
+MODULE
+
+A module is not finished because the page loads.
+
+Every module must have:
+
+ Database
+ API
+ UI
+ Mobile/responsive UI
+ Empty state
+ Loading state
+ Error state
+ Permissions
+ Audit log
+ Search
+ Filters
+ Export
+ Attachments
+ Comments if applicable
+ Notifications
+ Reminders
+ Workflow
+ Dashboard widgets
+ Reports
+ MCP read tools
+ MCP write tools where safe
+ Automated tests
+ Documentation
+
+110. ZERO-BROKEN-VIEW POLICY
+
+It is impossible to guarantee that software will literally never contain a bug.
+
+What can and should be required is:
+
+No uncaught UI exceptions
+No blank pages
+No unresolved promises
+No null/undefined rendering
+No unhandled API errors
+No missing permission handling
+No route without fallback
+No hidden financial exposure
+No record without project scope where project scope is required
+
+Use:
+
+     error boundaries
+     structured API errors
+     monitoring
+     logs
+     health checks
+     automated tests
+     database constraints
+     transaction handling
+
+111. FINAL PRODUCT PRINCIPLE
+
+The construction ERP should not feel like hundreds of forms.
+
+For every person, it should feel like:
+
+What do I need to do today?
+What is waiting on me?
+What is late?
+What changed?
+What needs approval?
+What is blocked?
+What happens next?
+
+while management can answer:
+
+Where are we?
+Are we ahead or behind?
+What have we spent?
+What have we committed?
+What will it cost to finish?
+What do clients owe us?
+What do we owe others?
+What materials will run out?
+What approvals are blocking work?
+What risks need attention?
+
+And an authorized AI agent should be able to answer the same questions and perform
+permitted actions securely.
+112. TARGET TECHNOLOGY POSITION
+
+The desired architecture should borrow the strongest concepts rather than copy one application:
+
+     Procore-style: connected project objects, field execution, integrations and
+         construction-specific APIs.
+
+     Autodesk-style: configurable RFI/submittal workflows, linked issues/records and project
+         collaboration.
+
+     Oracle Aconex-style: rigorous documents, organizations, workflows and auditability.
+     Primavera Unifier-style: enterprise cost/project controls.
+     Modern MCP/API layer: first-class agent access rather than screen scraping. The
+
+         current MCP specification is designed around stateless, routable servers with hardened
+         authorization, and OpenAI currently supports custom MCP-powered apps and write
+         actions in supported workspace configurations.
+
+The result should therefore be:
+
+        One construction company operating system. One source of truth. Every
+        project has its own team, permissions, files, quantities, materials, contracts,
+        invoices, workflows and dashboards. Every internal and external party
+        receives only the interface and information relevant to them. Every major
+        record is location-linked, auditable and actionable. The entire backend is
+        API-first and MCP-ready so ChatGPT or another authorized agent can operate
+        the ERP safely.
+

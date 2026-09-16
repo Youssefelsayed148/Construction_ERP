@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ERP Build Prompts</title>
+<meta name="description" content="31 copy-paste build prompts, one per phase of the ERP Expansion Plan, written against the actual Osiris Construction ERP codebase.">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --paper:#f3f5f7; --surface:#ffffff; --surface-2:#f8f9fb;
+    --ink:#1b1e26; --ink-soft:#565c6b; --ink-faint:#8b91a0;
+    --line:#d9dce2; --line-soft:#e7e9ee;
+    --accent:#1f5fbf; --accent-soft:#e9f1fc; --accent-line:#b9d3f2;
+    --add:#2f7d4f; --add-soft:#e7f3ec;
+    --mod:#a86400; --mod-soft:#f6efe0;
+    --del:#b23b2c; --del-soft:#f7e8e5;
+    --code-bg:#161a22; --code-ink:#e7e9ed; --code-line:#2a2f3a;
+    --shadow:0 1px 2px rgba(20,26,40,.04),0 4px 16px rgba(20,26,40,.05);
+    --maxw:960px;
+  }
+  :root:not([data-theme="light"]){
+    @media (prefers-color-scheme: dark){
+      --paper:#131519; --surface:#1b1e25; --surface-2:#1f232b;
+      --ink:#e7e9ed; --ink-soft:#9aa1af; --ink-faint:#6b7280;
+      --line:#2c313b; --line-soft:#252a33;
+      --accent:#5b9bf0; --accent-soft:#182741; --accent-line:#2f4d78;
+      --add:#5cba82; --add-soft:#16261d;
+      --mod:#d69a3c; --mod-soft:#2a2113;
+      --del:#d9695a; --del-soft:#2b1815;
+      --code-bg:#0d0f14; --code-ink:#dfe3ea; --code-line:#232833;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.28);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#131519; --surface:#1b1e25; --surface-2:#1f232b;
+    --ink:#e7e9ed; --ink-soft:#9aa1af; --ink-faint:#6b7280;
+    --line:#2c313b; --line-soft:#252a33;
+    --accent:#5b9bf0; --accent-soft:#182741; --accent-line:#2f4d78;
+    --add:#5cba82; --add-soft:#16261d;
+    --mod:#d69a3c; --mod-soft:#2a2113;
+    --del:#d9695a; --del-soft:#2b1815;
+    --code-bg:#0d0f14; --code-ink:#dfe3ea; --code-line:#232833;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.28);
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    font-size:16px; line-height:1.62; letter-spacing:-.003em;
+    padding:0 20px;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto}
+  a{color:var(--accent)}
+  h1,h2,h3,h4{font-family:"Zilla Slab",Georgia,serif; line-height:1.18; text-wrap:balance; margin:0}
+  h2{font-size:1.5rem; font-weight:600; letter-spacing:-.01em}
+  h3{font-size:1.1rem; font-weight:600}
+  p{margin:0}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+
+  .topnav{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb,var(--paper) 88%,transparent);
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);
+    margin:0 -20px 0; padding:0 20px;
+  }
+  .topnav .inner{
+    max-width:var(--maxw); margin:0 auto; display:flex; gap:20px;
+    overflow-x:auto; scrollbar-width:none; padding:11px 0;
+  }
+  .topnav .inner::-webkit-scrollbar{display:none}
+  .topnav a{ color:var(--ink-soft); text-decoration:none; white-space:nowrap; font-size:.82rem; font-weight:500; }
+  .topnav a:hover{color:var(--ink)}
+
+  header.hero{padding:52px 0 26px}
+  .kicker{
+    font-family:"IBM Plex Mono",monospace; font-size:.72rem; font-weight:500;
+    letter-spacing:.16em; text-transform:uppercase; color:var(--accent);
+    display:flex; align-items:center; gap:10px; margin-bottom:18px;
+  }
+  .kicker::after{content:""; height:1px; flex:1; background:var(--accent-line)}
+  header.hero h1{ font-weight:700; font-size:clamp(2rem,5vw,2.9rem); letter-spacing:-.02em; line-height:1.08; }
+  header.hero .lede{ margin-top:16px; font-size:1.06rem; color:var(--ink-soft); max-width:66ch; }
+
+  .rules{
+    margin-top:24px; border:1px solid var(--accent-line); background:var(--accent-soft);
+    border-radius:10px; padding:18px 20px; font-size:.92rem;
+  }
+  .rules h4{ font-family:"IBM Plex Mono",monospace; font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); margin-bottom:10px; }
+  .rules ol{margin:0; padding-left:20px}
+  .rules li{margin:6px 0; color:var(--ink-soft)}
+  .rules li b{color:var(--ink)}
+
+  section{padding:34px 0; border-top:1px solid var(--line); scroll-margin-top:60px}
+  section > .sec-intro{color:var(--ink-soft); margin-top:8px; max-width:70ch}
+
+  .toc-group{ margin-top:18px; }
+  .toc-group h4{ font-family:"IBM Plex Mono",monospace; font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:8px; }
+  .toc-list{ display:grid; gap:4px; margin-bottom:16px; }
+  .toc-list a{ font-size:.92rem; text-decoration:none; color:var(--ink); display:flex; gap:8px; }
+  .toc-list a:hover{ color:var(--accent) }
+  .toc-list .n{ color:var(--ink-faint); font-family:"IBM Plex Mono",monospace; font-size:.82rem; width:22px; flex:none; }
+
+  .phase-group-hd{
+    font-family:"IBM Plex Mono",monospace; font-size:.74rem; font-weight:500;
+    letter-spacing:.1em; text-transform:uppercase; color:var(--ink-faint);
+    margin:30px 0 12px; padding-bottom:8px; border-bottom:1px dashed var(--line);
+  }
+  .phase-group-hd:first-of-type{margin-top:10px}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    padding:22px; margin-bottom:18px; box-shadow:var(--shadow); scroll-margin-top:70px;
+  }
+  .card .chd{ display:flex; flex-wrap:wrap; align-items:baseline; gap:10px 14px; margin-bottom:6px; }
+  .card .pnum{ font-family:"Zilla Slab",serif; font-weight:700; color:var(--accent); font-size:1.05rem; }
+  .card h3{ font-size:1.18rem; }
+  .tag{
+    font-family:"IBM Plex Mono",monospace; font-size:.68rem; font-weight:500;
+    letter-spacing:.04em; text-transform:uppercase; padding:2px 8px; border-radius:999px;
+    border:1px solid var(--line); background:var(--surface-2); color:var(--ink-soft); white-space:nowrap;
+  }
+  .tag.dep{ border-color:color-mix(in srgb,var(--mod) 40%,transparent); background:var(--mod-soft); color:var(--mod); }
+  .card .psub{ color:var(--ink-soft); font-size:.93rem; margin:8px 0 14px; }
+
+  .promptbox{
+    position:relative; background:var(--code-bg); color:var(--code-ink);
+    border-radius:10px; padding:18px 18px 16px; margin-top:4px;
+    font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:.82rem; line-height:1.65; white-space:pre-wrap; word-break:break-word;
+    border:1px solid var(--code-line);
+  }
+  .promptbox .copy{
+    position:absolute; top:10px; right:10px; font-family:"IBM Plex Sans",sans-serif;
+    font-size:.72rem; font-weight:500; padding:5px 10px; border-radius:6px;
+    background:rgba(255,255,255,.08); color:var(--code-ink); border:1px solid rgba(255,255,255,.16);
+    cursor:pointer;
+  }
+  .promptbox .copy:hover{ background:rgba(255,255,255,.16) }
+  .promptbox .copy.done{ background:var(--add); border-color:var(--add); color:#0b1a10; }
+  .promptbox b{ color:#fff }
+  .promptbox .k{ color:#8fb8f0 }
+
+  .deliver{
+    margin-top:12px; padding-top:10px; border-top:1px solid var(--line-soft);
+    font-size:.8rem; color:var(--ink-faint); display:flex; flex-wrap:wrap; gap:6px 10px; align-items:baseline;
+  }
+  .deliver .dl-lbl{font-family:"IBM Plex Mono",monospace; letter-spacing:.06em; text-transform:uppercase; font-size:.68rem}
+  .deliver .mono{color:var(--ink-soft)}
+
+  footer{padding:34px 0 60px; border-top:1px solid var(--line); color:var(--ink-faint); font-size:.82rem}
+
+  @media (max-width:640px){
+    body{padding:0 15px}
+    .topnav{margin:0 -15px; padding:0 15px}
+    .card{padding:16px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important; scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="inner">
+    <a href="#howto">How to use</a>
+    <a href="#rules">Ground rules</a>
+    <a href="#foundation">1&ndash;8 Foundation</a>
+    <a href="#operations">9&ndash;12 Materials/procurement</a>
+    <a href="#commercial">13&ndash;14 Commercial/finance</a>
+    <a href="#siteportals">15&ndash;18 Site/portals</a>
+    <a href="#quality">19&ndash;25 Quality/handover</a>
+    <a href="#platform">26&ndash;31 Platform</a>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <header class="hero">
+    <div class="kicker">Osiris Construction ERP &nbsp;/&nbsp; Build Prompts</div>
+    <h1>31 build prompts, one per phase</h1>
+    <p class="lede">Each phase below is a self-contained prompt you hand to a coding agent (or read yourself) to execute that phase against the <em>current</em> repository &mdash; not a generic greenfield build. They follow <span class="mono">ERP_EXPANSION_PLAN.html</span> phase-for-phase and pull field lists, formulas, and workflow states from the <span class="mono">construction_erp_agent_pack</span>.</p>
+  </header>
+
+  <section id="howto">
+    <h2>How to use this document</h2>
+    <p class="sec-intro">This is not one giant prompt. Run the phases in order &mdash; each one assumes the previous phases are already merged. Copy one prompt block at a time into your coding agent's session, let it finish, review the diff, run the tests it wrote, commit, then move to the next.</p>
+    <div class="toc-group">
+      <h4>Foundation (must land first &mdash; touch live foreign keys)</h4>
+      <div class="toc-list">
+        <a href="#p1"><span class="n">01</span> Audit the existing codebase</a>
+        <a href="#p2"><span class="n">02</span> Reconcile out-of-spec modules (HR/Payroll/Legal/Assets)</a>
+        <a href="#p3"><span class="n">03</span> Core data architecture (Organizations, participants)</a>
+        <a href="#p4"><span class="n">04</span> Permission engine</a>
+        <a href="#p5"><span class="n">05</span> Project creation wizard</a>
+        <a href="#p6"><span class="n">06</span> Universal workflow engine</a>
+        <a href="#p7"><span class="n">07</span> Action, reminder &amp; notification engine</a>
+        <a href="#p8"><span class="n">08</span> Location + quantity engine</a>
+      </div>
+      <h4>Materials, inventory, procurement</h4>
+      <div class="toc-list">
+        <a href="#p9"><span class="n">09</span> Material planning</a>
+        <a href="#p10"><span class="n">10</span> Inventory</a>
+        <a href="#p11"><span class="n">11</span> Auto-replenishment</a>
+        <a href="#p12"><span class="n">12</span> Procurement</a>
+      </div>
+      <h4>Commercial &amp; finance</h4>
+      <div class="toc-list">
+        <a href="#p13"><span class="n">13</span> Commercial / contracts</a>
+        <a href="#p14"><span class="n">14</span> Finance &amp; invoicing</a>
+      </div>
+      <h4>Site operations &amp; external portals</h4>
+      <div class="toc-list">
+        <a href="#p15"><span class="n">15</span> Site operations</a>
+        <a href="#p16"><span class="n">16</span> Consultant portal</a>
+        <a href="#p17"><span class="n">17</span> Client portal</a>
+        <a href="#p18"><span class="n">18</span> Subcontractor &amp; supplier portals</a>
+      </div>
+      <h4>Quality, safety, controls, handover</h4>
+      <div class="toc-list">
+        <a href="#p19"><span class="n">19</span> QA/QC</a>
+        <a href="#p20"><span class="n">20</span> HSE</a>
+        <a href="#p21"><span class="n">21</span> Document control, RFI &amp; submittals</a>
+        <a href="#p22"><span class="n">22</span> Planning / scheduling</a>
+        <a href="#p23"><span class="n">23</span> Dashboards</a>
+        <a href="#p24"><span class="n">24</span> Reporting engine</a>
+        <a href="#p25"><span class="n">25</span> Handover, closeout &amp; warranty</a>
+      </div>
+      <h4>Platform, agents, hardening</h4>
+      <div class="toc-list">
+        <a href="#p26"><span class="n">26</span> External API</a>
+        <a href="#p27"><span class="n">27</span> MCP server</a>
+        <a href="#p28"><span class="n">28</span> Agent layer</a>
+        <a href="#p29"><span class="n">29</span> Mobile optimisation</a>
+        <a href="#p30"><span class="n">30</span> Security, observability &amp; backups</a>
+        <a href="#p31"><span class="n">31</span> Automated testing &amp; seed project</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="rules">
+    <h2>Ground rules for every prompt</h2>
+    <p class="sec-intro">These are not repeated in each block below &mdash; they are prepended automatically by convention. If you paste a prompt in isolation, paste this too.</p>
+    <div class="rules">
+      <h4>Apply to phases 1&ndash;31 without exception</h4>
+      <ol>
+        <li><b>Additive first.</b> New tables/columns are nullable or defaulted; nothing existing is dropped until every caller has migrated and a parity test has passed. Where the plan says "remove," keep the old path as a compatibility shim (view, facade function, or fallback column) until callers are cut over.</li>
+        <li><b>Transactional writes.</b> Any operation touching multiple financial or stock records (GRN + stock movement, certificate + invoice, variation + budget) runs in one DB transaction. No partial writes.</li>
+        <li><b>Soft-delete only.</b> Controlled records get <span class="mono">status = void/cancelled</span> and a reason, never a hard DELETE, once they have participated in a workflow.</li>
+        <li><b>Zero-broken-view policy.</b> Every new page/endpoint must render/respond correctly with zero rows, one row, and a missing related record (no client, no consultant, no BOQ). No raw null, no unhandled 500, no blank page.</li>
+        <li><b>Scope every new record.</b> Carry <span class="mono">company_id</span> (or is globally implicit in this single-tenant deployment &mdash; confirm which), <span class="mono">project_id</span> where project-scoped, <span class="mono">created_by_user_id</span>, and <span class="mono">location_id</span> / <span class="mono">work_package_id</span> / <span class="mono">cost_code_id</span> where applicable.</li>
+        <li><b>Route every write through the permission layer</b> introduced in Phase 4, once it exists. Before Phase 4 lands, keep using the existing <span class="mono">authorize()</span> in <span class="mono">backend/src/middleware/auth.js</span> &mdash; do not invent a second, parallel check.</li>
+        <li><b>Audit on write.</b> Approvals, payments, contract/commercial changes, quantity certifications and agent actions write an immutable audit row (before/after) once Phase 4's <span class="mono">audit_events</span> exists; until then, keep writing to the existing <span class="mono">activity_log</span>.</li>
+        <li><b>Inspect before you build.</b> Before writing any migration or route change for a phase, grep/read the actual current file(s) named in that phase's prompt &mdash; table/column names may already differ slightly from what's written here since the codebase moves daily.</li>
+        <li><b>Every module needs, before it counts as done:</b> migration + validation, API, desktop UI, empty/loading/error state, permission checks, audit trail, search/filter/export, notifications hook, dashboard widget, and at least one automated test per new calculation or state transition.</li>
+        <li><b>High-risk financial/contractual actions</b> (issue PO, approve variation, send client invoice, record payment, approve certificate, delete a controlled document, close a project) are never executed autonomously by an agent without the human approval step the workflow defines &mdash; this applies from Phase 27 onward but design every write endpoint from Phase 6 on so it slots into that gate later.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="foundation">
+    <h2>Phases 1&ndash;8 &mdash; Foundation</h2>
+    <p class="sec-intro">Do these in order. Phases 3, 4 and 8 rewrite live foreign keys &mdash; do not parallelize them with anything else touching the same tables.</p>
+
+    <div class="phase-group-hd">Audit &amp; decisions</div>
+
+    <div class="card" id="p1">
+      <div class="chd"><span class="pnum">01</span><h3>Audit the existing codebase</h3><span class="tag">prep &middot; read-only</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 1 &mdash; Audit the existing codebase.</b>
+
+You are working in the Osiris Construction ERP repo (Express + PostgreSQL + React, backend in <span class="k">backend/src</span>, frontend in <span class="k">frontend/src</span>). Before any other phase runs, produce a factual, current snapshot. Do not modify any code.
+
+Deliverables (write these as markdown files at the repo root under a new <span class="k">docs/audit/</span> folder):
+1. <span class="k">CURRENT_DATABASE_SCHEMA.md</span> &mdash; every table and column, generated by reading <span class="k">backend/src/scripts/setupDb.js</span> and every <span class="k">backend/src/scripts/migrate-*.js</span> file in order, plus a live <span class="k">\d</span> dump against a running dev DB if available. Note every table that lacks project scoping.
+2. <span class="k">CURRENT_MODULE_MATRIX.md</span> &mdash; one row per file in <span class="k">backend/src/routes/</span> and one row per file in <span class="k">frontend/src/pages/</span>, with a one-line description of what it does today, pulled from reading the file, not guessing from the filename.
+3. <span class="k">CURRENT_API_MATRIX.md</span> &mdash; every route (method + path) across all files in <span class="k">backend/src/routes/</span>, with the <span class="k">authorize(...)</span> roles it currently requires.
+4. <span class="k">CURRENT_PERMISSION_MATRIX.md</span> &mdash; read <span class="k">backend/src/middleware/auth.js</span> in full and document exactly how <span class="k">authorize()</span> resolves a role, what <span class="k">module_permissions[]</span> does, and every hardcoded bypass (search for <span class="k">role === 'owner'</span> and <span class="k">role === 'admin'</span>).
+5. <span class="k">GAP_ANALYSIS.md</span> &mdash; a phase-by-phase diff against <span class="k">ERP_EXPANSION_PLAN.html</span> and the 31 files in <span class="k">construction_erp_agent_pack/</span>; flag anywhere this audit finds the plan's "today" description is already stale (new tables/routes/pages added since the plan's last revision date in its footer).
+
+Do not skip step 5 &mdash; it is the check that keeps every later phase honest against a moving codebase.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">nothing</span></div>
+    </div>
+
+    <div class="card" id="p2">
+      <div class="chd"><span class="pnum">02</span><h3>Reconcile out-of-spec modules</h3><span class="tag dep">depends on 01</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 2 &mdash; Reconcile HR, Payroll, Legal and Maintenance/Assets.</b>
+
+<span class="k">backend/src/routes/hr.js</span>, <span class="k">payroll.js</span>, <span class="k">legal.js</span> and <span class="k">maintenance.js</span> (with frontend pages <span class="k">HR.js</span>, <span class="k">Payroll.js</span>, <span class="k">Legal.js</span>, and <span class="k">Assets.js</span>) exist in this codebase but appear nowhere in the 112-section specification except as org-chart departments (org chart section) and the Resource/Labour section (timesheets, attendance, cost rate). They currently run without project/organization scoping.
+
+1. Read all four route files plus <span class="k">Assets.js</span>/<span class="k">maintenance.js</span> in full, and the <span class="k">employees</span> table definition, to understand exactly what exists today (fields, endpoints, whether project_id is present anywhere).
+2. Write a decision record at <span class="k">docs/audit/OUT_OF_SPEC_MODULE_DECISIONS.md</span>: for each of HR, Payroll, Legal, Maintenance, decide (a) fold into the Organization/participant model from Phase 3 &mdash; i.e. treat internal staff as an "internal organization" participant type &mdash; or (b) keep as a standalone, company-level (non-project) module with its own permission scoping. Default recommendation: keep standalone but project-taggable, since payroll and legal records are frequently company-wide, not project-only.
+3. Add <span class="k">project_id</span> (nullable) to any of these tables that represent project-attributable cost or activity (e.g. timesheets, equipment maintenance logs) so they can later feed the Phase 13 labour/equipment cost calculations. Do not add project_id to genuinely company-wide records (e.g. a legal template library).
+4. Map <span class="k">hr.js</span> timesheet/attendance data to the target Resource/Labour formula: <span class="k">Labour Cost = Regular Hours * Rate + Overtime Hours * Overtime Rate</span>. Note in the decision record exactly which existing table/columns will supply "hours" and "rate" once Phase 13 needs it &mdash; do not implement the calculation yet.
+5. Do not add permission-engine hooks yet (Phase 4 doesn't exist); just leave clear <span class="k">// TODO(phase-4)</span> markers at every route handler in these four files that currently has no scoping check.
+
+This phase produces a decision document and light schema prep only &mdash; it must not change any existing behavior visible to users.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 1</span></div>
+    </div>
+
+    <div class="phase-group-hd">Structural refactors</div>
+
+    <div class="card" id="p3">
+      <div class="chd"><span class="pnum">03</span><h3>Core data architecture</h3><span class="tag dep">depends on 01, 02</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 3 &mdash; Core data architecture: Organizations, participants, locations, WBS, cost codes.</b>
+
+This is the highest-risk migration in the whole plan. Read <span class="k">backend/src/scripts/setupDb.js</span> and every <span class="k">migrate-*.js</span> fully first, especially the most recent uncommitted <span class="k">migrate-15.js</span> which re-points <span class="k">project_team.user_id</span> to <span class="k">project_team.employee_id</span> &mdash; your migration for <span class="k">project_team</span> must build on top of that shape, not the pre-migration one.
+
+1. Add new tables (additive migration <span class="k">migrate-16-organizations.js</span> following the existing numbered-script convention in <span class="k">backend/src/scripts/</span>): <span class="k">organizations</span> (id, name, org_type [client/consultant/subcontractor/supplier/internal/authority/testing_lab/...], contact info, tax id, status), <span class="k">organization_contacts</span>, <span class="k">organization_documents</span>, <span class="k">organization_users</span>, <span class="k">project_participants</span> (project_id, organization_id, participant_type, contract_reference, active_from/to, portal_access_enabled, visibility_policy), <span class="k">project_participant_users</span>, <span class="k">location_types</span>, <span class="k">project_locations</span> (id, project_id, parent_id, location_type, code, name, sort_order), <span class="k">wbs_nodes</span>, <span class="k">work_packages</span>, <span class="k">boq_location_allocations</span> (see Phase 8 for the quantity fields &mdash; create the table now, populate in Phase 8).
+2. Backfill: for every row in <span class="k">clients</span>, insert an <span class="k">organizations</span> row with <span class="k">org_type='client'</span> and keep a mapping table <span class="k">_migration_client_org_map(old_client_id, organization_id)</span>. Do the same for <span class="k">suppliers</span> and <span class="k">subcontractors</span>.
+3. Add <span class="k">organization_id</span> (nullable) to <span class="k">projects</span> alongside the existing <span class="k">client_id</span> &mdash; do not drop <span class="k">client_id</span> yet. Backfill <span class="k">projects.organization_id</span> from the mapping table.
+4. Create read-only compatibility views named exactly <span class="k">clients</span>, <span class="k">suppliers</span>, <span class="k">subcontractors</span> is not possible while the real tables still exist under those names &mdash; instead, keep the real tables as-is and add a service-layer helper (e.g. <span class="k">backend/src/services/organizations.js</span>) that every route can call to resolve either the legacy table or <span class="k">organizations</span>, so routes migrate one at a time without a big-bang cutover.
+5. Migrate <span class="k">project_team</span> rows into new <span class="k">project_participants</span>/<span class="k">project_participant_users</span> rows (using the post-migrate-15 <span class="k">employee_id</span> column), keeping <span class="k">project_team</span> itself in place as the legacy read path until every caller in <span class="k">backend/src/routes/projects.js</span> and <span class="k">frontend/src/pages/ProjectDetail.js</span> is confirmed migrated.
+6. Extend <span class="k">cost_codes</span> with a <span class="k">parent_id</span> for hierarchy and a <span class="k">wbs_node_id</span> link.
+7. Write a migration parity test: for every project, count of team members before == count of project_participant_users after; every client_id resolves to the same organization via both the old and new path.
+
+Do not touch <span class="k">buildings</span> yet &mdash; that absorption into <span class="k">project_locations</span> happens in Phase 8, after the location tree exists and can be validated independently.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 1, 2</span> &middot; <span class="dl-lbl">Gate</span><span class="mono">migration parity test passes before any route is cut over</span></div>
+    </div>
+
+    <div class="card" id="p4">
+      <div class="chd"><span class="pnum">04</span><h3>Permission engine</h3><span class="tag dep">depends on 03</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 4 &mdash; Replace the flat role check with a scoped policy engine.</b>
+
+Read <span class="k">backend/src/middleware/auth.js</span> in full, and every call site of <span class="k">authorize(...)</span> across the 28 files in <span class="k">backend/src/routes/</span>, before changing anything.
+
+1. Add tables: <span class="k">roles</span>, <span class="k">permissions</span> (module, action, e.g. view/create/edit/submit/approve/reject/see_internal_cost/see_client_value/see_subcontract_value/issue_financial_document/record_payment), <span class="k">role_permissions</span>, <span class="k">user_project_roles</span> (user_id, project_id, role_id, organization_id nullable for external roles), <span class="k">audit_events</span> (immutable: entity, entity_id, action, before jsonb, after jsonb, user_id, project_id, created_at &mdash; no update/delete grants on this table at the DB level).
+2. Build a policy-evaluation service at <span class="k">backend/src/services/policy.js</span> that resolves <span class="k">Company + Organization + Project + Role + Module + Record + Action</span> and returns allow/deny plus a set of visibility flags: <span class="k">see_internal_cost</span>, <span class="k">see_client_price</span>, <span class="k">see_subcontractor_price</span>.
+3. Keep <span class="k">authorize(...roles)</span>'s exact call signature in <span class="k">auth.js</span> so none of the 28 route files need to change their call sites yet &mdash; internally, have it call the new policy service and fall back to the legacy role-list check only when a user has no <span class="k">user_project_roles</span> rows yet (i.e. migration not complete for that user).
+4. Migrate every row in <span class="k">users</span> (role + module_permissions[]) into <span class="k">user_project_roles</span> for every project that user is on today (via <span class="k">project_team</span>/<span class="k">project_participants</span> from Phase 3). Keep <span class="k">users.role</span> and <span class="k">users.module_permissions[]</span> columns in place as fallback until parity tests pass across every role.
+5. Remove the hardcoded <span class="k">role === 'owner' || role === 'admin'</span> bypasses one at a time, replacing each with an explicit policy grant, and re-run the permission test suite after each removal.
+6. Add a "preview as role" demo mode: an authorized admin can view any screen as if logged in with a different role, read-only, and every such preview writes an <span class="k">audit_events</span> row.
+7. Write the mandatory isolation tests: a consultant-role user cannot hit any endpoint under <span class="k">/costing</span> or <span class="k">/finance</span> that returns internal cost fields; a client-role user cannot retrieve subcontractor/supplier rates; an external user cannot enumerate projects they aren't assigned to (verify by ID-guessing another project's endpoints).
+
+Definition of done: automated tests prove every external-facing route in the current 28 route files returns 403, not empty data, when called by a role that shouldn't see it.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 3</span> &middot; <span class="dl-lbl">Gate</span><span class="mono">isolation tests pass for every role before Phase 5</span></div>
+    </div>
+
+    <div class="card" id="p5">
+      <div class="chd"><span class="pnum">05</span><h3>Project creation wizard</h3><span class="tag dep">depends on 03, 04</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 5 &mdash; Turn project creation into an 11-step transactional wizard.</b>
+
+Read <span class="k">backend/src/routes/projects.js</span> (currently a single-INSERT <span class="k">POST /api/projects</span>) and <span class="k">frontend/src/pages/Projects.js</span> fully first.
+
+1. Add ~15 columns to <span class="k">projects</span>: project number, Arabic/English name, project type, country/city/address/GPS, timezone, currency, tax profile, original contract value, original budget, DLP/warranty period, retention percentage/cap, advance payment amount/percentage, liquidated-damages config, start/completion dates.
+2. Add <span class="k">project_templates</span>, <span class="k">template_locations</span>, <span class="k">template_wbs</span>, <span class="k">template_folders</span>, <span class="k">template_workflows</span>, <span class="k">template_approval_rules</span>. Seed at least one "Residential Tower" template matching the Phase 31 seed project shape (2 towers, 12 floors, 4 units/floor).
+3. Build a wizard UI in <span class="k">frontend/src/pages/</span> (new <span class="k">ProjectWizard.js</span>, replacing the current single-form create dialog in <span class="k">Projects.js</span>) with steps: basic info -> physical structure (from template or blank) -> WBS -> project team -> external participants (optional, can be empty) -> permission profile -> approval matrix -> BOQ/CBS import or blank -> schedule import or blank -> documents/registers -> notifications/SLA.
+4. Wrap the whole thing in one DB transaction in a new <span class="k">backend/src/services/projectProvisioning.js</span>: on Finish, atomically create the project row, root location, root WBS node, <span class="k">user_project_roles</span> for the assigned team, default <span class="k">project_participants</span>, default workflow instances (from Phase 6, once it exists &mdash; stub if not yet built), standard folder/register rows, numbering sequences, and default dashboard preferences. If any step fails, roll back everything &mdash; no half-created project.
+5. Handle empty states explicitly: creating a project with no client assigned must still let the Client Portal preview (Phase 17) load later with "No client assigned," not error.
+6. Tests: create a blank project with no client/consultant; create from the Residential Tower template; create an infrastructure project using chainage-type locations; retry a deliberately-failed provisioning and confirm no duplicate rows exist.
+
+Keep the old <span class="k">POST /api/projects</span> single-insert path available behind a feature flag until the wizard is verified in staging, then remove it.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 3, 4</span></div>
+    </div>
+
+    <div class="phase-group-hd">Shared engines</div>
+
+    <div class="card" id="p6">
+      <div class="chd"><span class="pnum">06</span><h3>Universal workflow engine</h3><span class="tag dep">depends on 04</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 6 &mdash; One configurable workflow engine to replace every hardcoded approval path.</b>
+
+Read <span class="k">backend/src/routes/approvals.js</span> in full first &mdash; note <span class="k">MODULE_MANAGER_ROLES</span>, <span class="k">DIRECT_TO_OWNER_MODULES</span>, and the hardcoded <span class="k">manager_review -&gt; approver</span> two-stage logic, plus the <span class="k">approval_requests</span> table shape (also referenced in <span class="k">backend/src/routes/dashboard.js</span> and <span class="k">backend/src/scripts/cleanup-orphan-approvals.js</span>).
+
+1. Add tables: <span class="k">workflow_templates</span>, <span class="k">workflow_steps</span> (sequential or parallel, role/organization-type/amount-threshold conditions), <span class="k">workflow_instances</span>, <span class="k">workflow_step_instances</span>, <span class="k">workflow_actions</span> (the decision log: approve/reject/return/reassign, with comment and timestamp), <span class="k">escalation_rules</span>.
+2. Build <span class="k">backend/src/services/workflowEngine.js</span> exposing <span class="k">startWorkflow(templateKey, entityType, entityId, context)</span>, <span class="k">recordDecision(instanceId, stepId, userId, decision, comment)</span>, and <span class="k">getPendingFor(userId)</span>.
+3. Seed the standard workflow templates from the catalog: RFI (Draft -&gt; Submitted -&gt; Coordinator -&gt; Discipline Reviewer(s) -&gt; Official Response -&gt; Acknowledged -&gt; Closed), Submittal, Consultant Observation (Raised -&gt; Acknowledged -&gt; Assigned -&gt; Rectification -&gt; Verification Requested -&gt; Accepted/Rejected -&gt; Closed), WIR, MIR, NCR, Purchase Requisition, PO, Variation, Payment Certificate, Supplier/Subcontract Invoice, Handover Punch &mdash; exact state names as documented in <span class="k">construction_erp_agent_pack/24_WORKFLOW_CATALOG.md</span>.
+4. Migrate every existing row in <span class="k">approval_requests</span> into a <span class="k">workflow_instances</span> row using a generic "Legacy Module Approval" template that reproduces the current <span class="k">manager_review -&gt; approver</span> two-stage behavior exactly, driven by the existing <span class="k">MODULE_MANAGER_ROLES</span> map.
+5. Re-point <span class="k">backend/src/routes/approvals.js</span>'s approve/reject endpoints to call <span class="k">workflowEngine.recordDecision</span> instead of the hardcoded stage logic, keeping the external API response shape identical so <span class="k">frontend/src/pages/Approvals.js</span> and the approval-detail modal (added 2026-09-06) don't need to change yet.
+6. Only once every module route calls the engine and a parity test shows identical approve/reject behavior for every existing pending request, retire <span class="k">MODULE_MANAGER_ROLES</span>, <span class="k">DIRECT_TO_OWNER_MODULES</span>, and the <span class="k">approval_requests</span> table (drop last, in a later cleanup phase, not here).
+
+Definition of done: every currently-pending row in <span class="k">approval_requests</span> has a matching <span class="k">workflow_instances</span> row with the same current step/approver, verified by a script, not by eyeballing.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 4</span></div>
+    </div>
+
+    <div class="card" id="p7">
+      <div class="chd"><span class="pnum">07</span><h3>Action, reminder &amp; notification engine</h3><span class="tag dep">depends on 06</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 7 &mdash; Universal ActionItem plus reminders, escalation and notifications.</b>
+
+1. Add tables: <span class="k">action_items</span> (polymorphic: source_type, source_id, project_id, location_id nullable, title, assigned_user_id, assigned_organization_id, priority, due_date, status, reminder_policy, escalation_policy), <span class="k">notifications</span>, <span class="k">notification_preferences</span>, <span class="k">reminder_rules</span>.
+2. Build <span class="k">backend/src/services/actionService.js</span> and <span class="k">notificationService.js</span> with channel adapters for in-app (write to <span class="k">notifications</span>, polled/pushed to the frontend) and email at minimum; stub push/SMS/WhatsApp behind a provider interface so they can be wired later without changing call sites.
+3. Wire <span class="k">action_items</span> generation into the workflow engine from Phase 6: every new <span class="k">workflow_step_instance</span> assigned to a user creates a matching action item, and every decision closes it.
+4. Build the escalation scheduler (a cron-style job, consistent with however this repo currently runs scheduled jobs &mdash; check <span class="k">backend/src/</span> for an existing job runner before adding a new one) implementing the example ladder: immediate assignment -&gt; 4h unacknowledged reminds the assignee's manager -&gt; 24h escalates further -&gt; due-date-missed escalates to the top of the configured chain. Thresholds must be configurable per <span class="k">escalation_rules</span> row, not hardcoded.
+5. Add a "My Actions" screen (<span class="k">frontend/src/pages/MyActions.js</span>) reachable from the global nav for every logged-in user, showing overdue / due today / due soon / awaiting me / delegated / recently completed, with filters.
+6. Emit the events listed in the target architecture (<span class="k">observation.created</span>, <span class="k">rfi.submitted</span>, <span class="k">purchase_requisition.approved</span>, <span class="k">invoice.overdue</span>, <span class="k">action.overdue</span>, etc.) from the relevant service layer methods as they're built in later phases &mdash; add the event-emission hook points now even where the emitting phase doesn't exist yet, so later phases only need one line to fire an event.
+
+Nothing existing is removed in this phase; it's purely additive plumbing that later phases plug into.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 6</span></div>
+    </div>
+
+    <div class="card" id="p8">
+      <div class="chd"><span class="pnum">08</span><h3>Location + quantity engine</h3><span class="tag dep">depends on 03</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 8 &mdash; Real location rows, BOQ allocated to locations, roll-ups.</b>
+
+Read <span class="k">backend/src/routes/boq.js</span> (133 lines) fully, plus wherever <span class="k">buildings</span> and <span class="k">boq_items.completed_quantity</span> are read/written across the backend and in <span class="k">frontend/src/pages/ProjectDetail.js</span> and <span class="k">BOQ.js</span>, before changing anything.
+
+1. Populate the <span class="k">project_locations</span>/<span class="k">location_types</span> tables created in Phase 3 with full CRUD (site/building/zone/floor/area/room, configurable per project template). Migrate every row in <span class="k">buildings</span> into <span class="k">project_locations</span> as location_type='building', generating child floor rows from <span class="k">buildings.floors</span> (integer) &mdash; one real row per floor, not a count.
+2. Populate <span class="k">boq_location_allocations</span> per BOQ item per location with: <span class="k">planned_quantity</span>, <span class="k">approved_design_quantity</span>, <span class="k">executed_quantity</span> (derived), <span class="k">consultant_approved_quantity</span> (derived), <span class="k">certified_quantity</span> (derived).
+3. Add a <span class="k">quantity_measurements</span> table as the single source of truth for executed quantity: project/location, boq_item, work_package, date, quantity, unit, source (work order/daily report id), measured_by, reviewed_by, approval_state, photos. Executed quantity must never be edited directly on a summary row &mdash; only inserted as a measurement.
+4. Build <span class="k">backend/src/services/quantityEngine.js</span> implementing the formulas exactly: <span class="k">Remaining = max(Planned - Executed, 0)</span>; <span class="k">Physical Progress % = Executed / Planned * 100</span>; <span class="k">Approved Progress % = Approved / Planned * 100</span>; <span class="k">Certified Progress % = Certified / Planned * 100</span>; <span class="k">Weighted Project Progress = sum(Weight_i * ApprovedProgress_i) / sum(Weight_i)</span> with weight policy configurable (BOQ value / planned quantity value / manual / schedule weight).
+5. Change <span class="k">boq_items.completed_quantity</span> from a stored column to a value derived by summing its <span class="k">boq_location_allocations</span> &mdash; expose it via a view or a computed field in the read query, not a trigger that could drift; keep the column readable during transition, sourced from the new calculation.
+6. Add required <span class="k">location_id</span> and <span class="k">boq_location_allocation_id</span> foreign keys to <span class="k">work_completions</span> (or wherever work-order completions are recorded in <span class="k">backend/src/routes/workorders.js</span>), nullable at first; backfill every existing completion to a default "Unassigned" location per project, then enforce NOT NULL only after backfill is verified.
+7. Drop <span class="k">buildings.floors</span> and <span class="k">buildings.units_per_floor</span> only after every reader has moved to counting real <span class="k">project_locations</span> child rows.
+8. Build a floor/location dashboard view showing planned/executed/approved/remaining quantities, active activities, material readiness, drawings/RFIs/WIR/MIR/NCR, consultant observations, labour/equipment, photos, and cost/budget where the viewer's permission flags allow it.
+9. Acceptance test: a query at floor, building and project level must reconcile to the exact same underlying <span class="k">quantity_measurements</span> rows &mdash; no separate summary path that can drift.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 3</span> &middot; <span class="dl-lbl">Gate</span><span class="mono">reconciliation test across floor/building/project before NOT NULL enforcement</span></div>
+    </div>
+  </section>
+
+  <section id="operations">
+    <h2>Phases 9&ndash;12 &mdash; Materials, inventory, procurement</h2>
+    <p class="sec-intro">Entirely additive &mdash; none of this conflicts with the current schema. It attaches to <span class="mono">item_master</span>, <span class="mono">warehouses</span>, and the Phase 8 location engine.</p>
+
+    <div class="card" id="p9">
+      <div class="chd"><span class="pnum">09</span><h3>Material planning</h3><span class="tag dep">depends on 08</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 9 &mdash; Material recipes and schedule-aware demand.</b>
+
+1. Read <span class="k">item_master</span>'s current columns in <span class="k">setupDb.js</span> first. Add planning fields if missing: base/purchase/issue unit, unit conversions, preferred suppliers, min/max/safety stock, supplier lead time, reorder policy, order multiple/MOQ, shelf life, batch/lot tracking flag, inspection-required flag.
+2. Add <span class="k">material_recipes</span> and <span class="k">recipe_lines</span> (material_id, factor_per_unit, wastage_pct, unit) linked to a BOQ item / activity type. Seed the standard example: per 1 m3 reinforced concrete &mdash; 1.00 m3 C35 concrete, 125 kg rebar, 1.5 kg binding wire, 3.8 m2 formwork, 10 spacers. All factors editable per project.
+3. Add <span class="k">material_requirements</span> (project, location, boq_item/work_package, material, gross_requirement, net_requirement, source_activity_date) computed by <span class="k">backend/src/services/materialDemand.js</span> using: <span class="k">Gross = Planned Activity Quantity * Recipe Factor</span>; <span class="k">Net = Gross * (1 + Wastage%) - Already Consumed</span>.
+4. Trigger recalculation whenever a Phase 22 schedule activity date changes or a Phase 8 location allocation's planned quantity changes (event-driven via the Phase 7 event bus, or a direct call if the schedule engine isn't built yet).
+5. Test: allocating a concrete pour to a floor with a linked recipe produces the correct material_requirements rows using the example factors above, including wastage.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 8</span></div>
+    </div>
+
+    <div class="card" id="p10">
+      <div class="chd"><span class="pnum">10</span><h3>Inventory</h3><span class="tag dep">depends on 09</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 10 &mdash; Ledgered stock movements, physical vs. available stock, MIR gate.</b>
+
+Read <span class="k">backend/src/routes/warehouses.js</span> (143 lines) fully, including the current <span class="k">POST /warehouses/:id/stock</span> direct-mutation endpoint and how <span class="k">warehouse_stock</span> and <span class="k">inventory_transfers</span> are updated today.
+
+1. Add <span class="k">stock_movements</span> (warehouse_id, material_id, movement_type: grn/issue/return/transfer/adjustment/waste/damage/supplier_return, quantity, reference_type, reference_id, created_by, created_at) and <span class="k">stock_reservations</span> (material_id, project_id/location_id, quantity, status, expires_at).
+2. Add a <span class="k">warehouse_type</span> column to <span class="k">warehouses</span>: central/project/site/temp/holding.
+3. Rebuild <span class="k">warehouse_stock</span> as a materialized/derived projection of <span class="k">stock_movements</span> (sum by warehouse+material), not a directly-mutated table. Rebuild <span class="k">inventory_transfers</span> as a paired stock_movement (transfer_out + transfer_in in one transaction).
+4. Implement the formulas exactly in <span class="k">backend/src/services/inventoryEngine.js</span>: <span class="k">Physical Stock = Opening + Receipts + Returns + Transfers In - Issues - Transfers Out - Waste/Writeoff</span>; <span class="k">Reserved Stock = sum(active reservations)</span>; <span class="k">Available Stock = Physical Stock - Reserved - Quarantined</span>.
+5. Gate incoming material behind an inspection status: a delivery only becomes usable stock after an accepted MIR (built in Phase 12) &mdash; add a <span class="k">quarantine</span> movement type for received-but-uninspected material.
+6. Remove <span class="k">POST /warehouses/:id/stock</span> as a direct-mutation endpoint once every caller (check <span class="k">frontend/src/pages/</span> for warehouse-related UI) is confirmed to be posting through the movement API instead.
+7. Never allow an UPDATE or DELETE on a historical <span class="k">stock_movements</span> row from the API layer &mdash; corrections are new reversal/adjustment movements referencing the original.
+8. Test: a GRN + issue + return sequence reconciles Physical Stock exactly; a rejected MIR never increases Available Stock; a return reverses the originally issued quantity correctly.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 9</span></div>
+    </div>
+
+    <div class="card" id="p11">
+      <div class="chd"><span class="pnum">11</span><h3>Auto-replenishment</h3><span class="tag dep">depends on 10</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 11 &mdash; Reorder points, projected inventory, gated auto-purchasing.</b>
+
+1. Extend <span class="k">business_rules</span> (already present in <span class="k">setupDb.js</span>) into a replenishment/auto-purchase policy store: per material or category, which of the four modes applies (alert only / auto-draft PR / auto-draft PO under a framework agreement / auto-issue PO below a configured financial-authority ceiling), and who the authority-ceiling approver is.
+2. Implement in <span class="k">backend/src/services/replenishment.js</span>: <span class="k">Lead-Time Demand = forecast daily usage * supplier lead-time days</span>; <span class="k">Reorder Point = Lead-Time Demand + Safety Stock</span>; <span class="k">Projected Available(date) = Available + Confirmed Incoming(date) - Scheduled Demand(date)</span>; <span class="k">Shortage = max(Net Requirement - Available - Confirmed Incoming, 0)</span>. Suggested order quantity must respect target max stock, open confirmed POs, future scheduled demand, MOQ/order multiple and shelf life/storage capacity.
+3. Add a scheduled job (idempotent &mdash; running it twice in a row on the same data must not create duplicate PRs) that evaluates every material against its reorder point and, per its configured mode, creates an alert, a draft PR (Phase 12), a draft PO under a framework price, or an issued PO only if strictly below the configured authority ceiling and only for pre-approved materials/suppliers. Default mode for anything unconfigured is alert-only &mdash; never silently escalate to auto-issue.
+4. Add alerts: projected shortage, below minimum, expiring material, excess/slow-moving, rejected delivery, delayed PO, abnormal wastage &mdash; routed through the Phase 7 notification engine.
+5. Test: a future floor activity with insufficient current+incoming stock creates exactly one draft PR when the job runs twice in a row (no duplicates); a material configured for auto-issue-PO but priced above the authority ceiling produces a draft PO awaiting approval, not an issued one.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 10</span></div>
+    </div>
+
+    <div class="card" id="p12">
+      <div class="chd"><span class="pnum">12</span><h3>Procurement</h3><span class="tag dep">depends on 10, 06</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 12 &mdash; The full PR &rarr; RFQ &rarr; PO &rarr; GRN chain, which does not exist today.</b>
+
+Current spend is captured only as <span class="k">expenses</span> + <span class="k">invoices</span> + <span class="k">payments</span> (<span class="k">backend/src/routes/finance.js</span>, <span class="k">invoices.js</span>, <span class="k">payments.js</span>). None of this is replaced &mdash; procurement sits alongside it and <span class="k">expenses</span> optionally links to a PO once this phase lands.
+
+1. Add tables: <span class="k">purchase_requisitions</span> + lines, <span class="k">rfqs</span> + <span class="k">rfq_lines</span> + <span class="k">rfq_vendors</span>, <span class="k">supplier_quotations</span> + lines, <span class="k">bid_comparisons</span>, <span class="k">purchase_orders</span> + lines, <span class="k">deliveries</span> + lines, <span class="k">material_inspection_requests</span> (MIR &mdash; link to PO/delivery/supplier/material submittal/GRN), <span class="k">goods_receipt_notes</span> + lines, <span class="k">supplier_returns</span>.
+2. Route PR/PO approval through the Phase 6 workflow engine using the catalog's exact states: PR (Draft -&gt; Submit -&gt; Budget Check -&gt; Authority Approval -&gt; Procurement), PO (Draft -&gt; Commercial/Procurement Approval -&gt; Financial Authority -&gt; Issued -&gt; Acknowledged -&gt; Partially/Fully Delivered -&gt; Closed).
+3. Implement calculations: <span class="k">PO Line Net = Qty * Unit Rate - Discount</span>; <span class="k">PO Total = Sum(Line Net) + Taxes + Freight + Approved Charges</span>.
+4. Enforce the GRN constraint: <span class="k">Accepted cumulative &lt;= Delivered cumulative &lt;= Ordered quantity + approved tolerance</span>. A GRN can only be created for MIR-accepted quantities (ties into Phase 10's quarantine gate).
+5. Build the quote-comparison view: compliant/non-compliant, lead time, unit price, total price, payment/delivery terms, tax, warranty, deviations, technical/commercial score &mdash; and make sure no vendor's portal view (Phase 18, once built) can see a competitor's quote.
+6. Build the three-way match: supplier invoice line reconciles PO ordered/price, GRN accepted quantity, and invoice quantity/price; flag exceptions (price variance, quantity variance, missing GRN, duplicate invoice, tax mismatch) instead of silently accepting.
+7. Generate the documents listed in the template catalog (PR, RFQ, quotation cover, technical evaluation, commercial comparison, award recommendation, PO, delivery receipt, MIR, GRN, supplier return note) as branded, numbered PDFs.
+8. Once this lands, add an optional <span class="k">po_id</span> foreign key to <span class="k">expenses</span> and update supplier records (in <span class="k">backend/src/routes/suppliers.js</span>) to resolve through <span class="k">organizations</span> from Phase 3.
+9. Gate: a full procurement scenario (PR -&gt; RFQ -&gt; 3 quotes -&gt; award -&gt; PO -&gt; partial delivery -&gt; MIR accept -&gt; GRN -&gt; stock increase -&gt; issue to a work package) completes with zero manual database edits.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 10, 6</span></div>
+    </div>
+  </section>
+
+  <section id="commercial">
+    <h2>Phases 13&ndash;14 &mdash; Commercial &amp; finance</h2>
+    <p class="sec-intro">Widens the existing subcontract/invoice tables into a real construction commercial model. Property-sales contracts stay a separate, optional line (see Phase 13, step 6).</p>
+
+    <div class="card" id="p13">
+      <div class="chd"><span class="pnum">13</span><h3>Commercial / contracts</h3><span class="tag dep">depends on 08, 12, 06</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 13 &mdash; Client contracts, variations, commitments, both-sided certificates.</b>
+
+Read <span class="k">backend/src/routes/costing.js</span> (70 lines, currently <span class="k">profit = contract_value - total_cost</span>), <span class="k">subcontractors.js</span> (223 lines &mdash; <span class="k">sub_contracts</span>, <span class="k">sub_payment_certificates</span>), and <span class="k">project_budgets</span>/<span class="k">cost_codes</span> in <span class="k">setupDb.js</span> before changing anything.
+
+1. Add tables: <span class="k">client_contracts</span>, <span class="k">contract_lines</span> (SOV), <span class="k">variations</span> + <span class="k">variation_lines</span> + <span class="k">variation_cost_buildup</span>, <span class="k">commitments</span>, <span class="k">retention_ledger</span>, <span class="k">advance_ledger</span>.
+2. Widen <span class="k">sub_contracts</span> with a line model and a revised-amount calculation: <span class="k">Revised Subcontract = Original Subcontract + Approved Changes</span>. Generalize <span class="k">sub_payment_certificates</span> into a shared <span class="k">payment_certificates</span> table usable for both client and subcontractor certificates (add a <span class="k">direction</span> or <span class="k">party_type</span> column) &mdash; keep the old table name working as a filtered view during transition.
+3. Widen <span class="k">project_budgets</span> with original vs. current values plus a <span class="k">budget_changes</span> log.
+4. Implement in <span class="k">backend/src/services/commercialEngine.js</span>, replacing the <span class="k">profit = contract_value - total_cost</span> line in <span class="k">costing.js</span>: <span class="k">Revised Contract Value = Original + Approved Client Variations</span>; <span class="k">Current Budget = Original Budget + Approved Budget Changes</span>; <span class="k">Committed Cost = approved commitments (POs, subcontracts) net of cancellations</span>; <span class="k">Actual Cost</span>; <span class="k">Accrued Cost</span>; <span class="k">ETC</span>; <span class="k">EAC = Actual + Accrued + ETC</span>; <span class="k">Forecast Profit = Forecast Revenue - EAC</span>; <span class="k">Forecast Margin % = Forecast Profit / Forecast Revenue * 100</span>. Snapshot every historical figure computed the old way before switching, so past reports remain explainable.
+5. Route the variation lifecycle through the Phase 6 engine exactly: Change Event -&gt; Estimate -&gt; Internal Commercial Review -&gt; Authority Approval -&gt; Consultant Recommendation -&gt; Client Approval/Reject -&gt; Incorporated. A variation approval must, in one transaction, update the contract's revised value and the project's forecast.
+6. Keep the existing <span class="k">units</span>/<span class="k">buildings</span> property-sales contracts (in <span class="k">backend/src/routes/units.js</span>) as a separate, optional path &mdash; do not merge unit-sale contracts into <span class="k">client_contracts</span>. Just make sure <span class="k">buildings</span>' absorption into <span class="k">project_locations</span> (done in Phase 8) hasn't broken anything <span class="k">units.js</span> depends on; add a regression test for unit sales specifically.
+7. Test: forecast margin recomputed after an approved variation matches a hand-calculated expected value for at least 3 scenarios (no variation, one client variation, one client variation + one subcontract change).</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 8, 12, 6</span></div>
+    </div>
+
+    <div class="card" id="p14">
+      <div class="chd"><span class="pnum">14</span><h3>Finance &amp; invoicing</h3><span class="tag dep">depends on 13</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 14 &mdash; AR/AP ledgers, three-way match, collections, reminders, cash flow.</b>
+
+Read <span class="k">backend/src/routes/finance.js</span> (68 lines), <span class="k">invoices.js</span> (174 lines) and <span class="k">payments.js</span> (115 lines) fully first.
+
+1. Add <span class="k">supplier_invoices</span>, formal AR/AP ledger tables, and link three-way match exceptions from Phase 12 into an AP review queue.
+2. Widen <span class="k">invoices</span> into client valuations with certified/retention/advance-recovery/tax breakdown and a full status lifecycle: Draft -&gt; Approved -&gt; Issued -&gt; Partially Paid -&gt; Paid -&gt; Overdue -&gt; Cancelled/Void -&gt; Credited. Implement the payment-certificate calculation exactly: <span class="k">Gross Current Work + Approved Variations This Period = Gross Certified; - Retention - Advance Recovery - Other Deductions + Tax = Net Certificate / Invoice Basis</span>, tracking previous cumulative values so nothing gets double-certified.
+3. Widen <span class="k">payments</span> to be AR/AP-aware with allocation records (<span class="k">payment_allocations</span>) linking a payment to one or more invoices, never exceeding the invoice's outstanding balance.
+4. Build the receivable reminder engine (configurable per company/project/client): 7 days before due, due today, 7/14/30 days overdue, with escalation to PM/Finance/CFO as configured &mdash; wired through the Phase 7 notification engine.
+5. Add a VAT/tax module and a cash-flow view combining AR aging, AP aging, collections, payments due, and retention receivable/payable.
+6. Build the company finance dashboard: AR aging, AP aging, cash collected, payments due, project cash flow, retention receivable/payable, overdue client invoices, supplier/subcontract liabilities, project forecast margin (from Phase 13).
+7. Ensure every financial transaction carries company, project, cost code, department, tax, and approver fields, and writes an <span class="k">audit_events</span> row (Phase 4) on create and on every status change.
+8. Test: a set of invoice/payment/allocation scenarios reconciles exactly &mdash; no invoice allocation total ever exceeds the invoice amount, no payment allocation total ever exceeds the payment amount, retention released matches retention held.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 13</span> &middot; <span class="dl-lbl">Gate</span><span class="mono">invoice/payment scenarios reconcile exactly</span></div>
+    </div>
+  </section>
+
+  <section id="siteportals">
+    <h2>Phases 15&ndash;18 &mdash; Site operations &amp; external portals</h2>
+    <p class="sec-intro">The site-engineer workspace first, since the portals surface its records to outside parties. All portals are scoped front-ends over the <em>same</em> project database, gated by Phase 4. Every portal route must render with zero records &mdash; no null, no 500, no blank page.</p>
+
+    <div class="card" id="p15">
+      <div class="chd"><span class="pnum">15</span><h3>Site operations</h3><span class="tag dep">depends on 07, 08</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 15 &mdash; Site-engineer daily workspace and a daily report that assembles itself.</b>
+
+Read <span class="k">backend/src/routes/site.js</span> (283 lines &mdash; <span class="k">site_visits</span>, <span class="k">site_daily_reports</span>) in full first.
+
+1. Build a site-engineer home screen (new <span class="k">frontend/src/pages/SiteWorkspace.js</span>, or extend the existing <span class="k">SiteManagement.js</span> if that's the natural home &mdash; check which one currently owns site_visits/daily_reports UI) showing: today's activities, inspections due, material readiness (from Phase 9/10), manpower, equipment, deliveries (from Phase 12), safety actions, and a quick photo-capture action.
+2. Auto-populate the daily report instead of free text: pull the day's schedule/work-order activities, manpower/time records, equipment usage, GRNs, executed quantities (Phase 8 measurements), inspections, observations, and photos into <span class="k">site_daily_reports</span> automatically; the engineer only types narrative, issues, blockers, and next-day plan.
+3. Widen <span class="k">site_visits</span> with visitor organization/user/role, visit type, attendees, purpose, inspected activities, and referenced drawings/documents.
+4. Add a shared photo-metadata model (project, location, linked record, uploader, organization, captured/uploaded time, optional GPS, caption, annotation layer) used by daily reports, site visits, and observations (Phase 16) alike &mdash; build it once, reuse everywhere.
+5. Add sticky notes (personal / project-shared / location-linked / record-linked), each optionally with a reminder and a "convert to action" button feeding Phase 7's action_items. Sticky notes must never substitute for formal contractual correspondence &mdash; keep them visually distinct from anything that generates a document.
+6. Test: a daily report generated on a day with zero recorded activity still renders (empty state, not an error), and a daily report on a busy day correctly pulls in every source record without double-counting.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 7, 8</span></div>
+    </div>
+
+    <div class="card" id="p16">
+      <div class="chd"><span class="pnum">16</span><h3>Consultant portal</h3><span class="tag dep">depends on 04, 15</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 16 &mdash; Consultant login, daily dashboard, and the observation workflow.</b>
+
+1. Build scoped portal auth: a consultant's <span class="k">organization_users</span>/<span class="k">project_participant_users</span> row (Phase 3) determines exactly which projects they see; MFA optional per company policy.
+2. Add <span class="k">observations</span> and <span class="k">observation_comments</span> tables with full status history, workflow states exactly as: Raised -&gt; Acknowledged -&gt; Assigned -&gt; Rectification In Progress -&gt; Submitted for Verification -&gt; Accepted/Rejected -&gt; Closed, running through the Phase 6 engine. On create: notify the PM (Phase 7), create a PM action, allow PM assignment to a site engineer or subcontractor. On rectification: capture after-photos and comments (reuse the Phase 15 photo-metadata model). On consultant rejection: reopen with a new comment and full audit trail.
+3. Widen <span class="k">project_rfis</span> and <span class="k">project_submittals</span> (currently single-answer) into the multi-stage flow: RFI (Draft -&gt; Submitted -&gt; Coordinator -&gt; Discipline Reviewer(s) -&gt; Official Response -&gt; Acknowledged -&gt; Closed) and Submittal (Draft -&gt; Internal Technical Review -&gt; PM -&gt; Consultant Coordinator -&gt; Reviewer(s) -&gt; Response A/B/C/D -&gt; Resubmit/Close), each keeping full revision history.
+4. Build the consultant dashboard: overall progress, milestones, planned vs actual, today's inspections, new work ready for inspection, WIR/MIR pending, RFIs awaiting response, submittals awaiting review, observations awaiting verification, NCR closeouts awaiting review, latest drawings, recent daily progress/photos, sticky/personal notes, upcoming visits &mdash; every widget must render on a project with zero of that record type.
+5. Build the "My Reviews" inbox: one page, sorted by due date/priority, filterable by project/discipline/type/location.
+6. Every official consultant response records user, organization, date/time, revision, comments and attachments &mdash; this is the audit trail a construction dispute would need later.
+7. Test empty states explicitly: "No inspections scheduled today," "No RFIs require your response," "Consultant not assigned to this discipline" &mdash; never blank or crash.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 4, 15</span></div>
+    </div>
+
+    <div class="card" id="p17">
+      <div class="chd"><span class="pnum">17</span><h3>Client portal</h3><span class="tag dep">depends on 04, 13, 14</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 17 &mdash; A clean owner dashboard that never leaks margins or vendor rates.</b>
+
+1. Build scoped client portal auth, gated so that <span class="k">see_internal_cost</span>, <span class="k">see_subcontractor_price</span>, <span class="k">see_supplier_price</span> flags (Phase 4) are always false for this role, enforced server-side, not just hidden in the UI.
+2. Build the client dashboard: project health, overall progress, planned vs actual, milestones, high-level schedule, latest progress photos, approved/pending variations, client approvals required, certified/billed/paid/outstanding values (from Phase 13/14), owner-facing documents, weekly/monthly reports (Phase 24, once it exists), handover readiness (Phase 25, once it exists).
+3. Build a client action center: approvals, decisions, variation responses, document acknowledgements, overdue owner inputs.
+4. If a client organization has multiple projects, the first page after login is a portfolio view with per-project health and key metrics.
+5. Zero-client requirement: the internal preview route for this portal must work even before a client organization or portal user is assigned &mdash; show setup actions ("Assign a client to preview this portal"), never an error.
+6. Add a "Preview as Client" mode for authorized internal admins/PMs &mdash; read-only, fully audited (Phase 4's <span class="k">audit_events</span>), no fake account created.
+7. Test explicitly: project with a client and full data; project with a client and zero records; project with no client assigned at all; mobile viewport.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 4, 13, 14</span> &middot; <span class="dl-lbl">Gate</span><span class="mono">works with client, no client, no records, and full project</span></div>
+    </div>
+
+    <div class="card" id="p18">
+      <div class="chd"><span class="pnum">18</span><h3>Subcontractor &amp; supplier portals</h3><span class="tag dep">depends on 04, 12, 13</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 18 &mdash; Two separate scoped logins over the same data; neither sees the other's pricing.</b>
+
+Read <span class="k">backend/src/routes/subcontractors.js</span> (223 lines) and <span class="k">suppliers.js</span> (202 lines) fully first.
+
+<b>Subcontractor portal:</b>
+1. Dashboard: awarded packages/scope, today's assigned work, latest approved drawings, inspections needed, consultant observations, RFIs/submittals, executed/approved quantities, payment application status, variations, snags/warranty.
+2. Actions: acknowledge subcontract/instructions, submit RFI, submit submittal, request WIR/MIR, submit progress quantities, upload manpower/equipment, respond to NCR/observation, submit variation quotation, submit payment application.
+3. Isolation: a subcontractor can only see its own package and commercial values unless explicitly shared &mdash; verify with a test that queries another subcontractor's PO/certificate by ID and expects 403/404, not the record.
+4. Surface <span class="k">sub_work_verifications</span> and subcontract certificates (Phase 13) directly in this portal.
+
+<b>Supplier portal:</b>
+5. Dashboard: open RFQs, quotation deadlines, awarded POs, deliveries due, inspection/rejection status, invoices/payment status, expiring compliance documents.
+6. Actions: submit quotation, send clarification, acknowledge PO, propose delivery date, upload delivery/certificates, submit invoice.
+7. Isolation: a supplier must never see a competing vendor's pricing &mdash; verify with a test against the Phase 12 quote-comparison data.
+8. Both portals resolve their organization through <span class="k">organizations</span> (Phase 3), so the same login table gates procurement-side and portal-side views consistently.
+9. Test each portal against: no assigned project, project with zero records, one project, multiple projects, expired assignment, forbidden financial field, mobile viewport.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 4, 12, 13</span></div>
+    </div>
+  </section>
+
+  <section id="quality">
+    <h2>Phases 19&ndash;25 &mdash; Quality, safety, controls, handover</h2>
+    <p class="sec-intro">Deepening thin modules in place, then closing with the two handover sections the original codebase never had.</p>
+
+    <div class="card" id="p19">
+      <div class="chd"><span class="pnum">19</span><h3>QA/QC</h3><span class="tag dep">depends on 06, 08</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 19 &mdash; ITP, WIR, MIR, checklists, hold/witness points, punch lists.</b>
+
+Read <span class="k">backend/src/routes/qhse.js</span> (327 lines &mdash; <span class="k">ncrs</span>, <span class="k">quality_tests</span>) fully first.
+
+1. Add: <span class="k">itps</span> + <span class="k">itp_points</span> (hold/witness/review point, required documents, responsible internal party, consultant responsibility, acceptance criteria), <span class="k">wirs</span>, <span class="k">mir_inspections</span> (link to PO/delivery/supplier/material submittal/GRN from Phase 12), <span class="k">checklist_templates</span> + <span class="k">checklist_instances</span>, <span class="k">corrective_actions</span> + <span class="k">preventive_actions</span>, <span class="k">mock_ups</span>, <span class="k">calibration_records</span>, <span class="k">punch_items</span> (feeds Phase 25 handover).
+2. Widen <span class="k">ncrs</span> with exact location, responsible party, root cause, corrective action, preventive action, cost/schedule impact, verification, closure authority.
+3. Route WIR through the Phase 6 engine with the configurable Site -&gt; QA/QC -&gt; PM -&gt; Consultant chain and results: approved / approved with comments / rejected / reinspect. Route MIR similarly, with its Accepted quantity controlling usable stock via Phase 10's quarantine gate.
+4. Link <span class="k">quality_tests</span> to an ITP where applicable.
+5. Generate the QA/QC document set: ITP, WIR, inspection checklist, MIR, NCR, corrective action, test report, punch list &mdash; branded PDFs per the template catalog.
+6. Nothing in the existing severity/state progression on <span class="k">ncrs</span> is removed &mdash; only widened.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 6, 8</span></div>
+    </div>
+
+    <div class="card" id="p20">
+      <div class="chd"><span class="pnum">20</span><h3>HSE</h3><span class="tag dep">depends on 06, 07</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 20 &mdash; Permits, JSA, inductions, near misses, HSE dashboard.</b>
+
+Read <span class="k">safety_incidents</span> and <span class="k">safety_inspections</span> in <span class="k">qhse.js</span> first.
+
+1. Add: <span class="k">inductions</span>, <span class="k">toolbox_talks</span>, <span class="k">jsas</span>/<span class="k">risk_assessments</span>, <span class="k">permits</span> (typed: work/hot-work/lifting/excavation/confined-space), <span class="k">near_misses</span>, <span class="k">ppe_records</span>, <span class="k">equipment_inspections</span>, <span class="k">emergency_drills</span>.
+2. Convert <span class="k">safety_incidents</span> into a typed <span class="k">incidents</span> table and <span class="k">safety_inspections</span> into typed inspections/permits, keeping the old table names as compatibility views until every reader has moved.
+3. Build the HSE dashboard: man-hours, days without LTI, open observations, overdue corrective actions, near misses, incidents, permits expiring/today.
+4. Route permit approvals through the Phase 6 engine where a permit type requires sign-off before work can start (hot work, confined space, lifting).
+5. Generate documents: safety inspection, JSA/risk assessment, permit to work, toolbox talk, incident report, near-miss report.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 6, 7</span></div>
+    </div>
+
+    <div class="card" id="p21">
+      <div class="chd"><span class="pnum">21</span><h3>Document control, RFI &amp; submittals</h3><span class="tag dep">depends on 16</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 21 &mdash; Controlled registers, transmittals, correspondence, auto-numbering.</b>
+
+Read <span class="k">backend/src/routes/doccontrol.js</span> (328 lines &mdash; <span class="k">document_categories</span>, <span class="k">document_versions</span>) fully first; it already has revision history and approval reset, which is a good base &mdash; do not throw it away.
+
+1. Widen <span class="k">project_documents</span>/<span class="k">document_versions</span> with discipline, type, status, location, package, originator, recipient.
+2. Add controlled registers by type (drawings, specs, contracts, reports, method statements, as-built, O&amp;M), <span class="k">transmittals</span> (incoming/outgoing, recipients, purpose, acknowledgement, response-due, auto-generated branded PDF), <span class="k">correspondence</span> (letters/notices/instructions/claims &mdash; numbered, revision-safe, linked contract/project record, audit trail).
+3. Enforce: exactly one current revision per controlled document; previous revisions immutable and superseded, with a prominent visual warning on superseded files in the UI; a new revision may reset review/approval according to the governing workflow (Phase 6).
+4. Add auto-numbering in the format <span class="k">PROJECT-DISCIPLINE-TYPE-SEQ-REV</span>, configurable per project.
+5. This phase also finishes what Phase 16 started for RFI/submittal &mdash; if any multi-stage/A-B-C-D-response work remains, complete it here rather than duplicating logic.
+6. Add cross-record search across current and historical revisions, transmittals, RFIs and correspondence, permission-filtered.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 16</span></div>
+    </div>
+
+    <div class="card" id="p22">
+      <div class="chd"><span class="pnum">22</span><h3>Planning / scheduling</h3><span class="tag dep">depends on 08</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 22 &mdash; Activities, dependencies, critical path, lookaheads, S-curve.</b>
+
+Read how <span class="k">project_phases</span>/<span class="k">project_milestones</span> are currently used across <span class="k">backend/src/routes/projects.js</span> and <span class="k">ProjectDetail.js</span> first.
+
+1. Add: <span class="k">schedule_activities</span> (WBS/work-package/location link, responsible party, planned/actual start-finish, original/remaining duration, % complete, quantity basis optional), <span class="k">activity_relationships</span> (FS/SS/FF/SF + lag), <span class="k">calendars</span>, <span class="k">baselines</span>.
+2. Integrate <span class="k">project_phases</span>/<span class="k">project_milestones</span> with the new WBS/schedule model rather than replacing them &mdash; a milestone can reference a schedule activity.
+3. Where progress is quantity-driven, derive activity % complete from Phase 8's approved physical quantity, with manual override controlled by permission/policy (not left wide open).
+4. Build views: Gantt, milestones, 2/4/6-week lookahead, delayed activities, critical activities, location-based schedule, subcontractor schedule.
+5. Implement <span class="k">Schedule Variance % = Actual Progress % - Planned Progress %</span>, and SPI/CPI only where earned-value management is explicitly enabled for the project (don't force EV bookkeeping on every project).
+6. Provide import/export for common scheduling tools (Primavera/MS Project) where feasible &mdash; do not attempt to build a full enterprise CPM engine in this iteration; a working critical-path calc over the activity/dependency graph is enough.
+7. Add alerts: activity starting soon but material not ready (cross-check Phase 9/11), inspection/submittal blocking an activity, critical activity delayed, milestone forecast late.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 8</span></div>
+    </div>
+
+    <div class="card" id="p23">
+      <div class="chd"><span class="pnum">23</span><h3>Dashboards</h3><span class="tag dep">depends on 04, 07</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 23 &mdash; 16 role dashboards replacing 5 generic endpoints.</b>
+
+Read <span class="k">backend/src/routes/dashboard.js</span> (271 lines) fully first &mdash; understand exactly which 5 endpoints exist today and what each returns.
+
+1. Rebuild it as a per-role widget system, not one bigger endpoint: CEO/Owner, Projects Director, Construction Manager, Project Manager, Site Engineer, Planning, QS/Commercial, Procurement, Storekeeper, QA/QC, HSE, Document Controller, Finance, Client, Consultant, Subcontractor &mdash; using the exact widget minimums documented in <span class="k">construction_erp_agent_pack/18_DASHBOARDS_ACTIONS_NOTIFICATIONS.md</span> for each role.
+2. Add the floor/location dashboard built in Phase 8 as an embeddable widget usable from both the internal app and (permission-filtered) the consultant/client portals.
+3. Add sticky notes (Phase 15) as a dashboard component: personal / project / location / record.
+4. Every dashboard must be permission-filtered server-side, not client-side hidden, and must render correctly with zero underlying records for a brand-new project.
+5. Keep old dashboard.js response shapes available under a legacy flag until the frontend has fully migrated, then remove the generic payload.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 4, 7</span></div>
+    </div>
+
+    <div class="card" id="p24">
+      <div class="chd"><span class="pnum">24</span><h3>Reporting engine</h3><span class="tag dep">depends on 23</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 24 &mdash; Filters, saved views, export, scheduled reports, auto project report.</b>
+
+1. Add a filter + export contract to every existing list endpoint (across all 28+ route files): consistent query params for filter/sort/pagination, and Excel/PDF export using the same filtered result set the UI shows.
+2. Build saved views (per user, per module), scheduled report jobs with email distribution, and drilldown from a report row back to the source record.
+3. Build the automatic project report (weekly/monthly, ~20 sections): Executive Summary, Progress, Schedule, Milestones, Manpower, Equipment, Quantities, Procurement, Materials, Quality, Safety, RFIs, Submittals, Consultant Observations, Variations, Financial Status, Photos, Key Risks, Actions &mdash; each section pulling live from the relevant phase's data, not hand assembled.
+4. Build commercial / procurement / management report packs as pre-configured saved views + exports.
+5. Every report respects the viewer's permission flags (Phase 4) &mdash; a client-facing export must never include internal cost columns even if the underlying query technically has access.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 23</span></div>
+    </div>
+
+    <div class="card" id="p25">
+      <div class="chd"><span class="pnum">25</span><h3>Handover, closeout &amp; warranty</h3><span class="tag dep">depends on 19, 06</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 25 &mdash; The project's last mile, currently absent end to end.</b>
+
+There is no existing handover path in this codebase to migrate away from &mdash; this is pure net-new build.
+
+1. Add: <span class="k">punch_items</span> (if not already created in Phase 19 &mdash; reuse it, don't duplicate) with location/asset, discipline, photos, responsible subcontractor, due date, verification authority; <span class="k">handover_packages</span> (register: as-built drawings, O&amp;M manuals, warranties, test/commissioning results, certificates, equipment/asset register, keys/access items, training records, authority approvals); <span class="k">asset_register</span> (asset code, location, model/serial, supplier, subcontractor, commissioning date, warranty start/end, documents); <span class="k">warranty_claims</span> (linked to asset/location, routed to PM/subcontractor, SLA tracking, rectification evidence, acceptance).
+2. Route the full handover lifecycle through the Phase 6 engine with the exact states: Pre-Handover -&gt; Punch/Snag -&gt; Rectification -&gt; Final Inspection -&gt; Testing &amp; Commissioning -&gt; As-Builts -&gt; O&amp;M -&gt; Training -&gt; Taking Over -&gt; DLP/Warranty -&gt; Final Completion.
+3. Build the handover-package UI as a checklist against the register above, with document upload per item and completion percentage.
+4. Build the warranty/DLP claim flow: client or authorized user raises a claim against an asset/location, it routes to PM/subcontractor, tracks SLA, and closes on accepted rectification evidence.
+5. Surface handover readiness (percentage of package items complete) on the client portal dashboard (Phase 17) and the project manager dashboard (Phase 23).
+6. Generate documents: handover checklist, testing/commissioning sheet, asset register, as-built register, O&amp;M register, warranty register, handover certificate.
+7. Test: a project with zero punch items still renders the handover screen with a correct 0%-complete state, not an error.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 19, 6</span></div>
+    </div>
+  </section>
+
+  <section id="platform">
+    <h2>Phases 26&ndash;31 &mdash; Platform, agents, hardening</h2>
+    <p class="sec-intro">Requires pulling business logic behind a shared service layer so the web app, the v1 API, and MCP all call the same code &mdash; by this point most of that service layer already exists from earlier phases (quantityEngine, inventoryEngine, commercialEngine, workflowEngine, etc.); this block wires it up externally rather than inventing new logic.</p>
+
+    <div class="card" id="p26">
+      <div class="chd"><span class="pnum">26</span><h3>External API</h3><span class="tag dep">depends on all service-layer phases (3&ndash;25)</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 26 &mdash; Versioned /api/v1, OAuth, webhooks, OpenAPI.</b>
+
+1. Before adding anything new, refactor: every route handler across the 28+ files in <span class="k">backend/src/routes/</span> that still contains business logic inline must have that logic extracted into the <span class="k">backend/src/services/*</span> modules built in earlier phases, so the existing internal API and the new v1 API call the exact same functions. Do this module by module, not all at once, verifying no behavior change after each extraction with the existing test suite.
+2. Build <span class="k">/api/v1/*</span> covering the resource families: companies, users, organizations, projects (+team/participants/locations/wbs), work-packages, boq, quantities, materials, inventory, purchase-requisitions, rfqs, purchase-orders, deliveries, grns, contracts, subcontracts, variations, payment-certificates, invoices, payments, daily-reports, site-visits, observations, rfis, submittals, inspections, ncrs, documents, transmittals, schedule, actions, notifications, reports.
+3. Add OAuth/OIDC for user-delegated access and scoped service-account tokens for machine integrations. Add idempotency keys on every create/financial endpoint, pagination/filter/sort, request correlation IDs, and the structured error shape: <span class="k">{"error":{"code","message","correlation_id","details"}}</span>.
+4. Add rate limiting and API audit logs (reusing Phase 4's <span class="k">audit_events</span> where the shape fits).
+5. Add webhooks for the event list from Phase 2's architecture doc (project.created, rfi.*, submittal.*, observation.*, inventory.low, purchase_order.issued, delivery.received, mir.*, invoice.*, payment.received, variation.approved, action.overdue) with delivery retry and a dead-letter path.
+6. Publish an OpenAPI spec generated from source (not hand-maintained separately) and stand up a sandbox/test environment.
+7. Test: every v1 endpoint enforces the exact same permission result as the equivalent UI/internal-API call for the same user; no endpoint allows cross-project data leakage by ID-guessing.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">every phase whose service layer it exposes</span></div>
+    </div>
+
+    <div class="card" id="p27">
+      <div class="chd"><span class="pnum">27</span><h3>MCP server</h3><span class="tag dep">depends on 26</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 27 &mdash; Remote MCP server over the shared service layer, never the database directly.</b>
+
+1. Build the MCP server as an adapter: Client -&gt; MCP Server -&gt; AgentPolicy/Authorization (Phase 4) -&gt; Business Services (built across phases 3&ndash;25) -&gt; Database/Storage. It must never query the database directly or bypass workflow/authorization logic.
+2. Implement read tools: list_projects, get_project, get_project_team, get_project_progress, list_locations, get_location_status, get_boq, get_quantity_status, get_material_requirements, get_inventory_status, get_material_shortages, list_rfis/get_rfi, list_submittals/get_submittal, list_inspections, list_observations, list_ncrs, get_project_cost_summary, list_invoices, list_payments, search_documents, get_my_actions.
+3. Implement safe transactional write tools (draft-only, never final commitments): create_rfi, add_rfi_comment/draft_response, create_site_observation, add_observation_comment, attach_observation_photo, create_purchase_requisition_draft, create_inspection_request, update_daily_report_draft, assign_action, complete_action_with_evidence, create_invoice_draft, create_variation_draft.
+4. Implement high-risk gated actions that require the configured approval workflow before executing: issue_purchase_order, approve_variation, issue_client_invoice, record_payment, approve_payment_certificate, release_retention, delete/void a controlled financial record, change permission/authority rules, close_project.
+5. Every tool call resolves authenticated user, organization, project memberships, role/permissions, delegated authority, monetary authority limit, and target record status before executing &mdash; identical resolution to the API layer, not a separate simplified check.
+6. For every high-risk action, store a confirmation record: proposed action, generated payload, reason/context, requesting agent/session, requesting user, required approver, approval decision, final executed transaction ID.
+7. Build an admin "Agent Activity" screen logging every tool call, authorization decision, record changed, and resulting event.
+8. Scope tokens narrowly &mdash; never give MCP unrestricted database credentials; enforce a tool allowlist by role and redact forbidden fields before any model-facing response.
+9. Test: an MCP call from a consultant-scoped session returns the exact same authorization result as the equivalent UI action for that same user.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 26</span></div>
+    </div>
+
+    <div class="card" id="p28">
+      <div class="chd"><span class="pnum">28</span><h3>Agent layer</h3><span class="tag dep">depends on 27</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 28 &mdash; PM, Procurement, Commercial, Consultant, Document and Executive assistants.</b>
+
+Build these strictly on top of the Phase 27 MCP tool set &mdash; no new business logic here, only orchestration and drafting.
+
+1. PM Assistant: summarizes actions, delays, comments, inspection status, procurement blockers and risks; drafts assignments/RFIs/reports for human review, never sends/executes directly.
+2. Procurement Assistant: forecasts shortages using Phase 11's calculations, drafts PRs/RFQs, compares compliant quotes, flags delayed deliveries.
+3. Commercial Assistant: summarizes budget/commitments/EAC/variations/certificates from Phase 13/14 and drafts commercial documents without autonomously approving money.
+4. Consultant Assistant: surfaces reviews due, organizes inspections, drafts responses; official approval stays role/policy controlled via Phase 27's high-risk gate.
+5. Document Assistant: searches current revisions (Phase 21), flags superseded references, compiles transmittals and document registers.
+6. Executive Assistant: portfolio health, margin, cash, delays, key risks and decisions, read-only across everything the CEO dashboard (Phase 23) shows.
+7. Every assistant runs on the Phase 27 API/MCP security model with human-review and approval gates before any contractual or financial write &mdash; no exceptions for "the agent is confident."</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 27</span></div>
+    </div>
+
+    <div class="card" id="p29">
+      <div class="chd"><span class="pnum">29</span><h3>Mobile optimisation</h3><span class="tag dep">depends on 15, 19, 20</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 29 &mdash; Mobile-first field flows and offline mode.</b>
+
+1. Responsive-harden the field-facing screens first: <span class="k">frontend/src/pages/SiteManagement.js</span>, <span class="k">WorkOrders.js</span>, and the Phase 15 site workspace, plus daily report, inspection, WIR/MIR, observations, action centre, drawings, material issues, labour, and safety screens.
+2. Field UX standard: large touch targets, camera-first photo capture, minimal typing, recent-locations shortcuts.
+3. Build offline mode: cache latest approved drawings, allow creating observations and filling checklists offline, and sync with explicit conflict resolution (never silently overwrite a server-side change with a stale offline draft &mdash; surface the conflict to the user).
+4. This phase is explicitly lower priority than 1&ndash;28 in the source spec ("eventually") &mdash; do not let it block Phase 30/31, but do not skip the responsive-hardening step, since Phase 15's site workspace is unusable on-site without it.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 15, 19, 20</span></div>
+    </div>
+
+    <div class="card" id="p30">
+      <div class="chd"><span class="pnum">30</span><h3>Security, observability &amp; backups</h3><span class="tag dep">depends on 04, 26, 27</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 30 &mdash; Not in the PDF's 112 numbered sections, but a hard requirement in the agent pack's own build order, and the plan's biggest historical gap. Do this before Phase 31's final test pass.</b>
+
+1. Security: OIDC/OAuth-compatible auth with MFA support, secure password/session policy, CSRF protection, secure cookies/tokens, encrypted secrets, signed/private file URLs, a file-type/malware-scanning policy on uploads, rate limiting, brute-force protection. Add an explicit server-side object-level (project/organization) check on every protected route in the 28+ route files, on top of the Phase 4 policy engine &mdash; treat this as a full audit pass, not a spot check.
+2. Agent security: scope every MCP token narrowly (no unrestricted DB credentials), evaluate policy per tool call, keep high-risk approval records (Phase 27), enforce a tool allowlist by role, and redact forbidden fields before any model-facing response.
+3. Observability: structured application logs with correlation IDs, error tracking, job-queue health, DB performance, API latency/error rates, webhook delivery health, notification delivery health, inventory-reconciliation alarms, agent tool-call audit.
+4. Health checks for: app, database, object storage, job queue, mail provider, integrations, MCP endpoint.
+5. Backups: automated DB backups, an object/file backup policy, a documented retention schedule, restore drills actually performed (not just planned), and documented RPO/RTO.
+6. Reliability: idempotent scheduled jobs (verify every cron/job added in phases 11, 14, 24 is safe to run twice), an outbox/event pattern for financially important events, retries with dead-letter handling, and a rule that no notification or webhook fails silently.
+7. Gate: automated security tests prove external parties (consultant/client/subcontractor/supplier roles) cannot access internal data, re-running the Phase 4 isolation suite against the now-complete route set.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 4, 26, 27</span> &middot; <span class="dl-lbl">Gate</span><span class="mono">security isolation tests pass before Phase 31 sign-off</span></div>
+    </div>
+
+    <div class="card" id="p31">
+      <div class="chd"><span class="pnum">31</span><h3>Automated testing &amp; seed project</h3><span class="tag dep">depends on everything</span></div>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 31 &mdash; Replace the ad-hoc *.ps1 scripts with real test suites and one master seed project.</b>
+
+This repo's current tests are the <span class="k">*.ps1</span> scripts at the root (<span class="k">approvals_test.ps1</span>, <span class="k">comprehensive_test.ps1</span>, <span class="k">full_test.ps1</span>, <span class="k">run_tests.ps1</span>, <span class="k">units_client_test.ps1</span>). Read them first to see what they already cover before replacing them &mdash; don't lose coverage in the swap.
+
+1. Build the required test layers: unit (calculations from every phase's *Engine.js service), integration (domain-service interactions), permission (every internal and external role), API contract, workflow, financial reconciliation, inventory reconciliation, E2E browser, mobile viewport, empty-state/error-state, MCP permission/action, and performance/load for large project registers.
+2. Seed one master project, "Osiris Residential Towers": 2 towers x 12 floors x 4 apartments/floor, client organization, PMC/construction-manager, architectural/structural/MEP consultants, concrete/MEP/finishes subcontractors, suppliers, a project warehouse, sample BOQ (C35 concrete 8,000 m3, reinforcement 1,000 t, blockwork 40,000 m2, plaster 65,000 m2, ceramic flooring 18,500 m2, electrical cable 120 km) allocated across towers/floors, and the standard concrete recipe from Phase 9.
+3. Run the golden E2E scenario end to end and assert every step: create from template -&gt; assign team/participants -&gt; allocate BOQ by floor -&gt; schedule a concrete pour -&gt; calculate materials and detect shortage -&gt; auto-create draft PR -&gt; RFQ to 3 suppliers, select a quote -&gt; issue PO through authority workflow -&gt; receive partial delivery, MIR accept, GRN -&gt; issue materials to the work package -&gt; record daily work and executed quantity -&gt; raise WIR, consultant approves with comment -&gt; consultant raises a photo observation on another item -&gt; PM assigns a subcontractor, before/after evidence uploaded, consultant closes -&gt; measure/certify progress -&gt; create client certificate/invoice and partial collection -&gt; create subcontractor certificate/payment -&gt; raise a variation linked to the RFI and approve it -&gt; complete punch items and hand over an asset/warranty package -&gt; validate every role's dashboard and MCP queries against the resulting data.
+4. Mandatory reconciliation assertions: sum of location quantity allocations equals BOQ planned quantity (or shows a controlled exception); inventory subledger equals balance; GRN accepted quantity never exceeds the allowed PO/delivery tolerance; invoice allocations never exceed payment; certificate cumulative values never double-count; project budget/commitment/actual/forecast figures reconcile to source transactions.
+5. Portal acceptance matrix for Client, Consultant, Subcontractor and Supplier: no assigned project, project with zero records, one project, multiple projects, expired assignment, forbidden financial field, mobile viewport.
+6. Wire all suites into CI so they run on every change; failure policy: no release ships with a critical, financial, or security test failing.
+7. Once the new suites cover everything the old <span class="k">*.ps1</span> scripts checked, retire them.</div>
+      <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 1&ndash;30</span> &middot; <span class="dl-lbl">Gate</span><span class="mono">golden E2E scenario passes with zero manual DB edits</span></div>
+    </div>
+  </section>
+
+  <footer>
+    Generated 2026-09-16 from <span class="mono">ERP_EXPANSION_PLAN.html</span> (31 phases) cross-referenced with <span class="mono">construction_erp_agent_pack/</span> and a direct read of the current <span class="mono">backend/src/routes/</span>, <span class="mono">backend/src/scripts/setupDb.js</span>, and <span class="mono">frontend/src/pages/</span>. File/table names quoted here reflect the codebase at that date &mdash; re-run Phase 1's audit step if significant time has passed before starting execution.
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  document.querySelectorAll('.promptbox').forEach(function(box){
+    var btn = box.querySelector('.copy');
+    if(!btn) return;
+    btn.addEventListener('click', function(){
+      var clone = box.cloneNode(true);
+      var c = clone.querySelector('.copy');
+      if(c) c.remove();
+      var text = clone.innerText;
+      function done(){
+        btn.textContent = 'Copied';
+        btn.classList.add('done');
+        setTimeout(function(){ btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1500);
+      }
+      try{
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(text).then(done).catch(function(){ fallback(text, done); });
+        } else {
+          fallback(text, done);
+        }
+      }catch(e){ fallback(text, done); }
+      function fallback(t, cb){
+        try{
+          var ta = document.createElement('textarea');
+          ta.value = t; ta.style.position='fixed'; ta.style.opacity='0';
+          document.body.appendChild(ta); ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          cb();
+        }catch(e){}
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

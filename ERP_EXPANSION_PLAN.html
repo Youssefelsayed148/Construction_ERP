@@ -1,0 +1,826 @@
+<title>ERP Expansion Plan</title>
+<meta name="description" content="A phase-by-phase map of the gap between the current Osiris construction ERP and the target specification — what is added, modified, and removed at each of the 27 phases.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --paper:#f3f5f7; --surface:#ffffff; --surface-2:#f8f9fb;
+    --ink:#1b1e26; --ink-soft:#565c6b; --ink-faint:#8b91a0;
+    --line:#d9dce2; --line-soft:#e7e9ee;
+    --accent:#1f5fbf; --accent-soft:#e9f1fc; --accent-line:#b9d3f2;
+    --add:#2f7d4f; --add-soft:#e7f3ec;
+    --mod:#a86400; --mod-soft:#f6efe0;
+    --del:#b23b2c; --del-soft:#f7e8e5;
+    --shadow:0 1px 2px rgba(20,26,40,.04),0 4px 16px rgba(20,26,40,.05);
+    --maxw:920px;
+  }
+  :root:not([data-theme="light"]){
+    @media (prefers-color-scheme: dark){
+      --paper:#131519; --surface:#1b1e25; --surface-2:#1f232b;
+      --ink:#e7e9ed; --ink-soft:#9aa1af; --ink-faint:#6b7280;
+      --line:#2c313b; --line-soft:#252a33;
+      --accent:#5b9bf0; --accent-soft:#182741; --accent-line:#2f4d78;
+      --add:#5cba82; --add-soft:#16261d;
+      --mod:#d69a3c; --mod-soft:#2a2113;
+      --del:#d9695a; --del-soft:#2b1815;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.28);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#131519; --surface:#1b1e25; --surface-2:#1f232b;
+    --ink:#e7e9ed; --ink-soft:#9aa1af; --ink-faint:#6b7280;
+    --line:#2c313b; --line-soft:#252a33;
+    --accent:#5b9bf0; --accent-soft:#182741; --accent-line:#2f4d78;
+    --add:#5cba82; --add-soft:#16261d;
+    --mod:#d69a3c; --mod-soft:#2a2113;
+    --del:#d9695a; --del-soft:#2b1815;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.28);
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    font-size:16px; line-height:1.62; letter-spacing:-.003em;
+    padding:0 20px;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto}
+  a{color:var(--accent)}
+
+  h1,h2,h3,h4{font-family:"Zilla Slab",Georgia,serif; line-height:1.18; text-wrap:balance; margin:0}
+  h2{font-size:1.6rem; font-weight:600; letter-spacing:-.01em}
+  h3{font-size:1.16rem; font-weight:600}
+  h4{font-size:1rem; font-weight:600}
+  p{margin:0}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* ---- top nav ---- */
+  .topnav{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb,var(--paper) 88%,transparent);
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);
+    margin:0 -20px 0; padding:0 20px;
+  }
+  .topnav .inner{
+    max-width:var(--maxw); margin:0 auto; display:flex; gap:22px;
+    overflow-x:auto; scrollbar-width:none; padding:11px 0;
+  }
+  .topnav .inner::-webkit-scrollbar{display:none}
+  .topnav a{
+    color:var(--ink-soft); text-decoration:none; white-space:nowrap;
+    font-size:.82rem; font-weight:500; letter-spacing:.01em;
+  }
+  .topnav a:hover{color:var(--ink)}
+
+  /* ---- hero ---- */
+  header.hero{padding:56px 0 30px}
+  .kicker{
+    font-family:"IBM Plex Mono",monospace; font-size:.72rem; font-weight:500;
+    letter-spacing:.16em; text-transform:uppercase; color:var(--accent);
+    display:flex; align-items:center; gap:10px; margin-bottom:18px;
+  }
+  .kicker::after{content:""; height:1px; flex:1; background:var(--accent-line)}
+  header.hero h1{
+    font-family:"Zilla Slab",Georgia,serif; font-weight:700;
+    font-size:clamp(2.1rem,5.4vw,3.1rem); letter-spacing:-.02em; line-height:1.06;
+  }
+  header.hero .lede{
+    margin-top:16px; font-size:1.08rem; color:var(--ink-soft); max-width:64ch;
+  }
+  .verdict{
+    margin-top:24px; border:1px solid var(--accent-line); background:var(--accent-soft);
+    border-radius:10px; padding:16px 18px; font-size:.97rem;
+  }
+  .verdict strong{color:var(--ink)}
+
+  /* ---- summary tiles ---- */
+  .tiles{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:12px; margin:30px 0 8px;
+  }
+  .tile{
+    background:var(--surface); border:1px solid var(--line); border-radius:10px;
+    padding:15px 16px; box-shadow:var(--shadow);
+  }
+  .tile .t-val{font-family:"Zilla Slab",serif; font-weight:700; font-size:1.7rem; line-height:1; letter-spacing:-.02em}
+  .tile .t-val .arw{color:var(--ink-faint); font-weight:500; margin:0 4px}
+  .tile .t-lbl{margin-top:7px; font-size:.78rem; color:var(--ink-soft); line-height:1.35}
+
+  section{padding:38px 0; border-top:1px solid var(--line); scroll-margin-top:60px}
+  section > .sec-intro{color:var(--ink-soft); margin-top:10px; max-width:66ch}
+
+  /* ---- legend ---- */
+  .legend{display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 4px}
+  .pill{
+    font-family:"IBM Plex Mono",monospace; font-size:.7rem; font-weight:500;
+    letter-spacing:.04em; text-transform:uppercase;
+    padding:3px 9px; border-radius:999px; border:1px solid;
+    display:inline-flex; align-items:center; gap:6px; white-space:nowrap;
+  }
+  .pill::before{content:""; width:6px; height:6px; border-radius:2px; background:currentColor}
+  .p-add{color:var(--add); border-color:color-mix(in srgb,var(--add) 40%,transparent); background:var(--add-soft)}
+  .p-mod{color:var(--mod); border-color:color-mix(in srgb,var(--mod) 40%,transparent); background:var(--mod-soft)}
+  .p-del{color:var(--del); border-color:color-mix(in srgb,var(--del) 40%,transparent); background:var(--del-soft)}
+  .p-neutral{color:var(--ink-soft); border-color:var(--line); background:var(--surface-2)}
+
+  /* ---- domain table ---- */
+  .tbl-scroll{overflow-x:auto; margin-top:18px; border:1px solid var(--line); border-radius:10px}
+  table.domain{border-collapse:collapse; width:100%; min-width:640px; font-size:.9rem}
+  table.domain th{
+    text-align:left; font-family:"IBM Plex Mono",monospace; font-weight:500;
+    font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-faint);
+    padding:12px 14px; background:var(--surface-2); border-bottom:1px solid var(--line);
+  }
+  table.domain td{padding:12px 14px; border-bottom:1px solid var(--line-soft); vertical-align:top}
+  table.domain tr:last-child td{border-bottom:none}
+  table.domain td:first-child{font-weight:600; white-space:nowrap}
+  .v-tag{
+    font-family:"IBM Plex Mono",monospace; font-size:.68rem; font-weight:500;
+    letter-spacing:.03em; text-transform:uppercase; padding:2px 7px; border-radius:5px;
+    white-space:nowrap;
+  }
+  .v-refactor{color:var(--del); background:var(--del-soft)}
+  .v-expand{color:var(--mod); background:var(--mod-soft)}
+  .v-new{color:var(--add); background:var(--add-soft)}
+
+  /* ---- phases ---- */
+  .phase-group-hd{
+    font-family:"IBM Plex Mono",monospace; font-size:.74rem; font-weight:500;
+    letter-spacing:.1em; text-transform:uppercase; color:var(--ink-faint);
+    margin:30px 0 12px; padding-bottom:8px; border-bottom:1px dashed var(--line);
+  }
+  .phase-group-hd:first-of-type{margin-top:20px}
+
+  .phase{
+    display:grid; grid-template-columns:52px 1fr; gap:18px;
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    padding:20px; margin-bottom:14px; box-shadow:var(--shadow);
+  }
+  .phase .pnum{
+    font-family:"Zilla Slab",serif; font-weight:700; font-size:1.5rem; color:var(--accent);
+    line-height:1; text-align:right; font-variant-numeric:tabular-nums;
+    border-right:2px solid var(--accent-line); padding-right:16px;
+  }
+  .phase .pbody{min-width:0}
+  .phase .phd{display:flex; flex-wrap:wrap; align-items:baseline; gap:10px; margin-bottom:4px}
+  .phase .phd h3{font-size:1.12rem}
+  .phase .psub{color:var(--ink-soft); font-size:.92rem; margin-bottom:14px}
+
+  .change-list{display:grid; gap:10px; margin-top:12px}
+  .cl-row{display:grid; grid-template-columns:88px 1fr; gap:12px; align-items:start; font-size:.9rem}
+  .cl-row .cl-k{padding-top:1px}
+  .cl-row .cl-v{color:var(--ink-soft)}
+  .cl-row .cl-v b{color:var(--ink); font-weight:600}
+  .cl-row .cl-v .mono{font-size:.84em; color:var(--ink); background:var(--surface-2); padding:1px 5px; border-radius:4px; border:1px solid var(--line-soft)}
+
+  .deliver{
+    margin-top:14px; padding-top:12px; border-top:1px solid var(--line-soft);
+    font-size:.8rem; color:var(--ink-faint); display:flex; flex-wrap:wrap; gap:6px 10px; align-items:baseline;
+  }
+  .deliver .dl-lbl{font-family:"IBM Plex Mono",monospace; letter-spacing:.06em; text-transform:uppercase; font-size:.68rem}
+  .deliver .mono{color:var(--ink-soft)}
+
+  /* ---- callout ---- */
+  .callout{
+    border:1px solid var(--del); background:var(--del-soft);
+    border-radius:10px; padding:16px 18px; margin-top:16px; font-size:.92rem;
+  }
+  .callout h4{color:var(--del); margin-bottom:6px; font-family:"IBM Plex Mono",monospace; font-size:.76rem; letter-spacing:.08em; text-transform:uppercase}
+  .callout ul{margin:8px 0 0; padding-left:20px}
+  .callout li{margin:4px 0; color:var(--ink-soft)}
+  .callout li b{color:var(--ink)}
+
+  .dod{columns:2; column-gap:26px; margin-top:16px; font-size:.88rem}
+  .dod span{display:block; break-inside:avoid; padding:3px 0; color:var(--ink-soft)}
+  .dod span::before{content:"\2713"; color:var(--add); font-weight:700; margin-right:8px}
+
+  footer{padding:34px 0 60px; border-top:1px solid var(--line); color:var(--ink-faint); font-size:.82rem}
+
+  @media (max-width:640px){
+    body{padding:0 15px}
+    .topnav{margin:0 -15px; padding:0 15px}
+    .phase{grid-template-columns:1fr; gap:12px; padding:16px}
+    .phase .pnum{text-align:left; border-right:none; border-bottom:2px solid var(--accent-line); padding-right:0; padding-bottom:8px; font-size:1.2rem}
+    .cl-row{grid-template-columns:1fr; gap:3px}
+    .dod{columns:1}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important; scroll-behavior:auto!important}}
+</style>
+
+<nav class="topnav">
+  <div class="inner">
+    <a href="#verdict">Verdict</a>
+    <a href="#today">Where we are</a>
+    <a href="#domains">Domain map</a>
+    <a href="#foundation">Foundation phases</a>
+    <a href="#operations">Operations</a>
+    <a href="#commercial">Commercial &amp; finance</a>
+    <a href="#portals">Site &amp; portals</a>
+    <a href="#quality">Quality &amp; controls</a>
+    <a href="#platform">API, MCP &amp; agents</a>
+    <a href="#risks">Migration risks</a>
+    <a href="#dod">Definition of done</a>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <header class="hero">
+    <div class="kicker">Osiris Construction ERP &nbsp;/&nbsp; Current &rarr; Target</div>
+    <h1>What the spec changes, phase by phase</h1>
+    <p class="lede">The 112-section specification is not a different product. It is written to sit on top of what is already built &mdash; same stack, same database, same API style &mdash; and expand it roughly fourfold. This is the map of that expansion: what gets <strong>added</strong>, <strong>modified</strong>, and <strong>removed</strong> at each of the 27 phases.</p>
+    <div class="verdict" id="verdict">
+      <strong>Verdict: adapt and expand, do not rebuild.</strong> Around 90&#8239;% of the work is additive (new tables and routes beside the current schema) or refactor (hardcoded logic &rarr; configurable engine). Genuine deletions are a handful of shortcut constants and three tables that fold into a unified model. Three phases are structural and must land first because they touch live foreign keys: <strong>Organizations</strong>, <strong>Permissions</strong>, and <strong>Locations&#8202;+&#8202;BOQ allocation</strong>.
+    </div>
+
+    <div class="tiles">
+      <div class="tile"><div class="t-val num">63<span class="arw">&rarr;</span>~205</div><div class="t-lbl">database tables</div></div>
+      <div class="tile"><div class="t-val num">28<span class="arw">&rarr;</span>~52</div><div class="t-lbl">API / service modules</div></div>
+      <div class="tile"><div class="t-val num">20<span class="arw">&rarr;</span>~58</div><div class="t-lbl">screens &amp; portal views</div></div>
+      <div class="tile"><div class="t-val num">3</div><div class="t-lbl">structural refactors of live data</div></div>
+      <div class="tile"><div class="t-val num">0</div><div class="t-lbl">modules thrown away</div></div>
+    </div>
+  </header>
+
+  <section id="today">
+    <h2>Where the product stands today</h2>
+    <p class="sec-intro">Audited from the running codebase &mdash; migrations, route files, and React pages.</p>
+
+    <div class="change-list" style="margin-top:20px">
+      <div class="cl-row"><div class="cl-k mono">Stack</div><div class="cl-v">Express + PostgreSQL + React. Relational, project-scoped. Exactly the architecture the spec assumes.</div></div>
+      <div class="cl-row"><div class="cl-k mono">Execution</div><div class="cl-v"><b>Solid.</b> <span class="mono">work_orders</span> with materials / labour / equipment / completions, and <span class="mono">sub_work_verifications</span>. This is the spine the spec builds on and explicitly credits.</div></div>
+      <div class="cl-row"><div class="cl-k mono">BOQ</div><div class="cl-v"><span class="mono">boq_sections</span> + <span class="mono">boq_items</span> with a single <span class="mono">completed_quantity</span>. No location dimension, no cost dimension, no certified-vs-executed split.</div></div>
+      <div class="cl-row"><div class="cl-k mono">Structure</div><div class="cl-v"><span class="mono">buildings</span> (floors stored as an integer, not rows) and <span class="mono">units</span> (for sales). No site / zone / floor / area / room tree.</div></div>
+      <div class="cl-row"><div class="cl-k mono">Permissions</div><div class="cl-v">Flat <span class="mono">users.role</span> string + <span class="mono">module_permissions[]</span>. <span class="mono">authorize()</span> is a role-list check with an owner/admin bypass. No org, project, record, or financial-visibility scoping.</div></div>
+      <div class="cl-row"><div class="cl-k mono">Approvals</div><div class="cl-v">One generic 2-stage flow (<span class="mono">manager_review &rarr; approver</span>) with a hardcoded <span class="mono">MODULE_MANAGER_ROLES</span> map. A proto-workflow engine, not configurable.</div></div>
+      <div class="cl-row"><div class="cl-k mono">Parties</div><div class="cl-v">Three separate tables &mdash; <span class="mono">clients</span>, <span class="mono">suppliers</span>, <span class="mono">subcontractors</span>. No unified Organization. No consultants.</div></div>
+      <div class="cl-row"><div class="cl-k mono">Procurement</div><div class="cl-v"><b>Absent.</b> No PR / RFQ / quotation / PO / GRN. Spend is captured as <span class="mono">expenses</span> + <span class="mono">invoices</span> + <span class="mono">payments</span>.</div></div>
+      <div class="cl-row"><div class="cl-k mono">Inventory</div><div class="cl-v"><span class="mono">warehouses</span> + <span class="mono">warehouse_stock</span> + <span class="mono">inventory_transfers</span>. No movement ledger, no GRN/MIR gate, no reservations, no reorder logic.</div></div>
+      <div class="cl-row"><div class="cl-k mono">Commercial</div><div class="cl-v"><span class="mono">sub_contracts</span>, <span class="mono">sub_payment_certificates</span>, <span class="mono">project_budgets</span>, <span class="mono">cost_codes</span>, journal entries. Profit is <span class="mono">contract_value &minus; total_cost</span> &mdash; no forecast model, no client-side certificates, no variations.</div></div>
+      <div class="cl-row"><div class="cl-k mono">RFI / Submittal</div><div class="cl-v"><span class="mono">project_rfis</span> / <span class="mono">project_submittals</span> &mdash; single-answer, not multi-stage.</div></div>
+      <div class="cl-row"><div class="cl-k mono">QHSE</div><div class="cl-v"><span class="mono">ncrs</span>, <span class="mono">quality_tests</span>, <span class="mono">safety_incidents</span>, <span class="mono">safety_inspections</span>, <span class="mono">site_visits</span>, <span class="mono">site_daily_reports</span>. Basic; no ITP / WIR / MIR / permits.</div></div>
+      <div class="cl-row"><div class="cl-k mono">Doc control</div><div class="cl-v"><span class="mono">document_categories</span> + <span class="mono">document_versions</span> &mdash; already has revision history and approval reset. Good base to make enterprise-grade.</div></div>
+      <div class="cl-row"><div class="cl-k mono">Property sales</div><div class="cl-v"><span class="mono">units</span> + <span class="mono">buildings</span> carry reservations/contracts for unit sales. Not in the spec's core construction model &mdash; &sect;81 says keep it as an optional Property Development module, not fold it into the main workflow.</div></div>
+      <div class="cl-row"><div class="cl-k mono">HR / Payroll / Legal / Assets</div><div class="cl-v">Four modules &mdash; <span class="mono">hr.js</span>, <span class="mono">payroll.js</span>, <span class="mono">legal.js</span>, <span class="mono">maintenance.js</span> &mdash; plus an <span class="mono">employees</span> table, built after this audit's original baseline. None of it maps to a numbered spec section except the org chart (&sect;4: HR, Legal, Plant&nbsp;&amp;&nbsp;Equipment as departments) and &sect;52 Resource/Labour (timesheets, cost rate feeding labour cost). Not org-scoped, not permission-engine-aware, no workflow hooks &mdash; needs its own gap pass before Phase&nbsp;3 locks the permission model.</div></div>
+      <div class="cl-row"><div class="cl-k mono">In-flight drift</div><div class="cl-v">An uncommitted migration already re-points <span class="mono">project_team.user_id</span> (login account) to <span class="mono">project_team.employee_id</span> (staffing record). Phase&nbsp;3's absorption of <span class="mono">project_team</span> into <span class="mono">project_participants</span> must design against this employee-based shape, not the pre-migration one.</div></div>
+      <div class="cl-row"><div class="cl-k mono">Absent entirely</div><div class="cl-v">Client / consultant / subcontractor / supplier portals &middot; action &amp; notification engine &middot; scheduling &middot; reporting engine &middot; versioned API &middot; MCP &middot; immutable audit log (only a mutable <span class="mono">activity_log</span>) &middot; handover / warranty / DLP &middot; site-operations daily workspace &middot; backup, observability &amp; DR posture.</div></div>
+    </div>
+  </section>
+
+  <section id="domains">
+    <h2>Domain-by-domain: the shape of the change</h2>
+    <div class="legend">
+      <span class="v-tag v-refactor">refactor</span><span style="font-size:.82rem;color:var(--ink-soft)">structural &mdash; touches live schema &amp; data</span>
+    </div>
+    <div class="legend">
+      <span class="v-tag v-expand">expand</span><span style="font-size:.82rem;color:var(--ink-soft)">thin version exists &mdash; deepen it in place</span>
+      <span class="v-tag v-new">new</span><span style="font-size:.82rem;color:var(--ink-soft)">net-new module &mdash; no conflict with current schema</span>
+    </div>
+
+    <div class="tbl-scroll">
+      <table class="domain">
+        <thead><tr><th>Domain</th><th>Today</th><th>Target</th><th>Nature</th></tr></thead>
+        <tbody>
+          <tr><td>Organizations</td><td>3 party tables</td><td>One <span class="mono">organizations</span> entity + participants + org users; 15 org types</td><td><span class="v-tag v-refactor">refactor</span></td></tr>
+          <tr><td>Permissions</td><td>role string + module list</td><td>Company&#8202;+&#8202;Org&#8202;+&#8202;Project&#8202;+&#8202;Role&#8202;+&#8202;Module&#8202;+&#8202;Record&#8202;+&#8202;Action; price-visibility flags</td><td><span class="v-tag v-refactor">refactor</span></td></tr>
+          <tr><td>Locations &amp; quantities</td><td>buildings (int floors)</td><td>Typed location tree + BOQ allocation with planned/executed/certified/remaining&#8202;+&#8202;cost; roll-ups</td><td><span class="v-tag v-refactor">refactor</span></td></tr>
+          <tr><td>Project setup</td><td>single INSERT</td><td>11-step transactional wizard + templates; no half-created project</td><td><span class="v-tag v-expand">expand</span></td></tr>
+          <tr><td>Workflow / approvals</td><td>hardcoded 2-stage</td><td>Configurable <span class="mono">WorkflowTemplate/Step/Instance</span>; amount &amp; org conditions; parallel/sequential</td><td><span class="v-tag v-refactor">refactor</span></td></tr>
+          <tr><td>Actions &amp; notifications</td><td>&mdash;</td><td>Universal <span class="mono">ActionItem</span>, "My Actions", multi-channel notify, reminders, escalation, digests</td><td><span class="v-tag v-new">new</span></td></tr>
+          <tr><td>Materials &amp; recipes</td><td>item master only</td><td>Recipes, wastage/conversion, schedule-aware demand calc</td><td><span class="v-tag v-new">new</span></td></tr>
+          <tr><td>Inventory</td><td>stock snapshot</td><td>Movement ledger (8 types), reservations, MIR gate, warehouse types</td><td><span class="v-tag v-expand">expand</span></td></tr>
+          <tr><td>Replenishment</td><td>&mdash;</td><td>Reorder point, projected inventory, gated auto-PR / auto-PO</td><td><span class="v-tag v-new">new</span></td></tr>
+          <tr><td>Procurement</td><td>&mdash;</td><td>PR &rarr; RFQ &rarr; quote &rarr; compare &rarr; PO &rarr; delivery &rarr; MIR &rarr; GRN &rarr; invoice &rarr; payment</td><td><span class="v-tag v-new">new</span></td></tr>
+          <tr><td>Commercial / contracts</td><td>subcontracts + certs</td><td>Client contracts, SOV, variations with cost build-up, commitments, both-sided certificates</td><td><span class="v-tag v-expand">expand</span></td></tr>
+          <tr><td>Finance / AR / AP</td><td>cash in/out</td><td>AR/AP ledgers, 3-way match, forecast model, reminder engine, VAT, cash flow</td><td><span class="v-tag v-expand">expand</span></td></tr>
+          <tr><td>RFI / submittal</td><td>single answer</td><td>Coordinator/reviewer stages, A/B/C/D responses, revision history</td><td><span class="v-tag v-expand">expand</span></td></tr>
+          <tr><td>QA/QC</td><td>NCR, tests, inspections</td><td>ITP, WIR, MIR, checklists, hold/witness points, CAPA, punch lists, mock-ups, calibration</td><td><span class="v-tag v-expand">expand</span></td></tr>
+          <tr><td>HSE</td><td>incidents, inspections</td><td>Permits, JSA, toolbox, inductions, near-misses, PPE, drills, HSE dashboard</td><td><span class="v-tag v-expand">expand</span></td></tr>
+          <tr><td>Document control</td><td>versioned docs</td><td>Controlled registers, transmittals, correspondence, superseded warnings, auto numbering</td><td><span class="v-tag v-expand">expand</span></td></tr>
+          <tr><td>Scheduling</td><td>phases + milestones</td><td>Activities, FS/SS/FF/SF + lag, calendars, baseline, critical path, lookaheads, S-curve, SPI/CPI</td><td><span class="v-tag v-new">new</span></td></tr>
+          <tr><td>Dashboards</td><td>5 generic endpoints</td><td>16 role dashboards + floor/location dashboards + sticky notes</td><td><span class="v-tag v-expand">expand</span></td></tr>
+          <tr><td>Reporting</td><td>&mdash;</td><td>Filters, saved views, Excel/PDF, scheduled email, drilldown; auto project report</td><td><span class="v-tag v-new">new</span></td></tr>
+          <tr><td>Site operations</td><td><span class="mono">site_visits</span>, <span class="mono">site_daily_reports</span></td><td>Site-engineer daily workspace, auto-populated daily report, formal site-visit record, photo metadata, sticky notes</td><td><span class="v-tag v-expand">expand</span></td></tr>
+          <tr><td>Client &amp; consultant portals</td><td>&mdash;</td><td>Scoped UIs over the same DB; client never sees margins/rates; consultant runs the observation workflow</td><td><span class="v-tag v-new">new</span></td></tr>
+          <tr><td>Subcontractor portal</td><td>&mdash;</td><td>Scope, WIR/MIR, quantities, payment applications, variations, snags</td><td><span class="v-tag v-new">new</span></td></tr>
+          <tr><td>Supplier portal</td><td>&mdash;</td><td>RFQ response, PO acknowledgement, delivery-date proposal, delivery/certificate upload, invoice submission &mdash; no cross-vendor pricing visibility</td><td><span class="v-tag v-new">new</span></td></tr>
+          <tr><td>Handover &amp; warranty</td><td>&mdash;</td><td>Pre-handover &rarr; punch list &rarr; rectification &rarr; T&amp;C &rarr; as-built &rarr; O&amp;M &rarr; taking-over &rarr; DLP; asset register with warranty start/end; warranty/DLP claim workflow</td><td><span class="v-tag v-new">new</span></td></tr>
+          <tr><td>Property sales</td><td><span class="mono">units</span> + <span class="mono">buildings</span> (reservations/contracts)</td><td>Kept as an optional module, not merged into the core workflow; eventually installment schedules, broker commission, cancellations, customer care</td><td><span class="v-tag v-expand">expand (optional)</span></td></tr>
+          <tr><td>HR / payroll / legal / assets</td><td><span class="mono">hr.js</span>, <span class="mono">payroll.js</span>, <span class="mono">legal.js</span>, <span class="mono">maintenance.js</span> (unscoped)</td><td>Org + project scoped like every other module; timesheets feed &sect;52 labour-cost calc; payroll/legal actions gated by the same permission &amp; workflow engines</td><td><span class="v-tag v-refactor">refactor</span></td></tr>
+          <tr><td>External API</td><td>internal routes only</td><td>Versioned <span class="mono">/api/v1</span>, OAuth, scoped tokens, webhooks, OpenAPI, sandbox</td><td><span class="v-tag v-new">new</span></td></tr>
+          <tr><td>MCP &amp; agents</td><td>&mdash;</td><td>Remote MCP server over shared service layer; permission-inherited read/write tools; agent workflows</td><td><span class="v-tag v-new">new</span></td></tr>
+          <tr><td>Audit</td><td>mutable activity log</td><td>Immutable <span class="mono">AuditEvent</span> with before/after on approvals, payments, contracts, quantities, revisions, agent actions</td><td><span class="v-tag v-expand">expand</span></td></tr>
+          <tr><td>Security &amp; observability</td><td>Basic auth, no formal posture</td><td>OIDC/MFA, secure sessions, encrypted secrets, rate limiting, structured logs, health checks, automated backups with documented RPO/RTO</td><td><span class="v-tag v-new">new</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="foundation">
+    <h2>Phases 1&ndash;8 &mdash; Foundation</h2>
+    <p class="sec-intro">Audit, then a decision pass on the modules the spec never anticipated, then the three structural refactors, then the wizard and the two shared engines everything else plugs into. This block is the risky part: phases&nbsp;3, 4 and&nbsp;8 rewrite live foreign keys.</p>
+
+    <div class="phase-group-hd">Audit &amp; core data</div>
+
+    <div class="phase">
+      <div class="pnum">01</div>
+      <div class="pbody">
+        <div class="phd"><h3>Audit the existing codebase</h3><span class="pill p-neutral">prep</span></div>
+        <p class="psub">Map every table, module, route, and workflow before touching anything.</p>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v">Six reference docs. This page is the first cut of <span class="mono">GAP_ANALYSIS.md</span>.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v">Nothing &mdash; read-only phase.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Nothing.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">CURRENT_SYSTEM_ARCHITECTURE.md &middot; CURRENT_DATABASE_SCHEMA.md &middot; CURRENT_MODULE_MATRIX.md &middot; CURRENT_API_MATRIX.md &middot; CURRENT_PERMISSION_MATRIX.md &middot; GAP_ANALYSIS.md</span></div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">02</div>
+      <div class="pbody">
+        <div class="phd"><h3>Reconcile out-of-spec modules</h3><span class="pill p-neutral">decision</span></div>
+        <p class="psub">HR, Payroll, Legal and Maintenance/Assets exist in the codebase but in none of the 112 spec sections beyond an org-chart mention. Decide their shape before the permission engine locks, or they stay permanently unscoped.</p>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v">Decision record per module: fold into the Organization/participant model (e.g. <span class="mono">employees</span> as an internal-org participant type) or keep standalone with its own scoping &middot; mapping of <span class="mono">hr.js</span> timesheet data to &sect;52 Resource/Labour cost-rate calc.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><b><span class="mono">hr.js</span>, <span class="mono">payroll.js</span>, <span class="mono">legal.js</span>, <span class="mono">maintenance.js</span></b> gain project/organization scoping and route through the Phase&nbsp;4 permission engine and Phase&nbsp;6 workflow engine (e.g. payroll approval, legal document sign-off) instead of running unscoped.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Nothing &mdash; these are additive to the spec, not superseded by it.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">OUT_OF_SPEC_MODULE_DECISIONS.md</span></div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">03</div>
+      <div class="pbody">
+        <div class="phd"><h3>Core data architecture</h3><span class="pill p-del">structural refactor</span></div>
+        <p class="psub">Introduce Organizations, participants, enhanced roles, the location tree, WBS, work packages, cost codes.</p>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v"><span class="mono">organizations</span>, <span class="mono">organization_users</span>, <span class="mono">organization_documents</span>, <span class="mono">project_participants</span>, <span class="mono">roles</span>, <span class="mono">permissions</span>, <span class="mono">role_permissions</span>, <span class="mono">location_types</span>, <span class="mono">project_locations</span>, <span class="mono">wbs_nodes</span>, <span class="mono">work_packages</span>, <span class="mono">boq_location_allocations</span>.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><b><span class="mono">projects.client_id</span></b> re-points to <span class="mono">organizations</span> &middot; <b><span class="mono">project_team</span></b> generalises into <span class="mono">project_participants</span> &mdash; built against its current post-migration shape (<span class="mono">employee_id</span> &rarr; <span class="mono">employees</span>, not the old <span class="mono">user_id</span>) &middot; <b><span class="mono">buildings</span></b> migrates into <span class="mono">project_locations</span> as a location type &middot; <span class="mono">cost_codes</span> gains hierarchy &amp; CBS links.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v"><b><span class="mono">clients</span>, <span class="mono">suppliers</span>, <span class="mono">subcontractors</span></b> as standalone tables &mdash; kept as read-only compatibility views through the transition, dropped once all callers move to <span class="mono">organizations</span>.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">TARGET_DATA_MODEL.md &middot; ENTITY_RELATIONSHIP_DIAGRAM.md &middot; MIGRATION_PLAN.md</span></div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">04</div>
+      <div class="pbody">
+        <div class="phd"><h3>Permission engine</h3><span class="pill p-del">structural refactor</span></div>
+        <p class="psub">Replace the flat role check with a policy that resolves Company + Org + Project + Role + Module + Record + Action, plus financial-visibility flags.</p>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v">Policy-evaluation service &middot; <span class="mono">user_project_roles</span> &middot; visibility flags (<span class="mono">see_internal_cost</span>, <span class="mono">see_client_price</span>, <span class="mono">see_subcontractor_price</span>) &middot; "preview as role" demo mode &middot; immutable <span class="mono">audit_events</span> (before/after).</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><b><span class="mono">middleware/auth.js</span></b> &mdash; <span class="mono">authorize()</span> keeps its signature as a facade but calls the policy layer &middot; scoped checks threaded through all 26 route files &middot; <span class="mono">users.role</span> / <span class="mono">module_permissions[]</span> migrated to role assignments (columns retained as fallback, then dropped).</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v"><b><span class="mono">role === 'owner' &#124;&#124; role === 'admin'</span></b> hard bypasses &middot; literal <span class="mono">authorize('owner','admin')</span> role lists.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">RBAC_MATRIX.md &middot; PERMISSION_TEST_CASES.md</span> &nbsp;&middot;&nbsp; gate: automated tests prove external parties cannot read internal data.</div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">05</div>
+      <div class="pbody">
+        <div class="phd"><h3>Project creation wizard</h3><span class="pill p-mod">expand existing</span></div>
+        <p class="psub">Turn creation into the 11-step wizard that provisions the whole workspace in one transaction.</p>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v">Wizard UI &middot; <span class="mono">project_templates</span>, <span class="mono">template_wbs</span>, <span class="mono">template_folders</span>, <span class="mono">template_workflows</span>, <span class="mono">template_approval_rules</span> &middot; transactional provisioning service &middot; standard folder/register generator.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><b><span class="mono">projects</span></b> gains ~15 fields (project number, contract type, GPS, country, currency, tax config, defects-liability period, retention rules, advance payment, budget vs contract value) &middot; <b><span class="mono">POST /api/projects</span></b> wrapped by the wizard &mdash; all-or-nothing.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Single-INSERT creation path that can leave a project without locations, team, folders, or workflows.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">PROJECT_CREATION_SPEC.md &middot; PROJECT_TEMPLATE_SPEC.md</span></div>
+      </div>
+    </div>
+
+    <div class="phase-group-hd">Shared engines</div>
+
+    <div class="phase">
+      <div class="pnum">06</div>
+      <div class="pbody">
+        <div class="phd"><h3>Universal workflow engine</h3><span class="pill p-del">refactor</span> <span class="pill p-add">+ new</span></div>
+        <p class="psub">One configurable engine for RFI, submittal, purchase, variation, and payment approvals.</p>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v"><span class="mono">workflow_templates</span>, <span class="mono">workflow_steps</span>, <span class="mono">workflow_instances</span>, <span class="mono">workflow_actions</span>, <span class="mono">escalation_rules</span> &middot; step conditions (role, org type, amount, project) &middot; parallel &amp; sequential approval.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><b><span class="mono">approval_requests</span></b> data migrates into <span class="mono">workflow_instances</span> &middot; every module's approve/reject call routes through the engine.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v"><b><span class="mono">MODULE_MANAGER_ROLES</span></b> and <b><span class="mono">DIRECT_TO_OWNER_MODULES</span></b> constants &middot; the hardcoded <span class="mono">manager_review &rarr; approver</span> stage logic in <span class="mono">approvals.js</span> &middot; <span class="mono">approval_requests</span> table retired post-migration.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">WORKFLOW_ENGINE.md &middot; APPROVAL_MATRIX.md</span></div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">07</div>
+      <div class="pbody">
+        <div class="phd"><h3>Action, reminder &amp; notification engine</h3><span class="pill p-add">net-new module</span></div>
+        <p class="psub">A universal ActionItem plus the reminder / escalation / digest machinery.</p>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v"><span class="mono">action_items</span> (polymorphic source), <span class="mono">notifications</span>, <span class="mono">notification_preferences</span>, <span class="mono">reminder_rules</span> &middot; channel adapters (in-app, email, push; optional SMS/WhatsApp) &middot; daily/weekly digest jobs &middot; "My Actions" screen for every user.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v">Site visits, observations, RFIs, submittals, NCRs, inspections, meeting minutes all emit <span class="mono">action_items</span> &middot; the existing <span class="mono">event_log</span> feeds the dispatcher.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Nothing.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">NOTIFICATION_RULES.md &middot; ESCALATION_MATRIX.md</span></div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">08</div>
+      <div class="pbody">
+        <div class="phd"><h3>Location + quantity engine</h3><span class="pill p-del">structural refactor</span></div>
+        <p class="psub">Physical hierarchy as real rows, BOQ quantities allocated to locations with a cost dimension, roll-ups upward.</p>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v">Full tree CRUD (site / building / zone / floor / area / room) &middot; <span class="mono">boq_location_allocations</span> with planned / executed / certified / remaining + cost &middot; roll-up service (area &rarr; floor &rarr; building &rarr; site &rarr; project) &middot; floor/location dashboards.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><b><span class="mono">boq_items.completed_quantity</span></b> becomes derived from allocations &middot; <b><span class="mono">work_completions</span></b> post against an allocation + location &middot; <span class="mono">buildings</span> fully absorbed into the location tree.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v"><b><span class="mono">buildings.floors</span></b> and <b><span class="mono">buildings.units_per_floor</span></b> integer columns &mdash; superseded by real location rows.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">QUANTITY_CALCULATION_RULES.md &middot; LOCATION_MODEL.md</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="operations">
+    <h2>Phases 9&ndash;12 &mdash; Materials, inventory, procurement</h2>
+    <p class="sec-intro">The largest block of net-new tables. None of it conflicts with the current schema &mdash; it attaches to <span class="mono">item_master</span>, <span class="mono">warehouses</span>, and the new location engine.</p>
+
+    <div class="phase">
+      <div class="pnum">09</div>
+      <div class="pbody">
+        <div class="phd"><h3>Material planning</h3><span class="pill p-add">net-new module</span></div>
+        <p class="psub">Standard recipes per activity; demand calculated from location quantities and schedule dates.</p>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v"><span class="mono">material_recipes</span>, <span class="mono">recipe_lines</span>, <span class="mono">material_requirements</span> &middot; wastage&#8202;%, conversion factors, alternative materials, project-specific ratios &middot; schedule-aware demand engine.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><span class="mono">item_master</span> gains planning attributes &middot; <span class="mono">boq_items</span> / activities link to a recipe.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Nothing.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">MATERIAL_RECIPE_SPEC.md &middot; MATERIAL_DEMAND_FORMULAS.md</span></div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">10</div>
+      <div class="pbody">
+        <div class="phd"><h3>Inventory</h3><span class="pill p-mod">expand</span> <span class="pill p-del">&rarr; refactor</span></div>
+        <p class="psub">Every stock change becomes a ledgered movement; physical vs available stock; MIR gate before usable.</p>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v"><span class="mono">stock_movements</span> (GRN, issue, return, transfer, adjustment, waste, damage, supplier-return) &middot; <span class="mono">stock_reservations</span> &middot; warehouse types (central / project / site / temp / holding) &middot; inspection-status gate on incoming material.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><b><span class="mono">warehouse_stock</span></b> becomes a projection of the movement ledger &middot; <b><span class="mono">inventory_transfers</span></b> become movement pairs &middot; free-text site delivery becomes transactional.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v"><b><span class="mono">POST /warehouses/:id/stock</span></b> direct-mutation endpoint &mdash; replaced by posting a movement.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">INVENTORY_RULES.md</span></div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">11</div>
+      <div class="pbody">
+        <div class="phd"><h3>Auto-replenishment</h3><span class="pill p-add">net-new module</span></div>
+        <p class="psub">Reorder points, projected inventory, and gated auto-purchasing &mdash; never uncontrolled.</p>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v"><span class="mono">item_master</span> planning fields (min / max / safety / lead-time / daily-usage / preferred-supplier / order-multiple / framework-price) &middot; projected-inventory forecast &middot; three modes: auto-PR, auto-draft-PO, auto-PO below a financial-authority ceiling.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><span class="mono">business_rules</span> extended into a replenishment / auto-purchase policy store.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Nothing.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">REPLENISHMENT_FORMULAS.md &middot; AUTOPURCHASE_POLICY.md</span></div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">12</div>
+      <div class="pbody">
+        <div class="phd"><h3>Procurement</h3><span class="pill p-add">net-new module</span></div>
+        <p class="psub">The full PR &rarr; PO &rarr; GRN chain, none of which exists today.</p>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v"><span class="mono">purchase_requisitions</span>, <span class="mono">rfqs</span>, <span class="mono">rfq_vendors</span>, <span class="mono">supplier_quotations</span>, <span class="mono">bid_comparisons</span>, <span class="mono">purchase_orders</span>, <span class="mono">deliveries</span>, <span class="mono">goods_receipt_notes</span>, <span class="mono">material_inspection_requests</span> (+ line tables) &middot; document templates for PR / RFQ / comparison / PO / GRN / MIR.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><span class="mono">expenses</span> optionally link to a PO &middot; supplier records now resolve through <span class="mono">organizations</span>.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Nothing.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">PROCUREMENT_WORKFLOW.md</span> + templates &nbsp;&middot;&nbsp; gate: full procurement test completes with no manual DB edits.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="commercial">
+    <h2>Phases 13&ndash;14 &mdash; Commercial &amp; finance</h2>
+    <p class="sec-intro">The current cash-in-minus-cash-out model is replaced by a construction commercial model. Existing subcontract and invoice tables are widened, not discarded.</p>
+
+    <div class="phase">
+      <div class="pnum">13</div>
+      <div class="pbody">
+        <div class="phd"><h3>Commercial / contracts</h3><span class="pill p-mod">expand</span> <span class="pill p-del">&rarr; refactor</span></div>
+        <p class="psub">Client contracts, variations with cost build-up, commitments, both-sided payment certificates. Property-sales contracts (&sect;81) stay a separate, optional line &mdash; not merged into this model.</p>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v"><span class="mono">client_contracts</span>, <span class="mono">contract_lines</span> (SOV), <span class="mono">variations</span>, <span class="mono">variation_lines</span>, <span class="mono">variation_cost_buildup</span>, <span class="mono">commitments</span> &middot; certificate calc engine (retention, advance recovery, deductions, tax).</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><b><span class="mono">sub_contracts</span></b> gains a line model &amp; revised-amount calc &middot; <b><span class="mono">sub_payment_certificates</span></b> generalise into <span class="mono">payment_certificates</span> (client + subcontractor) &middot; <b><span class="mono">project_budgets</span></b> gain original vs current + adjustments.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v"><b><span class="mono">profit = contract_value &minus; total_cost</span></b> in <span class="mono">costing.js</span> &mdash; replaced by committed / actual / accrued / cost-to-complete / forecast-final / forecast-margin.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">COMMERCIAL_RULES.md &middot; CONTRACT_CALCULATIONS.md</span></div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">14</div>
+      <div class="pbody">
+        <div class="phd"><h3>Finance &amp; invoicing</h3><span class="pill p-mod">expand existing</span></div>
+        <p class="psub">AR/AP ledgers, three-way match, collections, reminder engine, tax, cash flow.</p>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v"><span class="mono">supplier_invoices</span>, AR/AP ledgers, three-way match (PO&#8202;&harr;&#8202;GRN&#8202;&harr;&#8202;invoice) with exception flags &middot; <span class="mono">collections</span> &middot; invoice reminder engine (7&nbsp;days before &rarr; 30&nbsp;days overdue) &middot; retention receivable/payable &middot; VAT module &middot; cash-flow view &middot; company finance dashboard.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><b><span class="mono">invoices</span></b> become client valuations with certified / retention / advance-recovery / tax breakdown and a status lifecycle (draft &rarr; approved &rarr; issued &rarr; partially paid &rarr; paid &rarr; overdue &rarr; cancelled) &middot; <b><span class="mono">payments</span></b> become AR/AP-aware &middot; every financial transaction carries company, project, cost code, department, tax, approver.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Ad-hoc invoice totals without a certification basis.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">FINANCIAL_CALCULATION_RULES.md &middot; INVOICE_WORKFLOW.md</span> &nbsp;&middot;&nbsp; gate: invoice/payment scenarios reconcile exactly.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="portals">
+    <h2>Phases 15&ndash;18 &mdash; Site operations &amp; external portals</h2>
+    <p class="sec-intro">The site-engineer workspace first, since the portals surface its records (observations, visits, photos) to outside parties. The four portals are net-new front-ends on the <em>same</em> project database, gated by the Phase&nbsp;4 permission engine. The spec's hard rule: every portal route must render with zero records &mdash; no null, no 500, no blank page.</p>
+
+    <div class="phase">
+      <div class="pnum">15</div>
+      <div class="pbody">
+        <div class="phd"><h3>Site operations</h3><span class="pill p-mod">expand existing</span></div>
+        <p class="psub">The site engineer's daily workspace and a daily report that assembles itself from the day's actual records (&sect;37&ndash;38).</p>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v">Site-engineer home screen &mdash; today's activities, inspections due, material readiness, manpower, equipment, deliveries, safety actions &middot; auto-populated daily report (schedule/work-order activities, manpower/time records, equipment usage, GRNs, executed quantities, inspections, observations, photos &mdash; engineer adds only narrative, issues, blockers, next-day plan) &middot; photo metadata (project, location, linked record, uploader, org, timestamp, optional GPS, caption, annotation layer) &middot; sticky notes (personal / project / location / record).</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><b><span class="mono">site_visits</span></b> gains visitor org/role, visit type, attendees, referenced drawings, inspected activities &middot; <b><span class="mono">site_daily_reports</span></b> becomes derived-by-default instead of free text.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Fully manual daily-report entry as the only path.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">SITE_OPERATIONS_SPEC.md</span></div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">16</div>
+      <div class="pbody">
+        <div class="phd"><h3>Consultant portal</h3><span class="pill p-add">net-new module</span></div>
+        <p class="psub">Login, daily dashboard, and the formal observation process built out of site visits.</p>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v">Scoped portal auth &amp; UI &middot; consultant dashboard (today's WIR / MIR / RFI / submittal / observation counts) &middot; <span class="mono">observations</span>, <span class="mono">observation_comments</span> with full status history &middot; observation workflow: create &rarr; PM ack &rarr; assign &rarr; rectify &rarr; before/after photos &rarr; PM review &rarr; consultant approve/reject &rarr; close.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><b><span class="mono">site_visits</span></b> expanded into the observation process &middot; <b><span class="mono">project_rfis</span> / <span class="mono">project_submittals</span></b> get coordinator/reviewer stages, A/B/C/D responses, revision history.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Single-answer RFI/submittal handlers.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">CONSULTANT_PORTAL_SPEC.md</span></div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">17</div>
+      <div class="pbody">
+        <div class="phd"><h3>Client portal</h3><span class="pill p-add">net-new module</span></div>
+        <p class="psub">A deliberately clean owner dashboard that never exposes margins, subcontractor or supplier rates.</p>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v">Client portal auth &middot; dashboard (progress, milestones, photos, certified values, invoices, payments, pending decisions, handover) &middot; empty-state handling for no-client / no-portal-user / no-records.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><b><span class="mono">dashboard.js</span></b> gains a client-scoped, price-visibility-filtered view.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Nothing.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">CLIENT_PORTAL_SPEC.md</span> &nbsp;&middot;&nbsp; gate: works with client, no client, no records, and full project.</div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">18</div>
+      <div class="pbody">
+        <div class="phd"><h3>Subcontractor &amp; supplier portals</h3><span class="pill p-add">net-new module</span></div>
+        <p class="psub">Two separate scoped logins over the same data (&sect;16 Supplier Portal, &sect;18 Subcontractor Portal) &mdash; a subcontractor is not a supplier and neither should see the other's pricing.</p>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v"><b>Subcontractor:</b> portal auth &amp; UI &middot; scope/today's-work dashboard &middot; RFI/submittal/WIR/MIR submission &middot; progress-quantity submission &middot; payment-application flow &middot; variation quotation submission &middot; snag list surfaced to the trade partner. <b>Supplier:</b> portal auth &amp; UI &middot; dashboard (open RFQs, quotation deadlines, awarded POs, deliveries due, inspection/rejection status, invoice/payment status, expiring compliance documents) &middot; quotation submission &amp; clarification &middot; PO acknowledgement &middot; delivery-date proposal &middot; delivery/certificate upload &middot; invoice submission &mdash; no visibility into competing vendors' pricing.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><b><span class="mono">sub_work_verifications</span></b> and subcontract certificates surfaced in the subcontractor portal &middot; supplier records resolve through <span class="mono">organizations</span> (Phase&nbsp;3) so the same login gates both procurement-side and portal-side views.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Nothing.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">SUBCONTRACTOR_PORTAL_SPEC.md &middot; SUPPLIER_PORTAL_SPEC.md</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="quality">
+    <h2>Phases 19&ndash;25 &mdash; Quality, safety, controls, handover</h2>
+    <p class="sec-intro">Mostly deepening thin modules and adding the reporting engine. Low migration risk &mdash; existing NCR, test, inspection and document tables are extended in place. Closes with the two handover sections the original pass missed.</p>
+
+    <div class="phase">
+      <div class="pnum">19</div>
+      <div class="pbody">
+        <div class="phd"><h3>QA/QC</h3><span class="pill p-mod">expand existing</span></div>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v"><span class="mono">itps</span>, <span class="mono">checklists</span>, <span class="mono">wirs</span>, <span class="mono">mirs</span> (linked to PO / delivery / GRN / material / submittal / certs), <span class="mono">hold_points</span>, <span class="mono">witness_points</span>, <span class="mono">corrective_actions</span>, <span class="mono">preventive_actions</span>, <span class="mono">mock_ups</span>, <span class="mono">calibration_records</span>, <span class="mono">punch_lists</span>.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><b><span class="mono">ncrs</span></b> gain location, responsible party, root cause, corrective/preventive action, cost &amp; schedule impact, verification &middot; <b><span class="mono">quality_tests</span></b> link to an ITP.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Nothing &mdash; severity &amp; state progression retained.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">QAQC_WORKFLOW.md</span> + checklists</div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">20</div>
+      <div class="pbody">
+        <div class="phd"><h3>HSE</h3><span class="pill p-mod">expand existing</span></div>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v"><span class="mono">inductions</span>, <span class="mono">toolbox_talks</span>, <span class="mono">jsas</span>, <span class="mono">risk_assessments</span>, <span class="mono">permits</span> (work / hot work / lifting / excavation / confined space), <span class="mono">near_misses</span>, <span class="mono">ppe_records</span>, <span class="mono">equipment_inspections</span>, <span class="mono">emergency_drills</span> &middot; HSE dashboard (man-hours, days without LTI, overdue actions).</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><b><span class="mono">safety_incidents</span></b> &rarr; typed <span class="mono">incidents</span> &middot; <b><span class="mono">safety_inspections</span></b> &rarr; typed inspections/permits.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Nothing.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">HSE_WORKFLOW.md</span></div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">21</div>
+      <div class="pbody">
+        <div class="phd"><h3>Document control</h3><span class="pill p-mod">expand existing</span></div>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v">Controlled registers (drawings, specs, contracts, reports, method statements, as-built, O&amp;M) &middot; <span class="mono">transmittals</span> (incoming/outgoing + acknowledgement + auto PDF) &middot; <span class="mono">correspondence</span> (letters, notices, instructions, claims &mdash; numbered, revision-safe) &middot; auto numbering <span class="mono">PROJECT-DISCIPLINE-TYPE-SEQ-REV</span>.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><b><span class="mono">project_documents</span> / <span class="mono">document_versions</span></b> gain discipline, type, status, location, package, originator, recipient &middot; superseded revisions get a prominent visual warning.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Nothing &mdash; existing version-history and approval-reset logic is kept and upgraded.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">DOCUMENT_CONTROL_STANDARD.md &middot; NUMBERING_STANDARD.md</span></div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">22</div>
+      <div class="pbody">
+        <div class="phd"><h3>Planning / scheduling</h3><span class="pill p-add">net-new module</span></div>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v"><span class="mono">schedule_activities</span>, <span class="mono">activity_relationships</span> (FS/SS/FF/SF + lag), <span class="mono">calendars</span>, <span class="mono">baselines</span> &middot; critical path, float, 2/4/6-week lookaheads, S-curve, SPI/CPI &middot; Gantt view &middot; Primavera / MS Project import-export.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><b><span class="mono">project_phases</span> / <span class="mono">project_milestones</span></b> integrate with the WBS and schedule activities.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Nothing.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">PLANNING_CALCULATIONS.md</span></div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">23</div>
+      <div class="pbody">
+        <div class="phd"><h3>Dashboards</h3><span class="pill p-mod">expand existing</span></div>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v">16 role dashboards (CEO, Projects Director, Construction Manager, PM, Site Engineer, Planning, QS/Commercial, Procurement, Storekeeper, QA/QC, HSE, Document Controller, Finance, Client, Consultant, Subcontractor) &middot; sticky-notes component (personal / project / location / record).</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><b><span class="mono">dashboard.js</span></b> &mdash; today's 5 generic endpoints become a per-role widget system.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Generic one-size dashboard payload.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">DASHBOARD_MATRIX.md</span></div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">24</div>
+      <div class="pbody">
+        <div class="phd"><h3>Reporting engine</h3><span class="pill p-add">net-new module</span></div>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v">Filters, saved views, Excel / PDF export, scheduled reports, email distribution, charts, drilldown &mdash; all permission-aware &middot; auto project report (weekly/monthly, ~20 sections) &middot; commercial / procurement / management report packs.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v">Every list endpoint gains a filter + export contract.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Nothing.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">REPORT_CATALOG.md</span></div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">25</div>
+      <div class="pbody">
+        <div class="phd"><h3>Handover, closeout &amp; warranty</h3><span class="pill p-add">net-new module</span></div>
+        <p class="psub">&sect;79 Handover and &sect;80 Warranty/DLP &mdash; the project's last mile, currently absent end to end.</p>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v">Handover workflow: pre-handover &rarr; punch list &rarr; rectification &rarr; final inspection &rarr; testing &amp; commissioning &rarr; as-builts &rarr; O&amp;M &rarr; training &rarr; taking-over &rarr; DLP/warranty &rarr; final completion &middot; <span class="mono">punch_items</span> (location/asset, discipline, responsible subcontractor, verification authority) &middot; handover package register (as-builts, O&amp;M manuals, warranties, test/commissioning results, certificates, keys/access, training records, authority approvals) &middot; <span class="mono">asset_register</span> (asset code, location, model/serial, supplier, subcontractor, commissioning date, warranty start/end) &middot; warranty/DLP claim workflow (client raises against an asset/location, routes to PM/subcontractor, tracks SLA and rectification evidence).</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><b><span class="mono">punch_lists</span></b> (Phase&nbsp;19) feed the handover punch-item register instead of standing alone.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Nothing &mdash; there is no existing handover path to replace.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">HANDOVER_WARRANTY_SPEC.md</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="platform">
+    <h2>Phases 26&ndash;31 &mdash; Platform, agents, hardening</h2>
+    <p class="sec-intro">The API-first / MCP layer the spec is ultimately aiming for. It requires pulling business logic behind a shared service layer so the web app, the v1 API, and MCP all call the same code.</p>
+
+    <div class="phase">
+      <div class="pnum">26</div>
+      <div class="pbody">
+        <div class="phd"><h3>External API</h3><span class="pill p-add">net-new</span> <span class="pill p-mod">+ internal refactor</span></div>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v"><span class="mono">/api/v1/*</span> &mdash; ~25 resource families &middot; OAuth / OIDC, scoped tokens, service accounts &middot; pagination, filter, sort, idempotency keys &middot; ~18 webhook events &middot; rate limiting, API audit logs, OpenAPI spec, sandbox environment.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v">Existing <span class="mono">/api/*</span> route handlers refactored to sit on a shared service layer so v1 and MCP reuse the same business logic.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Business logic embedded directly in route handlers.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">openapi.yaml</span> &middot; integration guide &middot; authentication guide</div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">27</div>
+      <div class="pbody">
+        <div class="phd"><h3>MCP server</h3><span class="pill p-add">net-new module</span></div>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v">Remote MCP server over the shared service layer &middot; ~30 read tools + ~12 write tools &middot; permission inheritance (user / org / project / role) &middot; high-risk gating: <span class="mono">issue_purchase_order</span>, <span class="mono">approve_variation</span>, <span class="mono">send_client_invoice</span>, <span class="mono">record_payment</span>, <span class="mono">delete_document</span>, <span class="mono">close_project</span> require the configured authority.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v">Service layer contracts made MCP-callable (no business logic written inside MCP).</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Nothing.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">MCP_SERVER_SPEC.md &middot; MCP_TOOL_CATALOG.md &middot; MCP_PERMISSION_MAP.md &middot; MCP_SECURITY.md</span></div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">28</div>
+      <div class="pbody">
+        <div class="phd"><h3>Agent layer</h3><span class="pill p-add">net-new module</span></div>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v">PM, Procurement, Commercial, Consultant, Executive and Document assistant workflows &mdash; all on the API / MCP security model, all with human-review and approval gates before contractual or financial writes.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v">Nothing structural.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Nothing.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">29</div>
+      <div class="pbody">
+        <div class="phd"><h3>Mobile optimisation</h3><span class="pill p-mod">expand existing</span></div>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v">Mobile-first field flows (photos, daily report, inspection, WIR/MIR, observations, action centre, drawings, material issues, labour, safety) &middot; offline mode (cache drawings, create observations, fill checklists, sync with explicit conflict resolution) &mdash; flagged "eventually" in the spec.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v"><b><span class="mono">SiteManagement.js</span>, <span class="mono">WorkOrders.js</span></b> and field screens responsive-hardened.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Nothing.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">30</div>
+      <div class="pbody">
+        <div class="phd"><h3>Security, observability &amp; backups</h3><span class="pill p-add">net-new module</span></div>
+        <p class="psub">Not one of the PDF's 112 numbered sections, but a hard requirement in the agent pack's own build order &mdash; and currently the plan's biggest silent gap. Runs before final testing because the E2E/permission suites in Phase&nbsp;31 need to exercise it.</p>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v">OIDC/OAuth-compatible auth with MFA support &middot; secure password/session policy, CSRF protection, secure cookies/tokens &middot; encrypted secrets, signed/private file URLs, file-type/malware scanning policy &middot; rate limiting &amp; brute-force protection &middot; structured application logs with correlation IDs, error tracking, API latency/error-rate monitoring, webhook/notification delivery health, inventory-reconciliation alarms &middot; health checks (app, DB, object storage, job queue, mail provider, integrations, MCP endpoint) &middot; automated DB and object/file backups with a documented retention schedule, restore drills, and RPO/RTO &middot; idempotent scheduled jobs, outbox/event pattern, retries with dead-letter handling.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v">Every protected route gets an explicit server-side object-level (project/organization) check on top of the Phase&nbsp;4 policy engine &middot; MCP tool calls (Phase&nbsp;27) gain scoped tokens and per-call policy evaluation instead of broad credentials.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">Any remaining unauthenticated or unscoped internal endpoint.</div></div>
+        </div>
+        <div class="deliver"><span class="dl-lbl">Deliverables</span><span class="mono">SECURITY_BASELINE.md &middot; OBSERVABILITY_PLAN.md &middot; BACKUP_DR_PLAN.md</span> &nbsp;&middot;&nbsp; gate: automated security tests prove external parties cannot access internal data.</div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pnum">31</div>
+      <div class="pbody">
+        <div class="phd"><h3>Automated testing</h3><span class="pill p-add">net-new module</span></div>
+        <div class="change-list">
+          <div class="cl-row"><div class="cl-k"><span class="pill p-add">add</span></div><div class="cl-v">Unit (calculations), integration (workflow connections), permission (every role), E2E (full construction scenario), financial reconciliation, empty-state (zero-data), mobile, and agent (MCP permission) suites &middot; one master seed project &mdash; 2 buildings &times; 12 floors &times; 4 units, with subcontractors, consultant, client, warehouse, BOQ and schedule.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-mod">modify</span></div><div class="cl-v">CI pipeline runs all suites on every change.</div></div>
+          <div class="cl-row"><div class="cl-k"><span class="pill p-del">remove</span></div><div class="cl-v">The ad-hoc <span class="mono">*.ps1</span> test scripts in the repo root, replaced by real suites.</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="risks">
+    <h2>Migration risks &mdash; the parts that touch live data</h2>
+    <div class="callout">
+      <h4>High-risk &mdash; sequence carefully, migrate with rollback</h4>
+      <ul>
+        <li><b>Phase 3 (Organizations).</b> Re-points <span class="mono">projects.client_id</span> and every party FK. Do it behind compatibility views so no route breaks mid-migration; cut callers over one module at a time.</li>
+        <li><b>Phase 4 (Permissions).</b> Every route currently trusts <span class="mono">authorize()</span>. Keep that function as a facade over the new policy engine so the 28 route files don't all change at once; migrate <span class="mono">users.role</span> to role assignments with the old columns retained as fallback until parity tests pass.</li>
+        <li><b>Phase 8 (Locations + BOQ allocation).</b> <span class="mono">boq_items.completed_quantity</span> becomes derived and <span class="mono">work_completions</span> gains required location/allocation FKs. Backfill existing completions to a default location before enforcing NOT NULL.</li>
+        <li><b>Phase 6 (Workflow engine)</b> and <b>Phase 13 (commercial model).</b> Migrate <span class="mono">approval_requests</span> rows and recompute historical profit under the new forecast model; keep the old figures snapshotted for audit.</li>
+        <li><b>Phase 3 again &mdash; <span class="mono">project_team</span>.</b> A migration already in progress re-points it from <span class="mono">users</span> to <span class="mono">employees</span>; sequence the participants refactor so it lands on top of that, not against the pre-migration shape.</li>
+      </ul>
+    </div>
+    <p style="margin-top:16px; color:var(--ink-soft); font-size:.92rem">Everything else &mdash; procurement, notifications, scheduling, site operations, portals, reporting, handover, API, MCP, security hardening &mdash; is new tables and new routes alongside the current schema, with no destructive change to existing data.</p>
+  </section>
+
+  <section id="dod">
+    <h2>Definition of done &mdash; applied to every module</h2>
+    <p class="sec-intro">The spec's bar (&sect;109): a module is not finished because the page loads. Each of the ~52 modules above must satisfy all of the following before it counts as complete.</p>
+    <div class="dod">
+      <span>Database schema + constraints</span>
+      <span>REST API</span>
+      <span>Desktop UI</span>
+      <span>Mobile / responsive UI</span>
+      <span>Empty state</span>
+      <span>Loading state</span>
+      <span>Error state</span>
+      <span>Permission checks</span>
+      <span>Immutable audit log</span>
+      <span>Search</span>
+      <span>Filters</span>
+      <span>Export</span>
+      <span>Attachments</span>
+      <span>Comments where applicable</span>
+      <span>Notifications</span>
+      <span>Reminders</span>
+      <span>Workflow hooks</span>
+      <span>Dashboard widgets</span>
+      <span>Reports</span>
+      <span>MCP read tools</span>
+      <span>MCP write tools where safe</span>
+      <span>Automated tests</span>
+      <span>Documentation</span>
+    </div>
+  </section>
+
+  <footer>
+    Originally audited 2026-09-10, corrected 2026-09-16 against the running codebase &mdash; 63 tables, 28 API modules, 20 screens, plus an in-flight <span class="mono">project_team</span> migration. The 2026-09-10 pass missed the HR/Payroll/Legal/Maintenance modules (added 2026-09-06) and three spec sections (Site Operations &sect;37&ndash;38, Supplier Portal &sect;16, Handover/Warranty &sect;79&ndash;80); this revision adds phases 2, 15 and 25, splits phase 16 into 18, and adds the pack-sourced Security/Observability phase 30 &mdash; 27 phases become 31. Phase numbering otherwise follows the specification's own build sequence (&sect;107). Table and file names are indicative; final names land in <span class="mono">TARGET_DATA_MODEL.md</span>.
+  </footer>
+
+</div>

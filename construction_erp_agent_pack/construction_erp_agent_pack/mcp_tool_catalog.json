@@ -1,0 +1,56 @@
+{
+  "version": "1.0",
+  "principles": {
+    "authorization": "Every tool call resolves user, organization, project role and action permission.",
+    "business_logic": "Tools call the same application services as UI/API; no direct database bypass.",
+    "high_risk": "Financially binding, destructive or permission-changing actions require configured approval."
+  },
+  "read_tools": [
+    "list_projects",
+    "get_project",
+    "get_project_team",
+    "get_project_progress",
+    "list_locations",
+    "get_location_status",
+    "get_boq",
+    "get_quantity_status",
+    "get_material_requirements",
+    "get_inventory_status",
+    "get_material_shortages",
+    "list_rfis",
+    "get_rfi",
+    "list_submittals",
+    "list_inspections",
+    "list_observations",
+    "list_ncrs",
+    "get_project_cost_summary",
+    "list_invoices",
+    "list_payments",
+    "search_documents",
+    "get_my_actions"
+  ],
+  "draft_write_tools": [
+    "create_rfi",
+    "create_site_observation",
+    "add_observation_comment",
+    "attach_observation_photo",
+    "create_purchase_requisition_draft",
+    "create_inspection_request",
+    "update_daily_report_draft",
+    "assign_action",
+    "complete_action_with_evidence",
+    "create_invoice_draft",
+    "create_variation_draft"
+  ],
+  "approval_gated_tools": [
+    "issue_purchase_order",
+    "approve_variation",
+    "issue_client_invoice",
+    "record_payment",
+    "approve_payment_certificate",
+    "release_retention",
+    "void_financial_record",
+    "change_authority_rules",
+    "close_project"
+  ]
+}

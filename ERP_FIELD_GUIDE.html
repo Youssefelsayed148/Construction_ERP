@@ -1,0 +1,1172 @@
+<title>Construction ERP Field Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --paper: #f3f5f6;
+    --grid: #e4e8ea;
+    --surface: #ffffff;
+    --surface-2: #eef1f2;
+    --ink: #1b2126;
+    --slate: #586470;
+    --faint: #8c98a2;
+    --line: #d3d9dd;
+    --amber: #d68b12;
+    --amber-soft: #f6e6c8;
+    --blue: #2c6d8c;
+    --blue-soft: #dfeaef;
+    --ok: #3c7f52;
+    --ok-soft: #dcebe0;
+    --warn: #b07d18;
+    --warn-soft: #f4e7c9;
+    --crit: #b34a37;
+    --crit-soft: #f1dcd6;
+    --shadow: 0 1px 2px rgba(20,30,40,.06), 0 8px 24px -16px rgba(20,30,40,.18);
+    --maxw: 60rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #12171b;
+      --grid: #1d252b;
+      --surface: #192026;
+      --surface-2: #202a31;
+      --ink: #e7eaec;
+      --slate: #9ba6af;
+      --faint: #6b7883;
+      --line: #2b343c;
+      --amber: #e6a63c;
+      --amber-soft: #3a2e18;
+      --blue: #74b4cf;
+      --blue-soft: #1c2d35;
+      --ok: #5aa871;
+      --ok-soft: #1e2f24;
+      --warn: #d09a3c;
+      --warn-soft: #33291640;
+      --crit: #d1725e;
+      --crit-soft: #331f1a;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -18px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #12171b;
+    --grid: #1d252b;
+    --surface: #192026;
+    --surface-2: #202a31;
+    --ink: #e7eaec;
+    --slate: #9ba6af;
+    --faint: #6b7883;
+    --line: #2b343c;
+    --amber: #e6a63c;
+    --amber-soft: #3a2e18;
+    --blue: #74b4cf;
+    --blue-soft: #1c2d35;
+    --ok: #5aa871;
+    --ok-soft: #1e2f24;
+    --warn: #d09a3c;
+    --warn-soft: #33291640;
+    --crit: #d1725e;
+    --crit-soft: #331f1a;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -18px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 26px 26px;
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 78rem;
+    margin: 0 auto;
+    padding: 0 clamp(16px, 4vw, 48px);
+    display: grid;
+    grid-template-columns: 15rem minmax(0, 1fr);
+    gap: clamp(24px, 4vw, 56px);
+  }
+  @media (max-width: 60rem) {
+    .wrap { grid-template-columns: 1fr; }
+    .rail { position: static !important; height: auto !important; border-right: none !important; border-bottom: 1px solid var(--line); }
+  }
+
+  /* ---- header ---- */
+  header.hero {
+    grid-column: 1 / -1;
+    border-bottom: 2px solid var(--ink);
+    padding: clamp(40px, 7vw, 72px) 0 28px;
+    margin-bottom: 8px;
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .72rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--amber);
+    font-weight: 600;
+    margin: 0 0 14px;
+  }
+  h1 {
+    font-family: "Archivo", sans-serif;
+    font-weight: 800;
+    font-size: clamp(2.1rem, 5.5vw, 3.4rem);
+    line-height: 1.02;
+    letter-spacing: -.02em;
+    text-wrap: balance;
+    margin: 0 0 18px;
+  }
+  .hero p.lede {
+    max-width: 46rem;
+    font-size: 1.08rem;
+    color: var(--slate);
+    margin: 0;
+  }
+  .hero .meta {
+    margin-top: 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .78rem;
+  }
+  .hero .meta span {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    padding: 4px 10px;
+    border-radius: 2px;
+    color: var(--slate);
+  }
+  .hero .meta span b { color: var(--ink); font-weight: 600; }
+
+  /* ---- rail / toc ---- */
+  .rail {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 28px 18px 28px 0;
+    border-right: 1px solid var(--line);
+    font-size: .86rem;
+  }
+  .rail h2 {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .68rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin: 0 0 12px;
+    font-weight: 600;
+  }
+  .rail ol { list-style: none; margin: 0 0 20px; padding: 0; counter-reset: toc; }
+  .rail ol li { margin: 0; counter-increment: toc; }
+  .rail ol li a {
+    display: grid;
+    grid-template-columns: 1.6rem 1fr;
+    gap: 4px;
+    padding: 5px 8px 5px 0;
+    color: var(--slate);
+    text-decoration: none;
+    border-radius: 3px;
+    transition: color .12s, background .12s;
+  }
+  .rail ol li a::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .74rem;
+    color: var(--faint);
+  }
+  .rail ol li a:hover { color: var(--ink); background: var(--surface-2); }
+  .rail ol li a.sub { grid-template-columns: 1.6rem 1fr; font-size: .8rem; padding-left: 0; }
+  .rail ol li a.sub::before { content: "→"; color: var(--amber); }
+  .rail .railnote {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .72rem;
+    color: var(--faint);
+    line-height: 1.5;
+    border-top: 1px solid var(--line);
+    padding-top: 14px;
+  }
+
+  /* ---- main content ---- */
+  main { padding: 28px 0 120px; min-width: 0; }
+  section { margin-bottom: 72px; scroll-margin-top: 20px; }
+  section > .sec-head { border-top: 2px solid var(--ink); padding-top: 14px; margin-bottom: 24px; }
+  .sec-num {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .74rem;
+    letter-spacing: .16em;
+    color: var(--amber);
+    font-weight: 600;
+  }
+  h2.sec-title {
+    font-family: "Archivo", sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.5rem, 3.4vw, 2rem);
+    letter-spacing: -.015em;
+    line-height: 1.1;
+    margin: 6px 0 0;
+    text-wrap: balance;
+  }
+  h3 {
+    font-family: "Archivo", sans-serif;
+    font-weight: 700;
+    font-size: 1.24rem;
+    letter-spacing: -.01em;
+    margin: 40px 0 12px;
+    scroll-margin-top: 20px;
+  }
+  h4 {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-weight: 600;
+    font-size: 1rem;
+    margin: 24px 0 8px;
+  }
+  p { max-width: var(--maxw); }
+  main a { color: var(--blue); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  strong { font-weight: 600; }
+  code, .mono {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .86em;
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 3px;
+    border: 1px solid var(--line);
+  }
+  ul, ol { max-width: var(--maxw); padding-left: 1.3rem; }
+  li { margin: 4px 0; }
+
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* ---- callout ---- */
+  .note {
+    max-width: var(--maxw);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--amber);
+    background: var(--surface);
+    padding: 14px 18px;
+    margin: 18px 0;
+    border-radius: 0 4px 4px 0;
+    font-size: .95rem;
+  }
+  .note.blue { border-left-color: var(--blue); }
+  .note.crit { border-left-color: var(--crit); }
+  .note .tag {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .68rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--faint);
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  /* ---- state flow pill chain ---- */
+  .flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 14px 0 18px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .8rem;
+  }
+  .flow .st {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    padding: 3px 9px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .flow .st.start { border-color: var(--blue); background: var(--blue-soft); color: var(--ink); }
+  .flow .st.end { border-color: var(--ok); background: var(--ok-soft); color: var(--ink); }
+  .flow .st.stop { border-color: var(--crit); background: var(--crit-soft); color: var(--ink); }
+  .flow .arw { color: var(--amber); font-weight: 600; }
+  .flow .arw.back { color: var(--faint); }
+
+  /* ---- module block ---- */
+  .mod {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    border-radius: 5px;
+    padding: 20px 22px;
+    margin: 20px 0;
+    box-shadow: var(--shadow);
+  }
+  .mod > h4:first-child { margin-top: 0; }
+  .mod .route {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .78rem;
+    color: var(--blue);
+    display: block;
+    margin: 2px 0 12px;
+  }
+  .kv {
+    display: grid;
+    grid-template-columns: 8.5rem 1fr;
+    gap: 2px 14px;
+    font-size: .92rem;
+    margin: 10px 0;
+  }
+  .kv dt {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .74rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--faint);
+    padding-top: 3px;
+  }
+  .kv dd { margin: 0; }
+  @media (max-width: 34rem) { .kv { grid-template-columns: 1fr; } .kv dd { margin-bottom: 8px; } }
+
+  .endpoints {
+    list-style: none;
+    padding: 0;
+    margin: 12px 0;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .8rem;
+    border-top: 1px solid var(--line);
+  }
+  .endpoints li {
+    display: grid;
+    grid-template-columns: 3.6rem 1fr;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--line);
+    align-items: baseline;
+  }
+  .endpoints .m {
+    font-weight: 600;
+    font-size: .72rem;
+    color: var(--amber);
+    letter-spacing: .04em;
+  }
+  .endpoints .d { color: var(--slate); font-family: "IBM Plex Sans", sans-serif; font-size: .82rem; }
+
+  .steps { counter-reset: step; list-style: none; padding: 0; margin: 14px 0; max-width: var(--maxw); }
+  .steps > li {
+    counter-increment: step;
+    position: relative;
+    padding: 7px 0;
+    padding-inline-start: 2.6rem;
+    border-bottom: 1px dashed var(--line);
+    font-size: .95rem;
+  }
+  .steps > li::before {
+    content: counter(step);
+    position: absolute;
+    inset-inline-start: 0;
+    top: 8px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--amber);
+    background: var(--amber-soft);
+    border-radius: 2px;
+    width: 1.8rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .steps > li:last-child { border-bottom: none; }
+
+  /* ---- tables ---- */
+  .tablewrap { overflow-x: auto; margin: 18px 0; border: 1px solid var(--line); border-radius: 5px; }
+  table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+  th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--faint);
+    background: var(--surface-2);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td .mono, td code { font-size: .82em; }
+  tbody tr:nth-child(even) { background: color-mix(in srgb, var(--surface-2) 45%, transparent); }
+
+  .pill {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .7rem;
+    padding: 1px 7px;
+    border-radius: 2px;
+    border: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  .pill.ok { background: var(--ok-soft); border-color: var(--ok); }
+  .pill.warn { background: var(--warn-soft); border-color: var(--warn); }
+  .pill.crit { background: var(--crit-soft); border-color: var(--crit); }
+
+  /* ---- diagram ---- */
+  figure { margin: 24px 0; }
+  .diagram {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    border-radius: 6px;
+    padding: 10px;
+    overflow-x: auto;
+    box-shadow: var(--shadow);
+  }
+  .diagram svg { display: block; min-width: 640px; width: 100%; height: auto; }
+  figcaption { font-size: .82rem; color: var(--faint); margin-top: 8px; font-family: "IBM Plex Mono", monospace; }
+
+  .lead-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 12px;
+    margin: 20px 0;
+    max-width: var(--maxw);
+  }
+  .tile {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    border-radius: 5px;
+    padding: 14px 16px;
+  }
+  .tile .n {
+    font-family: "Archivo", sans-serif;
+    font-weight: 800;
+    font-size: 1.5rem;
+    letter-spacing: -.01em;
+  }
+  .tile .l {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--faint);
+    margin-top: 2px;
+  }
+
+  hr.rule { border: none; border-top: 1px solid var(--line); margin: 32px 0; max-width: var(--maxw); }
+
+  .backtop {
+    display: inline-block;
+    margin-top: 8px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .72rem;
+    color: var(--faint);
+    text-decoration: none;
+  }
+  .backtop:hover { color: var(--amber); }
+</style>
+
+<div class="wrap">
+  <header class="hero" id="top">
+    <p class="eyebrow">Onboarding &amp; Test Walkthrough</p>
+    <h1>Construction ERP Field Guide</h1>
+    <p class="lede">A start-to-finish tour of every module in the system and how they chain together — written for someone opening the app for the first time who needs to exercise the full cycle, understand each state machine, and know where the bodies are buried. The <strong>Projects</strong> module gets the deep treatment: it carries six sub-modules and the job-costing spine.</p>
+    <div class="meta">
+      <span>Stack: <b>React + Express + PostgreSQL</b></span>
+      <span>Auth: <b>JWT</b></span>
+      <span>Locale: <b>EN / AR</b></span>
+      <span>Currency: <b>EGP</b></span>
+      <span>Login: <b>owner@construction-erp.com / admin123</b></span>
+    </div>
+  </header>
+
+  <nav class="rail" aria-label="Contents">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#setup">Get it running &amp; sign in</a></li>
+      <li><a href="#bigpicture">The company cycle at a glance</a></li>
+      <li><a href="#masters">Foundation data modules</a></li>
+      <li><a href="#projects">The Projects module</a></li>
+      <li><a href="#subs">Project sub-modules (the six tabs)</a></li>
+      <li><a href="#costing">Project finance &amp; job costing</a></li>
+      <li><a href="#money">Company money: expenses, invoices, payments</a></li>
+      <li><a href="#approvals">Approvals: the cross-cutting workflow</a></li>
+      <li><a href="#golden">The golden-path test script</a></li>
+      <li><a href="#gotchas">Gotchas &amp; known quirks</a></li>
+    </ol>
+    <p class="railnote">Seed refs:<br>PRJ-SEED-1 — full data<br>PRJ-SEED-2 — BOQ only<br>CLI-SEED-1..3 · SUP-SEED-1..3</p>
+  </nav>
+
+  <main>
+
+    <!-- 1 -->
+    <section id="setup">
+      <div class="sec-head"><span class="sec-num">SECTION 01</span>
+        <h2 class="sec-title">Get it running &amp; sign in</h2></div>
+
+      <p>Two ways to bring the stack up. Both end with a browser on the frontend and an Express API on <code>:5000</code>.</p>
+
+      <h3>Option A — Docker (one command)</h3>
+      <p>From the repo root, with a <code>.env</code> holding <code>DB_PASSWORD</code> and <code>JWT_SECRET</code>:</p>
+      <ul>
+        <li><code>docker compose up --build</code> — starts Postgres, the backend, and the frontend (served on <code>:8090</code>).</li>
+        <li>To preload seeded/test data, drop the handed-off SQL dump at <code>db_dump/init.sql</code> <em>before</em> the first boot — Postgres auto-runs it only while its data directory is empty.</li>
+      </ul>
+
+      <h3>Option B — Local dev</h3>
+      <ol>
+        <li><code>node backend/src/scripts/setupDb.js</code> — creates the database, all base tables, the chart of accounts, and the seed <strong>owner</strong> login.</li>
+        <li><code>node backend/src/scripts/migrate-*.js</code> — run each migration script in order. They are standalone and idempotent; the local DB drifts from route code regularly, so run them all.</li>
+        <li><code>node backend/src/scripts/seed-test-data.js</code> — 3 clients, 3 suppliers, 6 inventory items, supplier↔material links, and two projects (<code>PRJ-SEED-1</code> fully populated, <code>PRJ-SEED-2</code> BOQ only). Safe to re-run — every row is keyed on a fixed <code>SEED-</code> marker.</li>
+        <li><code>node backend/server.js</code> and <code>npm start</code> in <code>frontend/</code>.</li>
+        <li>Optional: <code>node backend/create_test_users.js</code> adds <code>test-finance-mgr@test.com</code> and <code>test-staff@test.com</code> (both <code>test123</code>) so you can exercise multi-role approval flows.</li>
+      </ol>
+
+      <h3>Who you can log in as</h3>
+      <p>Auth is email + password → a 7-day JWT. The token carries only a user id; every request re-loads the user. Roles seen in the code:</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Role</th><th>What it can do</th></tr></thead>
+          <tbody>
+            <tr><td><code>owner</code> / <code>admin</code></td><td>Everything. The <code>authorize()</code> middleware short-circuits to allow for these two, and they see every pending approval regardless of stage.</td></tr>
+            <tr><td><code>finance_manager</code></td><td>Stage-1 approver for <code>expenses</code> and <code>payroll</code>.</td></tr>
+            <tr><td><code>legal_mgr</code></td><td>Stage-1 approver for <code>legal</code> documents.</td></tr>
+            <tr><td><code>maintenance_mgr</code></td><td>Stage-1 approver for <code>assets</code> and <code>maintenance</code>.</td></tr>
+            <tr><td><code>project_manager</code></td><td>Stage-1 approver for <code>project_budgets</code> and <code>sub_contracts</code>. <em>(This is a login role — distinct from a project's staffing "Project Manager", see §4.)</em></td></tr>
+            <tr><td><code>purchasing_mgr</code></td><td>Listed among privileged approval roles; purchase-order tables aren't present in this DB build.</td></tr>
+            <tr><td><code>staff</code></td><td>Default. Can create records and raise approval requests; can't approve.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>New logins are minted by an <code>owner</code>/<code>admin</code> via <strong>User management</strong> (<code>POST /api/auth/register</code>).</p>
+
+      <h3>Navigation map</h3>
+      <p>The sidebar is flat: <strong>Dashboard · Projects · Inventory · Clients · Suppliers · Assets · HR · Expenses · Invoices · Legal · Approvals</strong>. Everything project-specific lives one level down: <strong>Projects → a project card → Project Detail</strong>, which links out to six sub-module tabs (<code>/projects/:id/boq</code>, <code>/work-orders</code>, <code>/site</code>, <code>/qhse</code>, <code>/documents</code>, <code>/units</code>).</p>
+      <a class="backtop" href="#top">↑ top</a>
+    </section>
+
+    <!-- 2 -->
+    <section id="bigpicture">
+      <div class="sec-head"><span class="sec-num">SECTION 02</span>
+        <h2 class="sec-title">The company cycle at a glance</h2></div>
+
+      <p>Before touching a screen, hold this shape in your head. A client signs a contract; that becomes a <strong>project</strong> with a priced <strong>BOQ</strong> (the budget). Work is dispatched as <strong>work orders</strong> against BOQ sections. As crews report progress, verified <strong>work completions</strong> push quantities back into the BOQ and fire cost events that accrue into <strong>project costs</strong>. Money flows the other way: <strong>invoices</strong> are raised against the project, <strong>payments</strong> land against invoices, and the <strong>finance</strong> view nets it into profit. Real-estate projects add a <strong>units &amp; sales</strong> branch that auto-invoices on contract. <strong>Approvals</strong> wrap the whole thing wherever a spend needs a second signature.</p>
+
+      <figure>
+        <div class="diagram">
+          <svg viewBox="0 0 760 430" role="img" aria-labelledby="cyc-title cyc-desc">
+            <title id="cyc-title">Construction ERP end-to-end cycle</title>
+            <desc id="cyc-desc">Client and contract feed a project; the project holds a BOQ budget which drives work orders and site monitoring; verified completions accrue project costs; invoices and payments feed the finance profit view; a units and sales branch auto-creates invoices.</desc>
+            <defs>
+              <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" fill="var(--amber)"/>
+              </marker>
+              <marker id="ahb" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" fill="var(--blue)"/>
+              </marker>
+            </defs>
+            <style>
+              .bx { fill: var(--surface-2); stroke: var(--ink); stroke-width: 1.5; }
+              .bx.acc { fill: var(--amber-soft); stroke: var(--amber); }
+              .bx.blu { fill: var(--blue-soft); stroke: var(--blue); }
+              .lbl { fill: var(--ink); font-family: "IBM Plex Sans", sans-serif; font-size: 13px; font-weight: 600; }
+              .sub { fill: var(--slate); font-family: "IBM Plex Mono", monospace; font-size: 10px; }
+              .ln { stroke: var(--amber); stroke-width: 1.6; fill: none; }
+              .ln.blu { stroke: var(--blue); }
+              .flowlbl { fill: var(--slate); font-family: "IBM Plex Mono", monospace; font-size: 9.5px; }
+            </style>
+
+            <!-- row 1: client -> project -> boq -->
+            <rect class="bx" x="16" y="30" width="150" height="52" rx="4"/>
+            <text class="lbl" x="34" y="52">Client + Contract</text>
+            <text class="sub" x="34" y="68">clients · contract_value</text>
+
+            <rect class="bx acc" x="300" y="24" width="160" height="64" rx="4"/>
+            <text class="lbl" x="320" y="46">Project</text>
+            <text class="sub" x="320" y="62">phases · team ·</text>
+            <text class="sub" x="320" y="75">milestones · status</text>
+
+            <rect class="bx" x="596" y="30" width="150" height="52" rx="4"/>
+            <text class="lbl" x="614" y="52">BOQ (budget)</text>
+            <text class="sub" x="614" y="68">sections · items · rates</text>
+
+            <path class="ln" d="M166 56 L296 56" marker-end="url(#ah)"/>
+            <path class="ln" d="M460 56 L592 56" marker-end="url(#ah)"/>
+
+            <!-- boq down to work orders -->
+            <path class="ln" d="M671 82 L671 130" marker-end="url(#ah)"/>
+            <text class="flowlbl" x="678" y="110">dispatch</text>
+
+            <!-- row 2: work orders <- site/qhse -->
+            <rect class="bx" x="596" y="132" width="150" height="58" rx="4"/>
+            <text class="lbl" x="614" y="154">Work Orders</text>
+            <text class="sub" x="614" y="170">materials · labor ·</text>
+            <text class="sub" x="614" y="182">equipment</text>
+
+            <rect class="bx" x="596" y="232" width="150" height="58" rx="4"/>
+            <text class="lbl" x="614" y="254">Site + QHSE</text>
+            <text class="sub" x="614" y="270">daily reports · NCRs</text>
+            <text class="sub" x="614" y="282">inspections</text>
+
+            <path class="ln" d="M671 190 L671 228" marker-end="url(#ah)"/>
+
+            <!-- work completions -->
+            <rect class="bx acc" x="360" y="222" width="170" height="64" rx="4"/>
+            <text class="lbl" x="380" y="244">Work Completions</text>
+            <text class="sub" x="380" y="260">verify → BOQ qty ↑</text>
+            <text class="sub" x="380" y="273">+ fires cost event</text>
+
+            <path class="ln" d="M596 258 L534 258" marker-end="url(#ah)"/>
+
+            <!-- project costs -->
+            <rect class="bx" x="360" y="330" width="170" height="56" rx="4"/>
+            <text class="lbl" x="380" y="352">Project Costs</text>
+            <text class="sub" x="380" y="368">project_costs · cost codes</text>
+            <path class="ln" d="M445 286 L445 326" marker-end="url(#ah)"/>
+
+            <!-- finance -->
+            <rect class="bx acc" x="40" y="222" width="180" height="64" rx="4"/>
+            <text class="lbl" x="60" y="244">Finance view</text>
+            <text class="sub" x="60" y="260">paid − expenses = profit</text>
+            <text class="sub" x="60" y="273">outstanding = inv − paid</text>
+
+            <!-- invoices + payments -->
+            <rect class="bx" x="40" y="120" width="180" height="56" rx="4"/>
+            <text class="lbl" x="60" y="142">Invoices → Payments</text>
+            <text class="sub" x="60" y="158">draft→sent→partial→paid</text>
+
+            <path class="ln" d="M310 56 C180 70 130 90 130 116" marker-end="url(#ah)"/>
+            <text class="flowlbl" x="150" y="96">bill against project</text>
+            <path class="ln" d="M130 176 L130 218" marker-end="url(#ah)"/>
+            <path class="ln" d="M360 350 C250 350 230 320 224 288" marker-end="url(#ah)"/>
+            <text class="flowlbl" x="238" y="330">costs</text>
+
+            <!-- units branch -->
+            <rect class="bx blu" x="40" y="330" width="180" height="58" rx="4"/>
+            <text class="lbl" x="60" y="352">Units &amp; Sales</text>
+            <text class="sub" x="60" y="368">contract → auto-invoice</text>
+            <path class="ln blu" d="M40 352 C18 352 18 150 38 150" marker-end="url(#ahb)"/>
+            <text class="flowlbl" x="14" y="252" transform="rotate(-90 14 252)">auto INV-</text>
+          </svg>
+        </div>
+        <figcaption>Amber = build/cost direction · blue = money &amp; sales direction. Approvals (not shown) gate expenses, payroll, legal, assets, budgets &amp; sub-contracts.</figcaption>
+      </figure>
+
+      <div class="lead-tiles">
+        <div class="tile"><div class="n">11</div><div class="l">top-level modules</div></div>
+        <div class="tile"><div class="n">6</div><div class="l">project sub-modules</div></div>
+        <div class="tile"><div class="n">9</div><div class="l">state machines to test</div></div>
+        <div class="tile"><div class="n">2</div><div class="l">stages in an approval</div></div>
+      </div>
+      <a class="backtop" href="#top">↑ top</a>
+    </section>
+
+    <!-- 3 -->
+    <section id="masters">
+      <div class="sec-head"><span class="sec-num">SECTION 03</span>
+        <h2 class="sec-title">Foundation data modules</h2></div>
+      <p>These five hold the master records everything else points at. Test each with the same rhythm: <em>create (watch the auto-code) → verify it reads back → edit one field → delete</em>. Arabic name (<code>name_ar</code>) is required on almost every create; <code>name</code> / <code>name_en</code> are usually back-filled from it.</p>
+
+      <div class="mod">
+        <h4>Clients</h4>
+        <span class="route">/api/clients &nbsp;·&nbsp; sidebar: Clients</span>
+        <dl class="kv">
+          <dt>Purpose</dt><dd>The paying party on a project or a unit sale. Holds credit limit, payment terms, address &amp; city.</dd>
+          <dt>Code</dt><dd>Auto <code>CLI-####</code>. Type is <code>company</code> or <code>individual</code>.</dd>
+          <dt>Feeds</dt><dd>Project creation (selecting a client auto-fills the project's address/city), invoices, unit sales, the sales client-breakdown.</dd>
+          <dt>Delete</dt><dd>Soft — toggles <code>is_active</code>.</dd>
+        </dl>
+      </div>
+
+      <div class="mod">
+        <h4>Suppliers</h4>
+        <span class="route">/api/suppliers &nbsp;·&nbsp; sidebar: Suppliers</span>
+        <dl class="kv">
+          <dt>Purpose</dt><dd>Material &amp; equipment vendors. Carries specialty, city, payment terms.</dd>
+          <dt>Materials link</dt><dd>In the supplier's edit modal — link inventory items with a unit price &amp; lead time (<code>POST /api/suppliers/:id/materials</code>). Re-linking the same item returns a clean <span class="pill">409</span>. Reverse lookup: <code>GET /api/items/:id/suppliers</code>.</dd>
+          <dt>Code</dt><dd>Auto <code>SUP-####</code>.</dd>
+        </dl>
+      </div>
+
+      <div class="mod">
+        <h4>Inventory / Items</h4>
+        <span class="route">/api/items &nbsp;·&nbsp; sidebar: Inventory</span>
+        <dl class="kv">
+          <dt>Purpose</dt><dd>The item master — construction materials, consumables, rental equipment, safety/PPE.</dd>
+          <dt>Category</dt><dd><code>category</code> + a dependent <code>sub_category</code> (real server-side enum per category, from <code>GET /api/items/categories</code>).</dd>
+          <dt>Code</dt><dd>Auto <code>MAT-####</code>, read-only in the form.</dd>
+          <dt>Used by</dt><dd>BOQ item picker, work-order material issue, supplier materials, warehouse stock.</dd>
+        </dl>
+      </div>
+
+      <div class="mod">
+        <h4>Assets / Equipment</h4>
+        <span class="route">/api/assets &nbsp;·&nbsp; sidebar: Assets</span>
+        <dl class="kv">
+          <dt>Purpose</dt><dd>Owned or rented plant &amp; machinery. <code>category</code> and <code>equipment_type</code> are both required.</dd>
+          <dt>Location</dt><dd><code>current_project_id</code> (nullable FK) — null means "in the yard / unassigned".</dd>
+          <dt>Rates</dt><dd><code>hourly_rate</code> / <code>daily_rate</code> feed work-order equipment cost lines.</dd>
+          <dt>Related</dt><dd>Maintenance reminders (<code>/api/maintenance</code>) hang off an asset and can route through approvals.</dd>
+        </dl>
+      </div>
+
+      <div class="mod">
+        <h4>HR</h4>
+        <span class="route">/api/hr &nbsp;·&nbsp; sidebar: HR (→ Payroll)</span>
+        <dl class="kv">
+          <dt>Employees</dt><dd>Staff records with <code>salary</code>, department, designation. The <code>is_manager</code> flag makes an employee selectable as a project's staffing PM. Create/edit/delete is <code>owner</code>/<code>admin</code> only.</dd>
+          <dt>Attendance</dt><dd>One row per employee per day (<code>present / absent / late / on_leave</code>); duplicate day → <span class="pill">400</span>.</dd>
+          <dt>Leave</dt><dd>Requests: <span class="pill warn">pending</span> → <span class="pill ok">approved</span> / <span class="pill crit">rejected</span> by owner/admin.</dd>
+          <dt>Daily laborers</dt><dd>Separate from employees — <code>DL-####</code>, a skill category, a daily rate.</dd>
+          <dt>Labor payments</dt><dd>Days × rate → total. <strong>Fires <code>labor_payment.created</code></strong>, which the cost listener rolls into that project's costs.</dd>
+          <dt>Payroll</dt><dd>Periods (draft → approved via approvals) with per-employee detail lines; can post to finance.</dd>
+        </dl>
+      </div>
+      <a class="backtop" href="#top">↑ top</a>
+    </section>
+
+    <!-- 4 -->
+    <section id="projects">
+      <div class="sec-head"><span class="sec-num">SECTION 04</span>
+        <h2 class="sec-title">The Projects module</h2></div>
+      <p>This is the centre of gravity. A project is a container: it has a lifecycle, staffing structure, a schedule, a live financial read-out, and six sub-modules of operational detail. Start here, then work outward into §5.</p>
+
+      <h3>4.1 · Project lifecycle</h3>
+      <p>Status is a free select on the edit form (no forced transitions), but the intended order is:</p>
+      <div class="flow">
+        <span class="st start">planning</span><span class="arw">→</span>
+        <span class="st">active</span><span class="arw">→</span>
+        <span class="st">on_hold</span><span class="arw back">↔</span>
+        <span class="st">active</span><span class="arw">→</span>
+        <span class="st end">completed</span><span class="arw">→</span>
+        <span class="st stop">closed</span>
+      </div>
+      <p>Types: <code>residential · commercial · industrial · infrastructure · mixed</code>. Two money fields that are <em>not</em> the same thing:</p>
+      <ul>
+        <li><strong>Contract value</strong> — what the client owes across the job. Drives "outstanding" and the costing profitability view.</li>
+        <li><strong>Budget</strong> — the internal spend ceiling. Informational on the detail page.</li>
+      </ul>
+
+      <h3>4.2 · Creating a project</h3>
+      <div class="mod">
+        <span class="route">POST /api/projects</span>
+        <ul class="steps">
+          <li>Sidebar → <strong>Projects</strong> → <strong>New Project</strong>.</li>
+          <li>Fill English + Arabic name (both required). Pick a <strong>client</strong> — address and city auto-populate from that client's record.</li>
+          <li>Pick a <strong>Project Manager</strong> — the dropdown lists <em>employees</em> with <code>is_manager = true</code>, grouped by department. (Nothing to do with the <code>project_manager</code> login role.)</li>
+          <li>Set contract value, budget, start date, expected completion. Leave <code>code</code> blank — the server assigns <code>PRJ-000N</code>.</li>
+          <li>Save → you land back on the list. Open the card to reach <strong>Project Detail</strong>.</li>
+        </ul>
+      </div>
+      <div class="note"><span class="tag">Verify</span> The Projects list also fans out one <code>GET /api/finance/project/:id</code> per card, so each card shows live outstanding &amp; profit. The portfolio strip up top sums contract value and counts active projects.</div>
+
+      <h3>4.3 · Anatomy of the Project Detail page</h3>
+      <p>Four bands, top to bottom:</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Band</th><th>What's in it</th><th>Source</th></tr></thead>
+          <tbody>
+            <tr><td>Info + finance cards</td><td>Client, PM, address, contract value, budget, dates — then <strong>Payments collected</strong>, <strong>Outstanding</strong>, <strong>Expenses</strong>, <strong>Profit</strong> (green/red).</td><td><code>/api/projects/:id</code> + <code>/api/finance/project/:id</code></td></tr>
+            <tr><td>Overall completion</td><td>A single <code>completion_percentage</code> bar for the whole project.</td><td>project row</td></tr>
+            <tr><td>Phases</td><td>Add/edit phases, each with its own status &amp; % bar.</td><td><code>project_phases</code></td></tr>
+            <tr><td>Team &amp; Milestones</td><td>Team members (employees + a role); milestone timeline with target vs achieved dates.</td><td><code>project_team</code>, <code>project_milestones</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Phases</h4>
+      <div class="flow">
+        <span class="st start">planning</span><span class="arw">→</span>
+        <span class="st">active</span><span class="arw">→</span>
+        <span class="st end">completed</span>
+        <span class="arw back">·</span><span class="st">on_hold</span>
+      </div>
+      <p>Each phase carries a <code>completion_percentage</code> and an optional budget. Work orders can be tagged to a phase.</p>
+
+      <h4>Team roles</h4>
+      <p><code>project_manager · site_engineer · qs · safety_officer · supervisor · foreman</code>. Members are picked from <strong>HR employees</strong> (same source as the staffing PM on the project header) — an employee can only be added once per project (duplicate → <span class="pill">400</span>). Distinct from the <code>project_manager</code> <em>login role</em> used by approvals.</p>
+
+      <h4>Milestones</h4>
+      <p>Title (EN/AR), a target date, an optional achieved date. Status enum is <code>pending · achieved · delayed</code>; the timeline simply shows a filled node once <code>achieved_date</code> is set.</p>
+
+      <div class="mod">
+        <h4>Test scenario — project skeleton</h4>
+        <ul class="steps">
+          <li>Create a project against <code>CLI-SEED-1</code>. Confirm the code came back as <code>PRJ-000N</code> and address pre-filled.</li>
+          <li>Add two phases ("Foundations", "Superstructure"). Set the first to <span class="pill ok">active</span> at 40%.</li>
+          <li>Add a team member as <code>site_engineer</code>. Re-add the same user → expect the 400.</li>
+          <li>Add a milestone with a past target and no achieved date — it should render as pending on the timeline.</li>
+          <li>Edit the project: bump overall completion to 25%, change status to <span class="pill ok">active</span>. Reload — bars and badges reflect it.</li>
+        </ul>
+      </div>
+      <a class="backtop" href="#top">↑ top</a>
+    </section>
+
+    <!-- 5 -->
+    <section id="subs">
+      <div class="sec-head"><span class="sec-num">SECTION 05</span>
+        <h2 class="sec-title">Project sub-modules — the six tabs</h2></div>
+      <p>From Project Detail, the quick-link row opens each of these scoped to the current project. They're where the operational cycle actually runs.</p>
+
+      <!-- A BOQ -->
+      <h3>A · BOQ — Bill of Quantities</h3>
+      <div class="mod">
+        <span class="route">/api/boq &nbsp;·&nbsp; /projects/:id/boq</span>
+        <dl class="kv">
+          <dt>Model</dt><dd><strong>Sections</strong> (nestable via <code>parent_id</code>) contain <strong>items</strong>. An item has a <code>type</code> (<code>material · labor · equipment · subcontract</code>), a <code>quantity</code>, a <code>unit_rate</code>, and an optional link to an inventory item.</dd>
+          <dt>Line total</dt><dd><code>total_price</code> is a Postgres <em>generated column</em> = <code>quantity × unit_rate</code>. You can't set it directly; it's always consistent.</dd>
+          <dt>Progress</dt><dd><code>completed_quantity</code> on each item is bumped by verified work completions (see tab B).</dd>
+          <dt>Summary</dt><dd><code>GET /api/boq/summary/:projectId</code> groups value &amp; count by type and gives a grand total.</dd>
+        </dl>
+        <ul class="endpoints">
+          <li><span class="m">GET</span><span>/api/boq/sections/:projectId <span class="d">— section tree (parents first)</span></span></li>
+          <li><span class="m">POST</span><span>/api/boq/sections <span class="d">— body needs project_id + name_ar; parent_id optional</span></span></li>
+          <li><span class="m">POST</span><span>/api/boq/items <span class="d">— body needs project_id + section_id + description_ar</span></span></li>
+          <li><span class="m">GET</span><span>/api/boq/summary/:projectId <span class="d">— by-type totals + grand total</span></span></li>
+        </ul>
+        <h4>Cycle to test</h4>
+        <ul class="steps">
+          <li>Add a top-level section "Foundation Works".</li>
+          <li>Add a child section "Excavation" with <code>parent_id</code> = the first section — confirm it nests.</li>
+          <li>Add an item to Foundation Works: <em>Concrete pour</em>, <code>m3</code>, qty 250, rate 1800 → line total should read <strong>450,000</strong>.</li>
+          <li>Add an <code>equipment</code>-type item under Excavation.</li>
+          <li>Open the summary — grand total = sum of both lines, split by <code>material</code> vs <code>equipment</code>.</li>
+        </ul>
+      </div>
+
+      <!-- B Work Orders -->
+      <h3>B · Work Orders</h3>
+      <div class="mod">
+        <span class="route">/api/work-orders &nbsp;·&nbsp; /projects/:id/work-orders</span>
+        <dl class="kv">
+          <dt>Status</dt><dd><div class="flow" style="margin:0"><span class="st start">planned</span><span class="arw">→</span><span class="st">in_progress</span><span class="arw">→</span><span class="st end">completed</span><span class="arw back">·</span><span class="st stop">cancelled</span></div></dd>
+          <dt>Links</dt><dd>Optional <code>phase_id</code> and <code>boq_section_id</code>. The list resolves both to names.</dd>
+          <dt>Sub-resources</dt><dd><strong>Materials</strong> (issuing with a <code>warehouse_id</code> deducts stock — insufficient stock throws), <strong>Labor</strong> (planning only, no cost), <strong>Equipment</strong> (hours × hourly cost → line cost), <strong>Completions</strong>.</dd>
+        </dl>
+        <ul class="endpoints">
+          <li><span class="m">GET</span><span>/api/work-orders/project/:projectId <span class="d">— filter by status / phase_id</span></span></li>
+          <li><span class="m">POST</span><span>/api/work-orders <span class="d">— needs project_id + title_ar</span></span></li>
+          <li><span class="m">POST</span><span>/api/work-orders/:id/materials <span class="d">— item_id, actual_quantity, warehouse_id</span></span></li>
+          <li><span class="m">POST</span><span>/api/work-orders/:id/completions <span class="d">— boq_item_id, quantity_completed, completion_date</span></span></li>
+          <li><span class="m">PUT</span><span>/api/work-orders/:woId/completions/:compId/verify <span class="d">— {status: "verified" | "rejected"}</span></span></li>
+        </ul>
+        <div class="note blue"><span class="tag">The important bit</span> Verifying a completion does three things in one transaction: sets the completion to <span class="pill ok">verified</span>, adds <code>quantity_completed</code> onto <code>boq_items.completed_quantity</code>, and fires <code>work_completion.verified</code>. The cost listener then sums that work order's equipment + labor-payment lines and writes a row into <code>project_costs</code>. This is how field progress becomes cost.</div>
+        <h4>Cycle to test</h4>
+        <ul class="steps">
+          <li>Create a WO titled "Foundation Pour", linked to the BOQ Foundation section.</li>
+          <li>Move it to <span class="pill warn">in_progress</span>.</li>
+          <li>Add an equipment line: 40 hrs × 15,000 → cost 600,000.</li>
+          <li>Record a completion against the concrete BOQ item, <code>quantity_completed</code> = 100.</li>
+          <li>Verify it. Re-open the BOQ item → <code>completed_quantity</code> is now 100. Check <code>/api/costing/project/:id</code> → a new <code>project_costs</code> row for the equipment total.</li>
+        </ul>
+      </div>
+
+      <!-- C Site -->
+      <h3>C · Site Management</h3>
+      <div class="mod">
+        <span class="route">/api/projects/:projectId/(site-reports · site-visits · instructions) &nbsp;·&nbsp; /projects/:id/site</span>
+        <dl class="kv">
+          <dt>Daily reports</dt><dd>One per project per date (unique constraint → <span class="pill">409</span> on a duplicate). Weather, temperature, worker count, work summary (required), materials received &amp; equipment on site (free text — not linked to inventory).</dd>
+          <dt>Site visits</dt><dd>Visitor name/role, notes, and an <code>action_items</code> array of <code>{text, done}</code>.</dd>
+          <dt>Engineer instructions</dt><dd>Auto-numbered <code>EI-&lt;projectId&gt;-NNN</code>, a priority, and a strict state machine.</dd>
+        </dl>
+        <div class="flow">
+          <span class="st start">issued</span><span class="arw">→</span>
+          <span class="st">acknowledged</span><span class="arw">→</span>
+          <span class="st">implemented</span><span class="arw">→</span>
+          <span class="st end">closed</span>
+        </div>
+        <p>Transitions are enforced server-side — you can't skip a step, and a <span class="pill">closed</span> instruction is read-only.</p>
+        <h4>Cycle to test</h4>
+        <ul class="steps">
+          <li>File a daily report for today. File a second for the same date → expect the 409.</li>
+          <li>Log a site visit with two action items, one marked done.</li>
+          <li>Issue an instruction at <code>high</code> priority. Try to jump it straight to <code>implemented</code> → rejected. Walk it <code>acknowledge → implement → close</code>. Try to edit it after closing → 400.</li>
+        </ul>
+      </div>
+
+      <!-- D QHSE -->
+      <h3>D · QHSE — Quality, Health, Safety, Environment</h3>
+      <div class="mod">
+        <span class="route">/api/qhse &nbsp;·&nbsp; /projects/:id/qhse</span>
+        <dl class="kv">
+          <dt>Quality tests</dt><dd>A <code>test_type</code>, a result of <span class="pill ok">pass</span> / <span class="pill crit">fail</span> / <span class="pill warn">pending</span>, optional link to a BOQ item.</dd>
+          <dt>NCRs</dt><dd>Non-conformance reports. Auto <code>NCR-YYYY-####</code>, severity <code>minor · major · critical</code>, optional link to a quality test.</dd>
+          <dt>Inspections</dt><dd>A <code>checklist_items</code> JSONB array of <code>{item, ok, note}</code>, findings, status <code>pending · passed · failed</code>.</dd>
+          <dt>Incidents</dt><dd>Severity, injured party, corrective action; status <code>open · investigating · closed</code>.</dd>
+        </dl>
+        <p>NCR state machine (a resolved NCR can be re-opened; a closed one is read-only):</p>
+        <div class="flow">
+          <span class="st start">open</span><span class="arw">→</span>
+          <span class="st">in_progress</span><span class="arw">→</span>
+          <span class="st">resolved</span><span class="arw">→</span>
+          <span class="st end">closed</span>
+          <span class="arw back">↺ resolved → in_progress</span>
+        </div>
+        <h4>Cycle to test</h4>
+        <ul class="steps">
+          <li>Log a quality test with result <span class="pill crit">fail</span> against a BOQ item.</li>
+          <li>Raise an NCR (<code>major</code>) linked to that test. Note the <code>NCR-2026-####</code> number.</li>
+          <li>Advance it <code>open → in_progress → resolved</code> with resolution notes, then re-open to <code>in_progress</code>, then <code>resolved → closed</code>.</li>
+          <li>Log a safety inspection with a 3-item checklist and a failed status. Report an incident and close it.</li>
+        </ul>
+      </div>
+
+      <!-- E Documents -->
+      <h3>E · Project Documents — Document Control</h3>
+      <div class="mod">
+        <span class="route">/api/docs &nbsp;·&nbsp; /projects/:id/documents</span>
+        <dl class="kv">
+          <dt>Categories</dt><dd>Nestable folders (<code>parent_id</code>).</dd>
+          <dt>Documents</dt><dd>A <code>document_type</code> (<code>drawing · contract · report · photo · rfi · other</code>) and a <code>file_url</code>. Files are uploaded first via <code>/api/documents/upload</code> (multer → local <code>backend/uploads/</code>), then the URL is stored here.</dd>
+          <dt>Versioning</dt><dd>Creating a doc records <strong>v1</strong>. <code>POST /:id/versions</code> bumps the version, archives the prior file in <code>document_versions</code>, and <strong>resets status to <span class="pill">draft</span></strong> with approval cleared — a new revision needs re-approval.</dd>
+          <dt>Approval</dt><dd><code>POST /:id/approve</code> or <code>/reject</code> stamps approver + timestamp.</dd>
+          <dt>RFIs</dt><dd>Auto <code>RFI-&lt;projectId&gt;-NNN</code>. <span class="pill">open</span> → <em>respond</em> → <span class="pill ok">answered</span> → <em>close</em> → <span class="pill">closed</span>. An open RFI past its due date shows <code>is_overdue</code>.</dd>
+          <dt>Submittals</dt><dd><code>material · shop_drawing · sample · method</code>; respond with <code>under_review · approved · rejected · revised</code>.</dd>
+        </dl>
+        <div class="note"><span class="tag">Not the same as Legal</span> This module (<code>project_documents</code>) is entirely separate from the sidebar <strong>Legal</strong> module (<code>legal_documents</code>) — different tables, no FK, no overlap. Legal is org-wide; this is per-project.</div>
+        <h4>Cycle to test</h4>
+        <ul class="steps">
+          <li>Create a category "Structural Drawings".</li>
+          <li>Upload a document into it (type <code>drawing</code>). Approve it.</li>
+          <li>Upload a v2 via the versions endpoint — confirm version is 2, status snapped back to <span class="pill">draft</span>, and <code>document_versions</code> holds both.</li>
+          <li>Raise an RFI with a past due date → <code>is_overdue</code> true. Respond, then close.</li>
+          <li>Create a <code>shop_drawing</code> submittal and respond <code>approved</code>.</li>
+        </ul>
+      </div>
+
+      <!-- F Units -->
+      <h3>F · Units &amp; Sales</h3>
+      <div class="mod">
+        <span class="route">/api/sales &nbsp;·&nbsp; /projects/:id/units</span>
+        <dl class="kv">
+          <dt>Buildings</dt><dd>Code unique per project, floors, units-per-floor, status <code>planning · under_construction · completed</code>.</dd>
+          <dt>Units</dt><dd>Type (<code>apartment · villa · penthouse · studio · townhouse · duplex · commercial · plot · office</code>), finishing type, area, price. <code>price_per_m2</code> is derived.</dd>
+          <dt>Bulk generator</dt><dd><code>POST /buildings/:id/bulk-units</code> spins up <em>floors × units_per_floor</em> units from a prefix (e.g. prefix "A", floor 1 → <code>A101, A102…</code>). Code collisions → <span class="pill">409</span>.</dd>
+          <dt>Summary</dt><dd><code>GET /api/sales/summary?project_id=</code> — counts &amp; price totals by status, plus a per-client breakdown of contracted / invoiced / paid.</dd>
+        </dl>
+        <p>Unit sales flow (block is a side state; going back to <code>available</code> clears client &amp; sold amount):</p>
+        <div class="flow">
+          <span class="st start">available</span><span class="arw">→</span>
+          <span class="st">reserved</span><span class="arw">→</span>
+          <span class="st">contracted</span><span class="arw">→</span>
+          <span class="st">delivered</span><span class="arw">→</span>
+          <span class="st end">closed</span>
+          <span class="arw back">·</span><span class="st stop">blocked ↔ available</span>
+        </div>
+        <div class="note blue"><span class="tag">Auto-invoice</span> Moving a unit to <span class="pill">contracted</span> with a client attached auto-creates an invoice (<code>INV-000N</code>, status <span class="pill">sent</span>) for <code>sold_amount</code> (or list <code>price</code>). <code>client_id</code> is <strong>required</strong> for <code>reserved</code> and <code>contracted</code>. Guards: can't delete a building with sold units; can't delete a reserved/sold unit.</div>
+        <h4>Cycle to test</h4>
+        <ul class="steps">
+          <li>Create a building "Block A", 5 floors × 4 units.</li>
+          <li>Bulk-generate the 20 units at 1,200,000 each.</li>
+          <li>Reserve one unit — try without a <code>client_id</code> first (→ 400), then with <code>CLI-SEED-2</code>.</li>
+          <li>Contract that unit with a <code>sold_amount</code>. Check Invoices → a new <code>INV-000N</code> for that amount, tied to the project &amp; client.</li>
+          <li>Open the sales summary — the client breakdown shows the contracted amount and the auto-invoice.</li>
+          <li>Try to delete the building → blocked.</li>
+        </ul>
+      </div>
+      <a class="backtop" href="#top">↑ top</a>
+    </section>
+
+    <!-- 6 -->
+    <section id="costing">
+      <div class="sec-head"><span class="sec-num">SECTION 06</span>
+        <h2 class="sec-title">Project finance &amp; job costing</h2></div>
+      <p>Two endpoints report a project's money, and they answer <em>different questions</em> — don't expect them to match.</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>&nbsp;</th><th><code>/api/finance/project/:id</code></th><th><code>/api/costing/project/:id</code></th></tr></thead>
+          <tbody>
+            <tr><td>Question</td><td>"How's cash on this job?"</td><td>"Is this job profitable against contract?"</td></tr>
+            <tr><td>Revenue side</td><td><code>total_invoiced</code> = Σ invoices · <code>total_paid</code> = Σ payments</td><td><code>revenue</code> = project <code>contract_value</code></td></tr>
+            <tr><td>Cost side</td><td><code>total_expenses</code> = Σ expenses</td><td>Σ <code>project_costs</code> (from cost events)</td></tr>
+            <tr><td>Outstanding</td><td><code>total_invoiced − total_paid</code></td><td>—</td></tr>
+            <tr><td>Profit</td><td><code>total_paid − total_expenses</code></td><td><code>contract_value − Σ project_costs</code>, plus a margin %</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Where <code>project_costs</code> rows come from</h3>
+      <p>An in-process event bus (<code>costEventListener.js</code>) listens for three events and writes cost rows tagged with a cost code:</p>
+      <ul>
+        <li><code>work_completion.verified</code> → sums that WO's equipment + labor payments → cost code <code>11</code> (labor).</li>
+        <li><code>labor_payment.created</code> → the payment total → cost code <code>11</code>.</li>
+        <li><code>sub_payment.paid</code> → a subcontractor payment certificate → cost code <code>12</code> (subcontract).</li>
+      </ul>
+      <p>The Project Detail finance cards use the <strong>finance</strong> endpoint. The <code>/api/costing/project/:id/summary</code> endpoint joins cost codes against <code>project_budgets</code> to give a budget-vs-actual line per code.</p>
+      <a class="backtop" href="#top">↑ top</a>
+    </section>
+
+    <!-- 7 -->
+    <section id="money">
+      <div class="sec-head"><span class="sec-num">SECTION 07</span>
+        <h2 class="sec-title">Company money: expenses, invoices, payments</h2></div>
+
+      <div class="mod">
+        <h4>Expenses</h4>
+        <span class="route">/api/expenses &nbsp;·&nbsp; sidebar: Expenses</span>
+        <dl class="kv">
+          <dt>Model</dt><dd>Category, amount, date, an <strong>optional</strong> <code>project_id</code> (project-less overhead is allowed).</dd>
+          <dt>Status</dt><dd><span class="pill warn">pending</span> → <span class="pill ok">approved</span> / <span class="pill crit">rejected</span>, driven by the approvals workflow (module <code>expenses</code>, stage-1 role <code>finance_manager</code>).</dd>
+          <dt>Feeds</dt><dd>The project finance endpoint's <code>total_expenses</code> and the global finance summary.</dd>
+        </dl>
+      </div>
+
+      <div class="mod">
+        <h4>Invoices</h4>
+        <span class="route">/api/invoices &nbsp;·&nbsp; sidebar: Invoices</span>
+        <dl class="kv">
+          <dt>Create</dt><dd>Needs <code>project_id</code> + <code>client_id</code> + positive <code>amount</code> + <code>issue_date</code>. Number auto-assigned <code>INV-000N</code>; opens at status <span class="pill">sent</span>.</dd>
+          <dt>Status</dt><dd><code>draft · sent · partially_paid · paid · overdue</code> — <strong>recomputed lazily on every GET</strong> from Σ payments vs <code>amount</code> and the due date. It is not written on payment create/delete, so a stale status can exist between a payment change and the next read.</dd>
+          <dt>Delete</dt><dd>Blocked with a <span class="pill">400</span> if any payment is linked. Remove payments first.</dd>
+        </dl>
+        <div class="flow">
+          <span class="st start">draft</span><span class="arw">→</span>
+          <span class="st">sent</span><span class="arw">→</span>
+          <span class="st">partially_paid</span><span class="arw">→</span>
+          <span class="st end">paid</span>
+          <span class="arw back">·</span><span class="st stop">overdue</span>
+        </div>
+      </div>
+
+      <div class="mod">
+        <h4>Payments</h4>
+        <span class="route">/api/payments &nbsp;·&nbsp; (recorded from an invoice)</span>
+        <dl class="kv">
+          <dt>Model</dt><dd>Linked to an <code>invoice_id</code> (also carries <code>project_id</code> + <code>client_id</code>). Method, reference number, date.</dd>
+          <dt>Effect</dt><dd>The parent invoice's status is recalculated on its next GET. Deleting a payment reverses it the same way.</dd>
+        </dl>
+        <h4>Cycle to test</h4>
+        <ul class="steps">
+          <li>Create an invoice for 50,000 against your test project + client.</li>
+          <li>Record a payment of 30,000. Re-GET the invoice → <span class="pill warn">partially_paid</span>.</li>
+          <li>Record 20,000 more → <span class="pill ok">paid</span>, outstanding 0.</li>
+          <li>Try to delete the invoice → 400. Delete both payments, then the invoice → succeeds.</li>
+        </ul>
+      </div>
+
+      <p>The global <strong>Finance summary</strong> (<code>/api/finance/summary</code>) aggregates all payments, invoices and expenses into revenue collected, total invoiced, outstanding, net profit and an overdue count. The <strong>Dashboard</strong> surfaces the same headline figures.</p>
+      <a class="backtop" href="#top">↑ top</a>
+    </section>
+
+    <!-- 8 -->
+    <section id="approvals">
+      <div class="sec-head"><span class="sec-num">SECTION 08</span>
+        <h2 class="sec-title">Approvals — the cross-cutting workflow</h2></div>
+      <p>Any module that needs a second signature raises an <strong>approval request</strong>. It's a two-stage chain.</p>
+
+      <div class="flow">
+        <span class="st start">submitted</span><span class="arw">→</span>
+        <span class="st">manager_review</span><span class="arw">→</span>
+        <span class="st">owner_review</span><span class="arw">→</span>
+        <span class="st end">approved</span>
+        <span class="arw back">·</span><span class="st stop">rejected (either stage)</span>
+      </div>
+      <p>A few modules (<code>purchase_orders</code>, <code>grn</code>) skip straight to <code>owner_review</code>. Everything else starts at <code>manager_review</code>, gated by a module→role map:</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Module</th><th>Stage-1 (manager) role</th><th>On full approval, source becomes…</th></tr></thead>
+          <tbody>
+            <tr><td><code>expenses</code></td><td><code>finance_manager</code></td><td><span class="pill ok">approved</span></td></tr>
+            <tr><td><code>payroll</code></td><td><code>finance_manager</code></td><td><span class="pill ok">approved</span></td></tr>
+            <tr><td><code>legal</code></td><td><code>legal_mgr</code></td><td><span class="pill ok">verified</span></td></tr>
+            <tr><td><code>assets</code> / <code>maintenance</code></td><td><code>maintenance_mgr</code></td><td>(no status change wired)</td></tr>
+            <tr><td><code>project_budgets</code></td><td><code>project_manager</code></td><td><span class="pill ok">approved</span></td></tr>
+            <tr><td><code>sub_contracts</code></td><td><code>project_manager</code></td><td><span class="pill ok">active</span> (reject → <span class="pill crit">terminated</span>)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Rules that bite</h3>
+      <ul>
+        <li>You <strong>cannot approve or reject your own request</strong> — unless you're <code>owner</code>/<code>admin</code>.</li>
+        <li>A manager-stage approver must hold the mapped role for that module. Owner/admin can act at any stage.</li>
+        <li>Owner/admin see <em>all</em> pending requests; a manager sees only <code>manager_review</code> rows for their modules.</li>
+        <li>A reject at either stage flips the source record straight to rejected/terminated.</li>
+      </ul>
+
+      <h3>Endpoints</h3>
+      <ul class="endpoints">
+        <li><span class="m">POST</span><span>/api/approvals/request <span class="d">— {module_name, request_type, request_id, notes}</span></span></li>
+        <li><span class="m">GET</span><span>/api/approvals/pending <span class="d">— scoped to your role</span></span></li>
+        <li><span class="m">PUT</span><span>/api/approvals/:id/approve <span class="d">— advances one stage, or finalises</span></span></li>
+        <li><span class="m">PUT</span><span>/api/approvals/:id/reject</span></li>
+        <li><span class="m">GET</span><span>/api/approvals/my-requests <span class="d">— things you raised</span></span></li>
+        <li><span class="m">GET</span><span>/api/approvals/audit <span class="d">— owner/admin, non-pending history</span></span></li>
+        <li><span class="m">GET</span><span>/api/approvals/:id/details <span class="d">— request + underlying record + Submitted→Manager→Owner timeline</span></span></li>
+      </ul>
+
+      <div class="mod">
+        <h4>Cycle to test — an expense through both gates</h4>
+        <ul class="steps">
+          <li>As <code>test-staff@test.com</code>, create an expense for 8,000 on your project.</li>
+          <li><code>POST /api/approvals/request</code> with <code>module_name: "expenses"</code>, <code>request_id</code> = that expense id.</li>
+          <li>As <code>test-finance-mgr@test.com</code>, open <strong>Approvals → Pending</strong>. The row is clickable → the detail modal shows the expense fields + timeline. Approve → stage moves to <code>owner_review</code>.</li>
+          <li>As <code>owner</code>, approve again. The expense status is now <span class="pill ok">approved</span> and it appears in the <strong>Audit</strong> tab.</li>
+          <li>Repeat but have the finance manager <em>reject</em> at stage 1 → expense goes <span class="pill crit">rejected</span> immediately.</li>
+        </ul>
+      </div>
+      <a class="backtop" href="#top">↑ top</a>
+    </section>
+
+    <!-- 9 -->
+    <section id="golden">
+      <div class="sec-head"><span class="sec-num">SECTION 09</span>
+        <h2 class="sec-title">The golden-path test script</h2></div>
+      <p>One continuous scenario that touches every module in cycle order. Do it as <code>owner</code> for the first pass (no permission friction), then repeat the approval leg with the two test roles. Expect ~20 minutes.</p>
+
+      <ol class="steps">
+        <li><strong>Client</strong> — create "Marina Bay Holding" (or reuse <code>CLI-SEED-1</code>).</li>
+        <li><strong>Project</strong> — new project against that client, contract value 8,000,000, budget 6,000,000. Note the <code>PRJ-000N</code> code.</li>
+        <li><strong>Structure</strong> — add phases "Substructure" &amp; "Superstructure"; add yourself to the team as <code>project_manager</code>; add a milestone "Ground floor slab" dated next month.</li>
+        <li><strong>BOQ</strong> — section "Concrete Works" → item <em>C30 pour</em>, <code>m3</code>, qty 400, rate 2,000 (line = 800,000); nested section "Rebar" → item <em>Rebar fix</em>, <code>ton</code>, qty 60, rate 38,000.</li>
+        <li><strong>Work order</strong> — "Slab pour WO-1" against Concrete Works; move to <span class="pill warn">in_progress</span>; add an equipment line 24 hrs × 15,000.</li>
+        <li><strong>Site report</strong> — file today's daily report: 30 workers, weather sunny, summary "First slab section poured".</li>
+        <li><strong>QHSE</strong> — quality test "Slump test" = <span class="pill ok">pass</span>; raise a <code>minor</code> NCR on a honeycomb patch and walk it to <span class="pill">closed</span>.</li>
+        <li><strong>Documents</strong> — upload "Slab shop drawing" (type <code>drawing</code>), approve, then push a v2 and watch it drop to <span class="pill">draft</span>. Raise + answer + close one RFI.</li>
+        <li><strong>Completion</strong> — record a completion on the <em>C30 pour</em> BOQ item, qty 150; <strong>verify</strong> it. Confirm: BOQ <code>completed_quantity</code> = 150, and <code>/api/costing/project/:id</code> gained a cost row for the WO equipment.</li>
+        <li><strong>Invoice</strong> — raise <code>INV-000N</code> for 2,000,000 against the project + client.</li>
+        <li><strong>Payments</strong> — record 1,200,000 then 800,000. Re-open the invoice between each → <span class="pill warn">partially_paid</span> then <span class="pill ok">paid</span>.</li>
+        <li><strong>Expense + approval</strong> — log a 45,000 "Concrete supply" expense on the project; raise the approval request; approve through <code>finance_manager</code> then <code>owner</code>.</li>
+        <li><strong>Finance read-out</strong> — open Project Detail. Cards should show payments collected 2,000,000 · outstanding 0 · expenses 45,000 · profit 1,955,000 (<code>paid − expenses</code>).</li>
+        <li><strong>Sales branch</strong> — add building "Tower 1" (10 × 6); bulk-generate 60 units at 1,500,000; reserve one to <code>CLI-SEED-2</code>; contract it for 1,450,000; confirm a fresh <code>INV-000N</code> appeared automatically.</li>
+        <li><strong>Roll-up</strong> — check the <strong>Dashboard</strong>, the global <strong>Finance summary</strong>, and the <strong>Approvals → Audit</strong> tab all reflect the run.</li>
+      </ol>
+      <a class="backtop" href="#top">↑ top</a>
+    </section>
+
+    <!-- 10 -->
+    <section id="gotchas">
+      <div class="sec-head"><span class="sec-num">SECTION 10</span>
+        <h2 class="sec-title">Gotchas &amp; known quirks</h2></div>
+      <p>Things that look like bugs but aren't (or are, and you should know):</p>
+
+      <div class="note crit"><span class="tag">Stale dev-process class</span> If a route or i18n key looks correct in source but the bug still reproduces live, suspect a long-running <code>node server.js</code> / <code>npm start</code> that started <em>before</em> the fix. Check the port's PID creation time against the file mtime; kill &amp; restart before debugging further. This has burned people more than once.</div>
+
+      <div class="note"><span class="tag">Migrations are manual</span> The local DB drifts from route code. Migration scripts are standalone and idempotent but must be run by hand — a route referencing a table that "doesn't exist" usually means an un-run <code>migrate-*.js</code>.</div>
+
+      <ul>
+        <li><strong>Two different "Project Managers".</strong> The project header PM is an <em>employee</em> (<code>is_manager = true</code>, FK to <code>employees</code>, display only). The <code>project_manager</code> approval role is a <em>login user</em> role. They're unrelated.</li>
+        <li><strong>NCR status has no role gate.</strong> Any authenticated user can advance any NCR through its transitions. There's no assignee field — only <code>raised_by</code> / <code>resolved_by</code>.</li>
+        <li><strong>Invoice status is lazy.</strong> It's recomputed on GET, not written on payment mutation — a stale value can exist for one read.</li>
+        <li><strong>Bilingual creates.</strong> <code>name_ar</code> / <code>title_ar</code> / <code>description_ar</code> is required on most POSTs; the English and plain <code>name</code> columns are back-filled from it if omitted.</li>
+        <li><strong>Delete behaviour is mostly hard delete.</strong> Guarded only on invoices (linked payments), buildings/units (sold), and a few FK checks. Clients &amp; suppliers soft-delete via <code>is_active</code>.</li>
+        <li><strong>Site "materials received" / "equipment on site" are free text</strong> — not linked to Inventory or Assets, unlike BOQ's item picker.</li>
+        <li><strong>Units historically had no client link.</strong> Now <code>client_id</code> is captured on the status transition and is required for <code>reserved</code>/<code>contracted</code>; there's still no payment-plan model.</li>
+        <li><strong><code>project_documents</code> ≠ <code>legal_documents</code>.</strong> Separate tables, no relationship.</li>
+        <li><strong>CI builds.</strong> <code>CI=true</code> production builds fail on pre-existing ESLint unused-var warnings in some Part-1 pages — not your change.</li>
+      </ul>
+
+      <hr class="rule">
+      <p style="color:var(--faint);font-family:'IBM Plex Mono',monospace;font-size:.8rem">Cross-checked against <code>SYSTEM_TEST_REPORT.md</code> (158/158 assertions, 18 modules) — use that report for the exact per-assertion expectations.</p>
+      <a class="backtop" href="#top">↑ top</a>
+    </section>
+
+  </main>
+</div>

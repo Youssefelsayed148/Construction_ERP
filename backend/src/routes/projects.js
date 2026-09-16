@@ -47,7 +47,10 @@ router.get('/:id', authenticate, async (req, res) => {
 
     const [phases, team, milestones] = await Promise.all([
       query('SELECT * FROM project_phases WHERE project_id = $1 ORDER BY sort_order', [req.params.id]),
-      query('SELECT pt.*, u.name, u.role as user_role FROM project_team pt LEFT JOIN users u ON pt.user_id = u.id WHERE pt.project_id = $1', [req.params.id]),
+      query(`SELECT pt.*, e.name AS employee_name, e.name_ar AS employee_name_ar, e.name_en AS employee_name_en,
+                    e.designation, e.department
+             FROM project_team pt LEFT JOIN employees e ON pt.employee_id = e.id
+             WHERE pt.project_id = $1 ORDER BY pt.assigned_at`, [req.params.id]),
       query('SELECT * FROM project_milestones WHERE project_id = $1 ORDER BY target_date', [req.params.id]),
     ]);
 
@@ -174,15 +177,15 @@ router.delete('/:projectId/phases/:phaseId', authenticate, async (req, res) => {
 router.post('/:id/team', authenticate, async (req, res) => {
   try {
     const schema = Joi.object({
-      user_id: Joi.number().integer().required(), role: Joi.string().valid(...TEAM_ROLES).default('site_engineer'),
+      employee_id: Joi.number().integer().required(), role: Joi.string().valid(...TEAM_ROLES).default('site_engineer'),
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const existing = await query('SELECT id FROM project_team WHERE project_id = $1 AND user_id = $2', [req.params.id, value.user_id]);
-    if (existing.rows.length > 0) return res.status(400).json({ success: false, error: 'User already in team' });
+    const existing = await query('SELECT id FROM project_team WHERE project_id = $1 AND employee_id = $2', [req.params.id, value.employee_id]);
+    if (existing.rows.length > 0) return res.status(400).json({ success: false, error: 'Employee already in team' });
 
-    const r = await query('INSERT INTO project_team (project_id, user_id, role) VALUES ($1,$2,$3) RETURNING *', [req.params.id, value.user_id, value.role]);
+    const r = await query('INSERT INTO project_team (project_id, employee_id, role) VALUES ($1,$2,$3) RETURNING *', [req.params.id, value.employee_id, value.role]);
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
