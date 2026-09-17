@@ -303,6 +303,18 @@ async function ensureTables(query) {
   for (const ddl of TABLE_DDL) {
     await query(ddl);
   }
+  // Self-heal: escalation rules must only exist for steps a template defines.
+  // The dangling set is computed in JS so both pg and the mock executor
+  // behave identically; the DELETE only fires when orphans actually exist.
+  const rules = (await query('SELECT id, template_id, step_key FROM escalation_rules')).rows;
+  const steps = (await query('SELECT template_id, step_key FROM workflow_steps')).rows;
+  const defined = new Set(steps.map((s) => `${s.template_id}|${s.step_key}`));
+  const danglingIds = rules
+    .filter((r) => !defined.has(`${r.template_id}|${r.step_key}`))
+    .map((r) => r.id);
+  if (danglingIds.length > 0) {
+    await query('DELETE FROM escalation_rules WHERE id = ANY($1) RETURNING id', [danglingIds]);
+  }
 }
 
 async function seedTemplates(query) {
@@ -334,14 +346,17 @@ async function seedTemplates(query) {
         ]
       );
     }
-    // Default escalation: the manager review step escalates to the owner
-    // after 48 hours SLA breach.
-    await query(
-      `INSERT INTO escalation_rules (template_id, step_key, after_hours, escalate_to_role, is_active)
-       VALUES ($1, 'manager_review', 48, 'owner', true)
-       ON CONFLICT (template_id, step_key) DO NOTHING`,
-      [templateId]
-    );
+    // Default escalation: the legacy manager review step escalates to the
+    // owner after 48 hours SLA breach. Only templates that actually define a
+    // manager_review step get a rule — catalog templates never have one.
+    if (tpl.steps.some((s) => s.step_key === 'manager_review')) {
+      await query(
+        `INSERT INTO escalation_rules (template_id, step_key, after_hours, escalate_to_role, is_active)
+         VALUES ($1, 'manager_review', 48, 'owner', true)
+         ON CONFLICT (template_id, step_key) DO NOTHING`,
+        [templateId]
+      );
+    }
   }
 }
 

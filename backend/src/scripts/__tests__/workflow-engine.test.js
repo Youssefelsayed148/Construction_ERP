@@ -94,6 +94,15 @@ describe('workflow engine tables and catalog', () => {
     expect(rules.length).toBeGreaterThan(0);
     expect(rules.every((r) => r.step_key === 'manager_review' && Number(r.after_hours) === 48 && r.escalate_to_role === 'owner')).toBe(true);
   });
+
+  test('no escalation rule dangles on a step its template does not define', async () => {
+    const all = (await q('SELECT id FROM escalation_rules')).rows;
+    const bound = (await q(
+      `SELECT er.id AS id FROM escalation_rules er
+       JOIN workflow_steps ws ON ws.template_id = er.template_id AND ws.step_key = er.step_key`
+    )).rows;
+    expect(bound.length).toBe(all.length);
+  });
 });
 
 // ---------------------------------------------------------------------------
