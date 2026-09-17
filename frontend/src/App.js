@@ -9,6 +9,7 @@ import Clients from './pages/Clients';
 import Legal from './pages/Legal';
 import Approvals from './pages/Approvals';
 import MyActions from './pages/MyActions';
+import LocationDashboard from './pages/LocationDashboard';
 import Expenses from './pages/Expenses';
 import Invoices from './pages/Invoices';
 import Assets from './pages/Assets';
@@ -72,6 +73,7 @@ function App() {
           <Route path="projects/:id/boq" element={<BOQ />} />
           <Route path="projects/:id/work-orders" element={<WorkOrders />} />
           <Route path="projects/:id/site" element={<SiteManagement />} />
+          <Route path="projects/:id/locations" element={<LocationDashboard />} />
           <Route path="projects/:id/qhse" element={<QHSE />} />
           <Route path="projects/:id/documents" element={<ProjectDocuments />} />
           <Route path="projects/:id/units" element={<UnitsSales />} />

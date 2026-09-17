@@ -180,14 +180,41 @@ router.post('/:id/completions', authenticate, authorize(), async (req, res) => {
     const schema = Joi.object({
       boq_item_id: Joi.number().integer().required(), quantity_completed: Joi.number().positive().required(),
       completion_date: Joi.date().iso().required(), notes: Joi.string().allow(''),
+      project_location_id: Joi.number().integer().optional().allow(null),
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
+    const wo = await query('SELECT project_id FROM work_orders WHERE id = $1', [req.params.id]);
+    if (wo.rows.length === 0) return res.status(404).json({ success: false, error: 'Work order not found' });
+    const projectId = wo.rows[0].project_id;
+
+    const locationService = require('../services/locationService');
+    let locationId = value.project_location_id || null;
+    let allocId = null;
+    if (locationId != null) {
+      const alloc = await locationService.getOrCreateAllocation(query, value.boq_item_id, locationId);
+      allocId = alloc.id;
+    }
+
     const r = await query(
-      `INSERT INTO work_completions (work_order_id, boq_item_id, quantity_completed, completion_date, notes) VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [req.params.id, value.boq_item_id, value.quantity_completed, value.completion_date, value.notes]
+      `INSERT INTO work_completions (work_order_id, boq_item_id, quantity_completed, completion_date, notes, project_location_id, boq_location_allocation_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [req.params.id, value.boq_item_id, value.quantity_completed, value.completion_date, value.notes, locationId, allocId]
     );
+
+    // Phase 8: executed quantity enters the system ONLY as a measurement.
+    // The completion itself stays unverified until the WO verify step.
+    const engine = require('../services/quantityEngine');
+    await query(
+      `INSERT INTO quantity_measurements
+         (project_id, project_location_id, boq_item_id, boq_location_allocation_id,
+          measured_date, quantity, unit, source_type, source_id, measured_by, approval_state, photos)
+       VALUES ($1,$2,$3,$4,NULL,$5,$6,NULL,'work_completion',$7,$8,'pending','[]')`,
+      [projectId, locationId, value.boq_item_id, allocId, value.completion_date,
+       value.quantity_completed, req.user.id]
+    );
+
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -207,10 +234,18 @@ router.put('/:woId/completions/:compId/verify', authenticate, authorize(), async
       );
 
       if (status === 'verified') {
+        // Phase 8: executed quantity comes from quantity_measurements only.
+        // Approve the completion's measurement, then recompute the derived
+        // summaries FROM the measurements — the stored completed_quantity
+        // column mirrors the derived value during the transition.
+        const engine = require('../services/quantityEngine');
         await client.query(
-          `UPDATE boq_items SET completed_quantity = completed_quantity + $1, updated_at = NOW() WHERE id = $2`,
-          [parseFloat(comp.rows[0].quantity_completed), comp.rows[0].boq_item_id]
+          `UPDATE quantity_measurements SET approval_state = 'approved', reviewed_by = $1, updated_at = NOW()
+           WHERE source_type = 'work_completion' AND source_id = $2`,
+          [req.user.id, req.params.compId]
         );
+        await engine.syncAllocations((q, p) => client.query(q, p), { boqItemId: comp.rows[0].boq_item_id });
+        await engine.syncBoqItemCompletedQuantity((q, p) => client.query(q, p), comp.rows[0].boq_item_id);
 
         // Fire event for job costing
         fireEvent({

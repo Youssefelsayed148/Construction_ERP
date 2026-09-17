@@ -33,6 +33,13 @@ const UNIT_LABELS = {
 const UNITS = ['ton', 'm3', 'm2', 'piece', 'linear_m', 'bag', 'liter', 'set', 'lot'];
 const ITEM_TYPES = ['material', 'labor', 'equipment', 'subcontract'];
 
+// Phase 8: prefer the measurement-derived completion when present.
+function itemCompletion(i) {
+  return Number(
+    i.completion_percentage_derived != null ? i.completion_percentage_derived : i.completion_percentage
+  ) || 0;
+}
+
 function BOQ() {
   const { id: projectId } = useParams();
   const navigate = useNavigate();
@@ -104,7 +111,7 @@ function BOQ() {
   }, {});
   const grandTotal = Object.values(totalsByType).reduce((s, v) => s + v, 0);
   const totalCompletion = items.length > 0
-    ? items.reduce((sum, i) => sum + (Number(i.completion_percentage) || 0), 0) / items.length
+    ? items.reduce((sum, i) => sum + itemCompletion(i), 0) / items.length
     : 0;
 
   if (loading) {
@@ -331,12 +338,12 @@ function BOQSectionTree({
                           <div style={{ flex: 1, height: '4px', background: 'var(--color-surface-raised)', borderRadius: '2px', overflow: 'hidden', minWidth: '40px' }}>
                             <div style={{
                               height: '100%',
-                              width: `${Math.min(100, Math.max(0, Number(it.completion_percentage) || 0))}%`,
+                              width: `${Math.min(100, Math.max(0, itemCompletion(it)))}%`,
                               background: 'var(--color-accent)',
                               borderRadius: '2px',
                             }} />
                           </div>
-                          <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>{formatPercent(it.completion_percentage)}</span>
+                          <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>{formatPercent(itemCompletion(it))}</span>
                         </div>
                       </td>
                       <td>

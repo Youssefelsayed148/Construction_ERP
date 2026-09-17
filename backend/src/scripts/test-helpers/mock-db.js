@@ -354,10 +354,10 @@ class MockDb {
 
     // Handle COUNT(*)
     let rows;
-    if (/^COUNT\(\*\)(?:\s*::\s*\w+(?:\s+\w+)?)?$/i.test(projection)) {
+    if (/^COUNT\(\*\)(?:\s*::\s*\w+)?(?:\s+(?:AS\s+)?\w+)?$/i.test(projection)) {
       const cnt = this.evalCount(fromAndRest, params);
-      const aliasMatch = projection.match(/COUNT\(\*\)\s*::\s*\w+\s+(AS\s+)?(\w+)/i);
-      const alias = aliasMatch ? aliasMatch[2] : 'count';
+      const aliasMatch = projection.match(/COUNT\(\*\)(?:\s*::\s*\w+)?\s+(?:AS\s+)?(\w+)$/i);
+      const alias = aliasMatch ? aliasMatch[1] : 'count';
       const obj = {};
       obj[alias] = cnt;
       return [obj];
@@ -378,6 +378,9 @@ class MockDb {
     });
     return rows.map((r) => {
       const out = {};
+      // First pass: exact projection keys only. INSERT..SELECT position-aligns
+      // onto the INSERT column list using these, so ordering must match the
+      // SELECT clause exactly.
       for (const p of projCols) {
         // Try the raw expression first; fall back to the un-prefixed column.
         let val = r[p.expr];
@@ -390,6 +393,14 @@ class MockDb {
         // them against the params.
         if (val === undefined) val = evalLiteral(p.expr, params);
         out[p.alias] = val !== undefined ? val : null;
+      }
+      // Second pass: qualified projections (pl.id) also expose the bare
+      // column name, matching PostgreSQL's result naming (column `id`, not
+      // `pl.id`). Appended so the first-pass key order is untouched.
+      for (const p of projCols) {
+        if (!p.expr.includes('.')) continue;
+        const bare = p.expr.slice(p.expr.indexOf('.') + 1);
+        if (out[bare] === undefined) out[bare] = out[p.alias];
       }
       return out;
     });

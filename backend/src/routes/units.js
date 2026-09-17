@@ -60,10 +60,17 @@ router.get('/buildings', authenticate, authorize(), async (req, res) => {
     let conditions = []; let params = []; let idx = 1;
     if (project_id) { conditions.push(`b.project_id = $${idx++}`); params.push(project_id); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    // Phase 8: floors are real project_locations child rows, not an integer
+    // column — readers count the rows.
     const result = await query(
       `SELECT b.*,
         (SELECT COUNT(*) FROM units u WHERE u.building_id = b.id) as units_count,
-        (SELECT COUNT(*) FROM units u WHERE u.building_id = b.id AND u.status = 'available') as available_count
+        (SELECT COUNT(*) FROM units u WHERE u.building_id = b.id AND u.status = 'available') as available_count,
+        (SELECT COUNT(*) FROM project_locations fl WHERE fl.parent_id = b.project_location_id) as floor_count,
+        (SELECT COUNT(*) FROM project_locations fl
+          JOIN location_types lt ON lt.id = fl.location_type_id
+          WHERE fl.parent_id = b.project_location_id AND lt.code = 'floor') as floor_count_typed,
+        b.project_location_id
        FROM buildings b ${where} ORDER BY b.code`,
       params
     );
@@ -78,20 +85,44 @@ router.post('/buildings', authenticate, authorize(), async (req, res) => {
       code: Joi.string().required(),
       name: Joi.string().required(),
       floors: Joi.number().integer().min(1).default(1),
-      units_per_floor: Joi.number().integer().min(1).default(1),
       status: Joi.string().valid('planning', 'under_construction', 'completed').default('planning'),
       completion_percentage: Joi.number().min(0).max(100).default(0),
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
+    const buildingTypeId = (await query("SELECT id FROM location_types WHERE code = 'building'")).rows[0]?.id || null;
+    const floorTypeId = (await query("SELECT id FROM location_types WHERE code = 'floor'")).rows[0]?.id || null;
+    const root = await query('SELECT id FROM project_locations WHERE project_id = $1 AND parent_id IS NULL ORDER BY id LIMIT 1', [value.project_id]);
+    const parentId = root.rows[0] ? root.rows[0].id : null;
+
+    // Building location rows are real project_locations; floors are one row
+    // per integer, not a count. The buildings row keeps its legacy columns
+    // during the transition and links to its location.
     const result = await query(
-      `INSERT INTO buildings (project_id, code, name, floors, units_per_floor, status, completion_percentage)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [value.project_id, value.code, value.name, value.floors, value.units_per_floor, value.status, value.completion_percentage]
+      `INSERT INTO buildings (project_id, code, name, status, completion_percentage)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [value.project_id, value.code, value.name, value.status, value.completion_percentage]
     );
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'sales', description: `Created building ${value.code} - ${value.name}`, entityId: result.rows[0].id, entityType: 'building' });
-    res.status(201).json({ success: true, data: result.rows[0] });
+    const building = result.rows[0];
+    const loc = await query(
+      `INSERT INTO project_locations (project_id, parent_id, location_type_id, code, name, name_en, name_ar, legacy_building_id, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0) RETURNING id`,
+      [value.project_id, parentId, buildingTypeId, value.code, value.name, value.name, value.name, building.id]
+    );
+    const locationId = loc.rows[0].id;
+    for (let f = 1; f <= value.floors; f++) {
+      await query(
+        `INSERT INTO project_locations (project_id, parent_id, location_type_id, code, name, name_en, name_ar, sort_order)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [value.project_id, locationId, floorTypeId, `F-${String(f).padStart(2, '0')}`, `Floor ${f}`, `Floor ${f}`, `الطابق ${f}`, f]
+      );
+    }
+    await query('UPDATE buildings SET project_location_id = $1 WHERE id = $2', [locationId, building.id]);
+    const fresh = await query('SELECT * FROM buildings WHERE id = $1', [building.id]);
+
+    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'sales', description: `Created building ${value.code} - ${value.name}`, entityId: building.id, entityType: 'building' });
+    res.status(201).json({ success: true, data: fresh.rows[0] });
   } catch (error) {
     if (error.code === '23505') return res.status(409).json({ success: false, error: 'Building code already exists in this project' });
     res.status(500).json({ success: false, error: error.message });
@@ -102,20 +133,54 @@ router.put('/buildings/:id', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       code: Joi.string(), name: Joi.string(),
-      floors: Joi.number().integer().min(1), units_per_floor: Joi.number().integer().min(1),
       status: Joi.string().valid('planning', 'under_construction', 'completed'),
       completion_percentage: Joi.number().min(0).max(100),
+      floors: Joi.number().integer().min(0),
     }).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
+    // Phase 8: floors are managed as real location rows. Setting `floors`
+    // here syncs the location tree (add/remove floor rows) — no counter.
+    const { floors, ...fields } = value;
+
     const sets = []; const params = []; let idx = 1;
-    for (const [k, v] of Object.entries(value)) {
+    for (const [k, v] of Object.entries(fields)) {
       if (v !== undefined) { sets.push(`${k} = $${idx++}`); params.push(v); }
     }
     params.push(req.params.id);
     const result = await query(`UPDATE buildings SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Building not found' });
+
+    if (floors !== undefined) {
+      const floorTypeId = (await query("SELECT id FROM location_types WHERE code = 'floor'")).rows[0]?.id || null;
+      const existing = await query(
+        `SELECT pl.* FROM project_locations pl
+         JOIN location_types lt ON lt.id = pl.location_type_id
+         WHERE pl.parent_id = $1 AND lt.code = 'floor' ORDER BY pl.sort_order, pl.id`,
+        [result.rows[0].project_location_id]
+      );
+      const floorLocs = existing.rows;
+      if (floors > floorLocs.length) {
+        for (let f = floorLocs.length + 1; f <= floors; f++) {
+          await query(
+            `INSERT INTO project_locations (project_id, parent_id, location_type_id, code, name, name_en, name_ar, sort_order)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+            [result.rows[0].project_id, result.rows[0].project_location_id, floorTypeId,
+             `F-${String(f).padStart(2, '0')}`, `Floor ${f}`, `Floor ${f}`, `الطابق ${f}`, f]
+          );
+        }
+      } else if (floors < floorLocs.length) {
+        for (let f = floorLocs.length; f > floors; f--) {
+          const loc = floorLocs[f - 1];
+          const kids = await query('SELECT COUNT(*) AS c FROM project_locations WHERE parent_id = $1', [loc.id]);
+          if (Number(kids.rows[0].c) === 0) {
+            await query('DELETE FROM project_locations WHERE id = $1', [loc.id]);
+          }
+        }
+      }
+    }
+
     res.json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -124,8 +189,13 @@ router.delete('/buildings/:id', authenticate, authorize(), async (req, res) => {
   try {
     const unitsSold = await query(`SELECT COUNT(*) as cnt FROM units WHERE building_id = $1 AND status NOT IN ('available', 'blocked')`, [req.params.id]);
     if (parseInt(unitsSold.rows[0].cnt) > 0) return res.status(400).json({ success: false, error: 'Cannot delete building with reserved/sold units' });
-    const result = await query('DELETE FROM buildings WHERE id = $1 RETURNING code', [req.params.id]);
+    const result = await query('DELETE FROM buildings WHERE id = $1 RETURNING code, project_location_id', [req.params.id]);
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Building not found' });
+    // Phase 8: the building's location rows are real rows — remove them with
+    // the building (floor children cascade from project_locations.parent_id).
+    if (result.rows[0].project_location_id != null) {
+      await query('DELETE FROM project_locations WHERE id = $1', [result.rows[0].project_location_id]);
+    }
     res.json({ success: true, message: 'Building deleted' });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

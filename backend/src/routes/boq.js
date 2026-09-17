@@ -63,9 +63,22 @@ router.get('/items/:projectId', authenticate, authorize(), async (req, res) => {
     if (section_id) { conds.push(`bi.section_id = $${i++}`); p.push(parseInt(section_id)); }
     if (type && BOQ_ITEM_TYPES.includes(type)) { conds.push(`bi.type = $${i++}`); p.push(type); }
 
+    // Phase 8: completed_quantity is derived — summed from approved/certified
+    // quantity_measurements (via the item's location allocations). The stored
+    // column stays readable during the transition, sourced from this same
+    // calculation; the read exposes both so the frontend can switch cleanly.
     const data = await query(
-      `SELECT bi.*, bs.name as section_name, im.name_en as material_name_en, im.name_ar as material_name_ar
-       FROM boq_items bi LEFT JOIN boq_sections bs ON bi.section_id = bs.id LEFT JOIN item_master im ON bi.item_master_id = im.id
+      `SELECT bi.*, bs.name as section_name, im.name_en as material_name_en, im.name_ar as material_name_ar,
+              COALESCE(qm.executed, 0) as completed_quantity_derived,
+              CASE WHEN bi.quantity > 0 THEN LEAST(COALESCE(qm.executed, 0) / bi.quantity * 100, 100) ELSE 0 END as completion_percentage_derived
+       FROM boq_items bi
+       LEFT JOIN boq_sections bs ON bi.section_id = bs.id
+       LEFT JOIN item_master im ON bi.item_master_id = im.id
+       LEFT JOIN (
+         SELECT boq_item_id, SUM(quantity) AS executed
+         FROM quantity_measurements WHERE approval_state IN ('approved','certified')
+         GROUP BY boq_item_id
+       ) qm ON qm.boq_item_id = bi.id
        WHERE ${conds.join(' AND ')} ORDER BY bs.sort_order, bi.code`,
       p
     );

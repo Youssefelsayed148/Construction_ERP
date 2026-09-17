@@ -213,6 +213,7 @@ function ProjectDetail() {
           { path: 'boq', label: locale === 'ar' ? 'جدول الكميات' : 'BOQ' },
           { path: 'work-orders', label: locale === 'ar' ? 'أوامر العمل' : 'Work Orders' },
           { path: 'site', label: locale === 'ar' ? 'إدارة الموقع' : 'Site Management' },
+          { path: 'locations', label: locale === 'ar' ? 'المواقع والكميات' : 'Locations & Quantities' },
           { path: 'qhse', label: locale === 'ar' ? 'الجودة والسلامة' : 'Quality & HSE' },
           { path: 'documents', label: locale === 'ar' ? 'المستندات' : 'Documents' },
           { path: 'units', label: locale === 'ar' ? 'الوحدات والمبيعات' : 'Units & Sales' },

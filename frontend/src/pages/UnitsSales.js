@@ -205,7 +205,7 @@ function BuildingPanel({ building, locale, t, onBulk, onAddUnit, onChanged }) {
         <div>
           <h3 className="card-title">{building.code} — {building.name}</h3>
           <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
-            {BUILDING_STATUS_LABELS[locale]?.[building.status] || building.status} · {building.floors} {locale === 'ar' ? 'طوابق' : 'floors'} · {Number(building.completion_percentage) || 0}% {locale === 'ar' ? 'إنجاز' : 'complete'}
+            {BUILDING_STATUS_LABELS[locale]?.[building.status] || building.status} · {Number(building.floor_count) || 0} {locale === 'ar' ? 'طوابق' : 'floors'} · {Number(building.completion_percentage) || 0}% {locale === 'ar' ? 'إنجاز' : 'complete'}
           </div>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
@@ -276,7 +276,7 @@ function BuildingPanel({ building, locale, t, onBulk, onAddUnit, onChanged }) {
 }
 
 function BuildingModal({ projectId, locale, t, onClose, onSave }) {
-  const [form, setForm] = useState({ code: '', name: '', floors: 1, units_per_floor: 1, status: 'planning', completion_percentage: 0 });
+  const [form, setForm] = useState({ code: '', name: '', floors: 1, status: 'planning', completion_percentage: 0 });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -288,7 +288,7 @@ function BuildingModal({ projectId, locale, t, onClose, onSave }) {
     try {
       const body = {
         ...form, project_id: Number(projectId),
-        floors: Number(form.floors) || 1, units_per_floor: Number(form.units_per_floor) || 1,
+        floors: Number(form.floors) || 1,
         completion_percentage: Number(form.completion_percentage) || 0,
       };
       const res = await fetchApi(`${API_URL}/sales/buildings`, { method: 'POST', body: JSON.stringify(body) });
@@ -318,14 +318,10 @@ function BuildingModal({ projectId, locale, t, onClose, onSave }) {
                   <input className="form-input" value={form.name} onChange={e => handleChange('name', e.target.value)} required />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'الطوابق' : 'Floors'}</label>
                   <input className="form-input" type="number" min="1" value={form.floors} onChange={e => handleChange('floors', e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'وحدات/طابق' : 'Units/Floor'}</label>
-                  <input className="form-input" type="number" min="1" value={form.units_per_floor} onChange={e => handleChange('units_per_floor', e.target.value)} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">{t('common.status')}</label>
@@ -351,7 +347,7 @@ function BuildingModal({ projectId, locale, t, onClose, onSave }) {
 
 function BulkUnitsModal({ building, locale, t, onClose, onSave }) {
   const [form, setForm] = useState({
-    floors: building.floors || 1, units_per_floor: building.units_per_floor || 1,
+    floors: Number(building.floor_count) || 1, units_per_floor: 1,
     start_floor: 1, prefix: '', type: 'apartment', area: '', bedrooms: '', bathrooms: '',
     finishing_type: 'semi_finished', price: '',
   });
