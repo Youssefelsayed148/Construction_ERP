@@ -3,9 +3,15 @@ const router = express.Router();
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const policy = require('../services/policy');
+const workflowEngine = require('../services/workflowEngine');
 const { logActivity, fireEvent } = require('../utils/activity');
 
-// Module roles mapping - who handles Stage 1 (manager_review) for each module
+// Module roles mapping - who handles Stage 1 (manager_review) for each module.
+// Phase 6: these maps now drive the 'legacy_module_approval' workflow template
+// (seeded into workflow_steps conditions by migrate-19). The engine is the
+// source of truth for stage transitions; these maps remain only for the
+// /pending module filter and the timeline builder until the cleanup phase
+// drops them together with the approval_requests table.
 const DIRECT_TO_OWNER_MODULES = ['purchase_orders', 'grn'];
 
 const MODULE_MANAGER_ROLES = {
@@ -83,92 +89,16 @@ async function enrichApprovalRows(rows) {
   });
 }
 
-// Shared stage-transition logic — used by this file and external modules
+// Shared stage-transition logic — Phase 6: delegates to the workflow engine.
+// The engine enforces the self-approval guard, the module-manager role map
+// and the two-stage transition; this adapter dual-writes approval_requests
+// and returns the identical external response shape so Approvals.js and the
+// approval-detail modal need no changes yet.
 async function advanceApproval({ approvalId, userId, userName, role, notes, action }) {
-  const pending = await query('SELECT * FROM approval_requests WHERE id = $1', [approvalId]);
-  if (pending.rows.length === 0) {
-    return { statusCode: 404, body: { success: false, error: 'Request not found' } };
-  }
-  const ar = pending.rows[0];
-
-  if (ar.status !== 'pending') {
-    return { statusCode: 400, body: { success: false, error: 'Request already processed' } };
-  }
-
-  if (ar.requester_id === userId && role !== 'owner' && role !== 'admin') {
-    return { statusCode: 403, body: { success: false, error: 'You cannot approve or reject your own request' } };
-  }
-
-  if (action === 'approve') {
-    if (ar.stage === 'manager_review') {
-      const allowedRoles = MODULE_MANAGER_ROLES[ar.module_name] || [];
-      if (role !== 'owner' && role !== 'admin' && !allowedRoles.includes(role)) {
-        return { statusCode: 403, body: { success: false, error: 'Not authorized to approve this module at manager stage' } };
-      }
-      const result = await query(
-        `UPDATE approval_requests
-         SET stage = 'owner_review', manager_id = $1, manager_approved_at = NOW(), manager_notes = $2, updated_at = NOW()
-         WHERE id = $3 RETURNING *`,
-        [userId, notes || null, approvalId]
-      );
-      await logActivity({
-        userId, userName, userRole: role, action: 'approve', module: ar.module_name,
-        description: `Manager approved ${ar.request_type} #${ar.request_id} — forwarded to owner`,
-        entityId: approvalId, entityType: 'approval_request'
-      });
-      return { statusCode: 200, body: { success: true, stage: 'forwarded_to_owner', request: result.rows[0] } };
-    }
-
-    if (ar.stage === 'owner_review') {
-      if (role !== 'owner' && role !== 'admin') {
-        return { statusCode: 403, body: { success: false, error: 'Only owner or admin can approve at this stage' } };
-      }
-      const result = await query(
-        `UPDATE approval_requests
-         SET status = 'approved', approver_id = $1, notes = COALESCE($2, notes), updated_at = NOW()
-         WHERE id = $3 RETURNING *`,
-        [userId, notes || null, approvalId]
-      );
-      await logActivity({
-        userId, userName, userRole: role, action: 'approve', module: ar.module_name,
-        description: `Owner approved ${ar.request_type} #${ar.request_id}`,
-        entityId: approvalId, entityType: 'approval_request'
-      });
-      await updateRecordStatus(result.rows[0]);
-      return { statusCode: 200, body: { success: true, stage: 'fully_approved', request: result.rows[0] } };
-    }
-
-    return { statusCode: 400, body: { success: false, error: 'Unknown stage' } };
-  }
-
-  // action === 'reject'
-  if (ar.stage === 'manager_review') {
-    const allowedRoles = MODULE_MANAGER_ROLES[ar.module_name] || [];
-    if (role !== 'owner' && role !== 'admin' && !allowedRoles.includes(role)) {
-      return { statusCode: 403, body: { success: false, error: 'Not authorized to reject this module at manager stage' } };
-    }
-  } else if (ar.stage === 'owner_review') {
-    if (role !== 'owner' && role !== 'admin') {
-      return { statusCode: 403, body: { success: false, error: 'Only owner or admin can reject at this stage' } };
-    }
-  }
-
-  const result = await query(
-    `UPDATE approval_requests
-     SET status = 'rejected', approver_id = $1, notes = COALESCE($2, notes), updated_at = NOW()
-     WHERE id = $3 RETURNING *`,
-    [userId, notes || null, approvalId]
+  return workflowEngine.recordLegacyDecision(
+    { approvalId, userId, userName, role, notes, action },
+    { query, logActivity }
   );
-
-  await rejectRecordStatus(ar);
-
-  await logActivity({
-    userId, userName, userRole: role, action: 'reject', module: ar.module_name,
-    description: `Rejected ${ar.request_type} #${ar.request_id} at ${ar.stage} stage`,
-    entityId: approvalId, entityType: 'approval_request'
-  });
-
-  return { statusCode: 200, body: { success: true, request: result.rows[0] } };
 }
 
 // POST /api/approvals/request - Create approval request
@@ -199,6 +129,22 @@ router.post('/request', authenticate, authorize(), async (req, res) => {
       description: `Approval requested for ${request_type} #${request_id}`,
       entityId: result.rows[0].id, entityType: 'approval_request'
     });
+
+    // Phase 6: start the matching workflow instance (legacy template) so the
+    // engine tracks the request from birth. Best-effort — the request row is
+    // the contract; migrateLegacyApprovals backfills any stragglers.
+    try {
+      await workflowEngine.startWorkflow('legacy_module_approval', module_name, request_id, {
+        module_name,
+        request_type,
+        request_id,
+        requester_id: req.user.id,
+        legacy_approval_id: result.rows[0].id,
+        notes: notes || null,
+      }, { query });
+    } catch (wfError) {
+      console.error('workflowEngine.startWorkflow failed for legacy request:', wfError.message);
+    }
 
     res.json({ success: true, requires_approval: true, request: result.rows[0] });
   } catch (error) {
@@ -469,66 +415,6 @@ router.get('/:id/details', authenticate, authorize(), async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
-
-async function updateRecordStatus(ar) {
-  try {
-    switch (ar.module_name) {
-      case 'purchase_orders':
-        await query('UPDATE purchase_orders SET status = $1 WHERE id = $2', ['approved', ar.request_id]);
-        break;
-      case 'grn':
-        await query('UPDATE goods_receipt_notes SET status = $1 WHERE id = $2', ['approved', ar.request_id]);
-        break;
-      case 'payroll':
-        await query('UPDATE payroll_periods SET status = $1 WHERE id = $2', ['approved', ar.request_id]);
-        break;
-      case 'expenses':
-        await query('UPDATE expenses SET status = $1 WHERE id = $2', ['approved', ar.request_id]);
-        break;
-      case 'legal':
-        await query('UPDATE legal_documents SET status = $1 WHERE id = $2', ['verified', ar.request_id]);
-        break;
-      case 'project_budgets':
-        await query('UPDATE project_budgets SET status = $1 WHERE id = $2', ['approved', ar.request_id]);
-        break;
-      case 'sub_contracts':
-        await query('UPDATE sub_contracts SET status = $1 WHERE id = $2', ['active', ar.request_id]);
-        break;
-    }
-  } catch (error) {
-    console.error('Error updating record status after approval:', error);
-  }
-}
-
-async function rejectRecordStatus(ar) {
-  try {
-    switch (ar.module_name) {
-      case 'purchase_orders':
-        await query('UPDATE purchase_orders SET status = $1 WHERE id = $2', ['rejected', ar.request_id]);
-        break;
-      case 'grn':
-        await query('UPDATE goods_receipt_notes SET status = $1 WHERE id = $2', ['rejected', ar.request_id]);
-        break;
-      case 'payroll':
-        await query('UPDATE payroll_periods SET status = $1 WHERE id = $2', ['rejected', ar.request_id]);
-        break;
-      case 'expenses':
-        await query('UPDATE expenses SET status = $1 WHERE id = $2', ['rejected', ar.request_id]);
-        break;
-      case 'legal':
-        await query('UPDATE legal_documents SET status = $1 WHERE id = $2', ['rejected', ar.request_id]);
-        break;
-      case 'project_budgets':
-        await query('UPDATE project_budgets SET status = $1 WHERE id = $2', ['rejected', ar.request_id]);
-        break;
-      case 'sub_contracts':
-        await query('UPDATE sub_contracts SET status = $1 WHERE id = $2', ['terminated', ar.request_id]);
-        break;
-    }
-  } catch (error) {
-    console.error('Error updating record status after rejection:', error);
-  }
-}
 
 module.exports = router;
 module.exports.advanceApproval = advanceApproval;
