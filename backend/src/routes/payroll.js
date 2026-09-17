@@ -6,7 +6,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { journalPayrollPosted } = require('../utils/journal');
 
-router.get('/', authenticate, async (req, res) => {
+router.get('/', authenticate, authorize(), async (req, res) => {
   try {
     const { month, year, status, limit = 50 } = req.query;
     let conds = []; let p = []; let i = 1;
@@ -19,7 +19,7 @@ router.get('/', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const period = await query('SELECT * FROM payroll_periods WHERE id = $1', [req.params.id]);
     if (period.rows.length === 0) return res.status(404).json({ success: false, error: 'Not found' });
@@ -79,7 +79,7 @@ router.post('/', authenticate, authorize('owner', 'admin', 'finance_manager'), a
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.put('/:id', authenticate, async (req, res) => {
+router.put('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const existing = await query('SELECT * FROM payroll_periods WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Not found' });

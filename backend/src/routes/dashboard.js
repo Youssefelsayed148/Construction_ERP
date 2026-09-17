@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 
-router.get('/', authenticate, async (req, res) => {
+router.get('/', authenticate, authorize(), async (req, res) => {
   try {
     const [projectsRes, clientsRes, itemsRes, assetsRes, employeesRes, subRes] = await Promise.all([
       query('SELECT COUNT(*) as cnt FROM projects').catch(() => ({ rows: [{ cnt: 0 }] })),
@@ -31,7 +31,7 @@ router.get('/', authenticate, async (req, res) => {
 });
 
 // Portfolio - all projects summary
-router.get('/portfolio', authenticate, async (req, res) => {
+router.get('/portfolio', authenticate, authorize(), async (req, res) => {
   try {
     const projects = await query(`
       SELECT p.*, c.name_ar as client_name,
@@ -51,7 +51,7 @@ router.get('/portfolio', authenticate, async (req, res) => {
 });
 
 // Single project dashboard
-router.get('/project/:id', authenticate, async (req, res) => {
+router.get('/project/:id', authenticate, authorize(), async (req, res) => {
   try {
     const project = await query('SELECT * FROM projects WHERE id = $1', [req.params.id]);
     if (project.rows.length === 0) return res.status(404).json({ success: false, error: 'Project not found' });
@@ -79,7 +79,7 @@ router.get('/project/:id', authenticate, async (req, res) => {
 });
 
 // Alerts
-router.get('/alerts', authenticate, async (req, res) => {
+router.get('/alerts', authenticate, authorize(), async (req, res) => {
   try {
     const [lowStock, overdueMilestones, budgetOverruns, staleSiteReports, overdueRfis] = await Promise.all([
       query(`SELECT ws.*, w.name as warehouse_name, im.name_en, im.name_ar, im.code as item_code FROM warehouse_stock ws JOIN warehouses w ON ws.warehouse_id = w.id JOIN item_master im ON ws.item_id = im.id WHERE ws.quantity <= ws.reorder_level AND ws.reorder_level > 0 LIMIT 20`).catch(() => ({ rows: [] })),
@@ -117,7 +117,7 @@ router.get('/alerts', authenticate, async (req, res) => {
 
 // Owner overview - one compact summary row per module.
 // Every sub-query is wrapped so a single failing module never blanks the page.
-router.get('/overview', authenticate, async (req, res) => {
+router.get('/overview', authenticate, authorize(), async (req, res) => {
   const zero = (rows) => ({ rows });
   const [
     projAgg, projRisk, portfolio, finance, invoiceAgg, expenseAgg,

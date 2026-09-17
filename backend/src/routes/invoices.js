@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 
 const INVOICE_STATUSES = ['draft', 'sent', 'partially_paid', 'paid', 'overdue'];
@@ -16,7 +16,7 @@ function computeInvoiceStatus(invoice, totalPaid) {
   return invoice.status;
 }
 
-router.get('/', authenticate, async (req, res) => {
+router.get('/', authenticate, authorize(), async (req, res) => {
   try {
     const { project_id, client_id, status, search, limit = 100, offset = 0 } = req.query;
     let conditions = []; let params = []; let idx = 1;
@@ -51,7 +51,7 @@ router.get('/', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const result = await query(
       `SELECT i.*, p.name_ar as project_name_ar, p.name_en as project_name_en, p.code as project_code,
@@ -81,7 +81,7 @@ router.get('/:id', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       project_id: Joi.number().integer().required(),
@@ -114,7 +114,7 @@ router.post('/', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.put('/:id', authenticate, async (req, res) => {
+router.put('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const existing = await query('SELECT * FROM invoices WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Invoice not found' });
@@ -148,7 +148,7 @@ router.put('/:id', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.delete('/:id', authenticate, async (req, res) => {
+router.delete('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const payments = await query('SELECT COUNT(*) as cnt FROM payments WHERE invoice_id = $1', [req.params.id]);
     if (parseInt(payments.rows[0].cnt) > 0) {

@@ -2,10 +2,10 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 
-router.get('/', authenticate, async (req, res) => {
+router.get('/', authenticate, authorize(), async (req, res) => {
   try {
     const { type, project_id } = req.query;
     let conds = []; let p = []; let i = 1;
@@ -17,7 +17,7 @@ router.get('/', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const wh = await query('SELECT * FROM warehouses WHERE id = $1', [req.params.id]);
     if (wh.rows.length === 0) return res.status(404).json({ success: false, error: 'Warehouse not found' });
@@ -33,7 +33,7 @@ router.get('/:id', authenticate, async (req, res) => {
 });
 
 // Stock operations
-router.post('/:id/stock', authenticate, async (req, res) => {
+router.post('/:id/stock', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       item_id: Joi.number().integer().required(), quantity: Joi.number().required(),
@@ -55,7 +55,7 @@ router.post('/:id/stock', authenticate, async (req, res) => {
 });
 
 // Transfers
-router.get('/transfers', authenticate, async (req, res) => {
+router.get('/transfers', authenticate, authorize(), async (req, res) => {
   try {
     const { status } = req.query;
     let conds = []; let p = []; let i = 1;
@@ -72,7 +72,7 @@ router.get('/transfers', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.post('/transfers', authenticate, async (req, res) => {
+router.post('/transfers', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       from_warehouse_id: Joi.number().integer().required(),
@@ -104,7 +104,7 @@ router.post('/transfers', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.put('/transfers/:id/complete', authenticate, async (req, res) => {
+router.put('/transfers/:id/complete', authenticate, authorize(), async (req, res) => {
   try {
     const transfer = await query('SELECT * FROM inventory_transfers WHERE id = $1', [req.params.id]);
     if (transfer.rows.length === 0) return res.status(404).json({ success: false, error: 'Transfer not found' });

@@ -2,11 +2,11 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 
 // -- Subcontractors --
-router.get('/', authenticate, async (req, res) => {
+router.get('/', authenticate, authorize(), async (req, res) => {
   try {
     const { search, is_active, limit = 100 } = req.query;
     let conds = []; let p = []; let i = 1;
@@ -18,7 +18,7 @@ router.get('/', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const r = await query('SELECT * FROM subcontractors WHERE id = $1', [req.params.id]);
     if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Subcontractor not found' });
@@ -26,7 +26,7 @@ router.get('/:id', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       code: Joi.string().optional(), name_ar: Joi.string().required(), name_en: Joi.string().allow(''),
@@ -52,7 +52,7 @@ router.post('/', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.put('/:id', authenticate, async (req, res) => {
+router.put('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       name_ar: Joi.string(), name_en: Joi.string().allow(''), license_no: Joi.string().allow(''),
@@ -76,7 +76,7 @@ router.put('/:id', authenticate, async (req, res) => {
 });
 
 // -- Sub Contracts --
-router.get('/contracts/:projectId', authenticate, async (req, res) => {
+router.get('/contracts/:projectId', authenticate, authorize(), async (req, res) => {
   try {
     const data = await query(
       `SELECT sc.*, s.name as sub_name, s.name_en as sub_name_en, bi.description as boq_item_name
@@ -87,7 +87,7 @@ router.get('/contracts/:projectId', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.post('/contracts', authenticate, async (req, res) => {
+router.post('/contracts', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       project_id: Joi.number().integer().required(), subcontractor_id: Joi.number().integer().required(),
@@ -115,7 +115,7 @@ router.post('/contracts', authenticate, async (req, res) => {
 });
 
 // -- Work Verifications --
-router.get('/verifications/:contractId', authenticate, async (req, res) => {
+router.get('/verifications/:contractId', authenticate, authorize(), async (req, res) => {
   try {
     const data = await query(
       `SELECT swv.*, bi.description as boq_item_name FROM sub_work_verifications swv LEFT JOIN boq_items bi ON swv.boq_item_id = bi.id WHERE swv.sub_contract_id = $1 ORDER BY period_from DESC`,
@@ -125,7 +125,7 @@ router.get('/verifications/:contractId', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.post('/verifications', authenticate, async (req, res) => {
+router.post('/verifications', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       sub_contract_id: Joi.number().integer().required(), boq_item_id: Joi.number().integer().required(),
@@ -144,7 +144,7 @@ router.post('/verifications', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.put('/verifications/:id', authenticate, async (req, res) => {
+router.put('/verifications/:id', authenticate, authorize(), async (req, res) => {
   try {
     const { status } = req.body;
     if (!['approved', 'rejected'].includes(status)) return res.status(400).json({ success: false, error: 'Invalid status' });
@@ -159,7 +159,7 @@ router.put('/verifications/:id', authenticate, async (req, res) => {
 });
 
 // -- Payment Certificates --
-router.get('/certificates/:contractId', authenticate, async (req, res) => {
+router.get('/certificates/:contractId', authenticate, authorize(), async (req, res) => {
   try {
     const data = await query(
       `SELECT spc.*, u.name as certifier_name FROM sub_payment_certificates spc LEFT JOIN users u ON spc.certified_by = u.id WHERE spc.sub_contract_id = $1 ORDER BY period_from DESC`,
@@ -169,7 +169,7 @@ router.get('/certificates/:contractId', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.post('/certificates', authenticate, async (req, res) => {
+router.post('/certificates', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       sub_contract_id: Joi.number().integer().required(), period_from: Joi.date().iso().required(),
@@ -195,7 +195,7 @@ router.post('/certificates', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.put('/certificates/:id', authenticate, async (req, res) => {
+router.put('/certificates/:id', authenticate, authorize(), async (req, res) => {
   try {
     const { status } = req.body;
     if (!['certified', 'paid'].includes(status)) return res.status(400).json({ success: false, error: 'Invalid status' });

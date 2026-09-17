@@ -1,12 +1,16 @@
-// Unit tests for the Phase 2 TODO(phase-4) guard-prep work.
+// Tests for route guard coverage — updated for Phase 4.
 //
-// This phase must not change runtime behavior. The only auth-related change
-// is the addition of `// TODO(phase-4)` markers to every unguarded route in
-// legal.js, assets.js, maintenance.js, and the unguarded sub-routes of hr.js.
-// These tests assert that:
-//   - every route in those four files still has the existing `authenticate`
-//     middleware (so behavior is unchanged),
-//   - every route in those four files now has a TODO(phase-4) marker.
+// In Phase 2 this file only asserted TODO(phase-4) markers existed on every
+// unguarded route. Phase 4 replaces those markers with real guards: every
+// route now carries the authorize() middleware (backed by the scoped policy
+// engine), so the marker assertions are replaced with guard assertions.
+//
+//   - every route in legal.js, assets.js, maintenance.js, hr.js keeps its
+//     `authenticate` middleware,
+//   - every route in those files now has an authorize() middleware,
+//   - no TODO(phase-4) markers remain anywhere in backend/src/routes,
+//   - the explicit owner|admin / owner|admin|finance_manager call sites are
+//     preserved (they remain a coarse filter on top of the policy decision).
 
 const fs = require('fs');
 const path = require('path');
@@ -27,64 +31,49 @@ describe.each(ROUTE_FILES)('route file $file', ({ file, expectedRouteCount }) =>
     content = fs.readFileSync(path.join(ROUTES_DIR, file), 'utf8');
   });
 
-  test('imports the authenticate middleware from middleware/auth', () => {
+  test('imports authenticate and authorize from middleware/auth', () => {
     expect(content).toMatch(
       /require\(['"]\.\.\/middleware\/auth['"]\)/,
-      `${file} must still require the auth middleware`
+      `${file} must require the auth middleware`
     );
-    // Every route file uses authenticate.
     expect(content).toMatch(/\bauthenticate\b/);
+    expect(content).toMatch(/authorize/);
   });
 
-  test('declares at least one TODO(phase-4) marker', () => {
+  test('no TODO(phase-4) markers remain (replaced by real guards in Phase 4)', () => {
     const matches = content.match(/\/\/\s*TODO\(phase-4\)/g) || [];
-    expect(matches.length).toBeGreaterThan(0);
+    expect(matches).toEqual([]);
   });
 
   test('number of route definitions matches expected count', () => {
     const routerCalls = content.match(/router\.(get|post|put|delete)\s*\(/g) || [];
     expect(routerCalls.length).toBe(expectedRouteCount);
   });
+});
 
-  test('every TODO(phase-4) marker sits above a route definition', () => {
-    const lines = content.split('\n');
-    let todoCount = 0;
-    let followedByRouteCount = 0;
-    for (let i = 0; i < lines.length; i++) {
-      if (/\/\/\s*TODO\(phase-4\)/.test(lines[i])) {
-        todoCount++;
-        // Walk forward up to 12 lines and confirm at least one of those
-        // lines is a router.<verb>( call. We tolerate intervening const
-        // declarations, blank lines, and section comments (e.g. the
-        // `// -- Daily Laborers --` headers in hr.js).
-        let foundRoute = false;
-        for (let j = i + 1; j < Math.min(i + 13, lines.length); j++) {
-          const next = lines[j].trim();
-          if (!next) continue;
-          if (/^router\.(get|post|put|delete)\s*\(/.test(next)) {
-            foundRoute = true;
-            break;
-          }
-        }
-        if (foundRoute) followedByRouteCount++;
-      }
-    }
-    expect(todoCount).toBeGreaterThan(0);
-    expect(followedByRouteCount).toBe(todoCount);
+describe('every guarded route carries authorize() (static check)', () => {
+  const files = fs
+    .readdirSync(ROUTES_DIR)
+    .filter((f) => f.endsWith('.js'));
+
+  test('route files exist', () => {
+    expect(files.length).toBe(28);
   });
 
-  test('did not introduce a parallel authorization scheme (no new imports of authorize middleware helpers)', () => {
-    // The phase brief forbids inventing a second, parallel auth scheme.
-    // Phase 2 only adds comments; no new helpers should appear.
-    // The legal.js, assets.js, and maintenance.js files must not start
-    // importing `authorize` from anywhere new.
-    if (['legal.js', 'assets.js', 'maintenance.js'].includes(file)) {
-      expect(content).not.toMatch(/\bauthorize\s*\(/);
+  test.each(files)('%s has no bare authenticate-only route lines', (file) => {
+    const content = fs.readFileSync(path.join(ROUTES_DIR, file), 'utf8');
+    const lines = content.split('\n');
+    for (const line of lines) {
+      if (!/router\.(get|post|put|delete)\s*\(/.test(line)) continue;
+      // Public routes are the explicit exception: /login (no authenticate).
+      if (file === 'auth.js' && /router\.post\('\/login'/.test(line)) continue;
+      expect(line).toMatch(/\bauthenticate\b/);
+      expect(line).toMatch(/\bauthorize\b/);
     }
   });
 });
 
-describe('existing role guards in hr.js and payroll.js are untouched', () => {
+describe('existing role guards are untouched (coarse filter preserved)', () => {
   test('hr.js retains owner|admin guards on employee CRUD and leave approval', () => {
     const content = fs.readFileSync(path.join(ROUTES_DIR, 'hr.js'), 'utf8');
     const ownerAdminCount = (content.match(/authorize\(\s*['"]owner['"]\s*,\s*['"]admin['"]\s*\)/g) || []).length;
@@ -95,5 +84,17 @@ describe('existing role guards in hr.js and payroll.js are untouched', () => {
     const content = fs.readFileSync(path.join(ROUTES_DIR, 'payroll.js'), 'utf8');
     expect(content).toMatch(/authorize\(\s*['"]owner['"]\s*,\s*['"]admin['"]\s*,\s*['"]finance_manager['"]\s*\)/);
     expect(content).toMatch(/authorize\(\s*['"]owner['"]\s*,\s*['"]admin['"]\s*\)/);
+  });
+
+  test('auth.js register retains owner|admin', () => {
+    const content = fs.readFileSync(path.join(ROUTES_DIR, 'auth.js'), 'utf8');
+    expect(content).toMatch(/authorize\(\s*['"]owner['"]\s*,\s*['"]admin['"]\s*\)/);
+  });
+
+  test('users.js retains owner|admin on management routes and guards the preview demo mode with it', () => {
+    const content = fs.readFileSync(path.join(ROUTES_DIR, 'users.js'), 'utf8');
+    expect(content).toMatch(/router\.post\('\/preview\/:role',\s*authenticate,\s*authorize\(\s*['"]owner['"]\s*,\s*['"]admin['"]\s*\)/);
+    const ownerAdminCount = (content.match(/authorize\(\s*['"]owner['"]\s*,\s*['"]admin['"]\s*\)/g) || []).length;
+    expect(ownerAdminCount).toBe(6); // GET /, GET /preview/roles, GET /:id, PUT /:id, DELETE /:id, POST /preview/:role
   });
 });

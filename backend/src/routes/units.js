@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 
 // Mounted at /api/sales — buildings & sellable units (real estate).
@@ -54,7 +54,7 @@ async function createUnitSaleInvoice({ unit, building, clientId, userId, userNam
 
 // ============ BUILDINGS ============
 
-router.get('/buildings', authenticate, async (req, res) => {
+router.get('/buildings', authenticate, authorize(), async (req, res) => {
   try {
     const { project_id } = req.query;
     let conditions = []; let params = []; let idx = 1;
@@ -71,7 +71,7 @@ router.get('/buildings', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/buildings', authenticate, async (req, res) => {
+router.post('/buildings', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       project_id: Joi.number().integer().required(),
@@ -98,7 +98,7 @@ router.post('/buildings', authenticate, async (req, res) => {
   }
 });
 
-router.put('/buildings/:id', authenticate, async (req, res) => {
+router.put('/buildings/:id', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       code: Joi.string(), name: Joi.string(),
@@ -120,7 +120,7 @@ router.put('/buildings/:id', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.delete('/buildings/:id', authenticate, async (req, res) => {
+router.delete('/buildings/:id', authenticate, authorize(), async (req, res) => {
   try {
     const unitsSold = await query(`SELECT COUNT(*) as cnt FROM units WHERE building_id = $1 AND status NOT IN ('available', 'blocked')`, [req.params.id]);
     if (parseInt(unitsSold.rows[0].cnt) > 0) return res.status(400).json({ success: false, error: 'Cannot delete building with reserved/sold units' });
@@ -132,7 +132,7 @@ router.delete('/buildings/:id', authenticate, async (req, res) => {
 
 // ============ UNITS ============
 
-router.get('/buildings/:buildingId/units', authenticate, async (req, res) => {
+router.get('/buildings/:buildingId/units', authenticate, authorize(), async (req, res) => {
   try {
     const { status } = req.query;
     let conditions = ['building_id = $1']; let params = [req.params.buildingId]; let idx = 2;
@@ -142,7 +142,7 @@ router.get('/buildings/:buildingId/units', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/buildings/:buildingId/units', authenticate, async (req, res) => {
+router.post('/buildings/:buildingId/units', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       code: Joi.string().required(),
@@ -177,7 +177,7 @@ router.post('/buildings/:buildingId/units', authenticate, async (req, res) => {
 });
 
 // Bulk-create: generate floors × units_per_floor units from a pattern (e.g. prefix "A" → A-101, A-102...)
-router.post('/buildings/:buildingId/bulk-units', authenticate, async (req, res) => {
+router.post('/buildings/:buildingId/bulk-units', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       floors: Joi.number().integer().min(1).max(100).required(),
@@ -224,7 +224,7 @@ router.post('/buildings/:buildingId/bulk-units', authenticate, async (req, res) 
   }
 });
 
-router.put('/units/:id', authenticate, async (req, res) => {
+router.put('/units/:id', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       code: Joi.string(),
@@ -258,7 +258,7 @@ router.put('/units/:id', authenticate, async (req, res) => {
 });
 
 // Status transition: available → reserved → contracted → delivered → closed (+ block/release)
-router.post('/units/:id/status', authenticate, async (req, res) => {
+router.post('/units/:id/status', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       status: Joi.string().valid(...UNIT_STATUSES).required(),
@@ -321,7 +321,7 @@ router.post('/units/:id/status', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.delete('/units/:id', authenticate, async (req, res) => {
+router.delete('/units/:id', authenticate, authorize(), async (req, res) => {
   try {
     const existing = await query('SELECT * FROM units WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Unit not found' });
@@ -335,7 +335,7 @@ router.delete('/units/:id', authenticate, async (req, res) => {
 
 // ============ SALES SUMMARY ============
 
-router.get('/summary', authenticate, async (req, res) => {
+router.get('/summary', authenticate, authorize(), async (req, res) => {
   try {
     const { project_id } = req.query;
     let where = ''; let params = [];

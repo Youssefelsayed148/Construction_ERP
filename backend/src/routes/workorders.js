@@ -2,12 +2,12 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 
 const WO_STATUSES = ['planned', 'in_progress', 'completed', 'cancelled'];
 
-router.get('/project/:projectId', authenticate, async (req, res) => {
+router.get('/project/:projectId', authenticate, authorize(), async (req, res) => {
   try {
     const { status, phase_id } = req.query;
     let conds = ['wo.project_id = $1']; let p = [req.params.projectId]; let i = 2;
@@ -29,7 +29,7 @@ router.get('/project/:projectId', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const wo = await query('SELECT wo.*, u.name as assigned_to_name FROM work_orders wo LEFT JOIN users u ON wo.assigned_to = u.id WHERE wo.id = $1', [req.params.id]);
     if (wo.rows.length === 0) return res.status(404).json({ success: false, error: 'Work order not found' });
@@ -45,7 +45,7 @@ router.get('/:id', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       project_id: Joi.number().integer().required(), phase_id: Joi.number().integer().optional().allow(null),
@@ -69,7 +69,7 @@ router.post('/', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.put('/:id', authenticate, async (req, res) => {
+router.put('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       title_ar: Joi.string(), title_en: Joi.string().allow(''), description: Joi.string().allow(''),
@@ -91,7 +91,7 @@ router.put('/:id', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.delete('/:id', authenticate, async (req, res) => {
+router.delete('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const existing = await query('SELECT * FROM work_orders WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Work order not found' });
@@ -104,7 +104,7 @@ router.delete('/:id', authenticate, async (req, res) => {
 });
 
 // Materials
-router.post('/:id/materials', authenticate, async (req, res) => {
+router.post('/:id/materials', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       item_id: Joi.number().integer().required(), boq_item_id: Joi.number().integer().optional(),
@@ -137,7 +137,7 @@ router.post('/:id/materials', authenticate, async (req, res) => {
 });
 
 // Labor (planning only, no cost)
-router.post('/:id/labor', authenticate, async (req, res) => {
+router.post('/:id/labor', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       skill_category: Joi.string().required(), worker_count: Joi.number().integer().min(1).default(1),
@@ -156,7 +156,7 @@ router.post('/:id/labor', authenticate, async (req, res) => {
 });
 
 // Equipment
-router.post('/:id/equipment', authenticate, async (req, res) => {
+router.post('/:id/equipment', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       equipment_id: Joi.number().integer().required(), hours: Joi.number().min(0).default(0),
@@ -175,7 +175,7 @@ router.post('/:id/equipment', authenticate, async (req, res) => {
 });
 
 // Work Completions
-router.post('/:id/completions', authenticate, async (req, res) => {
+router.post('/:id/completions', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       boq_item_id: Joi.number().integer().required(), quantity_completed: Joi.number().positive().required(),
@@ -192,7 +192,7 @@ router.post('/:id/completions', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.put('/:woId/completions/:compId/verify', authenticate, async (req, res) => {
+router.put('/:woId/completions/:compId/verify', authenticate, authorize(), async (req, res) => {
   try {
     const comp = await query('SELECT * FROM work_completions WHERE id = $1', [req.params.compId]);
     if (comp.rows.length === 0) return res.status(404).json({ success: false, error: 'Completion not found' });

@@ -2,14 +2,14 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 
 // Mounted at /api/projects — provides /:projectId/site-reports, /:projectId/instructions, /:projectId/site-visits
 
 // ============ DAILY SITE REPORTS ============
 
-router.get('/:projectId/site-reports', authenticate, async (req, res) => {
+router.get('/:projectId/site-reports', authenticate, authorize(), async (req, res) => {
   try {
     const { from, to, limit = 100, offset = 0 } = req.query;
     let conditions = ['sdr.project_id = $1']; let params = [req.params.projectId]; let idx = 2;
@@ -25,7 +25,7 @@ router.get('/:projectId/site-reports', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.get('/:projectId/site-reports/:date', authenticate, async (req, res) => {
+router.get('/:projectId/site-reports/:date', authenticate, authorize(), async (req, res) => {
   try {
     const result = await query(
       `SELECT sdr.*, u.name as created_by_name FROM site_daily_reports sdr
@@ -38,7 +38,7 @@ router.get('/:projectId/site-reports/:date', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/:projectId/site-reports', authenticate, async (req, res) => {
+router.post('/:projectId/site-reports', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       report_date: Joi.date().iso().required(),
@@ -77,7 +77,7 @@ router.post('/:projectId/site-reports', authenticate, async (req, res) => {
   }
 });
 
-router.put('/:projectId/site-reports/:id', authenticate, async (req, res) => {
+router.put('/:projectId/site-reports/:id', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       weather: Joi.string().allow(''), temperature: Joi.string().allow(''),
@@ -112,7 +112,7 @@ const INSTRUCTION_TRANSITIONS = {
   implemented: ['closed'],
 };
 
-router.get('/:projectId/instructions', authenticate, async (req, res) => {
+router.get('/:projectId/instructions', authenticate, authorize(), async (req, res) => {
   try {
     const { status, priority } = req.query;
     let conditions = ['ei.project_id = $1']; let params = [req.params.projectId]; let idx = 2;
@@ -128,7 +128,7 @@ router.get('/:projectId/instructions', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/:projectId/instructions', authenticate, async (req, res) => {
+router.post('/:projectId/instructions', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       title: Joi.string().required(),
@@ -153,7 +153,7 @@ router.post('/:projectId/instructions', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.put('/:projectId/instructions/:id', authenticate, async (req, res) => {
+router.put('/:projectId/instructions/:id', authenticate, authorize(), async (req, res) => {
   try {
     const existing = await query('SELECT * FROM engineer_instructions WHERE id = $1 AND project_id = $2', [req.params.id, req.params.projectId]);
     if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Instruction not found' });
@@ -178,7 +178,7 @@ router.put('/:projectId/instructions/:id', authenticate, async (req, res) => {
 });
 
 // Status transitions: acknowledge → implement → close
-router.post('/:projectId/instructions/:id/:action(acknowledge|implement|close)', authenticate, async (req, res) => {
+router.post('/:projectId/instructions/:id/:action(acknowledge|implement|close)', authenticate, authorize(), async (req, res) => {
   try {
     const actionToStatus = { acknowledge: 'acknowledged', implement: 'implemented', close: 'closed' };
     const newStatus = actionToStatus[req.params.action];
@@ -212,7 +212,7 @@ router.post('/:projectId/instructions/:id/:action(acknowledge|implement|close)',
 
 // ============ SITE VISITS ============
 
-router.get('/:projectId/site-visits', authenticate, async (req, res) => {
+router.get('/:projectId/site-visits', authenticate, authorize(), async (req, res) => {
   try {
     const result = await query(
       `SELECT sv.*, u.name as logged_by_name FROM site_visits sv
@@ -224,7 +224,7 @@ router.get('/:projectId/site-visits', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/:projectId/site-visits', authenticate, async (req, res) => {
+router.post('/:projectId/site-visits', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       visit_date: Joi.date().iso().required(),
@@ -249,7 +249,7 @@ router.post('/:projectId/site-visits', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.put('/:projectId/site-visits/:id', authenticate, async (req, res) => {
+router.put('/:projectId/site-visits/:id', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       visit_date: Joi.date().iso(), visitor_name: Joi.string(), visitor_role: Joi.string().allow(''),
@@ -272,7 +272,7 @@ router.put('/:projectId/site-visits/:id', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.delete('/:projectId/site-visits/:id', authenticate, async (req, res) => {
+router.delete('/:projectId/site-visits/:id', authenticate, authorize(), async (req, res) => {
   try {
     const result = await query('DELETE FROM site_visits WHERE id = $1 AND project_id = $2 RETURNING visitor_name', [req.params.id, req.params.projectId]);
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Visit not found' });

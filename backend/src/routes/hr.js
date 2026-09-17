@@ -6,8 +6,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 
 // -- Employees --
-// TODO(phase-4): employees are a company-wide directory; all authenticated users can read (HR uses this widely). Owner|admin can read is_active=false.
-router.get('/employees', authenticate, async (req, res) => {
+router.get('/employees', authenticate, authorize(), async (req, res) => {
   try {
     const { department, status, search, is_manager, limit = 100 } = req.query;
     let conds = []; let p = []; let i = 1;
@@ -21,8 +20,7 @@ router.get('/employees', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// TODO(phase-4): same policy as GET /employees (directory read).
-router.get('/employees/:id', authenticate, async (req, res) => {
+router.get('/employees/:id', authenticate, authorize(), async (req, res) => {
   try {
     const r = await query('SELECT * FROM employees WHERE id = $1', [req.params.id]);
     if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Employee not found' });
@@ -100,8 +98,7 @@ router.delete('/employees/:id', authenticate, authorize('owner', 'admin'), async
 });
 
 // -- Attendance --
-// TODO(phase-4): site engineers see rows for their project only; HR sees all. Filter at the SQL layer using user_project_roles joined via attendance.project_id.
-router.get('/attendance', authenticate, async (req, res) => {
+router.get('/attendance', authenticate, authorize(), async (req, res) => {
   try {
     const { employee_id, date, from_date, to_date, limit = 100 } = req.query;
     let conds = []; let p = []; let i = 1;
@@ -114,8 +111,7 @@ router.get('/attendance', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// TODO(phase-4): site engineers may post attendance for their project; HR may post for any. Joi should accept project_id (column added in migrate-16.js).
-router.post('/attendance', authenticate, async (req, res) => {
+router.post('/attendance', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       employee_id: Joi.number().integer().required(), date: Joi.date().iso().required(),
@@ -137,8 +133,7 @@ router.post('/attendance', authenticate, async (req, res) => {
 });
 
 // -- Leave Requests --
-// TODO(phase-4): employees see their own; managers see their team (employees.is_manager=true chain); HR sees all.
-router.get('/leaves', authenticate, async (req, res) => {
+router.get('/leaves', authenticate, authorize(), async (req, res) => {
   try {
     const { employee_id, status } = req.query;
     let conds = []; let p = []; let i = 1;
@@ -150,8 +145,7 @@ router.get('/leaves', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// TODO(phase-4): an employee may file a leave for themselves; an HR user may file for anyone. Otherwise reject.
-router.post('/leaves', authenticate, async (req, res) => {
+router.post('/leaves', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       employee_id: Joi.number().integer().required(), leave_type: Joi.string().optional(),
@@ -186,10 +180,9 @@ router.put('/leaves/:id', authenticate, authorize('owner', 'admin'), async (req,
 });
 
 // -- Daily Laborers --
-// TODO(phase-4): directory read — open to all authenticated users (used by site engineers to pick a worker for a labour payment).
 const SKILLS = ['mason', 'carpenter', 'electrician', 'steel_fixer', 'plumber', 'painter', 'tiler', 'general'];
 
-router.get('/laborers', authenticate, async (req, res) => {
+router.get('/laborers', authenticate, authorize(), async (req, res) => {
   try {
     const { skill_category, is_active, search, limit = 100 } = req.query;
     let conds = []; let p = []; let i = 1;
@@ -202,11 +195,9 @@ router.get('/laborers', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// TODO(phase-4): static enum read — open to all authenticated users.
-router.get('/laborers/skills', authenticate, (req, res) => res.json({ success: true, data: SKILLS }));
+router.get('/laborers/skills', authenticate, authorize(), (req, res) => res.json({ success: true, data: SKILLS }));
 
-// TODO(phase-4): directory read — open to all authenticated users.
-router.get('/laborers/:id', authenticate, async (req, res) => {
+router.get('/laborers/:id', authenticate, authorize(), async (req, res) => {
   try {
     const r = await query('SELECT * FROM daily_laborers WHERE id = $1', [req.params.id]);
     if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Laborer not found' });
@@ -214,8 +205,7 @@ router.get('/laborers/:id', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// TODO(phase-4): owner|admin|hr_manager (or site_engineer for new roster additions on the day).
-router.post('/laborers', authenticate, async (req, res) => {
+router.post('/laborers', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       code: Joi.string().optional(), full_name: Joi.string().required(),
@@ -243,8 +233,7 @@ router.post('/laborers', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// TODO(phase-4): owner|admin|hr_manager.
-router.put('/laborers/:id', authenticate, async (req, res) => {
+router.put('/laborers/:id', authenticate, authorize(), async (req, res) => {
   try {
     const existing = await query('SELECT * FROM daily_laborers WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Laborer not found' });
@@ -270,8 +259,7 @@ router.put('/laborers/:id', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// TODO(phase-4): owner|admin only; soft-deactivate (is_active=false) to preserve labor_payments history rather than DELETE.
-router.delete('/laborers/:id', authenticate, async (req, res) => {
+router.delete('/laborers/:id', authenticate, authorize(), async (req, res) => {
   try {
     const r = await query('DELETE FROM daily_laborers WHERE id = $1 RETURNING code', [req.params.id]);
     if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Laborer not found' });
@@ -280,8 +268,7 @@ router.delete('/laborers/:id', authenticate, async (req, res) => {
 });
 
 // -- Labor Payments --
-// TODO(phase-4): site engineers see their project's payments; owner|admin|finance_manager see all.
-router.get('/labor-payments', authenticate, async (req, res) => {
+router.get('/labor-payments', authenticate, authorize(), async (req, res) => {
   try {
     const { project_id, laborer_id, limit = 100 } = req.query;
     let conds = []; let p = []; let i = 1;
@@ -293,8 +280,7 @@ router.get('/labor-payments', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// TODO(phase-4): site engineers may post payments on their project; finance_manager can post any; verify laborer is in the project's daily roster.
-router.post('/labor-payments', authenticate, async (req, res) => {
+router.post('/labor-payments', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       project_id: Joi.number().integer().required(), laborer_id: Joi.number().integer().required(),
@@ -328,8 +314,7 @@ router.post('/labor-payments', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// TODO(phase-4): owner|admin|finance_manager only; a deleted payment must fire a compensating event so project_costs can be unwound.
-router.delete('/labor-payments/:id', authenticate, async (req, res) => {
+router.delete('/labor-payments/:id', authenticate, authorize(), async (req, res) => {
   try {
     const r = await query('DELETE FROM labor_payments WHERE id = $1 RETURNING id', [req.params.id]);
     if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Payment not found' });

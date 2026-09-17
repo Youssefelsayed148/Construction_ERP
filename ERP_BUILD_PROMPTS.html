@@ -188,7 +188,7 @@
 
   <section id="howto">
     <h2>How to use this document</h2>
-    <p class="sec-intro">This is not one giant prompt. Run the phases in order &mdash; each one assumes the previous phases are already merged. Copy one prompt block at a time into your coding agent's session, let it finish, review the diff, run the tests it wrote, commit, then move to the next.</p>
+    <p class="sec-intro">This is not one giant prompt. Run the phases in order &mdash; each one assumes the previous phases are already merged. Copy one prompt block at a time into your coding agent's session, let it finish, review the diff, and run the tests it wrote. Each prompt ends with its own commit step, so once the agent runs it you should see a new commit for that phase alone &mdash; verify it exists (<span class="mono">git log -1</span>) before copying the next block.</p>
     <div class="toc-group">
       <h4>Foundation (must land first &mdash; touch live foreign keys)</h4>
       <div class="toc-list">
@@ -255,9 +255,10 @@
         <li><b>Scope every new record.</b> Carry <span class="mono">company_id</span> (or is globally implicit in this single-tenant deployment &mdash; confirm which), <span class="mono">project_id</span> where project-scoped, <span class="mono">created_by_user_id</span>, and <span class="mono">location_id</span> / <span class="mono">work_package_id</span> / <span class="mono">cost_code_id</span> where applicable.</li>
         <li><b>Route every write through the permission layer</b> introduced in Phase 4, once it exists. Before Phase 4 lands, keep using the existing <span class="mono">authorize()</span> in <span class="mono">backend/src/middleware/auth.js</span> &mdash; do not invent a second, parallel check.</li>
         <li><b>Audit on write.</b> Approvals, payments, contract/commercial changes, quantity certifications and agent actions write an immutable audit row (before/after) once Phase 4's <span class="mono">audit_events</span> exists; until then, keep writing to the existing <span class="mono">activity_log</span>.</li>
-        <li><b>Inspect before you build.</b> Before writing any migration or route change for a phase, grep/read the actual current file(s) named in that phase's prompt &mdash; table/column names may already differ slightly from what's written here since the codebase moves daily.</li>
+        <li><b>Inspect before you build.</b> Before writing any migration or route change for a phase, grep/read the actual current file(s) named in that phase's prompt &mdash; table/column names may already differ slightly from what's written here since the codebase moves daily. <span class="mono">docs/audit/</span> (produced by Phase 1, refreshed 2026-09-17) is the authoritative current-state reference &mdash; if it disagrees with a claim in one of these prompts, trust the audit and re-run Phase 1's steps yourself if enough time has passed since its date.</li>
         <li><b>Every module needs, before it counts as done:</b> migration + validation, API, desktop UI, empty/loading/error state, permission checks, audit trail, search/filter/export, notifications hook, dashboard widget, and at least one automated test per new calculation or state transition.</li>
         <li><b>High-risk financial/contractual actions</b> (issue PO, approve variation, send client invoice, record payment, approve certificate, delete a controlled document, close a project) are never executed autonomously by an agent without the human approval step the workflow defines &mdash; this applies from Phase 27 onward but design every write endpoint from Phase 6 on so it slots into that gate later.</li>
+        <li><b>One commit per phase, no exceptions.</b> Every prompt below ends with its own <span class="mono">git add -A &amp;&amp; git commit -m "Phase N: &lt;title&gt;"</span> step. Do not let an agent carry uncommitted work from one phase into the next, and do not squash several phases into one commit &mdash; if phase 9's migration turns out to be wrong, you want to revert phase 9 alone, not phases 9&ndash;12 together.</li>
       </ol>
     </div>
   </section>
@@ -281,23 +282,33 @@ Deliverables (write these as markdown files at the repo root under a new <span c
 4. <span class="k">CURRENT_PERMISSION_MATRIX.md</span> &mdash; read <span class="k">backend/src/middleware/auth.js</span> in full and document exactly how <span class="k">authorize()</span> resolves a role, what <span class="k">module_permissions[]</span> does, and every hardcoded bypass (search for <span class="k">role === 'owner'</span> and <span class="k">role === 'admin'</span>).
 5. <span class="k">GAP_ANALYSIS.md</span> &mdash; a phase-by-phase diff against <span class="k">ERP_EXPANSION_PLAN.html</span> and the 31 files in <span class="k">construction_erp_agent_pack/</span>; flag anywhere this audit finds the plan's "today" description is already stale (new tables/routes/pages added since the plan's last revision date in its footer).
 
-Do not skip step 5 &mdash; it is the check that keeps every later phase honest against a moving codebase.</div>
+Do not skip step 5 &mdash; it is the check that keeps every later phase honest against a moving codebase.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 1: Audit the existing codebase"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">nothing</span></div>
     </div>
 
     <div class="card" id="p2">
       <div class="chd"><span class="pnum">02</span><h3>Reconcile out-of-spec modules</h3><span class="tag dep">depends on 01</span></div>
-      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 2 &mdash; Reconcile HR, Payroll, Legal and Maintenance/Assets.</b>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 2 &mdash; Reconcile HR, Payroll, Legal, Maintenance and Assets (five modules, not four).</b>
 
-<span class="k">backend/src/routes/hr.js</span>, <span class="k">payroll.js</span>, <span class="k">legal.js</span> and <span class="k">maintenance.js</span> (with frontend pages <span class="k">HR.js</span>, <span class="k">Payroll.js</span>, <span class="k">Legal.js</span>, and <span class="k">Assets.js</span>) exist in this codebase but appear nowhere in the 112-section specification except as org-chart departments (org chart section) and the Resource/Labour section (timesheets, attendance, cost rate). They currently run without project/organization scoping.
+<span class="k">backend/src/routes/hr.js</span> (325 lines), <span class="k">payroll.js</span> (145 lines), <span class="k">legal.js</span> (83 lines), <span class="k">maintenance.js</span> (88 lines) <b>and</b> <span class="k">assets.js</span> (168 lines &mdash; equipment/equipment_type/hourly-daily rates) exist in this codebase but appear nowhere in the 112-section specification except as org-chart departments and &sect;52 Resource/Labour (timesheets, attendance, cost rate) / &sect;54 Equipment Cost. Per the Phase 1 audit (<span class="k">docs/audit/GAP_ANALYSIS.md</span> &sect;3.7), <span class="k">assets.js</span> is a separate, also-unscoped module that earlier drafts of this plan missed &mdash; treat it as part of this phase's scope, not Phase 16/18's. <span class="k">clients.js</span>, <span class="k">suppliers.js</span> and <span class="k">subcontractors.js</span> are a <em>different</em> case: they're unguarded directories already destined for Phase 3's <span class="k">organizations</span> absorption, not an open decision for this phase.
 
-1. Read all four route files plus <span class="k">Assets.js</span>/<span class="k">maintenance.js</span> in full, and the <span class="k">employees</span> table definition, to understand exactly what exists today (fields, endpoints, whether project_id is present anywhere).
-2. Write a decision record at <span class="k">docs/audit/OUT_OF_SPEC_MODULE_DECISIONS.md</span>: for each of HR, Payroll, Legal, Maintenance, decide (a) fold into the Organization/participant model from Phase 3 &mdash; i.e. treat internal staff as an "internal organization" participant type &mdash; or (b) keep as a standalone, company-level (non-project) module with its own permission scoping. Default recommendation: keep standalone but project-taggable, since payroll and legal records are frequently company-wide, not project-only.
-3. Add <span class="k">project_id</span> (nullable) to any of these tables that represent project-attributable cost or activity (e.g. timesheets, equipment maintenance logs) so they can later feed the Phase 13 labour/equipment cost calculations. Do not add project_id to genuinely company-wide records (e.g. a legal template library).
-4. Map <span class="k">hr.js</span> timesheet/attendance data to the target Resource/Labour formula: <span class="k">Labour Cost = Regular Hours * Rate + Overtime Hours * Overtime Rate</span>. Note in the decision record exactly which existing table/columns will supply "hours" and "rate" once Phase 13 needs it &mdash; do not implement the calculation yet.
-5. Do not add permission-engine hooks yet (Phase 4 doesn't exist); just leave clear <span class="k">// TODO(phase-4)</span> markers at every route handler in these four files that currently has no scoping check.
+Guard status today, from the audit: employee CRUD in <span class="k">hr.js</span> requires <span class="k">owner|admin</span>; laborers/labor-payments in the same file are unguarded; <span class="k">payroll.js</span> create requires <span class="k">owner|admin|finance_manager</span>, delete requires <span class="k">owner|admin</span>; <span class="k">legal.js</span> has no role guard at all; <span class="k">assets.js</span> and <span class="k">maintenance.js</span> are fully unguarded.
 
-This phase produces a decision document and light schema prep only &mdash; it must not change any existing behavior visible to users.</div>
+1. Read all five route files in full, plus the <span class="k">employees</span> table definition (note: <span class="k">employees.is_manager</span> was added in <span class="k">migrate-14.js</span>, and <span class="k">project_team.employee_id</span>/<span class="k">projects.project_manager_id</span> already reference it &mdash; this is settled, not in flux).
+2. Write a decision record at <span class="k">docs/audit/OUT_OF_SPEC_MODULE_DECISIONS.md</span>: for each of HR, Payroll, Legal, Maintenance, Assets, decide (a) fold into the Organization/participant model from Phase 3 &mdash; i.e. treat internal staff as an "internal organization" participant type &mdash; or (b) keep as a standalone, company-level (non-project) module with its own permission scoping. Default recommendation: keep standalone but project-taggable, since payroll and legal records are frequently company-wide, not project-only.
+3. Add <span class="k">project_id</span> (nullable) to any of these tables that represent project-attributable cost or activity (e.g. timesheets, equipment usage/maintenance logs) so they can later feed the Phase 13 labour/equipment cost calculations. Do not add project_id to genuinely company-wide records (e.g. a legal template library).
+4. Map <span class="k">hr.js</span> timesheet/attendance data to the target Resource/Labour formula: <span class="k">Labour Cost = Regular Hours * Rate + Overtime Hours * Overtime Rate</span>, and <span class="k">assets.js</span>'s hourly/daily rates to <span class="k">Equipment Cost = Usage Hours * Rate + Fuel + Mobilization + Allocated Maintenance</span>. Note in the decision record exactly which existing table/columns supply each input once Phase 13 needs it &mdash; do not implement the calculation yet.
+5. Close the most glaring gaps now, without waiting for Phase 4: add at minimum an <span class="k">authenticate</span>-only check (existing middleware) to every route in <span class="k">legal.js</span>, <span class="k">assets.js</span> and <span class="k">maintenance.js</span> that currently has none, and leave a <span class="k">// TODO(phase-4)</span> marker for the real scoped check. Do not invent a second, parallel authorization scheme.
+
+This phase produces a decision document and light schema/guard prep only &mdash; it must not change any existing behavior visible to users beyond closing the fully-open routes.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 2: Reconcile out-of-spec modules"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 1</span></div>
     </div>
 
@@ -307,7 +318,7 @@ This phase produces a decision document and light schema prep only &mdash; it mu
       <div class="chd"><span class="pnum">03</span><h3>Core data architecture</h3><span class="tag dep">depends on 01, 02</span></div>
       <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 3 &mdash; Core data architecture: Organizations, participants, locations, WBS, cost codes.</b>
 
-This is the highest-risk migration in the whole plan. Read <span class="k">backend/src/scripts/setupDb.js</span> and every <span class="k">migrate-*.js</span> fully first, especially the most recent uncommitted <span class="k">migrate-15.js</span> which re-points <span class="k">project_team.user_id</span> to <span class="k">project_team.employee_id</span> &mdash; your migration for <span class="k">project_team</span> must build on top of that shape, not the pre-migration one.
+This is the highest-risk migration in the whole plan. Read <span class="k">backend/src/scripts/setupDb.js</span> and every <span class="k">migrate-*.js</span> fully first. Per the Phase 1 audit, <span class="k">migrate-15.js</span> (which re-points <span class="k">project_team.user_id</span> to <span class="k">project_team.employee_id</span>) and <span class="k">migrate-14.js</span> (which re-points <span class="k">projects.project_manager_id</span> to <span class="k">employees(id)</span>) are both <b>already committed and applied</b> &mdash; <span class="k">project_team</span> has no <span class="k">user_id</span> column left to migrate away from. Treat this as a free refactor onto an already-settled shape, not a migration you need to sequence around; <span class="k">routes/projects.js</span> already joins <span class="k">project_team pt LEFT JOIN employees e ON pt.employee_id = e.id</span>. Also note: <span class="k">projects.location</span> was dropped in <span class="k">migrate-12.js</span> &mdash; only <span class="k">address</span> + <span class="k">city</span> remain, so don't reintroduce a <span class="k">location</span> column anywhere downstream (Phase 5's wizard included).
 
 1. Add new tables (additive migration <span class="k">migrate-16-organizations.js</span> following the existing numbered-script convention in <span class="k">backend/src/scripts/</span>): <span class="k">organizations</span> (id, name, org_type [client/consultant/subcontractor/supplier/internal/authority/testing_lab/...], contact info, tax id, status), <span class="k">organization_contacts</span>, <span class="k">organization_documents</span>, <span class="k">organization_users</span>, <span class="k">project_participants</span> (project_id, organization_id, participant_type, contract_reference, active_from/to, portal_access_enabled, visibility_policy), <span class="k">project_participant_users</span>, <span class="k">location_types</span>, <span class="k">project_locations</span> (id, project_id, parent_id, location_type, code, name, sort_order), <span class="k">wbs_nodes</span>, <span class="k">work_packages</span>, <span class="k">boq_location_allocations</span> (see Phase 8 for the quantity fields &mdash; create the table now, populate in Phase 8).
 2. Backfill: for every row in <span class="k">clients</span>, insert an <span class="k">organizations</span> row with <span class="k">org_type='client'</span> and keep a mapping table <span class="k">_migration_client_org_map(old_client_id, organization_id)</span>. Do the same for <span class="k">suppliers</span> and <span class="k">subcontractors</span>.
@@ -317,7 +328,11 @@ This is the highest-risk migration in the whole plan. Read <span class="k">backe
 6. Extend <span class="k">cost_codes</span> with a <span class="k">parent_id</span> for hierarchy and a <span class="k">wbs_node_id</span> link.
 7. Write a migration parity test: for every project, count of team members before == count of project_participant_users after; every client_id resolves to the same organization via both the old and new path.
 
-Do not touch <span class="k">buildings</span> yet &mdash; that absorption into <span class="k">project_locations</span> happens in Phase 8, after the location tree exists and can be validated independently.</div>
+Do not touch <span class="k">buildings</span> yet &mdash; that absorption into <span class="k">project_locations</span> happens in Phase 8, after the location tree exists and can be validated independently.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 3: Core data architecture"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 1, 2</span> &middot; <span class="dl-lbl">Gate</span><span class="mono">migration parity test passes before any route is cut over</span></div>
     </div>
 
@@ -335,7 +350,11 @@ Read <span class="k">backend/src/middleware/auth.js</span> in full, and every ca
 6. Add a "preview as role" demo mode: an authorized admin can view any screen as if logged in with a different role, read-only, and every such preview writes an <span class="k">audit_events</span> row.
 7. Write the mandatory isolation tests: a consultant-role user cannot hit any endpoint under <span class="k">/costing</span> or <span class="k">/finance</span> that returns internal cost fields; a client-role user cannot retrieve subcontractor/supplier rates; an external user cannot enumerate projects they aren't assigned to (verify by ID-guessing another project's endpoints).
 
-Definition of done: automated tests prove every external-facing route in the current 28 route files returns 403, not empty data, when called by a role that shouldn't see it.</div>
+Definition of done: automated tests prove every external-facing route in the current 28 route files returns 403, not empty data, when called by a role that shouldn't see it.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 4: Permission engine"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 3</span> &middot; <span class="dl-lbl">Gate</span><span class="mono">isolation tests pass for every role before Phase 5</span></div>
     </div>
 
@@ -352,7 +371,11 @@ Read <span class="k">backend/src/routes/projects.js</span> (currently a single-I
 5. Handle empty states explicitly: creating a project with no client assigned must still let the Client Portal preview (Phase 17) load later with "No client assigned," not error.
 6. Tests: create a blank project with no client/consultant; create from the Residential Tower template; create an infrastructure project using chainage-type locations; retry a deliberately-failed provisioning and confirm no duplicate rows exist.
 
-Keep the old <span class="k">POST /api/projects</span> single-insert path available behind a feature flag until the wizard is verified in staging, then remove it.</div>
+Keep the old <span class="k">POST /api/projects</span> single-insert path available behind a feature flag until the wizard is verified in staging, then remove it.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 5: Project creation wizard"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 3, 4</span></div>
     </div>
 
@@ -362,31 +385,43 @@ Keep the old <span class="k">POST /api/projects</span> single-insert path availa
       <div class="chd"><span class="pnum">06</span><h3>Universal workflow engine</h3><span class="tag dep">depends on 04</span></div>
       <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 6 &mdash; One configurable workflow engine to replace every hardcoded approval path.</b>
 
-Read <span class="k">backend/src/routes/approvals.js</span> in full first &mdash; note <span class="k">MODULE_MANAGER_ROLES</span>, <span class="k">DIRECT_TO_OWNER_MODULES</span>, and the hardcoded <span class="k">manager_review -&gt; approver</span> two-stage logic, plus the <span class="k">approval_requests</span> table shape (also referenced in <span class="k">backend/src/routes/dashboard.js</span> and <span class="k">backend/src/scripts/cleanup-orphan-approvals.js</span>).
+Read <span class="k">backend/src/routes/approvals.js</span> in full first &mdash; note <span class="k">MODULE_MANAGER_ROLES</span>, <span class="k">DIRECT_TO_OWNER_MODULES</span>, and the hardcoded <span class="k">manager_review -&gt; approver</span> two-stage logic, plus the <span class="k">approval_requests</span> table shape (also referenced in <span class="k">backend/src/routes/dashboard.js</span> and <span class="k">backend/src/scripts/cleanup-orphan-approvals.js</span>). Also note two real controls the audit found that are easy to drop by accident: the self-approval guard at <span class="k">approvals.js:97</span> (<span class="k">requester_id === userId && role !== 'owner' && role !== 'admin'</span> &rarr; 403), and <span class="k">cleanup-orphan-approvals.js</span> itself, which is an idempotent backstop for orphaned approval rows.
 
 1. Add tables: <span class="k">workflow_templates</span>, <span class="k">workflow_steps</span> (sequential or parallel, role/organization-type/amount-threshold conditions), <span class="k">workflow_instances</span>, <span class="k">workflow_step_instances</span>, <span class="k">workflow_actions</span> (the decision log: approve/reject/return/reassign, with comment and timestamp), <span class="k">escalation_rules</span>.
 2. Build <span class="k">backend/src/services/workflowEngine.js</span> exposing <span class="k">startWorkflow(templateKey, entityType, entityId, context)</span>, <span class="k">recordDecision(instanceId, stepId, userId, decision, comment)</span>, and <span class="k">getPendingFor(userId)</span>.
 3. Seed the standard workflow templates from the catalog: RFI (Draft -&gt; Submitted -&gt; Coordinator -&gt; Discipline Reviewer(s) -&gt; Official Response -&gt; Acknowledged -&gt; Closed), Submittal, Consultant Observation (Raised -&gt; Acknowledged -&gt; Assigned -&gt; Rectification -&gt; Verification Requested -&gt; Accepted/Rejected -&gt; Closed), WIR, MIR, NCR, Purchase Requisition, PO, Variation, Payment Certificate, Supplier/Subcontract Invoice, Handover Punch &mdash; exact state names as documented in <span class="k">construction_erp_agent_pack/24_WORKFLOW_CATALOG.md</span>.
 4. Migrate every existing row in <span class="k">approval_requests</span> into a <span class="k">workflow_instances</span> row using a generic "Legacy Module Approval" template that reproduces the current <span class="k">manager_review -&gt; approver</span> two-stage behavior exactly, driven by the existing <span class="k">MODULE_MANAGER_ROLES</span> map.
 5. Re-point <span class="k">backend/src/routes/approvals.js</span>'s approve/reject endpoints to call <span class="k">workflowEngine.recordDecision</span> instead of the hardcoded stage logic, keeping the external API response shape identical so <span class="k">frontend/src/pages/Approvals.js</span> and the approval-detail modal (added 2026-09-06) don't need to change yet.
-6. Only once every module route calls the engine and a parity test shows identical approve/reject behavior for every existing pending request, retire <span class="k">MODULE_MANAGER_ROLES</span>, <span class="k">DIRECT_TO_OWNER_MODULES</span>, and the <span class="k">approval_requests</span> table (drop last, in a later cleanup phase, not here).
+6. Port the self-approval guard and the orphan-cleanup behavior onto <span class="k">workflow_instances</span> explicitly &mdash; write a test that a requester cannot approve their own <span class="k">workflow_instance</span>, and re-point (or rewrite) <span class="k">cleanup-orphan-approvals.js</span> to operate on the new table so the backstop isn't silently lost in the migration.
+7. Only once every module route calls the engine and a parity test shows identical approve/reject behavior for every existing pending request, retire <span class="k">MODULE_MANAGER_ROLES</span>, <span class="k">DIRECT_TO_OWNER_MODULES</span>, and the <span class="k">approval_requests</span> table (drop last, in a later cleanup phase, not here).
 
-Definition of done: every currently-pending row in <span class="k">approval_requests</span> has a matching <span class="k">workflow_instances</span> row with the same current step/approver, verified by a script, not by eyeballing.</div>
+Definition of done: every currently-pending row in <span class="k">approval_requests</span> has a matching <span class="k">workflow_instances</span> row with the same current step/approver, verified by a script, not by eyeballing.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 6: Universal workflow engine"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 4</span></div>
     </div>
 
     <div class="card" id="p7">
       <div class="chd"><span class="pnum">07</span><h3>Action, reminder &amp; notification engine</h3><span class="tag dep">depends on 06</span></div>
-      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 7 &mdash; Universal ActionItem plus reminders, escalation and notifications.</b>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 7 &mdash; Universal ActionItem plus reminders, escalation and notifications, on top of an existing event bus.</b>
+
+Do not start from zero: <span class="k">setupDb.js</span> already creates <span class="k">event_log</span> (event_type, entity_type, entity_id, user_id, user_name, user_role, payload jsonb, created_at) and <span class="k">utils/activity.js</span> exports <span class="k">fireEvent(...)</span>, which inserts into it. <span class="k">fireEvent</span> is already called (fire-and-forget, no consumer today) from <span class="k">routes/hr.js</span>, <span class="k">routes/subcontractors.js</span>, <span class="k">routes/workorders.js</span>, and imported (unused as yet) in <span class="k">routes/costing.js</span> and <span class="k">routes/approvals.js</span>. Read <span class="k">utils/activity.js</span> and all five call sites first. Note also: the audit's live-DB dump did not have <span class="k">event_log</span> at the time it was taken, only the migration script does &mdash; verify it actually exists in your working database before building the dispatcher on top of it, and run <span class="k">setupDb.js</span>'s <span class="k">event_log</span> statement if it doesn't.
 
 1. Add tables: <span class="k">action_items</span> (polymorphic: source_type, source_id, project_id, location_id nullable, title, assigned_user_id, assigned_organization_id, priority, due_date, status, reminder_policy, escalation_policy), <span class="k">notifications</span>, <span class="k">notification_preferences</span>, <span class="k">reminder_rules</span>.
-2. Build <span class="k">backend/src/services/actionService.js</span> and <span class="k">notificationService.js</span> with channel adapters for in-app (write to <span class="k">notifications</span>, polled/pushed to the frontend) and email at minimum; stub push/SMS/WhatsApp behind a provider interface so they can be wired later without changing call sites.
-3. Wire <span class="k">action_items</span> generation into the workflow engine from Phase 6: every new <span class="k">workflow_step_instance</span> assigned to a user creates a matching action item, and every decision closes it.
-4. Build the escalation scheduler (a cron-style job, consistent with however this repo currently runs scheduled jobs &mdash; check <span class="k">backend/src/</span> for an existing job runner before adding a new one) implementing the example ladder: immediate assignment -&gt; 4h unacknowledged reminds the assignee's manager -&gt; 24h escalates further -&gt; due-date-missed escalates to the top of the configured chain. Thresholds must be configurable per <span class="k">escalation_rules</span> row, not hardcoded.
-5. Add a "My Actions" screen (<span class="k">frontend/src/pages/MyActions.js</span>) reachable from the global nav for every logged-in user, showing overdue / due today / due soon / awaiting me / delegated / recently completed, with filters.
-6. Emit the events listed in the target architecture (<span class="k">observation.created</span>, <span class="k">rfi.submitted</span>, <span class="k">purchase_requisition.approved</span>, <span class="k">invoice.overdue</span>, <span class="k">action.overdue</span>, etc.) from the relevant service layer methods as they're built in later phases &mdash; add the event-emission hook points now even where the emitting phase doesn't exist yet, so later phases only need one line to fire an event.
+2. Build a dispatcher that consumes <span class="k">event_log</span> (polling the table or wrapping <span class="k">fireEvent</span> to also invoke it synchronously &mdash; pick whichever fits this repo's existing job-running pattern) and turns events into <span class="k">notifications</span>/<span class="k">action_items</span> rows.
+3. Build <span class="k">backend/src/services/actionService.js</span> and <span class="k">notificationService.js</span> with channel adapters for in-app (write to <span class="k">notifications</span>, polled/pushed to the frontend) and email at minimum; stub push/SMS/WhatsApp behind a provider interface so they can be wired later without changing call sites.
+4. Wire <span class="k">action_items</span> generation into the workflow engine from Phase 6: every new <span class="k">workflow_step_instance</span> assigned to a user creates a matching action item, and every decision closes it.
+5. Build the escalation scheduler (a cron-style job, consistent with however this repo currently runs scheduled jobs &mdash; check <span class="k">backend/src/</span> for an existing job runner before adding a new one) implementing the example ladder: immediate assignment -&gt; 4h unacknowledged reminds the assignee's manager -&gt; 24h escalates further -&gt; due-date-missed escalates to the top of the configured chain. Thresholds must be configurable per <span class="k">escalation_rules</span> row, not hardcoded.
+6. Add a "My Actions" screen (<span class="k">frontend/src/pages/MyActions.js</span>) reachable from the global nav for every logged-in user, showing overdue / due today / due soon / awaiting me / delegated / recently completed, with filters.
+7. Add <span class="k">fireEvent</span> calls (or confirm the existing ones already cover it) for the events listed in the target architecture (<span class="k">observation.created</span>, <span class="k">rfi.submitted</span>, <span class="k">purchase_requisition.approved</span>, <span class="k">invoice.overdue</span>, <span class="k">action.overdue</span>, etc.) from the relevant service layer methods as they're built in later phases &mdash; add the event-emission hook points now even where the emitting phase doesn't exist yet, so later phases only need one line to fire an event.
 
-Nothing existing is removed in this phase; it's purely additive plumbing that later phases plug into.</div>
+Nothing existing is removed in this phase; it's additive plumbing wired onto an event source that already has five production callers.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 7: Action, reminder &amp; notification engine"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 6</span></div>
     </div>
 
@@ -404,7 +439,11 @@ Read <span class="k">backend/src/routes/boq.js</span> (133 lines) fully, plus wh
 6. Add required <span class="k">location_id</span> and <span class="k">boq_location_allocation_id</span> foreign keys to <span class="k">work_completions</span> (or wherever work-order completions are recorded in <span class="k">backend/src/routes/workorders.js</span>), nullable at first; backfill every existing completion to a default "Unassigned" location per project, then enforce NOT NULL only after backfill is verified.
 7. Drop <span class="k">buildings.floors</span> and <span class="k">buildings.units_per_floor</span> only after every reader has moved to counting real <span class="k">project_locations</span> child rows.
 8. Build a floor/location dashboard view showing planned/executed/approved/remaining quantities, active activities, material readiness, drawings/RFIs/WIR/MIR/NCR, consultant observations, labour/equipment, photos, and cost/budget where the viewer's permission flags allow it.
-9. Acceptance test: a query at floor, building and project level must reconcile to the exact same underlying <span class="k">quantity_measurements</span> rows &mdash; no separate summary path that can drift.</div>
+9. Acceptance test: a query at floor, building and project level must reconcile to the exact same underlying <span class="k">quantity_measurements</span> rows &mdash; no separate summary path that can drift.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 8: Location + quantity engine"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 3</span> &middot; <span class="dl-lbl">Gate</span><span class="mono">reconciliation test across floor/building/project before NOT NULL enforcement</span></div>
     </div>
   </section>
@@ -421,7 +460,11 @@ Read <span class="k">backend/src/routes/boq.js</span> (133 lines) fully, plus wh
 2. Add <span class="k">material_recipes</span> and <span class="k">recipe_lines</span> (material_id, factor_per_unit, wastage_pct, unit) linked to a BOQ item / activity type. Seed the standard example: per 1 m3 reinforced concrete &mdash; 1.00 m3 C35 concrete, 125 kg rebar, 1.5 kg binding wire, 3.8 m2 formwork, 10 spacers. All factors editable per project.
 3. Add <span class="k">material_requirements</span> (project, location, boq_item/work_package, material, gross_requirement, net_requirement, source_activity_date) computed by <span class="k">backend/src/services/materialDemand.js</span> using: <span class="k">Gross = Planned Activity Quantity * Recipe Factor</span>; <span class="k">Net = Gross * (1 + Wastage%) - Already Consumed</span>.
 4. Trigger recalculation whenever a Phase 22 schedule activity date changes or a Phase 8 location allocation's planned quantity changes (event-driven via the Phase 7 event bus, or a direct call if the schedule engine isn't built yet).
-5. Test: allocating a concrete pour to a floor with a linked recipe produces the correct material_requirements rows using the example factors above, including wastage.</div>
+5. Test: allocating a concrete pour to a floor with a linked recipe produces the correct material_requirements rows using the example factors above, including wastage.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 9: Material planning"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 8</span></div>
     </div>
 
@@ -438,19 +481,29 @@ Read <span class="k">backend/src/routes/warehouses.js</span> (143 lines) fully, 
 5. Gate incoming material behind an inspection status: a delivery only becomes usable stock after an accepted MIR (built in Phase 12) &mdash; add a <span class="k">quarantine</span> movement type for received-but-uninspected material.
 6. Remove <span class="k">POST /warehouses/:id/stock</span> as a direct-mutation endpoint once every caller (check <span class="k">frontend/src/pages/</span> for warehouse-related UI) is confirmed to be posting through the movement API instead.
 7. Never allow an UPDATE or DELETE on a historical <span class="k">stock_movements</span> row from the API layer &mdash; corrections are new reversal/adjustment movements referencing the original.
-8. Test: a GRN + issue + return sequence reconciles Physical Stock exactly; a rejected MIR never increases Available Stock; a return reverses the originally issued quantity correctly.</div>
+8. Test: a GRN + issue + return sequence reconciles Physical Stock exactly; a rejected MIR never increases Available Stock; a return reverses the originally issued quantity correctly.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 10: Inventory"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 9</span></div>
     </div>
 
     <div class="card" id="p11">
       <div class="chd"><span class="pnum">11</span><h3>Auto-replenishment</h3><span class="tag dep">depends on 10</span></div>
-      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 11 &mdash; Reorder points, projected inventory, gated auto-purchasing.</b>
+      <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 11 &mdash; Reorder points, projected inventory, gated auto-purchasing &mdash; on top of an existing alert, not a blank slate.</b>
+
+<span class="k">warehouse_stock.reorder_level</span> already exists (<span class="k">migrate-2.2.js</span>) and already drives a low-stock dashboard alert (<span class="k">dashboard.js</span> joins <span class="k">warehouse_stock JOIN warehouses JOIN item_master</span> and flags <span class="k">quantity &lt;= reorder_level AND reorder_level &gt; 0</span>). Do not add a second, parallel reorder-level column &mdash; this phase adds the forecast math and the purchasing action behind the existing one.
 
 1. Extend <span class="k">business_rules</span> (already present in <span class="k">setupDb.js</span>) into a replenishment/auto-purchase policy store: per material or category, which of the four modes applies (alert only / auto-draft PR / auto-draft PO under a framework agreement / auto-issue PO below a configured financial-authority ceiling), and who the authority-ceiling approver is.
 2. Implement in <span class="k">backend/src/services/replenishment.js</span>: <span class="k">Lead-Time Demand = forecast daily usage * supplier lead-time days</span>; <span class="k">Reorder Point = Lead-Time Demand + Safety Stock</span>; <span class="k">Projected Available(date) = Available + Confirmed Incoming(date) - Scheduled Demand(date)</span>; <span class="k">Shortage = max(Net Requirement - Available - Confirmed Incoming, 0)</span>. Suggested order quantity must respect target max stock, open confirmed POs, future scheduled demand, MOQ/order multiple and shelf life/storage capacity.
 3. Add a scheduled job (idempotent &mdash; running it twice in a row on the same data must not create duplicate PRs) that evaluates every material against its reorder point and, per its configured mode, creates an alert, a draft PR (Phase 12), a draft PO under a framework price, or an issued PO only if strictly below the configured authority ceiling and only for pre-approved materials/suppliers. Default mode for anything unconfigured is alert-only &mdash; never silently escalate to auto-issue.
 4. Add alerts: projected shortage, below minimum, expiring material, excess/slow-moving, rejected delivery, delayed PO, abnormal wastage &mdash; routed through the Phase 7 notification engine.
-5. Test: a future floor activity with insufficient current+incoming stock creates exactly one draft PR when the job runs twice in a row (no duplicates); a material configured for auto-issue-PO but priced above the authority ceiling produces a draft PO awaiting approval, not an issued one.</div>
+5. Test: a future floor activity with insufficient current+incoming stock creates exactly one draft PR when the job runs twice in a row (no duplicates); a material configured for auto-issue-PO but priced above the authority ceiling produces a draft PO awaiting approval, not an issued one.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 11: Auto-replenishment"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 10</span></div>
     </div>
 
@@ -468,7 +521,11 @@ Current spend is captured only as <span class="k">expenses</span> + <span class=
 6. Build the three-way match: supplier invoice line reconciles PO ordered/price, GRN accepted quantity, and invoice quantity/price; flag exceptions (price variance, quantity variance, missing GRN, duplicate invoice, tax mismatch) instead of silently accepting.
 7. Generate the documents listed in the template catalog (PR, RFQ, quotation cover, technical evaluation, commercial comparison, award recommendation, PO, delivery receipt, MIR, GRN, supplier return note) as branded, numbered PDFs.
 8. Once this lands, add an optional <span class="k">po_id</span> foreign key to <span class="k">expenses</span> and update supplier records (in <span class="k">backend/src/routes/suppliers.js</span>) to resolve through <span class="k">organizations</span> from Phase 3.
-9. Gate: a full procurement scenario (PR -&gt; RFQ -&gt; 3 quotes -&gt; award -&gt; PO -&gt; partial delivery -&gt; MIR accept -&gt; GRN -&gt; stock increase -&gt; issue to a work package) completes with zero manual database edits.</div>
+9. Gate: a full procurement scenario (PR -&gt; RFQ -&gt; 3 quotes -&gt; award -&gt; PO -&gt; partial delivery -&gt; MIR accept -&gt; GRN -&gt; stock increase -&gt; issue to a work package) completes with zero manual database edits.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 12: Procurement"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 10, 6</span></div>
     </div>
   </section>
@@ -481,15 +538,20 @@ Current spend is captured only as <span class="k">expenses</span> + <span class=
       <div class="chd"><span class="pnum">13</span><h3>Commercial / contracts</h3><span class="tag dep">depends on 08, 12, 06</span></div>
       <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 13 &mdash; Client contracts, variations, commitments, both-sided certificates.</b>
 
-Read <span class="k">backend/src/routes/costing.js</span> (70 lines, currently <span class="k">profit = contract_value - total_cost</span>), <span class="k">subcontractors.js</span> (223 lines &mdash; <span class="k">sub_contracts</span>, <span class="k">sub_payment_certificates</span>), and <span class="k">project_budgets</span>/<span class="k">cost_codes</span> in <span class="k">setupDb.js</span> before changing anything.
+Read <span class="k">backend/src/routes/costing.js</span> (70 lines), <span class="k">finance.js</span> (68 lines), <span class="k">dashboard.js</span>, <span class="k">subcontractors.js</span> (223 lines &mdash; <span class="k">sub_contracts</span>, <span class="k">sub_payment_certificates</span>), and <span class="k">project_budgets</span>/<span class="k">cost_codes</span> in <span class="k">setupDb.js</span> before changing anything. <b>There are three disagreeing profit/margin formulas in the running code today, not one</b> &mdash; the audit found: <span class="k">costing.js GET /project/:projectId/profitability</span> computes <span class="k">contract_value - retention - total_cost - retention</span> (retention pulled from <span class="k">business_rules.retention_percent</span>, default 10%); <span class="k">finance.js GET /project/:id</span> computes <span class="k">paid - expenses</span> (a cash figure, not profit, despite the name); <span class="k">dashboard.js</span> separately reports <span class="k">budget_burn_percent = total_spent / budget * 100</span>. Step 1 of this phase is picking one canonical model &mdash; do not port "the" existing formula forward as if there is only one.
 
-1. Add tables: <span class="k">client_contracts</span>, <span class="k">contract_lines</span> (SOV), <span class="k">variations</span> + <span class="k">variation_lines</span> + <span class="k">variation_cost_buildup</span>, <span class="k">commitments</span>, <span class="k">retention_ledger</span>, <span class="k">advance_ledger</span>.
-2. Widen <span class="k">sub_contracts</span> with a line model and a revised-amount calculation: <span class="k">Revised Subcontract = Original Subcontract + Approved Changes</span>. Generalize <span class="k">sub_payment_certificates</span> into a shared <span class="k">payment_certificates</span> table usable for both client and subcontractor certificates (add a <span class="k">direction</span> or <span class="k">party_type</span> column) &mdash; keep the old table name working as a filtered view during transition.
-3. Widen <span class="k">project_budgets</span> with original vs. current values plus a <span class="k">budget_changes</span> log.
-4. Implement in <span class="k">backend/src/services/commercialEngine.js</span>, replacing the <span class="k">profit = contract_value - total_cost</span> line in <span class="k">costing.js</span>: <span class="k">Revised Contract Value = Original + Approved Client Variations</span>; <span class="k">Current Budget = Original Budget + Approved Budget Changes</span>; <span class="k">Committed Cost = approved commitments (POs, subcontracts) net of cancellations</span>; <span class="k">Actual Cost</span>; <span class="k">Accrued Cost</span>; <span class="k">ETC</span>; <span class="k">EAC = Actual + Accrued + ETC</span>; <span class="k">Forecast Profit = Forecast Revenue - EAC</span>; <span class="k">Forecast Margin % = Forecast Profit / Forecast Revenue * 100</span>. Snapshot every historical figure computed the old way before switching, so past reports remain explainable.
-5. Route the variation lifecycle through the Phase 6 engine exactly: Change Event -&gt; Estimate -&gt; Internal Commercial Review -&gt; Authority Approval -&gt; Consultant Recommendation -&gt; Client Approval/Reject -&gt; Incorporated. A variation approval must, in one transaction, update the contract's revised value and the project's forecast.
-6. Keep the existing <span class="k">units</span>/<span class="k">buildings</span> property-sales contracts (in <span class="k">backend/src/routes/units.js</span>) as a separate, optional path &mdash; do not merge unit-sale contracts into <span class="k">client_contracts</span>. Just make sure <span class="k">buildings</span>' absorption into <span class="k">project_locations</span> (done in Phase 8) hasn't broken anything <span class="k">units.js</span> depends on; add a regression test for unit sales specifically.
-7. Test: forecast margin recomputed after an approved variation matches a hand-calculated expected value for at least 3 scenarios (no variation, one client variation, one client variation + one subcontract change).</div>
+1. Pick and document the canonical profit/margin model this phase implements (recommended: the EAC/forecast-margin model below, since it's the only one of the three that isn't a cash-flow proxy), and record in the commit message or a short design note which of the three existing formulas each downstream caller (<span class="k">costing.js</span>, <span class="k">finance.js</span>, <span class="k">dashboard.js</span>) is being replaced with it.
+2. Add tables: <span class="k">client_contracts</span>, <span class="k">contract_lines</span> (SOV), <span class="k">variations</span> + <span class="k">variation_lines</span> + <span class="k">variation_cost_buildup</span>, <span class="k">commitments</span>, <span class="k">retention_ledger</span>, <span class="k">advance_ledger</span>.
+3. Widen <span class="k">sub_contracts</span> with a line model and a revised-amount calculation: <span class="k">Revised Subcontract = Original Subcontract + Approved Changes</span>. Generalize <span class="k">sub_payment_certificates</span> into a shared <span class="k">payment_certificates</span> table usable for both client and subcontractor certificates (add a <span class="k">direction</span> or <span class="k">party_type</span> column) &mdash; keep the old table name working as a filtered view during transition.
+4. Widen <span class="k">project_budgets</span> with original vs. current values plus a <span class="k">budget_changes</span> log.
+5. Implement in <span class="k">backend/src/services/commercialEngine.js</span>, replacing all three existing formulas with one: <span class="k">Revised Contract Value = Original + Approved Client Variations</span>; <span class="k">Current Budget = Original Budget + Approved Budget Changes</span>; <span class="k">Committed Cost = approved commitments (POs, subcontracts) net of cancellations</span>; <span class="k">Actual Cost</span>; <span class="k">Accrued Cost</span>; <span class="k">ETC</span>; <span class="k">EAC = Actual + Accrued + ETC</span>; <span class="k">Forecast Profit = Forecast Revenue - EAC</span>; <span class="k">Forecast Margin % = Forecast Profit / Forecast Revenue * 100</span>. Snapshot every historical figure computed under any of the three old formulas before switching, so past reports remain explainable and you can show why a number changed.
+6. Route the variation lifecycle through the Phase 6 engine exactly: Change Event -&gt; Estimate -&gt; Internal Commercial Review -&gt; Authority Approval -&gt; Consultant Recommendation -&gt; Client Approval/Reject -&gt; Incorporated. A variation approval must, in one transaction, update the contract's revised value and the project's forecast.
+7. Keep the existing <span class="k">units</span>/<span class="k">buildings</span> property-sales contracts (in <span class="k">backend/src/routes/units.js</span>) as a separate, optional path &mdash; do not merge unit-sale contracts into <span class="k">client_contracts</span>. <span class="k">units.js</span>'s <span class="k">createUnitSaleInvoice</span> helper already auto-creates a project invoice when a unit moves available&rarr;reserved/contracted &mdash; Phase 14 (Finance) should reuse this helper for AR, not reimplement it. Just make sure <span class="k">buildings</span>' absorption into <span class="k">project_locations</span> (done in Phase 8) hasn't broken anything <span class="k">units.js</span> depends on; add a regression test for unit sales specifically.
+8. Test: forecast margin recomputed after an approved variation matches a hand-calculated expected value for at least 3 scenarios (no variation, one client variation, one client variation + one subcontract change); and a test that <span class="k">costing.js</span>, <span class="k">finance.js</span> and <span class="k">dashboard.js</span> all now report figures derived from the same canonical calculation, not three independent ones.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 13: Commercial / contracts"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 8, 12, 6</span></div>
     </div>
 
@@ -506,7 +568,11 @@ Read <span class="k">backend/src/routes/finance.js</span> (68 lines), <span clas
 5. Add a VAT/tax module and a cash-flow view combining AR aging, AP aging, collections, payments due, and retention receivable/payable.
 6. Build the company finance dashboard: AR aging, AP aging, cash collected, payments due, project cash flow, retention receivable/payable, overdue client invoices, supplier/subcontract liabilities, project forecast margin (from Phase 13).
 7. Ensure every financial transaction carries company, project, cost code, department, tax, and approver fields, and writes an <span class="k">audit_events</span> row (Phase 4) on create and on every status change.
-8. Test: a set of invoice/payment/allocation scenarios reconciles exactly &mdash; no invoice allocation total ever exceeds the invoice amount, no payment allocation total ever exceeds the payment amount, retention released matches retention held.</div>
+8. Test: a set of invoice/payment/allocation scenarios reconciles exactly &mdash; no invoice allocation total ever exceeds the invoice amount, no payment allocation total ever exceeds the payment amount, retention released matches retention held.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 14: Finance &amp; invoicing"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 13</span> &middot; <span class="dl-lbl">Gate</span><span class="mono">invoice/payment scenarios reconcile exactly</span></div>
     </div>
   </section>
@@ -519,14 +585,19 @@ Read <span class="k">backend/src/routes/finance.js</span> (68 lines), <span clas
       <div class="chd"><span class="pnum">15</span><h3>Site operations</h3><span class="tag dep">depends on 07, 08</span></div>
       <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 15 &mdash; Site-engineer daily workspace and a daily report that assembles itself.</b>
 
-Read <span class="k">backend/src/routes/site.js</span> (283 lines &mdash; <span class="k">site_visits</span>, <span class="k">site_daily_reports</span>) in full first.
+Read <span class="k">backend/src/routes/site.js</span> (283 lines &mdash; <span class="k">site_visits</span>, <span class="k">site_daily_reports</span>, <b>and</b> <span class="k">engineer_instructions</span>) in full first. <span class="k">engineer_instructions</span> (added <span class="k">migrate-7.js</span>) is a real, already-shipped workflow with its own state machine &mdash; <span class="k">issued -&gt; acknowledged -&gt; implemented -&gt; closed</span> via <span class="k">POST /:projectId/instructions/:id/:action(acknowledge|implement|close)</span> at <span class="k">site.js:131&ndash;181</span>. Treat it as part of this phase's spine, not a missing module to invent from scratch.
 
-1. Build a site-engineer home screen (new <span class="k">frontend/src/pages/SiteWorkspace.js</span>, or extend the existing <span class="k">SiteManagement.js</span> if that's the natural home &mdash; check which one currently owns site_visits/daily_reports UI) showing: today's activities, inspections due, material readiness (from Phase 9/10), manpower, equipment, deliveries (from Phase 12), safety actions, and a quick photo-capture action.
-2. Auto-populate the daily report instead of free text: pull the day's schedule/work-order activities, manpower/time records, equipment usage, GRNs, executed quantities (Phase 8 measurements), inspections, observations, and photos into <span class="k">site_daily_reports</span> automatically; the engineer only types narrative, issues, blockers, and next-day plan.
+1. Build a site-engineer home screen (new <span class="k">frontend/src/pages/SiteWorkspace.js</span>, or extend the existing <span class="k">SiteManagement.js</span> if that's the natural home &mdash; check which one currently owns site_visits/daily_reports UI) showing: today's activities, inspections due, material readiness (from Phase 9/10), manpower, equipment, deliveries (from Phase 12), safety actions, open <span class="k">engineer_instructions</span>, and a quick photo-capture action.
+2. Auto-populate the daily report instead of free text: pull the day's schedule/work-order activities, manpower/time records, equipment usage, GRNs, executed quantities (Phase 8 measurements), inspections, observations, <span class="k">engineer_instructions</span> activity, and photos into <span class="k">site_daily_reports</span> automatically; the engineer only types narrative, issues, blockers, and next-day plan.
 3. Widen <span class="k">site_visits</span> with visitor organization/user/role, visit type, attendees, purpose, inspected activities, and referenced drawings/documents.
-4. Add a shared photo-metadata model (project, location, linked record, uploader, organization, captured/uploaded time, optional GPS, caption, annotation layer) used by daily reports, site visits, and observations (Phase 16) alike &mdash; build it once, reuse everywhere.
-5. Add sticky notes (personal / project-shared / location-linked / record-linked), each optionally with a reminder and a "convert to action" button feeding Phase 7's action_items. Sticky notes must never substitute for formal contractual correspondence &mdash; keep them visually distinct from anything that generates a document.
-6. Test: a daily report generated on a day with zero recorded activity still renders (empty state, not an error), and a daily report on a busy day correctly pulls in every source record without double-counting.</div>
+4. Wire <span class="k">engineer_instructions</span>' three actions (acknowledge/implement/close) into Phase 7's <span class="k">action_items</span>/<span class="k">fireEvent</span> pipeline, so an issued instruction shows up in the assignee's "My Actions" queue instead of only being visible inside <span class="k">site.js</span>'s own endpoints.
+5. Add a shared photo-metadata model (project, location, linked record, uploader, organization, captured/uploaded time, optional GPS, caption, annotation layer) used by daily reports, site visits, and observations (Phase 16) alike &mdash; build it once, reuse everywhere.
+6. Add sticky notes (personal / project-shared / location-linked / record-linked), each optionally with a reminder and a "convert to action" button feeding Phase 7's action_items. Sticky notes must never substitute for formal contractual correspondence &mdash; keep them visually distinct from anything that generates a document.
+7. Test: a daily report generated on a day with zero recorded activity still renders (empty state, not an error); a daily report on a busy day correctly pulls in every source record (including engineer_instructions activity) without double-counting.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 15: Site operations"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 7, 8</span></div>
     </div>
 
@@ -540,7 +611,11 @@ Read <span class="k">backend/src/routes/site.js</span> (283 lines &mdash; <span 
 4. Build the consultant dashboard: overall progress, milestones, planned vs actual, today's inspections, new work ready for inspection, WIR/MIR pending, RFIs awaiting response, submittals awaiting review, observations awaiting verification, NCR closeouts awaiting review, latest drawings, recent daily progress/photos, sticky/personal notes, upcoming visits &mdash; every widget must render on a project with zero of that record type.
 5. Build the "My Reviews" inbox: one page, sorted by due date/priority, filterable by project/discipline/type/location.
 6. Every official consultant response records user, organization, date/time, revision, comments and attachments &mdash; this is the audit trail a construction dispute would need later.
-7. Test empty states explicitly: "No inspections scheduled today," "No RFIs require your response," "Consultant not assigned to this discipline" &mdash; never blank or crash.</div>
+7. Test empty states explicitly: "No inspections scheduled today," "No RFIs require your response," "Consultant not assigned to this discipline" &mdash; never blank or crash.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 16: Consultant portal"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 4, 15</span></div>
     </div>
 
@@ -554,7 +629,11 @@ Read <span class="k">backend/src/routes/site.js</span> (283 lines &mdash; <span 
 4. If a client organization has multiple projects, the first page after login is a portfolio view with per-project health and key metrics.
 5. Zero-client requirement: the internal preview route for this portal must work even before a client organization or portal user is assigned &mdash; show setup actions ("Assign a client to preview this portal"), never an error.
 6. Add a "Preview as Client" mode for authorized internal admins/PMs &mdash; read-only, fully audited (Phase 4's <span class="k">audit_events</span>), no fake account created.
-7. Test explicitly: project with a client and full data; project with a client and zero records; project with no client assigned at all; mobile viewport.</div>
+7. Test explicitly: project with a client and full data; project with a client and zero records; project with no client assigned at all; mobile viewport.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 17: Client portal"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 4, 13, 14</span> &middot; <span class="dl-lbl">Gate</span><span class="mono">works with client, no client, no records, and full project</span></div>
     </div>
 
@@ -575,7 +654,11 @@ Read <span class="k">backend/src/routes/subcontractors.js</span> (223 lines) and
 6. Actions: submit quotation, send clarification, acknowledge PO, propose delivery date, upload delivery/certificates, submit invoice.
 7. Isolation: a supplier must never see a competing vendor's pricing &mdash; verify with a test against the Phase 12 quote-comparison data.
 8. Both portals resolve their organization through <span class="k">organizations</span> (Phase 3), so the same login table gates procurement-side and portal-side views consistently.
-9. Test each portal against: no assigned project, project with zero records, one project, multiple projects, expired assignment, forbidden financial field, mobile viewport.</div>
+9. Test each portal against: no assigned project, project with zero records, one project, multiple projects, expired assignment, forbidden financial field, mobile viewport.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 18: Subcontractor &amp; supplier portals"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 4, 12, 13</span></div>
     </div>
   </section>
@@ -595,7 +678,11 @@ Read <span class="k">backend/src/routes/qhse.js</span> (327 lines &mdash; <span 
 3. Route WIR through the Phase 6 engine with the configurable Site -&gt; QA/QC -&gt; PM -&gt; Consultant chain and results: approved / approved with comments / rejected / reinspect. Route MIR similarly, with its Accepted quantity controlling usable stock via Phase 10's quarantine gate.
 4. Link <span class="k">quality_tests</span> to an ITP where applicable.
 5. Generate the QA/QC document set: ITP, WIR, inspection checklist, MIR, NCR, corrective action, test report, punch list &mdash; branded PDFs per the template catalog.
-6. Nothing in the existing severity/state progression on <span class="k">ncrs</span> is removed &mdash; only widened.</div>
+6. Nothing in the existing severity/state progression on <span class="k">ncrs</span> is removed &mdash; only widened.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 19: QA/QC"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 6, 8</span></div>
     </div>
 
@@ -609,7 +696,11 @@ Read <span class="k">safety_incidents</span> and <span class="k">safety_inspecti
 2. Convert <span class="k">safety_incidents</span> into a typed <span class="k">incidents</span> table and <span class="k">safety_inspections</span> into typed inspections/permits, keeping the old table names as compatibility views until every reader has moved.
 3. Build the HSE dashboard: man-hours, days without LTI, open observations, overdue corrective actions, near misses, incidents, permits expiring/today.
 4. Route permit approvals through the Phase 6 engine where a permit type requires sign-off before work can start (hot work, confined space, lifting).
-5. Generate documents: safety inspection, JSA/risk assessment, permit to work, toolbox talk, incident report, near-miss report.</div>
+5. Generate documents: safety inspection, JSA/risk assessment, permit to work, toolbox talk, incident report, near-miss report.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 20: HSE"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 6, 7</span></div>
     </div>
 
@@ -624,7 +715,11 @@ Read <span class="k">backend/src/routes/doccontrol.js</span> (328 lines &mdash; 
 3. Enforce: exactly one current revision per controlled document; previous revisions immutable and superseded, with a prominent visual warning on superseded files in the UI; a new revision may reset review/approval according to the governing workflow (Phase 6).
 4. Add auto-numbering in the format <span class="k">PROJECT-DISCIPLINE-TYPE-SEQ-REV</span>, configurable per project.
 5. This phase also finishes what Phase 16 started for RFI/submittal &mdash; if any multi-stage/A-B-C-D-response work remains, complete it here rather than duplicating logic.
-6. Add cross-record search across current and historical revisions, transmittals, RFIs and correspondence, permission-filtered.</div>
+6. Add cross-record search across current and historical revisions, transmittals, RFIs and correspondence, permission-filtered.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 21: Document control, RFI &amp; submittals"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 16</span></div>
     </div>
 
@@ -640,7 +735,11 @@ Read how <span class="k">project_phases</span>/<span class="k">project_milestone
 4. Build views: Gantt, milestones, 2/4/6-week lookahead, delayed activities, critical activities, location-based schedule, subcontractor schedule.
 5. Implement <span class="k">Schedule Variance % = Actual Progress % - Planned Progress %</span>, and SPI/CPI only where earned-value management is explicitly enabled for the project (don't force EV bookkeeping on every project).
 6. Provide import/export for common scheduling tools (Primavera/MS Project) where feasible &mdash; do not attempt to build a full enterprise CPM engine in this iteration; a working critical-path calc over the activity/dependency graph is enough.
-7. Add alerts: activity starting soon but material not ready (cross-check Phase 9/11), inspection/submittal blocking an activity, critical activity delayed, milestone forecast late.</div>
+7. Add alerts: activity starting soon but material not ready (cross-check Phase 9/11), inspection/submittal blocking an activity, critical activity delayed, milestone forecast late.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 22: Planning / scheduling"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 8</span></div>
     </div>
 
@@ -648,13 +747,17 @@ Read how <span class="k">project_phases</span>/<span class="k">project_milestone
       <div class="chd"><span class="pnum">23</span><h3>Dashboards</h3><span class="tag dep">depends on 04, 07</span></div>
       <div class="promptbox"><span class="copy" data-copy>Copy</span><b>Phase 23 &mdash; 16 role dashboards replacing 5 generic endpoints.</b>
 
-Read <span class="k">backend/src/routes/dashboard.js</span> (271 lines) fully first &mdash; understand exactly which 5 endpoints exist today and what each returns.
+Read <span class="k">backend/src/routes/dashboard.js</span> (271 lines) fully first &mdash; understand exactly which endpoints exist today. There are more than 5 by now: alongside the original generic set, <span class="k">GET /overview</span> (added 2026-09-06) already gives the owner role a per-module summary-strip + health row. Extend it for the CEO/Owner role in this phase; do not build a parallel owner dashboard from scratch and leave <span class="k">/overview</span> orphaned.
 
-1. Rebuild it as a per-role widget system, not one bigger endpoint: CEO/Owner, Projects Director, Construction Manager, Project Manager, Site Engineer, Planning, QS/Commercial, Procurement, Storekeeper, QA/QC, HSE, Document Controller, Finance, Client, Consultant, Subcontractor &mdash; using the exact widget minimums documented in <span class="k">construction_erp_agent_pack/18_DASHBOARDS_ACTIONS_NOTIFICATIONS.md</span> for each role.
+1. Rebuild it as a per-role widget system, not one bigger endpoint: CEO/Owner (extending <span class="k">/overview</span>), Projects Director, Construction Manager, Project Manager, Site Engineer, Planning, QS/Commercial, Procurement, Storekeeper, QA/QC, HSE, Document Controller, Finance, Client, Consultant, Subcontractor &mdash; using the exact widget minimums documented in <span class="k">construction_erp_agent_pack/18_DASHBOARDS_ACTIONS_NOTIFICATIONS.md</span> for each role.
 2. Add the floor/location dashboard built in Phase 8 as an embeddable widget usable from both the internal app and (permission-filtered) the consultant/client portals.
 3. Add sticky notes (Phase 15) as a dashboard component: personal / project / location / record.
 4. Every dashboard must be permission-filtered server-side, not client-side hidden, and must render correctly with zero underlying records for a brand-new project.
-5. Keep old dashboard.js response shapes available under a legacy flag until the frontend has fully migrated, then remove the generic payload.</div>
+5. Keep old dashboard.js response shapes available under a legacy flag until the frontend has fully migrated, then remove the generic payload.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 23: Dashboards"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 4, 7</span></div>
     </div>
 
@@ -666,7 +769,11 @@ Read <span class="k">backend/src/routes/dashboard.js</span> (271 lines) fully fi
 2. Build saved views (per user, per module), scheduled report jobs with email distribution, and drilldown from a report row back to the source record.
 3. Build the automatic project report (weekly/monthly, ~20 sections): Executive Summary, Progress, Schedule, Milestones, Manpower, Equipment, Quantities, Procurement, Materials, Quality, Safety, RFIs, Submittals, Consultant Observations, Variations, Financial Status, Photos, Key Risks, Actions &mdash; each section pulling live from the relevant phase's data, not hand assembled.
 4. Build commercial / procurement / management report packs as pre-configured saved views + exports.
-5. Every report respects the viewer's permission flags (Phase 4) &mdash; a client-facing export must never include internal cost columns even if the underlying query technically has access.</div>
+5. Every report respects the viewer's permission flags (Phase 4) &mdash; a client-facing export must never include internal cost columns even if the underlying query technically has access.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 24: Reporting engine"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 23</span></div>
     </div>
 
@@ -682,7 +789,11 @@ There is no existing handover path in this codebase to migrate away from &mdash;
 4. Build the warranty/DLP claim flow: client or authorized user raises a claim against an asset/location, it routes to PM/subcontractor, tracks SLA, and closes on accepted rectification evidence.
 5. Surface handover readiness (percentage of package items complete) on the client portal dashboard (Phase 17) and the project manager dashboard (Phase 23).
 6. Generate documents: handover checklist, testing/commissioning sheet, asset register, as-built register, O&amp;M register, warranty register, handover certificate.
-7. Test: a project with zero punch items still renders the handover screen with a correct 0%-complete state, not an error.</div>
+7. Test: a project with zero punch items still renders the handover screen with a correct 0%-complete state, not an error.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 25: Handover, closeout &amp; warranty"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 19, 6</span></div>
     </div>
   </section>
@@ -701,7 +812,11 @@ There is no existing handover path in this codebase to migrate away from &mdash;
 4. Add rate limiting and API audit logs (reusing Phase 4's <span class="k">audit_events</span> where the shape fits).
 5. Add webhooks for the event list from Phase 2's architecture doc (project.created, rfi.*, submittal.*, observation.*, inventory.low, purchase_order.issued, delivery.received, mir.*, invoice.*, payment.received, variation.approved, action.overdue) with delivery retry and a dead-letter path.
 6. Publish an OpenAPI spec generated from source (not hand-maintained separately) and stand up a sandbox/test environment.
-7. Test: every v1 endpoint enforces the exact same permission result as the equivalent UI/internal-API call for the same user; no endpoint allows cross-project data leakage by ID-guessing.</div>
+7. Test: every v1 endpoint enforces the exact same permission result as the equivalent UI/internal-API call for the same user; no endpoint allows cross-project data leakage by ID-guessing.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 26: External API"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">every phase whose service layer it exposes</span></div>
     </div>
 
@@ -717,7 +832,11 @@ There is no existing handover path in this codebase to migrate away from &mdash;
 6. For every high-risk action, store a confirmation record: proposed action, generated payload, reason/context, requesting agent/session, requesting user, required approver, approval decision, final executed transaction ID.
 7. Build an admin "Agent Activity" screen logging every tool call, authorization decision, record changed, and resulting event.
 8. Scope tokens narrowly &mdash; never give MCP unrestricted database credentials; enforce a tool allowlist by role and redact forbidden fields before any model-facing response.
-9. Test: an MCP call from a consultant-scoped session returns the exact same authorization result as the equivalent UI action for that same user.</div>
+9. Test: an MCP call from a consultant-scoped session returns the exact same authorization result as the equivalent UI action for that same user.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 27: MCP server"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 26</span></div>
     </div>
 
@@ -733,7 +852,11 @@ Build these strictly on top of the Phase 27 MCP tool set &mdash; no new business
 4. Consultant Assistant: surfaces reviews due, organizes inspections, drafts responses; official approval stays role/policy controlled via Phase 27's high-risk gate.
 5. Document Assistant: searches current revisions (Phase 21), flags superseded references, compiles transmittals and document registers.
 6. Executive Assistant: portfolio health, margin, cash, delays, key risks and decisions, read-only across everything the CEO dashboard (Phase 23) shows.
-7. Every assistant runs on the Phase 27 API/MCP security model with human-review and approval gates before any contractual or financial write &mdash; no exceptions for "the agent is confident."</div>
+7. Every assistant runs on the Phase 27 API/MCP security model with human-review and approval gates before any contractual or financial write &mdash; no exceptions for "the agent is confident."
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 28: Agent layer"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 27</span></div>
     </div>
 
@@ -744,7 +867,11 @@ Build these strictly on top of the Phase 27 MCP tool set &mdash; no new business
 1. Responsive-harden the field-facing screens first: <span class="k">frontend/src/pages/SiteManagement.js</span>, <span class="k">WorkOrders.js</span>, and the Phase 15 site workspace, plus daily report, inspection, WIR/MIR, observations, action centre, drawings, material issues, labour, and safety screens.
 2. Field UX standard: large touch targets, camera-first photo capture, minimal typing, recent-locations shortcuts.
 3. Build offline mode: cache latest approved drawings, allow creating observations and filling checklists offline, and sync with explicit conflict resolution (never silently overwrite a server-side change with a stale offline draft &mdash; surface the conflict to the user).
-4. This phase is explicitly lower priority than 1&ndash;28 in the source spec ("eventually") &mdash; do not let it block Phase 30/31, but do not skip the responsive-hardening step, since Phase 15's site workspace is unusable on-site without it.</div>
+4. This phase is explicitly lower priority than 1&ndash;28 in the source spec ("eventually") &mdash; do not let it block Phase 30/31, but do not skip the responsive-hardening step, since Phase 15's site workspace is unusable on-site without it.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 29: Mobile optimisation"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 15, 19, 20</span></div>
     </div>
 
@@ -758,7 +885,11 @@ Build these strictly on top of the Phase 27 MCP tool set &mdash; no new business
 4. Health checks for: app, database, object storage, job queue, mail provider, integrations, MCP endpoint.
 5. Backups: automated DB backups, an object/file backup policy, a documented retention schedule, restore drills actually performed (not just planned), and documented RPO/RTO.
 6. Reliability: idempotent scheduled jobs (verify every cron/job added in phases 11, 14, 24 is safe to run twice), an outbox/event pattern for financially important events, retries with dead-letter handling, and a rule that no notification or webhook fails silently.
-7. Gate: automated security tests prove external parties (consultant/client/subcontractor/supplier roles) cannot access internal data, re-running the Phase 4 isolation suite against the now-complete route set.</div>
+7. Gate: automated security tests prove external parties (consultant/client/subcontractor/supplier roles) cannot access internal data, re-running the Phase 4 isolation suite against the now-complete route set.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 30: Security, observability &amp; backups"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 4, 26, 27</span> &middot; <span class="dl-lbl">Gate</span><span class="mono">security isolation tests pass before Phase 31 sign-off</span></div>
     </div>
 
@@ -774,13 +905,17 @@ This repo's current tests are the <span class="k">*.ps1</span> scripts at the ro
 4. Mandatory reconciliation assertions: sum of location quantity allocations equals BOQ planned quantity (or shows a controlled exception); inventory subledger equals balance; GRN accepted quantity never exceeds the allowed PO/delivery tolerance; invoice allocations never exceed payment; certificate cumulative values never double-count; project budget/commitment/actual/forecast figures reconcile to source transactions.
 5. Portal acceptance matrix for Client, Consultant, Subcontractor and Supplier: no assigned project, project with zero records, one project, multiple projects, expired assignment, forbidden financial field, mobile viewport.
 6. Wire all suites into CI so they run on every change; failure policy: no release ships with a critical, financial, or security test failing.
-7. Once the new suites cover everything the old <span class="k">*.ps1</span> scripts checked, retire them.</div>
+7. Once the new suites cover everything the old <span class="k">*.ps1</span> scripts checked, retire them.
+
+<b>Finish by committing.</b> Once this phase's code, migrations and tests are in place and passing, stage and commit before starting the next phase -- do not batch multiple phases into one commit:
+<span class="k">git add -A</span>
+<span class="k">git commit -m "Phase 31: Automated testing &amp; seed project"</span></div>
       <div class="deliver"><span class="dl-lbl">Depends on</span><span class="mono">Phase 1&ndash;30</span> &middot; <span class="dl-lbl">Gate</span><span class="mono">golden E2E scenario passes with zero manual DB edits</span></div>
     </div>
   </section>
 
   <footer>
-    Generated 2026-09-16 from <span class="mono">ERP_EXPANSION_PLAN.html</span> (31 phases) cross-referenced with <span class="mono">construction_erp_agent_pack/</span> and a direct read of the current <span class="mono">backend/src/routes/</span>, <span class="mono">backend/src/scripts/setupDb.js</span>, and <span class="mono">frontend/src/pages/</span>. File/table names quoted here reflect the codebase at that date &mdash; re-run Phase 1's audit step if significant time has passed before starting execution.
+Generated 2026-09-16, corrected 2026-09-17 against Phase 1's own output (<span class="mono">docs/audit/GAP_ANALYSIS.md</span>), from <span class="mono">ERP_EXPANSION_PLAN.html</span> (31 phases) cross-referenced with <span class="mono">construction_erp_agent_pack/</span> and a direct read of <span class="mono">backend/src/routes/</span>, <span class="mono">backend/src/scripts/setupDb.js</span>, and <span class="mono">frontend/src/pages/</span>. The 2026-09-17 pass fixed: Phase 2's scope (5 modules, not 4 &mdash; <span class="mono">assets.js</span> was missing), Phase 3's framing of <span class="mono">migrate-14/15.js</span> as already-committed rather than in-flight, Phase 6/7's omission of the existing self-approval guard and <span class="mono">event_log</span>/<span class="mono">fireEvent()</span> scaffolding, Phase 11's omission of the existing <span class="mono">reorder_level</span> alert, Phase 13's single (rather than triple, disagreeing) profit-formula claim, and Phase 15/23's omission of <span class="mono">engineer_instructions</span> and the existing owner-dashboard <span class="mono">/overview</span> endpoint. File/table names quoted here reflect the codebase as of that correction &mdash; re-run Phase 1's audit step if significant time has passed before starting execution.
   </footer>
 
 </div>

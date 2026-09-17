@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, authorize, createPreviewToken } = require('../middleware/auth');
+const policy = require('../services/policy');
 const { logActivity } = require('../utils/activity');
 
 // GET /api/users - list all users (owner/admin)
@@ -11,6 +12,17 @@ router.get('/', authenticate, authorize('owner', 'admin'), async (req, res) => {
     const result = await query(
       'SELECT id, name, email, role, department, module_permissions, is_active, created_at FROM users ORDER BY created_at DESC'
     );
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/users/preview/roles — the roles an admin can preview.
+// Registered before GET /:id so "preview" is not captured as an id.
+router.get('/preview/roles', authenticate, authorize('owner', 'admin'), async (req, res) => {
+  try {
+    const result = await query('SELECT key, name FROM roles WHERE is_system = true ORDER BY key');
     res.json({ success: true, data: result.rows });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -95,6 +107,41 @@ router.delete('/:id', authenticate, authorize('owner', 'admin'), async (req, res
 
     res.json({ success: true, message: 'User deactivated' });
   } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/users/preview/:role — "preview as role" demo mode (Phase 4).
+// An authorized admin can view any screen as if logged in with a different
+// role. The issued preview token is read-only (enforced in authenticate) and
+// every preview start writes an audit_events row.
+router.post('/preview/:role', authenticate, authorize('owner', 'admin'), async (req, res) => {
+  try {
+    const { role } = req.params;
+
+    const roleRow = await query('SELECT id, name FROM roles WHERE key = $1', [role]);
+    if (roleRow.rows.length === 0) {
+      return res.status(400).json({ success: false, error: `Unknown role: ${role}` });
+    }
+
+    const token = createPreviewToken({ user: req.user, role });
+    if (!token) {
+      return res.status(500).json({ success: false, error: 'Failed to create preview token' });
+    }
+
+    await policy.recordAuditEvent({
+      entity: 'user',
+      entityId: req.user.id,
+      action: 'preview_as_role',
+      before: null,
+      after: { preview_role: role, role_name: roleRow.rows[0].name },
+      userId: req.user.id,
+      projectId: null,
+    });
+
+    res.json({ success: true, preview_role: role, token, expires_in: '30m' });
+  } catch (error) {
+    console.error('Error starting preview:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

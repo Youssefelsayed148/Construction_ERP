@@ -2,19 +2,19 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 
 const BOQ_ITEM_TYPES = ['material', 'labor', 'equipment', 'subcontract'];
 
-router.get('/sections/:projectId', authenticate, async (req, res) => {
+router.get('/sections/:projectId', authenticate, authorize(), async (req, res) => {
   try {
     const sections = await query('SELECT * FROM boq_sections WHERE project_id = $1 ORDER BY parent_id NULLS FIRST, sort_order', [req.params.projectId]);
     res.json({ success: true, data: sections.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.post('/sections', authenticate, async (req, res) => {
+router.post('/sections', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       project_id: Joi.number().integer().required(), code: Joi.string().optional(),
@@ -34,7 +34,7 @@ router.post('/sections', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.put('/sections/:id', authenticate, async (req, res) => {
+router.put('/sections/:id', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({ name_ar: Joi.string(), name_en: Joi.string().allow(''), sort_order: Joi.number(), parent_id: Joi.number().integer().optional().allow(null) }).min(1);
     const { error, value } = schema.validate(req.body);
@@ -49,14 +49,14 @@ router.put('/sections/:id', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.delete('/sections/:id', authenticate, async (req, res) => {
+router.delete('/sections/:id', authenticate, authorize(), async (req, res) => {
   const r = await query('DELETE FROM boq_sections WHERE id = $1 RETURNING id', [req.params.id]);
   if (r.rowCount === 0) return res.status(404).json({ success: false, error: 'Section not found' });
   res.json({ success: true, message: 'Deleted' });
 });
 
 // BOQ Items
-router.get('/items/:projectId', authenticate, async (req, res) => {
+router.get('/items/:projectId', authenticate, authorize(), async (req, res) => {
   try {
     const { section_id, type } = req.query;
     let conds = ['bi.project_id = $1']; let p = [req.params.projectId]; let i = 2;
@@ -73,7 +73,7 @@ router.get('/items/:projectId', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.post('/items', authenticate, async (req, res) => {
+router.post('/items', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       project_id: Joi.number().integer().required(), section_id: Joi.number().integer().required(),
@@ -97,7 +97,7 @@ router.post('/items', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.put('/items/:id', authenticate, async (req, res) => {
+router.put('/items/:id', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({ description_ar: Joi.string(), description_en: Joi.string().allow(''), unit: Joi.string(), quantity: Joi.number().min(0), unit_rate: Joi.number().min(0), item_master_id: Joi.number().integer().optional().allow(null), type: Joi.string().valid(...BOQ_ITEM_TYPES) }).min(1);
     const { error, value } = schema.validate(req.body);
@@ -112,14 +112,14 @@ router.put('/items/:id', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.delete('/items/:id', authenticate, async (req, res) => {
+router.delete('/items/:id', authenticate, authorize(), async (req, res) => {
   const r = await query('DELETE FROM boq_items WHERE id = $1 RETURNING id', [req.params.id]);
   if (r.rowCount === 0) return res.status(404).json({ success: false, error: 'Item not found' });
   res.json({ success: true, message: 'Deleted' });
 });
 
 // BOQ Summary
-router.get('/summary/:projectId', authenticate, async (req, res) => {
+router.get('/summary/:projectId', authenticate, authorize(), async (req, res) => {
   try {
     const summary = await query(
       `SELECT type, COUNT(*) as item_count, SUM(total_price) as total_value, SUM(quantity) as total_qty FROM boq_items WHERE project_id = $1 GROUP BY type`,

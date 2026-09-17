@@ -287,7 +287,10 @@ const INTERNAL_ORG_CODE = 'INTERNAL';
 
 const BACKFILL_STATEMENTS = [
   // Internal-staff sentinel organization (one per company).
-  `INSERT INTO organizations (code, name, name_ar, org_type, status)
+  // NOTE: organizations has no `name` column (only name_ar/name_en) —
+  // this used to reference it and would fail on real Postgres
+  // ("column name of relation organizations does not exist").
+  `INSERT INTO organizations (code, name_en, name_ar, org_type, status)
    VALUES ($1, $2, $3, 'internal', 'active')
    ON CONFLICT (code) DO NOTHING`,
   [
@@ -297,6 +300,10 @@ const BACKFILL_STATEMENTS = [
   ],
 
   // Backfill organizations from clients.
+  // NOTE: is_active is boolean; organizations.status is a varchar meant to
+  // hold 'active'/'inactive' (matching its own DEFAULT and the sentinel
+  // org above). A bare `is_active` selects the correct type but the wrong
+  // value ('true'/'false' text) — map it explicitly.
   `INSERT INTO organizations (
      code, name_ar, name_en, org_type, contact_person, phone, email,
      address, city, tax_id, payment_terms, credit_limit, status,
@@ -306,12 +313,12 @@ const BACKFILL_STATEMENTS = [
      code, name_ar, name_en, 'client',
      contact_person, phone, email,
      address, city, tax_id, payment_terms,
-     credit_limit, is_active,
+     credit_limit, CASE WHEN is_active THEN 'active' ELSE 'inactive' END,
      id
    FROM clients
    ON CONFLICT (code) DO NOTHING`,
 
-  // Backfill organizations from suppliers.
+  // Backfill organizations from suppliers. Same is_active -> status mapping.
   `INSERT INTO organizations (
      code, name_ar, name_en, org_type, contact_person, phone, email,
      address, city, tax_id, payment_terms, status, legacy_supplier_id
@@ -320,25 +327,28 @@ const BACKFILL_STATEMENTS = [
      code, name_ar, name_en, 'supplier',
      contact_person, phone, email,
      address, city, tax_id, payment_terms,
-     is_active,
+     CASE WHEN is_active THEN 'active' ELSE 'inactive' END,
      id
    FROM suppliers
    ON CONFLICT (code) DO NOTHING`,
 
-  // Backfill organizations from subcontractors.
+  // Backfill organizations from subcontractors. subcontractors.name is
+  // NOT NULL but organizations has no `name` column, so it's folded into
+  // name_en/name_ar (falling back to it when those are unset) instead of
+  // being selected into a non-existent target column. Same is_active fix.
   `INSERT INTO organizations (
-     code, name, name_en, name_ar, org_type, contact_person, phone, email,
+     code, name_en, name_ar, org_type, contact_person, phone, email,
      address, classification, license_no, bank_name, bank_account,
      insurance_amount, insurance_expiry, rating, status,
      legacy_subcontractor_id
    )
    SELECT
-     code, name, name_en, name_ar, 'subcontractor',
+     code, COALESCE(name_en, name), COALESCE(name_ar, name), 'subcontractor',
      contact_person, phone, email,
      address, classification, license_no,
      bank_name, bank_account,
      insurance_amount, insurance_expiry,
-     rating, is_active,
+     rating, CASE WHEN is_active THEN 'active' ELSE 'inactive' END,
      id
    FROM subcontractors
    ON CONFLICT (code) DO NOTHING`,

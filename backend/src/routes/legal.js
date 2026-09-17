@@ -2,11 +2,10 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 
-// TODO(phase-4): add scoped check — owner|admin|legal_mgr read all; project members see rows where project_id = their project.
-router.get('/', authenticate, async (req, res) => {
+router.get('/', authenticate, authorize(), async (req, res) => {
   try {
     const { status, document_type, limit = 100, offset = 0 } = req.query;
     let conditions = []; let params = []; let idx = 1;
@@ -18,8 +17,7 @@ router.get('/', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-// TODO(phase-4): add scoped check — same policy as GET /, evaluated against the row's project_id.
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const result = await query('SELECT * FROM legal_documents WHERE id = $1', [req.params.id]);
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Document not found' });
@@ -27,8 +25,7 @@ router.get('/:id', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-// TODO(phase-4): add scoped check — write access owner|admin|legal_mgr; verify project_id (when supplied) is in user_project_roles.
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       title: Joi.string().required(), document_type: Joi.string().optional(),
@@ -48,8 +45,7 @@ router.post('/', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-// TODO(phase-4): add scoped check — owner|admin|legal_mgr; row must be in a project the caller can write to.
-router.put('/:id', authenticate, async (req, res) => {
+router.put('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const existing = await query('SELECT * FROM legal_documents WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Document not found' });
@@ -75,8 +71,7 @@ router.put('/:id', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-// TODO(phase-4): add scoped check — owner|admin only; row must be in a project the caller can delete from.
-router.delete('/:id', authenticate, async (req, res) => {
+router.delete('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const result = await query('DELETE FROM legal_documents WHERE id = $1 RETURNING title', [req.params.id]);
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Document not found' });

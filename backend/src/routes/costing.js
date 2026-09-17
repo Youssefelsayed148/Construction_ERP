@@ -1,17 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { fireEvent } = require('../utils/activity');
 
-router.get('/codes', authenticate, async (req, res) => {
+router.get('/codes', authenticate, authorize(), async (req, res) => {
   try {
     const data = await query('SELECT * FROM cost_codes ORDER BY code');
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.get('/project/:projectId', authenticate, async (req, res) => {
+router.get('/project/:projectId', authenticate, authorize(), async (req, res) => {
   try {
     const costs = await query(
       `SELECT pc.*, cc.name as cost_code_name, cc.type as cost_code_type
@@ -36,7 +36,7 @@ router.get('/project/:projectId', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.get('/project/:projectId/summary', authenticate, async (req, res) => {
+router.get('/project/:projectId/summary', authenticate, authorize(), async (req, res) => {
   try {
     const data = await query(
       `SELECT cc.code, cc.name, cc.type, COALESCE(pb.budget_amount, 0) as budget, COALESCE(pb.revised_amount, 0) as revised,
@@ -49,7 +49,7 @@ router.get('/project/:projectId/summary', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.get('/project/:projectId/profitability', authenticate, async (req, res) => {
+router.get('/project/:projectId/profitability', authenticate, authorize(), async (req, res) => {
   try {
     const project = await query('SELECT contract_value, budget FROM projects WHERE id = $1', [req.params.projectId]);
     if (project.rows.length === 0) return res.status(404).json({ success: false, error: 'Project not found' });

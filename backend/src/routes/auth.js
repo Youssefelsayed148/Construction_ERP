@@ -110,7 +110,7 @@ router.post('/login', async (req, res) => {
 });
 
 // GET /api/auth/me
-router.get('/me', authenticate, async (req, res) => {
+router.get('/me', authenticate, authorize(), async (req, res) => {
   res.json({
     success: true,
     data: {
@@ -124,7 +124,7 @@ router.get('/me', authenticate, async (req, res) => {
 });
 
 // POST /api/auth/change-password
-router.post('/change-password', authenticate, async (req, res) => {
+router.post('/change-password', authenticate, authorize(), async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword || newPassword.length < 6) {

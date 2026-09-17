@@ -2,17 +2,17 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { journalExpenseCreated } = require('../utils/journal');
 
 const EXPENSE_CATEGORIES = ['materials', 'labor', 'equipment', 'fuel', 'maintenance', 'transport', 'utilities', 'rent', 'office', 'legal', 'insurance', 'other'];
 
-router.get('/categories', authenticate, (req, res) => {
+router.get('/categories', authenticate, authorize(), (req, res) => {
   res.json({ success: true, data: EXPENSE_CATEGORIES });
 });
 
-router.get('/', authenticate, async (req, res) => {
+router.get('/', authenticate, authorize(), async (req, res) => {
   try {
     const { category, status, project_id, limit = 100, offset = 0 } = req.query;
     let conditions = []; let params = []; let idx = 1;
@@ -25,7 +25,7 @@ router.get('/', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const result = await query('SELECT e.*, u.name as created_by_name FROM expenses e LEFT JOIN users u ON e.created_by = u.id WHERE e.id = $1', [req.params.id]);
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Expense not found' });
@@ -33,7 +33,7 @@ router.get('/:id', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       category: Joi.string().valid(...EXPENSE_CATEGORIES).required(),
@@ -58,7 +58,7 @@ router.post('/', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.put('/:id', authenticate, async (req, res) => {
+router.put('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const existing = await query('SELECT * FROM expenses WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Expense not found' });
@@ -84,7 +84,7 @@ router.put('/:id', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.delete('/:id', authenticate, async (req, res) => {
+router.delete('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const result = await query('DELETE FROM expenses WHERE id = $1 RETURNING id', [req.params.id]);
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Expense not found' });

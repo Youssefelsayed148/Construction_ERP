@@ -5,7 +5,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { getRecentActivities } = require('../utils/activity');
 
 // GET /api/activity - recent activity
-router.get('/', authenticate, async (req, res) => {
+router.get('/', authenticate, authorize(), async (req, res) => {
   try {
     const { limit = 50 } = req.query;
     const activities = await getRecentActivities(limit);

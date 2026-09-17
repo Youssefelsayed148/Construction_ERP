@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 
 const UPLOAD_DIR = path.join(__dirname, '../../uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -31,7 +31,7 @@ const upload = multer({
 
 // Generic file upload — returns URL(s) served from /uploads. Reused by site reports,
 // document control, QHSE attachments, etc.
-router.post('/upload', authenticate, (req, res) => {
+router.post('/upload', authenticate, authorize(), (req, res) => {
   upload.array('files', 10)(req, res, (err) => {
     if (err) return res.status(400).json({ success: false, error: err.message });
     if (!req.files || req.files.length === 0) return res.status(400).json({ success: false, error: 'No files uploaded' });

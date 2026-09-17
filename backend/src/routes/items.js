@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 
 const CATEGORIES = ['raw_material', 'finished_material', 'equipment_rental', 'consumable', 'tool', 'safety', 'other'];
@@ -17,11 +17,11 @@ const SUB_CATEGORIES = {
 };
 const VALID_UNITS = ['ton', 'm3', 'm2', 'piece', 'linear_m', 'bag', 'liter', 'set', 'lot'];
 
-router.get('/categories', authenticate, (req, res) => {
+router.get('/categories', authenticate, authorize(), (req, res) => {
   res.json({ success: true, data: { categories: CATEGORIES, sub_categories: SUB_CATEGORIES, units: VALID_UNITS } });
 });
 
-router.get('/', authenticate, async (req, res) => {
+router.get('/', authenticate, authorize(), async (req, res) => {
   try {
     const { category, sub_category, search, is_active, limit = 100, offset = 0 } = req.query;
     let conditions = [];
@@ -60,7 +60,7 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const result = await query('SELECT * FROM item_master WHERE id = $1', [req.params.id]);
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Item not found' });
@@ -70,7 +70,7 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
-router.get('/:id/suppliers', authenticate, async (req, res) => {
+router.get('/:id/suppliers', authenticate, authorize(), async (req, res) => {
   try {
     const data = await query(
       `SELECT sm.*, s.code as supplier_code, s.name_ar as supplier_name_ar, s.name_en as supplier_name_en
@@ -86,7 +86,7 @@ router.get('/:id/suppliers', authenticate, async (req, res) => {
   }
 });
 
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       code: Joi.string().optional(),
@@ -129,7 +129,7 @@ router.post('/', authenticate, async (req, res) => {
   }
 });
 
-router.put('/:id', authenticate, async (req, res) => {
+router.put('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const existing = await query('SELECT * FROM item_master WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Item not found' });
@@ -180,7 +180,7 @@ router.put('/:id', authenticate, async (req, res) => {
   }
 });
 
-router.delete('/:id', authenticate, async (req, res) => {
+router.delete('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const result = await query('DELETE FROM item_master WHERE id = $1 RETURNING code, name_en', [req.params.id]);
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Item not found' });

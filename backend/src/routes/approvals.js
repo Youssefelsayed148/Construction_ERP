@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
+const policy = require('../services/policy');
 const { logActivity, fireEvent } = require('../utils/activity');
 
 // Module roles mapping - who handles Stage 1 (manager_review) for each module
@@ -171,7 +172,7 @@ async function advanceApproval({ approvalId, userId, userName, role, notes, acti
 }
 
 // POST /api/approvals/request - Create approval request
-router.post('/request', authenticate, async (req, res) => {
+router.post('/request', authenticate, authorize(), async (req, res) => {
   try {
     const { module_name, request_type, request_id, notes } = req.body;
 
@@ -214,7 +215,24 @@ router.get('/pending', authenticate, authorize(
     const { role } = req.user;
     let result;
 
-    if (role === 'owner' || role === 'admin') {
+    // Policy grant (Phase 4): explicit permission checks instead of the old
+    // hardcoded `role === 'owner' || role === 'admin'` bypass. Internal
+    // approver roles hold ('*', '*') grants seeded in role_permissions;
+    // module managers resolve through their per-module grants.
+    const { source, grants } = await policy.listGrants(req.user);
+    let seesAllPending;
+    let modulesForRole;
+    if (source === 'legacy') {
+      seesAllPending = role === 'owner' || role === 'admin';
+      modulesForRole = Object.entries(MODULE_MANAGER_ROLES)
+        .filter(([, roles]) => roles.includes(role))
+        .map(([mod]) => mod);
+    } else {
+      seesAllPending = grants.some((g) => policy.grantMatches(g.perm_module, g.perm_action, 'approvals', 'approve'));
+      modulesForRole = Object.keys(MODULE_MANAGER_ROLES)
+        .filter((mod) => grants.some((g) => policy.grantMatches(g.perm_module, g.perm_action, mod, 'approve')));
+    }
+    if (seesAllPending) {
       result = await query(`
         SELECT ar.*, u.name as requester_name, u.email as requester_email, m.name as manager_name
         FROM approval_requests ar
@@ -246,7 +264,7 @@ router.get('/pending', authenticate, authorize(
 });
 
 // PUT /api/approvals/:id/approve
-router.put('/:id/approve', authenticate, async (req, res) => {
+router.put('/:id/approve', authenticate, authorize(), async (req, res) => {
   try {
     const { id } = req.params;
     const { notes } = req.body;
@@ -260,7 +278,7 @@ router.put('/:id/approve', authenticate, async (req, res) => {
 });
 
 // PUT /api/approvals/:id/reject
-router.put('/:id/reject', authenticate, async (req, res) => {
+router.put('/:id/reject', authenticate, authorize(), async (req, res) => {
   try {
     const { id } = req.params;
     const { notes } = req.body;
@@ -274,7 +292,7 @@ router.put('/:id/reject', authenticate, async (req, res) => {
 });
 
 // GET /api/approvals/my-requests
-router.get('/my-requests', authenticate, async (req, res) => {
+router.get('/my-requests', authenticate, authorize(), async (req, res) => {
   try {
     const { limit = 100 } = req.query;
     const result = await query(`
@@ -321,7 +339,7 @@ router.get('/audit', authenticate, authorize('owner', 'admin'), async (req, res)
 });
 
 // GET /api/approvals/check/:module/:requestId
-router.get('/check/:module/:requestId', authenticate, async (req, res) => {
+router.get('/check/:module/:requestId', authenticate, authorize(), async (req, res) => {
   try {
     const { module, requestId } = req.params;
     const approval = await query(
@@ -411,7 +429,7 @@ function buildApprovalTimeline(ar) {
   return steps;
 }
 
-router.get('/:id/details', authenticate, async (req, res) => {
+router.get('/:id/details', authenticate, authorize(), async (req, res) => {
   try {
     const { id } = req.params;
     const arRes = await query(`

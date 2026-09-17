@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 
 // Mounted at /api/docs — document library with versioning, RFIs, submittals.
@@ -10,14 +10,14 @@ const { logActivity } = require('../utils/activity');
 
 // ============ CATEGORIES ============
 
-router.get('/categories', authenticate, async (req, res) => {
+router.get('/categories', authenticate, authorize(), async (req, res) => {
   try {
     const result = await query('SELECT * FROM document_categories ORDER BY parent_id NULLS FIRST, name');
     res.json({ success: true, data: result.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/categories', authenticate, async (req, res) => {
+router.post('/categories', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({ name: Joi.string().required(), parent_id: Joi.number().integer().allow(null).optional() });
     const { error, value } = schema.validate(req.body);
@@ -29,7 +29,7 @@ router.post('/categories', authenticate, async (req, res) => {
 
 // ============ DOCUMENTS ============
 
-router.get('/documents', authenticate, async (req, res) => {
+router.get('/documents', authenticate, authorize(), async (req, res) => {
   try {
     const { project_id, category_id, document_type, status, search, limit = 200, offset = 0 } = req.query;
     let conditions = []; let params = []; let idx = 1;
@@ -52,7 +52,7 @@ router.get('/documents', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.get('/documents/:id', authenticate, async (req, res) => {
+router.get('/documents/:id', authenticate, authorize(), async (req, res) => {
   try {
     const [doc, versions] = await Promise.all([
       query(
@@ -72,7 +72,7 @@ router.get('/documents/:id', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/documents', authenticate, async (req, res) => {
+router.post('/documents', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       project_id: Joi.number().integer().required(),
@@ -108,7 +108,7 @@ router.post('/documents', authenticate, async (req, res) => {
 });
 
 // Upload a new version — bumps version, archives previous file in document_versions
-router.post('/documents/:id/versions', authenticate, async (req, res) => {
+router.post('/documents/:id/versions', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       file_url: Joi.string().required(),
@@ -141,7 +141,7 @@ router.post('/documents/:id/versions', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.put('/documents/:id', authenticate, async (req, res) => {
+router.put('/documents/:id', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       category_id: Joi.number().integer().allow(null),
@@ -166,7 +166,7 @@ router.put('/documents/:id', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/documents/:id/:action(approve|reject)', authenticate, async (req, res) => {
+router.post('/documents/:id/:action(approve|reject)', authenticate, authorize(), async (req, res) => {
   try {
     const newStatus = req.params.action === 'approve' ? 'approved' : 'rejected';
     const result = await query(
@@ -179,7 +179,7 @@ router.post('/documents/:id/:action(approve|reject)', authenticate, async (req, 
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.delete('/documents/:id', authenticate, async (req, res) => {
+router.delete('/documents/:id', authenticate, authorize(), async (req, res) => {
   try {
     const result = await query('DELETE FROM project_documents WHERE id = $1 RETURNING title', [req.params.id]);
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Document not found' });
@@ -190,7 +190,7 @@ router.delete('/documents/:id', authenticate, async (req, res) => {
 
 // ============ RFIs ============
 
-router.get('/rfis', authenticate, async (req, res) => {
+router.get('/rfis', authenticate, authorize(), async (req, res) => {
   try {
     const { project_id, status } = req.query;
     let conditions = []; let params = []; let idx = 1;
@@ -209,7 +209,7 @@ router.get('/rfis', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/rfis', authenticate, async (req, res) => {
+router.post('/rfis', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       project_id: Joi.number().integer().required(),
@@ -235,7 +235,7 @@ router.post('/rfis', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/rfis/:id/respond', authenticate, async (req, res) => {
+router.post('/rfis/:id/respond', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({ answer: Joi.string().required() });
     const { error, value } = schema.validate(req.body);
@@ -251,7 +251,7 @@ router.post('/rfis/:id/respond', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/rfis/:id/close', authenticate, async (req, res) => {
+router.post('/rfis/:id/close', authenticate, authorize(), async (req, res) => {
   try {
     const result = await query(
       `UPDATE project_rfis SET status = 'closed', updated_at = NOW() WHERE id = $1 AND status = 'answered' RETURNING *`,
@@ -264,7 +264,7 @@ router.post('/rfis/:id/close', authenticate, async (req, res) => {
 
 // ============ SUBMITTALS ============
 
-router.get('/submittals', authenticate, async (req, res) => {
+router.get('/submittals', authenticate, authorize(), async (req, res) => {
   try {
     const { project_id, status } = req.query;
     let conditions = []; let params = []; let idx = 1;
@@ -281,7 +281,7 @@ router.get('/submittals', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/submittals', authenticate, async (req, res) => {
+router.post('/submittals', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       project_id: Joi.number().integer().required(),
@@ -305,7 +305,7 @@ router.post('/submittals', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/submittals/:id/respond', authenticate, async (req, res) => {
+router.post('/submittals/:id/respond', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       status: Joi.string().valid('under_review', 'approved', 'rejected', 'revised').required(),

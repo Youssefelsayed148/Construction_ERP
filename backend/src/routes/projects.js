@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 
 const PROJECT_TYPES = ['residential', 'commercial', 'industrial', 'infrastructure', 'mixed'];
@@ -10,7 +10,7 @@ const PROJECT_STATUSES = ['planning', 'active', 'on_hold', 'completed', 'closed'
 const PHASE_STATUSES = ['planning', 'active', 'completed', 'on_hold'];
 const TEAM_ROLES = ['project_manager', 'site_engineer', 'qs', 'safety_officer', 'supervisor', 'foreman'];
 
-router.get('/portfolio', authenticate, async (req, res) => {
+router.get('/portfolio', authenticate, authorize(), async (req, res) => {
   try {
     const data = await query(`
       SELECT p.*, c.name_ar as client_name, c.name_en as client_name_en,
@@ -24,7 +24,7 @@ router.get('/portfolio', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.get('/', authenticate, async (req, res) => {
+router.get('/', authenticate, authorize(), async (req, res) => {
   try {
     const { status, project_type, search, limit = 100, offset = 0 } = req.query;
     let conds = []; let p = []; let i = 1;
@@ -40,7 +40,7 @@ router.get('/', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const project = await query(`SELECT p.*, c.name_ar as client_name, c.name_en as client_name_en, e.name_ar as project_manager_name, e.name_en as project_manager_name_en FROM projects p LEFT JOIN clients c ON p.client_id = c.id LEFT JOIN employees e ON p.project_manager_id = e.id WHERE p.id = $1`, [req.params.id]);
     if (project.rows.length === 0) return res.status(404).json({ success: false, error: 'Project not found' });
@@ -61,7 +61,7 @@ router.get('/:id', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       code: Joi.string().optional(), name_ar: Joi.string().required(), name_en: Joi.string().allow(''),
@@ -95,7 +95,7 @@ router.post('/', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.put('/:id', authenticate, async (req, res) => {
+router.put('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const existing = await query('SELECT * FROM projects WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Project not found' });
@@ -126,7 +126,7 @@ router.put('/:id', authenticate, async (req, res) => {
 });
 
 // -- Phases --
-router.post('/:id/phases', authenticate, async (req, res) => {
+router.post('/:id/phases', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       code: Joi.string().optional(), name_ar: Joi.string().required(), name_en: Joi.string().allow(''),
@@ -145,7 +145,7 @@ router.post('/:id/phases', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.put('/:projectId/phases/:phaseId', authenticate, async (req, res) => {
+router.put('/:projectId/phases/:phaseId', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       name_ar: Joi.string(), name_en: Joi.string().allow(''), sort_order: Joi.number(),
@@ -167,14 +167,14 @@ router.put('/:projectId/phases/:phaseId', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.delete('/:projectId/phases/:phaseId', authenticate, async (req, res) => {
+router.delete('/:projectId/phases/:phaseId', authenticate, authorize(), async (req, res) => {
   const r = await query('DELETE FROM project_phases WHERE id = $1 AND project_id = $2', [req.params.phaseId, req.params.projectId]);
   if (r.rowCount === 0) return res.status(404).json({ success: false, error: 'Phase not found' });
   res.json({ success: true, message: 'Deleted' });
 });
 
 // -- Team --
-router.post('/:id/team', authenticate, async (req, res) => {
+router.post('/:id/team', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       employee_id: Joi.number().integer().required(), role: Joi.string().valid(...TEAM_ROLES).default('site_engineer'),
@@ -190,14 +190,14 @@ router.post('/:id/team', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.delete('/:projectId/team/:teamId', authenticate, async (req, res) => {
+router.delete('/:projectId/team/:teamId', authenticate, authorize(), async (req, res) => {
   const r = await query('DELETE FROM project_team WHERE id = $1 AND project_id = $2', [req.params.teamId, req.params.projectId]);
   if (r.rowCount === 0) return res.status(404).json({ success: false, error: 'Team member not found' });
   res.json({ success: true, message: 'Removed' });
 });
 
 // -- Milestones --
-router.post('/:id/milestones', authenticate, async (req, res) => {
+router.post('/:id/milestones', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       title_ar: Joi.string().required(), title_en: Joi.string().allow(''),
@@ -215,7 +215,7 @@ router.post('/:id/milestones', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.put('/:projectId/milestones/:milestoneId', authenticate, async (req, res) => {
+router.put('/:projectId/milestones/:milestoneId', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       title_ar: Joi.string(), title_en: Joi.string().allow(''),
@@ -236,7 +236,7 @@ router.put('/:projectId/milestones/:milestoneId', authenticate, async (req, res)
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.delete('/:projectId/milestones/:milestoneId', authenticate, async (req, res) => {
+router.delete('/:projectId/milestones/:milestoneId', authenticate, authorize(), async (req, res) => {
   const r = await query('DELETE FROM project_milestones WHERE id = $1', [req.params.milestoneId]);
   if (r.rowCount === 0) return res.status(404).json({ success: false, error: 'Milestone not found' });
   res.json({ success: true, message: 'Deleted' });

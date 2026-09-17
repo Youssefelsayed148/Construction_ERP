@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 
-router.get('/project/:id', authenticate, async (req, res) => {
+router.get('/project/:id', authenticate, authorize(), async (req, res) => {
   try {
     const projectId = req.params.id;
     const proj = await query('SELECT * FROM projects WHERE id = $1', [projectId]);
@@ -41,7 +41,7 @@ router.get('/project/:id', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.get('/summary', authenticate, async (req, res) => {
+router.get('/summary', authenticate, authorize(), async (req, res) => {
   try {
     const totalCollected = await query('SELECT COALESCE(SUM(amount), 0) as total FROM payments');
     const totalInvoiced = await query('SELECT COALESCE(SUM(amount), 0) as total FROM invoices');

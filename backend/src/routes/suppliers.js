@@ -2,12 +2,12 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 
 const SPECIALTIES = ['concrete', 'steel', 'electrical', 'plumbing', 'wood', 'paint_coating', 'aggregate', 'equipment', 'safety', 'general', 'other'];
 
-router.get('/', authenticate, async (req, res) => {
+router.get('/', authenticate, authorize(), async (req, res) => {
   try {
     const { search, specialty, is_active, limit = 100, offset = 0 } = req.query;
     let conditions = [];
@@ -39,11 +39,11 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
-router.get('/specialties', authenticate, (req, res) => {
+router.get('/specialties', authenticate, authorize(), (req, res) => {
   res.json({ success: true, data: SPECIALTIES });
 });
 
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const result = await query('SELECT * FROM suppliers WHERE id = $1', [req.params.id]);
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Supplier not found' });
@@ -53,7 +53,7 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       code: Joi.string().optional(),
@@ -94,7 +94,7 @@ router.post('/', authenticate, async (req, res) => {
   }
 });
 
-router.put('/:id', authenticate, async (req, res) => {
+router.put('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const existing = await query('SELECT * FROM suppliers WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Supplier not found' });
@@ -126,7 +126,7 @@ router.put('/:id', authenticate, async (req, res) => {
   }
 });
 
-router.delete('/:id', authenticate, async (req, res) => {
+router.delete('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const result = await query('DELETE FROM suppliers WHERE id = $1 RETURNING code', [req.params.id]);
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Supplier not found' });
@@ -138,7 +138,7 @@ router.delete('/:id', authenticate, async (req, res) => {
 });
 
 // -- Supplied Materials (supplier <-> item_master link) --
-router.get('/:id/materials', authenticate, async (req, res) => {
+router.get('/:id/materials', authenticate, authorize(), async (req, res) => {
   try {
     const data = await query(
       `SELECT sm.*, im.code as material_code, im.name_ar as material_name_ar, im.name_en as material_name_en, im.unit
@@ -154,7 +154,7 @@ router.get('/:id/materials', authenticate, async (req, res) => {
   }
 });
 
-router.post('/:id/materials', authenticate, async (req, res) => {
+router.post('/:id/materials', authenticate, authorize(), async (req, res) => {
   try {
     const supplier = await query('SELECT id FROM suppliers WHERE id = $1', [req.params.id]);
     if (supplier.rows.length === 0) return res.status(404).json({ success: false, error: 'Supplier not found' });
@@ -188,7 +188,7 @@ router.post('/:id/materials', authenticate, async (req, res) => {
   }
 });
 
-router.delete('/:id/materials/:material_id', authenticate, async (req, res) => {
+router.delete('/:id/materials/:material_id', authenticate, authorize(), async (req, res) => {
   try {
     const result = await query('DELETE FROM supplier_materials WHERE supplier_id = $1 AND material_id = $2 RETURNING id', [req.params.id, req.params.material_id]);
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Link not found' });

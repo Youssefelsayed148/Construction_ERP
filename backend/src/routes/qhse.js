@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 
 // Mounted at /api/qhse — quality tests, NCRs, safety inspections & incidents.
@@ -10,7 +10,7 @@ const { logActivity } = require('../utils/activity');
 
 // ============ QUALITY TESTS ============
 
-router.get('/quality-tests', authenticate, async (req, res) => {
+router.get('/quality-tests', authenticate, authorize(), async (req, res) => {
   try {
     const { project_id, result: testResult } = req.query;
     let conditions = []; let params = []; let idx = 1;
@@ -26,7 +26,7 @@ router.get('/quality-tests', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/quality-tests', authenticate, async (req, res) => {
+router.post('/quality-tests', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       project_id: Joi.number().integer().required(),
@@ -52,7 +52,7 @@ router.post('/quality-tests', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.put('/quality-tests/:id', authenticate, async (req, res) => {
+router.put('/quality-tests/:id', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       test_type: Joi.string(), test_date: Joi.date().iso(),
@@ -76,7 +76,7 @@ router.put('/quality-tests/:id', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.delete('/quality-tests/:id', authenticate, async (req, res) => {
+router.delete('/quality-tests/:id', authenticate, authorize(), async (req, res) => {
   try {
     const result = await query('DELETE FROM quality_tests WHERE id = $1 RETURNING test_type', [req.params.id]);
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Test not found' });
@@ -92,7 +92,7 @@ const NCR_TRANSITIONS = {
   resolved: ['closed', 'in_progress'],
 };
 
-router.get('/ncrs', authenticate, async (req, res) => {
+router.get('/ncrs', authenticate, authorize(), async (req, res) => {
   try {
     const { project_id, status, severity } = req.query;
     let conditions = []; let params = []; let idx = 1;
@@ -110,7 +110,7 @@ router.get('/ncrs', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/ncrs', authenticate, async (req, res) => {
+router.post('/ncrs', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       project_id: Joi.number().integer().required(),
@@ -137,7 +137,7 @@ router.post('/ncrs', authenticate, async (req, res) => {
 });
 
 // NCR status transitions: open → in_progress → resolved → closed (resolved can reopen to in_progress)
-router.post('/ncrs/:id/status', authenticate, async (req, res) => {
+router.post('/ncrs/:id/status', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       status: Joi.string().valid('in_progress', 'resolved', 'closed').required(),
@@ -171,7 +171,7 @@ router.post('/ncrs/:id/status', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.put('/ncrs/:id', authenticate, async (req, res) => {
+router.put('/ncrs/:id', authenticate, authorize(), async (req, res) => {
   try {
     const existing = await query('SELECT status FROM ncrs WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'NCR not found' });
@@ -197,7 +197,7 @@ router.put('/ncrs/:id', authenticate, async (req, res) => {
 
 // ============ SAFETY INSPECTIONS ============
 
-router.get('/inspections', authenticate, async (req, res) => {
+router.get('/inspections', authenticate, authorize(), async (req, res) => {
   try {
     const { project_id, status } = req.query;
     let conditions = []; let params = []; let idx = 1;
@@ -213,7 +213,7 @@ router.get('/inspections', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/inspections', authenticate, async (req, res) => {
+router.post('/inspections', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       project_id: Joi.number().integer().required(),
@@ -235,7 +235,7 @@ router.post('/inspections', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.put('/inspections/:id', authenticate, async (req, res) => {
+router.put('/inspections/:id', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       inspection_date: Joi.date().iso(),
@@ -261,7 +261,7 @@ router.put('/inspections/:id', authenticate, async (req, res) => {
 
 // ============ SAFETY INCIDENTS ============
 
-router.get('/incidents', authenticate, async (req, res) => {
+router.get('/incidents', authenticate, authorize(), async (req, res) => {
   try {
     const { project_id, status } = req.query;
     let conditions = []; let params = []; let idx = 1;
@@ -277,7 +277,7 @@ router.get('/incidents', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/incidents', authenticate, async (req, res) => {
+router.post('/incidents', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       project_id: Joi.number().integer().required(),
@@ -302,7 +302,7 @@ router.post('/incidents', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.put('/incidents/:id', authenticate, async (req, res) => {
+router.put('/incidents/:id', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       incident_type: Joi.string().allow(''), severity: Joi.string().valid('minor', 'major', 'critical'),
