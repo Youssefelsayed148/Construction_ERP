@@ -14,6 +14,7 @@ import Assets from './pages/Assets';
 import HR from './pages/HR';
 import Payroll from './pages/Payroll';
 import Projects from './pages/Projects';
+import ProjectWizard from './pages/ProjectWizard';
 import ProjectDetail from './pages/ProjectDetail';
 import BOQ from './pages/BOQ';
 import WorkOrders from './pages/WorkOrders';
@@ -62,6 +63,9 @@ function App() {
           <Route path="hr" element={<HR />} />
           <Route path="hr/payroll" element={<Payroll />} />
           <Route path="projects" element={<Projects />} />
+          {/* Phase 5: the 11-step creation wizard. Declared before the :id
+              route so "new" is never read as a project id. */}
+          <Route path="projects/new" element={<ProjectWizard />} />
           <Route path="projects/:id" element={<ProjectDetail />} />
           <Route path="projects/:id/boq" element={<BOQ />} />
           <Route path="projects/:id/work-orders" element={<WorkOrders />} />

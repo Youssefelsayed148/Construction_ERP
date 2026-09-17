@@ -266,11 +266,13 @@ describe('DoD sweep: external roles get 403 (not empty data) on routes they must
       const action = { GET: 'view', HEAD: 'view', POST: 'create', PUT: 'edit', PATCH: 'edit', DELETE: 'delete' }[method];
       const mount = FILE_MOUNT[route.file];
       const module = mount.split('/').pop();
+      // Call sites with an explicit coarse role list always deny external roles.
+      const explicitRoleList = route.authorizeMws[0].authorizeRoles && route.authorizeMws[0].authorizeRoles.length > 0;
       const granted = EXTERNAL_GRANTS[role].includes(module);
       // A route that resolves a project id resolves the UNASSIGNED one here.
       const resolvesProject = route.path.includes(':projectId') ||
         (module === 'projects' && route.path.includes(':id'));
-      const mustDeny = !granted || action !== 'view' || resolvesProject;
+      const mustDeny = explicitRoleList || !granted || action !== 'view' || resolvesProject;
       // Only pass path params the route actually declares.
       const paramNames = [...route.path.matchAll(/:(\w+)/g)].map((m) => m[1]);
       const params = {};

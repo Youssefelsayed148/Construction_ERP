@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import { Search, Plus, Briefcase, ArrowRight, MapPin, DollarSign, Calendar, TrendingUp, TrendingDown, Receipt, X } from 'lucide-react';
 import { formatCurrency, formatDate, formatPercent } from '../utils/formatters';
-import EGYPT_CITIES from '../constants/egyptCities';
 
 const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api`;
 
@@ -47,9 +46,6 @@ function Projects() {
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [clients, setClients] = useState([]);
-  const [managers, setManagers] = useState([]);
   const [financeData, setFinanceData] = useState({});
 
   const loadProjects = useCallback(async () => {
@@ -73,20 +69,6 @@ function Projects() {
     } catch (e) { console.error(e); }
   }, []);
 
-  const loadClients = useCallback(async () => {
-    try {
-      const res = await fetchApi(`${API_URL}/clients?limit=200`);
-      if (res.success) setClients(res.data || []);
-    } catch (e) { console.error(e); }
-  }, []);
-
-  const loadManagers = useCallback(async () => {
-    try {
-      const res = await fetchApi(`${API_URL}/hr/employees?is_manager=true&limit=200`);
-      if (res.success) setManagers(res.data || []);
-    } catch (e) { console.error(e); }
-  }, []);
-
   useEffect(() => { loadProjects(); }, [loadProjects]);
   useEffect(() => { loadPortfolio(); }, [loadPortfolio]);
   useEffect(() => {
@@ -104,11 +86,9 @@ function Projects() {
     if (projects.length > 0) loadFinance();
   }, [projects]);
 
-  const handleOpenModal = () => {
-    loadClients();
-    loadManagers();
-    setShowModal(true);
-  };
+  // Phase 5: the single-form create dialog is replaced by the 11-step wizard
+  // (pages/ProjectWizard.js), which provisions the project transactionally.
+  const handleOpenWizard = () => navigate('/projects/new');
 
   const projectName = (p) => locale === 'ar' ? p.name_ar : p.name_en;
   const statusLabel = (s) => STATUS_LABELS[locale]?.[s] || s;
@@ -125,7 +105,7 @@ function Projects() {
             {locale === 'ar' ? 'إدارة محفظة المشاريع' : 'Project Portfolio Management'}
           </p>
         </div>
-        <button className="btn btn-primary" onClick={handleOpenModal}>
+        <button className="btn btn-primary" onClick={handleOpenWizard}>
           <Plus size={16} />
           {locale === 'ar' ? 'مشروع جديد' : 'New Project'}
         </button>
@@ -316,174 +296,6 @@ function Projects() {
         </div>
       )}
 
-      {showModal && <ProjectModal
-        locale={locale}
-        t={t}
-        clients={clients}
-        managers={managers}
-        onClose={() => setShowModal(false)}
-        onSave={loadProjects}
-      />}
-    </div>
-  );
-}
-
-function ProjectModal({ locale, t, onClose, onSave, clients, managers }) {
-  const [form, setForm] = useState({
-    name_en: '', name_ar: '',
-    address: '', city: '',
-    project_type: 'residential', client_id: '', project_manager_id: '',
-    contract_value: 0, budget: 0, start_date: '', expected_completion: ''
-  });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleChange = (field, value) => {
-    setForm(f => {
-      const next = { ...f, [field]: value };
-      if (field === 'client_id' && value) {
-        const selectedClient = clients.find(c => c.id === Number(value));
-        if (selectedClient) {
-          next.address = selectedClient.address || '';
-          next.city = selectedClient.city || '';
-        }
-      }
-      return next;
-    });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    setError('');
-    try {
-      const body = {
-        ...form,
-        contract_value: Number(form.contract_value) || 0,
-        budget: Number(form.budget) || 0,
-        client_id: form.client_id ? Number(form.client_id) : null,
-        project_manager_id: form.project_manager_id ? Number(form.project_manager_id) : null,
-      };
-      const res = await fetchApi(`${API_URL}/projects`, { method: 'POST', body: JSON.stringify(body) });
-      if (res.success) { onSave(); onClose(); }
-      else { setError(res.error || 'Save failed'); }
-    } catch (e) { setError(e.message); }
-    finally { setSaving(false); }
-  };
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal-wide" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3 className="modal-title">{locale === 'ar' ? 'مشروع جديد' : 'New Project'}</h3>
-          <button className="modal-close" onClick={onClose}>&times;</button>
-        </div>
-        <div className="modal-body">
-          <form onSubmit={handleSubmit}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div className="form-group">
-                  <label className="form-label">English Name *</label>
-                  <input className="form-input" value={form.name_en} onChange={e => handleChange('name_en', e.target.value)} required />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">الاسم العربي *</label>
-                  <input className="form-input" value={form.name_ar} onChange={e => handleChange('name_ar', e.target.value)} required />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'العنوان' : 'Address'}</label>
-                  <input className="form-input" value={form.address} onChange={e => handleChange('address', e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'المدينة' : 'City'}</label>
-                  <select className="form-select" value={form.city} onChange={e => handleChange('city', e.target.value)}>
-                    <option value="">-- {locale === 'ar' ? 'اختر المدينة' : 'Select City'} --</option>
-                    {!EGYPT_CITIES.some(c => c.en === form.city) && form.city && (
-                      <option value={form.city} disabled>{form.city}</option>
-                    )}
-                    {EGYPT_CITIES.map(c => (
-                      <option key={c.en} value={c.en}>
-                        {locale === 'ar' ? c.ar : c.en}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'نوع المشروع' : 'Project Type'}</label>
-                  <select className="form-select" value={form.project_type} onChange={e => handleChange('project_type', e.target.value)}>
-                    {ALL_TYPES.map(tp => (
-                      <option key={tp} value={tp}>{TYPE_LABELS[locale]?.[tp] || tp}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'العميل' : 'Client'}</label>
-                  <select className="form-select" value={form.client_id} onChange={e => handleChange('client_id', e.target.value)}>
-                    <option value="">-- {locale === 'ar' ? 'اختر العميل' : 'Select Client'} --</option>
-                    {clients.map(c => (
-                      <option key={c.id} value={c.id}>{locale === 'ar' ? c.name_ar : c.name_en} ({c.code})</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'مدير المشروع' : 'Project Manager'}</label>
-                  <select className="form-select" value={form.project_manager_id} onChange={e => handleChange('project_manager_id', e.target.value)}>
-                    <option value="">-- {locale === 'ar' ? 'اختر مدير المشروع' : 'Select PM'} --</option>
-                    {Object.entries(managers.reduce((groups, m) => {
-                      const dept = m.department || (locale === 'ar' ? 'بدون قسم' : 'No Department');
-                      (groups[dept] = groups[dept] || []).push(m);
-                      return groups;
-                    }, {})).map(([dept, deptManagers]) => (
-                      <optgroup key={dept} label={dept}>
-                        {deptManagers.map(m => (
-                          <option key={m.id} value={m.id}>{locale === 'ar' ? m.name_ar : (m.name_en || m.name_ar)}</option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'تاريخ البدء' : 'Start Date'}</label>
-                  <input className="form-input" type="date" value={form.start_date} onChange={e => handleChange('start_date', e.target.value)} />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'قيمة العقد' : 'Contract Value'} (EGP)</label>
-                  <input className="form-input" type="number" min="0" value={form.contract_value} onChange={e => handleChange('contract_value', e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الميزانية' : 'Budget'} (EGP)</label>
-                  <input className="form-input" type="number" min="0" value={form.budget} onChange={e => handleChange('budget', e.target.value)} />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'تاريخ الانتهاء المتوقع' : 'Expected Completion'}</label>
-                <input className="form-input" type="date" value={form.expected_completion} onChange={e => handleChange('expected_completion', e.target.value)} />
-              </div>
-
-              {error && <div className="alert alert-danger">{error}</div>}
-            </div>
-          </form>
-        </div>
-        <div className="modal-footer">
-          <button className="btn" onClick={onClose}>{t('common.cancel')}</button>
-          <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
-            {saving ? <span className="spinner" /> : t('common.save')}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

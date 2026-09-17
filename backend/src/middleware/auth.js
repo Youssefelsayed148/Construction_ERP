@@ -97,7 +97,7 @@ const authenticate = async (req, res, next) => {
 //      the policy decision, so owner|admin-only endpoints stay that way in
 //      both paths.
 const authorize = (...roles) => {
-  return async function authorizeMiddleware(req, res, next) {
+  const middleware = async function authorizeMiddleware(req, res, next) {
     if (!req.user) {
       return res.status(401).json({ success: false, error: 'Authentication required' });
     }
@@ -128,6 +128,9 @@ const authorize = (...roles) => {
 
     next();
   };
+  // Exposed for tooling/tests: the coarse role list the call site declared.
+  middleware.authorizeRoles = Object.freeze([...roles]);
+  return middleware;
 };
 
 module.exports = { authenticate, authorize, createPreviewToken };

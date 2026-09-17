@@ -4,11 +4,19 @@ const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
+const provisioning = require('../services/projectProvisioning');
 
 const PROJECT_TYPES = ['residential', 'commercial', 'industrial', 'infrastructure', 'mixed'];
 const PROJECT_STATUSES = ['planning', 'active', 'on_hold', 'completed', 'closed'];
 const PHASE_STATUSES = ['planning', 'active', 'completed', 'on_hold'];
 const TEAM_ROLES = ['project_manager', 'site_engineer', 'qs', 'safety_officer', 'supervisor', 'foreman'];
+
+// Feature flag: while PROJECT_CREATION_WIZARD is off (default) POST /api/projects
+// keeps the legacy single-INSERT path. When the wizard is verified in staging,
+// flip the flag on; after that the legacy path can be deleted outright.
+function wizardEnabled() {
+  return ['1', 'true', 'on'].includes(String(process.env.PROJECT_CREATION_WIZARD || '').toLowerCase());
+}
 
 router.get('/portfolio', authenticate, authorize(), async (req, res) => {
   try {
@@ -40,6 +48,40 @@ router.get('/', authenticate, authorize(), async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// -- Wizard templates (registered before /:id so "templates" is not read as an id) --
+router.get('/templates', authenticate, authorize('owner', 'admin', 'project_manager'), async (req, res) => {
+  try {
+    const data = await query('SELECT id, key, name, project_type, description, is_active FROM project_templates WHERE is_active = true ORDER BY name');
+    res.json({ success: true, data: data.rows });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+router.get('/templates/:key', authenticate, authorize('owner', 'admin', 'project_manager'), async (req, res) => {
+  try {
+    const t = await query('SELECT * FROM project_templates WHERE key = $1 AND is_active = true', [req.params.key]);
+    if (t.rows.length === 0) return res.status(404).json({ success: false, error: 'Template not found' });
+    const template = t.rows[0];
+    // default_values may come back as a JSON string depending on the driver.
+    if (typeof template.default_values === 'string') {
+      try { template.default_values = JSON.parse(template.default_values); } catch (e) { /* leave as-is */ }
+    }
+    const [locations, wbs, folders, workflows, rules] = await Promise.all([
+      query('SELECT parent_code, code, location_type_code, name, name_en, name_ar, sort_order FROM template_locations WHERE template_id = $1 ORDER BY sort_order, id', [template.id]),
+      query('SELECT parent_code, code, name, name_en, name_ar, wbs_level, sort_order FROM template_wbs WHERE template_id = $1 ORDER BY sort_order, id', [template.id]),
+      query('SELECT code, name, folder_type FROM template_folders WHERE template_id = $1 ORDER BY sort_order, id', [template.id]),
+      query('SELECT code, name, description, steps FROM template_workflows WHERE template_id = $1 ORDER BY sort_order, id', [template.id]),
+      query('SELECT module, threshold_amount, approver_role, stage FROM template_approval_rules WHERE template_id = $1 ORDER BY sort_order, id', [template.id]),
+    ]);
+    res.json({ success: true, data: { ...template, locations: locations.rows, wbs: wbs.rows, folders: folders.rows, workflows: workflows.rows, approval_rules: rules.rows } });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// Explicit wizard route (works regardless of the flag) — the 11-step UI posts
+// here; the same transactional provisioning backs both endpoints.
+router.post('/wizard', authenticate, authorize('owner', 'admin', 'project_manager'), async (req, res) => {
+  return wizardCreate(req, res);
+});
+
 router.get('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const project = await query(`SELECT p.*, c.name_ar as client_name, c.name_en as client_name_en, e.name_ar as project_manager_name, e.name_en as project_manager_name_en FROM projects p LEFT JOIN clients c ON p.client_id = c.id LEFT JOIN employees e ON p.project_manager_id = e.id WHERE p.id = $1`, [req.params.id]);
@@ -61,7 +103,94 @@ router.get('/:id', authenticate, authorize(), async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.post('/', authenticate, authorize(), async (req, res) => {
+// POST /api/projects — dispatcher. Legacy single-INSERT stays available while
+// the wizard flag is off; once PROJECT_CREATION_WIZARD is enabled the wizard
+// provisioning transaction takes over the same route.
+router.post('/', authenticate, authorize('owner', 'admin', 'project_manager'), async (req, res) => {
+  if (wizardEnabled()) return wizardCreate(req, res);
+  return legacyCreate(req, res);
+});
+
+// Wizard path: one transaction provisions everything (project row, root
+// location, root WBS, team + user_project_roles, participants, workflows,
+// folders/registers, numbering, dashboard prefs). Any failure rolls back the
+// whole thing — no half-created project.
+const wizardCreate = async (req, res) => {
+  try {
+    const schema = Joi.object({
+      name_ar: Joi.string().required(),
+      name_en: Joi.string().allow(''),
+      code: Joi.string().optional(),
+      project_number: Joi.string().allow('', null),
+      project_type: Joi.string().valid(...PROJECT_TYPES).default('commercial'),
+      template_key: Joi.string().allow(null, ''),
+      client_id: Joi.number().integer().allow(null),
+      consultant_organization_id: Joi.number().integer().allow(null),
+      project_manager_id: Joi.number().integer().allow(null),
+      address: Joi.string().allow('', null), city: Joi.string().allow('', null),
+      country: Joi.string().allow('', null),
+      gps_latitude: Joi.number().allow(null), gps_longitude: Joi.number().allow(null),
+      timezone: Joi.string().allow('', null), currency: Joi.string().allow('', null),
+      tax_profile: Joi.string().allow('', null),
+      contract_value: Joi.number().min(0).default(0),
+      budget: Joi.number().min(0).default(0),
+      original_contract_value: Joi.number().min(0).allow(null),
+      original_budget: Joi.number().min(0).allow(null),
+      dlp_period_months: Joi.number().integer().allow(null),
+      warranty_period_months: Joi.number().integer().allow(null),
+      retention_percentage: Joi.number().min(0).max(100).allow(null),
+      retention_cap_amount: Joi.number().min(0).allow(null),
+      advance_payment_amount: Joi.number().min(0).allow(null),
+      advance_payment_percentage: Joi.number().min(0).max(100).allow(null),
+      liquidated_damages_rate: Joi.number().min(0).allow(null),
+      liquidated_damages_cap: Joi.number().min(0).allow(null),
+      start_date: Joi.date().iso().allow(null),
+      expected_completion: Joi.date().iso().allow(null),
+      status: Joi.string().valid(...PROJECT_STATUSES).default('planning'),
+      visibility_policy: Joi.string().valid('standard', 'restricted', 'client_visible').default('standard'),
+      team: Joi.array().items(Joi.object({
+        employee_id: Joi.number().integer().required(),
+        user_id: Joi.number().integer().allow(null),
+        email: Joi.string().email().allow(null, ''),
+        role: Joi.string().valid(...TEAM_ROLES).default('site_engineer'),
+      })).default([]),
+      participants: Joi.array().items(Joi.object({
+        organization_id: Joi.number().integer().allow(null),
+        client_id: Joi.number().integer().allow(null),
+        participant_type: Joi.string().valid('consultant', 'client', 'supplier', 'subcontractor').required(),
+        portal_access_enabled: Joi.boolean().default(false),
+      })).default([]),
+      boq: Joi.alternatives().try(Joi.string(), Joi.object()).allow(null),
+      schedule: Joi.alternatives().try(Joi.string(), Joi.object()).allow(null),
+      notifications: Joi.object({
+        sla_hours: Joi.number().integer().min(1).default(48),
+        channels: Joi.array().items(Joi.string()).default([]),
+      }).allow(null),
+    }).unknown(true);
+    const { error, value } = schema.validate(req.body);
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+
+    const result = await transaction(async (client) => {
+      const out = await provisioning.provisionProject(value, { client, templateKey: value.template_key });
+      return out;
+    });
+
+    await logActivity({
+      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+      action: 'create', module: 'projects',
+      description: `Provisioned project ${result.project.code} via wizard (${result.steps.length} steps)`,
+      entityId: result.project.id, entityType: 'project'
+    });
+    res.status(201).json({ success: true, data: result.project, counts: result.counts, steps: result.steps });
+  } catch (e) {
+    console.error('Wizard provisioning failed:', e);
+    res.status(500).json({ success: false, error: `Provisioning failed, rolled back: ${e.message}` });
+  }
+};
+
+// Legacy single-INSERT path (kept behind the feature flag until the wizard is
+// verified in staging, then removable).
+const legacyCreate = async (req, res) => {
   try {
     const schema = Joi.object({
       code: Joi.string().optional(), name_ar: Joi.string().required(), name_en: Joi.string().allow(''),
@@ -93,7 +222,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'projects', description: `Created project ${value.code}`, entityId: result.id, entityType: 'project' });
     res.status(201).json({ success: true, data: result });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
-});
+};
 
 router.put('/:id', authenticate, authorize(), async (req, res) => {
   try {
