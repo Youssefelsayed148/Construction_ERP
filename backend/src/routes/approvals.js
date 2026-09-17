@@ -146,6 +146,21 @@ router.post('/request', authenticate, authorize(), async (req, res) => {
       console.error('workflowEngine.startWorkflow failed for legacy request:', wfError.message);
     }
 
+    // Phase 7: event hook point — let the people who can act on this request
+    // know (dispatcher routes 'approval.requested' to owner/admin + module
+    // manager).
+    fireEvent({
+      eventType: 'approval.requested',
+      entityType: 'approval_request',
+      entityId: result.rows[0].id,
+      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+      payload: {
+        module_name, request_type, request_id,
+        manager_role: (workflowEngine.MODULE_MANAGER_ROLES[module_name] || [])[0] || null,
+        title: `Approval requested: ${request_type} #${request_id}`,
+      },
+    }).catch(() => {});
+
     res.json({ success: true, requires_approval: true, request: result.rows[0] });
   } catch (error) {
     console.error('Error creating approval request:', error);

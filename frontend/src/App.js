@@ -8,6 +8,7 @@ import Suppliers from './pages/Suppliers';
 import Clients from './pages/Clients';
 import Legal from './pages/Legal';
 import Approvals from './pages/Approvals';
+import MyActions from './pages/MyActions';
 import Expenses from './pages/Expenses';
 import Invoices from './pages/Invoices';
 import Assets from './pages/Assets';
@@ -57,6 +58,7 @@ function App() {
           <Route path="clients" element={<Clients />} />
           <Route path="legal" element={<Legal />} />
           <Route path="approvals" element={<Approvals />} />
+          <Route path="my-actions" element={<MyActions />} />
           <Route path="expenses" element={<Expenses />} />
           <Route path="invoices" element={<Invoices />} />
           <Route path="assets" element={<Assets />} />

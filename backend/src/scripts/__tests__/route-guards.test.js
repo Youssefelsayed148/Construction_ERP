@@ -57,7 +57,7 @@ describe('every guarded route carries authorize() (static check)', () => {
     .filter((f) => f.endsWith('.js'));
 
   test('route files exist', () => {
-    expect(files.length).toBe(28);
+    expect(files.length).toBe(30);
   });
 
   test.each(files)('%s has no bare authenticate-only route lines', (file) => {

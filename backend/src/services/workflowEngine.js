@@ -22,6 +22,8 @@
 const { query: defaultQuery } = require('../config/database');
 
 const { query } = require('../config/database');
+const actionService = require('./actionService');
+const { fireEvent } = require('../utils/activity');
 
 // Mirrors the legacy map (kept in one place: the migration seeds it into the
 // legacy template's step conditions; the engine reads it from there).
@@ -205,7 +207,40 @@ async function startWorkflow(templateKey, entityType, entityId, context, opts = 
     );
   }
 
+  // Phase 7: the pending first step is actionable → matching action item.
+  try {
+    const firstStepInstance = (await loadStepInstances(client, instanceId)).find((s) => s.status === 'pending');
+    const instanceRow = await loadInstance(client, instanceId);
+    if (firstStepInstance && instanceRow) {
+      const templateStep = steps.find((s) => s.step_key === firstStepInstance.step_key);
+      await actionService.createForWorkflowStep(instanceRow, firstStepInstance, templateStep, { client });
+    }
+  } catch (e) {
+    console.error('[WORKFLOW] action item creation failed:', e.message);
+  }
+
   return getInstance(client, instanceId);
+}
+
+// Final decision → durable module event. `purchase_orders` publishes under
+// the catalog name; every other module emits `${module}.${outcome}`. Later
+// phases add routes to the dispatcher for the ones they care about.
+async function emitModuleEvent(client, instance, outcome, actor) {
+  try {
+    const context = parseJson(instance.context);
+    const moduleName = context.module_name || instance.entity_type;
+    if (!moduleName) return;
+    const eventType = moduleName === 'purchase_orders' ? `purchase_requisition.${outcome}` : `${moduleName}.${outcome}`;
+    await fireEvent({
+      eventType,
+      entityType: moduleName,
+      entityId: instance.entity_id,
+      userId: actor.userId, userName: actor.userName, userRole: actor.role,
+      payload: { requester_id: instance.requester_id, module_name: moduleName, request_type: context.request_type },
+    }, { query: client.query });
+  } catch (e) {
+    console.error('[WORKFLOW] event emission failed:', e.message);
+  }
 }
 
 // The current step is the first applicable step that is not yet terminal-done.
@@ -305,6 +340,19 @@ async function recordDecision(instanceId, stepId, userId, decision, comment, opt
       await applySourceStatus(client, instance, 'approved');
     }
     await recordAction(client, { instance, step: current, userId, userName, role, decision: 'approve', comment });
+    // Phase 7: action items — close the decided step's, open the next step's.
+    try {
+      await actionService.closeForWorkflowStep(instanceId, current.id, 'completed', { client });
+      if (next) {
+        const nextStepInstance = (await loadStepInstances(client, instanceId)).find((s) => s.step_key === next.step_key);
+        const instanceRow = await loadInstance(client, instanceId);
+        await actionService.createForWorkflowStep(instanceRow, nextStepInstance, next, { client });
+      } else {
+        await emitModuleEvent(client, instance, 'approved', { userId, userName, role });
+      }
+    } catch (e) {
+      console.error('[WORKFLOW] action item sync failed:', e.message);
+    }
     const fresh = await getInstance(client, instanceId);
     return {
       ok: true,
@@ -326,6 +374,12 @@ async function recordDecision(instanceId, stepId, userId, decision, comment, opt
     );
     await applySourceStatus(client, instance, 'rejected');
     await recordAction(client, { instance, step: current, userId, userName, role, decision: 'reject', comment });
+    try {
+      await actionService.closeForWorkflowStep(instanceId, current.id, 'rejected', { client });
+      await emitModuleEvent(client, instance, 'rejected', { userId, userName, role });
+    } catch (e) {
+      console.error('[WORKFLOW] action item sync failed:', e.message);
+    }
     const fresh = await getInstance(client, instanceId);
     return { ok: true, statusCode: 200, outcome: 'rejected', stage: null, workflow: fresh };
   }
@@ -349,6 +403,18 @@ async function recordDecision(instanceId, stepId, userId, decision, comment, opt
       [resolveAssignedRole(previous, context), instanceId, previous.step_key, now, null]
     );
     await recordAction(client, { instance, step: current, userId, userName, role, decision: 'return', comment });
+    // Phase 7: rework loop — close the returned step's item, raise one for the
+    // re-opened previous step.
+    try {
+      await actionService.closeForWorkflowStep(instanceId, current.id, 'completed', { client });
+      const prevStepInstance = (await loadStepInstances(client, instanceId)).find((s) => s.step_key === previous.step_key);
+      const instanceRow = await loadInstance(client, instanceId);
+      if (prevStepInstance && instanceRow) {
+        await actionService.createForWorkflowStep(instanceRow, prevStepInstance, previous, { client });
+      }
+    } catch (e) {
+      console.error('[WORKFLOW] action item sync failed:', e.message);
+    }
     const fresh = await getInstance(client, instanceId);
     return { ok: true, statusCode: 200, outcome: 'returned', stage: previous.step_key, workflow: fresh };
   }
@@ -362,6 +428,16 @@ async function recordDecision(instanceId, stepId, userId, decision, comment, opt
       'UPDATE workflow_step_instances SET assigned_user_id = $1 WHERE id = $2',
       [target, current.id]
     );
+    // Phase 7: keep the step's action item pointing at the new assignee.
+    try {
+      await client.query(
+        `UPDATE action_items SET assigned_user_id = $1, assigned_role = NULL, acknowledged_at = NULL, updated_at = $2
+         WHERE workflow_step_instance_id = $3 AND status IN ('open','in_progress')`,
+        [target, now, current.id]
+      );
+    } catch (e) {
+      console.error('[WORKFLOW] action item reassignment failed:', e.message);
+    }
     await recordAction(client, { instance, step: current, userId, userName, role, decision: 'reassign', comment });
     const fresh = await getInstance(client, instanceId);
     return { ok: true, statusCode: 200, outcome: 'reassigned', stage: current.step_key, workflow: fresh };
@@ -535,6 +611,21 @@ async function migrateLegacyApprovals(client) {
       );
     }
     migrated++;
+
+    // Phase 7: active legacy instances get an action item for the pending
+    // step, so the My Actions screen covers pre-engine rows too.
+    if (ar.status === 'pending') {
+      try {
+        const instanceRow = await loadInstance(client, instanceId);
+        const pendingStep = (await loadStepInstances(client, instanceId)).find((s) => s.status === 'pending');
+        if (instanceRow && pendingStep) {
+          const templateStep = steps.find((s) => s.step_key === pendingStep.step_key);
+          await actionService.createForWorkflowStep(instanceRow, pendingStep, templateStep, { client });
+        }
+      } catch (e) {
+        console.error('[WORKFLOW] legacy action item creation failed:', e.message);
+      }
+    }
   }
   return migrated;
 }

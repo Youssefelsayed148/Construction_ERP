@@ -12,9 +12,13 @@ const logActivity = async ({ userId, userName, userRole, action, module, descrip
   }
 };
 
-const fireEvent = async ({ eventType, entityType, entityId, userId, userName, userRole, payload }) => {
+// fireEvent — durable event_log row + synchronous emit on global.eventBus.
+// opts.query lets transaction-bound callers (workflowEngine) reuse their own
+// executor; production callers use the default pool.
+const fireEvent = async ({ eventType, entityType, entityId, userId, userName, userRole, payload }, opts = {}) => {
   try {
-    const result = await query(
+    const q = opts.query || query;
+    const result = await q(
       `INSERT INTO event_log (event_type, entity_type, entity_id, user_id, user_name, user_role, payload)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
       [eventType, entityType, entityId, userId, userName, userRole, JSON.stringify(payload || {})]
@@ -23,7 +27,10 @@ const fireEvent = async ({ eventType, entityType, entityId, userId, userName, us
     console.log(`[EVENT] ${eventType} fired for ${entityType} #${entityId}`);
 
     if (global.eventBus && typeof global.eventBus.emit === 'function') {
-      global.eventBus.emit(eventType, { entityType, entityId, userId, userName, userRole, payload });
+      global.eventBus.emit(eventType, {
+        eventType, entityType, entityId, userId, userName, userRole, payload,
+        eventId: result.rows[0] ? result.rows[0].id : null,
+      });
     }
 
     return result.rows[0];

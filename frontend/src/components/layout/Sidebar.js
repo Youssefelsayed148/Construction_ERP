@@ -4,7 +4,7 @@ import { useDispatch } from 'react-redux';
 import { logout as reduxLogout } from '../../store/slices/authSlice';
 import { authService } from '../../services/api';
 import { useLocale } from '../../hooks/useLocale';
-import { LayoutDashboard, Briefcase, Users, Package, Truck, Wrench, Shield, DollarSign, Receipt, ClipboardList, LogOut, Globe, HardHat } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Users, Package, Truck, Wrench, Shield, DollarSign, Receipt, ClipboardList, ListChecks, LogOut, Globe, HardHat } from 'lucide-react';
 
 const mainMenuItems = [
   { path: '/dashboard', icon: LayoutDashboard, labelKey: 'nav.dashboard' },
@@ -18,6 +18,7 @@ const mainMenuItems = [
   { path: '/invoices', icon: Receipt, labelKey: 'nav.invoices' },
   { path: '/legal', icon: Shield, labelKey: 'nav.legal' },
   { path: '/approvals', icon: ClipboardList, labelKey: 'nav.approvals' },
+  { path: '/my-actions', icon: ListChecks, labelKey: 'nav.myActions' },
 ];
 
 function Sidebar() {

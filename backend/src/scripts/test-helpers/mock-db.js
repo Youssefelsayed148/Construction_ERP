@@ -169,6 +169,7 @@ class MockDb {
     t.rows.push(row);
     if (m[4]) {
       const retCols = extractColList(m[4].trim());
+      if (retCols.length === 1 && retCols[0] === '*') return { rows: [row] };
       return { rows: [pickCols(row, retCols)] };
     }
     return { rows: [] };
@@ -212,7 +213,11 @@ class MockDb {
     }
     const returning = (sql.match(/RETURNING\s+([\s\S]+?)(?:\s+ON CONFLICT|$)/i) || [])[1];
     if (returning) {
-      return { rows: t.rows.slice(-inserted).map((r) => pickCols(r, extractColList(returning.trim()))) };
+      const retCols = extractColList(returning.trim());
+      const picked = retCols.length === 1 && retCols[0] === '*'
+        ? t.rows.slice(-inserted)
+        : t.rows.slice(-inserted).map((r) => pickCols(r, retCols));
+      return { rows: picked };
     }
     return { rows: [] };
   }
@@ -242,6 +247,10 @@ class MockDb {
         value = { __ref: rhs };
       } else if (/^['"].*['"]$/.test(rhs)) {
         value = rhs.slice(1, -1);
+      } else if (/^-?\d+(\.\d+)?$/.test(rhs)) {
+        value = parseFloat(rhs);
+      } else if (rhs === 'NULL') {
+        value = null;
       } else {
         // expression like 'CLI-LEGACY-' || id — evaluated lazily
         value = { __expr: rhs };
@@ -721,6 +730,13 @@ function evalPredicate(expr, row, params) {
     const v = resolveRef(isn[1], row, {});
     return isn[2] ? v !== null && v !== undefined : v === null || v === undefined;
   }
+  // ANY($1::int[]) — must be checked before the generic equality branch,
+  // whose RHS subexpression would otherwise swallow "ANY($1)".
+  const any = expr.match(/^(\w+)\s*=\s*ANY\s*\(\$(\d+)(?:::\w+(?:\[\])?)?\)$/i);
+  if (any) {
+    const arr = params[parseInt(any[2], 10) - 1];
+    return Array.isArray(arr) && arr.includes(row[any[1]]);
+  }
   // Equality / inequality
   const cmp = expr.match(/^(\w+(?:\.\w+)?)\s*(=|<>|!=)\s*([\s\S]+)$/);
   if (cmp) {
@@ -729,11 +745,12 @@ function evalPredicate(expr, row, params) {
     if (cmp[2] === '=') return lv === rv;
     return lv !== rv;
   }
-  // ANY($1::int[])
-  const any = expr.match(/^(\w+)\s*=\s*ANY\s*\(\$(\d+)(?:::\w+(?:\[\])?)?\)$/i);
-  if (any) {
-    const arr = params[parseInt(any[2], 10) - 1];
-    return Array.isArray(arr) && arr.includes(row[any[1]]);
+  // IN (list of literals) — e.g. status IN ('open','in_progress')
+  const inList = expr.match(/^(\w+(?:\.\w+)?)\s+IN\s*\(([^)]+)\)$/i);
+  if (inList && !/^SELECT/i.test(inList[2].trim())) {
+    const lv = resolveRef(inList[1], row, {});
+    const items = inList[2].split(',').map((s) => evalLiteral(s.trim(), params));
+    return items.includes(lv);
   }
   // IN (SELECT ...)
   const inSel = expr.match(/^(\w+)\s+IN\s*\(([\s\S]+)\)$/i);

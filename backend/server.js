@@ -68,9 +68,15 @@ app.use('/api/projects', require('./src/routes/site'));
 app.use('/api/qhse', require('./src/routes/qhse'));
 app.use('/api/docs', require('./src/routes/doccontrol'));
 app.use('/api/sales', require('./src/routes/units'));
+app.use('/api/actions', require('./src/routes/actions'));
+app.use('/api/notifications', require('./src/routes/notifications'));
 
 // Initialize cost event listener
 require('./src/services/costEventListener').initCostEventListener();
+
+// Initialize action/notification dispatcher + escalation scheduler (Phase 7)
+require('./src/services/eventDispatcher').initEventDispatcher();
+require('./src/services/escalationScheduler').initEscalationScheduler();
 
 app.use((err, req, res, next) => {
   logger.error(err.stack);
