@@ -51,6 +51,7 @@ class MockDb {
   }
 
   query = async (sql, params = []) => {
+    assertParamArity(sql, params);
     const norm = sql.replace(/\s+/g, ' ').trim();
     const upper = norm.toUpperCase();
     if (upper.startsWith('CREATE TABLE')) return this.execCreateTable(norm, params);
@@ -500,6 +501,29 @@ class MockDb {
       // not used by current migration; skip
     }
     return rows;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Param-arity check. Real PostgreSQL prepares a statement expecting exactly
+// as many bind parameters as the highest $N it finds in the SQL text, and
+// rejects the bind message otherwise ("bind message supplies N parameters,
+// but prepared statement requires M"). This mock silently ignored that,
+// which is how three real off-by-one/shifted-param bugs (Phase 3's
+// location_types seed, Phase 6's approve/reject SQL, Phase 8's work-order
+// completion insert) shipped with a fully green mock-backed test suite and
+// then failed immediately against real Postgres. Enforce the same contract
+// here so future migrations/services can't silently drift again.
+// ---------------------------------------------------------------------------
+function assertParamArity(sql, params) {
+  const matches = sql.match(/\$(\d+)/g);
+  if (!matches) return;
+  const maxPlaceholder = Math.max(...matches.map((m) => parseInt(m.slice(1), 10)));
+  if (maxPlaceholder !== params.length) {
+    throw new Error(
+      `MockDb: bind message supplies ${params.length} parameter(s), but statement ` +
+      `references $1..$${maxPlaceholder} (requires ${maxPlaceholder}): ${sql.replace(/\s+/g, ' ').trim().slice(0, 200)}`
+    );
   }
 }
 

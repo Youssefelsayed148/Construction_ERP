@@ -458,7 +458,7 @@ describe('orphan cleanup on workflow_instances', () => {
   test('dry run finds the orphan, apply deletes instance + legacy twin', async () => {
     await q("INSERT INTO expenses (id, amount) VALUES ($1, $2)", [950, 5]);
     await q(`INSERT INTO approval_requests (id, module_name, request_type, request_id, requester_id, status, stage)
-             VALUES ($1, 'expenses', 'expense', $2, $3, 'pending', 'manager_review')`, [950, 950]);
+             VALUES ($1, 'expenses', 'expense', $2, $3, 'pending', 'manager_review')`, [950, 950, 20]);
     await engine.startWorkflow('legacy_module_approval', 'expenses', 950,
       { module_name: 'expenses', request_type: 'expense', request_id: 950, requester_id: 20, legacy_approval_id: 950 }, { client });
     // Orphan: instance + approval_request pointing at a deleted expense.

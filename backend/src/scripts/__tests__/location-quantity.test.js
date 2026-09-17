@@ -12,10 +12,33 @@
 //     reconcile to the exact same quantity_measurements rows
 //   - derived summaries are rewritten from measurements, never hand-edited
 
+const fs = require('fs');
+const path = require('path');
 const { MockDb } = require('../test-helpers/mock-db');
 const migration = require('../location-quantity-migration');
 const engine = require('../../services/quantityEngine');
 const locationService = require('../../services/locationService');
+
+describe('migrate-21-locations-quantities.js (runner text invariants)', () => {
+  const content = fs.readFileSync(
+    path.join(__dirname, '..', 'migrate-21-locations-quantities.js'), 'utf8'
+  );
+
+  test('does NOT unconditionally drop buildings.floors/units_per_floor in the same run (ground rule 1: nothing dropped until every caller has migrated and a parity test has passed)', () => {
+    // The call must be gated behind an explicit flag, not run unconditionally
+    // right after the backfill — dropping in the same run as the backfill
+    // gives zero window to verify readers have cut over in a real deployment.
+    expect(content).toMatch(/if\s*\(\s*process\.argv\.includes\(['"]--drop-legacy-buildings-columns['"]\)\s*\)/);
+    // dropLegacyBuildingColumns must only appear inside that gate, not as an
+    // unconditional top-level call.
+    const unconditional = /^\s*(?:const\s+\w+\s*=\s*)?await\s+migration\.dropLegacyBuildingColumns\(query\);\s*$/m;
+    const lines = content.split('\n');
+    const gateLineIdx = lines.findIndex((l) => l.includes("--drop-legacy-buildings-columns"));
+    const dropLineIdx = lines.findIndex((l) => l.includes('migration.dropLegacyBuildingColumns(query)'));
+    expect(gateLineIdx).toBeGreaterThan(-1);
+    expect(dropLineIdx).toBeGreaterThan(gateLineIdx);
+  });
+});
 
 const db = new MockDb();
 const q = (sql, params) => db.query(sql, params);

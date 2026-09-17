@@ -54,9 +54,21 @@ async function run() {
   await migration.createViews(query);
   console.log('[OK] derived progress views created');
 
-  // Phase 8 step 7: every reader has moved to counting real floor rows.
-  const dropped = await migration.dropLegacyBuildingColumns(query);
-  console.log(`[OK] dropped legacy building columns: ${dropped.join(', ') || '(none — already dropped)'}`);
+  // Phase 8 step 7 (buildings.floors / units_per_floor drop) is deliberately
+  // NOT run here. Ground rule 1 requires "nothing existing is dropped until
+  // every caller has migrated and a parity test has passed" — dropping in
+  // the same run as the backfill above gives zero window to verify that in
+  // a real deployment. Run it separately, after confirming in staging/prod
+  // that every reader (routes/units.js floor counts, the frontend floor
+  // display, any report) is reading project_locations rows, not the
+  // buildings columns:
+  //   node backend/src/scripts/migrate-21-locations-quantities.js --drop-legacy-buildings-columns
+  if (process.argv.includes('--drop-legacy-buildings-columns')) {
+    const dropped = await migration.dropLegacyBuildingColumns(query);
+    console.log(`[OK] dropped legacy building columns: ${dropped.join(', ') || '(none — already dropped)'}`);
+  } else {
+    console.log('[SKIP] buildings.floors / units_per_floor kept — re-run with --drop-legacy-buildings-columns once every reader is confirmed migrated');
+  }
 
   console.log('\nMigration complete!');
   process.exit(0);

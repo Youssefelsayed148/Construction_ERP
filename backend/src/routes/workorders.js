@@ -190,32 +190,46 @@ router.post('/:id/completions', authenticate, authorize(), async (req, res) => {
     const projectId = wo.rows[0].project_id;
 
     const locationService = require('../services/locationService');
-    let locationId = value.project_location_id || null;
-    let allocId = null;
-    if (locationId != null) {
-      const alloc = await locationService.getOrCreateAllocation(query, value.boq_item_id, locationId);
-      allocId = alloc.id;
-    }
 
-    const r = await query(
-      `INSERT INTO work_completions (work_order_id, boq_item_id, quantity_completed, completion_date, notes, project_location_id, boq_location_allocation_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [req.params.id, value.boq_item_id, value.quantity_completed, value.completion_date, value.notes, locationId, allocId]
-    );
+    // Both inserts below must land together — a completion row with no
+    // matching measurement (or vice versa) would silently break the
+    // quantity engine's "executed quantity enters the system ONLY as a
+    // measurement" invariant (ground rule 2: transactional multi-record writes).
+    const completion = await transaction(async (client) => {
+      const txQuery = (text, params) => client.query(text, params);
 
-    // Phase 8: executed quantity enters the system ONLY as a measurement.
-    // The completion itself stays unverified until the WO verify step.
-    const engine = require('../services/quantityEngine');
-    await query(
-      `INSERT INTO quantity_measurements
-         (project_id, project_location_id, boq_item_id, boq_location_allocation_id,
-          measured_date, quantity, unit, source_type, source_id, measured_by, approval_state, photos)
-       VALUES ($1,$2,$3,$4,NULL,$5,$6,NULL,'work_completion',$7,$8,'pending','[]')`,
-      [projectId, locationId, value.boq_item_id, allocId, value.completion_date,
-       value.quantity_completed, req.user.id]
-    );
+      // work_completions.project_location_id is NOT NULL once the Phase 8
+      // migration's backfill is verified (migrate-21), so a completion
+      // posted without a location falls back to the project's "Unassigned"
+      // location rather than failing at the DB with a NOT NULL violation.
+      const locationId = value.project_location_id
+        || await locationService.getOrCreateUnassignedLocation(txQuery, projectId);
+      const alloc = await locationService.getOrCreateAllocation(txQuery, value.boq_item_id, locationId);
+      const allocId = alloc.id;
 
-    res.status(201).json({ success: true, data: r.rows[0] });
+      const r = await txQuery(
+        `INSERT INTO work_completions (work_order_id, boq_item_id, quantity_completed, completion_date, notes, project_location_id, boq_location_allocation_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+        [req.params.id, value.boq_item_id, value.quantity_completed, value.completion_date, value.notes, locationId, allocId]
+      );
+
+      // Phase 8: executed quantity enters the system ONLY as a measurement.
+      // The completion itself stays unverified until the WO verify step.
+      const boqItem = await txQuery('SELECT unit FROM boq_items WHERE id = $1', [value.boq_item_id]);
+      const unit = boqItem.rows[0] ? boqItem.rows[0].unit : null;
+      await txQuery(
+        `INSERT INTO quantity_measurements
+           (project_id, project_location_id, boq_item_id, boq_location_allocation_id,
+            measured_date, quantity, unit, source_type, source_id, measured_by, approval_state, photos)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,'work_completion',$8,$9,'pending','[]')`,
+        [projectId, locationId, value.boq_item_id, allocId, value.completion_date,
+         value.quantity_completed, unit, r.rows[0].id, req.user.id]
+      );
+
+      return r.rows[0];
+    });
+
+    res.status(201).json({ success: true, data: completion });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 

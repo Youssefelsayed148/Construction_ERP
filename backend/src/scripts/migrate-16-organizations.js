@@ -30,38 +30,45 @@
 // inserts are guarded by NOT EXISTS.
 
 require('dotenv').config({ path: require('path').join(__dirname, '../../.env') });
-const { query } = require('../config/database');
+const { transaction } = require('../config/database');
 const migration = require('./organizations-migration');
 
+// The whole migration runs inside one DB transaction (ground rule 2 —
+// transactional writes) so a mid-run failure (e.g. an unmet FK, a bad
+// backfill row) leaves the schema untouched instead of half-migrated.
 async function run() {
   console.log('Running Phase 3 migration — Core data architecture (organizations, participants, locations, WBS)...\n');
 
-  await migration.ensureSchema(query);
-  console.log('[OK] schema ensured (organizations + participant + location + WBS tables)');
+  await transaction(async (client) => {
+    const txQuery = (text, params) => client.query(text, params);
 
-  await migration.ensureInternalOrganization(query);
-  console.log('[OK] INTERNAL sentinel organization ensured');
+    await migration.ensureSchema(txQuery);
+    console.log('[OK] schema ensured (organizations + participant + location + WBS tables)');
 
-  await migration.runLocationTypeSeed(query);
-  console.log('[OK] location_types seeded');
+    const internalOrgId = await migration.ensureInternalOrganization(txQuery);
+    console.log('[OK] INTERNAL sentinel organization ensured');
 
-  await migration.runAlters(query);
-  console.log('[OK] projects.organization_id + cost_codes.wbs_node_id added');
+    await migration.runLocationTypeSeed(txQuery);
+    console.log('[OK] location_types seeded');
 
-  await migration.backfillClients(query);
-  await migration.backfillSuppliers(query);
-  await migration.backfillSubcontractors(query);
-  console.log('[OK] organizations backfilled from clients / suppliers / subcontractors');
+    await migration.runAlters(txQuery);
+    console.log('[OK] projects.organization_id + cost_codes.wbs_node_id added');
 
-  await migration.buildMappingTables(query);
-  console.log('[OK] _migration_client_org_map / _migration_supplier_org_map / _migration_subcontractor_org_map built');
+    await migration.backfillClients(txQuery);
+    await migration.backfillSuppliers(txQuery);
+    await migration.backfillSubcontractors(txQuery);
+    console.log('[OK] organizations backfilled from clients / suppliers / subcontractors');
 
-  await migration.backfillProjectsOrganizationId(query);
-  console.log('[OK] projects.organization_id backfilled from client map');
+    await migration.buildMappingTables(txQuery);
+    console.log('[OK] _migration_client_org_map / _migration_supplier_org_map / _migration_subcontractor_org_map built');
 
-  await migration.backfillProjectParticipants(query);
-  await migration.backfillProjectParticipantUsers(query);
-  console.log('[OK] project_team migrated to project_participants / project_participant_users');
+    await migration.backfillProjectsOrganizationId(txQuery);
+    console.log('[OK] projects.organization_id backfilled from client map');
+
+    await migration.backfillProjectParticipants(txQuery, internalOrgId);
+    await migration.backfillProjectParticipantUsers(txQuery, internalOrgId);
+    console.log('[OK] project_team migrated to project_participants / project_participant_users');
+  });
 
   console.log('\nMigration complete!');
   process.exit(0);

@@ -39,6 +39,18 @@ describe('migrate-16-organizations.js (text invariants)', () => {
     expect(content).toMatch(/require\(['"]dotenv['"]\)/);
     expect(content).toMatch(/require\(['"]\.\.\/config\/database['"]\)/);
   });
+
+  test('runs inside one DB transaction (ground rule 2)', () => {
+    expect(content).toMatch(/require\(\s*\{\s*transaction\s*\}\s*\)|\{\s*transaction\s*\}\s*=\s*require/);
+    expect(content).toMatch(/transaction\(async\s*\(client\)\s*=>/);
+  });
+
+  test('captures internalOrgId and passes it to both participant backfills (regression: previously called with no argument, which throws)', () => {
+    const internalOrgAssignment = /const\s+internalOrgId\s*=\s*await\s+migration\.ensureInternalOrganization/;
+    expect(content).toMatch(internalOrgAssignment);
+    expect(content).toMatch(/migration\.backfillProjectParticipants\(\s*txQuery\s*,\s*internalOrgId\s*\)/);
+    expect(content).toMatch(/migration\.backfillProjectParticipantUsers\(\s*txQuery\s*,\s*internalOrgId\s*\)/);
+  });
 });
 
 describe('organizations-migration.js (schema invariants)', () => {
@@ -98,6 +110,14 @@ describe('organizations-migration.js (schema invariants)', () => {
     const inserts = m.BACKFILL_STATEMENTS.filter((s) => typeof s === 'string');
     for (const s of inserts) {
       expect(s).toMatch(/ON CONFLICT[^;]*DO NOTHING/i);
+    }
+  });
+
+  test('location_types seed statement param count matches each seed row length (regression: previously 5 placeholders for 6-element rows, which throws against real Postgres)', () => {
+    const sql = m.LOCATION_TYPE_SEED_SQL[0];
+    const placeholderCount = (sql.match(/\$\d+/g) || []).length;
+    for (const row of m.LOCATION_TYPE_SEED) {
+      expect(row.length).toBe(placeholderCount);
     }
   });
 

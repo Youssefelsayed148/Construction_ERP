@@ -753,9 +753,9 @@ async function recordLegacyDecision({ approvalId, userId, userName, role, notes,
     // fully approved
     await client.query(
       `UPDATE approval_requests
-       SET status = 'approved', approver_id = $1, notes = $4, updated_at = $4
+       SET status = 'approved', approver_id = $1, notes = $2, updated_at = $4
        WHERE id = $3`,
-      [userId, notes || null, approvalId, notes || ar.notes || null, now]
+      [userId, notes || ar.notes || null, approvalId, now]
     );
     const back = await client.query('SELECT * FROM approval_requests WHERE id = $1', [approvalId]);
     updated = back.rows[0];
@@ -772,9 +772,9 @@ async function recordLegacyDecision({ approvalId, userId, userName, role, notes,
   // action === 'reject'
   await client.query(
     `UPDATE approval_requests
-     SET status = 'rejected', approver_id = $1, notes = $4, updated_at = $4
+     SET status = 'rejected', approver_id = $1, notes = $2, updated_at = $4
      WHERE id = $3`,
-    [userId, notes || null, approvalId, notes || ar.notes || null, now]
+    [userId, notes || ar.notes || null, approvalId, now]
   );
   const back = await client.query('SELECT * FROM approval_requests WHERE id = $1', [approvalId]);
   updated = back.rows[0];

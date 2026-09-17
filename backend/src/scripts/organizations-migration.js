@@ -465,8 +465,8 @@ const PROJECT_PARTICIPANT_USERS_SQL =
      AND u.id IS NOT NULL`;
 
 const LOCATION_TYPE_SEED_SQL = [
-  `INSERT INTO location_types (code, name, name_en, name_ar, sort_order)
-   VALUES ($1, $2, $3, $4, $5)
+  `INSERT INTO location_types (code, name, name_en, name_ar, sort_order, parent_id)
+   VALUES ($1, $2, $3, $4, $5, $6)
    ON CONFLICT (code) DO NOTHING`,
 ];
 
@@ -636,6 +636,7 @@ module.exports = {
   PROJECT_PARTICIPANTS_SQL,
   PROJECT_PARTICIPANT_USERS_SQL,
   LOCATION_TYPE_SEED,
+  LOCATION_TYPE_SEED_SQL,
   // Step functions
   ensureSchema,
   ensureInternalOrganization,
