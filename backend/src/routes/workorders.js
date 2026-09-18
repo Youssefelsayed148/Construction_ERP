@@ -4,6 +4,7 @@ const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
+const inventoryEngine = require('../services/inventoryEngine');
 
 const WO_STATUSES = ['planned', 'in_progress', 'completed', 'cancelled'];
 
@@ -117,19 +118,32 @@ router.post('/:id/materials', authenticate, authorize(), async (req, res) => {
     const total_cost = value.actual_quantity * value.unit_cost;
 
     await transaction(async (client) => {
-      // Deduct from warehouse stock
+      // Phase 10 — issuance is ledgered: the movement API deducts stock
+      // (gated on available stock) instead of direct warehouse_stock mutation.
       if (value.warehouse_id && value.actual_quantity > 0) {
-        const stock = await client.query('SELECT quantity FROM warehouse_stock WHERE warehouse_id = $1 AND item_id = $2', [value.warehouse_id, value.item_id]);
-        const current = parseFloat(stock.rows[0]?.quantity || 0);
-        if (current < value.actual_quantity) throw new Error(`Insufficient stock: ${current} available, ${value.actual_quantity} requested`);
-        await client.query('UPDATE warehouse_stock SET quantity = quantity - $1 WHERE warehouse_id = $2 AND item_id = $3', [value.actual_quantity, value.warehouse_id, value.item_id]);
+        const balances = await inventoryEngine.getBalances(client, value.warehouse_id, value.item_id);
+        if (balances.available < value.actual_quantity) {
+          throw new Error(`Insufficient stock: ${balances.available} available, ${value.actual_quantity} requested`);
+        }
       }
 
-      await client.query(
+      const wom = await client.query(
         `INSERT INTO work_order_materials (work_order_id, item_id, boq_item_id, planned_quantity, actual_quantity, unit_cost, total_cost, warehouse_id, issued_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
         [req.params.id, value.item_id, value.boq_item_id, value.planned_quantity, value.actual_quantity, value.unit_cost, total_cost, value.warehouse_id, req.user.id]
       );
+
+      if (value.warehouse_id && value.actual_quantity > 0) {
+        await inventoryEngine.createMovement(client, {
+          warehouse_id: value.warehouse_id,
+          material_id: value.item_id,
+          movement_type: 'issue',
+          quantity: value.actual_quantity,
+          reference_type: 'work_order_material',
+          reference_id: wom.rows[0].id,
+          created_by: req.user.id,
+        });
+      }
     });
 
     res.status(201).json({ success: true, message: 'Material issued' });
