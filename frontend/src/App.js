@@ -21,6 +21,7 @@ import ProjectDetail from './pages/ProjectDetail';
 import BOQ from './pages/BOQ';
 import WorkOrders from './pages/WorkOrders';
 import SiteManagement from './pages/SiteManagement';
+import SiteWorkspace from './pages/SiteWorkspace';
 import QHSE from './pages/QHSE';
 import ProjectDocuments from './pages/ProjectDocuments';
 import UnitsSales from './pages/UnitsSales';
@@ -73,6 +74,7 @@ function App() {
           <Route path="projects/:id/boq" element={<BOQ />} />
           <Route path="projects/:id/work-orders" element={<WorkOrders />} />
           <Route path="projects/:id/site" element={<SiteManagement />} />
+          <Route path="projects/:id/site-workspace" element={<SiteWorkspace />} />
           <Route path="projects/:id/locations" element={<LocationDashboard />} />
           <Route path="projects/:id/qhse" element={<QHSE />} />
           <Route path="projects/:id/documents" element={<ProjectDocuments />} />
