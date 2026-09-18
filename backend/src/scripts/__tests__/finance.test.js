@@ -129,6 +129,37 @@ describe('migration', () => {
     expect(db.table('payments').columns.has('direction')).toBe(true);
   });
 
+  test('tax_codes table is created by the migration (not assumed pre-existing)', () => {
+    // Regression: ensureTaxCodes INSERTs into tax_codes; before this fix no
+    // DDL created the table, so migrate-27 crashed on a real database.
+    expect(db.table('tax_codes').columns.has('code')).toBe(true);
+    expect(db.table('tax_codes').columns.has('rate_pct')).toBe(true);
+  });
+
+  test('audit_events carries BOTH the Phase 4 and Phase 14 column families', async () => {
+    // Regression: Phase 4 (policy engine) created audit_events with
+    // entity / action / "before" / "after" / user_id. Phase 14's
+    // writeAuditEvent used a disjoint column set, which would have failed on
+    // any real database where the Phase 4 table already existed.
+    for (const col of ['entity', 'action', 'entity_type', 'event_type', 'user_id', 'actor_id']) {
+      expect(db.table('audit_events').columns.has(col)).toBe(true);
+    }
+
+    // writeAuditEvent dual-writes: entity=entity_type, action=event_type,
+    // user_id=actor_id, so Phase 4 readers see Phase 14 events.
+    // (Distinct entity_type so the probe doesn't collide with the
+    // invoice-audit counts asserted in later describes.)
+    await finance.writeAuditEvent(q, {
+      entity_type: 'audit_regression_probe', entity_id: 1, event_type: 'create',
+      actor_id: FINANCE.id, actor_name: 'CFO', after_state: { x: 1 },
+    });
+    const row = (await q("SELECT * FROM audit_events WHERE entity_type = 'audit_regression_probe' LIMIT 1")).rows[0];
+    expect(row.entity).toBe('audit_regression_probe'); // Phase 4 family mirror
+    expect(row.action).toBe('create');                 // Phase 4 family mirror
+    expect(row.user_id).toBe(FINANCE.id);              // Phase 4 family mirror
+    expect(row.actor_id).toBe(FINANCE.id);             // Phase 14 family
+  });
+
   test('tax codes seeded and AP queue synced from three-way-match exceptions', async () => {
     const taxes = (await q('SELECT * FROM tax_codes')).rows;
     expect(taxes.length).toBe(4);

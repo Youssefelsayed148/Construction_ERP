@@ -55,11 +55,20 @@ async function writeAuditEvent(q, {
   entity_type, entity_id, event_type, actor_id = null, actor_name = null,
   before_state = {}, after_state = {},
 }) {
+  // Dual-write: audit_events is ONE physical table shared with the Phase 4
+  // policy engine, whose columns are entity / action / "before" / "after" /
+  // user_id (entity+action NOT NULL there). Populate both column families so
+  // either reader sees every event and neither schema's constraints bite.
+  const beforeJson = JSON.stringify(before_state || {});
+  const afterJson = JSON.stringify(after_state || {});
   const r = await q(
-    `INSERT INTO audit_events (entity_type, entity_id, event_type, actor_id, actor_name, before_state, after_state)
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-    [entity_type, entity_id, event_type, actor_id, actor_name,
-     JSON.stringify(before_state || {}), JSON.stringify(after_state || {})]
+    `INSERT INTO audit_events
+       (entity_type, entity_id, event_type, actor_id, actor_name, before_state, after_state,
+        entity, action, "before", "after", user_id)
+     VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8, $9, $10::jsonb, $11::jsonb, $12)
+     RETURNING *`,
+    [entity_type, entity_id, event_type, actor_id, actor_name, beforeJson, afterJson,
+     entity_type, event_type, beforeJson, afterJson, actor_id]
   );
   return r.rows[0];
 }

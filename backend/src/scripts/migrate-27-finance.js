@@ -13,6 +13,9 @@ async function run() {
   await migration.ensureTables(query);
   console.log('[OK] valuations/allocations/AP queue/reminders/tax/audit tables ensured');
 
+  await migration.ensureAuditCompat(query);
+  console.log('[OK] audit_events converged with the Phase 4 policy-engine shape (both column families usable)');
+
   const seeded = await financeEngine.ensureTaxCodes(query);
   console.log(`[OK] tax codes seeded (${seeded} row(s))`);
 

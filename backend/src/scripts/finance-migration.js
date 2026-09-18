@@ -92,19 +92,66 @@ const DDL = [
     UNIQUE(invoice_id, reminder_type)
   )`,
 
+  // Tax module — VAT codes used by valuations/certificates. Without this
+  // DDL, ensureTaxCodes and GET /tax-codes crash on a real DB (the in-memory
+  // test fixture masked it because MockDb auto-creates tables on first use).
+  `CREATE TABLE IF NOT EXISTS tax_codes (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(30) UNIQUE NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    rate_pct DECIMAL(5,3) NOT NULL DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`,
+
   // Immutable audit mirror — every financial create/status change writes one.
+  //
+  // Phase 4 (policy engine) already creates audit_events with the columns
+  // entity / action / "before" / "after" / user_id / project_id — with
+  // entity and action NOT NULL. Phase 14 writes the richer shape
+  // (entity_type / event_type / actor_id / actor_name / before_state /
+  // after_state). One physical table, union schema: the CREATE covers fresh
+  // databases, the ALTERs converge an existing Phase 4 table, and the
+  // engine (writeAuditEvent) dual-writes BOTH column families so either
+  // reader (policy.js or the finance routes) sees every event.
   `CREATE TABLE IF NOT EXISTS audit_events (
     id SERIAL PRIMARY KEY,
-    entity_type VARCHAR(100) NOT NULL,
+    entity VARCHAR(100),
     entity_id INTEGER,
-    event_type VARCHAR(50) NOT NULL,
+    action VARCHAR(100),
+    "before" JSONB,
+    "after" JSONB,
+    user_id INTEGER REFERENCES users(id),
+    project_id INTEGER REFERENCES projects(id),
+    entity_type VARCHAR(100),
+    event_type VARCHAR(50),
     actor_id INTEGER REFERENCES users(id),
     actor_name VARCHAR(255),
     before_state JSONB DEFAULT '{}',
     after_state JSONB DEFAULT '{}',
     created_at TIMESTAMPTZ DEFAULT NOW()
   )`,
-  `CREATE INDEX IF NOT EXISTS idx_audit_events_entity ON audit_events(entity_type, entity_id)`,
+  `ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS entity VARCHAR(100)`,
+  `ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS action VARCHAR(100)`,
+  `ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id)`,
+  `ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS project_id INTEGER REFERENCES projects(id)`,
+  `ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS entity_type VARCHAR(100)`,
+  `ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS event_type VARCHAR(50)`,
+  `ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS actor_id INTEGER REFERENCES users(id)`,
+  `ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS actor_name VARCHAR(255)`,
+  `ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS before_state JSONB DEFAULT '{}'`,
+  `ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS after_state JSONB DEFAULT '{}'`,
+  `CREATE INDEX IF NOT EXISTS idx_audit_events_entity ON audit_events(entity, entity_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_audit_events_entity_type ON audit_events(entity_type, entity_id)`,
+];
+
+// Real-PostgreSQL-only: a Phase-4-era audit_events table carries NOT NULL on
+// entity/action. Phase 14's writes fill both column families, so this is
+// belt-and-braces for any writer that only fills one family. MockDb cannot
+// parse ALTER COLUMN, so this runs from migrate-27 only.
+const AUDIT_COMPAT_SQL = [
+  `ALTER TABLE audit_events ALTER COLUMN entity DROP NOT NULL`,
+  `ALTER TABLE audit_events ALTER COLUMN action DROP NOT NULL`,
 ];
 
 async function ensureTables(query) {
@@ -113,4 +160,16 @@ async function ensureTables(query) {
   }
 }
 
-module.exports = { DDL, ensureTables };
+// Run after ensureTables on a real database (migrate-27). Best-effort: the
+// NOT NULL drops only matter for pre-Phase-14 tables that had them.
+async function ensureAuditCompat(query) {
+  for (const sql of AUDIT_COMPAT_SQL) {
+    try {
+      await query(sql);
+    } catch (e) {
+      console.warn(`[finance-migration] audit compat skipped: ${e.message}`);
+    }
+  }
+}
+
+module.exports = { DDL, AUDIT_COMPAT_SQL, ensureTables, ensureAuditCompat };
