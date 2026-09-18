@@ -78,6 +78,7 @@ app.use('/api/commercial', require('./src/routes/commercial'));
 app.use('/api/finance-ledger', require('./src/routes/financeLedger'));
 app.use('/api/consultant', require('./src/routes/consultant'));
 app.use('/api/client-portal', require('./src/routes/client'));
+app.use('/api/portal', require('./src/routes/portal'));
 
 // Initialize cost event listener
 require('./src/services/costEventListener').initCostEventListener();
