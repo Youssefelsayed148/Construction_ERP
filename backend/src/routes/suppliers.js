@@ -45,7 +45,12 @@ router.get('/specialties', authenticate, authorize(), (req, res) => {
 
 router.get('/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const result = await query('SELECT * FROM suppliers WHERE id = $1', [req.params.id]);
+    // Phase 12 — suppliers resolve through their organization (Phase 3).
+    const result = await query(
+      `SELECT s.*, o.code AS organization_code, o.name_en AS organization_name_en, o.name_ar AS organization_name_ar, o.org_type AS organization_type
+       FROM suppliers s LEFT JOIN organizations o ON o.id = s.organization_id WHERE s.id = $1`,
+      [req.params.id]
+    );
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Supplier not found' });
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
@@ -67,6 +72,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
       specialty: Joi.string().valid(...SPECIALTIES).optional(),
       tax_id: Joi.string().allow(''),
       payment_terms: Joi.string().allow(''),
+      organization_id: Joi.number().integer().optional().allow(null),
       is_active: Joi.boolean().optional(),
     });
     const { error, value } = schema.validate(req.body);
@@ -81,9 +87,9 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     if (existing.rows.length > 0) return res.status(400).json({ success: false, error: 'Code already exists' });
 
     const result = await query(
-      `INSERT INTO suppliers (code, name_ar, name_en, contact_person, phone, email, address, city, specialty, tax_id, payment_terms, is_active)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
-      [value.code, value.name_ar, value.name_en, value.contact_person, value.phone, value.email, value.address, value.city, value.specialty, value.tax_id, value.payment_terms, value.is_active !== undefined ? value.is_active : true]
+      `INSERT INTO suppliers (code, name_ar, name_en, contact_person, phone, email, address, city, specialty, tax_id, payment_terms, organization_id, is_active)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+      [value.code, value.name_ar, value.name_en, value.contact_person, value.phone, value.email, value.address, value.city, value.specialty, value.tax_id, value.payment_terms, value.organization_id || null, value.is_active !== undefined ? value.is_active : true]
     );
 
     await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'suppliers', description: `Created supplier ${value.code}`, entityId: result.rows[0].id, entityType: 'supplier' });
@@ -106,6 +112,7 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
       city: Joi.string().allow(''),
       specialty: Joi.string().valid(...SPECIALTIES),
       tax_id: Joi.string().allow(''), payment_terms: Joi.string().allow(''),
+      organization_id: Joi.number().integer().allow(null),
       is_active: Joi.boolean(),
     }).min(1);
     const { error, value } = schema.validate(req.body);
