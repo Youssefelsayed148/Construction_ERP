@@ -75,6 +75,7 @@ app.use('/api/quantities', require('./src/routes/quantities'));
 app.use('/api/materials', require('./src/routes/materials'));
 app.use('/api/procurement', require('./src/routes/procurement'));
 app.use('/api/commercial', require('./src/routes/commercial'));
+app.use('/api/finance-ledger', require('./src/routes/financeLedger'));
 
 // Initialize cost event listener
 require('./src/services/costEventListener').initCostEventListener();
@@ -85,6 +86,9 @@ require('./src/services/escalationScheduler').initEscalationScheduler();
 
 // Replenishment / auto-purchasing sweep (Phase 11)
 require('./src/services/replenishment').initReplenishmentScheduler();
+
+// Receivable reminders (Phase 14)
+require('./src/services/financeEngine').initReceivableReminderScheduler();
 
 app.use((err, req, res, next) => {
   logger.error(err.stack);
