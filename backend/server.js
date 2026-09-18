@@ -81,6 +81,9 @@ require('./src/services/costEventListener').initCostEventListener();
 require('./src/services/eventDispatcher').initEventDispatcher();
 require('./src/services/escalationScheduler').initEscalationScheduler();
 
+// Replenishment / auto-purchasing sweep (Phase 11)
+require('./src/services/replenishment').initReplenishmentScheduler();
+
 app.use((err, req, res, next) => {
   logger.error(err.stack);
   res.status(500).json({ success: false, error: 'Internal server error', message: err.message });
