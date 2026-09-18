@@ -3,6 +3,7 @@ const router = express.Router();
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { fireEvent } = require('../utils/activity');
+const commercialEngine = require('../services/commercialEngine');
 
 router.get('/codes', authenticate, authorize(), async (req, res) => {
   try {
@@ -51,18 +52,32 @@ router.get('/project/:projectId/summary', authenticate, authorize(), async (req,
 
 router.get('/project/:projectId/profitability', authenticate, authorize(), async (req, res) => {
   try {
-    const project = await query('SELECT contract_value, budget FROM projects WHERE id = $1', [req.params.projectId]);
-    if (project.rows.length === 0) return res.status(404).json({ success: false, error: 'Project not found' });
+    // Phase 13 — the canonical EAC/forecast-margin model (replaces the legacy
+    // `contract_value − total_cost`; the frozen legacy figure is served under
+    // `legacy` so past reports stay explainable).
+    const data = await commercialEngine.projectCommercial(query, parseInt(req.params.projectId, 10));
+    if (!data) return res.status(404).json({ success: false, error: 'Project not found' });
 
-    const costs = await query('SELECT COALESCE(SUM(amount), 0) as total_cost FROM project_costs WHERE project_id = $1', [req.params.projectId]);
-    const revenue = parseFloat(project.rows[0].contract_value || 0);
-    const totalCost = parseFloat(costs.rows[0].total_cost);
-    const profit = revenue - totalCost;
-    const margin = revenue > 0 ? (profit / revenue * 100) : 0;
-
+    const legacySnapshot = await query(
+      "SELECT figures FROM commercial_snapshots WHERE project_id = $1 AND snapshot_type = 'costing_legacy'",
+      [req.params.projectId]
+    );
+    const legacy = legacySnapshot.rows[0] ? legacySnapshot.rows[0].figures : null;
     res.json({
       success: true,
-      data: { revenue, total_cost: totalCost, profit, profit_margin_percent: parseFloat(margin.toFixed(2)), budget: parseFloat(project.rows[0].budget || 0) }
+      data: {
+        revenue: data.forecast_revenue,
+        revised_contract_value: data.revised_contract_value,
+        total_cost: data.eac,
+        profit: data.forecast_profit,
+        profit_margin_percent: data.forecast_margin_percent,
+        budget: data.current_budget,
+        committed_cost: data.committed_cost,
+        actual_cost: data.actual_cost,
+        accrued_cost: data.accrued_cost,
+        etc: data.etc,
+        legacy,
+      }
     });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

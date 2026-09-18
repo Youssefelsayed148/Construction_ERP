@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
+const commercialEngine = require('../services/commercialEngine');
 
 router.get('/project/:id', authenticate, authorize(), async (req, res) => {
   try {
@@ -27,15 +28,28 @@ router.get('/project/:id', authenticate, authorize(), async (req, res) => {
     const paid = parseFloat(totalPaid.rows[0].total) || 0;
     const expenses = parseFloat(totalExpenses.rows[0].total) || 0;
 
+    // Phase 13 — `profit` is the canonical EAC/forecast-margin figure from the
+    // commercial engine; the cash-proxy formula (paid − expenses) is retired
+    // to the frozen legacy snapshot.
+    const commercial = await commercialEngine.projectCommercial(query, parseInt(projectId, 10));
+    const legacySnapshot = await query(
+      "SELECT figures FROM commercial_snapshots WHERE project_id = $1 AND snapshot_type = 'finance_cash_proxy'",
+      [projectId]
+    );
+
     res.json({
       success: true,
       data: {
-        contract_value: contractValue,
+        contract_value: commercial ? commercial.revised_contract_value : contractValue,
         total_invoiced: invoiced,
-        total_paid: paid,
+        total_paid: paid,               // cash figure (kept, explicitly labeled)
         outstanding_balance: invoiced - paid,
-        total_expenses: expenses,
-        profit: paid - expenses,
+        total_expenses: expenses,       // cash figure
+        profit: commercial ? commercial.forecast_profit : 0,
+        forecast_revenue: commercial ? commercial.forecast_revenue : 0,
+        forecast_margin_percent: commercial ? commercial.forecast_margin_percent : 0,
+        eac: commercial ? commercial.eac : 0,
+        legacy_profit_cash_proxy: legacySnapshot.rows[0] ? legacySnapshot.rows[0].figures : null,
       }
     });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }

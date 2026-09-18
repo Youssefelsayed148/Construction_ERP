@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
+const commercialEngine = require('../services/commercialEngine');
 
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
@@ -63,15 +64,27 @@ router.get('/project/:id', authenticate, authorize(), async (req, res) => {
     ]);
 
     const p = project.rows[0];
-    const budget_burn = parseFloat(p.budget) > 0 ? (parseFloat(costs.rows[0].total_spent) / parseFloat(p.budget) * 100) : 0;
+
+    // Phase 13 — burn is measured against Current Budget (original + approved
+    // changes) from the canonical commercial engine, not the static
+    // projects.budget; the dashboard also carries the forecast margin.
+    let commercial = null;
+    try {
+      commercial = await commercialEngine.projectCommercial(query, parseInt(req.params.id, 10));
+    } catch (e) { commercial = null; }
+    const currentBudget = commercial ? commercial.current_budget : parseFloat(p.budget);
+    const totalSpent = commercial ? commercial.actual_cost : parseFloat(costs.rows[0].total_spent);
+    const budget_burn = totalSpent > 0 && currentBudget > 0 ? (totalSpent / currentBudget * 100) : 0;
 
     res.json({
       success: true,
       data: {
         ...p,
         phases: phases.rows,
-        total_spent: parseFloat(costs.rows[0].total_spent),
+        total_spent: totalSpent,
         budget_burn_percent: parseFloat(budget_burn.toFixed(1)),
+        forecast_margin_percent: commercial ? commercial.forecast_margin_percent : null,
+        forecast_profit: commercial ? commercial.forecast_profit : null,
         upcoming_milestones: milestones.rows,
       }
     });
