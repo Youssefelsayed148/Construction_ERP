@@ -20,6 +20,7 @@
 const { query: defaultQuery } = require('../config/database');
 const actionService = require('./actionService');
 const notificationService = require('./notificationService');
+const materialDemand = require('./materialDemand');
 
 function parseJson(v) {
   if (v == null) return {};
@@ -150,6 +151,28 @@ async function routeApprovalRequested(evt, opts) {
   }, opts);
 }
 
+// Phase 9 — material demand triggers. Recomputation is idempotent, so a
+// direct call (quantities routes) plus this durable catch-up path converge.
+async function routeAllocationQuantityChanged(evt, opts) {
+  const q = (opts && opts.query) || defaultQuery;
+  await materialDemand.recomputeForAllocationEvent(q, evt, opts);
+}
+
+// Phase 22 will fire this when a schedule activity's date/quantity changes;
+// the route is already wired so the schedule engine lands with zero
+// dispatcher changes.
+async function routeScheduleActivityChanged(evt, opts) {
+  const q = (opts && opts.query) || defaultQuery;
+  await materialDemand.recomputeForScheduleEvent(q, evt, opts);
+}
+
+// Recipe factors edited (materials routes fire this) — re-derive demand for
+// the linked BOQ item, or the event's project for activity-type recipes.
+async function routeRecipeChanged(evt, opts) {
+  const q = (opts && opts.query) || defaultQuery;
+  await materialDemand.recomputeForRecipeEvent(q, evt, opts);
+}
+
 const EVENT_ROUTES = {
   'observation.created': routeObservationCreated,
   'rfi.submitted': routeRfiSubmitted,
@@ -157,6 +180,9 @@ const EVENT_ROUTES = {
   'invoice.overdue': routeInvoiceOverdue,
   'action.overdue': routeActionOverdue,
   'approval.requested': routeApprovalRequested,
+  'allocation.quantity_changed': routeAllocationQuantityChanged,
+  'schedule.activity.changed': routeScheduleActivityChanged,
+  'recipe.changed': routeRecipeChanged,
 };
 
 // ---------------------------------------------------------------------------

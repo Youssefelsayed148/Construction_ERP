@@ -72,6 +72,7 @@ app.use('/api/actions', require('./src/routes/actions'));
 app.use('/api/notifications', require('./src/routes/notifications'));
 app.use('/api/locations', require('./src/routes/locations'));
 app.use('/api/quantities', require('./src/routes/quantities'));
+app.use('/api/materials', require('./src/routes/materials'));
 
 // Initialize cost event listener
 require('./src/services/costEventListener').initCostEventListener();

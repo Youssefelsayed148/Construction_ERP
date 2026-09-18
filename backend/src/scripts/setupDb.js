@@ -204,7 +204,23 @@ async function setupDatabase() {
       name_ar VARCHAR(255) NOT NULL,
       description TEXT,
       is_active BOOLEAN DEFAULT true,
-      created_at TIMESTAMPTZ DEFAULT NOW()
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      base_unit VARCHAR(50),
+      purchase_unit VARCHAR(50),
+      issue_unit VARCHAR(50),
+      unit_conversions JSONB DEFAULT '[]',
+      preferred_supplier_ids JSONB DEFAULT '[]',
+      min_stock DECIMAL(15,3) DEFAULT 0,
+      max_stock DECIMAL(15,3) DEFAULT 0,
+      safety_stock DECIMAL(15,3) DEFAULT 0,
+      supplier_lead_time_days INTEGER DEFAULT 0,
+      reorder_policy VARCHAR(30) DEFAULT 'none',
+      reorder_point DECIMAL(15,3) DEFAULT 0,
+      order_multiple DECIMAL(15,3) DEFAULT 0,
+      moq DECIMAL(15,3) DEFAULT 0,
+      shelf_life_days INTEGER,
+      batch_lot_tracking BOOLEAN DEFAULT false,
+      inspection_required BOOLEAN DEFAULT false
     )
   `);
   console.log('[OK] item_master');

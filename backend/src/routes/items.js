@@ -16,6 +16,31 @@ const SUB_CATEGORIES = {
   other: ['other'],
 };
 const VALID_UNITS = ['ton', 'm3', 'm2', 'piece', 'linear_m', 'bag', 'liter', 'set', 'lot'];
+const REORDER_POLICIES = ['none', 'reorder_point', 'min_max', 'periodic'];
+
+// Phase 9 — planning fields shared by create/update (all optional).
+const PLANNING_FIELDS = {
+  base_unit: Joi.string().allow('', null),
+  purchase_unit: Joi.string().allow('', null),
+  issue_unit: Joi.string().allow('', null),
+  unit_conversions: Joi.array().items(Joi.object({
+    from_unit: Joi.string().required(),
+    to_unit: Joi.string().required(),
+    factor: Joi.number().positive().required(),
+  })).default([]),
+  preferred_supplier_ids: Joi.array().items(Joi.number().integer()).default([]),
+  min_stock: Joi.number().min(0),
+  max_stock: Joi.number().min(0),
+  safety_stock: Joi.number().min(0),
+  supplier_lead_time_days: Joi.number().integer().min(0),
+  reorder_policy: Joi.string().valid(...REORDER_POLICIES),
+  reorder_point: Joi.number().min(0),
+  order_multiple: Joi.number().min(0),
+  moq: Joi.number().min(0),
+  shelf_life_days: Joi.number().integer().min(0).allow(null),
+  batch_lot_tracking: Joi.boolean(),
+  inspection_required: Joi.boolean(),
+};
 
 router.get('/categories', authenticate, authorize(), (req, res) => {
   res.json({ success: true, data: { categories: CATEGORIES, sub_categories: SUB_CATEGORIES, units: VALID_UNITS } });
@@ -97,6 +122,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
       name_ar: Joi.string().required(),
       description: Joi.string().allow(''),
       is_active: Joi.boolean().default(true),
+      ...PLANNING_FIELDS,
     });
 
     const { error, value } = schema.validate(req.body);
@@ -143,6 +169,7 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
       name_ar: Joi.string(),
       description: Joi.string().allow(''),
       is_active: Joi.boolean(),
+      ...PLANNING_FIELDS,
     });
 
     const { error, value } = schema.validate(req.body);

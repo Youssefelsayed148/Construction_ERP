@@ -3,8 +3,9 @@ const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
-const { logActivity } = require('../utils/activity');
+const { logActivity, fireEvent } = require('../utils/activity');
 const engine = require('../services/quantityEngine');
+const materialDemand = require('../services/materialDemand');
 
 // Phase 8 — quantity surface. Executed quantity is NEVER edited on a summary
 // row: it only enters the system as a quantity_measurements row. Allocation
@@ -81,6 +82,9 @@ router.post('/allocations', authenticate, authorize(), async (req, res) => {
       planned_quantity: Joi.number().min(0).default(0),
       approved_design_quantity: Joi.number().min(0).default(0),
       unit_cost: Joi.number().min(0).default(0),
+      // Phase 9 — the activity the allocation plans (e.g. 'concrete_pour');
+      // drives activity-type recipe resolution for material demand.
+      activity_type: Joi.string().max(50).optional().allow(null, ''),
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
@@ -88,10 +92,23 @@ router.post('/allocations', authenticate, authorize(), async (req, res) => {
     const alloc = await getOrCreateAllocation(query, value.boq_item_id, value.project_location_id);
     const r = await query(
       `UPDATE boq_location_allocations
-       SET planned_quantity = $1, approved_design_quantity = $2, unit_cost = $3, updated_at = NOW()
-       WHERE id = $4 RETURNING *`,
-      [value.planned_quantity, value.approved_design_quantity, value.unit_cost, alloc.id]
+       SET planned_quantity = $1, approved_design_quantity = $2, unit_cost = $3,
+           activity_type = COALESCE($4, activity_type), updated_at = NOW()
+       WHERE id = $5 RETURNING *`,
+      [value.planned_quantity, value.approved_design_quantity, value.unit_cost, value.activity_type || null, alloc.id]
     );
+
+    // Phase 9 — planned quantity drives material demand: re-derive the
+    // allocation's material_requirements immediately, and fire the durable
+    // event so the catch-up path (and later, schedule-linked dates) sees it.
+    await materialDemand.recomputeAllocation(query, alloc.id, {}).catch((e) =>
+      console.error('[MATERIAL_DEMAND] allocation recompute failed:', e.message));
+    await fireEvent({
+      eventType: 'allocation.quantity_changed', entityType: 'boq_location_allocation', entityId: alloc.id,
+      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+      payload: { boq_item_id: value.boq_item_id, project_location_id: value.project_location_id, planned_quantity: value.planned_quantity },
+    }).catch(() => {});
+
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -104,6 +121,7 @@ router.put('/allocations/:id', authenticate, authorize(), async (req, res) => {
       planned_quantity: Joi.number().min(0),
       approved_design_quantity: Joi.number().min(0),
       unit_cost: Joi.number().min(0),
+      activity_type: Joi.string().max(50).allow(null, ''),
     }).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
@@ -117,6 +135,18 @@ router.put('/allocations/:id', authenticate, authorize(), async (req, res) => {
     p.push(req.params.id);
     const r = await query(`UPDATE boq_location_allocations SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`, p);
     if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Allocation not found' });
+
+    // Phase 9 — only a planned_quantity change moves demand, but the
+    // recompute is idempotent and cheap; keep summaries convergent.
+    if (value.planned_quantity !== undefined) {
+      await materialDemand.recomputeAllocation(query, r.rows[0].id, {}).catch((e) =>
+        console.error('[MATERIAL_DEMAND] allocation recompute failed:', e.message));
+      await fireEvent({
+        eventType: 'allocation.quantity_changed', entityType: 'boq_location_allocation', entityId: r.rows[0].id,
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        payload: { boq_item_id: r.rows[0].boq_item_id, planned_quantity: value.planned_quantity },
+      }).catch(() => {});
+    }
     res.json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
