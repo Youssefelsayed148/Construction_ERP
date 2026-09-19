@@ -234,6 +234,8 @@ async function submitQuotation(q, {
 }) {
   const rfq = (await q('SELECT * FROM rfqs WHERE id = $1', [rfq_id])).rows[0];
   if (!rfq) throw new Error(`RFQ #${rfq_id} not found`);
+  if (['awarded', 'closed', 'cancelled', 'void'].includes(rfq.status)) throw new Error('RFQ is no longer open for quotations');
+  if (rfq.due_date && new Date(rfq.due_date).getTime() < Date.now() - 86400000) throw new Error('RFQ quotation deadline has passed');
   const invited = (await q('SELECT * FROM rfq_vendors WHERE rfq_id = $1', [rfq_id])).rows
     .some((v) => toNum(v.supplier_id) === toNum(supplier_id));
   if (!invited) throw new Error('Supplier was not invited to this RFQ');

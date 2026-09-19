@@ -10,6 +10,7 @@
 
 const DDL = [
   `ALTER TABLE organization_documents ADD COLUMN IF NOT EXISTS expiry_date DATE`,
+  `ALTER TABLE sub_contracts ADD COLUMN IF NOT EXISTS acknowledged_at TIMESTAMPTZ`,
   `ALTER TABLE project_documents ADD COLUMN IF NOT EXISTS portal_visibility VARCHAR(30) DEFAULT 'internal'`,
   `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS sub_contract_id INTEGER REFERENCES sub_contracts(id) ON DELETE SET NULL`,
   `ALTER TABLE observations ADD COLUMN IF NOT EXISTS sub_contract_id INTEGER REFERENCES sub_contracts(id) ON DELETE SET NULL`,

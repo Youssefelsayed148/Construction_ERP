@@ -17,6 +17,11 @@
 'use strict';
 
 const DDL = [
+  `CREATE TABLE IF NOT EXISTS uploaded_files (
+    file_name VARCHAR(255) PRIMARY KEY,
+    uploaded_by INTEGER NOT NULL REFERENCES users(id),
+    uploaded_at TIMESTAMPTZ DEFAULT NOW()
+  )`,
   // ------------------------------------------------------------------
   // Shared photo-metadata model
   // ------------------------------------------------------------------

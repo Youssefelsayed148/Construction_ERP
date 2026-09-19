@@ -347,10 +347,27 @@ async function advanceObservation(q, observationId, user, action, opts = {}) {
 // comments and attachments recorded (the dispute audit trail).
 async function recordRfiResponse(q, { rfi_id, stage = 'official_response', user, organization_id = null, organization_name = null, body, attachments = [], revision = 1 }) {
   if (!body || !String(body).trim()) throw new Error('Response body is required');
-  const rfi = (await q('SELECT project_id FROM project_rfis WHERE id = $1', [rfi_id])).rows[0];
+  const rfi = (await q('SELECT * FROM project_rfis WHERE id = $1', [rfi_id])).rows[0];
   if (!rfi) throw new Error(`RFI #${rfi_id} not found`);
-  await assertConsultantProject(q, user, rfi.project_id);
-  if (user.role === 'consultant') ({ organization_id, organization_name } = await consultantIdentity(q, user, rfi.project_id));
+  if (!['coordinator', 'discipline_review', 'official_response', 'acknowledgement'].includes(stage)) throw new Error('Invalid RFI stage');
+  if (toNum(revision) !== toNum(rfi.revision || 1)) throw new Error('RFI revision does not match the current record');
+  const prior = (await q('SELECT * FROM rfi_responses WHERE rfi_id = $1', [rfi_id])).rows
+    .filter((r) => toNum(r.revision) === toNum(revision)).sort((a, b) => toNum(a.id) - toNum(b.id));
+  const previousStage = prior.at(-1)?.stage || null;
+  const expected = previousStage == null ? ['coordinator']
+    : previousStage === 'coordinator' ? ['discipline_review']
+      : previousStage === 'discipline_review' ? ['discipline_review', 'official_response']
+        : previousStage === 'official_response' ? ['acknowledgement'] : [];
+  if (!expected.includes(stage)) throw new Error(`RFI stage ${stage} cannot follow ${previousStage || 'submission'}`);
+  if (stage === 'acknowledgement') {
+    if (toNum(rfi.raised_by) !== toNum(user.id) && !['owner', 'admin'].includes(user.role)) {
+      throw new Error('Only the RFI requester can acknowledge the response');
+    }
+  } else {
+    if (!['consultant', 'owner', 'admin', 'project_manager'].includes(user.role)) throw new Error('Consultant review role required');
+    await assertConsultantProject(q, user, rfi.project_id);
+    if (user.role === 'consultant') ({ organization_id, organization_name } = await consultantIdentity(q, user, rfi.project_id));
+  }
   const r = await q(
     `INSERT INTO rfi_responses (rfi_id, revision, stage, responder_user_id, responder_name,
        responder_organization_id, responder_organization_name, body, attachments)
@@ -364,21 +381,55 @@ async function recordRfiResponse(q, { rfi_id, stage = 'official_response', user,
       "UPDATE project_rfis SET status = 'answered', answer = $1, answered_by = $2, answered_at = $3, revision = $4, updated_at = $3 WHERE id = $5",
       [String(body).trim(), user.id, new Date(), revision, rfi_id]
     );
-  }
+  } else await q('UPDATE project_rfis SET status = $1, updated_at = $2 WHERE id = $3',
+    [stage === 'acknowledgement' ? 'acknowledged' : stage, new Date(), rfi_id]);
   try {
     await require('./financeEngine').writeAuditEvent(q, {
-      entity_type: 'rfi_response', entity_id: response.id, event_type: 'official_response',
+      entity_type: 'rfi_response', entity_id: response.id, event_type: stage,
       actor_id: user.id, actor_name: user.name, after_state: response,
     });
   } catch (e) { /* audit best-effort */ }
   return response;
 }
 
+async function closeRfi(q, rfiId, user) {
+  const rfi = (await q('SELECT * FROM project_rfis WHERE id = $1', [rfiId])).rows[0];
+  if (!rfi) throw new Error(`RFI #${rfiId} not found`);
+  if (rfi.status !== 'acknowledged') throw new Error('RFI must be acknowledged before closing');
+  if (!['consultant', 'project_manager', 'owner', 'admin'].includes(user.role)) throw new Error('Consultant or PM role required');
+  await assertConsultantProject(q, user, rfi.project_id);
+  await q("UPDATE project_rfis SET status = 'closed', updated_at = $1 WHERE id = $2", [new Date(), rfiId]);
+  return (await q('SELECT * FROM project_rfis WHERE id = $1', [rfiId])).rows[0];
+}
+
 async function recordSubmittalResponse(q, { submittal_id, stage = 'response', user, organization_id = null, organization_name = null, response_code, comments, attachments = [], revision = 1 }) {
-  if (!['A', 'B', 'C', 'D'].includes(response_code)) throw new Error('Response code must be A, B, C or D');
-  const submittal = (await q('SELECT project_id FROM project_submittals WHERE id = $1', [submittal_id])).rows[0];
+  const submittal = (await q('SELECT * FROM project_submittals WHERE id = $1', [submittal_id])).rows[0];
   if (!submittal) throw new Error(`Submittal #${submittal_id} not found`);
-  await assertConsultantProject(q, user, submittal.project_id);
+  if (submittal.status !== 'submitted' && !['internal_technical_review', 'pm', 'consultant_coordinator', 'reviewer'].includes(submittal.status)) {
+    throw new Error('Submittal is not awaiting review');
+  }
+  if (toNum(revision) !== toNum(submittal.revision_number || 1)) throw new Error('Submittal revision does not match the current record');
+  const prior = (await q('SELECT * FROM submittal_revisions WHERE submittal_id = $1', [submittal_id])).rows
+    .filter((r) => toNum(r.revision_number) === toNum(revision) && r.stage !== 'resubmitted')
+    .sort((a, b) => toNum(a.id) - toNum(b.id));
+  const previousStage = prior.at(-1)?.stage || null;
+  const expected = previousStage == null ? ['internal_technical_review']
+    : previousStage === 'internal_technical_review' ? ['pm']
+      : previousStage === 'pm' ? ['consultant_coordinator']
+        : previousStage === 'consultant_coordinator' ? ['reviewer']
+          : previousStage === 'reviewer' ? ['reviewer', 'response'] : [];
+  if (!expected.includes(stage)) throw new Error(`Submittal stage ${stage} cannot follow ${previousStage || 'submission'}`);
+  if (stage === 'response' && !['A', 'B', 'C', 'D'].includes(response_code)) throw new Error('Response code must be A, B, C or D');
+  if (stage !== 'response' && response_code != null) throw new Error('Response code is only valid at the final stage');
+  const allowedRoles = {
+    internal_technical_review: ['engineer', 'site_supervisor', 'project_manager', 'owner', 'admin'],
+    pm: ['project_manager', 'owner', 'admin'],
+    consultant_coordinator: ['consultant', 'owner', 'admin'],
+    reviewer: ['consultant', 'owner', 'admin'],
+    response: ['consultant', 'owner', 'admin'],
+  };
+  if (!allowedRoles[stage].includes(user.role)) throw new Error(`Role ${user.role} cannot complete ${stage}`);
+  if (user.role === 'consultant') await assertConsultantProject(q, user, submittal.project_id);
   if (user.role === 'consultant') ({ organization_id, organization_name } = await consultantIdentity(q, user, submittal.project_id));
   const r = await q(
     `INSERT INTO submittal_revisions (submittal_id, revision_number, stage, actor_user_id, actor_name,
@@ -388,12 +439,27 @@ async function recordSubmittalResponse(q, { submittal_id, stage = 'response', us
      response_code, comments || null, JSON.stringify(attachments)]
   );
   const row = r.rows[0];
-  const newStatus = response_code === 'D' ? 'resubmit_required' : 'closed';
-  await q(
-    'UPDATE project_submittals SET status = $1, response = $2, responded_by = $3, responded_at = $4, response_code = $5, revision_number = $6, updated_at = $4 WHERE id = $7',
-    [newStatus, comments || response_code, user.id, new Date(), response_code, revision, submittal_id]
-  );
+  if (stage === 'response') {
+    const newStatus = ['C', 'D'].includes(response_code) ? 'resubmit_required' : 'closed';
+    await q(
+      'UPDATE project_submittals SET status = $1, response = $2, responded_by = $3, responded_at = $4, response_code = $5, revision_number = $6, updated_at = $4 WHERE id = $7',
+      [newStatus, comments || response_code, user.id, new Date(), response_code, revision, submittal_id]
+    );
+  } else await q('UPDATE project_submittals SET status = $1, updated_at = $2 WHERE id = $3', [stage, new Date(), submittal_id]);
   return row;
+}
+
+async function resubmitSubmittal(q, submittalId, user, { comments = null, attachments = [] } = {}) {
+  const submittal = (await q('SELECT * FROM project_submittals WHERE id = $1', [submittalId])).rows[0];
+  if (!submittal) throw new Error(`Submittal #${submittalId} not found`);
+  if (submittal.status !== 'resubmit_required') throw new Error('Submittal does not require resubmission');
+  const revision = toNum(submittal.revision_number || 1) + 1;
+  await q('UPDATE project_submittals SET status = $1, revision_number = $2, updated_at = $3 WHERE id = $4', ['submitted', revision, new Date(), submittalId]);
+  return (await q(
+    `INSERT INTO submittal_revisions (submittal_id, revision_number, stage, actor_user_id, actor_name, comments, attachments)
+     VALUES ($1,$2,'resubmitted',$3,$4,$5,$6) RETURNING *`,
+    [submittalId, revision, user.id, user.name || null, comments, JSON.stringify(attachments)]
+  )).rows[0];
 }
 
 // ---------------------------------------------------------------------------
@@ -416,11 +482,12 @@ async function myReviews(q, user, filters = {}) {
   const scopedType = (type) => filters.type == null || type === filters.type;
 
   const rfis = (await safeAll(q, 'SELECT * FROM project_rfis', []))
-    .filter((r0) => !['closed', 'answered'].includes(r0.status))
+    .filter((r0) => !['closed', 'answered', 'acknowledged'].includes(r0.status))
     .filter(scopedProject).filter(scopedDiscipline).filter(() => !filters.type || filters.type === 'rfi');
   addAll('rfi', rfis, (type, r0) => ({ type, id: r0.id, project_id: toNum(r0.project_id), number: r0.rfi_number, title: r0.subject, due_date: r0.due_date, priority: r0.priority || 'normal', status: r0.status, discipline: r0.discipline || null, location_id: null }));
 
-  const submittals = (await safeAll(q, "SELECT * FROM project_submittals WHERE status = 'submitted'", []))
+  const submittals = (await safeAll(q, 'SELECT * FROM project_submittals', []))
+    .filter((s) => !['closed', 'resubmit_required'].includes(s.status))
     .filter(scopedProject).filter(() => !filters.type || filters.type === 'submittal');
   addAll('submittal', submittals, (type, r0) => ({ type, id: r0.id, project_id: toNum(r0.project_id), number: r0.submittal_number, title: r0.title, due_date: null, priority: 'normal', status: r0.status, discipline: null, location_id: null }));
 
@@ -514,10 +581,11 @@ async function consultantDashboard(q, user, { project_id = null, now = new Date(
   dashboard.wir_pending = { items: wirs.map((w) => ({ id: w.id })), count: wirs.length, empty_label: 'No WIRs pending your review' };
 
   const rfis = forProjects((await safeAll(q, 'SELECT * FROM project_rfis', []))
-    .filter((r0) => !['closed', 'answered'].includes(r0.status)));
+    .filter((r0) => !['closed', 'answered', 'acknowledged'].includes(r0.status)));
   dashboard.rfis_awaiting_response = { items: rfis.map((r0) => ({ id: r0.id, rfi_number: r0.rfi_number, subject: r0.subject, due_date: r0.due_date })), count: rfis.length, empty_label: 'No RFIs require your response' };
 
-  const submittals = forProjects((await safeAll(q, "SELECT * FROM project_submittals WHERE status = 'submitted'", [])));
+  const submittals = forProjects((await safeAll(q, 'SELECT * FROM project_submittals', []))
+    .filter((s) => !['closed', 'resubmit_required'].includes(s.status)));
   dashboard.submittals_awaiting_review = { items: submittals.map((s) => ({ id: s.id, submittal_number: s.submittal_number, title: s.title })), count: submittals.length, empty_label: 'No submittals awaiting review' };
 
   const obs = forProjects((await safeAll(q, "SELECT * FROM observations WHERE status = 'submitted_for_verification'", [])));
@@ -529,13 +597,13 @@ async function consultantDashboard(q, user, { project_id = null, now = new Date(
   // Latest drawings, recent daily progress/photos, notes, upcoming visits.
   const drawings = forProjects(await safeAll(q,
     "SELECT * FROM project_documents WHERE document_type = 'drawing' AND status = 'approved' AND portal_visibility IN ('consultant','all_external') ORDER BY id DESC", []));
-  dashboard.latest_drawings = { items: drawings.slice(0, 5).map((d) => ({ id: d.id, title: d.title || d.file_name })), count: drawings.length, empty_label: 'No drawings uploaded yet' };
+  dashboard.latest_drawings = { items: drawings.slice(0, 5).map((d) => ({ id: d.id, title: d.title || d.file_name, file_url: d.file_url })), count: drawings.length, empty_label: 'No drawings uploaded yet' };
 
   const dailyReports = forProjects(await safeAll(q, 'SELECT * FROM site_daily_reports ORDER BY report_date DESC', []));
   dashboard.recent_daily_reports = { items: dailyReports.slice(0, 5).map((d) => ({ id: d.id, report_date: d.report_date, work_summary: d.work_summary })), count: dailyReports.length, empty_label: 'No daily reports yet' };
 
   const photos = forProjects(await safeAll(q, 'SELECT * FROM photos ORDER BY uploaded_at DESC', []));
-  dashboard.recent_photos = { items: photos.slice(0, 8).map((p) => ({ id: p.id, caption: p.caption, linked_entity_type: p.linked_entity_type, linked_entity_id: p.linked_entity_id })), count: photos.length, empty_label: 'No photos yet' };
+  dashboard.recent_photos = { items: photos.slice(0, 8).map((p) => ({ id: p.id, caption: p.caption, file_url: p.file_url, linked_entity_type: p.linked_entity_type, linked_entity_id: p.linked_entity_id })), count: photos.length, empty_label: 'No photos yet' };
 
   const notes = await safeAll(q, 'SELECT * FROM sticky_notes WHERE owner_user_id = $1', [user.id]);
   dashboard.personal_notes = { items: notes.filter((n) => n.scope === 'personal').slice(0, 10), count: notes.length, empty_label: 'No personal notes' };
@@ -555,7 +623,9 @@ module.exports = {
   addObservationComment,
   advanceObservation,
   recordRfiResponse,
+  closeRfi,
   recordSubmittalResponse,
+  resubmitSubmittal,
   myReviews,
   consultantDashboard,
 };

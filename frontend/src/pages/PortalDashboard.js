@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshCw, FolderKanban, ClipboardCheck, Building2, Truck, Send } from 'lucide-react';
 import { authService } from '../services/api';
+import { openProtectedFile } from '../components/ProtectedMedia';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -76,13 +77,35 @@ function Record({ value }) {
   const title = value.title || value.name || value.subject || value.number || value.order_number || value.contract_number || value.invoice_number || value.rfq_number || `Record #${value.id}`;
   const status = value.status || value.priority;
   const detail = value.amount ?? value.total_amount ?? value.net_certificate ?? value.deadline ?? value.due_date;
-  return <div className="portal-record"><span>{title}</span><span>{detail != null ? valueText(detail) : ''} {status ? <small className="badge badge-secondary">{label(status)}</small> : null}</span></div>;
+  return <div className="portal-record"><span>{value.file_url ? <a href="#open-file" onClick={e => { e.preventDefault(); openProtectedFile(value.file_url).catch(error => window.alert(error.message)); }}>{title}</a> : title}</span><span>{detail != null ? valueText(detail) : ''} {status ? <small className="badge badge-secondary">{label(status)}</small> : null}</span></div>;
 }
 
 function QuickActions({ kind, data, onDone }) {
   const submit = async (path, body) => {
     await request(path, { method: 'POST', body: JSON.stringify(body) });
     onDone();
+  };
+  const pickPackage = () => {
+    const id = Number(window.prompt('Awarded package ID', data.packages?.[0]?.id || ''));
+    return data.packages?.find((p) => Number(p.id) === id) || null;
+  };
+  const today = () => new Date().toISOString().slice(0, 10);
+  const uploadFiles = async () => {
+    const files = await new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file'; input.multiple = true;
+      input.onchange = () => resolve(Array.from(input.files || []));
+      input.click();
+    });
+    if (!files.length) return [];
+    const form = new FormData();
+    files.forEach((file) => form.append('files', file));
+    const response = await fetch(`${API_BASE_URL}/api/documents/upload`, {
+      method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }, body: form,
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || 'Upload failed');
+    return body.data.map((file) => ({ file_name: file.original_name, file_url: file.file_url }));
   };
   const createObservation = async () => {
     const project_id = Number(window.prompt('Project ID', data.project_ids?.[0] || ''));
@@ -111,12 +134,124 @@ function QuickActions({ kind, data, onDone }) {
     const id = Number(window.prompt('Purchase order ID', data.awarded_pos?.items?.[0]?.id || ''));
     if (id) await submit(`/api/portal/supplier/purchase-orders/${id}/acknowledge`, {});
   };
+  const advanceObservation = async () => {
+    const id = Number(window.prompt('Observation ID', data.observations_awaiting_verification?.items?.[0]?.id || ''));
+    const action = window.prompt('Action: acknowledge, assign, start_rectification, submit_for_verification, accept, reject, close', 'accept');
+    const comment = window.prompt('Comment', '') || '';
+    if (id && action) await submit(`/api/consultant/observations/${id}/advance`, { action, comment });
+  };
+  const reviewRfi = async () => {
+    const id = Number(window.prompt('RFI ID', data.rfis_awaiting_response?.items?.[0]?.id || ''));
+    const stage = window.prompt('Stage: coordinator, discipline_review, official_response', 'coordinator');
+    const body = window.prompt('Review or official response');
+    if (id && stage && body) await submit(`/api/consultant/rfis/${id}/response`, { stage, body });
+  };
+  const reviewSubmittal = async () => {
+    const id = Number(window.prompt('Submittal ID', data.submittals_awaiting_review?.items?.[0]?.id || ''));
+    const stage = window.prompt('Stage: internal_technical_review, pm, consultant_coordinator, reviewer, response', 'consultant_coordinator');
+    const comments = window.prompt('Review comments', '') || '';
+    const response_code = stage === 'response' ? window.prompt('Response code: A, B, C or D', 'A') : null;
+    if (id && stage && (stage !== 'response' || response_code)) await submit(`/api/consultant/submittals/${id}/response`, { stage, comments, ...(response_code ? { response_code } : {}) });
+  };
+  const acknowledgeContract = async () => {
+    const pkg = pickPackage();
+    if (pkg) await submit(`/api/portal/subcontractor/contracts/${pkg.id}/acknowledge`, {});
+  };
+  const acknowledgeInstruction = async () => {
+    const pkg = pickPackage();
+    const id = Number(window.prompt('Engineer instruction ID'));
+    if (pkg && id) await submit(`/api/portal/subcontractor/instructions/${id}/acknowledge`, { project_id: pkg.project_id });
+  };
+  const submitQuantity = async () => {
+    const pkg = pickPackage();
+    const boq_item_id = Number(window.prompt('BOQ item ID'));
+    const quantity_claimed = Number(window.prompt('Quantity claimed'));
+    if (pkg && boq_item_id && quantity_claimed > 0) await submit('/api/portal/subcontractor/quantities', {
+      sub_contract_id: pkg.id, boq_item_id, period_from: today(), period_to: today(), quantity_claimed,
+    });
+  };
+  const submitPaymentApplication = async () => {
+    const pkg = pickPackage();
+    const work_value = Number(window.prompt('Work value this period'));
+    if (pkg && work_value > 0) await submit('/api/portal/subcontractor/payment-applications', {
+      project_id: pkg.project_id, sub_contract_id: pkg.id, period_from: today(), period_to: today(), work_value,
+    });
+  };
+  const sendSubSubmission = (submissionKind) => async () => {
+    const pkg = pickPackage();
+    const related_entity_id = Number(window.prompt('Related record ID (optional)', '')) || null;
+    const note = window.prompt('Submission details');
+    if (pkg && note) await submit(`/api/portal/subcontractor/submissions/${submissionKind}`, {
+      project_id: pkg.project_id, related_entity_type: submissionKind, related_entity_id,
+      payload: { sub_contract_id: pkg.id, note },
+    });
+  };
+  const acknowledgeRfi = async () => {
+    const id = Number(window.prompt('Answered RFI ID', data.rfis?.items?.[0]?.id || ''));
+    if (id) await submit(`/api/portal/subcontractor/rfis/${id}/acknowledge`, { body: 'Acknowledged' });
+  };
+  const resubmitSubmittal = async () => {
+    const id = Number(window.prompt('Submittal ID requiring resubmission'));
+    const comments = window.prompt('What changed in this revision?');
+    if (id && comments) await submit(`/api/portal/subcontractor/submittals/${id}/resubmit`, { comments });
+  };
+  const quoteRfq = async () => {
+    const id = Number(window.prompt('RFQ ID', data.open_rfqs?.items?.[0]?.id || ''));
+    if (!id) return;
+    const rfq = await request(`/api/portal/supplier/rfqs/${id}`);
+    const supplier_id = rfq.supplier_ids.length === 1 ? rfq.supplier_ids[0]
+      : Number(window.prompt('Supplier organization ID', rfq.supplier_ids[0]));
+    if (!rfq.supplier_ids.includes(supplier_id)) return;
+    const lines = [];
+    for (const line of rfq.lines) {
+      const entered = window.prompt(`Unit price for ${line.description || line.material_id} (${line.quantity} ${line.unit || ''})`);
+      if (entered == null || entered === '' || Number(entered) < 0) return;
+      lines.push({ rfq_line_id: line.id, quantity: Number(line.quantity), unit_price: Number(entered) });
+    }
+    await submit(`/api/portal/supplier/rfqs/${id}/quotations`, { supplier_id, lines });
+  };
+  const proposeDelivery = async () => {
+    const id = Number(window.prompt('Purchase order ID', data.awarded_pos?.items?.[0]?.id || ''));
+    const proposed_date = window.prompt('Proposed delivery date (YYYY-MM-DD)', today());
+    if (id && proposed_date) await submit(`/api/portal/supplier/purchase-orders/${id}/propose-delivery`, { proposed_date });
+  };
+  const uploadCertificate = async () => {
+    const id = Number(window.prompt('Delivery ID', data.deliveries?.items?.[0]?.id || ''));
+    if (!id) return;
+    const files = await uploadFiles();
+    if (files.length) await submit(`/api/portal/supplier/deliveries/${id}/certificates`, { files });
+  };
+  const submitInvoice = async () => {
+    const id = Number(window.prompt('Purchase order ID', data.awarded_pos?.items?.[0]?.id || ''));
+    if (!id) return;
+    const po = await request(`/api/portal/supplier/purchase-orders/${id}`);
+    const invoice_number = window.prompt('Invoice number');
+    if (!invoice_number) return;
+    const lines = [];
+    for (const line of po.lines) {
+      const quantity = window.prompt(`Invoice quantity for ${line.description || line.material_id}`, line.quantity);
+      const unit_price = window.prompt('Unit price', line.unit_rate);
+      if (quantity == null || unit_price == null || Number(quantity) <= 0 || Number(unit_price) < 0) return;
+      lines.push({ purchase_order_line_id: line.id, quantity: Number(quantity), unit_price: Number(unit_price) });
+    }
+    await submit('/api/portal/supplier/invoices', {
+      purchase_order_id: id, invoice_number, invoice_date: today(),
+      total_amount: lines.reduce((sum, line) => sum + line.quantity * line.unit_price, 0), lines,
+    });
+  };
   const actions = kind === 'consultant'
-    ? [['Raise observation', createObservation]]
+    ? [['Raise observation', createObservation], ['Advance observation', advanceObservation], ['Review RFI', reviewRfi], ['Review submittal', reviewSubmittal]]
     : kind === 'subcontractor'
-      ? [['Submit RFI', createRfi], ['Submit submittal', createSubmittal]]
+      ? [['Acknowledge package', acknowledgeContract], ['Acknowledge instruction', acknowledgeInstruction],
+        ['Submit RFI', createRfi], ['Acknowledge RFI', acknowledgeRfi], ['Submit submittal', createSubmittal],
+        ['Resubmit submittal', resubmitSubmittal], ['Claim quantity', submitQuantity], ['Payment application', submitPaymentApplication],
+        ['Request WIR', sendSubSubmission('wir_request')], ['Request MIR', sendSubSubmission('mir_request')],
+        ['Report manpower', sendSubSubmission('manpower')], ['Report equipment', sendSubSubmission('equipment')],
+        ['Respond to NCR', sendSubSubmission('ncr_response')], ['Respond to observation', sendSubSubmission('observation_response')],
+        ['Quote variation', sendSubSubmission('variation_quote')]]
       : kind === 'supplier'
-        ? [['Send clarification', clarify], ['Acknowledge PO', acknowledgePo]]
+        ? [['Submit quotation', quoteRfq], ['Send clarification', clarify], ['Acknowledge PO', acknowledgePo],
+          ['Propose delivery', proposeDelivery], ['Upload delivery certificate', uploadCertificate], ['Submit invoice', submitInvoice]]
         : [];
   if (!actions.length) return null;
   return <div className="portal-actions">{actions.map(([text, fn]) => <button className="btn btn-primary btn-sm" key={text} onClick={() => fn().catch(e => window.alert(e.message))}><Send size={14} /> {text}</button>)}</div>;

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import { ArrowLeft, Plus, Search, X, FileText, FolderOpen, MessageSquare, PackageCheck, History, CheckCircle, XCircle, Upload, Download } from 'lucide-react';
 import DocumentUpload from '../components/DocumentUpload';
+import { openProtectedFile } from '../components/ProtectedMedia';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 const API_URL = `${API_BASE_URL}/api`;
@@ -183,7 +184,7 @@ function LibraryTab({ projectId, locale, t }) {
               {documents.map(doc => (
                 <tr key={doc.id}>
                   <td style={{ fontWeight: 500 }}>
-                    <a href={`${API_BASE_URL}${doc.file_url}`} target="_blank" rel="noreferrer" style={{ color: 'var(--color-accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <a href="#open-file" onClick={e => { e.preventDefault(); openProtectedFile(doc.file_url).catch(error => window.alert(error.message)); }} style={{ color: 'var(--color-accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                       <FileText size={14} />
                       {doc.title}
                     </a>
@@ -403,7 +404,7 @@ function VersionHistoryModal({ doc, locale, onClose }) {
                       {v.uploaded_by_name || ''} — {formatDate(v.created_at)}
                     </div>
                   </div>
-                  <a className="btn" style={{ padding: '6px 10px' }} href={`${API_BASE_URL}${v.file_url}`} target="_blank" rel="noreferrer" title={locale === 'ar' ? 'تنزيل' : 'Download'}>
+                  <a className="btn" style={{ padding: '6px 10px' }} href="#open-file" onClick={e => { e.preventDefault(); openProtectedFile(v.file_url).catch(error => window.alert(error.message)); }} title={locale === 'ar' ? 'تنزيل' : 'Download'}>
                     <Download size={14} />
                   </a>
                 </div>

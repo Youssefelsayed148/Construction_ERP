@@ -239,8 +239,12 @@ describe('observation workflow (exact states)', () => {
 
 describe('multi-stage RFI and submittal flows', () => {
   test('official RFI response records user, organization, date/time, revision, attachments', async () => {
-    await q(`INSERT INTO project_rfis (id, rfi_number, project_id, subject, question, status, due_date)
-             VALUES ($1,$2,$3,$4,$5,$6,$7)`, [1, 'RFI-0001', 1, 'Slab thickness at ramp', 'Confirm 250mm', 'open', '2026-09-30']);
+    await q(`INSERT INTO project_rfis (id, rfi_number, project_id, subject, question, status, due_date, raised_by)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, [1, 'RFI-0001', 1, 'Slab thickness at ramp', 'Confirm 250mm', 'open', '2026-09-30', SUPERVISOR.id]);
+    await expect(engine.recordRfiResponse(q, { rfi_id: 1, stage: 'official_response', user: CONSULTANT, body: 'Too early' }))
+      .rejects.toThrow(/cannot follow submission/);
+    await engine.recordRfiResponse(q, { rfi_id: 1, stage: 'coordinator', user: CONSULTANT, body: 'Assigned to structures' });
+    await engine.recordRfiResponse(q, { rfi_id: 1, stage: 'discipline_review', user: CONSULTANT, body: 'Reviewed drawing' });
     const response = await engine.recordRfiResponse(q, {
       rfi_id: 1, stage: 'official_response', user: CONSULTANT,
       organization_id: 9, organization_name: 'Other Consultant',
@@ -255,14 +259,27 @@ describe('multi-stage RFI and submittal flows', () => {
     expect(rfi.answer).toMatch(/250 mm/);
     // Audit trail written.
     const audits = (await q("SELECT * FROM audit_events WHERE entity_type = 'rfi_response'")).rows;
-    expect(audits.length).toBe(1);
+    expect(audits.length).toBe(3);
+    await expect(engine.recordRfiResponse(q, { rfi_id: 1, stage: 'acknowledgement', user: PM, body: 'Ack' }))
+      .rejects.toThrow(/Only the RFI requester/);
+    await engine.recordRfiResponse(q, { rfi_id: 1, stage: 'acknowledgement', user: SUPERVISOR, body: 'Acknowledged' });
+    expect((await engine.closeRfi(q, 1, CONSULTANT)).status).toBe('closed');
   });
 
   test('submittal A/B/C/D response with revision history; D forces resubmit', async () => {
     await q(`INSERT INTO project_submittals (id, submittal_number, project_id, title, status)
              VALUES ($1,$2,$3,$4,$5)`, [1, 'SUB-0001', 1, 'Rebar shop drawings', 'submitted']);
+    await expect(engine.recordSubmittalResponse(q, { submittal_id: 1, stage: 'response', user: CONSULTANT, response_code: 'D' }))
+      .rejects.toThrow(/cannot follow submission/);
+    const reviewStages = async (revision) => {
+      await engine.recordSubmittalResponse(q, { submittal_id: 1, stage: 'internal_technical_review', user: SUPERVISOR, comments: 'Technical check', revision });
+      await engine.recordSubmittalResponse(q, { submittal_id: 1, stage: 'pm', user: PM, comments: 'PM check', revision });
+      await engine.recordSubmittalResponse(q, { submittal_id: 1, stage: 'consultant_coordinator', user: CONSULTANT, comments: 'Coordinator check', revision });
+      await engine.recordSubmittalResponse(q, { submittal_id: 1, stage: 'reviewer', user: CONSULTANT, comments: 'Reviewer check', revision });
+    };
+    await reviewStages(1);
     const d = await engine.recordSubmittalResponse(q, {
-      submittal_id: 1, user: CONSULTANT, organization_id: 5, organization_name: 'Consultant Org',
+      submittal_id: 1, stage: 'response', user: CONSULTANT, organization_id: 5, organization_name: 'Consultant Org',
       response_code: 'D', comments: 'Bar spacing does not match spec', revision: 1,
     });
     expect(d.response_code).toBe('D');
@@ -270,14 +287,14 @@ describe('multi-stage RFI and submittal flows', () => {
     expect(submittal.status).toBe('resubmit_required');
     expect(submittal.response_code).toBe('D');
 
-    const a = await engine.recordSubmittalResponse(q, {
-      submittal_id: 1, user: CONSULTANT, response_code: 'A', revision: 2,
-    });
+    await engine.resubmitSubmittal(q, 1, SUPERVISOR, { comments: 'Corrected drawing attached' });
+    await reviewStages(2);
+    const a = await engine.recordSubmittalResponse(q, { submittal_id: 1, stage: 'response', user: CONSULTANT, response_code: 'A', revision: 2 });
     expect(a.revision_number).toBe(2);
     const submittal2 = (await q('SELECT * FROM project_submittals WHERE id = 1')).rows[0];
     expect(submittal2.status).toBe('closed');
     const revisions = (await q('SELECT * FROM submittal_revisions WHERE submittal_id = 1')).rows;
-    expect(revisions.length).toBe(2);
+    expect(revisions.length).toBe(11);
   });
 });
 

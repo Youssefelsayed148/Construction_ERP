@@ -201,7 +201,7 @@ async function clientDashboard(q, user, { project_id = null, preview_project_id 
   // Latest progress photos (Phase 15 model).
   const photos = forProjects((await safeAll(q, 'SELECT * FROM photos ORDER BY uploaded_at DESC', [])));
   dashboard.latest_photos = {
-    items: photos.slice(0, 8).map((p) => ({ id: p.id, caption: p.caption, uploaded_at: p.uploaded_at })),
+    items: photos.slice(0, 8).map((p) => ({ id: p.id, caption: p.caption, file_url: p.file_url, uploaded_at: p.uploaded_at })),
     count: photos.length,
     empty_label: 'No progress photos yet',
   };
@@ -238,7 +238,7 @@ async function clientDashboard(q, user, { project_id = null, preview_project_id 
   const documents = forProjects(await safeAll(q,
     "SELECT * FROM project_documents WHERE status = 'approved' AND portal_visibility IN ('client','all_external')", []));
   dashboard.owner_documents = {
-    items: documents.slice(0, 10).map((d) => ({ id: d.id, title: d.title || d.file_name })),
+    items: documents.slice(0, 10).map((d) => ({ id: d.id, title: d.title || d.file_name, file_url: d.file_url })),
     count: documents.length,
     empty_label: 'No owner-facing documents yet',
   };
@@ -298,7 +298,7 @@ async function clientActionCenter(q, user, { project_id = null, preview_project_
   return {
     approvals: { items: pendingApprovals.map((a) => ({ id: a.id, title: a.title || 'Approval request', requested_at: a.created_at })), count: pendingApprovals.length, empty_label: 'No client approvals pending' },
     variation_responses: { items: variationResponses.map((v) => ({ id: v.id, variation_number: v.variation_number, title: v.title, amount: toNum(v.amount) })), count: variationResponses.length, empty_label: 'No variations awaiting your response' },
-    document_acknowledgements: { items: documentAcks.map((d) => ({ id: d.id, title: d.title || d.file_name })), count: documentAcks.length, empty_label: 'No documents awaiting acknowledgement' },
+    document_acknowledgements: { items: documentAcks.map((d) => ({ id: d.id, title: d.title || d.file_name, file_url: d.file_url })), count: documentAcks.length, empty_label: 'No documents awaiting acknowledgement' },
     overdue_inputs: { items: overdueInputs.map((a) => ({ id: a.id, due_date: a.due_date })), count: overdueInputs.length, empty_label: 'No overdue owner inputs' },
   };
 }

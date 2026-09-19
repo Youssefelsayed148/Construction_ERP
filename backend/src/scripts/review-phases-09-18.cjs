@@ -231,6 +231,26 @@ async function reproduce(q) {
       record('Consultant record mutation ownership', 'PASS', e.message);
     }
   });
+  await check('Ordered RFI and submittal revisions', async () => {
+    const engine = require('../services/consultantEngine');
+    const rfi = await insert('project_rfis', { rfi_number: 'REVIEW-RFI-ORDER', project_id: project.id, subject: 'Review RFI', status: 'submitted', raised_by: user.id });
+    let earlyRejected = false;
+    try { await engine.recordRfiResponse(q, { rfi_id: rfi.id, stage: 'official_response', user, body: 'Too early' }); }
+    catch (e) { earlyRejected = /cannot follow/.test(e.message); }
+    for (const stage of ['coordinator', 'discipline_review', 'official_response', 'acknowledgement']) {
+      await engine.recordRfiResponse(q, { rfi_id: rfi.id, stage, user, body: stage });
+    }
+    const closed = await engine.closeRfi(q, rfi.id, user);
+    const submittal = await insert('project_submittals', { submittal_number: 'REVIEW-SUB-ORDER', project_id: project.id, title: 'Review submittal', status: 'submitted' });
+    const stages = ['internal_technical_review', 'pm', 'consultant_coordinator', 'reviewer'];
+    for (const stage of stages) await engine.recordSubmittalResponse(q, { submittal_id: submittal.id, stage, user, revision: 1 });
+    await engine.recordSubmittalResponse(q, { submittal_id: submittal.id, stage: 'response', user, response_code: 'D', revision: 1 });
+    await engine.resubmitSubmittal(q, submittal.id, user, { comments: 'Revision 2' });
+    for (const stage of stages) await engine.recordSubmittalResponse(q, { submittal_id: submittal.id, stage, user, revision: 2 });
+    await engine.recordSubmittalResponse(q, { submittal_id: submittal.id, stage: 'response', user, response_code: 'A', revision: 2 });
+    const finalSub = (await q('SELECT status FROM project_submittals WHERE id = $1', [submittal.id])).rows[0];
+    record('Ordered RFI and submittal revisions', earlyRejected && closed.status === 'closed' && finalSub.status === 'closed' ? 'PASS' : 'FAIL', { earlyRejected, rfi_status: closed.status, submittal_status: finalSub.status });
+  });
 }
 
 run().then(() => {

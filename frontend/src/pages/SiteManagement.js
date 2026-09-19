@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import { ArrowLeft, Plus, CalendarDays, ClipboardList, Users, Sun, CheckCircle, X } from 'lucide-react';
 import DocumentUpload from '../components/DocumentUpload';
+import { openProtectedFile, ProtectedImage } from '../components/ProtectedMedia';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 const API_URL = `${API_BASE_URL}/api`;
@@ -143,8 +144,8 @@ function DailyReportsTab({ projectId, locale, t }) {
               {Array.isArray(r.photos) && r.photos.length > 0 && (
                 <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
                   {r.photos.map((p, i) => (
-                    <a key={i} href={`${API_BASE_URL}${p.file_url}`} target="_blank" rel="noreferrer">
-                      <img src={`${API_BASE_URL}${p.file_url}`} alt={p.original_name || 'site'} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: 'var(--radius-md)' }}
+                    <a key={i} href="#open-file" onClick={e => { e.preventDefault(); openProtectedFile(p.file_url).catch(error => window.alert(error.message)); }}>
+                      <ProtectedImage fileUrl={p.file_url} alt={p.original_name || 'site'} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: 'var(--radius-md)' }}
                         onError={e => { e.target.style.display = 'none'; e.target.parentNode.innerHTML = '📎 ' + (p.original_name || 'file'); }} />
                     </a>
                   ))}
@@ -483,8 +484,8 @@ function VisitsTab({ projectId, locale, t }) {
               {Array.isArray(v.photos) && v.photos.length > 0 && (
                 <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
                   {v.photos.map((p, i) => (
-                    <a key={i} href={`${API_BASE_URL}${p.file_url}`} target="_blank" rel="noreferrer">
-                      <img src={`${API_BASE_URL}${p.file_url}`} alt={p.original_name || 'visit'} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: 'var(--radius-md)' }} />
+                    <a key={i} href="#open-file" onClick={e => { e.preventDefault(); openProtectedFile(p.file_url).catch(error => window.alert(error.message)); }}>
+                      <ProtectedImage fileUrl={p.file_url} alt={p.original_name || 'visit'} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: 'var(--radius-md)' }} />
                     </a>
                   ))}
                 </div>

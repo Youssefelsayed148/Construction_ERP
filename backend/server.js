@@ -2,7 +2,6 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const logger = require('./src/utils/logger');
-const path = require('path');
 const { healthCheck } = require('./src/config/database');
 
 const app = express();
@@ -23,7 +22,7 @@ const app = express();
 app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000', credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', require('./src/routes/media'));
 
 app.use((req, res, next) => {
   logger.info(`${req.method} ${req.url}`);

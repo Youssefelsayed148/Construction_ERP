@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 
 const UPLOAD_DIR = path.join(__dirname, '../../uploads');
@@ -32,7 +33,7 @@ const upload = multer({
 // Generic file upload — returns URL(s) served from /uploads. Reused by site reports,
 // document control, QHSE attachments, etc.
 router.post('/upload', authenticate, authorize(), (req, res) => {
-  upload.array('files', 10)(req, res, (err) => {
+  upload.array('files', 10)(req, res, async (err) => {
     if (err) return res.status(400).json({ success: false, error: err.message });
     if (!req.files || req.files.length === 0) return res.status(400).json({ success: false, error: 'No files uploaded' });
     const files = req.files.map(f => ({
@@ -41,6 +42,16 @@ router.post('/upload', authenticate, authorize(), (req, res) => {
       file_type: path.extname(f.originalname).toLowerCase().replace('.', ''),
       file_size_bytes: f.size,
     }));
+    try {
+      await transaction(async (client) => {
+        for (const file of req.files) {
+          await client.query('INSERT INTO uploaded_files (file_name, uploaded_by) VALUES ($1, $2)', [file.filename, req.user.id]);
+        }
+      });
+    } catch (error) {
+      await Promise.all(req.files.map((file) => fs.promises.unlink(file.path).catch(() => {})));
+      return res.status(500).json({ success: false, error: 'Could not register uploaded files' });
+    }
     res.status(201).json({ success: true, data: files });
   });
 });

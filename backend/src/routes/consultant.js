@@ -104,16 +104,29 @@ router.post('/observations/:id/advance', authenticate, authorize(), async (req, 
 router.post('/rfis/:id/response', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
-      stage: Joi.string().valid('coordinator', 'discipline_review', 'official_response', 'acknowledgement').default('official_response'),
+      stage: Joi.string().valid('coordinator', 'discipline_review', 'official_response').default('coordinator'),
       body: Joi.string().required(),
       attachments: Joi.array().default([]),
       revision: Joi.number().integer().min(1).default(1),
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const response = await engine.recordRfiResponse(query, { ...value, rfi_id: parseInt(req.params.id, 10), user: req.user });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'doccontrol', description: `Official RFI response recorded (rev ${value.revision})`, entityId: response.id, entityType: 'rfi_response' });
+    const response = await transaction(async (client) => {
+      await client.query('SELECT id FROM project_rfis WHERE id = $1 FOR UPDATE', [parseInt(req.params.id, 10)]);
+      return engine.recordRfiResponse(client.query.bind(client), { ...value, rfi_id: parseInt(req.params.id, 10), user: req.user });
+    });
+    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'doccontrol', description: `RFI ${value.stage} recorded (rev ${value.revision})`, entityId: response.id, entityType: 'rfi_response' });
     res.status(201).json({ success: true, data: response });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+});
+
+router.post('/rfis/:id/close', authenticate, authorize(), async (req, res) => {
+  try {
+    const row = await transaction(async (client) => {
+      await client.query('SELECT id FROM project_rfis WHERE id = $1 FOR UPDATE', [parseInt(req.params.id, 10)]);
+      return engine.closeRfi(client.query.bind(client), parseInt(req.params.id, 10), req.user);
+    });
+    res.json({ success: true, data: row });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 
@@ -121,16 +134,19 @@ router.post('/rfis/:id/response', authenticate, authorize(), async (req, res) =>
 router.post('/submittals/:id/response', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
-      stage: Joi.string().valid('internal_technical_review', 'pm', 'consultant_coordinator', 'reviewer', 'response').default('response'),
-      response_code: Joi.string().valid('A', 'B', 'C', 'D').required(),
+      stage: Joi.string().valid('internal_technical_review', 'pm', 'consultant_coordinator', 'reviewer', 'response').default('internal_technical_review'),
+      response_code: Joi.string().valid('A', 'B', 'C', 'D').optional(),
       comments: Joi.string().allow('', null),
       attachments: Joi.array().default([]),
       revision: Joi.number().integer().min(1).default(1),
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const row = await engine.recordSubmittalResponse(query, { ...value, submittal_id: parseInt(req.params.id, 10), user: req.user });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'doccontrol', description: `Submittal response ${value.response_code} recorded (rev ${value.revision})`, entityId: row.id, entityType: 'submittal_revision' });
+    const row = await transaction(async (client) => {
+      await client.query('SELECT id FROM project_submittals WHERE id = $1 FOR UPDATE', [parseInt(req.params.id, 10)]);
+      return engine.recordSubmittalResponse(client.query.bind(client), { ...value, submittal_id: parseInt(req.params.id, 10), user: req.user });
+    });
+    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'doccontrol', description: `Submittal ${value.stage} recorded (rev ${value.revision})`, entityId: row.id, entityType: 'submittal_revision' });
     res.status(201).json({ success: true, data: row });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });

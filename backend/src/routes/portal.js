@@ -44,6 +44,15 @@ router.get('/subcontractor/contracts/:id', authenticate, authorize(), async (req
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
+router.post('/subcontractor/contracts/:id/acknowledge', authenticate, authorize(), async (req, res) => {
+  try {
+    const contract = await engine.subContractForOrg(query, parseInt(req.params.id, 10), req.user.id);
+    if (!contract) return res.status(404).json({ success: false, error: 'Package not found' });
+    const row = (await query('UPDATE sub_contracts SET acknowledged_at = NOW() WHERE id = $1 RETURNING *', [contract.id])).rows[0];
+    res.json({ success: true, data: row });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+});
+
 router.post('/subcontractor/instructions/:id/acknowledge', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
@@ -165,6 +174,43 @@ router.post('/subcontractor/submittals', authenticate, authorize(), async (req, 
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 
+router.post('/subcontractor/rfis/:id/acknowledge', authenticate, authorize(), async (req, res) => {
+  try {
+    const rfiId = parseInt(req.params.id, 10);
+    const rfi = (await query('SELECT * FROM project_rfis WHERE id = $1', [rfiId])).rows[0];
+    if (!rfi || !rfi.sub_contract_id || !await engine.subContractForOrg(query, rfi.sub_contract_id, req.user.id)) {
+      return res.status(404).json({ success: false, error: 'RFI not found' });
+    }
+    const { error, value } = Joi.object({ body: Joi.string().allow('', null).default('Acknowledged') }).validate(req.body || {});
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    const row = await transaction(async (client) => {
+      await client.query('SELECT id FROM project_rfis WHERE id = $1 FOR UPDATE', [rfiId]);
+      return require('../services/consultantEngine').recordRfiResponse(client.query.bind(client), {
+        rfi_id: rfiId, stage: 'acknowledgement', revision: Number(rfi.revision || 1),
+        user: req.user, body: value.body || 'Acknowledged',
+      });
+    });
+    res.status(201).json({ success: true, data: row });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+});
+
+router.post('/subcontractor/submittals/:id/resubmit', authenticate, authorize(), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const submittal = (await query('SELECT * FROM project_submittals WHERE id = $1', [id])).rows[0];
+    if (!submittal || !submittal.sub_contract_id || !await engine.subContractForOrg(query, submittal.sub_contract_id, req.user.id)) {
+      return res.status(404).json({ success: false, error: 'Submittal not found' });
+    }
+    const { error, value } = Joi.object({ comments: Joi.string().allow('', null), attachments: Joi.array().default([]) }).validate(req.body || {});
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    const row = await transaction(async (client) => {
+      await client.query('SELECT id FROM project_submittals WHERE id = $1 FOR UPDATE', [id]);
+      return require('../services/consultantEngine').resubmitSubmittal(client.query.bind(client), id, req.user, value);
+    });
+    res.status(201).json({ success: true, data: row });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+});
+
 // Scoped submissions that require internal review before they affect the formal
 // WIR/MIR, QHSE, labour, equipment or commercial registers.
 router.post('/subcontractor/submissions/:kind', authenticate, authorize(), async (req, res) => {
@@ -193,6 +239,33 @@ router.get('/supplier/dashboard', authenticate, authorize(), async (req, res) =>
     const data = await engine.supplierDashboard(query, req.user.id);
     res.json({ success: true, data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+router.get('/supplier/rfqs/:id', authenticate, authorize(), async (req, res) => {
+  try {
+    const access = await engine.supplierRfq(query, req.user.id, parseInt(req.params.id, 10));
+    if (!access) return res.status(404).json({ success: false, error: 'RFQ not found' });
+    const lines = (await query('SELECT * FROM rfq_lines WHERE rfq_id = $1', [access.rfq.id])).rows;
+    res.json({ success: true, data: {
+      id: access.rfq.id, rfq_number: access.rfq.rfq_number, project_id: access.rfq.project_id,
+      title: access.rfq.title, due_date: access.rfq.due_date, status: access.rfq.status,
+      supplier_ids: access.supplierIds,
+      lines: lines.map((l) => ({ id: l.id, material_id: l.material_id, description: l.description, quantity: l.quantity, unit: l.unit })),
+    } });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+});
+
+router.get('/supplier/purchase-orders/:id', authenticate, authorize(), async (req, res) => {
+  try {
+    const po = await engine.supplierPurchaseOrder(query, req.user.id, parseInt(req.params.id, 10));
+    if (!po) return res.status(404).json({ success: false, error: 'Purchase order not found' });
+    const lines = (await query('SELECT * FROM purchase_order_lines WHERE purchase_order_id = $1', [po.id])).rows;
+    res.json({ success: true, data: {
+      id: po.id, order_number: po.order_number, project_id: po.project_id, status: po.status,
+      total_amount: po.total_amount,
+      lines: lines.map((l) => ({ id: l.id, material_id: l.material_id, description: l.description, quantity: l.quantity, unit: l.unit, unit_rate: l.unit_rate })),
+    } });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 
 router.post('/supplier/rfqs/:id/quotations', authenticate, authorize(), async (req, res) => {
