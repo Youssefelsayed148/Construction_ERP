@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
-const { query } = require('../config/database');
+const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const engine = require('../services/consultantEngine');
@@ -52,7 +52,9 @@ router.post('/observations', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const observation = await engine.createObservation(query, { ...value, user: req.user });
+    const observation = await transaction((client) => engine.createObservation(
+      client.query.bind(client), { ...value, user: req.user }
+    ));
     await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'observations', description: `Raised observation ${observation.observation_number}`, entityId: observation.id, entityType: 'observation' });
     res.status(201).json({ success: true, data: observation });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
@@ -90,7 +92,9 @@ router.post('/observations/:id/advance', authenticate, authorize(), async (req, 
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const observation = await engine.advanceObservation(query, parseInt(req.params.id, 10), req.user, value.action, value);
+    const observation = await transaction((client) => engine.advanceObservation(
+      client.query.bind(client), parseInt(req.params.id, 10), req.user, value.action, value
+    ));
     await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'observations', description: `Observation → ${observation.status}`, entityId: observation.id, entityType: 'observation' });
     res.json({ success: true, data: observation });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
@@ -104,8 +108,6 @@ router.post('/rfis/:id/response', authenticate, authorize(), async (req, res) =>
       body: Joi.string().required(),
       attachments: Joi.array().default([]),
       revision: Joi.number().integer().min(1).default(1),
-      organization_id: Joi.number().integer().optional().allow(null),
-      organization_name: Joi.string().allow('', null),
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
@@ -124,8 +126,6 @@ router.post('/submittals/:id/response', authenticate, authorize(), async (req, r
       comments: Joi.string().allow('', null),
       attachments: Joi.array().default([]),
       revision: Joi.number().integer().min(1).default(1),
-      organization_id: Joi.number().integer().optional().allow(null),
-      organization_name: Joi.string().allow('', null),
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });

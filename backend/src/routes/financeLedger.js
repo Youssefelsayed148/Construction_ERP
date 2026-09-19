@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
-const { query } = require('../config/database');
+const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const finance = require('../services/financeEngine');
@@ -65,11 +65,19 @@ router.post('/payments/:id/allocate', authenticate, authorize(), async (req, res
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const result = await finance.allocatePayment(query, {
-      payment_id: parseInt(req.params.id, 10),
-      allocations: value.allocations,
-      allocated_by: req.user.id,
-      actor_name: req.user.name,
+    const result = await transaction(async (client) => {
+      const txQuery = client.query.bind(client);
+      await txQuery('SELECT id FROM payments WHERE id = $1 FOR UPDATE', [parseInt(req.params.id, 10)]);
+      const invoiceIds = [...new Set(value.allocations.filter((a) => a.target_type === 'client_invoice' && a.invoice_id).map((a) => a.invoice_id))].sort((a, b) => a - b);
+      const supplierInvoiceIds = [...new Set(value.allocations.filter((a) => a.target_type === 'supplier_invoice' && a.supplier_invoice_id).map((a) => a.supplier_invoice_id))].sort((a, b) => a - b);
+      if (invoiceIds.length) await txQuery('SELECT id FROM invoices WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE', [invoiceIds]);
+      if (supplierInvoiceIds.length) await txQuery('SELECT id FROM supplier_invoices WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE', [supplierInvoiceIds]);
+      return finance.allocatePayment(txQuery, {
+        payment_id: parseInt(req.params.id, 10),
+        allocations: value.allocations,
+        allocated_by: req.user.id,
+        actor_name: req.user.name,
+      });
     });
     res.status(201).json({ success: true, data: result });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }

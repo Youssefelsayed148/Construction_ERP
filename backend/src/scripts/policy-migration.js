@@ -98,10 +98,15 @@ const EXTERNAL_ROLES = ['consultant', 'client', 'subcontractor', 'supplier'];
 
 // Module keys match the Express mount segment under /api (see server.js).
 const EXTERNAL_ROLE_MODULE_GRANTS = {
-  consultant: ['projects', 'boq', 'qhse', 'docs', 'work-orders', 'documents'],
-  client: ['projects', 'docs', 'qhse', 'boq'],
-  subcontractor: ['subcontractors'],
-  supplier: ['items', 'warehouses'],
+  consultant: ['consultant', 'projects', 'boq', 'qhse', 'docs', 'work-orders', 'documents'],
+  client: ['client-portal', 'projects', 'docs', 'qhse', 'boq'],
+  subcontractor: ['portal', 'subcontractors'],
+  supplier: ['portal', 'items', 'warehouses'],
+};
+const EXTERNAL_ROLE_WRITE_GRANTS = {
+  consultant: { consultant: ['create', 'edit', 'submit', 'approve', 'reject'], documents: ['create'] },
+  subcontractor: { portal: ['create', 'edit', 'submit'], documents: ['create'] },
+  supplier: { portal: ['create', 'edit', 'submit'], documents: ['create'] },
 };
 
 // Visibility flags (services/policy.js) resolved from these permissions.
@@ -285,6 +290,11 @@ async function seedRolePermissions(query) {
       await grant(query, roleKey, moduleKey, 'view');
     }
   }
+  for (const [roleKey, moduleGrants] of Object.entries(EXTERNAL_ROLE_WRITE_GRANTS)) {
+    for (const [moduleKey, actions] of Object.entries(moduleGrants)) {
+      for (const action of actions) await grant(query, roleKey, moduleKey, action);
+    }
+  }
   for (const [roleKey, flags] of Object.entries(ROLE_VISIBILITY_GRANTS)) {
     for (const flag of flags) {
       await grant(query, roleKey, '*', flag);
@@ -370,6 +380,7 @@ module.exports = {
   INTERNAL_ROLES,
   EXTERNAL_ROLES,
   EXTERNAL_ROLE_MODULE_GRANTS,
+  EXTERNAL_ROLE_WRITE_GRANTS,
   ROLE_VISIBILITY_GRANTS,
   TABLE_DDL,
   AUDIT_IMMUTABILITY_SQL,

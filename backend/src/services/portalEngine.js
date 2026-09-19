@@ -74,7 +74,10 @@ async function subcontractorScopeFor(q, userId, opts = {}) {
     for (const p of participants) {
       if (p.participant_type !== 'subcontractor') continue;
       if (p.portal_access_enabled === false) continue;
+      if (p.active_from != null && new Date(p.active_from) > now) continue;
       if (p.active_to != null && new Date(p.active_to) < now) continue;
+      const assignedUsers = await safeAll(q, 'SELECT user_id FROM project_participant_users WHERE project_participant_id = $1', [p.id]);
+      if (assignedUsers.length > 0 && !assignedUsers.some((u) => toNum(u.user_id) === toNum(userId))) continue;
       const legacySubId = toNum(p.legacy_subcontractor_id);
       const contracts = await safeAll(q, 'SELECT * FROM sub_contracts WHERE subcontractor_id = $1', [legacySubId > 0 ? legacySubId : -1]);
       for (const c of contracts) {
@@ -131,12 +134,14 @@ async function subcontractorDashboard(q, userId, { now = new Date() } = {}) {
   // Today's assigned work.
   const myWork = (await safeAll(q, 'SELECT * FROM work_orders', []))
     .filter((w) => projectIds.includes(toNum(w.project_id)))
-    .filter((w) => toNum(w.assigned_to) === userId || sameDay(w.planned_start_date, today));
+    .filter((w) => toNum(w.assigned_to) === userId || contractIds.includes(toNum(w.sub_contract_id)))
+    .filter((w) => sameDay(w.planned_start_date, today) || w.status === 'in_progress');
   dashboard.todays_work = { items: myWork.map((w) => ({ id: toNum(w.id), title: w.title, status: w.status })), count: myWork.length, empty_label: 'No work assigned today' };
 
   // Latest approved drawings.
   const drawings = (await safeAll(q, 'SELECT * FROM project_documents', []))
-    .filter((d) => projectIds.includes(toNum(d.project_id)) && d.status === 'approved');
+    .filter((d) => projectIds.includes(toNum(d.project_id)) && d.status === 'approved'
+      && ['subcontractor', 'all_external'].includes(d.portal_visibility));
   dashboard.latest_drawings = { items: drawings.slice(0, 5).map((d) => ({ id: toNum(d.id), title: d.title || d.file_name })), count: drawings.length, empty_label: 'No approved drawings yet' };
 
   // Inspections needed + executed/approved quantities (sub_work_verifications).
@@ -154,18 +159,20 @@ async function subcontractorDashboard(q, userId, { now = new Date() } = {}) {
 
   // Consultant observations + NCRs.
   const observations = (await safeAll(q, 'SELECT * FROM observations', []))
-    .filter((o) => projectIds.includes(toNum(o.project_id)) && ['raised', 'assigned', 'rectification_in_progress', 'submitted_for_verification'].includes(o.status));
+    .filter((o) => projectIds.includes(toNum(o.project_id)) && contractIds.includes(toNum(o.sub_contract_id))
+      && ['raised', 'assigned', 'rectification_in_progress', 'submitted_for_verification'].includes(o.status));
   dashboard.observations = { items: observations.map((o) => ({ id: toNum(o.id), title: o.title, status: o.status })), count: observations.length, empty_label: 'No consultant observations open' };
   const ncrs = (await safeAll(q, 'SELECT * FROM ncrs', []))
-    .filter((n) => projectIds.includes(toNum(n.project_id)) && n.status !== 'closed');
+    .filter((n) => projectIds.includes(toNum(n.project_id)) && contractIds.includes(toNum(n.sub_contract_id)) && n.status !== 'closed');
   dashboard.ncrs = { items: ncrs.map((n) => ({ id: toNum(n.id) })), count: ncrs.length, empty_label: 'No open NCRs' };
 
   // RFIs / submittals.
   const rfis = (await safeAll(q, 'SELECT * FROM project_rfis', []))
-    .filter((r) => projectIds.includes(toNum(r.project_id)) && r.status !== 'closed');
+    .filter((r) => projectIds.includes(toNum(r.project_id)) && contractIds.includes(toNum(r.sub_contract_id)) && r.status !== 'closed');
   dashboard.rfis = { items: rfis.map((r) => ({ id: toNum(r.id), rfi_number: r.rfi_number, subject: r.subject, status: r.status })), count: rfis.length, empty_label: 'No RFIs open' };
   const submittals = (await safeAll(q, 'SELECT * FROM project_submittals', []))
-    .filter((s) => projectIds.includes(toNum(s.project_id)) && !['closed', 'resubmit_required'].includes(s.status));
+    .filter((s) => projectIds.includes(toNum(s.project_id)) && contractIds.includes(toNum(s.sub_contract_id))
+      && !['closed', 'resubmit_required'].includes(s.status));
   dashboard.submittals = { items: submittals.map((s) => ({ id: toNum(s.id), submittal_number: s.submittal_number, title: s.title, status: s.status })), count: submittals.length, empty_label: 'No submittals open' };
 
   // Payment application status (the shared Phase 13 certificates).
@@ -190,6 +197,9 @@ async function acknowledgeInstruction(q, userId, { project_id, instruction_id, r
   if (scope.packages.length === 0) return null;
   const instruction = (await safeAll(q, 'SELECT * FROM engineer_instructions WHERE id = $1 AND project_id = $2', [instruction_id, project_id]))[0];
   if (!instruction) return null;
+  if (!scope.packages.some((p) => toNum(p.id) === toNum(instruction.sub_contract_id))
+      && toNum(instruction.assigned_to_user_id) !== toNum(userId)) return null;
+  if (instruction.status !== 'issued') return null;
   await q(
     "UPDATE engineer_instructions SET status = 'acknowledged', acknowledged_at = $1, response = $2, updated_at = $1 WHERE id = $3",
     [new Date(), response, instruction_id]
@@ -209,13 +219,15 @@ async function submitPaymentApplication(q, userId, {
   project_id, sub_contract_id, period_from, period_to, work_value,
   retention = 0, materials_deducted = 0, other_deductions = 0, notes = null,
 }) {
-  const contract = (await safeAll(q, 'SELECT * FROM sub_contracts WHERE id = $1', [sub_contract_id]))[0];
+  const contract = await subContractForOrg(q, sub_contract_id, userId);
   if (!contract || toNum(contract.project_id) !== toNum(project_id)) return null;
 
   const prior = (await safeAll(q,
     "SELECT * FROM payment_certificates WHERE party_type = 'subcontractor' AND sub_contract_id = $1",
     [sub_contract_id])).filter((c) => !['cancelled', 'void'].includes(c.status));
-  const previousCumulative = Math.round(prior.reduce((s, c) => s + toNum(c.cumulative_certified), 0) * 100) / 100;
+  const previousCumulative = Math.round(prior.reduce(
+    (max, c) => Math.max(max, toNum(c.cumulative_certified)), 0
+  ) * 100) / 100;
   const gross = Math.round(toNum(work_value) * 100) / 100;
   const netBefore = Math.max(gross - toNum(retention) - toNum(materials_deducted) - toNum(other_deductions), 0);
 
@@ -242,18 +254,29 @@ async function supplierScope(q, userId, { now = new Date() } = {}) {
   const orgs = await resolveOrgForUser(q, userId, 'supplier');
   const supplierIds = new Set();
   const projectIds = new Set();
+  const assignments = [];
   for (const org of orgs) {
     const participants = await safeAll(q, 'SELECT * FROM project_participants WHERE organization_id = $1', [org.id]);
     for (const p of participants) {
       if (p.participant_type !== 'supplier') continue;
       if (p.portal_access_enabled === false) continue;
+      if (p.active_from != null && new Date(p.active_from) > now) continue;
       if (p.active_to != null && new Date(p.active_to) < now) continue;
+      const assignedUsers = await safeAll(q, 'SELECT user_id FROM project_participant_users WHERE project_participant_id = $1', [p.id]);
+      if (assignedUsers.length > 0 && !assignedUsers.some((u) => toNum(u.user_id) === toNum(userId))) continue;
       const legacySupplierId = toNum(p.legacy_supplier_id);
-      if (legacySupplierId > 0) supplierIds.add(legacySupplierId);
+      if (legacySupplierId > 0) {
+        supplierIds.add(legacySupplierId);
+        assignments.push({ supplier_id: legacySupplierId, project_id: toNum(p.project_id), organization_id: toNum(org.id) });
+      }
       projectIds.add(toNum(p.project_id));
     }
   }
-  return { orgs, supplierIds: [...supplierIds], projectIds: [...projectIds].sort((a, b) => a - b) };
+  return { orgs, supplierIds: [...supplierIds], projectIds: [...projectIds].sort((a, b) => a - b), assignments };
+}
+
+function supplierAssigned(scope, supplierId, projectId) {
+  return scope.assignments.some((a) => a.supplier_id === toNum(supplierId) && a.project_id === toNum(projectId));
 }
 
 async function supplierDashboard(q, userId, { now = new Date() } = {}) {
@@ -270,11 +293,15 @@ async function supplierDashboard(q, userId, { now = new Date() } = {}) {
   // quotation rows, never a competitor's pricing (Phase 12 quote comparison).
   const myQuotations = (await safeAll(q, 'SELECT * FROM supplier_quotations', []))
     .filter((q0) => scope.supplierIds.includes(toNum(q0.supplier_id)));
-  const rfqIds = [...new Set(myQuotations.map((q0) => toNum(q0.rfq_id)))];
-  const rfqs = (await safeAll(q, 'SELECT * FROM rfqs', [])).filter((r) => rfqIds.includes(toNum(r.id)));
+  const invitations = (await safeAll(q, 'SELECT * FROM rfq_vendors', []))
+    .filter((v) => scope.supplierIds.includes(toNum(v.supplier_id)));
+  const rfqIds = [...new Set([...myQuotations, ...invitations].map((row) => toNum(row.rfq_id)))];
+  const rfqs = (await safeAll(q, 'SELECT * FROM rfqs', []))
+    .filter((r) => rfqIds.includes(toNum(r.id)) && [...myQuotations, ...invitations]
+      .some((row) => toNum(row.rfq_id) === toNum(r.id) && supplierAssigned(scope, row.supplier_id, r.project_id)));
   dashboard.open_rfqs = {
     items: rfqs.map((r) => {
-      const mine = myQuotations.find((q0) => toNum(q0.rfq_id) === toNum(r.id));
+      const mine = myQuotations.find((q0) => toNum(q0.rfq_id) === toNum(r.id) && supplierAssigned(scope, q0.supplier_id, r.project_id));
       return { id: toNum(r.id), rfq_number: r.rfq_number || String(r.id), deadline: r.due_date || null, my_quoted_price: mine != null ? toNum(mine.total_price) : null };
     }),
     count: rfqs.length,
@@ -283,7 +310,7 @@ async function supplierDashboard(q, userId, { now = new Date() } = {}) {
 
   // Awarded POs.
   const pos = (await safeAll(q, 'SELECT * FROM purchase_orders', []))
-    .filter((p) => scope.supplierIds.includes(toNum(p.supplier_id)));
+    .filter((p) => supplierAssigned(scope, p.supplier_id, p.project_id));
   dashboard.awarded_pos = {
     items: pos.map((p) => ({ id: toNum(p.id), order_number: p.order_number, total_amount: toNum(p.total_amount), status: p.status })),
     count: pos.length,
@@ -312,7 +339,8 @@ async function supplierDashboard(q, userId, { now = new Date() } = {}) {
 
   // Invoice / payment status.
   const invoices = (await safeAll(q, 'SELECT * FROM supplier_invoices', []))
-    .filter((i) => scope.supplierIds.includes(toNum(i.supplier_id)));
+    .filter((i) => (i.purchase_order_id != null && myPoIds.includes(toNum(i.purchase_order_id)))
+      || (i.project_id != null && supplierAssigned(scope, i.supplier_id, i.project_id)));
   dashboard.invoices = {
     items: invoices.map((i) => ({ id: toNum(i.id), invoice_number: i.invoice_number, total_amount: toNum(i.total_amount), status: i.status })),
     count: invoices.length,
@@ -333,6 +361,52 @@ async function supplierDashboard(q, userId, { now = new Date() } = {}) {
   return dashboard;
 }
 
+async function assertSubcontractorProject(q, userId, projectId) {
+  const scope = await subcontractorScopeFor(q, userId, { projectId });
+  if (scope.packages.length === 0) throw new Error('Project is outside the subcontractor scope');
+  return scope;
+}
+
+async function assertSupplierProject(q, userId, projectId) {
+  const scope = await supplierScope(q, userId);
+  if (!scope.projectIds.includes(toNum(projectId))) throw new Error('Project is outside the supplier scope');
+  return scope;
+}
+
+async function supplierPurchaseOrder(q, userId, purchaseOrderId) {
+  const scope = await supplierScope(q, userId);
+  const po = (await safeAll(q, 'SELECT * FROM purchase_orders WHERE id = $1', [purchaseOrderId]))[0];
+  if (!po || !supplierAssigned(scope, po.supplier_id, po.project_id)) return null;
+  return po;
+}
+
+async function supplierRfq(q, userId, rfqId) {
+  const scope = await supplierScope(q, userId);
+  const rfq = (await safeAll(q, 'SELECT * FROM rfqs WHERE id = $1', [rfqId]))[0];
+  if (!rfq || !scope.projectIds.includes(toNum(rfq.project_id))) return null;
+  const invitations = await safeAll(q, 'SELECT * FROM rfq_vendors WHERE rfq_id = $1', [rfqId]);
+  const quoted = await safeAll(q, 'SELECT * FROM supplier_quotations WHERE rfq_id = $1', [rfqId]);
+  const supplierIds = [...new Set([...invitations, ...quoted]
+    .filter((r) => supplierAssigned(scope, r.supplier_id, rfq.project_id))
+    .map((r) => toNum(r.supplier_id)))];
+  if (supplierIds.length === 0) return null;
+  return { rfq, scope, supplierIds };
+}
+
+async function createPortalSubmission(q, userId, {
+  organization_id, project_id, submission_type, related_entity_type = null,
+  related_entity_id = null, payload = {},
+}) {
+  const r = await q(
+    `INSERT INTO portal_submissions (organization_id, project_id, submission_type,
+       related_entity_type, related_entity_id, payload, submitted_by)
+     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+    [organization_id || null, project_id, submission_type, related_entity_type,
+     related_entity_id, JSON.stringify(payload || {}), userId]
+  );
+  return r.rows[0];
+}
+
 module.exports = {
   resolveOrgForUser,
   subContractForOrg,
@@ -342,4 +416,9 @@ module.exports = {
   submitPaymentApplication,
   supplierScope,
   supplierDashboard,
+  assertSubcontractorProject,
+  assertSupplierProject,
+  supplierPurchaseOrder,
+  supplierRfq,
+  createPortalSubmission,
 };

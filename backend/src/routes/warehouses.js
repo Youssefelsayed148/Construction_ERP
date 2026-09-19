@@ -257,16 +257,17 @@ router.put('/transfers/:id/complete', authenticate, authorize(), async (req, res
     const items = await query('SELECT * FROM inventory_transfer_items WHERE transfer_id = $1', [req.params.id]);
 
     await transaction(async (client) => {
+      const txQuery = client.query.bind(client);
       // Pre-flight: usable (available) stock at the source for every item.
       for (const item of items.rows) {
-        const balances = await engine.getBalances(client, transfer.rows[0].from_warehouse_id, item.item_id);
+        const balances = await engine.getBalances(txQuery, transfer.rows[0].from_warehouse_id, item.item_id);
         if (balances.available < engine.toNum(item.quantity)) {
           throw new Error(`Insufficient stock for item #${item.item_id}: ${balances.available} available, ${item.quantity} requested`);
         }
       }
       // Paired movements in one transaction: transfer_out + transfer_in.
       for (const item of items.rows) {
-        await engine.createMovement(client, {
+        await engine.createMovement(txQuery, {
           warehouse_id: transfer.rows[0].from_warehouse_id,
           material_id: item.item_id,
           movement_type: 'transfer_out',
@@ -275,7 +276,7 @@ router.put('/transfers/:id/complete', authenticate, authorize(), async (req, res
           reference_id: transfer.rows[0].id,
           created_by: req.user.id,
         });
-        await engine.createMovement(client, {
+        await engine.createMovement(txQuery, {
           warehouse_id: transfer.rows[0].to_warehouse_id,
           material_id: item.item_id,
           movement_type: 'transfer_in',

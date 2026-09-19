@@ -1,30 +1,32 @@
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
-const { query } = require('../config/database');
+const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
+const finance = require('../services/financeEngine');
 
 const PAYMENT_METHODS = ['cash', 'bank_transfer', 'check', 'other'];
 
 function computeInvoiceStatus(invoice, totalPaid) {
   const paid = parseFloat(totalPaid) || 0;
-  const amount = parseFloat(invoice.amount) || 0;
+  const amount = parseFloat(invoice.net_amount) > 0 ? parseFloat(invoice.net_amount) : (parseFloat(invoice.amount) || 0);
   if (paid >= amount) return 'paid';
   if (invoice.due_date && new Date(invoice.due_date) < new Date() && paid < amount) return 'overdue';
   if (paid > 0) return 'partially_paid';
-  return invoice.status;
+  return ['paid', 'partially_paid'].includes(invoice.status)
+    ? (invoice.gross_current_work ? 'issued' : 'sent') : invoice.status;
 }
 
-async function recalcInvoiceStatus(invoiceId) {
-  const inv = await query('SELECT * FROM invoices WHERE id = $1', [invoiceId]);
+async function recalcInvoiceStatus(q, invoiceId) {
+  const inv = await q('SELECT * FROM invoices WHERE id = $1', [invoiceId]);
   if (inv.rows.length === 0) return;
   const invoice = inv.rows[0];
-  const paid = await query('SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE invoice_id = $1', [invoiceId]);
+  const paid = await q("SELECT COALESCE(SUM(amount), 0) as total FROM payment_allocations WHERE invoice_id = $1 AND target_type = 'client_invoice'", [invoiceId]);
   const totalPaid = parseFloat(paid.rows[0].total) || 0;
   const newStatus = computeInvoiceStatus(invoice, totalPaid);
   if (newStatus !== invoice.status) {
-    await query('UPDATE invoices SET status = $1, updated_at = NOW() WHERE id = $2', [newStatus, invoiceId]);
+    await q('UPDATE invoices SET status = $1, updated_at = NOW() WHERE id = $2', [newStatus, invoiceId]);
   }
 }
 
@@ -68,39 +70,56 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const result = await query(
-      `INSERT INTO payments (invoice_id, project_id, client_id, amount, payment_date, payment_method, reference_number, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [value.invoice_id || null, value.project_id, value.client_id, value.amount,
-       value.payment_date, value.payment_method, value.reference_number, value.notes]
-    );
-
-    if (value.invoice_id) {
-      await recalcInvoiceStatus(value.invoice_id);
-    }
+    const payment = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      if (value.invoice_id) {
+        const inv = (await q('SELECT * FROM invoices WHERE id = $1 FOR UPDATE', [value.invoice_id])).rows[0];
+        if (!inv || Number(inv.project_id) !== value.project_id || Number(inv.client_id) !== value.client_id) {
+          throw new Error('Invoice does not belong to the selected project and client');
+        }
+        if (['void', 'cancelled', 'credited'].includes(inv.status)) throw new Error('Invoice is not payable');
+        const balance = await finance.invoiceOutstanding(q, value.invoice_id);
+        if (value.amount > balance.outstanding + 1e-9) throw new Error('Payment exceeds invoice outstanding balance');
+      }
+      const row = (await q(
+        `INSERT INTO payments (invoice_id, project_id, client_id, amount, payment_date, payment_method, reference_number, notes)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+        [value.invoice_id || null, value.project_id, value.client_id, value.amount,
+         value.payment_date, value.payment_method, value.reference_number, value.notes]
+      )).rows[0];
+      if (value.invoice_id) {
+        await finance.allocatePayment(q, {
+          payment_id: row.id,
+          allocations: [{ target_type: 'client_invoice', invoice_id: value.invoice_id, amount: value.amount }],
+          allocated_by: req.user.id, actor_name: req.user.name,
+        });
+      }
+      return row;
+    });
 
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       action: 'create', module: 'payments',
       description: `Recorded payment of ${value.amount} EGP`,
-      entityId: result.rows[0].id, entityType: 'payment', amount: value.amount
+      entityId: payment.id, entityType: 'payment', amount: value.amount
     });
 
-    res.status(201).json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+    res.status(201).json({ success: true, data: payment });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const existing = await query('SELECT * FROM payments WHERE id = $1', [req.params.id]);
-    if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Payment not found' });
-
-    const payment = existing.rows[0];
-    const result = await query('DELETE FROM payments WHERE id = $1 RETURNING id', [req.params.id]);
-
-    if (payment.invoice_id) {
-      await recalcInvoiceStatus(payment.invoice_id);
-    }
+    const payment = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const existing = (await q('SELECT * FROM payments WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!existing) return null;
+      if (existing.invoice_id) await q('SELECT id FROM invoices WHERE id = $1 FOR UPDATE', [existing.invoice_id]);
+      await q('DELETE FROM payments WHERE id = $1', [req.params.id]);
+      if (existing.invoice_id) await recalcInvoiceStatus(q, existing.invoice_id);
+      return existing;
+    });
+    if (!payment) return res.status(404).json({ success: false, error: 'Payment not found' });
 
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,

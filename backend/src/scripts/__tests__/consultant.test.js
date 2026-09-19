@@ -8,6 +8,7 @@
 
 const { MockDb } = require('../test-helpers/mock-db');
 const consultantMigration = require('../consultant-migration');
+const workflowMigration = require('../workflow-engine-migration');
 const engine = require('../../services/consultantEngine');
 
 const db = new MockDb();
@@ -61,7 +62,8 @@ async function buildFixture() {
     id SERIAL PRIMARY KEY, project_id INTEGER, ncr_number VARCHAR(50), title VARCHAR(255),
     description TEXT, status VARCHAR(30) DEFAULT 'open')`);
   await q(`CREATE TABLE IF NOT EXISTS project_documents (
-    id SERIAL PRIMARY KEY, project_id INTEGER, category_id INTEGER, title VARCHAR(255), file_name VARCHAR(255))`);
+    id SERIAL PRIMARY KEY, project_id INTEGER, category_id INTEGER, title VARCHAR(255), file_name VARCHAR(255),
+    document_type VARCHAR(50), status VARCHAR(30), portal_visibility VARCHAR(30))`);
   await q(`CREATE TABLE IF NOT EXISTS document_categories (id SERIAL PRIMARY KEY, code VARCHAR(50))`);
   await q(`CREATE TABLE IF NOT EXISTS site_daily_reports (
     id SERIAL PRIMARY KEY, project_id INTEGER, report_date DATE, work_summary TEXT)`);
@@ -105,7 +107,9 @@ async function buildFixture() {
     user_id INTEGER, user_name VARCHAR(255), user_role VARCHAR(100), payload JSONB,
     dispatched_at TIMESTAMPTZ, created_at TIMESTAMPTZ)`);
 
+  await workflowMigration.run(q);
   await consultantMigration.ensureTables(q);
+  await consultantMigration.widenObservationTemplate(q);
   await consultantMigration.ensureTables(q); // idempotent
 
   await q(`INSERT INTO users (id, name, email, role, is_active) VALUES ($1,$2,$3,$4,$5)`, [20, 'Consultant Rep', 'c@x.com', 'consultant', true]);
@@ -239,10 +243,11 @@ describe('multi-stage RFI and submittal flows', () => {
              VALUES ($1,$2,$3,$4,$5,$6,$7)`, [1, 'RFI-0001', 1, 'Slab thickness at ramp', 'Confirm 250mm', 'open', '2026-09-30']);
     const response = await engine.recordRfiResponse(q, {
       rfi_id: 1, stage: 'official_response', user: CONSULTANT,
-      organization_id: 5, organization_name: 'Consultant Org',
+      organization_id: 9, organization_name: 'Other Consultant',
       body: 'Thickness confirmed at 250 mm nominal.', attachments: [{ file: 'sk-1.pdf' }], revision: 1,
     });
     expect(response.responder_organization_id).toBe(5);
+    expect(response.responder_organization_name).toBe('Consultant Org');
     expect(response.revision).toBe(1);
     expect(response.attachments).toBeDefined();
     const rfi = (await q('SELECT * FROM project_rfis WHERE id = 1')).rows[0];
@@ -310,7 +315,7 @@ describe('consultant dashboard (zero-safe widgets)', () => {
     await q(`INSERT INTO observations (id, observation_number, project_id, title, status, consultant_organization_id)
              VALUES ($1,$2,$3,$4,$5,$6)`, [50, 'OBS-0050', 1, 'Curing check', 'submitted_for_verification', 5]);
     await q(`INSERT INTO ncrs (id, project_id, ncr_number, title, status) VALUES ($1,$2,$3,$4,$5)`, [1, 1, 'NCR-0001', 'Rebar cover', 'verification']);
-    await q(`INSERT INTO project_documents (id, project_id, category_id, title) VALUES ($1,$2,$3,$4)`, [1, 1, 7, 'Drawing Rev C']);
+    await q(`INSERT INTO project_documents (id, project_id, category_id, title, document_type, status, portal_visibility) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [1, 1, 7, 'Drawing Rev C', 'drawing', 'approved', 'consultant']);
     await q(`INSERT INTO document_categories (id, code) VALUES ($1,$2)`, [7, 'drawings']);
 
     const dash = await engine.consultantDashboard(q, CONSULTANT, { project_id: 1 });

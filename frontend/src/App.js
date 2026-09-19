@@ -25,8 +25,11 @@ import SiteWorkspace from './pages/SiteWorkspace';
 import QHSE from './pages/QHSE';
 import ProjectDocuments from './pages/ProjectDocuments';
 import UnitsSales from './pages/UnitsSales';
+import PortalDashboard from './pages/PortalDashboard';
+import ProcurementReview from './pages/ProcurementReview';
 import { authService } from './services/api';
 import './styles/index.css';
+import './styles/portal.css';
 
 function ProtectedRoute({ children }) {
   const isAuthenticated = authService.isAuthenticated();
@@ -37,6 +40,11 @@ function ProtectedRoute({ children }) {
 function LandingRedirect() {
   const user = authService.getCurrentUser();
   if (!user) return <Navigate to="/login" replace />;
+  const portalLanding = {
+    consultant: '/consultant-portal', client: '/client-portal',
+    subcontractor: '/subcontractor-portal', supplier: '/supplier-portal',
+  };
+  if (portalLanding[user.role]) return <Navigate to={portalLanding[user.role]} replace />;
   return <Navigate to="/dashboard" replace />;
 }
 
@@ -55,7 +63,12 @@ function App() {
         >
           <Route index element={<LandingRedirect />} />
           <Route path="dashboard" element={<Dashboard />} />
+          <Route path="consultant-portal" element={<PortalDashboard kind="consultant" />} />
+          <Route path="client-portal" element={<PortalDashboard kind="client" />} />
+          <Route path="subcontractor-portal" element={<PortalDashboard kind="subcontractor" />} />
+          <Route path="supplier-portal" element={<PortalDashboard kind="supplier" />} />
           <Route path="inventory" element={<Items />} />
+          <Route path="procurement/comparison" element={<ProcurementReview />} />
           <Route path="suppliers" element={<Suppliers />} />
           <Route path="clients" element={<Clients />} />
           <Route path="legal" element={<Legal />} />

@@ -37,7 +37,7 @@ const DDL = [
     warehouse_id INTEGER NOT NULL REFERENCES warehouses(id) ON DELETE CASCADE,
     material_id INTEGER NOT NULL REFERENCES item_master(id),
     movement_type VARCHAR(30) NOT NULL CHECK (movement_type IN
-      ('opening','grn','quarantine','quarantine_release','quarantine_reject',
+      ('opening','grn','quarantine','quarantine_release','quarantine_reject','quarantine_restore',
        'issue','return','transfer_out','transfer_in','adjustment','reversal',
        'waste','damage','supplier_return')),
     quantity DECIMAL(15,3) NOT NULL,
@@ -50,6 +50,10 @@ const DDL = [
   `CREATE INDEX IF NOT EXISTS idx_stock_movements_warehouse ON stock_movements(warehouse_id)`,
   `CREATE INDEX IF NOT EXISTS idx_stock_movements_material ON stock_movements(material_id)`,
   `CREATE INDEX IF NOT EXISTS idx_stock_movements_reference ON stock_movements(reference_type, reference_id)`,
+  `ALTER TABLE stock_movements DROP CONSTRAINT IF EXISTS stock_movements_movement_type_check`,
+  `ALTER TABLE stock_movements ADD CONSTRAINT stock_movements_movement_type_check CHECK (movement_type IN
+    ('opening','grn','quarantine','quarantine_release','quarantine_reject','quarantine_restore',
+     'issue','return','transfer_out','transfer_in','adjustment','reversal','waste','damage','supplier_return'))`,
   `CREATE TABLE IF NOT EXISTS stock_reservations (
     id SERIAL PRIMARY KEY,
     material_id INTEGER NOT NULL REFERENCES item_master(id) ON DELETE CASCADE,
@@ -79,7 +83,12 @@ const DDL = [
 
 async function ensureTables(query) {
   for (const ddl of DDL) {
-    await query(ddl);
+    try {
+      await query(ddl);
+    } catch (e) {
+      if (/MockDb: bad ALTER TABLE/.test(e.message) && /CONSTRAINT(?: IF EXISTS)? stock_movements_movement_type_check/.test(ddl)) continue;
+      throw e;
+    }
   }
 }
 

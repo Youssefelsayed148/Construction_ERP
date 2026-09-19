@@ -49,10 +49,13 @@ function clientVisibilityFlags(user, policyFlags) {
   // role, a client portal viewer is forced to the safest flags.
   return {
     see_internal_cost: false,
-    see_client_price: false,
+    see_client_price: true,
     see_subcontractor_price: false,
+    see_supplier_price: false,
     ...policyFlags,
     see_internal_cost: false, // never for the client portal, enforced here
+    see_subcontractor_price: false,
+    see_supplier_price: false,
   };
 }
 
@@ -71,16 +74,26 @@ function stripInternalFields(obj) {
 // Scoped project resolution
 // ---------------------------------------------------------------------------
 
-async function resolveClientProjects(q, userId) {
-  const orgLinks = await safeAll(q, 'SELECT organization_id FROM organization_users WHERE user_id = $1', [userId]);
+async function resolveClientProjects(q, userId, { previewProjectId = null } = {}) {
+  if (previewProjectId != null) {
+    const project = (await q('SELECT id FROM projects WHERE id = $1', [previewProjectId])).rows[0];
+    return project ? [toNum(project.id)] : [];
+  }
+  const orgLinks = (await safeAll(q, 'SELECT organization_id, is_active FROM organization_users WHERE user_id = $1', [userId]))
+    .filter((link) => link.is_active !== false);
   const projects = [];
+  const now = new Date();
   for (const link of orgLinks) {
     const participants = await safeAll(q,
-      'SELECT project_id, participant_type, portal_access_enabled FROM project_participants WHERE organization_id = $1',
+      'SELECT id, project_id, participant_type, portal_access_enabled, active_from, active_to FROM project_participants WHERE organization_id = $1',
       [link.organization_id]);
     for (const p of participants) {
       if (p.participant_type !== 'client') continue;
       if (p.portal_access_enabled === false) continue;
+      if (p.active_from != null && new Date(p.active_from) > now) continue;
+      if (p.active_to != null && new Date(p.active_to) < now) continue;
+      const assignedUsers = await safeAll(q, 'SELECT user_id FROM project_participant_users WHERE project_participant_id = $1', [p.id]);
+      if (assignedUsers.length > 0 && !assignedUsers.some((u) => toNum(u.user_id) === toNum(userId))) continue;
       const id = toNum(p.project_id);
       if (!projects.includes(id)) projects.push(id);
     }
@@ -116,13 +129,13 @@ async function clientFinancials(q, projectId) {
   return { certified: Math.round(certified * 100) / 100, billed: Math.round(billed * 100) / 100, paid: Math.round(paid * 100) / 100, outstanding };
 }
 
-async function clientDashboard(q, user, { project_id = null, now = new Date() } = {}) {
-  const projectIds = await resolveClientProjects(q, user.id);
+async function clientDashboard(q, user, { project_id = null, preview_project_id = null, now = new Date() } = {}) {
+  const projectIds = await resolveClientProjects(q, user.id, { previewProjectId: preview_project_id });
   const scoped = project_id != null && projectIds.includes(toNum(project_id)) ? [toNum(project_id)] : projectIds;
 
   const projects = [];
   for (const pid of scoped) {
-    const p = (await safeAll(q, 'SELECT id, name, name_en, status, progress_percent, client_id FROM projects WHERE id = $1', [pid]))[0];
+    const p = (await q('SELECT id, name, name_en, status, completion_percentage, client_id FROM projects WHERE id = $1', [pid])).rows[0];
     if (p) projects.push(p);
   }
 
@@ -136,6 +149,18 @@ async function clientDashboard(q, user, { project_id = null, now = new Date() } 
   }
 
   const dashboard = { projects, project_ids: scoped, setup_actions: [] };
+  if (preview_project_id != null) {
+    const participants = await safeAll(q, 'SELECT * FROM project_participants WHERE project_id = $1', [preview_project_id]);
+    const nowMs = now.getTime();
+    const hasClient = projects.some((p) => p.client_id != null)
+      || participants.some((p) => p.participant_type === 'client' && p.portal_access_enabled !== false
+        && (p.active_from == null || new Date(p.active_from).getTime() <= nowMs)
+        && (p.active_to == null || new Date(p.active_to).getTime() >= nowMs));
+    if (!hasClient) {
+      dashboard.setup_actions.push('Assign a client to preview this portal');
+      dashboard.note = 'No client is assigned to this project yet.';
+    }
+  }
   const forProjects = (rows) => rows.filter((r) => scoped.includes(toNum(r.project_id)));
 
   // Project health / progress.
@@ -149,7 +174,7 @@ async function clientDashboard(q, user, { project_id = null, now = new Date() } 
       .reduce((s, m) => s + toNum(m.quantity), 0);
     health.push({
       project_id: p.id, name: p.name || p.name_en, status: p.status,
-      progress_percent: toNum(p.progress_percent) || (planned > 0 ? Math.round((executed / planned) * 10000) / 100 : 0),
+      progress_percent: toNum(p.completion_percentage) || (planned > 0 ? Math.round((executed / planned) * 10000) / 100 : 0),
       planned_quantity: Math.round(planned * 1000) / 1000,
       executed_quantity: Math.round(executed * 1000) / 1000,
     });
@@ -182,7 +207,7 @@ async function clientDashboard(q, user, { project_id = null, now = new Date() } 
   };
 
   // Variations: approved vs pending (client-facing values only).
-  const variations = forProjects(await safeAll(q, 'SELECT * FROM variations', []));
+  const variations = forProjects(await safeAll(q, "SELECT * FROM variations WHERE variation_type = 'client'", []));
   dashboard.variations = {
     approved: variations.filter((v) => v.status === 'incorporated'),
     pending: variations.filter((v) => ['change_event', 'estimate', 'internal_commercial_review', 'authority_approval', 'consultant_recommendation', 'client_approval_reject'].includes(v.status)),
@@ -193,7 +218,8 @@ async function clientDashboard(q, user, { project_id = null, now = new Date() } 
 
   // Client approvals required (variations at the client-approval step + issued
   // payment certificates awaiting client countersign are out of scope here).
-  const approvalRequests = forProjects((await safeAll(q, "SELECT * FROM approval_requests WHERE status = 'pending'", [])));
+  const approvalRequests = (await safeAll(q, "SELECT * FROM approval_requests WHERE status = 'pending'", []))
+    .filter((a) => a.project_id != null && scoped.includes(toNum(a.project_id)));
   dashboard.client_approvals_required = {
     items: approvalRequests.map((a) => ({ id: a.id, title: a.title || a.module || 'Approval', requested_at: a.created_at })),
     count: approvalRequests.length,
@@ -209,7 +235,8 @@ async function clientDashboard(q, user, { project_id = null, now = new Date() } 
   dashboard.financials = financials;
 
   // Owner-facing documents.
-  const documents = forProjects(await safeAll(q, 'SELECT * FROM project_documents', []));
+  const documents = forProjects(await safeAll(q,
+    "SELECT * FROM project_documents WHERE status = 'approved' AND portal_visibility IN ('client','all_external')", []));
   dashboard.owner_documents = {
     items: documents.slice(0, 10).map((d) => ({ id: d.id, title: d.title || d.file_name })),
     count: documents.length,
@@ -229,11 +256,11 @@ async function clientDashboard(q, user, { project_id = null, now = new Date() } 
 // portal lands here.
 // ---------------------------------------------------------------------------
 
-async function clientPortfolio(q, user) {
-  const projectIds = await resolveClientProjects(q, user.id);
+async function clientPortfolio(q, user, { preview_project_id = null } = {}) {
+  const projectIds = await resolveClientProjects(q, user.id, { previewProjectId: preview_project_id });
   const items = [];
   for (const pid of projectIds) {
-    const p = (await safeAll(q, 'SELECT id, name, name_en, status, progress_percent FROM projects WHERE id = $1', [pid]))[0];
+    const p = (await q('SELECT id, name, name_en, status, completion_percentage FROM projects WHERE id = $1', [pid])).rows[0];
     if (!p) continue;
     const planned = (await safeAll(q, 'SELECT quantity FROM boq_items WHERE project_id = $1', [pid]))
       .reduce((s, b) => s + toNum(b.quantity), 0);
@@ -243,7 +270,7 @@ async function clientPortfolio(q, user) {
     const f = await clientFinancials(q, pid);
     items.push({
       project_id: pid, name: p.name || p.name_en, status: p.status,
-      progress_percent: toNum(p.progress_percent) || (planned > 0 ? Math.round((executed / planned) * 10000) / 100 : 0),
+      progress_percent: toNum(p.completion_percentage) || (planned > 0 ? Math.round((executed / planned) * 10000) / 100 : 0),
       outstanding: f.outstanding,
     });
   }
@@ -255,16 +282,16 @@ async function clientPortfolio(q, user) {
 // overdue owner inputs.
 // ---------------------------------------------------------------------------
 
-async function clientActionCenter(q, user, { project_id = null } = {}) {
-  const projectIds = await resolveClientProjects(q, user.id);
+async function clientActionCenter(q, user, { project_id = null, preview_project_id = null } = {}) {
+  const projectIds = await resolveClientProjects(q, user.id, { previewProjectId: preview_project_id });
   const scoped = project_id != null && projectIds.includes(toNum(project_id)) ? [toNum(project_id)] : projectIds;
   // approval_requests rows have no project link — they are client-scoped by
   // nature; records WITH a project_id are project-filtered.
-  const forProjects = (rows) => rows.filter((r) => r.project_id == null || scoped.includes(toNum(r.project_id)));
+  const forProjects = (rows) => rows.filter((r) => r.project_id != null && scoped.includes(toNum(r.project_id)));
   const now = new Date();
 
   const pendingApprovals = forProjects((await safeAll(q, "SELECT * FROM approval_requests WHERE status = 'pending'", [])));
-  const variationResponses = forProjects((await safeAll(q, "SELECT * FROM variations WHERE status = 'client_approval_reject'", [])));
+  const variationResponses = forProjects((await safeAll(q, "SELECT * FROM variations WHERE variation_type = 'client' AND status = 'client_approval_reject'", [])));
   const documentAcks = forProjects((await safeAll(q, "SELECT * FROM project_documents WHERE status = 'awaiting_acknowledgement'", [])));
   const overdueInputs = pendingApprovals.filter((a) => a.due_date && new Date(a.due_date) < now);
 

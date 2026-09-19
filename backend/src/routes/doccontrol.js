@@ -84,15 +84,16 @@ router.post('/documents', authenticate, authorize(), async (req, res) => {
       file_type: Joi.string().allow('').optional(),
       file_size_bytes: Joi.number().integer().optional(),
       tags: Joi.array().items(Joi.string()).default([]),
+      portal_visibility: Joi.string().valid('internal', 'client', 'consultant', 'subcontractor', 'all_external').default('internal'),
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
     const result = await query(
-      `INSERT INTO project_documents (project_id, category_id, title, description, document_type, file_url, file_type, file_size_bytes, tags, uploaded_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10) RETURNING *`,
+      `INSERT INTO project_documents (project_id, category_id, title, description, document_type, file_url, file_type, file_size_bytes, tags, uploaded_by, portal_visibility)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11) RETURNING *`,
       [value.project_id, value.category_id, value.title, value.description, value.document_type,
-       value.file_url, value.file_type, value.file_size_bytes, JSON.stringify(value.tags), req.user.id]
+       value.file_url, value.file_type, value.file_size_bytes, JSON.stringify(value.tags), req.user.id, value.portal_visibility]
     );
 
     // Record v1 in version history
@@ -149,6 +150,7 @@ router.put('/documents/:id', authenticate, authorize(), async (req, res) => {
       document_type: Joi.string().valid('drawing', 'contract', 'report', 'photo', 'rfi', 'other'),
       status: Joi.string().valid('draft', 'review', 'archived'),
       tags: Joi.array().items(Joi.string()),
+      portal_visibility: Joi.string().valid('internal', 'client', 'consultant', 'subcontractor', 'all_external'),
     }).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });

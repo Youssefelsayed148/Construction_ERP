@@ -234,6 +234,9 @@ async function submitQuotation(q, {
 }) {
   const rfq = (await q('SELECT * FROM rfqs WHERE id = $1', [rfq_id])).rows[0];
   if (!rfq) throw new Error(`RFQ #${rfq_id} not found`);
+  const invited = (await q('SELECT * FROM rfq_vendors WHERE rfq_id = $1', [rfq_id])).rows
+    .some((v) => toNum(v.supplier_id) === toNum(supplier_id));
+  if (!invited) throw new Error('Supplier was not invited to this RFQ');
   const duplicate = (await q(
     'SELECT * FROM supplier_quotations WHERE rfq_id = $1 AND supplier_id = $2',
     [rfq_id, supplier_id]
@@ -241,6 +244,17 @@ async function submitQuotation(q, {
   if (duplicate) throw new Error('This vendor already quoted on the RFQ');
 
   const rfqLines = (await q('SELECT * FROM rfq_lines WHERE rfq_id = $1', [rfq_id])).rows;
+  const expected = new Set(rfqLines.map((line) => toNum(line.id)));
+  const offered = lines.map((line) => toNum(line.rfq_line_id));
+  if (offered.length !== expected.size || new Set(offered).size !== expected.size || offered.some((id) => !expected.has(id))) {
+    throw new Error('Quotation must cover each line of this RFQ exactly once');
+  }
+  for (const line of lines) {
+    const source = rfqLines.find((r) => toNum(r.id) === toNum(line.rfq_line_id));
+    if (line.material_id != null && toNum(line.material_id) !== toNum(source.material_id)) {
+      throw new Error('Quotation material does not match its RFQ line');
+    }
+  }
   const subtotal = round2(lines.reduce((s, l) => s + toNum(l.quantity) * toNum(l.unit_price), 0));
   const tax = round2(subtotal * toNum(tax_pct) / 100);
   const quotationNumber = await nextNumber(q, 'supplier_quotations', 'quotation_number', 'Q');
@@ -523,43 +537,55 @@ async function decideMir(q, mirId, user, decision, { accepted = null, notes = nu
   const mir = (await q('SELECT * FROM material_inspection_requests WHERE id = $1', [mirId])).rows[0];
   if (!mir) throw new Error(`MIR #${mirId} not found`);
   if (mir.status !== 'pending') throw new Error(`MIR is already ${mir.status}`);
+  if (!['accept', 'reject'].includes(decision)) throw new Error(`Invalid MIR decision: ${decision}`);
 
   const mirLines = (await q('SELECT * FROM mir_lines WHERE mir_id = $1', [mirId])).rows;
-  const acceptedQty = round3(mirLines.reduce((s, l) => s + (accepted && accepted[l.id] != null ? toNum(accepted[l.id]) : toNum(l.quantity)), 0));
-
-  if (acceptedQty > 0) {
-    await inventoryEngine.createMovement(q, {
-      warehouse_id: mir.warehouse_id, material_id: mirLines[0].material_id,
-      movement_type: 'quarantine_release', quantity: acceptedQty,
-      reference_type: 'mir', reference_id: mirId, created_by: user ? user.id : null,
-    });
-    for (const line of mirLines) {
-      const a = accepted && accepted[line.id] != null ? toNum(accepted[line.id]) : toNum(line.quantity);
-      const rej = round3(toNum(line.quantity) - a);
-      await q(
-        'UPDATE mir_lines SET accepted_quantity = $1, rejected_quantity = $2 WHERE id = $3',
-        [a, rej, line.id]
-      );
-      if (line.purchase_order_line_id != null) {
-        const poLine = (await q('SELECT * FROM purchase_order_lines WHERE id = $1', [line.purchase_order_line_id])).rows[0];
-        if (poLine) {
-          await q(
-            'UPDATE purchase_order_lines SET accepted_quantity = $1 WHERE id = $2',
-            [round3(toNum(poLine.accepted_quantity) + a), line.purchase_order_line_id]
-          );
-        }
-      }
+  if (mirLines.length === 0) throw new Error('MIR has no lines');
+  let acceptedQty = 0;
+  let inspectedQty = 0;
+  for (const line of mirLines) {
+    const inspected = toNum(line.quantity);
+    const lineAccepted = decision === 'reject'
+      ? 0
+      : round3(accepted && accepted[line.id] != null ? toNum(accepted[line.id]) : inspected);
+    if (lineAccepted < 0 || lineAccepted > inspected + 1e-9) {
+      throw new Error(`Accepted quantity ${lineAccepted} is outside MIR line #${line.id} quantity ${inspected}`);
     }
-  } else {
-    for (const line of mirLines) {
-      await q(
-        'UPDATE mir_lines SET accepted_quantity = 0, rejected_quantity = $1 WHERE id = $2',
-        [toNum(line.quantity), line.id]
-      );
+    const rejected = round3(inspected - lineAccepted);
+    inspectedQty = round3(inspectedQty + inspected);
+    acceptedQty = round3(acceptedQty + lineAccepted);
+
+    if (lineAccepted > 0) {
+      await inventoryEngine.createMovement(q, {
+        warehouse_id: mir.warehouse_id, material_id: line.material_id,
+        movement_type: 'quarantine_release', quantity: lineAccepted,
+        reference_type: 'mir', reference_id: mirId, created_by: user ? user.id : null,
+      });
+    }
+    if (rejected > 0) {
+      await inventoryEngine.createMovement(q, {
+        warehouse_id: mir.warehouse_id, material_id: line.material_id,
+        movement_type: 'quarantine_reject', quantity: rejected,
+        reference_type: 'mir', reference_id: mirId, created_by: user ? user.id : null,
+      });
+    }
+    await q(
+      'UPDATE mir_lines SET accepted_quantity = $1, rejected_quantity = $2 WHERE id = $3',
+      [lineAccepted, rejected, line.id]
+    );
+    if (line.purchase_order_line_id != null && lineAccepted > 0) {
+      const poLine = (await q('SELECT * FROM purchase_order_lines WHERE id = $1', [line.purchase_order_line_id])).rows[0];
+      if (poLine) {
+        await q(
+          'UPDATE purchase_order_lines SET accepted_quantity = $1 WHERE id = $2',
+          [round3(toNum(poLine.accepted_quantity) + lineAccepted), line.purchase_order_line_id]
+        );
+      }
     }
   }
 
-  const status = acceptedQty > 0 ? (acceptedQty < mirLines.reduce((s, l) => s + toNum(l.quantity), 0) ? 'partially_accepted' : 'accepted') : 'rejected';
+  const status = acceptedQty === 0 ? 'rejected'
+    : acceptedQty < inspectedQty ? 'partially_accepted' : 'accepted';
   await q(
     'UPDATE material_inspection_requests SET status = $1, inspected_by = $2, decided_at = $3, notes = $4 WHERE id = $5',
     [status, user ? user.id : null, new Date(), notes, mirId]

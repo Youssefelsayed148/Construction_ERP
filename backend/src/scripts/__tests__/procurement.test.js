@@ -216,6 +216,14 @@ describe('full procurement scenario (gate — zero manual DB edits)', () => {
     expect(vendors.length).toBe(3);
 
     const rfqLine = (await q('SELECT * FROM rfq_lines WHERE rfq_id = $1', [rfq.id])).rows[0];
+    await expect(svc.submitQuotation(q, {
+      rfq_id: rfq.id, supplier_id: 9,
+      lines: [{ rfq_line_id: rfqLine.id + 9999, quantity: 100, unit_price: 98 }],
+    })).rejects.toThrow(/cover each line/);
+    await expect(svc.submitQuotation(q, {
+      rfq_id: rfq.id, supplier_id: 999,
+      lines: [{ rfq_line_id: rfqLine.id, quantity: 100, unit_price: 98 }],
+    })).rejects.toThrow(/not invited/);
     const q1 = await svc.submitQuotation(q, {
       rfq_id: rfq.id, supplier_id: 9, created_by: USER_SUPPLIER.id,
       lines: [{ rfq_line_id: rfqLine.id, quantity: 100, unit_price: 98, delivery_days: 7 }],

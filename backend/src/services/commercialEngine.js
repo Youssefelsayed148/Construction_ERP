@@ -96,7 +96,7 @@ function computeCertificateNet({
 
 async function approvedVariationTotal(q, projectId) {
   const rows = (await q(
-    "SELECT id, amount FROM variations WHERE project_id = $1 AND status = 'incorporated'",
+    "SELECT id, amount FROM variations WHERE project_id = $1 AND status = 'incorporated' AND variation_type = 'client'",
     [projectId]
   )).rows;
   return round2(rows.reduce((s, v) => s + toNum(v.amount), 0));
@@ -124,46 +124,53 @@ async function syncCommitments(q, projectId) {
     'SELECT * FROM commitments WHERE project_id = $1',
     [projectId]
   )).rows;
-  const known = new Set(existing.map((c) => `${c.source_type}:${c.source_id}`));
+  const bySource = new Map(existing.map((c) => [`${c.source_type}:${c.source_id}`, c]));
+  const activeKeys = new Set();
 
   // Issued/approved POs (Phase 12 statuses).
   let pos = [];
   try {
-    pos = (await q(
-      "SELECT id, supplier_id, total_amount, status FROM purchase_orders WHERE project_id = $1 AND status IN ('approved','issued','confirmed')",
-      [projectId]
-    )).rows;
+    pos = (await q('SELECT id, supplier_id, total_amount, status FROM purchase_orders WHERE project_id = $1', [projectId])).rows
+      .filter((po) => !['draft', 'rejected', 'cancelled', 'void'].includes(po.status));
   } catch (e) { pos = []; }
   for (const po of pos) {
     const key = `purchase_order:${po.id}`;
-    if (!known.has(key)) {
+    activeKeys.add(key);
+    if (!bySource.has(key)) {
       const count = parseInt((await q('SELECT COUNT(*) FROM commitments')).rows[0].count);
       await q(
         `INSERT INTO commitments (commitment_number, project_id, source_type, source_id, original_amount, status)
          VALUES ($1, $2, 'purchase_order', $3, $4, 'active')`,
         [`CM-${String(count + 1).padStart(5, '0')}`, projectId, po.id, toNum(po.total_amount)]
       );
-    }
+    } else await q('UPDATE commitments SET original_amount = $1, status = $2, updated_at = $3 WHERE id = $4',
+      [toNum(po.total_amount), 'active', new Date(), bySource.get(key).id]);
   }
 
   // Active subcontracts.
   let subs = [];
   try {
-    subs = (await q(
-      "SELECT id, contract_value, revised_amount, status FROM sub_contracts WHERE project_id = $1 AND status IN ('active','approved')",
-      [projectId]
-    )).rows;
+    subs = (await q('SELECT id, contract_value, revised_amount, status FROM sub_contracts WHERE project_id = $1', [projectId])).rows
+      .filter((sc) => ['active', 'approved', 'completed', 'closed'].includes(sc.status));
   } catch (e) { subs = []; }
   for (const sc of subs) {
     const key = `sub_contract:${sc.id}`;
-    if (!known.has(key)) {
+    activeKeys.add(key);
+    const amount = sc.revised_amount != null && toNum(sc.revised_amount) > 0 ? toNum(sc.revised_amount) : toNum(sc.contract_value);
+    if (!bySource.has(key)) {
       const count = parseInt((await q('SELECT COUNT(*) FROM commitments')).rows[0].count);
-      const amount = sc.revised_amount != null && toNum(sc.revised_amount) > 0 ? toNum(sc.revised_amount) : toNum(sc.contract_value);
       await q(
         `INSERT INTO commitments (commitment_number, project_id, source_type, source_id, original_amount, status)
          VALUES ($1, $2, 'sub_contract', $3, $4, 'active')`,
         [`CM-${String(count + 1).padStart(5, '0')}`, projectId, sc.id, amount]
       );
+    } else await q('UPDATE commitments SET original_amount = $1, status = $2, updated_at = $3 WHERE id = $4',
+      [amount, 'active', new Date(), bySource.get(key).id]);
+  }
+  for (const commitment of existing) {
+    const key = `${commitment.source_type}:${commitment.source_id}`;
+    if (['purchase_order', 'sub_contract'].includes(commitment.source_type) && !activeKeys.has(key) && commitment.status !== 'cancelled') {
+      await q('UPDATE commitments SET status = $1, updated_at = $2 WHERE id = $3', ['cancelled', new Date(), commitment.id]);
     }
   }
   return (await q('SELECT * FROM commitments WHERE project_id = $1', [projectId])).rows;

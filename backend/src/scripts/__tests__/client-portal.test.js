@@ -49,7 +49,7 @@ async function buildFixture() {
     status VARCHAR(50) DEFAULT 'change_event')`);
   await q(`CREATE TABLE IF NOT EXISTS approval_requests (
     id SERIAL PRIMARY KEY, module_name VARCHAR(100), request_type VARCHAR(100), request_id INTEGER,
-    requester_id INTEGER, status VARCHAR(50) DEFAULT 'pending', due_date DATE, created_at TIMESTAMPTZ)`);
+    requester_id INTEGER, project_id INTEGER, status VARCHAR(50) DEFAULT 'pending', due_date DATE, created_at TIMESTAMPTZ)`);
   await q(`CREATE TABLE IF NOT EXISTS invoices (
     id SERIAL PRIMARY KEY, invoice_number VARCHAR(50), project_id INTEGER, client_id INTEGER,
     amount DECIMAL(15,2) DEFAULT 0, issue_date DATE, due_date DATE, status VARCHAR(30) DEFAULT 'draft',
@@ -60,7 +60,7 @@ async function buildFixture() {
     allocated_by INTEGER, created_at TIMESTAMPTZ)`);
   await q(`CREATE TABLE IF NOT EXISTS project_documents (
     id SERIAL PRIMARY KEY, project_id INTEGER, category_id INTEGER, title VARCHAR(255),
-    file_name VARCHAR(255), status VARCHAR(30) DEFAULT 'draft')`);
+    file_name VARCHAR(255), status VARCHAR(30) DEFAULT 'draft', portal_visibility VARCHAR(30) DEFAULT 'internal')`);
   await q(`CREATE TABLE IF NOT EXISTS project_costs (
     id SERIAL PRIMARY KEY, project_id INTEGER, cost_code_id INTEGER, amount DECIMAL(15,2) DEFAULT 0)`);
   await q(`CREATE TABLE IF NOT EXISTS commitments (
@@ -120,12 +120,12 @@ describe('dashboard with full data', () => {
     await q(`INSERT INTO project_milestones (id, project_id, title, target_date, achieved_date) VALUES ($1,$2,$3,$4,$5)`, [1, 1, 'Foundation done', '2026-10-01', '2026-09-30']);
     await q(`INSERT INTO work_orders (id, project_id, title, status, planned_start_date, planned_end_date, completion_percentage) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [1, 1, 'Structure works', 'in_progress', '2026-09-01', '2026-12-01', 40]);
     await q(`INSERT INTO photos (id, project_id, caption) VALUES ($1,$2,$3)`, [1, 1, 'Slab pour']);
-    await q(`INSERT INTO variations (id, variation_number, project_id, title, amount, status) VALUES ($1,$2,$3,$4,$5,$6)`, [1, 'VAR-0001', 1, 'Add canopy', 15000, 'incorporated']);
-    await q(`INSERT INTO variations (id, variation_number, project_id, title, amount, status) VALUES ($1,$2,$3,$4,$5,$6)`, [2, 'VAR-0002', 1, 'Change facade', 8000, 'client_approval_reject']);
-    await q(`INSERT INTO approval_requests (id, module_name, request_type, request_id, status, due_date) VALUES ($1,$2,$3,$4,$5,$6)`, [1, 'variation', 'client_approval', 1, 'pending', '2026-09-01']);
+    await q(`INSERT INTO variations (id, variation_number, project_id, title, variation_type, amount, status) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [1, 'VAR-0001', 1, 'Add canopy', 'client', 15000, 'incorporated']);
+    await q(`INSERT INTO variations (id, variation_number, project_id, title, variation_type, amount, status) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [2, 'VAR-0002', 1, 'Change facade', 'client', 8000, 'client_approval_reject']);
+    await q(`INSERT INTO approval_requests (id, module_name, request_type, request_id, project_id, status, due_date) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [1, 'variation', 'client_approval', 1, 1, 'pending', '2026-09-01']);
     await q(`INSERT INTO invoices (id, invoice_number, project_id, client_id, amount, certified_gross, net_amount) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [1, 'INV-00001', 1, 7, 40000, 42000, 40000]);
     await q(`INSERT INTO payment_allocations (id, target_type, invoice_id, amount) VALUES ($1,$2,$3,$4)`, [1, 'client_invoice', 1, 25000]);
-    await q(`INSERT INTO project_documents (id, project_id, title, status) VALUES ($1,$2,$3,$4)`, [1, 1, 'Owner handover checklist', 'approved']);
+    await q(`INSERT INTO project_documents (id, project_id, title, status, portal_visibility) VALUES ($1,$2,$3,$4,$5)`, [1, 1, 'Owner handover checklist', 'approved', 'client']);
     // Internal-cost data that MUST NOT leak:
     await q(`INSERT INTO project_costs (id, project_id, amount) VALUES ($1,$2,$3)`, [1, 1, 123456]);
     await q(`INSERT INTO commitments (id, commitment_number, project_id, original_amount, cancelled_amount, status) VALUES ($1,$2,$3,$4,$5,$6)`, [1, 'CM-00001', 1, 99999, 0, 'active']);
@@ -206,6 +206,14 @@ describe('no client assigned', () => {
 // ---------------------------------------------------------------------------
 
 describe('server-side cost gating and preview mode', () => {
+  test('a signed preview is scoped to its requested project even without client_id on projects', async () => {
+    const ids = await engine.resolveClientProjects(q, 999, { previewProjectId: 1 });
+    expect(ids).toEqual([1]);
+    const dashboard = await engine.clientDashboard(q, { id: 999, role: 'client' }, { preview_project_id: 1 });
+    expect(dashboard.project_ids).toEqual([1]);
+    const unassigned = await engine.clientDashboard(q, { id: 999, role: 'client' }, { preview_project_id: 3 });
+    expect(unassigned.setup_actions).toContain('Assign a client to preview this portal');
+  });
   test('a client-role user resolves to the all-false visibility flags', async () => {
     const flags = await policy.visibilityFlags(CLIENT_USER, { query: q });
     expect(flags.see_internal_cost).toBe(false);

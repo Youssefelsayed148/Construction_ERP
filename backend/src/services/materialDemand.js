@@ -37,6 +37,37 @@ function round4(n) {
   return Math.round((toNum(n) + Number.EPSILON) * 10000) / 10000;
 }
 
+function parseJson(v) {
+  if (Array.isArray(v)) return v;
+  try { return JSON.parse(v || '[]'); } catch (e) { return []; }
+}
+
+function convertQuantity(quantity, fromUnit, toUnit, conversions = []) {
+  if (!fromUnit || !toUnit || fromUnit === toUnit) return round4(quantity);
+  const graph = new Map();
+  const add = (from, to, factor) => {
+    if (!graph.has(from)) graph.set(from, []);
+    graph.get(from).push({ to, factor });
+  };
+  for (const c of parseJson(conversions)) {
+    const factor = toNum(c.factor);
+    if (!c.from_unit || !c.to_unit || factor <= 0) continue;
+    add(c.from_unit, c.to_unit, factor);
+    add(c.to_unit, c.from_unit, 1 / factor);
+  }
+  const queue = [{ unit: fromUnit, factor: 1 }];
+  const seen = new Set([fromUnit]);
+  while (queue.length) {
+    const current = queue.shift();
+    for (const edge of graph.get(current.unit) || []) {
+      const factor = current.factor * edge.factor;
+      if (edge.to === toUnit) return round4(toNum(quantity) * factor);
+      if (!seen.has(edge.to)) { seen.add(edge.to); queue.push({ unit: edge.to, factor }); }
+    }
+  }
+  throw new Error(`No unit conversion from ${fromUnit} to ${toUnit}`);
+}
+
 // ---------------------------------------------------------------------------
 // Formulas
 // ---------------------------------------------------------------------------
@@ -89,7 +120,7 @@ async function resolveRecipe(q, { projectId, boqItemId, activityType } = {}) {
 // predate work_order_materials contribute 0).
 // ---------------------------------------------------------------------------
 
-async function loadConsumed(q, { projectId, boqItemId, materialIds } = {}) {
+async function loadConsumed(q, { projectId, boqItemId, materialIds, allocationId = null, plannedQuantity = 0 } = {}) {
   const consumed = {};
   if (projectId == null || !Array.isArray(materialIds) || materialIds.length === 0) return consumed;
   let rows = [];
@@ -109,6 +140,20 @@ async function loadConsumed(q, { projectId, boqItemId, materialIds } = {}) {
     if (!ids.has(row.item_id)) continue;
     if (boqItemId != null && row.boq_item_id !== boqItemId) continue; // only consumption booked on this BOQ item
     consumed[row.item_id] = (consumed[row.item_id] || 0) + toNum(row.actual_quantity);
+  }
+  // Consumption records predate location-aware issues. Until an issue carries
+  // an allocation/location, apportion the BOQ item's total consumption across
+  // its allocations by planned quantity so it is deducted exactly once.
+  if (allocationId != null && boqItemId != null) {
+    const allocations = (await q(
+      'SELECT id, planned_quantity FROM boq_location_allocations WHERE boq_item_id = $1',
+      [boqItemId]
+    )).rows;
+    const totalPlanned = allocations.reduce((s, a) => s + toNum(a.planned_quantity), 0);
+    const share = totalPlanned > 0 ? toNum(plannedQuantity) / totalPlanned : 0;
+    for (const materialId of Object.keys(consumed)) {
+      consumed[materialId] = round4(consumed[materialId] * share);
+    }
   }
   return consumed;
 }
@@ -139,13 +184,21 @@ async function recomputeAllocation(q, allocationId, opts = {}) {
     projectId: item.project_id,
     boqItemId: item.id,
     materialIds: lines.map((l) => l.material_id),
+    allocationId: alloc.id,
+    plannedQuantity: alloc.planned_quantity,
   });
   const activityDate = opts.activityDate || null;
   const now = new Date();
 
   let written = 0;
   for (const line of lines) {
-    const gross = grossRequirement(alloc.planned_quantity, line.factor_per_unit);
+    const material = (await q('SELECT * FROM item_master WHERE id = $1', [line.material_id])).rows[0];
+    if (!material) throw new Error(`Recipe material #${line.material_id} not found`);
+    const requirementUnit = material.base_unit || material.unit || line.unit || null;
+    const gross = convertQuantity(
+      grossRequirement(alloc.planned_quantity, line.factor_per_unit),
+      line.unit || requirementUnit, requirementUnit, material.unit_conversions
+    );
     const wastage = toNum(line.wastage_pct);
     const used = toNum(consumed[line.material_id]);
     const net = netRequirement(gross, wastage, used);
@@ -163,7 +216,7 @@ async function recomputeAllocation(q, allocationId, opts = {}) {
              already_consumed = $10, net_requirement = $11, source_activity_date = $12, updated_at = $13
          WHERE id = $14`,
         [item.project_id, alloc.project_location_id ?? null, item.id, opts.workPackageId ?? null,
-         recipe.id, line.material_id, line.unit || null, gross, wastage, used, net, activityDate, now,
+         recipe.id, line.material_id, requirementUnit, gross, wastage, used, net, activityDate, now,
          existing.id]
       );
     } else {
@@ -174,7 +227,7 @@ async function recomputeAllocation(q, allocationId, opts = {}) {
             source_type, source_id, source_activity_date, status)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
         [item.project_id, alloc.project_location_id ?? null, item.id, opts.workPackageId ?? null,
-         recipe.id, line.id, line.material_id, line.unit || null, gross, wastage, used, net,
+         recipe.id, line.id, line.material_id, requirementUnit, gross, wastage, used, net,
          'location_allocation', alloc.id, activityDate, 'planned']
       );
     }
@@ -258,6 +311,7 @@ module.exports = {
   round4,
   grossRequirement,
   netRequirement,
+  convertQuantity,
   resolveRecipe,
   loadConsumed,
   recomputeAllocation,

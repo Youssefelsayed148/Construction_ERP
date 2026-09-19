@@ -16,6 +16,9 @@ async function run() {
   await migration.ensureAuditCompat(query);
   console.log('[OK] audit_events converged with the Phase 4 policy-engine shape (both column families usable)');
 
+  const backfilled = await migration.backfillLegacyPaymentAllocations(query);
+  console.log(`[OK] ${backfilled} historical invoice-linked payment allocation(s) backfilled`);
+
   const seeded = await financeEngine.ensureTaxCodes(query);
   console.log(`[OK] tax codes seeded (${seeded} row(s))`);
 

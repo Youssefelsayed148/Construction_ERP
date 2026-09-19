@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
-const { query } = require('../config/database');
+const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const svc = require('../services/procurementService');
 const pdf = require('../utils/procurementPdf');
+const atomic = (fn) => transaction((client) => fn(client.query.bind(client)));
 
 // Phase 12 — the PR → RFQ → PO → GRN procurement surface. All state lives in
 // the tables + the Phase 6 workflow engine; these routes are thin adapters.
@@ -37,7 +38,7 @@ router.post('/pr', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const pr = await svc.createPurchaseRequest(query, { ...value, created_by: req.user.id });
+    const pr = await atomic((q) => svc.createPurchaseRequest(q, { ...value, created_by: req.user.id }));
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       action: 'create', module: 'procurement',
@@ -50,7 +51,7 @@ router.post('/pr', authenticate, authorize(), async (req, res) => {
 
 router.post('/pr/:id/submit', authenticate, authorize(), async (req, res) => {
   try {
-    const result = await svc.submitPurchaseRequest(query, parseInt(req.params.id, 10), req.user);
+    const result = await atomic((q) => svc.submitPurchaseRequest(q, parseInt(req.params.id, 10), req.user));
     res.json({ success: true, data: result });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -60,7 +61,7 @@ router.post('/pr/:id/decide', authenticate, authorize(), async (req, res) => {
     const schema = Joi.object({ decision: Joi.string().valid('approve', 'reject').required(), comment: Joi.string().allow('', null) });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const result = await svc.decideOnPurchaseRequest(query, 'purchase_request', parseInt(req.params.id, 10), req.user, value.decision, value.comment);
+    const result = await atomic((q) => svc.decideOnPurchaseRequest(q, 'purchase_request', parseInt(req.params.id, 10), req.user, value.decision, value.comment));
     res.json({ success: true, data: result });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -86,7 +87,7 @@ router.post('/rfq', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const rfq = await svc.createRfq(query, { ...value, created_by: req.user.id });
+    const rfq = await atomic((q) => svc.createRfq(q, { ...value, created_by: req.user.id }));
     res.status(201).json({ success: true, data: rfq });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -96,7 +97,7 @@ router.post('/rfq/:id/vendors', authenticate, authorize(), async (req, res) => {
     const schema = Joi.object({ supplier_ids: Joi.array().items(Joi.number().integer()).min(1).required() });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const vendors = await svc.inviteVendors(query, parseInt(req.params.id, 10), value.supplier_ids);
+    const vendors = await atomic((q) => svc.inviteVendors(q, parseInt(req.params.id, 10), value.supplier_ids));
     res.status(201).json({ success: true, data: vendors });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -125,13 +126,13 @@ router.post('/rfq/:id/quotations', authenticate, authorize(), async (req, res) =
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const quotation = await svc.submitQuotation(query, { ...value, rfq_id: parseInt(req.params.id, 10), created_by: req.user.id });
+    const quotation = await atomic((q) => svc.submitQuotation(q, { ...value, rfq_id: parseInt(req.params.id, 10), created_by: req.user.id }));
     res.status(201).json({ success: true, data: quotation });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
 
 // Full commercial comparison — internal eyes only.
-router.get('/rfq/:id/comparison', authenticate, authorize(), async (req, res) => {
+router.get('/rfq/:id/comparison', authenticate, authorize('owner', 'admin', 'purchasing_mgr', 'project_manager'), async (req, res) => {
   try {
     const comparison = await svc.buildBidComparison(query, parseInt(req.params.id, 10), { persist: false });
     res.json({ success: true, data: comparison });
@@ -143,6 +144,16 @@ router.get('/rfq/:id/quotations/vendor/:supplierId', authenticate, authorize(), 
   try {
     const rfqId = parseInt(req.params.id, 10);
     const supplierId = parseInt(req.params.supplierId, 10);
+    if (req.user.role === 'supplier') {
+      const scope = await require('../services/portalEngine').supplierScope(query, req.user.id);
+      if (!scope.supplierIds.includes(supplierId)) {
+        return res.status(404).json({ success: false, error: 'Quotation not found' });
+      }
+      const rfq = (await query('SELECT project_id FROM rfqs WHERE id = $1', [rfqId])).rows[0];
+      if (!rfq || !scope.assignments.some((a) => a.supplier_id === supplierId && a.project_id === Number(rfq.project_id))) {
+        return res.status(404).json({ success: false, error: 'Quotation not found' });
+      }
+    }
     const mine = await svc.quotationsForVendor(query, rfqId, supplierId);
     const lines = [];
     for (const quotation of mine) {
@@ -157,7 +168,7 @@ router.post('/rfq/:id/award', authenticate, authorize(), async (req, res) => {
     const schema = Joi.object({ quotation_id: Joi.number().integer().required() });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const quotation = await svc.awardRfq(query, parseInt(req.params.id, 10), value.quotation_id, req.user);
+    const quotation = await atomic((q) => svc.awardRfq(q, parseInt(req.params.id, 10), value.quotation_id, req.user));
     res.json({ success: true, data: quotation });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -192,7 +203,7 @@ router.post('/po', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const po = await svc.createPurchaseOrder(query, { ...value, created_by: req.user.id });
+    const po = await atomic((q) => svc.createPurchaseOrder(q, { ...value, created_by: req.user.id }));
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       action: 'create', module: 'procurement',
@@ -205,7 +216,7 @@ router.post('/po', authenticate, authorize(), async (req, res) => {
 
 router.post('/po/:id/issue', authenticate, authorize(), async (req, res) => {
   try {
-    const result = await svc.issuePurchaseOrder(query, parseInt(req.params.id, 10), req.user);
+    const result = await atomic((q) => svc.issuePurchaseOrder(q, parseInt(req.params.id, 10), req.user));
     res.json({ success: true, data: result });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -215,7 +226,7 @@ router.post('/po/:id/decide', authenticate, authorize(), async (req, res) => {
     const schema = Joi.object({ decision: Joi.string().valid('approve', 'reject').required(), comment: Joi.string().allow('', null) });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const result = await svc.decideOnPurchaseRequest(query, 'purchase_order', parseInt(req.params.id, 10), req.user, value.decision, value.comment);
+    const result = await atomic((q) => svc.decideOnPurchaseRequest(q, 'purchase_order', parseInt(req.params.id, 10), req.user, value.decision, value.comment));
     res.json({ success: true, data: result });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -238,14 +249,16 @@ router.post('/deliveries', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const delivery = await svc.createDelivery(query, { ...value, received_by: req.user.id });
+    const delivery = await transaction((client) => svc.createDelivery(
+      client.query.bind(client), { ...value, received_by: req.user.id }
+    ));
     res.status(201).json({ success: true, data: delivery });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
 
 router.post('/deliveries/:id/mir', authenticate, authorize(), async (req, res) => {
   try {
-    const mir = await svc.createMir(query, { delivery_id: parseInt(req.params.id, 10), created_by: req.user.id });
+    const mir = await atomic((q) => svc.createMir(q, { delivery_id: parseInt(req.params.id, 10), created_by: req.user.id }));
     res.status(201).json({ success: true, data: mir });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -259,16 +272,17 @@ router.post('/mir/:id/decide', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const mir = await svc.decideMir(query, parseInt(req.params.id, 10), req.user, value.decision, {
-      accepted: value.accepted, notes: value.notes,
-    });
+    const mir = await transaction((client) => svc.decideMir(
+      client.query.bind(client), parseInt(req.params.id, 10), req.user, value.decision,
+      { accepted: value.accepted, notes: value.notes }
+    ));
     res.json({ success: true, data: mir });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
 
 router.post('/mir/:id/grn', authenticate, authorize(), async (req, res) => {
   try {
-    const grn = await svc.createGrn(query, { mir_id: parseInt(req.params.id, 10), created_by: req.user.id, received_by: req.user.id });
+    const grn = await atomic((q) => svc.createGrn(q, { mir_id: parseInt(req.params.id, 10), created_by: req.user.id, received_by: req.user.id }));
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       action: 'create', module: 'procurement',
@@ -291,9 +305,9 @@ router.post('/grn/:id/returns', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const supplierReturn = await svc.createSupplierReturn(query, {
+    const supplierReturn = await atomic((q) => svc.createSupplierReturn(q, {
       grn_id: parseInt(req.params.id, 10), ...value, created_by: req.user.id,
-    });
+    }));
     res.status(201).json({ success: true, data: supplierReturn });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -320,7 +334,7 @@ router.post('/invoices', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const result = await svc.recordSupplierInvoice(query, { ...value, created_by: req.user.id });
+    const result = await atomic((q) => svc.recordSupplierInvoice(q, { ...value, created_by: req.user.id }));
     res.status(201).json({ success: true, data: result });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -361,6 +375,63 @@ router.get('/documents/grn/:id', authenticate, authorize(), async (req, res) => 
     const buffer = await pdf.renderGrnDocument(grn, grnLines);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${grn.grn_number}.pdf"`);
+    res.send(buffer);
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// Remaining template-catalog documents use the same branded PDF renderer.
+// Commercial/technical comparisons stay on the internal procurement surface.
+router.get('/documents/:kind/:id', authenticate, authorize('owner', 'admin', 'purchasing_mgr', 'project_manager'), async (req, res) => {
+  try {
+    const kind = req.params.kind;
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ success: false, error: 'Invalid document ID' });
+    const one = async (table) => (await query(`SELECT * FROM ${table} WHERE id = $1`, [id])).rows[0];
+    const lines = async (table, field) => (await query(`SELECT * FROM ${table} WHERE ${field} = $1`, [id])).rows;
+    let buffer; let number;
+    if (kind === 'rfq') {
+      const rfq = await one('rfqs');
+      if (!rfq) return res.status(404).json({ success: false, error: 'RFQ not found' });
+      const vendors = await lines('rfq_vendors', 'rfq_id');
+      buffer = await pdf.renderRfqDocument(rfq, await lines('rfq_lines', 'rfq_id'), vendors.length);
+      number = rfq.rfq_number;
+    } else if (kind === 'quotation-cover') {
+      const quotation = await one('supplier_quotations');
+      if (!quotation) return res.status(404).json({ success: false, error: 'Quotation not found' });
+      const supplier = (await query('SELECT * FROM suppliers WHERE id = $1', [quotation.supplier_id])).rows[0];
+      buffer = await pdf.renderQuotationCoverDocument(quotation, supplier?.name_en || supplier?.name_ar || supplier?.code, await lines('supplier_quotation_lines', 'quotation_id'));
+      number = quotation.quotation_number;
+    } else if (['technical-evaluation', 'commercial-comparison', 'award-recommendation'].includes(kind)) {
+      const rfq = await one('rfqs');
+      if (!rfq) return res.status(404).json({ success: false, error: 'RFQ not found' });
+      const comparison = await svc.buildBidComparison(query, id, { persist: false });
+      if (kind === 'technical-evaluation') buffer = await pdf.renderTechnicalEvaluationDocument(rfq, comparison.rows);
+      if (kind === 'commercial-comparison') buffer = await pdf.renderCommercialComparisonDocument(comparison);
+      if (kind === 'award-recommendation') {
+        if (!comparison.recommendation) return res.status(400).json({ success: false, error: 'No compliant quotation to recommend' });
+        buffer = await pdf.renderAwardRecommendationDocument(rfq, { ...comparison.recommendation, rows: comparison.rows });
+      }
+      number = rfq.rfq_number;
+    } else if (kind === 'delivery') {
+      const delivery = await one('deliveries');
+      if (!delivery) return res.status(404).json({ success: false, error: 'Delivery not found' });
+      const po = (await query('SELECT order_number FROM purchase_orders WHERE id = $1', [delivery.purchase_order_id])).rows[0];
+      buffer = await pdf.renderDeliveryReceiptDocument(delivery, await lines('delivery_lines', 'delivery_id'), po?.order_number);
+      number = delivery.delivery_number;
+    } else if (kind === 'mir') {
+      const mir = await one('material_inspection_requests');
+      if (!mir) return res.status(404).json({ success: false, error: 'MIR not found' });
+      const delivery = (await query('SELECT delivery_number FROM deliveries WHERE id = $1', [mir.delivery_id])).rows[0];
+      buffer = await pdf.renderMirDocument(mir, await lines('mir_lines', 'mir_id'), delivery?.delivery_number);
+      number = mir.mir_number;
+    } else if (kind === 'return') {
+      const supplierReturn = await one('supplier_returns');
+      if (!supplierReturn) return res.status(404).json({ success: false, error: 'Supplier return not found' });
+      buffer = await pdf.renderSupplierReturnDocument(supplierReturn, await lines('supplier_return_lines', 'supplier_return_id'));
+      number = supplierReturn.return_number;
+    } else return res.status(404).json({ success: false, error: 'Unknown document type' });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${String(number || id).replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf"`);
     res.send(buffer);
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

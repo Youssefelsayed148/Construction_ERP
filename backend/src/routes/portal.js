@@ -1,10 +1,23 @@
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
-const { query } = require('../config/database');
+const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const engine = require('../services/portalEngine');
+const procurement = require('../services/procurementService');
+
+function supplierAssignment(scope, supplierId, projectId) {
+  return scope.assignments?.find((a) => Number(a.supplier_id) === Number(supplierId)
+    && Number(a.project_id) === Number(projectId));
+}
+
+function rfqSupplier(access, requestedId) {
+  const ids = access.supplierIds;
+  const id = requestedId == null ? (ids.length === 1 ? ids[0] : null) : Number(requestedId);
+  if (!id || !ids.includes(id)) throw new Error('Select an invited supplier organization for this RFQ');
+  return supplierAssignment(access.scope, id, access.rfq.project_id);
+}
 
 // Mounted at /api/portal — subcontractor and supplier portal surface.
 // Both scopes resolve their organization through organizations (Phase 3);
@@ -64,6 +77,10 @@ router.post('/subcontractor/quantities', authenticate, authorize(), async (req, 
     // Isolation: the claimed contract must be one of the caller's packages.
     const contract = await engine.subContractForOrg(query, value.sub_contract_id, req.user.id);
     if (!contract) return res.status(404).json({ success: false, error: 'Package not found' });
+    const boq = (await query('SELECT project_id FROM boq_items WHERE id = $1', [value.boq_item_id])).rows[0];
+    if (!boq || Number(boq.project_id) !== Number(contract.project_id)) {
+      return res.status(400).json({ success: false, error: 'BOQ item is outside this package project' });
+    }
     const r = await query(
       `INSERT INTO sub_work_verifications (sub_contract_id, boq_item_id, period_from, period_to, quantity_claimed, notes)
        VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
@@ -89,10 +106,83 @@ router.post('/subcontractor/payment-applications', authenticate, authorize(), as
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const certificate = await engine.submitPaymentApplication(query, req.user.id, value);
+    const certificate = await transaction(async (client) => {
+      await client.query('SELECT id FROM sub_contracts WHERE id = $1 FOR UPDATE', [value.sub_contract_id]);
+      return engine.submitPaymentApplication(client.query.bind(client), req.user.id, value);
+    });
     if (!certificate) return res.status(404).json({ success: false, error: 'Package not found' });
     await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'portal', description: `Payment application ${certificate.certificate_number} submitted`, entityId: certificate.id, entityType: 'payment_certificate' });
     res.status(201).json({ success: true, data: certificate });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+});
+
+router.post('/subcontractor/rfis', authenticate, authorize(), async (req, res) => {
+  try {
+    const schema = Joi.object({
+      project_id: Joi.number().integer().required(), sub_contract_id: Joi.number().integer().required(), subject: Joi.string().required(),
+      question: Joi.string().allow('').required(), category: Joi.string().allow('', null),
+      priority: Joi.string().valid('low', 'normal', 'high', 'urgent').default('normal'),
+      due_date: Joi.date().iso().allow(null),
+    });
+    const { error, value } = schema.validate(req.body);
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    const contract = await engine.subContractForOrg(query, value.sub_contract_id, req.user.id);
+    if (!contract || Number(contract.project_id) !== value.project_id) return res.status(404).json({ success: false, error: 'Package not found' });
+    const row = await transaction(async (client) => {
+      const next = await client.query('SELECT COUNT(*) + 1 AS next FROM project_rfis WHERE project_id = $1', [value.project_id]);
+      const number = `RFI-${value.project_id}-${String(next.rows[0].next).padStart(3, '0')}`;
+      return (await client.query(
+        `INSERT INTO project_rfis (rfi_number, project_id, sub_contract_id, subject, question, category, priority, due_date, raised_by, status)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'submitted') RETURNING *`,
+        [number, value.project_id, value.sub_contract_id, value.subject, value.question, value.category, value.priority, value.due_date, req.user.id]
+      )).rows[0];
+    });
+    res.status(201).json({ success: true, data: row });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+});
+
+router.post('/subcontractor/submittals', authenticate, authorize(), async (req, res) => {
+  try {
+    const schema = Joi.object({
+      project_id: Joi.number().integer().required(), sub_contract_id: Joi.number().integer().required(), title: Joi.string().required(),
+      submittal_type: Joi.string().valid('material', 'shop_drawing', 'sample', 'method').default('material'),
+      submitted_to: Joi.string().allow('', null),
+    });
+    const { error, value } = schema.validate(req.body);
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    const contract = await engine.subContractForOrg(query, value.sub_contract_id, req.user.id);
+    if (!contract || Number(contract.project_id) !== value.project_id) return res.status(404).json({ success: false, error: 'Package not found' });
+    const row = await transaction(async (client) => {
+      const next = await client.query('SELECT COUNT(*) + 1 AS next FROM project_submittals WHERE project_id = $1', [value.project_id]);
+      const number = `SUB-${value.project_id}-${String(next.rows[0].next).padStart(3, '0')}`;
+      return (await client.query(
+        `INSERT INTO project_submittals (submittal_number, project_id, sub_contract_id, title, submittal_type, submitted_to, submitted_by, status)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,'submitted') RETURNING *`,
+        [number, value.project_id, value.sub_contract_id, value.title, value.submittal_type, value.submitted_to, req.user.id]
+      )).rows[0];
+    });
+    res.status(201).json({ success: true, data: row });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+});
+
+// Scoped submissions that require internal review before they affect the formal
+// WIR/MIR, QHSE, labour, equipment or commercial registers.
+router.post('/subcontractor/submissions/:kind', authenticate, authorize(), async (req, res) => {
+  try {
+    const kinds = ['wir_request', 'mir_request', 'manpower', 'equipment', 'ncr_response', 'observation_response', 'variation_quote'];
+    if (!kinds.includes(req.params.kind)) return res.status(400).json({ success: false, error: 'Unsupported submission type' });
+    const schema = Joi.object({
+      project_id: Joi.number().integer().required(), related_entity_type: Joi.string().allow(null, ''),
+      related_entity_id: Joi.number().integer().allow(null), payload: Joi.object().required(),
+    });
+    const { error, value } = schema.validate(req.body);
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    const scope = await engine.assertSubcontractorProject(query, req.user.id, value.project_id);
+    const row = await engine.createPortalSubmission(query, req.user.id, {
+      ...value, submission_type: req.params.kind,
+      organization_id: scope.packages.find((p) => Number(p.project_id) === value.project_id).organization_id,
+    });
+    res.status(201).json({ success: true, data: row });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 
@@ -103,6 +193,113 @@ router.get('/supplier/dashboard', authenticate, authorize(), async (req, res) =>
     const data = await engine.supplierDashboard(query, req.user.id);
     res.json({ success: true, data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+router.post('/supplier/rfqs/:id/quotations', authenticate, authorize(), async (req, res) => {
+  try {
+    const schema = Joi.object({
+      lines: Joi.array().items(Joi.object({
+        rfq_line_id: Joi.number().integer().allow(null), material_id: Joi.number().integer().allow(null),
+        quantity: Joi.number().positive().required(), unit_price: Joi.number().min(0).required(),
+        delivery_days: Joi.number().integer().min(0).allow(null),
+      })).min(1).required(),
+      tax_pct: Joi.number().min(0).default(0), payment_terms: Joi.string().allow('', null),
+      delivery_terms: Joi.string().allow('', null), lead_time_days: Joi.number().integer().min(0).allow(null),
+      warranty_months: Joi.number().integer().min(0).allow(null), valid_until: Joi.date().iso().allow(null),
+      compliant: Joi.boolean().default(true), deviations: Joi.array().items(Joi.string()).default([]),
+      supplier_id: Joi.number().integer().optional(),
+    });
+    const { error, value } = schema.validate(req.body);
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    const access = await engine.supplierRfq(query, req.user.id, parseInt(req.params.id, 10));
+    if (!access) return res.status(404).json({ success: false, error: 'RFQ not found' });
+    const assignment = rfqSupplier(access, value.supplier_id);
+    const result = await transaction((client) => procurement.submitQuotation(client.query.bind(client), {
+      ...value, rfq_id: access.rfq.id, supplier_id: assignment.supplier_id, created_by: req.user.id,
+    }));
+    res.status(201).json({ success: true, data: result });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+});
+
+router.post('/supplier/rfqs/:id/clarifications', authenticate, authorize(), async (req, res) => {
+  try {
+    const { error, value } = Joi.object({ message: Joi.string().required(), supplier_id: Joi.number().integer().optional() }).validate(req.body);
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    const access = await engine.supplierRfq(query, req.user.id, parseInt(req.params.id, 10));
+    if (!access) return res.status(404).json({ success: false, error: 'RFQ not found' });
+    const assignment = rfqSupplier(access, value.supplier_id);
+    const row = await engine.createPortalSubmission(query, req.user.id, {
+      organization_id: assignment.organization_id, project_id: access.rfq.project_id,
+      submission_type: 'rfq_clarification', related_entity_type: 'rfq', related_entity_id: access.rfq.id,
+      payload: value,
+    });
+    res.status(201).json({ success: true, data: row });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+});
+
+router.post('/supplier/purchase-orders/:id/acknowledge', authenticate, authorize(), async (req, res) => {
+  try {
+    const po = await engine.supplierPurchaseOrder(query, req.user.id, parseInt(req.params.id, 10));
+    if (!po) return res.status(404).json({ success: false, error: 'Purchase order not found' });
+    const row = (await query('UPDATE purchase_orders SET acknowledged_at = NOW() WHERE id = $1 RETURNING *', [po.id])).rows[0];
+    res.json({ success: true, data: row });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+});
+
+router.post('/supplier/purchase-orders/:id/propose-delivery', authenticate, authorize(), async (req, res) => {
+  try {
+    const { error, value } = Joi.object({ proposed_date: Joi.date().iso().required(), note: Joi.string().allow('', null) }).validate(req.body);
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    const po = await engine.supplierPurchaseOrder(query, req.user.id, parseInt(req.params.id, 10));
+    if (!po) return res.status(404).json({ success: false, error: 'Purchase order not found' });
+    const scope = await engine.supplierScope(query, req.user.id);
+    const row = await engine.createPortalSubmission(query, req.user.id, {
+      organization_id: supplierAssignment(scope, po.supplier_id, po.project_id).organization_id, project_id: po.project_id,
+      submission_type: 'delivery_date_proposal', related_entity_type: 'purchase_order', related_entity_id: po.id,
+      payload: value,
+    });
+    res.status(201).json({ success: true, data: row });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+});
+
+router.post('/supplier/deliveries/:id/certificates', authenticate, authorize(), async (req, res) => {
+  try {
+    const schema = Joi.object({ files: Joi.array().items(Joi.object({ file_name: Joi.string().required(), file_url: Joi.string().required() })).min(1).required() });
+    const { error, value } = schema.validate(req.body);
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    const delivery = (await query('SELECT * FROM deliveries WHERE id = $1', [req.params.id])).rows[0];
+    if (!delivery) return res.status(404).json({ success: false, error: 'Delivery not found' });
+    const po = await engine.supplierPurchaseOrder(query, req.user.id, delivery.purchase_order_id);
+    if (!po) return res.status(404).json({ success: false, error: 'Delivery not found' });
+    const scope = await engine.supplierScope(query, req.user.id);
+    const row = await engine.createPortalSubmission(query, req.user.id, {
+      organization_id: supplierAssignment(scope, po.supplier_id, po.project_id).organization_id, project_id: po.project_id,
+      submission_type: 'delivery_certificate', related_entity_type: 'delivery', related_entity_id: delivery.id,
+      payload: value,
+    });
+    res.status(201).json({ success: true, data: row });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+});
+
+router.post('/supplier/invoices', authenticate, authorize(), async (req, res) => {
+  try {
+    const schema = Joi.object({
+      purchase_order_id: Joi.number().integer().required(), invoice_number: Joi.string().required(),
+      invoice_date: Joi.date().iso().allow(null), total_amount: Joi.number().min(0).required(),
+      tax_amount: Joi.number().min(0).default(0), lines: Joi.array().items(Joi.object({
+        purchase_order_line_id: Joi.number().integer().allow(null), material_id: Joi.number().integer().allow(null),
+        quantity: Joi.number().positive().required(), unit_price: Joi.number().min(0).required(),
+      })).min(1).required(),
+    });
+    const { error, value } = schema.validate(req.body);
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    const po = await engine.supplierPurchaseOrder(query, req.user.id, value.purchase_order_id);
+    if (!po) return res.status(404).json({ success: false, error: 'Purchase order not found' });
+    const result = await transaction((client) => procurement.recordSupplierInvoice(client.query.bind(client), {
+      ...value, supplier_id: po.supplier_id, created_by: req.user.id,
+    }));
+    res.status(201).json({ success: true, data: result });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 
 module.exports = router;

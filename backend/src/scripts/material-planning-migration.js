@@ -166,9 +166,16 @@ async function seedStandardRecipes(query) {
   //    item_master may already carry its own codes/prices).
   for (const [code, category, subCategory, unit, nameEn, nameAr] of STANDARD_ITEMS) {
     await query(
-      `INSERT INTO item_master (code, category, sub_category, unit, name_en, name_ar, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, true) ON CONFLICT (code) DO NOTHING`,
+      `INSERT INTO item_master (code, category, sub_category, unit, base_unit, purchase_unit, issue_unit, name_en, name_ar, is_active)
+       VALUES ($1, $2, $3, $4, $4, $4, $4, $5, $6, true) ON CONFLICT (code) DO NOTHING`,
       [code, category, subCategory, unit, nameEn, nameAr]
+    );
+  }
+  const rebar = (await query('SELECT * FROM item_master WHERE code = $1', ['RM-REBAR'])).rows[0];
+  if (rebar && parseConversions(rebar.unit_conversions).length === 0) {
+    await query(
+      'UPDATE item_master SET base_unit = $1, purchase_unit = $1, issue_unit = $1, unit_conversions = $2 WHERE id = $3',
+      ['ton', JSON.stringify([{ from_unit: 'kg', to_unit: 'ton', factor: 0.001 }]), rebar.id]
     );
   }
 
@@ -207,6 +214,11 @@ async function seedStandardRecipes(query) {
   }
 
   return { recipe_id: recipeId, lines: linesSeeded };
+}
+
+function parseConversions(value) {
+  if (Array.isArray(value)) return value;
+  try { return JSON.parse(value || '[]'); } catch (e) { return []; }
 }
 
 // Real-Postgres-only maintenance: drop requirement rows whose recipe line was

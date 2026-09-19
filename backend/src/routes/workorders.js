@@ -118,10 +118,11 @@ router.post('/:id/materials', authenticate, authorize(), async (req, res) => {
     const total_cost = value.actual_quantity * value.unit_cost;
 
     await transaction(async (client) => {
+      const txQuery = client.query.bind(client);
       // Phase 10 — issuance is ledgered: the movement API deducts stock
       // (gated on available stock) instead of direct warehouse_stock mutation.
       if (value.warehouse_id && value.actual_quantity > 0) {
-        const balances = await inventoryEngine.getBalances(client, value.warehouse_id, value.item_id);
+        const balances = await inventoryEngine.getBalances(txQuery, value.warehouse_id, value.item_id);
         if (balances.available < value.actual_quantity) {
           throw new Error(`Insufficient stock: ${balances.available} available, ${value.actual_quantity} requested`);
         }
@@ -134,7 +135,7 @@ router.post('/:id/materials', authenticate, authorize(), async (req, res) => {
       );
 
       if (value.warehouse_id && value.actual_quantity > 0) {
-        await inventoryEngine.createMovement(client, {
+        await inventoryEngine.createMovement(txQuery, {
           warehouse_id: value.warehouse_id,
           material_id: value.item_id,
           movement_type: 'issue',

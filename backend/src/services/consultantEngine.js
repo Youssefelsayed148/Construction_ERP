@@ -21,6 +21,7 @@
 'use strict';
 
 const { query: defaultQuery } = require('../config/database');
+const workflowEngine = require('./workflowEngine');
 
 const OBSERVATION_TRANSITIONS = {
   raised: ['acknowledged'],
@@ -67,20 +68,55 @@ async function safeAll(q, sql, params) {
 // active consultant participant with portal access enabled. (Filtering in JS
 // keeps the query parseable by the test MockDb.)
 async function resolveConsultantProjects(q, userId) {
-  const orgLinks = await safeAll(q, 'SELECT organization_id FROM organization_users WHERE user_id = $1', [userId]);
+  const orgLinks = (await safeAll(q, 'SELECT organization_id, is_active FROM organization_users WHERE user_id = $1', [userId]))
+    .filter((link) => link.is_active !== false);
   const projects = [];
+  const now = new Date();
   for (const link of orgLinks) {
     const participants = await safeAll(q,
-      'SELECT project_id, participant_type, portal_access_enabled FROM project_participants WHERE organization_id = $1',
+      'SELECT id, project_id, participant_type, portal_access_enabled, active_from, active_to FROM project_participants WHERE organization_id = $1',
       [link.organization_id]);
     for (const p of participants) {
       if (p.participant_type !== 'consultant') continue;
       if (p.portal_access_enabled === false) continue;
+      if (p.active_from != null && new Date(p.active_from) > now) continue;
+      if (p.active_to != null && new Date(p.active_to) < now) continue;
+      const assignedUsers = await safeAll(q, 'SELECT user_id FROM project_participant_users WHERE project_participant_id = $1', [p.id]);
+      if (assignedUsers.length > 0 && !assignedUsers.some((u) => toNum(u.user_id) === toNum(userId))) continue;
       const id = toNum(p.project_id);
       if (!projects.includes(id)) projects.push(id);
     }
   }
   return projects.sort((a, b) => a - b);
+}
+
+async function assertConsultantProject(q, user, projectId) {
+  if (!user) throw new Error('Authentication required');
+  if (user.role !== 'consultant') return true;
+  const projects = await resolveConsultantProjects(q, user.id);
+  if (!projects.includes(toNum(projectId))) throw new Error('Consultant is not assigned to this project');
+  return true;
+}
+
+async function consultantIdentity(q, user, projectId) {
+  if (user.role !== 'consultant') return { organization_id: null, organization_name: null };
+  await assertConsultantProject(q, user, projectId);
+  const links = (await q('SELECT organization_id, is_active FROM organization_users WHERE user_id = $1', [user.id])).rows
+    .filter((l) => l.is_active !== false);
+  const now = new Date();
+  for (const link of links) {
+    const participants = (await q('SELECT * FROM project_participants WHERE organization_id = $1', [link.organization_id])).rows;
+    for (const p of participants) {
+      if (p.participant_type !== 'consultant' || toNum(p.project_id) !== toNum(projectId) || p.portal_access_enabled === false) continue;
+      if (p.active_from != null && new Date(p.active_from) > now) continue;
+      if (p.active_to != null && new Date(p.active_to) < now) continue;
+      const assigned = (await q('SELECT user_id FROM project_participant_users WHERE project_participant_id = $1', [p.id])).rows;
+      if (assigned.length && !assigned.some((r) => toNum(r.user_id) === toNum(user.id))) continue;
+      const org = (await q('SELECT * FROM organizations WHERE id = $1', [link.organization_id])).rows[0];
+      return { organization_id: toNum(link.organization_id), organization_name: org?.name || org?.name_en || org?.name_ar || null };
+    }
+  }
+  throw new Error('Consultant is not assigned to this project');
 }
 
 // ---------------------------------------------------------------------------
@@ -91,6 +127,8 @@ async function createObservation(q, {
   project_id, title, description = null, discipline = null, location_id = null,
   severity = 'normal', user, organization_id = null,
 }) {
+  await assertConsultantProject(q, user, project_id);
+  if (user.role === 'consultant') organization_id = (await consultantIdentity(q, user, project_id)).organization_id;
   const count = parseInt((await q('SELECT COUNT(*) FROM observations')).rows[0].count, 10);
   const observationNumber = `OBS-${String(count + 1).padStart(4, '0')}`;
 
@@ -102,6 +140,16 @@ async function createObservation(q, {
      title, description, severity, user.id, new Date()]
   );
   const observation = r.rows[0];
+
+  const workflow = await workflowEngine.startWorkflow(
+    'consultant_observation', 'observation', observation.id,
+    { project_id, requester_id: null, observation_number: observationNumber }, { query: q }
+  );
+  await workflowEngine.syncExternalState(workflow.instance.id, 'raised', {
+    userId: user.id, userName: user.name, role: user.role,
+  }, { query: q, comment: 'Observation raised' });
+  await q('UPDATE observations SET workflow_instance_id = $1 WHERE id = $2', [workflow.instance.id, observation.id]);
+  observation.workflow_instance_id = workflow.instance.id;
 
   await q(
     `INSERT INTO observation_status_history (observation_id, from_status, to_status, actor_user_id, actor_name, actor_organization_id, note)
@@ -146,6 +194,10 @@ async function createObservation(q, {
 
 async function addObservationComment(q, { observation_id, user, organization_id = null, comment_type = 'comment', body }) {
   if (!body || !String(body).trim()) throw new Error('Comment body is required');
+  const observation = (await q('SELECT project_id FROM observations WHERE id = $1', [observation_id])).rows[0];
+  if (!observation) throw new Error(`Observation #${observation_id} not found`);
+  await assertConsultantProject(q, user, observation.project_id);
+  if (user.role === 'consultant') organization_id = (await consultantIdentity(q, user, observation.project_id)).organization_id;
   const r = await q(
     `INSERT INTO observation_comments (observation_id, author_user_id, organization_id, comment_type, body)
      VALUES ($1,$2,$3,$4,$5) RETURNING *`,
@@ -159,6 +211,19 @@ async function addObservationComment(q, { observation_id, user, organization_id 
 async function advanceObservation(q, observationId, user, action, opts = {}) {
   const observation = (await q('SELECT * FROM observations WHERE id = $1', [observationId])).rows[0];
   if (!observation) throw new Error(`Observation #${observationId} not found`);
+  await assertConsultantProject(q, user, observation.project_id);
+  const actorOrganizationId = user.role === 'consultant'
+    ? (await consultantIdentity(q, user, observation.project_id)).organization_id : null;
+  const allowedRoles = {
+    acknowledge: ['consultant', 'project_manager', 'owner', 'admin'],
+    assign: ['project_manager', 'owner', 'admin'],
+    start_rectification: ['engineer', 'site_supervisor', 'project_manager', 'owner', 'admin'],
+    submit_for_verification: ['engineer', 'site_supervisor', 'project_manager', 'owner', 'admin'],
+    accept: ['consultant', 'owner', 'admin'],
+    reject: ['consultant', 'owner', 'admin'],
+    close: ['consultant', 'project_manager', 'owner', 'admin'],
+  };
+  if (!(allowedRoles[action] || []).includes(user.role)) throw new Error(`Role ${user.role} cannot ${action} an observation`);
 
   const actionToStatus = {
     acknowledge: 'acknowledged',
@@ -195,13 +260,29 @@ async function advanceObservation(q, observationId, user, action, opts = {}) {
   await q(
     `INSERT INTO observation_status_history (observation_id, from_status, to_status, actor_user_id, actor_name, actor_organization_id, note)
      VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-    [observationId, from, to, user.id, user.name || null, opts.organization_id || null, opts.note || null]
+    [observationId, from, to, user.id, user.name || null, actorOrganizationId, opts.note || null]
   );
+
+  if (observation.workflow_instance_id != null) {
+    const workflowStep = {
+      acknowledged: 'acknowledged', assigned: 'assigned',
+      rectification_in_progress: 'rectification',
+      submitted_for_verification: 'verification_requested',
+      accepted: 'accepted_rejected', rejected: 'accepted_rejected', closed: 'closed',
+    }[to];
+    await workflowEngine.syncExternalState(observation.workflow_instance_id, workflowStep, {
+      userId: user.id, userName: user.name, role: user.role,
+    }, {
+      query: q, comment: opts.comment || opts.note || null,
+      rejected: to === 'rejected', decision: to === 'rejected' ? 'reject' : action,
+      terminal: to === 'closed',
+    });
+  }
 
   if (opts.comment) {
     await addObservationComment(q, {
       observation_id: observationId, user,
-      organization_id: opts.organization_id || null,
+      organization_id: actorOrganizationId,
       comment_type: to === 'rejected' ? 'rejection' : to === 'accepted' ? 'verification' : to === 'assigned' ? 'assignment' : 'comment',
       body: opts.comment,
     });
@@ -215,7 +296,7 @@ async function advanceObservation(q, observationId, user, action, opts = {}) {
          uploader_user_id, organization_id, captured_at, caption, annotations)
        VALUES ($1, 'observation', $2, $3, $4, $5, $6, $7, $8, '[]'::jsonb)`,
       [observation.project_id, observationId, photo.file_name || null, photo.file_url || null,
-       user.id, opts.organization_id || null, new Date(), photo.caption || null]
+       user.id, actorOrganizationId, new Date(), photo.caption || null]
     );
   }
 
@@ -266,6 +347,10 @@ async function advanceObservation(q, observationId, user, action, opts = {}) {
 // comments and attachments recorded (the dispute audit trail).
 async function recordRfiResponse(q, { rfi_id, stage = 'official_response', user, organization_id = null, organization_name = null, body, attachments = [], revision = 1 }) {
   if (!body || !String(body).trim()) throw new Error('Response body is required');
+  const rfi = (await q('SELECT project_id FROM project_rfis WHERE id = $1', [rfi_id])).rows[0];
+  if (!rfi) throw new Error(`RFI #${rfi_id} not found`);
+  await assertConsultantProject(q, user, rfi.project_id);
+  if (user.role === 'consultant') ({ organization_id, organization_name } = await consultantIdentity(q, user, rfi.project_id));
   const r = await q(
     `INSERT INTO rfi_responses (rfi_id, revision, stage, responder_user_id, responder_name,
        responder_organization_id, responder_organization_name, body, attachments)
@@ -291,6 +376,10 @@ async function recordRfiResponse(q, { rfi_id, stage = 'official_response', user,
 
 async function recordSubmittalResponse(q, { submittal_id, stage = 'response', user, organization_id = null, organization_name = null, response_code, comments, attachments = [], revision = 1 }) {
   if (!['A', 'B', 'C', 'D'].includes(response_code)) throw new Error('Response code must be A, B, C or D');
+  const submittal = (await q('SELECT project_id FROM project_submittals WHERE id = $1', [submittal_id])).rows[0];
+  if (!submittal) throw new Error(`Submittal #${submittal_id} not found`);
+  await assertConsultantProject(q, user, submittal.project_id);
+  if (user.role === 'consultant') ({ organization_id, organization_name } = await consultantIdentity(q, user, submittal.project_id));
   const r = await q(
     `INSERT INTO submittal_revisions (submittal_id, revision_number, stage, actor_user_id, actor_name,
        actor_organization_id, actor_organization_name, response_code, comments, attachments)
@@ -321,7 +410,8 @@ async function myReviews(q, user, filters = {}) {
   };
 
   const orgLinks = await resolveConsultantProjects(q, user.id);
-  const scopedProject = (r) => filters.project_id == null || toNum(r.project_id) === toNum(filters.project_id);
+  const scopedProject = (r) => orgLinks.includes(toNum(r.project_id))
+    && (filters.project_id == null || toNum(r.project_id) === toNum(filters.project_id));
   const scopedDiscipline = (r) => filters.discipline == null || (r.discipline || null) === filters.discipline;
   const scopedType = (type) => filters.type == null || type === filters.type;
 
@@ -365,11 +455,11 @@ async function myReviews(q, user, filters = {}) {
 
 async function consultantDashboard(q, user, { project_id = null, now = new Date() } = {}) {
   const projectIds = await resolveConsultantProjects(q, user.id);
-  const scoped = project_id != null ? [toNum(project_id)] : projectIds;
+  const scoped = project_id != null && projectIds.includes(toNum(project_id)) ? [toNum(project_id)] : projectIds;
   const today = new Date(now).toISOString().slice(0, 10);
   const projects = [];
   for (const pid of scoped) {
-    const p = (await safeAll(q, 'SELECT id, name, name_en, status, progress_percent FROM projects WHERE id = $1', [pid]))[0];
+    const p = (await q('SELECT id, name, name_en, status, completion_percentage FROM projects WHERE id = $1', [pid])).rows[0];
     if (p) projects.push(p);
   }
 
@@ -437,7 +527,8 @@ async function consultantDashboard(q, user, { project_id = null, now = new Date(
   dashboard.ncr_closeouts_awaiting_review = { items: ncrs.map((n) => ({ id: n.id })), count: ncrs.length, empty_label: 'No NCR closeouts awaiting review' };
 
   // Latest drawings, recent daily progress/photos, notes, upcoming visits.
-  const drawings = forProjects(await safeAll(q, "SELECT * FROM project_documents WHERE category_id IN (SELECT id FROM document_categories WHERE code = 'drawings') ORDER BY id DESC", []));
+  const drawings = forProjects(await safeAll(q,
+    "SELECT * FROM project_documents WHERE document_type = 'drawing' AND status = 'approved' AND portal_visibility IN ('consultant','all_external') ORDER BY id DESC", []));
   dashboard.latest_drawings = { items: drawings.slice(0, 5).map((d) => ({ id: d.id, title: d.title || d.file_name })), count: drawings.length, empty_label: 'No drawings uploaded yet' };
 
   const dailyReports = forProjects(await safeAll(q, 'SELECT * FROM site_daily_reports ORDER BY report_date DESC', []));
@@ -459,6 +550,7 @@ async function consultantDashboard(q, user, { project_id = null, now = new Date(
 module.exports = {
   OBSERVATION_TRANSITIONS,
   resolveConsultantProjects,
+  assertConsultantProject,
   createObservation,
   addObservationComment,
   advanceObservation,

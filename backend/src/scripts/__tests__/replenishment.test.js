@@ -179,6 +179,23 @@ describe('migration', () => {
 // ---------------------------------------------------------------------------
 
 describe('replenishment formulas', () => {
+  test('confirmed incoming counts each PO line once and includes partial deliveries', async () => {
+    const fakeQuery = async (sql) => {
+      if (sql.includes('FROM purchase_orders WHERE material_id')) return { rows: [
+        { id: 1, quantity: 10, delivered_quantity: 2 },
+        { id: 3, quantity: 4, delivered_quantity: 1 },
+      ] };
+      if (sql.includes('FROM purchase_orders WHERE status')) return { rows: [{ id: 1 }, { id: 2 }, { id: 3 }] };
+      if (sql.includes('FROM purchase_order_lines')) return { rows: [
+        { purchase_order_id: 1, quantity: 10, delivered_quantity: 2 },
+        { purchase_order_id: 2, quantity: 5, delivered_quantity: 1 },
+      ] };
+      return { rows: [] };
+    };
+    // PO 1 appears in both representations, PO 2 only in lines, PO 3 only
+    // in the legacy header: 8 + 4 + 3, never 23.
+    expect(await replenishment.openConfirmedQuantity(fakeQuery, 50)).toBe(15);
+  });
   test('Lead-Time Demand = forecast daily usage × supplier lead-time days', () => {
     expect(replenishment.leadTimeDemand(12, 10)).toBe(120);
     expect(replenishment.leadTimeDemand(0, 10)).toBe(0);
@@ -222,6 +239,14 @@ describe('replenishment formulas', () => {
       available: 0, confirmedIncoming: 0, scheduledDemand: 0,
       targetMaxStock: 200, storageHeadroom: 120,
     })).toBe(120);
+
+    // MOQ / rounding must never push an order past shelf-life or storage caps.
+    expect(replenishment.suggestedOrderQuantity({
+      targetMaxStock: 200, storageHeadroom: 12, moq: 20, orderMultiple: 10,
+    })).toBe(0);
+    expect(replenishment.suggestedOrderQuantity({
+      targetMaxStock: 43, storageHeadroom: 43, orderMultiple: 5,
+    })).toBe(40);
 
     // MOQ floors a small need.
     expect(replenishment.roundToOrderRules(3, 10, 0)).toBe(10);

@@ -290,6 +290,18 @@ describe('payment allocations (reconciliation)', () => {
     })).rejects.toThrow(/exceeds the payment amount/);
   });
 
+  test('repeated lines for one invoice cannot exceed its balance in a single request', async () => {
+    await expect(finance.allocatePayment(q, {
+      payment_id: 70,
+      allocations: [
+        { invoice_id: invoiceB.id, amount: 600 },
+        { invoice_id: invoiceB.id, amount: 600 },
+      ],
+      allocated_by: FINANCE.id,
+    })).rejects.toThrow(/exceeds the invoice's outstanding/);
+    expect((await finance.invoiceOutstanding(q, invoiceB.id)).outstanding).toBe(1000);
+  });
+
   test('allocation totals reconcile exactly for every document', async () => {
     const invoices = (await q('SELECT * FROM invoices')).rows;
     for (const inv of invoices) {
@@ -394,4 +406,3 @@ describe('company finance dashboard', () => {
     expect(typeof dashboard.project_margins[0].forecast_margin_percent).toBe('number');
   });
 });
-

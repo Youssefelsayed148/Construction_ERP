@@ -202,8 +202,8 @@ describe('subcontractor portal', () => {
   });
 
   test('acknowledge instruction: works only on own project, completes the action item', async () => {
-    await q(`INSERT INTO engineer_instructions (id, instruction_number, project_id, title, status, action_item_id)
-             VALUES ($1,$2,$3,$4,$5,$6)`, [1, 'EI-1-001', 1, 'Protect slab edges', 'issued', 900]);
+    await q(`INSERT INTO engineer_instructions (id, instruction_number, project_id, sub_contract_id, title, status, action_item_id)
+             VALUES ($1,$2,$3,$4,$5,$6,$7)`, [1, 'EI-1-001', 1, 1, 'Protect slab edges', 'issued', 900]);
     await q(`INSERT INTO action_items (id, source_type, source_id, assigned_user_id, title, status) VALUES ($1,$2,$3,$4,$5,$6)`, [900, 'engineer_instruction', 1, 40, 'ack', 'open']);
     const result = await engine.acknowledgeInstruction(q, SUB_A.id, { project_id: 1, instruction_id: 1, response: 'Noted' });
     expect(result).not.toBeNull();
@@ -261,17 +261,17 @@ describe('supplier portal', () => {
     await q(`INSERT INTO supplier_quotations (id, quotation_number, rfq_id, supplier_id, total_price, status)
              VALUES ($1,$2,$3,$4,$5,$6)`, [11, 'QT-B', 10, 88, 90000, 'submitted']);
     // Awarded PO + delivery + MIR + invoice for supplier 70.
-    await q(`INSERT INTO purchase_orders (id, order_number, supplier_id, total_amount, status)
-             VALUES ($1,$2,$3,$4,$5)`, [10, 'PO-0010', 70, 80000, 'issued']);
+    await q(`INSERT INTO purchase_orders (id, order_number, project_id, supplier_id, total_amount, status)
+             VALUES ($1,$2,$3,$4,$5,$6)`, [10, 'PO-0010', 1, 70, 80000, 'issued']);
     await q(`INSERT INTO deliveries (id, delivery_number, purchase_order_id, supplier_id, delivery_date, status)
              VALUES ($1,$2,$3,$4,$5,$6)`, [10, 'DLV-0010', 10, 70, '2026-09-20', 'in_transit']);
     await q(`INSERT INTO material_inspection_requests (id, project_id, delivery_id, title, status)
              VALUES ($1,$2,$3,$4,$5)`, [10, 1, 10, 'Cement MIR', 'pending']);
-    await q(`INSERT INTO supplier_invoices (id, invoice_number, supplier_id, total_amount, status)
-             VALUES ($1,$2,$3,$4,$5)`, [10, 'SI-0010', 70, 80000, 'received']);
+    await q(`INSERT INTO supplier_invoices (id, invoice_number, supplier_id, purchase_order_id, total_amount, status)
+             VALUES ($1,$2,$3,$4,$5,$6)`, [10, 'SI-0010', 70, 10, 80000, 'received']);
     // A competing supplier's PO — must NOT appear.
-    await q(`INSERT INTO purchase_orders (id, order_number, supplier_id, total_amount, status)
-             VALUES ($1,$2,$3,$4,$5)`, [11, 'PO-0011', 88, 70000, 'issued']);
+    await q(`INSERT INTO purchase_orders (id, order_number, project_id, supplier_id, total_amount, status)
+             VALUES ($1,$2,$3,$4,$5,$6)`, [11, 'PO-0011', 1, 88, 70000, 'issued']);
     await q(`INSERT INTO supplier_invoices (id, invoice_number, supplier_id, total_amount, status)
              VALUES ($1,$2,$3,$4,$5)`, [11, 'SI-0011', 88, 70000, 'received']);
     // Compliance doc expiring within 90 days.

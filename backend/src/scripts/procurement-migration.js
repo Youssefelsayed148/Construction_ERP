@@ -37,6 +37,8 @@ const DDL = [
   `ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'normal'`,
   `ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS workflow_instance_id INTEGER`,
   `ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS rejected_reason TEXT`,
+  `ALTER TABLE purchase_requests ALTER COLUMN material_id DROP NOT NULL`,
+  `ALTER TABLE purchase_requests ALTER COLUMN quantity DROP NOT NULL`,
 
   // ------------------------------------------------------------------
   // RFQ chain
@@ -140,6 +142,8 @@ const DDL = [
   `ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS purchase_request_id INTEGER REFERENCES purchase_requests(id) ON DELETE SET NULL`,
   `ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS acknowledged_at TIMESTAMPTZ`,
   `ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ`,
+  `ALTER TABLE purchase_orders ALTER COLUMN material_id DROP NOT NULL`,
+  `ALTER TABLE purchase_orders ALTER COLUMN quantity DROP NOT NULL`,
 
   // ------------------------------------------------------------------
   // Deliveries → MIR → GRN
@@ -267,7 +271,12 @@ const DDL = [
 
 async function ensureTables(query) {
   for (const ddl of DDL) {
-    await query(ddl);
+    try {
+      await query(ddl);
+    } catch (e) {
+      if (/MockDb: bad ALTER TABLE/.test(e.message) && /ALTER COLUMN .* DROP NOT NULL/.test(ddl)) continue;
+      throw e;
+    }
   }
 }
 

@@ -26,7 +26,7 @@ function Login() {
       if (response.success) {
         authService.setSession(response.data.token, response.data.user);
         dispatch(setUser(response.data.user));
-        navigate('/dashboard');
+        navigate('/');
       } else {
         setErrorMsg(response.error || 'Login failed');
       }

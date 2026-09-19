@@ -74,7 +74,7 @@ function sameDateIn(list, date) {
 
 async function dayManpower(q, projectId, date) {
   const rows = await safeAll(q, 'SELECT * FROM attendance WHERE date = $1', [dateStr(date)]);
-  return rows.filter((r) => r.status === 'present');
+  return rows.filter((r) => toNum(r.project_id) === toNum(projectId) && r.status === 'present');
 }
 
 async function dayEquipment(q, projectId, date) {
@@ -84,7 +84,10 @@ async function dayEquipment(q, projectId, date) {
 
 async function dayGrns(q, projectId, date) {
   const rows = await safeAll(q, 'SELECT * FROM goods_receipt_notes', []);
-  return rows.filter((g) => g.created_at && sameDateIn([g.created_at], date));
+  const purchaseOrders = await safeAll(q, 'SELECT id, project_id FROM purchase_orders', []);
+  const projectByPo = new Map(purchaseOrders.map((po) => [toNum(po.id), toNum(po.project_id)]));
+  return rows.filter((g) => projectByPo.get(toNum(g.purchase_order_id)) === toNum(projectId)
+    && g.created_at && sameDateIn([g.created_at], date));
 }
 
 async function dayMeasurements(q, projectId, date) {

@@ -119,7 +119,11 @@ async function createClientValuation(q, {
   )).rows;
   const prior = priorRows.filter((r) => !['cancelled', 'void'].includes(r.status))
     .filter((r) => client_contract_id == null || r.client_contract_id === client_contract_id);
-  const previousCumulative = round2(prior.reduce((s, r) => s + toNum(r.cumulative_certified), 0));
+  // cumulative_certified already includes every earlier period, so summing
+  // cumulative rows double-counts history (100, 200 -> 300 before period 3).
+  const previousCumulative = round2(prior.reduce(
+    (max, r) => Math.max(max, toNum(r.cumulative_certified)), 0
+  ));
 
   const certifiedGross = round2(toNum(gross_current_work) + toNum(approved_variations_period));
   const netBeforeTax = certifiedGross - toNum(retention) - toNum(advance_recovery) - toNum(other_deductions);
@@ -245,15 +249,42 @@ async function allocatePayment(q, {
     throw new Error(`Allocation exceeds the payment amount: ${payment.amount} available, ${round2(alreadyAllocated + requested)} requested`);
   }
 
-  const results = [];
+  // Validate every target before the first write. Routes also wrap this in a
+  // transaction for rollback and row-lock protection on real PostgreSQL.
+  const validated = [];
+  const plannedByTarget = new Map();
   for (const a of allocations) {
     const amount = round2(toNum(a.amount));
     if (!(amount > 0)) throw new Error('Allocation amounts must be positive');
     if (a.target_type === 'supplier_invoice') {
+      if (!a.supplier_invoice_id) throw new Error('Supplier invoice ID is required');
       const bal = await supplierInvoiceOutstanding(q, a.supplier_invoice_id);
-      if (amount > bal.outstanding + 1e-9) {
+      const key = `supplier:${a.supplier_invoice_id}`;
+      const planned = round2((plannedByTarget.get(key) || 0) + amount);
+      if (planned > bal.outstanding + 1e-9) {
         throw new Error(`Allocation exceeds the supplier invoice's outstanding balance: ${bal.outstanding} outstanding, ${amount} requested`);
       }
+      plannedByTarget.set(key, planned);
+      validated.push({ ...a, amount, target_type: 'supplier_invoice' });
+    } else {
+      if (!a.invoice_id) throw new Error('Invoice ID is required');
+      const inv = (await q('SELECT * FROM invoices WHERE id = $1', [a.invoice_id])).rows[0];
+      if (!inv) throw new Error(`Invoice #${a.invoice_id} not found`);
+      const bal = await invoiceOutstanding(q, a.invoice_id);
+      const key = `client:${a.invoice_id}`;
+      const planned = round2((plannedByTarget.get(key) || 0) + amount);
+      if (planned > bal.outstanding + 1e-9) {
+        throw new Error(`Allocation exceeds the invoice's outstanding balance: ${bal.outstanding} outstanding, ${amount} requested`);
+      }
+      plannedByTarget.set(key, planned);
+      validated.push({ ...a, amount, target_type: 'client_invoice' });
+    }
+  }
+
+  const results = [];
+  for (const a of validated) {
+    const amount = a.amount;
+    if (a.target_type === 'supplier_invoice') {
       const r = await q(
         `INSERT INTO payment_allocations (payment_id, target_type, supplier_invoice_id, amount, allocated_by)
          VALUES ($1, 'supplier_invoice', $2, $3, $4) RETURNING *`,
@@ -265,12 +296,6 @@ async function allocatePayment(q, {
         await q("UPDATE supplier_invoices SET status = 'paid' WHERE id = $1", [a.supplier_invoice_id]);
       }
     } else {
-      const inv = (await q('SELECT * FROM invoices WHERE id = $1', [a.invoice_id])).rows[0];
-      if (!inv) throw new Error(`Invoice #${a.invoice_id} not found`);
-      const bal = await invoiceOutstanding(q, a.invoice_id);
-      if (amount > bal.outstanding + 1e-9) {
-        throw new Error(`Allocation exceeds the invoice's outstanding balance: ${bal.outstanding} outstanding, ${amount} requested`);
-      }
       const r = await q(
         `INSERT INTO payment_allocations (payment_id, target_type, invoice_id, amount, allocated_by)
          VALUES ($1, 'client_invoice', $2, $3, $4) RETURNING *`,
@@ -479,7 +504,7 @@ async function reminderConfig(q, { project_id = null, client_id = null } = {}) {
   return { enabled: true, config_key: 'receivable_reminder_config:company' };
 }
 
-async function runReceivableReminderSweep(q, opts = {}) {
+async function runReceivableReminderSweep(q = defaultQuery, opts = {}) {
   const now = opts.now || new Date();
   const nowMs = new Date(now).getTime();
   const config = await reminderConfig(q, opts);
@@ -543,7 +568,7 @@ function daysOverdueOf(invoice, now) {
 function initReceivableReminderScheduler(opts = {}) {
   const intervalHours = toNum(opts.intervalHours) || 12;
   const timer = setInterval(() => {
-    runReceivableReminderSweep().catch((e) => console.error('[RECEIVABLE] sweep failed:', e.message));
+    runReceivableReminderSweep(defaultQuery).catch((e) => console.error('[RECEIVABLE] sweep failed:', e.message));
   }, intervalHours * 3600 * 1000);
   if (typeof timer.unref === 'function') timer.unref();
   console.log(`[RECEIVABLE] reminder scheduler initialized — sweep every ${intervalHours}h`);

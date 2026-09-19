@@ -59,7 +59,7 @@ async function buildFixture() {
     planned_start_date DATE, planned_end_date DATE, actual_start_date DATE, actual_end_date DATE,
     completion_percentage DECIMAL(5,2) DEFAULT 0, updated_at TIMESTAMPTZ)`);
   await q(`CREATE TABLE IF NOT EXISTS attendance (
-    id SERIAL PRIMARY KEY, employee_id INTEGER, date DATE, status VARCHAR(50) DEFAULT 'present',
+    id SERIAL PRIMARY KEY, employee_id INTEGER, project_id INTEGER, date DATE, status VARCHAR(50) DEFAULT 'present',
     check_in TIME, check_out TIME, notes TEXT, created_at TIMESTAMPTZ)`);
   await q(`CREATE TABLE IF NOT EXISTS equipment_usage_logs (
     id SERIAL PRIMARY KEY, equipment_id INTEGER, project_id INTEGER, log_date DATE,
@@ -68,6 +68,7 @@ async function buildFixture() {
     id SERIAL PRIMARY KEY, grn_number VARCHAR(50), purchase_order_id INTEGER, delivery_id INTEGER,
     mir_id INTEGER, warehouse_id INTEGER, status VARCHAR(30) DEFAULT 'posted',
     received_by INTEGER, created_by INTEGER, created_at TIMESTAMPTZ)`);
+  await q(`CREATE TABLE IF NOT EXISTS purchase_orders (id SERIAL PRIMARY KEY, project_id INTEGER)`);
   await q(`CREATE TABLE IF NOT EXISTS quantity_measurements (
     id SERIAL PRIMARY KEY, project_id INTEGER, project_location_id INTEGER, boq_item_id INTEGER,
     measured_date DATE, quantity DECIMAL(15,3) DEFAULT 0, unit VARCHAR(50),
@@ -161,13 +162,14 @@ describe('daily report on a busy day', () => {
              VALUES ($1,$2,$3,$4,$5)`, [2, 1, 'Other day work', 'planned', '2026-09-10']);
     // Manpower: 3 present, 1 absent.
     for (const [id, emp, status] of [[1, 1, 'present'], [2, 2, 'present'], [3, 3, 'present'], [4, 4, 'absent']]) {
-      await q(`INSERT INTO attendance (id, employee_id, date, status) VALUES ($1,$2,$3,$4)`, [id, emp, DAY, status]);
+      await q(`INSERT INTO attendance (id, employee_id, project_id, date, status) VALUES ($1,$2,$3,$4,$5)`, [id, emp, 1, DAY, status]);
     }
     // Equipment: 2 logs today.
     await q(`INSERT INTO equipment_usage_logs (id, equipment_id, project_id, log_date, hours_operated) VALUES ($1,$2,$3,$4,$5)`, [1, 7, 1, DAY, 6.5]);
     await q(`INSERT INTO equipment_usage_logs (id, equipment_id, project_id, log_date, hours_operated) VALUES ($1,$2,$3,$4,$5)`, [2, 8, 1, DAY, 3.5]);
     // GRN today.
-    await q(`INSERT INTO goods_receipt_notes (id, grn_number, created_at) VALUES ($1,$2,$3)`, [1, 'GRN-00001', `${DAY}T08:00:00Z`]);
+    await q(`INSERT INTO purchase_orders (id, project_id) VALUES ($1,$2)`, [1, 1]);
+    await q(`INSERT INTO goods_receipt_notes (id, grn_number, purchase_order_id, created_at) VALUES ($1,$2,$3,$4)`, [1, 'GRN-00001', 1, `${DAY}T08:00:00Z`]);
     // Approved measurement today + one pending + one other day.
     await q(`INSERT INTO quantity_measurements (id, project_id, boq_item_id, measured_date, quantity, unit, approval_state) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [1, 1, 9, DAY, 120, 'm3', 'approved']);
     await q(`INSERT INTO quantity_measurements (id, project_id, boq_item_id, measured_date, quantity, unit, approval_state) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [2, 1, 9, DAY, 999, 'm3', 'pending']);

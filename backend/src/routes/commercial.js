@@ -136,7 +136,9 @@ router.post('/variations', authenticate, authorize(), async (req, res) => {
 
 router.post('/variations/:id/start', authenticate, authorize(), async (req, res) => {
   try {
-    const instance = await engine.startVariationWorkflow(query, parseInt(req.params.id, 10), req.user);
+    const instance = await transaction((client) => engine.startVariationWorkflow(
+      client.query.bind(client), parseInt(req.params.id, 10), req.user
+    ));
     res.json({ success: true, data: instance });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -146,7 +148,9 @@ router.post('/variations/:id/decide', authenticate, authorize(), async (req, res
     const schema = Joi.object({ decision: Joi.string().valid('approve', 'reject').required(), comment: Joi.string().allow('', null) });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const result = await engine.decideVariation(query, parseInt(req.params.id, 10), req.user, value.decision, value.comment);
+    const result = await transaction((client) => engine.decideVariation(
+      client.query.bind(client), parseInt(req.params.id, 10), req.user, value.decision, value.comment
+    ));
     res.json({ success: true, data: result });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });

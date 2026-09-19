@@ -36,6 +36,7 @@ const DDL = [
   `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS cost_code_id INTEGER REFERENCES cost_codes(id) ON DELETE SET NULL`,
   `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS department VARCHAR(100)`,
   `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS approved_by INTEGER REFERENCES users(id)`,
+  `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id)`,
 
   // Payments — AR/AP aware.
   `ALTER TABLE payments ADD COLUMN IF NOT EXISTS direction VARCHAR(10) DEFAULT 'ar'`,
@@ -46,6 +47,7 @@ const DDL = [
   `ALTER TABLE payments ADD COLUMN IF NOT EXISTS department VARCHAR(100)`,
   `ALTER TABLE payments ADD COLUMN IF NOT EXISTS tax_amount DECIMAL(15,2) DEFAULT 0`,
   `ALTER TABLE payments ADD COLUMN IF NOT EXISTS approved_by INTEGER REFERENCES users(id)`,
+  `ALTER TABLE payments ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id)`,
   `ALTER TABLE supplier_invoices ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES organizations(id) ON DELETE SET NULL`,
   `ALTER TABLE supplier_invoices ADD COLUMN IF NOT EXISTS cost_code_id INTEGER REFERENCES cost_codes(id) ON DELETE SET NULL`,
   `ALTER TABLE supplier_invoices ADD COLUMN IF NOT EXISTS department VARCHAR(100)`,
@@ -172,4 +174,36 @@ async function ensureAuditCompat(query) {
   }
 }
 
-module.exports = { DDL, AUDIT_COMPAT_SQL, ensureTables, ensureAuditCompat };
+// Existing invoice-linked payments predate Phase 14's allocation table. Fill
+// only the remaining invoice balance, in payment order, and leave genuine
+// overpayments unapplied for finance review. A repeat run adds no rows.
+async function backfillLegacyPaymentAllocations(query) {
+  const result = await query(`
+    WITH existing AS (
+      SELECT invoice_id, COALESCE(SUM(amount), 0) AS allocated
+      FROM payment_allocations WHERE target_type = 'client_invoice'
+      GROUP BY invoice_id
+    ), candidates AS (
+      SELECT p.id AS payment_id, p.invoice_id, p.amount,
+        COALESCE(SUM(p.amount) OVER (
+          PARTITION BY p.invoice_id ORDER BY p.payment_date, p.id
+          ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+        ), 0) AS prior_unallocated,
+        GREATEST(COALESCE(NULLIF(i.net_amount, 0), i.amount, 0) - COALESCE(e.allocated, 0), 0) AS capacity
+      FROM payments p
+      JOIN invoices i ON i.id = p.invoice_id
+      LEFT JOIN existing e ON e.invoice_id = p.invoice_id
+      WHERE COALESCE(p.direction, 'ar') = 'ar'
+        AND NOT EXISTS (SELECT 1 FROM payment_allocations a WHERE a.payment_id = p.id)
+    )
+    INSERT INTO payment_allocations (payment_id, target_type, invoice_id, amount)
+    SELECT payment_id, 'client_invoice', invoice_id,
+      LEAST(amount, GREATEST(capacity - prior_unallocated, 0))
+    FROM candidates
+    WHERE LEAST(amount, GREATEST(capacity - prior_unallocated, 0)) > 0
+    RETURNING id
+  `);
+  return result.rowCount;
+}
+
+module.exports = { DDL, AUDIT_COMPAT_SQL, ensureTables, ensureAuditCompat, backfillLegacyPaymentAllocations };

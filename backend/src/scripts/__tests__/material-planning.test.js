@@ -239,8 +239,8 @@ describe('recomputeAllocation (acceptance)', () => {
     // Gross = Planned × Factor; Net = Gross × (1 + Wastage%) − Consumed (0).
     expect(num(byCode['RM-CONC-C35'].gross_requirement)).toBe(100);
     expect(num(byCode['RM-CONC-C35'].net_requirement)).toBe(102); // +2% wastage
-    expect(num(byCode['RM-REBAR'].gross_requirement)).toBe(12500);
-    expect(num(byCode['RM-REBAR'].net_requirement)).toBe(12875); // +3%
+    expect(num(byCode['RM-REBAR'].gross_requirement)).toBe(12.5);
+    expect(num(byCode['RM-REBAR'].net_requirement)).toBe(12.875); // +3%, stored in tonnes
     expect(num(byCode['RM-BIND-WIRE'].gross_requirement)).toBe(150);
     expect(num(byCode['RM-BIND-WIRE'].net_requirement)).toBe(157.5); // +5%
     expect(num(byCode['RM-FORMWORK'].gross_requirement)).toBe(380);
@@ -261,13 +261,13 @@ describe('recomputeAllocation (acceptance)', () => {
   test('issued consumption on the BOQ item is subtracted (already consumed)', async () => {
     const rebar = (await q('SELECT * FROM item_master WHERE code = $1', ['RM-REBAR'])).rows[0];
     await q(`INSERT INTO work_order_materials (work_order_id, item_id, boq_item_id, actual_quantity)
-             VALUES ($1,$2,$3,$4)`, [10, rebar.id, BOQ_ID, 875]);
+             VALUES ($1,$2,$3,$4)`, [10, rebar.id, BOQ_ID, 0.875]);
 
     await demand.recomputeAllocation(q, ALLOC_ID, { activityDate: '2026-09-25' });
     const byCode = await requirementByCode();
     // 12500 × 1.03 = 12875 − 875 issued = 12000
-    expect(num(byCode['RM-REBAR'].already_consumed)).toBe(875);
-    expect(num(byCode['RM-REBAR'].net_requirement)).toBe(12000);
+    expect(num(byCode['RM-REBAR'].already_consumed)).toBe(0.875);
+    expect(num(byCode['RM-REBAR'].net_requirement)).toBe(12);
     // Other rows untouched by the rebar issue.
     expect(num(byCode['RM-CONC-C35'].net_requirement)).toBe(102);
   });
@@ -292,9 +292,9 @@ describe('recomputeAllocation (acceptance)', () => {
     const byCode = await requirementByCode();
     expect(num(byCode['RM-CONC-C35'].gross_requirement)).toBe(120);
     expect(num(byCode['RM-CONC-C35'].net_requirement)).toBeCloseTo(122.4);
-    expect(num(byCode['RM-REBAR'].gross_requirement)).toBe(15000);
+    expect(num(byCode['RM-REBAR'].gross_requirement)).toBe(15);
     // 15000 × 1.03 − 875 consumed = 14575
-    expect(num(byCode['RM-REBAR'].net_requirement)).toBe(14575);
+    expect(num(byCode['RM-REBAR'].net_requirement)).toBe(14.575);
   });
 
   test('allocation without any matching recipe produces no rows', async () => {

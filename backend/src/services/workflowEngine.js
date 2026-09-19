@@ -260,6 +260,40 @@ async function getInstance(client, instanceId) {
   return { instance, steps: steps, actions: actions.rows };
 }
 
+// Sync a domain state machine that has richer branch/reopen semantics than the
+// generic approve/reject runner. Authorization and transition validation stay
+// in the domain service; this function keeps the Phase 6 instance, step state,
+// and append-only action log authoritative for audit and reporting.
+async function syncExternalState(instanceId, stepKey, actor, opts = {}) {
+  const client = opts.client || { query: opts.query || defaultQuery };
+  const instance = await loadInstance(client, instanceId);
+  if (!instance) throw new Error('Workflow instance not found');
+  const definitions = await loadSteps(client, instance.template_id);
+  const definition = definitions.find((s) => s.step_key === stepKey);
+  if (!definition) throw new Error(`Workflow step not found: ${stepKey}`);
+  const instances = await loadStepInstances(client, instanceId);
+  const target = instances.find((s) => s.step_key === stepKey);
+  if (!target) throw new Error(`Workflow step instance not found: ${stepKey}`);
+  const now = new Date();
+  const terminal = opts.terminal === true;
+  await client.query(
+    `UPDATE workflow_step_instances
+     SET status = $1, assigned_user_id = $2, opened_at = $3, completed_at = $4
+     WHERE id = $5`,
+    [opts.rejected ? 'rejected' : 'done', actor.userId, target.opened_at || now, now, target.id]
+  );
+  await client.query(
+    `UPDATE workflow_instances SET current_step_key = $1, status = $2, updated_at = $3 WHERE id = $4`,
+    [terminal ? null : stepKey, terminal ? 'approved' : 'active', now, instanceId]
+  );
+  await recordAction(client, {
+    instance, step: target, userId: actor.userId, userName: actor.userName,
+    role: actor.role, decision: opts.decision || (opts.rejected ? 'reject' : 'advance'),
+    comment: opts.comment || null,
+  });
+  return getInstance(client, instanceId);
+}
+
 // ---------------------------------------------------------------------------
 // recordDecision
 // ---------------------------------------------------------------------------
@@ -807,4 +841,5 @@ module.exports = {
   loadSteps,
   loadInstance,
   loadStepInstances,
+  syncExternalState,
 };

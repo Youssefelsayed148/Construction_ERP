@@ -180,6 +180,26 @@ describe('mandatory isolation: consultant vs /costing and /finance', () => {
   });
 });
 
+describe('external portal path boundary', () => {
+  const { externalPortalAllowed } = require('../../middleware/auth');
+  test.each([
+    ['consultant', '/api/consultant/dashboard'],
+    ['client', '/api/client-portal/dashboard'],
+    ['subcontractor', '/api/portal/subcontractor/dashboard'],
+    ['supplier', '/api/portal/supplier/dashboard'],
+  ])('%s can reach only its portal prefix', (role, path) => {
+    expect(externalPortalAllowed({ user: { role }, originalUrl: path, method: 'GET' })).toBe(true);
+    expect(externalPortalAllowed({ user: { role }, originalUrl: '/api/projects/1', method: 'GET' })).toBe(false);
+    expect(externalPortalAllowed({ user: { role }, originalUrl: path.replace('/dashboard', '') + '-other', method: 'GET' })).toBe(false);
+  });
+  test('external upload is limited to POST /api/documents/upload', () => {
+    const user = { role: 'supplier' };
+    expect(externalPortalAllowed({ user, originalUrl: '/api/documents/upload', method: 'POST' })).toBe(true);
+    expect(externalPortalAllowed({ user, originalUrl: '/api/documents/upload', method: 'GET' })).toBe(false);
+    expect(externalPortalAllowed({ user, originalUrl: '/api/documents/upload/1', method: 'POST' })).toBe(false);
+  });
+});
+
 describe('mandatory isolation: client vs subcontractor/supplier rates', () => {
   const client = EXTERNAL_USERS.client;
   const targetRoutes = allRoutes.filter((r) => ['subcontractors', 'suppliers'].includes(r.file));
@@ -204,7 +224,6 @@ describe('mandatory isolation: external user cannot ID-guess unassigned projects
     '%s assigned to project %s fails closed on /api/projects/:id for an unassigned project',
     async (role, user) => {
       const getProject = allRoutes.find((r) => r.file === 'projects' && r.path === '/:id');
-      const grantedProjects = EXTERNAL_GRANTS[role].includes('projects');
       const assigned = await runAuthorize(getProject.authorizeMws[0], user, {
         method: 'GET',
         baseUrl: '/api/projects',
@@ -215,12 +234,8 @@ describe('mandatory isolation: external user cannot ID-guess unassigned projects
         baseUrl: '/api/projects',
         params: { id: UNASSIGNED_PROJECT },
       });
-      if (grantedProjects) {
-        expect(assigned.next).toHaveBeenCalled();
-      } else {
-        // Roles without the projects module are denied even on their own project.
-        expect(assigned.res.status).toHaveBeenCalledWith(403);
-      }
+      // External identities use their scoped portal, even for an assigned project.
+      expect(assigned.res.status).toHaveBeenCalledWith(403);
       expect(guessed.res.status).toHaveBeenCalledWith(403);
       expect(guessed.next).not.toHaveBeenCalled();
     }
@@ -263,16 +278,8 @@ describe('DoD sweep: external roles get 403 (not empty data) on routes they must
     if (route.file === 'auth' && route.path === '/login') return;
     for (const [role, user] of Object.entries(EXTERNAL_USERS)) {
       const method = route.methods[0].toUpperCase();
-      const action = { GET: 'view', HEAD: 'view', POST: 'create', PUT: 'edit', PATCH: 'edit', DELETE: 'delete' }[method];
       const mount = FILE_MOUNT[route.file];
-      const module = mount.split('/').pop();
-      // Call sites with an explicit coarse role list always deny external roles.
-      const explicitRoleList = route.authorizeMws[0].authorizeRoles && route.authorizeMws[0].authorizeRoles.length > 0;
-      const granted = EXTERNAL_GRANTS[role].includes(module);
-      // A route that resolves a project id resolves the UNASSIGNED one here.
-      const resolvesProject = route.path.includes(':projectId') ||
-        (module === 'projects' && route.path.includes(':id'));
-      const mustDeny = explicitRoleList || !granted || action !== 'view' || resolvesProject;
+      const mustDeny = true; // Raw internal modules are unavailable to external identities.
       // Only pass path params the route actually declares.
       const paramNames = [...route.path.matchAll(/:(\w+)/g)].map((m) => m[1]);
       const params = {};
@@ -339,10 +346,6 @@ describe('positive controls: internal roles are unaffected', () => {
   });
 
   test('legacy fallback still enforces explicit role lists (un-migrated client is denied users)', async () => {
-    query.mockImplementationOnce(async (sql) => {
-      if (/FROM\s+user_project_roles/i.test(sql)) return { rows: [] };
-      return { rows: [] };
-    });
     const route = allRoutes.find((r) => r.file === 'users' && r.path === '/');
     const legacyClient = { id: 78, email: 'oldc@x.com', name: 'OldC', role: 'client' };
     const { res, next } = await runAuthorize(route.authorizeMws[0], legacyClient, {

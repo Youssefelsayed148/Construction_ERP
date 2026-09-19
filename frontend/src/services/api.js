@@ -96,11 +96,13 @@ export const authService = {
   },
 
   setSession: (token, user) => {
+    sessionStorage.removeItem('clientPreviewToken');
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
   },
 
   clearSession: () => {
+    sessionStorage.removeItem('clientPreviewToken');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
   },

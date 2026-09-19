@@ -97,20 +97,27 @@ function suggestedOrderQuantity({
 }) {
   const projected = Math.max(projectedAvailable(available, confirmedIncoming, scheduledDemand), 0);
   let raw = Math.max(round3(toNum(targetMaxStock) - projected), 0);
+  let hardCap = Infinity;
 
   const shelf = toNum(shelfLifeDays);
   const usage = toNum(forecastDailyUsage);
   if (shelf > 0 && usage > 0) {
-    raw = Math.min(raw, round3(usage * shelf)); // cannot order more than is consumable before expiry
+    hardCap = Math.min(hardCap, round3(usage * shelf)); // cannot order more than is consumable before expiry
   }
   if (storageHeadroom != null) {
-    raw = Math.min(raw, Math.max(toNum(storageHeadroom), 0)); // cannot exceed storage capacity
+    hardCap = Math.min(hardCap, Math.max(toNum(storageHeadroom), 0)); // cannot exceed storage capacity
   }
+  raw = Math.min(raw, hardCap);
 
   const mult = toNum(orderMultiple);
-  if (mult > 0 && raw > 0) raw = Math.ceil(raw / mult) * mult;
   const minimum = toNum(moq);
+  if (minimum > hardCap) return 0; // an MOQ that breaches shelf/storage limits requires manual intervention
+  if (mult > 0 && raw > 0) {
+    const roundedUp = Math.ceil(raw / mult) * mult;
+    raw = roundedUp <= hardCap ? roundedUp : Math.floor(hardCap / mult) * mult;
+  }
   if (minimum > 0 && raw > 0 && raw < minimum) raw = minimum;
+  raw = Math.min(raw, hardCap);
   return round3(raw);
 }
 
@@ -167,11 +174,22 @@ async function forecastDailyUsage(q, materialId, { now = new Date(), days = USAG
 
 // Open confirmed POs = committed, not-yet-received incoming quantity.
 async function openConfirmedQuantity(q, materialId) {
-  const rows = (await q(
-    `SELECT * FROM purchase_orders WHERE material_id = $1 AND status IN ('approved','issued','confirmed')`,
+  const orders = (await q(
+    `SELECT * FROM purchase_orders WHERE material_id = $1 AND status IN ('approved','issued','confirmed','partially_delivered')`,
     [materialId]
   )).rows;
-  return round3(rows.reduce((s, r) => s + toNum(r.quantity), 0));
+  let headerOnly = orders;
+  let lineTotal = 0;
+  try {
+    const openOrders = (await q("SELECT * FROM purchase_orders WHERE status IN ('approved','issued','confirmed','partially_delivered')")).rows;
+    const openIds = new Set(openOrders.map((po) => po.id));
+    const lines = (await q('SELECT * FROM purchase_order_lines WHERE material_id = $1', [materialId])).rows;
+    const ordersWithLines = new Set(lines.map((line) => line.purchase_order_id));
+    headerOnly = orders.filter((po) => !ordersWithLines.has(po.id));
+    lineTotal = lines.filter((line) => openIds.has(line.purchase_order_id))
+      .reduce((s, line) => s + Math.max(toNum(line.quantity) - toNum(line.delivered_quantity), 0), 0);
+  } catch (e) { /* Phase 11 database before line tables: header total above is authoritative. */ }
+  return round3(headerOnly.reduce((s, r) => s + Math.max(toNum(r.quantity) - toNum(r.delivered_quantity), 0), 0) + lineTotal);
 }
 
 // Scheduled demand = future planned material_requirements rows (Phase 9).
@@ -271,6 +289,16 @@ async function ensureDraftPurchaseRequest(q, { item, quantity, neededBy, mode, c
      VALUES ($1, $2, $3, $4, $5, 'draft', 'replenishment', $6, $7, $8, $9) RETURNING *`,
     [requestNumber, item.id, quantity, item.unit || null, neededBy || null, item.id, sourceKey, mode, createdBy]
   );
+  try {
+    await q(
+      `INSERT INTO purchase_request_lines
+         (purchase_request_id, material_id, description, quantity, unit, needed_by)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [r.rows[0].id, item.id, item.name_en || item.name_ar || item.code, quantity, item.unit || null, neededBy || null]
+    );
+  } catch (e) {
+    if (!/purchase_request_lines/.test(e.message)) throw e;
+  }
   return { created: true, request: r.rows[0] };
 }
 
@@ -294,6 +322,17 @@ async function ensurePurchaseOrder(q, { item, supplier, quantity, unitPrice, sta
      unitPrice, round3(toNum(quantity) * toNum(unitPrice)), status, basis, ceiling, neededBy,
      'replenishment', item.id, sourceKey, createdBy]
   );
+  try {
+    await q(
+      `INSERT INTO purchase_order_lines
+         (purchase_order_id, material_id, description, quantity, unit, unit_rate, needed_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [r.rows[0].id, item.id, item.name_en || item.name_ar || item.code, quantity,
+       item.unit || null, unitPrice || 0, neededBy]
+    );
+  } catch (e) {
+    if (!/purchase_order_lines/.test(e.message)) throw e;
+  }
   return { created: true, order: r.rows[0] };
 }
 
@@ -418,7 +457,17 @@ async function evaluateMaterial(q, item, opts = {}) {
     });
     need = Math.max(need, suggested);
   }
-  need = roundToOrderRules(need, item.moq, item.order_multiple);
+  // The shortage path needs the same hard shelf/storage bounds as the target
+  // stock path. A larger MOQ is unsafe to auto-order; the shortage alert above
+  // stays open for manual resolution.
+  if (need > 0) {
+    const headroom = await storageHeadroomFor(q, stock.stock_by_warehouse);
+    need = suggestedOrderQuantity({
+      targetMaxStock: need, moq: item.moq, orderMultiple: item.order_multiple,
+      shelfLifeDays: item.shelf_life_days, forecastDailyUsage: usage,
+      storageHeadroom: headroom,
+    });
+  }
 
   if (need > 0 && policy.mode !== 'alert_only') {
     if (policy.mode === 'auto_draft_pr') {
@@ -468,7 +517,7 @@ async function evaluateMaterial(q, item, opts = {}) {
 // The scheduled sweep (idempotent — twice on the same data creates nothing)
 // ---------------------------------------------------------------------------
 
-async function runReplenishmentSweep(q, opts = {}) {
+async function runReplenishmentSweep(q = defaultQuery, opts = {}) {
   const items = (await q('SELECT * FROM item_master WHERE is_active = true')).rows;
   const results = [];
   for (const item of items) {
@@ -513,15 +562,15 @@ async function evaluateOtherAlerts(q, opts = {}) {
       [materialId]
     )).rows;
     const recent = issues.some((m) => m.created_at && new Date(m.created_at).getTime() >= cutoff);
-    const raisedAlert = await raiseAlert(q, {
-      materialId, alertType: 'excess_slow_moving',
-      snapshot: { summary: `${entry.physical} in stock with no issues in the last ${lookbackDays} days` },
-      notify: opts.notify !== false,
-    });
     if (recent) {
       await resolveAlerts(q, { materialId, alertTypes: ['excess_slow_moving'] });
-    } else if (raisedAlert.created) {
-      raised.excess_slow_moving++;
+    } else {
+      const raisedAlert = await raiseAlert(q, {
+        materialId, alertType: 'excess_slow_moving',
+        snapshot: { summary: `${entry.physical} in stock with no issues in the last ${lookbackDays} days` },
+        notify: opts.notify !== false,
+      });
+      if (raisedAlert.created) raised.excess_slow_moving++;
     }
   }
 
@@ -541,12 +590,12 @@ async function evaluateOtherAlerts(q, opts = {}) {
   const pos = (await q("SELECT * FROM purchase_orders WHERE status = 'issued'")).rows;
   for (const po of pos) {
     const overdue = po.needed_by != null && new Date(po.needed_by).getTime() < now.getTime();
-    const r = await raiseAlert(q, {
-      materialId: po.material_id, purchaseOrderId: po.id, alertType: 'delayed_po',
-      snapshot: { summary: `PO ${po.order_number || po.id} overdue since ${po.needed_by}` },
-      notify: opts.notify !== false,
-    });
     if (overdue) {
+      const r = await raiseAlert(q, {
+        materialId: po.material_id, purchaseOrderId: po.id, alertType: 'delayed_po',
+        snapshot: { summary: `PO ${po.order_number || po.id} overdue since ${po.needed_by}` },
+        notify: opts.notify !== false,
+      });
       if (r.created) raised.delayed_po++;
     } else {
       await resolveAlerts(q, { materialId: po.material_id, alertTypes: ['delayed_po'] });
@@ -562,12 +611,12 @@ async function evaluateOtherAlerts(q, opts = {}) {
     const wasted = movements.filter((m) => m.movement_type === 'waste' || m.movement_type === 'damage')
       .reduce((s, m) => s + toNum(m.quantity), 0);
     const abnormal = issued > 0 && wasted / issued > WASTAGE_ALERT_THRESHOLD;
-    const r = await raiseAlert(q, {
-      materialId: item.id, alertType: 'abnormal_wastage',
-      snapshot: { summary: `Wastage ${wasted} of ${issued} issued exceeds ${(WASTAGE_ALERT_THRESHOLD * 100).toFixed(0)}% in the last ${lookbackDays} days` },
-      notify: opts.notify !== false,
-    });
     if (abnormal) {
+      const r = await raiseAlert(q, {
+        materialId: item.id, alertType: 'abnormal_wastage',
+        snapshot: { summary: `Wastage ${wasted} of ${issued} issued exceeds ${(WASTAGE_ALERT_THRESHOLD * 100).toFixed(0)}% in the last ${lookbackDays} days` },
+        notify: opts.notify !== false,
+      });
       if (r.created) raised.abnormal_wastage++;
     } else {
       await resolveAlerts(q, { materialId: item.id, alertTypes: ['abnormal_wastage'] });

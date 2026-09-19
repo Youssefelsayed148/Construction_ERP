@@ -10,6 +10,7 @@ const mainMenuItems = [
   { path: '/dashboard', icon: LayoutDashboard, labelKey: 'nav.dashboard' },
   { path: '/projects', icon: Briefcase, labelKey: 'nav.projects' },
   { path: '/inventory', icon: Package, labelKey: 'nav.inventory' },
+  { path: '/procurement/comparison', icon: ClipboardList, label: 'Procurement comparison' },
   { path: '/clients', icon: Users, labelKey: 'nav.clients' },
   { path: '/suppliers', icon: Truck, labelKey: 'nav.suppliers' },
   { path: '/assets', icon: Wrench, labelKey: 'nav.assets' },
@@ -21,11 +22,19 @@ const mainMenuItems = [
   { path: '/my-actions', icon: ListChecks, labelKey: 'nav.myActions' },
 ];
 
+const portalMenuItems = {
+  consultant: [{ path: '/consultant-portal', icon: ClipboardList, label: 'Consultant Portal' }],
+  client: [{ path: '/client-portal', icon: Briefcase, label: 'Client Portal' }],
+  subcontractor: [{ path: '/subcontractor-portal', icon: HardHat, label: 'Subcontractor Portal' }],
+  supplier: [{ path: '/supplier-portal', icon: Truck, label: 'Supplier Portal' }],
+};
+
 function Sidebar() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { t, setLocale, locale } = useLocale();
   const user = authService.getCurrentUser();
+  const menuItems = portalMenuItems[user?.role] || mainMenuItems;
 
   const handleLogout = () => {
     authService.clearSession();
@@ -47,7 +56,7 @@ function Sidebar() {
       </div>
 
       <nav className="sidebar-nav">
-        {mainMenuItems.map((item) => (
+        {menuItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
@@ -56,7 +65,7 @@ function Sidebar() {
             }
           >
             <item.icon size={18} />
-            <span>{t(`common.${item.labelKey}`)}</span>
+            <span>{item.label || t(`common.${item.labelKey}`)}</span>
           </NavLink>
         ))}
       </nav>

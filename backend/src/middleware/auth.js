@@ -6,12 +6,26 @@ const SECRET = process.env.JWT_SECRET;
 if (!SECRET) throw new Error('JWT_SECRET environment variable is required');
 
 const READ_ONLY_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+const EXTERNAL_PORTAL_PATHS = {
+  consultant: '/api/consultant',
+  client: '/api/client-portal',
+  subcontractor: '/api/portal/subcontractor',
+  supplier: '/api/portal/supplier',
+};
+
+function externalPortalAllowed(req) {
+  const prefix = EXTERNAL_PORTAL_PATHS[req.user?.role];
+  if (!prefix) return true;
+  const path = String(req.originalUrl || '').split('?')[0];
+  if (path === prefix || path.startsWith(prefix + '/')) return true;
+  return path === '/api/documents/upload' && req.method === 'POST';
+}
 
 // Sign a preview-as-role token. The token carries the ACTING user's id plus
 // the role being previewed; authenticate() swaps req.user.role to the
 // previewed role and forces read-only. Every preview start is audited by the
 // endpoint that issues the token (POST /api/users/preview/:role).
-const createPreviewToken = ({ user, role, expiresIn = '30m' }) => {
+const createPreviewToken = ({ user, role, scopedProjectIds = [], expiresIn = '30m' }) => {
   return jwt.sign(
     {
       userId: user.id,
@@ -19,6 +33,7 @@ const createPreviewToken = ({ user, role, expiresIn = '30m' }) => {
       name: user.name,
       preview: true,
       previewRole: role,
+      scopedProjectIds,
     },
     SECRET,
     { expiresIn }
@@ -71,6 +86,7 @@ const authenticate = async (req, res, next) => {
         actor_email: user.email,
         role: decoded.previewRole,
         read_only: true,
+        scoped_project_ids: Array.isArray(decoded.scopedProjectIds) ? decoded.scopedProjectIds : [],
       };
     }
 
@@ -100,6 +116,9 @@ const authorize = (...roles) => {
   const middleware = async function authorizeMiddleware(req, res, next) {
     if (!req.user) {
       return res.status(401).json({ success: false, error: 'Authentication required' });
+    }
+    if (!externalPortalAllowed(req)) {
+      return res.status(403).json({ success: false, error: 'This account can access only its scoped portal' });
     }
 
     let decision;
@@ -133,4 +152,4 @@ const authorize = (...roles) => {
   return middleware;
 };
 
-module.exports = { authenticate, authorize, createPreviewToken };
+module.exports = { authenticate, authorize, createPreviewToken, externalPortalAllowed };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import { ArrowLeft, Camera, Sun, Users, Truck, HardHat, ClipboardList, AlertTriangle, StickyNote, Play } from 'lucide-react';
@@ -63,6 +63,8 @@ function SiteWorkspace() {
   const [issues, setIssues] = useState('');
   const [plan, setPlan] = useState('');
   const [error, setError] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoInput = useRef(null);
 
   const today = new Date().toISOString().slice(0, 10);
   const t = SECTION_LABELS[locale === 'ar' ? 'ar' : 'en'];
@@ -78,15 +80,34 @@ function SiteWorkspace() {
 
   useEffect(() => { load(); }, [load]);
 
-  const addPhoto = () => {
-    const caption = window.prompt(locale === 'ar' ? 'وصف الصورة:' : 'Photo caption:');
-    if (caption == null) return;
-    // Real capture uses the device camera / file input; the metadata model is
-    // the same either way (project, uploader, GPS optional, caption).
-    fetchApi(`${API_URL}/projects/${id}/photos`, {
-      method: 'POST',
-      body: JSON.stringify({ caption, file_name: `capture-${Date.now()}.jpg` }),
-    }).then(load).catch(e => setError(e.message));
+  const addPhoto = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    const caption = window.prompt(locale === 'ar' ? 'وصف الصورة:' : 'Photo caption:') || '';
+    setUploadingPhoto(true);
+    try {
+      const form = new FormData();
+      form.append('files', file);
+      const uploadedResponse = await fetch(`${API_BASE_URL}/api/documents/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: form,
+      });
+      const uploaded = await uploadedResponse.json();
+      if (!uploadedResponse.ok) throw new Error(uploaded.error || 'Photo upload failed');
+      const saved = uploaded.data?.[0];
+      if (!saved) throw new Error('The server did not return the uploaded photo');
+      await fetchApi(`${API_URL}/projects/${id}/photos`, {
+        method: 'POST',
+        body: JSON.stringify({ caption, file_name: saved.original_name || file.name, file_url: saved.file_url }),
+      });
+      load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   const addSticky = (scope) => {
@@ -121,8 +142,9 @@ function SiteWorkspace() {
           <button className="btn btn-secondary btn-sm" onClick={() => navigate(-1)}><ArrowLeft size={14} /></button>
           <h1 style={{ fontSize: 20, margin: 0 }}>{locale === 'ar' ? 'مساحة عمل مهندس الموقع' : 'Site Engineer Workspace'}</h1>
         </div>
-        <button className="btn btn-primary btn-sm" onClick={addPhoto}>
-          <Camera size={14} style={{ marginRight: 4 }} /> {locale === 'ar' ? 'التقاط صورة' : 'Quick Photo'}
+        <input ref={photoInput} type="file" accept="image/*" capture="environment" onChange={addPhoto} style={{ display: 'none' }} />
+        <button className="btn btn-primary btn-sm" disabled={uploadingPhoto} onClick={() => photoInput.current?.click()}>
+          <Camera size={14} style={{ marginRight: 4 }} /> {uploadingPhoto ? 'Uploading…' : (locale === 'ar' ? 'التقاط صورة' : 'Quick Photo')}
         </button>
       </div>
 

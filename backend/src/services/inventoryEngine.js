@@ -42,6 +42,7 @@ const PHYSICAL_SIGNS = {
   grn: 1,
   quarantine: 1,
   quarantine_release: 0,
+  quarantine_restore: 0,
   quarantine_reject: -1,
   return: 1,
   transfer_in: 1,
@@ -59,11 +60,12 @@ const QUARANTINE_SIGNS = {
   quarantine: 1,
   quarantine_release: -1,
   quarantine_reject: -1,
+  quarantine_restore: 1,
 };
 
 const MOVEMENT_TYPES = Object.keys(PHYSICAL_SIGNS);
 // Types that must be paired/derived (transfer API) or MIR-gated.
-const PAIRED_TYPES = ['transfer_out', 'transfer_in', 'quarantine_release', 'quarantine_reject'];
+const PAIRED_TYPES = ['transfer_out', 'transfer_in', 'quarantine_release', 'quarantine_reject', 'quarantine_restore'];
 // Types that draw down usable (available) stock and need a balance check.
 const OUTBOUND_TYPES = ['issue', 'transfer_out', 'waste', 'damage', 'supplier_return'];
 
@@ -130,6 +132,7 @@ async function rebuildWarehouseStock(q, { warehouseId, materialId } = {}) {
     if (r.warehouse_id == null) continue; // planning-level reservation, not warehouse stock
     if (warehouseId != null && r.warehouse_id !== warehouseId) continue;
     if (materialId != null && r.material_id !== materialId) continue;
+    if (r.expires_at != null && new Date(r.expires_at) <= new Date()) continue;
     const key = `${r.warehouse_id}:${r.material_id}`;
     reservedByKey.set(key, round3((reservedByKey.get(key) || 0) + toNum(r.quantity)));
   }
@@ -256,6 +259,13 @@ async function createMovement(q, {
 async function reverseMovement(q, movementId, { reason = null, created_by = null } = {}) {
   const original = (await q('SELECT * FROM stock_movements WHERE id = $1', [movementId])).rows[0];
   if (!original) throw new Error(`Stock movement #${movementId} not found`);
+  const prior = (await q(
+    `SELECT id FROM stock_movements
+     WHERE reference_type = 'stock_movement' AND reference_id = $1
+       AND movement_type IN ('reversal','quarantine_reject','quarantine_restore')`,
+    [original.id]
+  )).rows[0];
+  if (prior) throw new Error(`Stock movement #${movementId} is already reversed by movement #${prior.id}`);
   if (original.movement_type === 'reversal') {
     throw new Error('Cannot reverse a reversal — post a new adjustment movement instead');
   }
@@ -271,8 +281,20 @@ async function reverseMovement(q, movementId, { reason = null, created_by = null
       created_by,
     });
   }
-  if (original.movement_type === 'quarantine_release' || original.movement_type === 'quarantine_reject') {
+  if (original.movement_type === 'quarantine_release') {
     // Undo a MIR decision: the material goes back into quarantine.
+    return createMovement(q, {
+      warehouse_id: original.warehouse_id,
+      material_id: original.material_id,
+      movement_type: 'quarantine_restore',
+      quantity: toNum(original.quantity),
+      reference_type: 'stock_movement',
+      reference_id: original.id,
+      notes: reason || `Reversal of movement #${original.id}`,
+      created_by,
+    });
+  }
+  if (original.movement_type === 'quarantine_reject') {
     return createMovement(q, {
       warehouse_id: original.warehouse_id,
       material_id: original.material_id,
