@@ -3,7 +3,7 @@ const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
-const { logActivity } = require('../utils/activity');
+const { logActivity, fireEvent } = require('../utils/activity');
 const svc = require('../services/procurementService');
 const pdf = require('../utils/procurementPdf');
 const atomic = (fn) => transaction((client) => fn(client.query.bind(client)));
@@ -227,6 +227,13 @@ router.post('/po/:id/decide', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     const result = await atomic((q) => svc.decideOnDocument(q, 'purchase_order', parseInt(req.params.id, 10), req.user, value.decision, value.comment));
+    if (result.status === 'issued') {
+      await fireEvent({
+        eventType: 'purchase_order.issued', entityType: 'purchase_order', entityId: parseInt(req.params.id, 10),
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        payload: { purchase_order_id: parseInt(req.params.id, 10), status: result.status },
+      });
+    }
     res.json({ success: true, data: result });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -276,6 +283,12 @@ router.post('/mir/:id/decide', authenticate, authorize(), async (req, res) => {
       client.query.bind(client), parseInt(req.params.id, 10), req.user, value.decision,
       { accepted: value.accepted, notes: value.notes }
     ));
+    await fireEvent({
+      eventType: value.decision === 'accept' ? 'mir.accepted' : 'mir.rejected',
+      entityType: 'material_inspection_request', entityId: parseInt(req.params.id, 10),
+      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+      payload: { mir_id: parseInt(req.params.id, 10), status: mir.status },
+    });
     res.json({ success: true, data: mir });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -288,6 +301,11 @@ router.post('/mir/:id/grn', authenticate, authorize(), async (req, res) => {
       action: 'create', module: 'procurement',
       description: `Created GRN ${grn.grn_number} from MIR #${req.params.id}`,
       entityId: grn.id, entityType: 'goods_receipt_note',
+    });
+    await fireEvent({
+      eventType: 'delivery.received', entityType: 'goods_receipt_note', entityId: grn.id,
+      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+      payload: { grn_id: grn.id, grn_number: grn.grn_number, mir_id: grn.mir_id, purchase_order_id: grn.purchase_order_id, warehouse_id: grn.warehouse_id },
     });
     res.status(201).json({ success: true, data: grn });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }

@@ -3,7 +3,7 @@ const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
-const { logActivity } = require('../utils/activity');
+const { logActivity, fireEvent } = require('../utils/activity');
 
 const INVOICE_STATUSES = ['draft', 'sent', 'partially_paid', 'paid', 'overdue'];
 
@@ -108,6 +108,11 @@ router.post('/', authenticate, authorize(), async (req, res) => {
       action: 'create', module: 'invoices',
       description: `Created invoice ${value.invoice_number} — ${value.amount} EGP`,
       entityId: result.rows[0].id, entityType: 'invoice', amount: value.amount
+    });
+    await fireEvent({
+      eventType: 'invoice.created', entityType: 'invoice', entityId: result.rows[0].id,
+      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+      payload: { invoice_id: result.rows[0].id, invoice_number: value.invoice_number, amount: value.amount, project_id: value.project_id, status: 'sent' },
     });
 
     res.status(201).json({ success: true, data: result.rows[0] });

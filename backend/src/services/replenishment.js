@@ -352,6 +352,19 @@ async function raiseAlert(q, { materialId, purchaseOrderId = null, alertType, sn
     [materialId, purchaseOrderId, alertType, JSON.stringify(snapshot || {})]
   );
   const alert = r.rows[0];
+  if (['below_minimum', 'projected_shortage'].includes(alertType)) {
+    // inventory.low — the external-API webhook event for stock at/below its
+    // floor. Only raised on NEW alerts (the early-return above handles the
+    // already-open case). Same durability contract as every other event: an
+    // event_log row + a bus emit; webhook dispatch never blocks the sweep.
+    try {
+      const { fireEvent } = require('../utils/activity');
+      await fireEvent({
+        eventType: 'inventory.low', entityType: 'material', entityId: materialId,
+        payload: { material_id: materialId, alert_type: alertType, snapshot: snapshot || {} },
+      }, { query: q });
+    } catch (e) { console.error('[REPLENISH] inventory.low event failed:', e.message); }
+  }
   if (notify) {
     try {
       await notificationService.notifyRoles(ALERT_ROLES, {

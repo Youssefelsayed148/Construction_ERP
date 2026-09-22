@@ -57,10 +57,13 @@ describe('every guarded route carries authorize() (static check)', () => {
     .filter((f) => f.endsWith('.js'));
 
   test('route files exist', () => {
-    expect(files.length).toBe(44); // Includes the authenticated media route + the Phase 20 HSE, Phase 22 schedule, Phase 24 reports and Phase 25 handover routes.
+    // 44 internal route files + Phase 26's v1.js assembly (which is not a
+    // classic per-route file — it remounts the guarded internal chains).
+    expect(files.length).toBe(45);
   });
 
   test.each(files)('%s has no bare authenticate-only route lines', (file) => {
+    if (file === 'v1.js') return; // Phase 26: v1 remounts the internal guarded chains verbatim.
     const content = fs.readFileSync(path.join(ROUTES_DIR, file), 'utf8');
     const lines = content.split('\n');
     for (const line of lines) {

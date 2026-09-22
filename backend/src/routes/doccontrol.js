@@ -3,7 +3,7 @@ const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
-const { logActivity } = require('../utils/activity');
+const { logActivity, fireEvent } = require('../utils/activity');
 
 // Mounted at /api/docs — document library with versioning, RFIs, submittals.
 // File uploads go through /api/documents/upload first; this router stores the returned URLs.
@@ -248,6 +248,7 @@ router.post('/rfis', authenticate, authorize(), async (req, res) => {
       [rfiNumber, value.project_id, value.subject, value.question, value.category, value.priority, value.due_date, req.user.id]
     );
     await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Raised ${rfiNumber}: ${value.subject}`, entityId: result.rows[0].id, entityType: 'project_rfi' });
+    await fireEvent({ eventType: 'rfi.created', entityType: 'project_rfi', entityId: result.rows[0].id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: value.project_id, rfi_number: rfiNumber, subject: value.subject, status: 'open' } });
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -264,6 +265,7 @@ router.post('/rfis/:id/respond', authenticate, authorize(), async (req, res) => 
       [value.answer, req.user.id, req.params.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'RFI not found or not open' });
+    await fireEvent({ eventType: 'rfi.answered', entityType: 'project_rfi', entityId: parseInt(req.params.id, 10), userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: result.rows[0].project_id, rfi_number: result.rows[0].rfi_number, status: 'answered' } });
     res.json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -275,6 +277,7 @@ router.post('/rfis/:id/close', authenticate, authorize(), async (req, res) => {
       [req.params.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'RFI not found or not answered yet' });
+    await fireEvent({ eventType: 'rfi.closed', entityType: 'project_rfi', entityId: parseInt(req.params.id, 10), userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: result.rows[0].project_id, rfi_number: result.rows[0].rfi_number, status: 'closed' } });
     res.json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -318,6 +321,7 @@ router.post('/submittals', authenticate, authorize(), async (req, res) => {
       [subNumber, value.project_id, value.title, value.submittal_type, value.submitted_to, req.user.id]
     );
     await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Submitted ${subNumber}: ${value.title}`, entityId: result.rows[0].id, entityType: 'project_submittal' });
+    await fireEvent({ eventType: 'submittal.created', entityType: 'project_submittal', entityId: result.rows[0].id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: value.project_id, submittal_number: subNumber, title: value.title, status: 'submitted' } });
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -338,6 +342,7 @@ router.post('/submittals/:id/respond', authenticate, authorize(), async (req, re
       [value.status, value.response, req.user.id, req.params.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Submittal not found' });
+    await fireEvent({ eventType: `submittal.${value.status}`, entityType: 'project_submittal', entityId: parseInt(req.params.id, 10), userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: result.rows[0].project_id, submittal_number: result.rows[0].submittal_number, status: value.status } });
     res.json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

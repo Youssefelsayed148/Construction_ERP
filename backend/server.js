@@ -19,7 +19,11 @@ const app = express();
   }
 })();
 
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000', credentials: true }));
+const FRONTEND_ORIGIN = process.env.FRONTEND_URL || 'http://localhost:3000';
+// Phase 26: v1 also serves non-browser API clients; extra origins (sandbox UI,
+// partner portals) come in via a comma-separated env list.
+const EXTRA_ORIGINS = (process.env.CORS_EXTRA_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
+app.use(cors({ origin: [FRONTEND_ORIGIN, ...EXTRA_ORIGINS], credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', require('./src/routes/media'));
@@ -83,6 +87,9 @@ app.use('/api/consultant', require('./src/routes/consultant'));
 app.use('/api/client-portal', require('./src/routes/client'));
 app.use('/api/portal', require('./src/routes/portal'));
 
+// Phase 26 — versioned external API: /api/v1
+app.use('/api/v1', require('./src/routes/v1').buildV1Router());
+
 // Initialize cost event listener
 require('./src/services/costEventListener').initCostEventListener();
 
@@ -98,6 +105,9 @@ require('./src/services/financeEngine').initReceivableReminderScheduler();
 
 // Permit expiry sweep (Phase 20)
 require('./src/services/hseEngine').initPermitExpiryScheduler();
+
+// Webhook deliveries: event subscription + retry sweep (Phase 26)
+require('./src/services/webhookService').initWebhookEventSubscriber();
 
 // Scheduled report sweep (Phase 24)
 require('./src/routes/reports').initScheduledReportScheduler();
