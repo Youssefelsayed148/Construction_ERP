@@ -772,6 +772,16 @@ function evalPredicate(expr, row, params) {
     const arr = params[parseInt(any[2], 10) - 1];
     return Array.isArray(arr) && arr.includes(row[any[1]]);
   }
+  // LIKE 'pattern' — added for Phase 19 numbering (additive: such predicates
+  // previously threw "unsupported predicate", so nothing changes for them).
+  const like = expr.match(/^(\w+(?:\.\w+)?)\s+LIKE\s+([\s\S]+)$/i);
+  if (like) {
+    const lv = resolveRef(like[1], row, {});
+    const rv = evalLiteral(like[2], params);
+    if (lv == null || rv == null) return false;
+    const rx = new RegExp('^' + String(rv).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/%/g, '.*') + '$');
+    return rx.test(String(lv));
+  }
   // Equality / inequality
   const cmp = expr.match(/^(\w+(?:\.\w+)?)\s*(=|<>|!=)\s*([\s\S]+)$/);
   if (cmp) {
