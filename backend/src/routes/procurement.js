@@ -61,7 +61,7 @@ router.post('/pr/:id/decide', authenticate, authorize(), async (req, res) => {
     const schema = Joi.object({ decision: Joi.string().valid('approve', 'reject').required(), comment: Joi.string().allow('', null) });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const result = await atomic((q) => svc.decideOnPurchaseRequest(q, 'purchase_request', parseInt(req.params.id, 10), req.user, value.decision, value.comment));
+    const result = await atomic((q) => svc.decideOnDocument(q, 'purchase_request', parseInt(req.params.id, 10), req.user, value.decision, value.comment));
     res.json({ success: true, data: result });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -226,7 +226,7 @@ router.post('/po/:id/decide', authenticate, authorize(), async (req, res) => {
     const schema = Joi.object({ decision: Joi.string().valid('approve', 'reject').required(), comment: Joi.string().allow('', null) });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const result = await atomic((q) => svc.decideOnPurchaseRequest(q, 'purchase_order', parseInt(req.params.id, 10), req.user, value.decision, value.comment));
+    const result = await atomic((q) => svc.decideOnDocument(q, 'purchase_order', parseInt(req.params.id, 10), req.user, value.decision, value.comment));
     res.json({ success: true, data: result });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });

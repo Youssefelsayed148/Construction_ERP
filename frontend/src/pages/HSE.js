@@ -406,7 +406,7 @@ function JsaTab({ projectId, locale, t }) {
 
   const act = async (row, status) => {
     try {
-      await fetchApi(`${API_URL}/hse/${kind === 'jsas' ? `jsas/${row.id}/status` : ''}`, { method: 'POST', body: JSON.stringify({ status }) });
+      await fetchApi(`${API_URL}/hse/${kind === 'jsas' ? `jsas/${row.id}/status` : `risk-assessments/${row.id}/status`}`, { method: 'POST', body: JSON.stringify({ status }) });
       reload();
     } catch (err) { alert(err.message); }
   };

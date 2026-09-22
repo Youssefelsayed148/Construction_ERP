@@ -79,7 +79,7 @@ export function ItpTab({ projectId, locale, t }) {
     try {
       const [r, loc] = await Promise.all([
         fetchApi(`${API_URL}/qhse/itps?project_id=${projectId}`),
-        fetchApi(`${API_URL}/locations/${projectId}/locations`).catch(() => ({ data: [] })),
+        fetchApi(`${API_URL}/locations/project/${projectId}`).catch(() => ({ data: [] })),
       ]);
       if (r.success) setItps(r.data || []);
       setLocations(loc.data || []);

@@ -447,6 +447,26 @@ router.post('/risk-assessments', authenticate, authorize(), async (req, res) => 
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
+// Status lifecycle mirrors JSAs (review → approve); risk_assessments has no
+// reviewer columns, so only the status itself is stamped.
+const RA_TRANSITIONS = { draft: ['reviewed'], reviewed: ['approved', 'superseded'] };
+router.post('/risk-assessments/:id/status', authenticate, authorize(), async (req, res) => {
+  try {
+    const schema = Joi.object({ status: Joi.string().valid('reviewed', 'approved', 'superseded').required() });
+    const { error, value } = schema.validate(req.body);
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    const existing = (await query('SELECT status FROM risk_assessments WHERE id = $1', [req.params.id])).rows[0];
+    if (!existing) return res.status(404).json({ success: false, error: 'Risk assessment not found' });
+    if (!RA_TRANSITIONS[existing.status] || !RA_TRANSITIONS[existing.status].includes(value.status)) {
+      return res.status(400).json({ success: false, error: `Cannot transition from '${existing.status}' to '${value.status}'` });
+    }
+    const r = await query(`UPDATE risk_assessments SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+      [value.status, req.params.id]);
+    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'hse', description: `Risk assessment #${req.params.id} status → ${value.status}`, entityId: parseInt(req.params.id, 10), entityType: 'risk_assessment' });
+    res.json({ success: true, data: r.rows[0] });
+  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
 router.get('/risk-assessments/:id/pdf', authenticate, authorize(), async (req, res) => {
   try {
     const ra = (await query('SELECT * FROM risk_assessments WHERE id = $1', [req.params.id])).rows[0];
