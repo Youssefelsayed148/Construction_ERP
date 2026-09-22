@@ -218,6 +218,7 @@ function ProjectDetail() {
           { path: 'hse', label: locale === 'ar' ? 'الصحة والسلامة' : 'HSE Workspace' },
           { path: 'schedule', label: locale === 'ar' ? 'الجدولة' : 'Schedule' },
           { path: 'reports', label: locale === 'ar' ? 'التقارير' : 'Reports' },
+          { path: 'handover', label: locale === 'ar' ? 'التسليم والإغلاق' : 'Handover & closeout' },
           { path: 'documents', label: locale === 'ar' ? 'المستندات' : 'Documents' },
           { path: 'units', label: locale === 'ar' ? 'الوحدات والمبيعات' : 'Units & Sales' },
         ].map(m => (

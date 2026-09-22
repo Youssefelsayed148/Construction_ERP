@@ -26,6 +26,7 @@ import QHSE from './pages/QHSE';
 import HSE from './pages/HSE';
 import Schedule from './pages/Schedule';
 import Reports from './pages/Reports';
+import Handover from './pages/Handover';
 import ProjectDocuments from './pages/ProjectDocuments';
 import UnitsSales from './pages/UnitsSales';
 import PortalDashboard from './pages/PortalDashboard';
@@ -96,6 +97,7 @@ function App() {
           <Route path="projects/:id/hse" element={<HSE />} />
           <Route path="projects/:id/schedule" element={<Schedule />} />
           <Route path="projects/:id/reports" element={<Reports />} />
+          <Route path="projects/:id/handover" element={<Handover />} />
           <Route path="projects/:id/documents" element={<ProjectDocuments />} />
           <Route path="projects/:id/units" element={<UnitsSales />} />
           <Route path="settings" element={<div className="page-container"><h1>Settings</h1></div>} />

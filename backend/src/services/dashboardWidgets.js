@@ -170,7 +170,19 @@ async function projectManagerWidgets(q, { userId, projectId = null }) {
       invoiced: invoices.rows.reduce((s, i) => s + num(i.amount), 0),
       collected: payments.rows.reduce((s, p) => s + num(p.amount), 0),
     }),
+    // Phase 25 — handover readiness surfaces on the PM dashboard.
+    ...(projectId != null ? [await handoverReadinessWidget(q, projectId)] : []),
   ];
+}
+
+async function handoverReadinessWidget(q, projectId) {
+  try {
+    const handoverEngine = require('./handoverEngine');
+    const readiness = await handoverEngine.handoverReadiness(q, projectId);
+    return w('handover_readiness', 'Handover readiness', readiness);
+  } catch (e) {
+    return w('handover_readiness', 'Handover readiness', { percent: 0 });
+  }
 }
 function activities_progress(rows) {
   if (!rows.length) return 0;
