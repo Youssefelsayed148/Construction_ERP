@@ -3,6 +3,7 @@ const router = express.Router();
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const commercialEngine = require('../services/commercialEngine');
+const dashboardWidgets = require('../services/dashboardWidgets');
 
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
@@ -279,6 +280,15 @@ router.get('/overview', authenticate, authorize(), async (req, res) => {
       },
     },
   });
+});
+
+// Phase 23 — per-role widget dashboard resolver. Additive: every legacy
+// endpoint above keeps its exact response shape until the frontend migrates.
+router.get('/role', authenticate, authorize(), async (req, res) => {
+  try {
+    const data = await dashboardWidgets.roleDashboard(query, req.user, { projectId: req.query.project_id || null });
+    res.json({ success: true, data });
+  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
 module.exports = router;
