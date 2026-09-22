@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
-import { ArrowLeft, Plus, Search, X, FileText, FolderOpen, MessageSquare, PackageCheck, History, CheckCircle, XCircle, Upload, Download } from 'lucide-react';
+import { ArrowLeft, Plus, Search, X, FileText, FolderOpen, MessageSquare, PackageCheck, History, CheckCircle, XCircle, Upload, Download, AlertTriangle } from 'lucide-react';
+import { RegisterTab, TransmittalsTab, CorrespondenceTab, DocSearchTab } from './DocControlExtended';
 import DocumentUpload from '../components/DocumentUpload';
 import { openProtectedFile } from '../components/ProtectedMedia';
 
@@ -62,6 +63,10 @@ function ProjectDocuments() {
     { key: 'library', icon: FolderOpen, label: locale === 'ar' ? 'مكتبة المستندات' : 'Document Library' },
     { key: 'rfis', icon: MessageSquare, label: locale === 'ar' ? 'طلبات المعلومات' : 'RFIs' },
     { key: 'submittals', icon: PackageCheck, label: locale === 'ar' ? 'الاعتمادات' : 'Submittals' },
+    { key: 'register', icon: FileText, label: locale === 'ar' ? 'سجلات التحكم' : 'Controlled Registers' },
+    { key: 'transmittals', icon: Upload, label: locale === 'ar' ? 'مذكرات الإرسال' : 'Transmittals' },
+    { key: 'correspondence', icon: MessageSquare, label: locale === 'ar' ? 'المراسلات' : 'Correspondence' },
+    { key: 'search', icon: Search, label: locale === 'ar' ? 'بحث شامل' : 'Cross-Search' },
   ];
 
   return (
@@ -93,6 +98,10 @@ function ProjectDocuments() {
       {tab === 'library' && <LibraryTab projectId={id} locale={locale} t={t} />}
       {tab === 'rfis' && <RfisTab projectId={id} locale={locale} t={t} />}
       {tab === 'submittals' && <SubmittalsTab projectId={id} locale={locale} t={t} />}
+      {tab === 'register' && <RegisterTab projectId={id} locale={locale} t={t} />}
+      {tab === 'transmittals' && <TransmittalsTab projectId={id} locale={locale} t={t} />}
+      {tab === 'correspondence' && <CorrespondenceTab projectId={id} locale={locale} t={t} />}
+      {tab === 'search' && <DocSearchTab projectId={id} locale={locale} t={t} />}
     </div>
   );
 }
@@ -189,6 +198,19 @@ function LibraryTab({ projectId, locale, t }) {
                       {doc.title}
                     </a>
                     {doc.description && <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>{doc.description}</div>}
+                    {/* Phase 21: prominent superseded-revision warning */}
+                    {doc.doc_status === 'superseded' && (
+                      <div className="badge badge-danger" style={{ marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <AlertTriangle size={12} />
+                        {locale === 'ar' ? '⚠ إصدار ملغي — لا يستخدم للبناء' : '⚠ SUPERSEDED — do not use for construction'}
+                        {doc.superseded_by_doc_id ? ` → #${doc.superseded_by_doc_id}` : ''}
+                      </div>
+                    )}
+                    {doc.doc_number && (
+                      <div style={{ fontSize: '12px', fontFamily: 'monospace', color: 'var(--color-text-secondary)', marginTop: 4 }}>
+                        {doc.doc_number}{doc.revision_code ? ` · ${doc.revision_code}` : ''}
+                      </div>
+                    )}
                   </td>
                   <td style={{ fontSize: '13px' }}>{doc.category_name || '-'}</td>
                   <td style={{ fontSize: '13px' }}>{DOC_TYPE_LABELS[locale]?.[doc.document_type] || doc.document_type}</td>
