@@ -67,6 +67,7 @@ app.use('/api/projects', require('./src/routes/site'));
 app.use('/api/qhse', require('./src/routes/qhse'));
 app.use('/api/hse', require('./src/routes/hse'));
 app.use('/api/schedule', require('./src/routes/schedule'));
+app.use('/api/reports', require('./src/routes/reports'));
 app.use('/api/docs', require('./src/routes/doccontrol'));
 app.use('/api/sales', require('./src/routes/units'));
 app.use('/api/actions', require('./src/routes/actions'));
@@ -96,6 +97,9 @@ require('./src/services/financeEngine').initReceivableReminderScheduler();
 
 // Permit expiry sweep (Phase 20)
 require('./src/services/hseEngine').initPermitExpiryScheduler();
+
+// Scheduled report sweep (Phase 24)
+require('./src/routes/reports').initScheduledReportScheduler();
 
 app.use((err, req, res, next) => {
   logger.error(err.stack);
