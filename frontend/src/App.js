@@ -23,6 +23,7 @@ import WorkOrders from './pages/WorkOrders';
 import SiteManagement from './pages/SiteManagement';
 import SiteWorkspace from './pages/SiteWorkspace';
 import QHSE from './pages/QHSE';
+import HSE from './pages/HSE';
 import ProjectDocuments from './pages/ProjectDocuments';
 import UnitsSales from './pages/UnitsSales';
 import PortalDashboard from './pages/PortalDashboard';
@@ -90,6 +91,7 @@ function App() {
           <Route path="projects/:id/site-workspace" element={<SiteWorkspace />} />
           <Route path="projects/:id/locations" element={<LocationDashboard />} />
           <Route path="projects/:id/qhse" element={<QHSE />} />
+          <Route path="projects/:id/hse" element={<HSE />} />
           <Route path="projects/:id/documents" element={<ProjectDocuments />} />
           <Route path="projects/:id/units" element={<UnitsSales />} />
           <Route path="settings" element={<div className="page-container"><h1>Settings</h1></div>} />

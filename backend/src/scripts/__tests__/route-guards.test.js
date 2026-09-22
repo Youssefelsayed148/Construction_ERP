@@ -57,7 +57,7 @@ describe('every guarded route carries authorize() (static check)', () => {
     .filter((f) => f.endsWith('.js'));
 
   test('route files exist', () => {
-    expect(files.length).toBe(40); // Includes the authenticated media route.
+    expect(files.length).toBe(41); // Includes the authenticated media route + the Phase 20 HSE route.
   });
 
   test.each(files)('%s has no bare authenticate-only route lines', (file) => {

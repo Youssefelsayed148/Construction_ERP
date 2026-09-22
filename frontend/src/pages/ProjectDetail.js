@@ -215,6 +215,7 @@ function ProjectDetail() {
           { path: 'site', label: locale === 'ar' ? 'إدارة الموقع' : 'Site Management' },
           { path: 'locations', label: locale === 'ar' ? 'المواقع والكميات' : 'Locations & Quantities' },
           { path: 'qhse', label: locale === 'ar' ? 'الجودة والسلامة' : 'Quality & HSE' },
+          { path: 'hse', label: locale === 'ar' ? 'الصحة والسلامة' : 'HSE Workspace' },
           { path: 'documents', label: locale === 'ar' ? 'المستندات' : 'Documents' },
           { path: 'units', label: locale === 'ar' ? 'الوحدات والمبيعات' : 'Units & Sales' },
         ].map(m => (
