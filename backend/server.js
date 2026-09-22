@@ -66,6 +66,7 @@ app.use('/api/documents', require('./src/routes/documents'));
 app.use('/api/projects', require('./src/routes/site'));
 app.use('/api/qhse', require('./src/routes/qhse'));
 app.use('/api/hse', require('./src/routes/hse'));
+app.use('/api/schedule', require('./src/routes/schedule'));
 app.use('/api/docs', require('./src/routes/doccontrol'));
 app.use('/api/sales', require('./src/routes/units'));
 app.use('/api/actions', require('./src/routes/actions'));
