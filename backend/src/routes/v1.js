@@ -34,6 +34,7 @@ const v1 = require('../middleware/v1');
 const oauthService = require('../services/oauthService');
 const webhookService = require('../services/webhookService');
 const apiResources = require('../services/apiResources');
+const assistantService = require('../services/assistantService');
 const { healthCheck } = require('../config/database');
 const buildOpenApi = require('../utils/openapi');
 
@@ -48,6 +49,7 @@ const ROUTERS = {
   items: { router: require('./items'), mount: '/api/items' },
   warehouses: { router: require('./warehouses'), mount: '/api/warehouses' },
   procurement: { router: require('./procurement'), mount: '/api/procurement' },
+  dashboard: { router: require('./dashboard'), mount: '/api/dashboard' },
   commercial: { router: require('./commercial'), mount: '/api/commercial' },
   subcontractors: { router: require('./subcontractors'), mount: '/api/subcontractors' },
   financeLedger: { router: require('./financeLedger'), mount: '/api/finance-ledger' },
@@ -81,15 +83,27 @@ function remountFrom({ router, internalMount, method, path }) {
     const prevBaseUrl = req.baseUrl;
     req.baseUrl = internalMount;
     let idx = 0;
-    const step = (err) => {
-      if (err) { req.baseUrl = prevBaseUrl; return next(err); }
-      if (idx >= chain.length) return;
-      const handler = chain[idx++];
-      try {
-        Promise.resolve(handler(req, res, step)).catch(step);
-      } catch (e) { step(e); }
-    };
-    step();
+    // The wrapper resolves when the chain finalized a response (json/send/end)
+    // or when it exhausted — direct callers (MCP tool execution) need to await
+    // the RESPONSE, not just the dispatch.
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = () => { if (!settled) { settled = true; req.baseUrl = prevBaseUrl; resolve(); } };
+      const step = (err) => {
+        if (err) { req.baseUrl = prevBaseUrl; if (!settled) { settled = true; resolve(); } return next && next(err); }
+        if (idx >= chain.length) { if (!settled) { settled = true; req.baseUrl = prevBaseUrl; resolve(); } return; }
+        const handler = chain[idx++];
+        try {
+          const out = handler(req, res, step);
+          Promise.resolve(out).catch((e) => { if (!settled) { settled = true; req.baseUrl = prevBaseUrl; resolve(); } next && next(e); });
+        } catch (e) { if (!settled) { settled = true; req.baseUrl = prevBaseUrl; resolve(); } next && next(e); }
+      };
+      const origJson = res.json.bind(res);
+      res.json = (payload) => { const r = origJson(payload); finish(); return r; };
+      if (res.send) { const origSend = res.send.bind(res); res.send = (payload) => { const out2 = origSend(payload); finish(); return out2; }; }
+      if (res.end) { const origEnd = res.end.bind(res); res.end = (payload) => { const out3 = origEnd(payload); finish(); return out3; }; }
+      step();
+    });
   };
 }
 
@@ -535,6 +549,25 @@ function buildV1Router() {
   api.get('/observations', (req, res, next) =>
     apiResources.listFamily('observations', req, res).catch(next));
 
+  // --- Phase 28: the six assistants (orchestration on the Phase 27 tools) ---
+  api.get('/assistants/:assistant/summary', (req, res, next) => {
+    if (!assistantService.ASSISTANTS.includes(req.params.assistant)) {
+      return res.status(404).json({ success: false, error: `Unknown assistant '${req.params.assistant}'` });
+    }
+    assistantService.summarize(req.params.assistant, req.user, {
+      project_id: req.query.project_id ? Number(req.query.project_id) : undefined,
+      rfq_id: req.query.rfq_id ? Number(req.query.rfq_id) : undefined,
+      q: req.query.q,
+    }).then((data) => res.json({ success: true, data })).catch(next);
+  });
+  api.post('/assistants/:assistant/draft', (req, res, next) => {
+    if (!assistantService.ASSISTANTS.includes(req.params.assistant)) {
+      return res.status(404).json({ success: false, error: `Unknown assistant '${req.params.assistant}'` });
+    }
+    assistantService.draftFor(req.params.assistant, req.body || {})
+      .then((data) => res.json({ success: true, data })).catch(next);
+  });
+
   // Idempotency wraps POSTs (before the remounted chains so their responses
   // are captured for replay).
   api.use(v1.idempotency);
@@ -574,4 +607,4 @@ function registerFamilies(router) {
   }
 }
 
-module.exports = { buildV1Router, remount, remountFrom, FAMILY_MAP };
+module.exports = { buildV1Router, remount, remountFrom, FAMILY_MAP, ROUTERS };

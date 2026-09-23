@@ -90,6 +90,12 @@ app.use('/api/portal', require('./src/routes/portal'));
 // Phase 26 — versioned external API: /api/v1
 app.use('/api/v1', require('./src/routes/v1').buildV1Router());
 
+// Phase 27 — MCP server (authenticates itself; same bearer tokens as v1)
+app.use('/api/mcp', require('./src/routes/mcp'));
+
+// Phase 27 — admin Agent Activity surface
+app.use('/api/agent', require('./src/routes/agents'));
+
 // Initialize cost event listener
 require('./src/services/costEventListener').initCostEventListener();
 

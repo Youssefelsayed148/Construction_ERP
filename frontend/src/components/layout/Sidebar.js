@@ -4,7 +4,7 @@ import { useDispatch } from 'react-redux';
 import { logout as reduxLogout } from '../../store/slices/authSlice';
 import { authService } from '../../services/api';
 import { useLocale } from '../../hooks/useLocale';
-import { LayoutDashboard, Briefcase, Users, Package, Truck, Wrench, Shield, DollarSign, Receipt, ClipboardList, ListChecks, LogOut, Globe, HardHat } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Users, Package, Truck, Wrench, Shield, DollarSign, Receipt, ClipboardList, ListChecks, LogOut, Globe, HardHat, Bot } from 'lucide-react';
 
 const mainMenuItems = [
   { path: '/dashboard', icon: LayoutDashboard, labelKey: 'nav.dashboard' },
@@ -20,6 +20,8 @@ const mainMenuItems = [
   { path: '/legal', icon: Shield, labelKey: 'nav.legal' },
   { path: '/approvals', icon: ClipboardList, labelKey: 'nav.approvals' },
   { path: '/my-actions', icon: ListChecks, labelKey: 'nav.myActions' },
+  // Phase 27 — owner/admin only (filtered below).
+  { path: '/agent-activity', icon: Bot, label: 'Agent Activity', roles: ['owner', 'admin'] },
 ];
 
 const portalMenuItems = {
@@ -34,7 +36,8 @@ function Sidebar() {
   const navigate = useNavigate();
   const { t, setLocale, locale } = useLocale();
   const user = authService.getCurrentUser();
-  const menuItems = portalMenuItems[user?.role] || mainMenuItems;
+  const base = portalMenuItems[user?.role] || mainMenuItems;
+  const menuItems = base.filter((item) => !item.roles || item.roles.includes(user?.role));
 
   const handleLogout = () => {
     authService.clearSession();

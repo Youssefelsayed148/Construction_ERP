@@ -31,6 +31,7 @@ import ProjectDocuments from './pages/ProjectDocuments';
 import UnitsSales from './pages/UnitsSales';
 import PortalDashboard from './pages/PortalDashboard';
 import ProcurementReview from './pages/ProcurementReview';
+import AgentActivity from './pages/AgentActivity';
 import { authService } from './services/api';
 import './styles/index.css';
 import './styles/portal.css';
@@ -101,6 +102,8 @@ function App() {
           <Route path="projects/:id/documents" element={<ProjectDocuments />} />
           <Route path="projects/:id/units" element={<UnitsSales />} />
           <Route path="settings" element={<div className="page-container"><h1>Settings</h1></div>} />
+          {/* Phase 27 — Agent Activity (owner/admin; backend enforces) */}
+          <Route path="agent-activity" element={<AgentActivity />} />
         </Route>
       </Routes>
     </BrowserRouter>
