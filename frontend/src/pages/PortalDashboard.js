@@ -3,7 +3,7 @@ import { RefreshCw, FolderKanban, ClipboardCheck, Building2, Truck, Send } from 
 import { authService } from '../services/api';
 import { openProtectedFile } from '../components/ProtectedMedia';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
 
 const CONFIG = {
   consultant: { title: 'Consultant Portal', endpoint: '/api/consultant/dashboard', extra: '/api/consultant/reviews', extraTitle: 'My Reviews', icon: ClipboardCheck },

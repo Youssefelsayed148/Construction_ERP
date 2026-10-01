@@ -10,6 +10,7 @@
 
 const { MockDb } = require('../test-helpers/mock-db');
 const migration = require('../workflow-engine-migration');
+const actionMigration = require('../action-engine-migration');
 const engine = require('../../services/workflowEngine');
 const cleanup = require('../cleanup-orphan-approvals');
 
@@ -36,6 +37,7 @@ async function buildFixture() {
     id SERIAL PRIMARY KEY, amount DECIMAL(15,2), category VARCHAR(100), description TEXT, status VARCHAR(50))`);
   await migration.ensureTables(q);
   await migration.seedTemplates(q);
+  await actionMigration.run(q);
 }
 
 beforeAll(async () => {

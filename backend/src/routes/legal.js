@@ -7,10 +7,11 @@ const { logActivity } = require('../utils/activity');
 
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
-    const { status, document_type, limit = 100, offset = 0 } = req.query;
+    const { status, document_type, project_id, limit = 100, offset = 0 } = req.query;
     let conditions = []; let params = []; let idx = 1;
     if (status) { conditions.push(`status = $${idx++}`); params.push(status); }
     if (document_type) { conditions.push(`document_type = $${idx++}`); params.push(document_type); }
+    if (project_id) { conditions.push(`project_id = $${idx++}`); params.push(parseInt(project_id, 10)); }
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const dataResult = await query(`SELECT * FROM legal_documents ${where} ORDER BY created_at DESC LIMIT $${idx++} OFFSET $${idx}`, [...params, parseInt(limit), parseInt(offset)]);
     res.json({ success: true, data: dataResult.rows });
@@ -29,6 +30,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       title: Joi.string().required(), document_type: Joi.string().optional(),
+      project_id: Joi.number().integer().required(),
       description: Joi.string().allow(''), file_path: Joi.string().allow(''),
       submitted_by: Joi.string().allow(''),
     });
@@ -36,8 +38,8 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
     const result = await query(
-      `INSERT INTO legal_documents (title, document_type, description, file_path, submitted_by) VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [value.title, value.document_type, value.description, value.file_path, value.submitted_by]
+      `INSERT INTO legal_documents (title, document_type, description, file_path, submitted_by, project_id) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+      [value.title, value.document_type, value.description, value.file_path, value.submitted_by, value.project_id]
     );
 
     await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'legal', description: `Created legal document "${value.title}"`, entityId: result.rows[0].id, entityType: 'legal_document' });

@@ -8,10 +8,11 @@ const { logActivity } = require('../utils/activity');
 // Maintenance Reminders (linked to assets)
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
-    const { asset_id, status, limit = 100 } = req.query;
+    const { asset_id, status, project_id, limit = 100 } = req.query;
     let conds = []; let p = []; let i = 1;
     if (asset_id) { conds.push(`asset_id = $${i++}`); p.push(parseInt(asset_id)); }
     if (status) { conds.push(`status = $${i++}`); p.push(status); }
+    if (project_id) { conds.push(`mr.project_id = $${i++}`); p.push(parseInt(project_id, 10)); }
     const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
     const data = await query(`SELECT mr.*, a.code as asset_code, a.name_en as asset_name FROM maintenance_reminders mr LEFT JOIN assets a ON mr.asset_id = a.id ${w} ORDER BY scheduled_date DESC LIMIT $${i++}`, [...p, parseInt(limit)]);
     res.json({ success: true, data: data.rows });
@@ -30,6 +31,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       asset_id: Joi.number().integer().required(), title: Joi.string().required(),
+      project_id: Joi.number().integer().required(),
       description: Joi.string().allow(''), maintenance_type: Joi.string(),
       priority: Joi.string(), scheduled_date: Joi.date().iso().required(),
       next_due_date: Joi.date().iso(), interval_value: Joi.number(),
@@ -40,8 +42,8 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
     const r = await query(
-      `INSERT INTO maintenance_reminders (asset_id, title, description, maintenance_type, priority, scheduled_date, next_due_date, interval_value, interval_unit, estimated_hours, estimated_cost, assigned_tech) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
-      [value.asset_id, value.title, value.description, value.maintenance_type, value.priority, value.scheduled_date, value.next_due_date, value.interval_value, value.interval_unit, value.estimated_hours, value.estimated_cost, value.assigned_tech]
+      `INSERT INTO maintenance_reminders (asset_id, title, description, maintenance_type, priority, scheduled_date, next_due_date, interval_value, interval_unit, estimated_hours, estimated_cost, assigned_tech, project_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+      [value.asset_id, value.title, value.description, value.maintenance_type, value.priority, value.scheduled_date, value.next_due_date, value.interval_value, value.interval_unit, value.estimated_hours, value.estimated_cost, value.assigned_tech, value.project_id]
     );
 
     await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'maintenance', description: `Scheduled maintenance for equipment #${value.asset_id}`, entityId: r.rows[0].id, entityType: 'maintenance_reminder' });

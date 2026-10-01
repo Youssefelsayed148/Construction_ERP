@@ -329,6 +329,17 @@ describe('event dispatcher', () => {
 // ---------------------------------------------------------------------------
 
 describe('workflow → action items', () => {
+  test('requester-resolved steps create a concrete user action', async () => {
+    const wf = await engine.startWorkflow('rfi', 'rfi', 699,
+      { module_name: 'rfi', project_id: 1, requester_id: 20 }, { client });
+    const firstStep = wf.steps.find((step) => step.status === 'pending');
+    const item = db.table('action_items').rows.find((row) => row.workflow_instance_id === wf.instance.id);
+
+    expect(Number(firstStep.assigned_user_id)).toBe(20);
+    expect(Number(item.assigned_user_id)).toBe(20);
+    expect(item.assigned_role).toBe(null);
+  });
+
   test('starting a legacy workflow creates an action item for the pending step', async () => {
     await q(`INSERT INTO expenses (id, amount, status) VALUES ($1, $2, $3)`, [700, 100, 'pending']);
     const wf = await engine.startWorkflow('legacy_module_approval', 'expenses', 700,

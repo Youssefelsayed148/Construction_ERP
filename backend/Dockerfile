@@ -12,4 +12,4 @@ RUN mkdir -p uploads
 ENV NODE_ENV=production
 EXPOSE 5000
 
-CMD ["node", "server.js"]
+CMD ["npm", "run", "start:migrated"]

@@ -448,17 +448,28 @@ async function setupDatabase() {
   `);
   console.log('[OK] payroll');
 
-  // Seed owner account if no users exist
+  // Seed an initial owner only when explicitly requested. Production must never
+  // receive a predictable default credential as a side effect of migrations.
   const userCount = await query('SELECT COUNT(*) as cnt FROM users');
-  if (parseInt(userCount.rows[0].cnt) === 0) {
+  const shouldSeedOwner = process.env.SEED_DEFAULT_OWNER === 'true';
+  if (parseInt(userCount.rows[0].cnt) === 0 && shouldSeedOwner) {
+    const ownerEmail = process.env.DEFAULT_OWNER_EMAIL;
+    const ownerPassword = process.env.DEFAULT_OWNER_PASSWORD;
+    if (!ownerEmail || !ownerPassword || ownerPassword.length < 12) {
+      throw new Error(
+        'SEED_DEFAULT_OWNER requires DEFAULT_OWNER_EMAIL and DEFAULT_OWNER_PASSWORD (minimum 12 characters)'
+      );
+    }
     const bcrypt = require('bcryptjs');
-    const hashedPassword = await bcrypt.hash('admin123', 10);
+    const hashedPassword = await bcrypt.hash(ownerPassword, 10);
     await query(
       `INSERT INTO users (name, email, password, role, department, module_permissions, is_active)
        VALUES ($1, $2, $3, $4, $5, $6, true)`,
-      ['Owner', 'owner@construction-erp.com', hashedPassword, 'owner', 'Management', ['all']]
+      ['Owner', ownerEmail, hashedPassword, 'owner', 'Management', ['all']]
     );
-    console.log('[SEED] Owner account created: owner@construction-erp.com / admin123');
+    console.log(`[SEED] Owner account created: ${ownerEmail}`);
+  } else if (parseInt(userCount.rows[0].cnt) === 0) {
+    console.log('[SEED] No users exist; initial owner seeding was not requested');
   }
 
   console.log('\nDatabase setup complete!');

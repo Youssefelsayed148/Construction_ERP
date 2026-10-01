@@ -119,10 +119,125 @@ function extractProjectId(req, module) {
     if (req.params.project_id != null) return Number(req.params.project_id);
   }
   if (req.query && req.query.project_id != null) return Number(req.query.project_id);
+  if (req.body && req.body.project_id != null) return Number(req.body.project_id);
+  if (req.body && req.body.projectId != null) return Number(req.body.projectId);
   if (module === 'projects' && req.params && req.params.id != null) {
     return Number(req.params.id);
   }
+  if (req.route && /^\/project\/:id(?:\/|$)/.test(String(req.route.path)) && req.params?.id != null) {
+    return Number(req.params.id);
+  }
   return null;
+}
+
+// Routes such as /invoices/:id carry a record id, not a project id. Resolve
+// those records before policy evaluation so a project-scoped grant cannot be
+// bypassed by guessing another project's record id. Every table name below is
+// a constant owned by the server; request input is used only as a parameter.
+const RECORD_SCOPE_RULES = Object.freeze({
+  actions: [[/^\/:id(?:\/|$)/, 'action_items']],
+  agents: [[/^\/requests\/:id(?:\/|$)/, 'agent_action_requests']],
+  boq: [[/^\/sections\/:id(?:\/|$)/, 'boq_sections'], [/^\/items\/:id(?:\/|$)/, 'boq_items']],
+  commercial: [[/^\/variations\/:id(?:\/|$)/, 'variations']],
+  consultant: [
+    [/^\/observations\/:id(?:\/|$)/, 'observations'],
+    [/^\/rfis\/:id(?:\/|$)/, 'project_rfis'],
+    [/^\/submittals\/:id(?:\/|$)/, 'project_submittals'],
+  ],
+  docs: [
+    [/^\/documents\/:id(?:\/|$)/, 'project_documents'],
+    [/^\/rfis\/:id(?:\/|$)/, 'project_rfis'],
+    [/^\/submittals\/:id(?:\/|$)/, 'project_submittals'],
+    [/^\/transmittals\/:id(?:\/|$)/, 'transmittals'],
+    [/^\/correspondence\/:id(?:\/|$)/, 'correspondence'],
+  ],
+  expenses: [[/^\/:id(?:\/|$)/, 'expenses']],
+  payments: [[/^\/:id(?:\/|$)/, 'payments']],
+  invoices: [[/^\/:id(?:\/|$)/, 'invoices']],
+  locations: [[/^\/:id(?:\/|$)/, 'project_locations']],
+  materials: [[/^\/recipes\/:id(?:\/|$)/, 'material_recipes']],
+  procurement: [
+    [/^\/(?:documents\/)?pr\/:id(?:\/|$)/, 'purchase_requests'],
+    [/^\/rfq\/:id(?:\/|$)/, 'rfqs'],
+    [/^\/(?:documents\/)?po\/:id(?:\/|$)/, 'purchase_orders'],
+    [/^\/deliveries\/:id(?:\/|$)/, 'deliveries'],
+    [/^\/mir\/:id(?:\/|$)/, 'material_inspection_requests'],
+    [/^\/(?:documents\/)?grn\/:id(?:\/|$)/, 'goods_receipt_notes'],
+  ],
+  qhse: [
+    [/^\/quality-tests\/:id(?:\/|$)/, 'quality_tests'],
+    [/^\/ncrs\/:id(?:\/|$)/, 'ncrs'],
+    [/^\/itps\/:id(?:\/|$)/, 'itps'],
+    [/^\/wirs\/:id(?:\/|$)/, 'wirs'],
+    [/^\/mirs\/:id(?:\/|$)/, 'material_inspection_requests'],
+    [/^\/punch-items\/:id(?:\/|$)/, 'punch_items'],
+  ],
+  hse: [
+    [/^\/incidents\/:id(?:\/|$)/, 'incidents'],
+    [/^\/inspections\/:id(?:\/|$)/, 'hse_inspections'],
+    [/^\/permits\/:id(?:\/|$)/, 'work_permits'],
+    [/^\/jsas\/:id(?:\/|$)/, 'jsas'],
+    [/^\/risk-assessments\/:id(?:\/|$)/, 'risk_assessments'],
+    [/^\/near-misses\/:id(?:\/|$)/, 'near_misses'],
+  ],
+  legal: [[/^\/:id(?:\/|$)/, 'legal_documents']],
+  maintenance: [[/^\/:id(?:\/|$)/, 'maintenance_reminders']],
+  warehouses: [
+    [/^\/:id(?:\/|$)/, 'warehouses'],
+    [/^\/movements\/:id(?:\/|$)/, 'SELECT w.project_id FROM stock_movements sm JOIN warehouses w ON w.id = sm.warehouse_id WHERE sm.id = $1'],
+    [/^\/transfers\/:id(?:\/|$)/, 'SELECT COALESCE(source.project_id, destination.project_id) AS project_id FROM inventory_transfers t LEFT JOIN warehouses source ON source.id = t.from_warehouse_id LEFT JOIN warehouses destination ON destination.id = t.to_warehouse_id WHERE t.id = $1'],
+    [/^\/reservations\/:id(?:\/|$)/, 'stock_reservations'],
+  ],
+  'finance-ledger': [
+    [/^\/invoices\/:id(?:\/|$)/, 'invoices'],
+    [/^\/payments\/:id(?:\/|$)/, 'payments'],
+    [/^\/ap-review\/:id(?:\/|$)/, 'SELECT po.project_id FROM ap_review_queue q JOIN supplier_invoices si ON si.id = q.supplier_invoice_id JOIN purchase_orders po ON po.id = si.purchase_order_id WHERE q.id = $1'],
+  ],
+  handover: [
+    [/^\/process\/:id(?:\/|$)/, 'handover_processes'],
+    [/^\/package\/items\/:id(?:\/|$)/, 'handover_package_items'],
+    [/^\/claims\/:id(?:\/|$)/, 'warranty_claims'],
+  ],
+  quantities: [
+    [/^\/allocations\/:id(?:\/|$)/, 'boq_location_allocations'],
+    [/^\/measurements\/:id(?:\/|$)/, 'quantity_measurements'],
+    [/^\/progress\/location\/:locationId(?:\/|$)/, 'project_locations', 'locationId'],
+    [/^\/locations\/:locationId(?:\/|$)/, 'project_locations', 'locationId'],
+  ],
+  schedule: [[/^\/activities\/:id(?:\/|$)/, 'schedule_activities']],
+  'work-orders': [[/^\/:id(?:\/|$)/, 'work_orders']],
+});
+
+function recordScopeRule(req, module) {
+  const routePath = String(req.route?.path || '');
+  return (RECORD_SCOPE_RULES[module] || []).find(([pattern]) => pattern.test(routePath)) || null;
+}
+
+async function resolveProjectContext(req, module, q = query) {
+  const explicit = extractProjectId(req, module);
+  const rule = recordScopeRule(req, module);
+  if (!rule) {
+    if (explicit != null) return { projectId: explicit, recordScoped: false, recordFound: true };
+    return { projectId: null, recordScoped: false, recordFound: true };
+  }
+  const [, source, paramName = 'id'] = rule;
+  const recordId = req.params?.[paramName];
+  if (recordId == null) return { projectId: null, recordScoped: true, recordFound: false };
+  const sql = /^SELECT\s/i.test(source)
+    ? source
+    : `SELECT project_id FROM ${source} WHERE id = $1`;
+  const result = await q(sql, [recordId]);
+  const row = result.rows && result.rows[0];
+  const resolvedProjectId = row && row.project_id != null ? Number(row.project_id) : null;
+  // A caller cannot override a record's real owner by supplying an allowed
+  // project_id in the request body or query string.
+  const ownershipMatches = explicit == null || resolvedProjectId == null
+    || Number(explicit) === resolvedProjectId;
+  return {
+    projectId: resolvedProjectId,
+    recordScoped: true,
+    recordFound: Boolean(row) && ownershipMatches,
+  };
 }
 
 // Build the full decision for a set of policy rows.
@@ -137,15 +252,21 @@ function extractProjectId(req, module) {
 function decide({ rows, module, action, projectId }) {
   const flags = emptyFlags();
   if (rows.length === 0) {
-    return { allowed: null, flags, role_keys: [], source: 'legacy' };
+    return { allowed: null, flags, role_keys: [], source: 'legacy', company_wide: false, scoped_project_ids: [] };
   }
 
   const roleKeys = new Set();
+  const scopedProjectIds = new Set();
+  let companyWide = false;
   let allowed = false;
   for (const row of rows) {
     roleKeys.add(row.role_key);
     const flag = VISIBILITY_ACTION_TO_FLAG[row.perm_action];
     if (flag) flags[flag] = true;
+    if (grantMatches(row.perm_module, row.perm_action, module, action)) {
+      if (row.project_id == null) companyWide = true;
+      else scopedProjectIds.add(Number(row.project_id));
+    }
     if (allowed) continue;
     if (projectId != null && row.project_id != null && Number(row.project_id) !== Number(projectId)) {
       continue;
@@ -160,6 +281,8 @@ function decide({ rows, module, action, projectId }) {
     flags,
     role_keys: [...roleKeys],
     source: 'policy',
+    company_wide: companyWide,
+    scoped_project_ids: [...scopedProjectIds].filter(Number.isFinite),
   };
 }
 
@@ -214,16 +337,29 @@ async function evaluateForRole(roleKey, { module, action, projectId, actorScoped
 async function evaluateRequest(req, opts = {}) {
   const module = moduleFromRequest(req);
   const action = actionFromRequest(req);
-  const projectId = extractProjectId(req, module);
+  const q = opts.query || query;
+  const context = await resolveProjectContext(req, module, q);
+  const { projectId } = context;
+  if (context.recordScoped && !context.recordFound) {
+    return { allowed: false, flags: emptyFlags(), role_keys: [], source: 'policy', project_id: null };
+  }
+  const constrainRecordDecision = (decision) => {
+    if (context.recordScoped && projectId == null && decision.source === 'policy' && !decision.company_wide) {
+      return { ...decision, allowed: false, project_id: null };
+    }
+    return { ...decision, project_id: projectId };
+  };
   if (req.preview && req.user) {
-    return evaluateForRole(req.user.role, {
+    const decision = await evaluateForRole(req.user.role, {
       module,
       action,
       projectId,
       actorScopedProjects: (req.preview.scoped_project_ids || []).map(Number),
     }, opts);
+    return constrainRecordDecision(decision);
   }
-  return evaluate({ user: req.user, module, action, projectId }, opts);
+  const decision = await evaluate({ user: req.user, module, action, projectId }, opts);
+  return constrainRecordDecision(decision);
 }
 
 // Raw grants + decision source for a user. Used by routes that need to
@@ -311,6 +447,9 @@ module.exports = {
   moduleFromRequest,
   actionFromRequest,
   extractProjectId,
+  RECORD_SCOPE_RULES,
+  recordScopeRule,
+  resolveProjectContext,
   loadUserPolicy,
   loadRoleGrants,
   decide,

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Bot, ShieldCheck, ClipboardList, CheckCircle2, XCircle } from 'lucide-react';
 import { useLocale } from '../hooks/useLocale';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
 function headers() {
   const token = localStorage.getItem('token');

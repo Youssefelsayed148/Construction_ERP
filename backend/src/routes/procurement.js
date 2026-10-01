@@ -21,6 +21,30 @@ const prLineSchema = Joi.object({
   notes: Joi.string().optional().allow('', null),
 });
 
+// Project procurement workspace read model for the complete PR → RFQ → PO →
+// delivery → MIR → GRN chain.
+router.get('/project/:projectId', authenticate, authorize(), async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.projectId, 10);
+    const [purchaseRequests, rfqs, purchaseOrders, deliveries, mirs, grns] = await Promise.all([
+      query('SELECT * FROM purchase_requests WHERE project_id = $1 ORDER BY created_at DESC, id DESC LIMIT 200', [projectId]),
+      query('SELECT * FROM rfqs WHERE project_id = $1 ORDER BY created_at DESC, id DESC LIMIT 200', [projectId]),
+      query('SELECT * FROM purchase_orders WHERE project_id = $1 ORDER BY created_at DESC, id DESC LIMIT 200', [projectId]),
+      query('SELECT * FROM deliveries WHERE project_id = $1 ORDER BY created_at DESC, id DESC LIMIT 200', [projectId]),
+      query('SELECT * FROM material_inspection_requests WHERE project_id = $1 ORDER BY created_at DESC, id DESC LIMIT 200', [projectId]),
+      query('SELECT * FROM goods_receipt_notes WHERE project_id = $1 ORDER BY created_at DESC, id DESC LIMIT 200', [projectId]),
+    ]);
+    res.json({ success: true, data: {
+      purchase_requests: purchaseRequests.rows,
+      rfqs: rfqs.rows,
+      purchase_orders: purchaseOrders.rows,
+      deliveries: deliveries.rows,
+      material_inspection_requests: mirs.rows,
+      goods_receipt_notes: grns.rows,
+    } });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 // ---------------------------------------------------------------------------
 // Purchase requisitions (PR: Draft → Submit → Budget Check → Authority →
 // Procurement via the Phase 6 workflow engine)

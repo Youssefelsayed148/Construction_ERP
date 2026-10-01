@@ -4,7 +4,7 @@ import { useLocale } from '../hooks/useLocale';
 import { ArrowLeft, Edit, Plus, Users, Calendar, Flag, MapPin, X, Briefcase, TrendingUp, TrendingDown } from 'lucide-react';
 import { formatCurrency, formatDate, formatPercent } from '../utils/formatters';
 
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api`;
+const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
 const headers = () => {
   const token = localStorage.getItem('token');
@@ -213,6 +213,8 @@ function ProjectDetail() {
           { path: 'boq', label: locale === 'ar' ? 'جدول الكميات' : 'BOQ' },
           { path: 'work-orders', label: locale === 'ar' ? 'أوامر العمل' : 'Work Orders' },
           { path: 'site', label: locale === 'ar' ? 'إدارة الموقع' : 'Site Management' },
+          { path: 'site-workspace', label: locale === 'ar' ? 'مساحة عمل الموقع' : 'Site Workspace' },
+          { path: 'operations', label: locale === 'ar' ? 'المواد والمشتريات' : 'Materials & Commercial' },
           { path: 'locations', label: locale === 'ar' ? 'المواقع والكميات' : 'Locations & Quantities' },
           { path: 'qhse', label: locale === 'ar' ? 'الجودة والسلامة' : 'Quality & HSE' },
           { path: 'hse', label: locale === 'ar' ? 'الصحة والسلامة' : 'HSE Workspace' },

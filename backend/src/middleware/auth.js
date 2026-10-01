@@ -21,6 +21,36 @@ function externalPortalAllowed(req) {
   return path === '/api/documents/upload' && req.method === 'POST';
 }
 
+const OMIT = Symbol('omit-out-of-scope-record');
+
+// Defense in depth for collection endpoints. Handlers built before scoped
+// policy often return mixed-project arrays; prune any object carrying a
+// foreign project_id before it reaches a project-scoped caller.
+function filterScopedPayload(value, allowedProjectIds) {
+  const allowed = allowedProjectIds instanceof Set
+    ? allowedProjectIds
+    : new Set((allowedProjectIds || []).map(Number));
+
+  function visit(node, key = '') {
+    if (Array.isArray(node)) {
+      if (key === 'project_ids') return node.filter((id) => allowed.has(Number(id)));
+      return node.map((item) => visit(item)).filter((item) => item !== OMIT);
+    }
+    if (!node || typeof node !== 'object' || Buffer.isBuffer(node)) return node;
+    const projectId = node.project_id ?? node.projectId;
+    if (projectId != null && !allowed.has(Number(projectId))) return OMIT;
+    const output = {};
+    for (const [childKey, child] of Object.entries(node)) {
+      const filtered = visit(child, childKey);
+      if (filtered !== OMIT) output[childKey] = filtered;
+    }
+    return output;
+  }
+
+  const filtered = visit(value);
+  return filtered === OMIT ? null : filtered;
+}
+
 // Sign a preview-as-role token. The token carries the ACTING user's id plus
 // the role being previewed; authenticate() swaps req.user.role to the
 // previewed role and forces read-only. Every preview start is audited by the
@@ -145,6 +175,11 @@ const authorize = (...roles) => {
       return res.status(403).json({ success: false, error: 'Insufficient permissions' });
     }
 
+    if (!decision.company_wide && decision.project_id == null && decision.scoped_project_ids?.length) {
+      const originalJson = res.json.bind(res);
+      res.json = (payload) => originalJson(filterScopedPayload(payload, decision.scoped_project_ids));
+    }
+
     next();
   };
   // Exposed for tooling/tests: the coarse role list the call site declared.
@@ -152,4 +187,4 @@ const authorize = (...roles) => {
   return middleware;
 };
 
-module.exports = { authenticate, authorize, createPreviewToken, externalPortalAllowed };
+module.exports = { authenticate, authorize, createPreviewToken, externalPortalAllowed, filterScopedPayload };

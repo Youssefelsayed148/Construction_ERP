@@ -1,0 +1,61 @@
+name: ERP quality gate
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: construction_erp
+          POSTGRES_USER: construction_erp_user
+          POSTGRES_PASSWORD: test-database-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U construction_erp_user -d construction_erp"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      JWT_SECRET: ci-only-secret-that-is-longer-than-32-characters
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_NAME: construction_erp
+      DB_USER: construction_erp_user
+      DB_PASSWORD: test-database-password
+      CI: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: Backend dependencies
+        run: npm ci
+        working-directory: backend
+      - name: Fresh database migration
+        run: npm run migrate
+        working-directory: backend
+      - name: Backend tests
+        run: npm test -- --runInBand --detectOpenHandles
+        working-directory: backend
+      - name: Frontend dependencies
+        run: npm ci
+        working-directory: frontend
+      - name: Frontend unit tests
+        run: npm run test:ci
+        working-directory: frontend
+      - name: Frontend production build
+        run: npm run build
+        working-directory: frontend
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - name: Browser and mobile viewport tests
+        run: npm run test:e2e
+        working-directory: frontend

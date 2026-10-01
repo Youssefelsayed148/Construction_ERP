@@ -6,6 +6,7 @@ const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
+const policy = require('../services/policy');
 
 const SECRET = process.env.JWT_SECRET;
 
@@ -15,7 +16,7 @@ router.post('/register', authenticate, authorize('owner', 'admin'), async (req, 
     const schema = Joi.object({
       name: Joi.string().required(),
       email: Joi.string().email().required(),
-      password: Joi.string().min(6).required(),
+      password: Joi.string().min(12).required(),
       role: Joi.string().valid('admin', 'manager', 'staff', 'accountant', 'engineer', 'site_supervisor').default('staff'),
       department: Joi.string().optional(),
       module_permissions: Joi.array().items(Joi.string()).optional()
@@ -89,6 +90,11 @@ router.post('/login', async (req, res) => {
       description: `User ${user.name} logged in`
     });
 
+    const access = await policy.listGrants(user);
+    const policyModules = access.source === 'policy'
+      ? [...new Set(access.grants.map((grant) => grant.perm_module).filter(Boolean))]
+      : (user.module_permissions || []);
+
     res.json({
       success: true,
       data: {
@@ -99,7 +105,8 @@ router.post('/login', async (req, res) => {
           email: user.email,
           role: user.role,
           department: user.department,
-          module_permissions: user.module_permissions
+          module_permissions: user.module_permissions,
+          policy_modules: policyModules,
         }
       }
     });
@@ -127,8 +134,8 @@ router.get('/me', authenticate, authorize(), async (req, res) => {
 router.post('/change-password', authenticate, authorize(), async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword || newPassword.length < 6) {
-      return res.status(400).json({ success: false, error: 'Current password and new password (min 6 chars) required' });
+    if (!currentPassword || !newPassword || newPassword.length < 12) {
+      return res.status(400).json({ success: false, error: 'Current password and new password (min 12 chars) required' });
     }
 
     const result = await query('SELECT password FROM users WHERE id = $1', [req.user.id]);

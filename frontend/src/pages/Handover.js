@@ -9,7 +9,7 @@ import { useLocale } from '../hooks/useLocale';
 import { openProtectedFile } from '../components/ProtectedMedia';
 import { ArrowLeft, Plus, KeyRound, PackageCheck, CheckCircle } from 'lucide-react';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
 const API_URL = `${API_BASE_URL}/api`;
 
 const headers = () => {

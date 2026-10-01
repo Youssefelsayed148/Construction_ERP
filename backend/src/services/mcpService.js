@@ -180,8 +180,8 @@ async function createConfirmationRecord({ toolName, def, args, reason, user, age
   const requiredApproverRole = agentPolicy.requiredApproverRole(toolName);
   const r = await query(
     `INSERT INTO agent_action_requests
-       (tool, operation, payload, reason, agent_session, requesting_user_id, required_approver_role, execution_status)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+       (tool, operation, payload, reason, agent_session, requesting_user_id, required_approver_role, execution_status, project_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
     [toolName,
       JSON.stringify({ router: def.router || null, method: def.method || null, path: def.path || null }),
       JSON.stringify(args || {}),
@@ -189,7 +189,8 @@ async function createConfirmationRecord({ toolName, def, args, reason, user, age
       agentSession || null,
       user.id,
       requiredApproverRole,
-      def.draftOnly ? 'draft' : 'awaiting_approval']
+      def.draftOnly ? 'draft' : 'awaiting_approval',
+      args?.project_id == null ? null : Number(args.project_id)]
   );
   return r.rows[0];
 }

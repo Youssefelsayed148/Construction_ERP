@@ -32,6 +32,7 @@ import UnitsSales from './pages/UnitsSales';
 import PortalDashboard from './pages/PortalDashboard';
 import ProcurementReview from './pages/ProcurementReview';
 import AgentActivity from './pages/AgentActivity';
+import ProjectOperations from './pages/ProjectOperations';
 import { authService } from './services/api';
 import './styles/index.css';
 import './styles/portal.css';
@@ -93,6 +94,7 @@ function App() {
           <Route path="projects/:id/work-orders" element={<WorkOrders />} />
           <Route path="projects/:id/site" element={<SiteManagement />} />
           <Route path="projects/:id/site-workspace" element={<SiteWorkspace />} />
+          <Route path="projects/:id/operations" element={<ProjectOperations />} />
           <Route path="projects/:id/locations" element={<LocationDashboard />} />
           <Route path="projects/:id/qhse" element={<QHSE />} />
           <Route path="projects/:id/hse" element={<HSE />} />
