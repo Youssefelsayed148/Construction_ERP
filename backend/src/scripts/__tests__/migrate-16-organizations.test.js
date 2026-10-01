@@ -123,6 +123,7 @@ describe('organizations-migration.js (schema invariants)', () => {
 
   test('alters add organization_id to projects and wbs_node_id to cost_codes', () => {
     const alterText = m.ALTER_STATEMENTS.join('\n');
+    expect(alterText).toMatch(/ALTER TABLE\s+suppliers\s+ADD COLUMN IF NOT EXISTS\s+city/i);
     expect(alterText).toMatch(/ALTER TABLE\s+projects\s+ADD COLUMN/i);
     expect(alterText).toMatch(/organization_id/i);
     expect(alterText).toMatch(/REFERENCES\s+organizations\(id\)/i);

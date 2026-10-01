@@ -19,6 +19,8 @@ const MIGRATIONS = [
   'setupDb.js',
   'migrate-1.3.js', 'migrate-1.4.js', 'migrate-2.1.js', 'migrate-2.2.js',
   'migrate-3.js', 'migrate-4.js', 'migrate-5.2.js', 'migrate-7.js',
+  'migrate-8.js', 'migrate-9.js', 'migrate-10.js', 'migrate-11.js',
+  'migrate-12.js', 'migrate-13.js', 'migrate-14.js', 'migrate-15.js',
   'policy-migration.js', 'migrate-16.js', 'organizations-migration.js',
   'migrate-16-organizations.js', 'migrate-17-policy-engine.js',
   'migrate-18-project-wizard.js', 'project-wizard-migration.js',
@@ -42,9 +44,6 @@ const MIGRATIONS = [
   'migrate-36-handover.js', 'handover-migration.js',
   'migrate-37-external-api.js', 'migrate-38-agent-layer.js',
   'migrate-39-project-scope-hardening.js',
-  // Legacy one-off cleanups that are idempotent guards:
-  'migrate-8.js', 'migrate-9.js', 'migrate-10.js', 'migrate-11.js', 'migrate-12.js',
-  'migrate-13.js', 'migrate-14.js', 'migrate-15.js', 'migrate-4.js',
 ];
 
 function runScript(script) {

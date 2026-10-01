@@ -354,7 +354,7 @@ async function enforceNotNull(query) {
 // the view exposes the derived value straight from the source of truth.
 async function createViews(query) {
   const views = [
-    `CREATE OR REPLACE VIEW v_boq_item_progress AS
+    ['v_boq_item_progress', `CREATE VIEW v_boq_item_progress AS
      SELECT bi.*,
        COALESCE(m.executed, 0) AS completed_quantity_derived,
        CASE WHEN bi.quantity > 0
@@ -366,8 +366,8 @@ async function createViews(query) {
        FROM quantity_measurements
        WHERE approval_state IN ('approved','certified')
        GROUP BY boq_item_id
-     ) m ON m.boq_item_id = bi.id`,
-    `CREATE OR REPLACE VIEW v_boq_allocation_progress AS
+     ) m ON m.boq_item_id = bi.id`],
+    ['v_boq_allocation_progress', `CREATE VIEW v_boq_allocation_progress AS
      SELECT a.*,
        COALESCE(m.executed, 0) AS executed_derived,
        COALESCE(m.consultant_approved, 0) AS consultant_approved_derived,
@@ -380,13 +380,18 @@ async function createViews(query) {
               SUM(CASE WHEN approval_state = 'certified' THEN quantity ELSE 0 END) AS certified
        FROM quantity_measurements
        GROUP BY boq_item_id, project_location_id
-     ) m ON m.boq_item_id = a.boq_item_id AND m.project_location_id = a.project_location_id`,
+     ) m ON m.boq_item_id = a.boq_item_id AND m.project_location_id = a.project_location_id`],
   ];
-  for (const ddl of views) {
+  for (const [name, ddl] of views) {
     // Views are a PostgreSQL-only read convenience; mock executors skip them.
     try {
+      // Later phases add columns to the underlying tables. PostgreSQL cannot
+      // CREATE OR REPLACE a SELECT * view when those additions shift the
+      // derived-column positions, so rebuild the read-only view explicitly.
+      await query(`DROP VIEW IF EXISTS ${name}`);
       await query(ddl);
     } catch (e) {
+      if (e.code) throw e;
       console.error(`[location-quantity-migration] view skipped: ${e.message}`);
     }
   }

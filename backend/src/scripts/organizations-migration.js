@@ -378,6 +378,9 @@ const BACKFILL_STATEMENTS = [
 // ---------------------------------------------------------------------------
 
 const ALTER_STATEMENTS = [
+  // Fresh and partially upgraded installations must expose every legacy
+  // supplier field consumed by the organization backfill.
+  `ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS city VARCHAR(100)`,
   // projects.organization_id alongside the existing projects.client_id.
   // We keep client_id for now — the route layer reads both during the
   // cutover window; Phase 8 / 9 will retire client_id.

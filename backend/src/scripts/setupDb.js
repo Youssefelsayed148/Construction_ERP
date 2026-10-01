@@ -236,6 +236,7 @@ async function setupDatabase() {
       phone VARCHAR(50),
       email VARCHAR(255),
       address TEXT,
+      city VARCHAR(100),
       specialty VARCHAR(255),
       tax_id VARCHAR(100),
       payment_terms VARCHAR(255),
