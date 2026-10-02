@@ -2,7 +2,7 @@
   "note": "Heuristic static counts. Per-file counts may only go down (npm run i18n:check). Regenerate with npm run i18n:inventory.",
   "frontend": {
     "totals": {
-      "inlineBranches": 1192,
+      "inlineBranches": 1189,
       "hardcodedEnglish": 102,
       "rawEnumRendering": 5,
       "hardcodedFormat": 8,
@@ -32,27 +32,6 @@
       },
       "components/layout/Sidebar.js": {
         "inlineBranches": 3,
-        "hardcodedEnglish": 0,
-        "rawEnumRendering": 0,
-        "hardcodedFormat": 0,
-        "prompts": 0
-      },
-      "i18n/config.js": {
-        "inlineBranches": 1,
-        "hardcodedEnglish": 0,
-        "rawEnumRendering": 0,
-        "hardcodedFormat": 0,
-        "prompts": 0
-      },
-      "i18n/LocaleContext.js": {
-        "inlineBranches": 1,
-        "hardcodedEnglish": 0,
-        "rawEnumRendering": 0,
-        "hardcodedFormat": 0,
-        "prompts": 0
-      },
-      "i18n/translate.js": {
-        "inlineBranches": 1,
         "hardcodedEnglish": 0,
         "rawEnumRendering": 0,
         "hardcodedFormat": 0,
