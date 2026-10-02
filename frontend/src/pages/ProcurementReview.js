@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
 const COLUMNS = [
   ['supplier_name', 'Supplier'], ['compliant', 'Compliant'], ['lead_time_days', 'Lead days'],
   ['unit_price', 'Unit price'], ['total_price', 'Total price'], ['payment_terms', 'Payment terms'],

@@ -3,7 +3,7 @@ import { useLocale } from '../hooks/useLocale';
 import { Search, Plus, Edit, Trash2, Users, X } from 'lucide-react';
 import EGYPT_CITIES from '../constants/egyptCities';
 
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api`;
+const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
 const headers = () => {
   const token = localStorage.getItem('token');
@@ -64,7 +64,6 @@ function Clients() {
   };
 
   const clientName = (c) => locale === 'ar' ? c.name_ar : c.name_en;
-  const clientTypeLabel = (type) => CLIENT_TYPE_LABELS[locale]?.[type] || type;
   const cityDisplay = (city) => {
     if (!city) return '-';
     const match = EGYPT_CITIES.find(c => c.en === city);

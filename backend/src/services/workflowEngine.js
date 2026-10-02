@@ -119,6 +119,12 @@ function resolveAssignedRole(step, context) {
   return null;
 }
 
+function resolveAssignedUser(step, context) {
+  if (step.resolver_type === 'requester') return num(context && context.requester_id);
+  if (step.resolver_type === 'user') return num(step.resolver_value);
+  return null;
+}
+
 // Who may decide at this step: privileged roles bypass everything; otherwise
 // the step's resolver decides (role list, module-manager map, org type).
 function allowedRolesFor(step, context) {
@@ -189,7 +195,6 @@ async function startWorkflow(templateKey, entityType, entityId, context, opts = 
   );
   const instanceId = inst.rows[0].id;
 
-  const stepBySort = new Map(steps.map((s) => [s.step_key, s]));
   for (const step of steps) {
     const isFirstStep = step.step_key === first.step_key;
     const wasSkipped = !applicable.some((s) => s.step_key === step.step_key);
@@ -201,22 +206,18 @@ async function startWorkflow(templateKey, entityType, entityId, context, opts = 
         step.mode || 'sequential',
         wasSkipped ? 'skipped' : (isFirstStep ? 'pending' : 'waiting'),
         resolveAssignedRole(step, ctx),
-        null,
+        resolveAssignedUser(step, ctx),
         isFirstStep ? new Date() : null,
       ]
     );
   }
 
   // Phase 7: the pending first step is actionable → matching action item.
-  try {
-    const firstStepInstance = (await loadStepInstances(client, instanceId)).find((s) => s.status === 'pending');
-    const instanceRow = await loadInstance(client, instanceId);
-    if (firstStepInstance && instanceRow) {
-      const templateStep = steps.find((s) => s.step_key === firstStepInstance.step_key);
-      await actionService.createForWorkflowStep(instanceRow, firstStepInstance, templateStep, { client });
-    }
-  } catch (e) {
-    console.error('[WORKFLOW] action item creation failed:', e.message);
+  const firstStepInstance = (await loadStepInstances(client, instanceId)).find((s) => s.status === 'pending');
+  const instanceRow = await loadInstance(client, instanceId);
+  if (firstStepInstance && instanceRow) {
+    const templateStep = steps.find((s) => s.step_key === firstStepInstance.step_key);
+    await actionService.createForWorkflowStep(instanceRow, firstStepInstance, templateStep, { client });
   }
 
   return getInstance(client, instanceId);
@@ -291,6 +292,7 @@ async function syncExternalState(instanceId, stepKey, actor, opts = {}) {
     role: actor.role, decision: opts.decision || (opts.rejected ? 'reject' : 'advance'),
     comment: opts.comment || null,
   });
+  await actionService.closeForWorkflowStep(instanceId, target.id, opts.rejected ? 'rejected' : 'completed', { client });
   return getInstance(client, instanceId);
 }
 
@@ -363,8 +365,8 @@ async function recordDecision(instanceId, stepId, userId, decision, comment, opt
         [next.step_key, now, instanceId]
       );
       await client.query(
-        `UPDATE workflow_step_instances SET status = 'pending', assigned_role = $1, opened_at = $4 WHERE instance_id = $2 AND step_key = $3`,
-        [resolveAssignedRole(next, context), instanceId, next.step_key, now]
+        `UPDATE workflow_step_instances SET status = 'pending', assigned_role = $1, assigned_user_id = $5, opened_at = $4 WHERE instance_id = $2 AND step_key = $3`,
+        [resolveAssignedRole(next, context), instanceId, next.step_key, now, resolveAssignedUser(next, context)]
       );
     } else {
       await client.query(
@@ -375,17 +377,13 @@ async function recordDecision(instanceId, stepId, userId, decision, comment, opt
     }
     await recordAction(client, { instance, step: current, userId, userName, role, decision: 'approve', comment });
     // Phase 7: action items — close the decided step's, open the next step's.
-    try {
-      await actionService.closeForWorkflowStep(instanceId, current.id, 'completed', { client });
-      if (next) {
-        const nextStepInstance = (await loadStepInstances(client, instanceId)).find((s) => s.step_key === next.step_key);
-        const instanceRow = await loadInstance(client, instanceId);
-        await actionService.createForWorkflowStep(instanceRow, nextStepInstance, next, { client });
-      } else {
-        await emitModuleEvent(client, instance, 'approved', { userId, userName, role });
-      }
-    } catch (e) {
-      console.error('[WORKFLOW] action item sync failed:', e.message);
+    await actionService.closeForWorkflowStep(instanceId, current.id, 'completed', { client });
+    if (next) {
+      const nextStepInstance = (await loadStepInstances(client, instanceId)).find((s) => s.step_key === next.step_key);
+      const instanceRow = await loadInstance(client, instanceId);
+      await actionService.createForWorkflowStep(instanceRow, nextStepInstance, next, { client });
+    } else {
+      await emitModuleEvent(client, instance, 'approved', { userId, userName, role });
     }
     const fresh = await getInstance(client, instanceId);
     return {
@@ -408,12 +406,8 @@ async function recordDecision(instanceId, stepId, userId, decision, comment, opt
     );
     await applySourceStatus(client, instance, 'rejected');
     await recordAction(client, { instance, step: current, userId, userName, role, decision: 'reject', comment });
-    try {
-      await actionService.closeForWorkflowStep(instanceId, current.id, 'rejected', { client });
-      await emitModuleEvent(client, instance, 'rejected', { userId, userName, role });
-    } catch (e) {
-      console.error('[WORKFLOW] action item sync failed:', e.message);
-    }
+    await actionService.closeForWorkflowStep(instanceId, current.id, 'rejected', { client });
+    await emitModuleEvent(client, instance, 'rejected', { userId, userName, role });
     const fresh = await getInstance(client, instanceId);
     return { ok: true, statusCode: 200, outcome: 'rejected', stage: null, workflow: fresh };
   }
@@ -433,21 +427,17 @@ async function recordDecision(instanceId, stepId, userId, decision, comment, opt
       [previous.step_key, now, instanceId]
     );
     await client.query(
-      `UPDATE workflow_step_instances SET status = 'pending', assigned_role = $1, opened_at = $4, completed_at = $5 WHERE instance_id = $2 AND step_key = $3`,
-      [resolveAssignedRole(previous, context), instanceId, previous.step_key, now, null]
+      `UPDATE workflow_step_instances SET status = 'pending', assigned_role = $1, assigned_user_id = $6, opened_at = $4, completed_at = $5 WHERE instance_id = $2 AND step_key = $3`,
+      [resolveAssignedRole(previous, context), instanceId, previous.step_key, now, null, resolveAssignedUser(previous, context)]
     );
     await recordAction(client, { instance, step: current, userId, userName, role, decision: 'return', comment });
     // Phase 7: rework loop — close the returned step's item, raise one for the
     // re-opened previous step.
-    try {
-      await actionService.closeForWorkflowStep(instanceId, current.id, 'completed', { client });
-      const prevStepInstance = (await loadStepInstances(client, instanceId)).find((s) => s.step_key === previous.step_key);
-      const instanceRow = await loadInstance(client, instanceId);
-      if (prevStepInstance && instanceRow) {
-        await actionService.createForWorkflowStep(instanceRow, prevStepInstance, previous, { client });
-      }
-    } catch (e) {
-      console.error('[WORKFLOW] action item sync failed:', e.message);
+    await actionService.closeForWorkflowStep(instanceId, current.id, 'completed', { client });
+    const prevStepInstance = (await loadStepInstances(client, instanceId)).find((s) => s.step_key === previous.step_key);
+    const instanceRow = await loadInstance(client, instanceId);
+    if (prevStepInstance && instanceRow) {
+      await actionService.createForWorkflowStep(instanceRow, prevStepInstance, previous, { client });
     }
     const fresh = await getInstance(client, instanceId);
     return { ok: true, statusCode: 200, outcome: 'returned', stage: previous.step_key, workflow: fresh };
@@ -463,15 +453,11 @@ async function recordDecision(instanceId, stepId, userId, decision, comment, opt
       [target, current.id]
     );
     // Phase 7: keep the step's action item pointing at the new assignee.
-    try {
-      await client.query(
-        `UPDATE action_items SET assigned_user_id = $1, assigned_role = NULL, acknowledged_at = NULL, updated_at = $2
-         WHERE workflow_step_instance_id = $3 AND status IN ('open','in_progress')`,
-        [target, now, current.id]
-      );
-    } catch (e) {
-      console.error('[WORKFLOW] action item reassignment failed:', e.message);
-    }
+    await client.query(
+      `UPDATE action_items SET assigned_user_id = $1, assigned_role = NULL, acknowledged_at = NULL, updated_at = $2
+       WHERE workflow_step_instance_id = $3 AND status IN ('open','in_progress')`,
+      [target, now, current.id]
+    );
     await recordAction(client, { instance, step: current, userId, userName, role, decision: 'reassign', comment });
     const fresh = await getInstance(client, instanceId);
     return { ok: true, statusCode: 200, outcome: 'reassigned', stage: current.step_key, workflow: fresh };
@@ -507,10 +493,11 @@ async function getPendingFor(userId, opts = {}) {
     if (!current) continue;
     const isPrivileged = role === 'owner' || role === 'admin';
     const roleMatch = current.assigned_role != null && roleSet.has(current.assigned_role);
+    const userMatch = current.assigned_user_id != null && num(current.assigned_user_id) === num(userId);
     const isRequester = instance.requester_id != null && num(instance.requester_id) === num(userId);
     // Requester visibility: they see their own instances read-only.
-    if (isPrivileged || roleMatch || isRequester) {
-      pending.push({ instance, step: current, can_decide: isPrivileged || roleMatch });
+    if (isPrivileged || roleMatch || userMatch || isRequester) {
+      pending.push({ instance, step: current, can_decide: isPrivileged || roleMatch || userMatch });
     }
   }
   return pending;
@@ -523,11 +510,7 @@ async function applySourceStatus(client, instance, outcome) {
   const entry = map[moduleName];
   if (!entry) return;
   const [table, status] = entry;
-  try {
-    await client.query(`UPDATE ${table} SET status = $1 WHERE id = $2`, [status, instance.entity_id]);
-  } catch (error) {
-    console.error(`workflowEngine.applySourceStatus failed for ${moduleName}#${instance.entity_id}:`, error.message);
-  }
+  await client.query(`UPDATE ${table} SET status = $1 WHERE id = $2`, [status, instance.entity_id]);
 }
 
 // ---------------------------------------------------------------------------
@@ -836,6 +819,7 @@ module.exports = {
   verifyApprovalParity,
   stepApplicable,
   resolveAssignedRole,
+  resolveAssignedUser,
   allowedRolesFor,
   loadTemplate,
   loadSteps,

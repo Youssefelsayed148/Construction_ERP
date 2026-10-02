@@ -8,7 +8,7 @@ import { ArrowLeft, Camera, Sun, Users, Truck, HardHat, ClipboardList, AlertTria
 // generated from the same source records (POST .../site-reports/assemble),
 // so the engineer types only narrative, issues and the next-day plan.
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
 const API_URL = `${API_BASE_URL}/api`;
 
 const headers = () => {

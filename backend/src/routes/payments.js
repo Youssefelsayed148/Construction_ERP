@@ -3,7 +3,7 @@ const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
-const { logActivity } = require('../utils/activity');
+const { logActivity, fireEvent } = require('../utils/activity');
 const finance = require('../services/financeEngine');
 
 const PAYMENT_METHODS = ['cash', 'bank_transfer', 'check', 'other'];
@@ -102,6 +102,11 @@ router.post('/', authenticate, authorize(), async (req, res) => {
       action: 'create', module: 'payments',
       description: `Recorded payment of ${value.amount} EGP`,
       entityId: payment.id, entityType: 'payment', amount: value.amount
+    });
+    await fireEvent({
+      eventType: 'payment.received', entityType: 'payment', entityId: payment.id,
+      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+      payload: { payment_id: payment.id, amount: value.amount, invoice_id: value.invoice_id || null, project_id: value.project_id, client_id: value.client_id },
     });
 
     res.status(201).json({ success: true, data: payment });

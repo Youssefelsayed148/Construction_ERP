@@ -8,7 +8,7 @@ import {
   DollarSign, TrendingUp, TrendingDown, Receipt, Truck, Shield, ClipboardList, ChevronRight,
 } from 'lucide-react';
 
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api`;
+const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
 function Dashboard() {
   const { t, locale } = useLocale();
@@ -17,6 +17,7 @@ function Dashboard() {
   const [alerts, setAlerts] = useState(null);
   const [financeSummary, setFinanceSummary] = useState(null);
   const [overview, setOverview] = useState(null);
+  const [roleDash, setRoleDash] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,12 +32,14 @@ function Dashboard() {
       authGet('/dashboard/alerts'),
       authGet('/finance/summary'),
       authGet('/dashboard/overview'),
+      authGet('/dashboard/role'),
     ])
-      .then(([statsRes, alertsRes, financeRes, overviewRes]) => {
+      .then(([statsRes, alertsRes, financeRes, overviewRes, roleRes]) => {
         if (statsRes?.success) setStats(statsRes.data || statsRes);
         if (alertsRes?.success) setAlerts(alertsRes.data);
         if (financeRes?.success) setFinanceSummary(financeRes.data);
         if (overviewRes?.success) setOverview(overviewRes.data);
+        if (roleRes?.success) setRoleDash(roleRes.data);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -191,6 +194,10 @@ function Dashboard() {
         </div>
       ) : (
         <>
+          {/* Phase 23: the per-role widget strip (all 16 roles; the owner strip
+              extends /overview above). Zero records render empty cards. */}
+          <RoleDashboardSection dash={roleDash} ar={ar} />
+
           <div className="stats-grid">
             {healthCards.map((card, i) => (
               <div className="stat-card" key={i}>
@@ -339,6 +346,62 @@ function Dashboard() {
         </>
       )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Phase 23 — per-role widget strip + sticky notes + location dashboard widget
+// ---------------------------------------------------------------------------
+
+function RoleDashboardSection({ dash, ar }) {
+  if (!dash) return null;
+  const widgets = dash.widgets || [];
+  const sticky = dash.sticky_notes || [];
+  return (
+    <>
+      <div className="card" style={{ marginBottom: 20, padding: 12 }}>
+        <h3 className="card-title" style={{ fontSize: 14, marginBottom: 10 }}>
+          {ar ? 'لوحة دوري' : 'My role dashboard'} ({dash.role})
+        </h3>
+        <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
+          {widgets.map((wgt) => {
+            const entries = Object.entries(wgt.data || {});
+            const headline = entries[0];
+            return (
+              <div className="stat-card" key={wgt.key}>
+                <div className="stat-label">{wgt.title}</div>
+                {headline ? (
+                  <div className="stat-value" style={{ fontSize: 20 }}>
+                    {typeof headline[1] === 'number' ? formatNumber(headline[1]) : (headline[1] ?? '—')}
+                  </div>
+                ) : (
+                  <div className="stat-value" style={{ fontSize: 20 }}>—</div>
+                )}
+                <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
+                  {entries.slice(1, 3).map(([k, v]) => `${k}: ${typeof v === 'number' ? formatNumber(v) : (v ?? '—')}`).join(' · ')}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      {(sticky.length > 0) && (
+        <div className="card" style={{ marginBottom: 20, padding: 12 }}>
+          <h3 className="card-title" style={{ fontSize: 14, marginBottom: 8 }}>
+            {ar ? 'الملاحظات السريعة' : 'Sticky notes'} ({sticky.length})
+          </h3>
+          <div style={{ display: 'grid', gap: 6 }}>
+            {sticky.map(n => (
+              <div key={n.id} style={rowStyle}>
+                <span style={{ width: 12, height: 12, borderRadius: 3, background: n.color || 'yellow', flexShrink: 0 }} />
+                <span style={{ fontSize: 13 }}>{n.text}</span>
+                <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--color-text-secondary)' }}>{n.scope}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

@@ -6,7 +6,7 @@ import {
   Users, Camera, Wallet, RefreshCw,
 } from 'lucide-react';
 
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api`;
+const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
 const headers = () => {
   const token = localStorage.getItem('token');

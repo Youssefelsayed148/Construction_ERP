@@ -3,7 +3,7 @@ const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
-const { logActivity } = require('../utils/activity');
+const { logActivity, fireEvent } = require('../utils/activity');
 const engine = require('../services/commercialEngine');
 
 // Phase 13 — the commercial surface: client contracts (SOV), the variation
@@ -151,6 +151,13 @@ router.post('/variations/:id/decide', authenticate, authorize(), async (req, res
     const result = await transaction((client) => engine.decideVariation(
       client.query.bind(client), parseInt(req.params.id, 10), req.user, value.decision, value.comment
     ));
+    if (value.decision === 'approve') {
+      await fireEvent({
+        eventType: 'variation.approved', entityType: 'variation', entityId: parseInt(req.params.id, 10),
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        payload: { variation_id: parseInt(req.params.id, 10), status: result.status },
+      });
+    }
     res.json({ success: true, data: result });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });

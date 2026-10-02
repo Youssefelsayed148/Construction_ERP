@@ -92,7 +92,7 @@ async function runEscalationSweep(query, opts = {}) {
           top_roles: policy.top_roles,
           body: `Action "${item.title}" is past its due date (${due.toISOString().slice(0, 10)}).`,
         },
-      });
+      }, { query: qf });
       await qf(
         'UPDATE action_items SET escalation_level = 3, last_escalated_at = $1, updated_at = $1 WHERE id = $2',
         [now, item.id]

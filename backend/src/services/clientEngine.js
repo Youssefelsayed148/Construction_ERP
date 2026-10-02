@@ -246,7 +246,13 @@ async function clientDashboard(q, user, { project_id = null, preview_project_id 
   // Future phases (24 weekly/monthly reports, 25 handover readiness) — the
   // widgets exist now and degrade to their empty state until those phases ship.
   dashboard.periodic_reports = { items: [], count: 0, empty_label: 'Weekly/monthly reports arrive with Phase 24' };
-  dashboard.handover_readiness = { percent: null, empty_label: 'Handover readiness arrives with Phase 25' };
+  // Phase 25 — handover readiness (percent of package items complete).
+  try {
+    const handoverEngine = require('./handoverEngine');
+    dashboard.handover_readiness = await handoverEngine.handoverReadiness(q, projectId);
+  } catch (e) {
+    dashboard.handover_readiness = { percent: 0, open_punch_items: 0 };
+  }
 
   return dashboard;
 }

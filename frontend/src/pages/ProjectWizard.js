@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import { ArrowRight, ArrowLeft, Check, X, Building2, Layers, Network, Users, Globe, ShieldCheck, FileCheck, CalendarRange, FolderTree, BellRing } from 'lucide-react';
 
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api`;
+const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
 const headers = () => {
   const token = localStorage.getItem('token');

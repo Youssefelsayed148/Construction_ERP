@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Upload, X, FileText, Image } from 'lucide-react';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
 
 // Reusable file upload: uploads to /api/documents/upload and reports uploaded
 // file info (file_url, original_name, file_type, file_size_bytes) via onUploaded.

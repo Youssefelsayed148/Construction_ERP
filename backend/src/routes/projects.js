@@ -3,7 +3,7 @@ const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
-const { logActivity } = require('../utils/activity');
+const { logActivity, fireEvent } = require('../utils/activity');
 const provisioning = require('../services/projectProvisioning');
 
 const PROJECT_TYPES = ['residential', 'commercial', 'industrial', 'infrastructure', 'mixed'];
@@ -181,6 +181,7 @@ const wizardCreate = async (req, res) => {
       description: `Provisioned project ${result.project.code} via wizard (${result.steps.length} steps)`,
       entityId: result.project.id, entityType: 'project'
     });
+    await fireEvent({ eventType: 'project.created', entityType: 'project', entityId: result.project.id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: result.project.id, code: result.project.code, name: result.project.name, via: 'wizard' } });
     res.status(201).json({ success: true, data: result.project, counts: result.counts, steps: result.steps });
   } catch (e) {
     console.error('Wizard provisioning failed:', e);
@@ -220,6 +221,7 @@ const legacyCreate = async (req, res) => {
     });
 
     await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'projects', description: `Created project ${value.code}`, entityId: result.id, entityType: 'project' });
+    await fireEvent({ eventType: 'project.created', entityType: 'project', entityId: result.id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: result.id, code: result.code, name: result.name } });
     res.status(201).json({ success: true, data: result });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 };

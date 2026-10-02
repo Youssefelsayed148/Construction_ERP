@@ -209,7 +209,7 @@ describe('full procurement scenario (gate — zero manual DB edits)', () => {
   test('RFQ issued to 3 vendors; 3 quotes; comparison; award', async () => {
     rfq = await svc.createRfq(q, {
       purchase_request_id: pr.id, project_id: 1,
-      title: 'Cement supply', due_date: '2026-09-30', created_by: USER_PURCHASING.id,
+      title: 'Cement supply', due_date: '2099-09-30', created_by: USER_PURCHASING.id,
       lines: [{ material_id: 50, description: 'Cement bags', quantity: 100, unit: 'bag' }],
     });
     const vendors = await svc.inviteVendors(q, rfq.id, SUPPLIERS);
@@ -228,7 +228,7 @@ describe('full procurement scenario (gate — zero manual DB edits)', () => {
       rfq_id: rfq.id, supplier_id: 9, created_by: USER_SUPPLIER.id,
       lines: [{ rfq_line_id: rfqLine.id, quantity: 100, unit_price: 98, delivery_days: 7 }],
       tax_pct: 5, payment_terms: 'Net 30', delivery_terms: 'FOB site',
-      lead_time_days: 7, warranty_months: 12, valid_until: '2026-10-15',
+      lead_time_days: 7, warranty_months: 12, valid_until: '2099-10-15',
       technical_score: 4.5, commercial_score: 4.2,
     });
     await svc.submitQuotation(q, {

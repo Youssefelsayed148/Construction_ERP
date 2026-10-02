@@ -34,6 +34,8 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+      AUTH_RATE_LIMIT_PER_15_MIN: ${AUTH_RATE_LIMIT_PER_15_MIN:-20}
     volumes:
       - backend_uploads:/app/uploads
 

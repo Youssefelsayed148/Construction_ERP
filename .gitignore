@@ -6,6 +6,8 @@ frontend/.env.local
 *.log
 backend/uploads/
 frontend/build/
+frontend/playwright-report/
+frontend/test-results/
 .DS_Store
 db_dump/
 .env.docker

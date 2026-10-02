@@ -75,8 +75,18 @@ async function migrate() {
 
   await query('CREATE INDEX IF NOT EXISTS idx_quality_tests_project ON quality_tests(project_id, result)');
   await query('CREATE INDEX IF NOT EXISTS idx_ncrs_project ON ncrs(project_id, status)');
-  await query('CREATE INDEX IF NOT EXISTS idx_safety_inspections_project ON safety_inspections(project_id)');
-  await query('CREATE INDEX IF NOT EXISTS idx_safety_incidents_project ON safety_incidents(project_id, status)');
+  // Phase 20 replaces these legacy tables with compatibility views. On a
+  // rerun, index only when the legacy relation is still a physical table.
+  await query(`DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM pg_class WHERE oid = 'safety_inspections'::regclass AND relkind IN ('r', 'p')) THEN
+      CREATE INDEX IF NOT EXISTS idx_safety_inspections_project ON safety_inspections(project_id);
+    END IF;
+  END $$`);
+  await query(`DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM pg_class WHERE oid = 'safety_incidents'::regclass AND relkind IN ('r', 'p')) THEN
+      CREATE INDEX IF NOT EXISTS idx_safety_incidents_project ON safety_incidents(project_id, status);
+    END IF;
+  END $$`);
   console.log('[OK] indexes');
 
   console.log('\nMigration complete!');

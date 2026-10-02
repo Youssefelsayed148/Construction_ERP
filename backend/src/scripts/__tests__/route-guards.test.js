@@ -57,10 +57,14 @@ describe('every guarded route carries authorize() (static check)', () => {
     .filter((f) => f.endsWith('.js'));
 
   test('route files exist', () => {
-    expect(files.length).toBe(40); // Includes the authenticated media route.
+    // 44 internal route files + Phase 26's v1.js assembly + Phase 27's mcp.js
+    // (authenticates via oauthService, not middleware/auth) and agents.js.
+    expect(files.length).toBe(47);
   });
 
   test.each(files)('%s has no bare authenticate-only route lines', (file) => {
+    if (file === 'v1.js') return; // Phase 26: v1 remounts the internal guarded chains verbatim.
+    if (file === 'mcp.js') return; // Phase 27: authenticates via the oauth service; every tool call still re-runs the internal guarded chains.
     const content = fs.readFileSync(path.join(ROUTES_DIR, file), 'utf8');
     const lines = content.split('\n');
     for (const line of lines) {

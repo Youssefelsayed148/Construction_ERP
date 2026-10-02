@@ -4,22 +4,24 @@ import { useDispatch } from 'react-redux';
 import { logout as reduxLogout } from '../../store/slices/authSlice';
 import { authService } from '../../services/api';
 import { useLocale } from '../../hooks/useLocale';
-import { LayoutDashboard, Briefcase, Users, Package, Truck, Wrench, Shield, DollarSign, Receipt, ClipboardList, ListChecks, LogOut, Globe, HardHat } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Users, Package, Truck, Wrench, Shield, DollarSign, Receipt, ClipboardList, ListChecks, LogOut, Globe, HardHat, Bot } from 'lucide-react';
 
 const mainMenuItems = [
-  { path: '/dashboard', icon: LayoutDashboard, labelKey: 'nav.dashboard' },
-  { path: '/projects', icon: Briefcase, labelKey: 'nav.projects' },
-  { path: '/inventory', icon: Package, labelKey: 'nav.inventory' },
-  { path: '/procurement/comparison', icon: ClipboardList, label: 'Procurement comparison' },
-  { path: '/clients', icon: Users, labelKey: 'nav.clients' },
-  { path: '/suppliers', icon: Truck, labelKey: 'nav.suppliers' },
-  { path: '/assets', icon: Wrench, labelKey: 'nav.assets' },
-  { path: '/hr', icon: Users, labelKey: 'nav.hr' },
-  { path: '/expenses', icon: DollarSign, labelKey: 'nav.expenses' },
-  { path: '/invoices', icon: Receipt, labelKey: 'nav.invoices' },
-  { path: '/legal', icon: Shield, labelKey: 'nav.legal' },
-  { path: '/approvals', icon: ClipboardList, labelKey: 'nav.approvals' },
-  { path: '/my-actions', icon: ListChecks, labelKey: 'nav.myActions' },
+  { path: '/dashboard', icon: LayoutDashboard, labelKey: 'nav.dashboard', module: 'dashboard' },
+  { path: '/projects', icon: Briefcase, labelKey: 'nav.projects', module: 'projects' },
+  { path: '/inventory', icon: Package, labelKey: 'nav.inventory', module: 'items' },
+  { path: '/procurement/comparison', icon: ClipboardList, label: 'Procurement comparison', module: 'procurement' },
+  { path: '/clients', icon: Users, labelKey: 'nav.clients', module: 'clients' },
+  { path: '/suppliers', icon: Truck, labelKey: 'nav.suppliers', module: 'suppliers' },
+  { path: '/assets', icon: Wrench, labelKey: 'nav.assets', module: 'assets' },
+  { path: '/hr', icon: Users, labelKey: 'nav.hr', module: 'hr' },
+  { path: '/expenses', icon: DollarSign, labelKey: 'nav.expenses', module: 'expenses' },
+  { path: '/invoices', icon: Receipt, labelKey: 'nav.invoices', module: 'invoices' },
+  { path: '/legal', icon: Shield, labelKey: 'nav.legal', module: 'legal' },
+  { path: '/approvals', icon: ClipboardList, labelKey: 'nav.approvals', module: 'approvals' },
+  { path: '/my-actions', icon: ListChecks, labelKey: 'nav.myActions', module: 'actions' },
+  // Phase 27 — owner/admin only (filtered below).
+  { path: '/agent-activity', icon: Bot, label: 'Agent Activity', roles: ['owner', 'admin'] },
 ];
 
 const portalMenuItems = {
@@ -29,12 +31,16 @@ const portalMenuItems = {
   supplier: [{ path: '/supplier-portal', icon: Truck, label: 'Supplier Portal' }],
 };
 
-function Sidebar() {
+function Sidebar({ mobileOpen = false, onNavigate }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { t, setLocale, locale } = useLocale();
   const user = authService.getCurrentUser();
-  const menuItems = portalMenuItems[user?.role] || mainMenuItems;
+  const base = portalMenuItems[user?.role] || mainMenuItems;
+  const modules = Array.isArray(user?.policy_modules) ? user.policy_modules : user?.module_permissions;
+  const hasModule = (module) => !module || !Array.isArray(modules) || modules.length === 0
+    || modules.includes('*') || modules.includes('all') || modules.includes(module);
+  const menuItems = base.filter((item) => (!item.roles || item.roles.includes(user?.role)) && hasModule(item.module));
 
   const handleLogout = () => {
     authService.clearSession();
@@ -47,7 +53,7 @@ function Sidebar() {
   };
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${mobileOpen ? ' mobile-open' : ''}`}>
       <div className="sidebar-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <HardHat size={28} style={{ color: 'var(--color-accent)' }} />
@@ -63,6 +69,7 @@ function Sidebar() {
             className={({ isActive }) =>
               `nav-item${isActive ? ' active' : ''}`
             }
+            onClick={onNavigate}
           >
             <item.icon size={18} />
             <span>{item.label || t(`common.${item.labelKey}`)}</span>

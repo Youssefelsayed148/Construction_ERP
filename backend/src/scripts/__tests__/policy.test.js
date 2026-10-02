@@ -273,6 +273,61 @@ describe('policy.evaluateRequest', () => {
     expect(denied.allowed).toBe(false);
   });
 
+  test('derives the project from write payloads', async () => {
+    const denied = await policy.evaluateRequest(
+      { user: { id: 4, role: 'consultant' }, method: 'POST', baseUrl: '/api/qhse', params: {}, query: {}, body: { project_id: 2 } },
+      { query }
+    );
+    expect(denied.allowed).toBe(false);
+    expect(denied.project_id).toBe(2);
+  });
+
+  test('resolves record IDs to their owning project before deciding', async () => {
+    const recordQuery = async (sql, params) => {
+      if (/FROM\s+invoices\s+WHERE/i.test(sql)) {
+        return { rows: [{ project_id: params[0] === 10 ? 1 : 9 }] };
+      }
+      return query(sql, params);
+    };
+    const allowed = await policy.evaluateRequest(
+      { user: { id: 4, role: 'consultant' }, method: 'GET', baseUrl: '/api/invoices', route: { path: '/:id' }, params: { id: 10 }, query: {} },
+      { query: recordQuery }
+    );
+    const denied = await policy.evaluateRequest(
+      { user: { id: 4, role: 'consultant' }, method: 'GET', baseUrl: '/api/invoices', route: { path: '/:id' }, params: { id: 11 }, query: {} },
+      { query: recordQuery }
+    );
+    // Consultant has no invoice permission, but both decisions prove the
+    // resolved owner project is carried into the policy result.
+    expect(allowed.project_id).toBe(1);
+    expect(denied.project_id).toBe(9);
+    expect(denied.allowed).toBe(false);
+  });
+
+  test('does not let a body project_id override a record owner', async () => {
+    const context = await policy.resolveProjectContext(
+      { route: { path: '/:id' }, params: { id: 44 }, query: {}, body: { project_id: 1 } },
+      'invoices',
+      async () => ({ rows: [{ project_id: 9 }] })
+    );
+    expect(context).toEqual({ projectId: 9, recordScoped: true, recordFound: false });
+  });
+
+  test('project-scoped grants cannot access legacy records with no project owner', async () => {
+    const scopedQuery = async (sql) => {
+      if (/FROM\s+invoices\s+WHERE/i.test(sql)) return { rows: [{ project_id: null }] };
+      if (/FROM\s+user_project_roles/i.test(sql)) {
+        return { rows: [{ role_key: 'consultant', project_id: 1, organization_id: 3, perm_module: 'invoices', perm_action: 'view' }] };
+      }
+      throw new Error(`unexpected SQL: ${sql}`);
+    };
+    const decision = await policy.evaluateRequest(
+      { user: { id: 4, role: 'consultant' }, method: 'GET', baseUrl: '/api/invoices', route: { path: '/:id' }, params: { id: 10 }, query: {}, body: {} },
+      { query: scopedQuery }
+    );
+    expect(decision.allowed).toBe(false);
+  });
+
   test('maps HTTP methods to policy actions', () => {
     expect(policy.actionFromRequest({ method: 'GET' })).toBe('view');
     expect(policy.actionFromRequest({ method: 'POST' })).toBe('create');
@@ -283,6 +338,49 @@ describe('policy.evaluateRequest', () => {
   test('req.params.id is only trusted as a project on the projects mount (ID-guess rule)', () => {
     expect(policy.extractProjectId({ params: { id: 5 } }, 'projects')).toBe(5);
     expect(policy.extractProjectId({ params: { id: 5 } }, 'invoices')).toBeNull();
+  });
+
+  test.each([
+    ['warehouses', '/:id/movements', { id: '14' }, /FROM warehouses WHERE id/i],
+    ['finance-ledger', '/invoices/:id/transition', { id: '15' }, /FROM invoices WHERE id/i],
+    ['handover', '/claims/:id/status', { id: '16' }, /FROM warranty_claims WHERE id/i],
+    ['quantities', '/measurements/:id/review', { id: '17' }, /FROM quantity_measurements WHERE id/i],
+  ])('resolves %s record routes before authorization', async (module, routePath, params, expectedSql) => {
+    const calls = [];
+    const context = await policy.resolveProjectContext(
+      { route: { path: routePath }, params, query: {}, body: {} },
+      module,
+      async (sql, values) => { calls.push({ sql, values }); return { rows: [{ project_id: 7 }] }; }
+    );
+    expect(context).toEqual({ projectId: 7, recordScoped: true, recordFound: true });
+    expect(calls[0].sql).toMatch(expectedSql);
+    expect(calls[0].values).toEqual([params.id]);
+  });
+
+  test('resolves nested warehouse movement ownership through its warehouse', async () => {
+    const context = await policy.resolveProjectContext(
+      { route: { path: '/movements/:id/reverse' }, params: { id: '22' }, query: {}, body: {} },
+      'warehouses',
+      async (sql, values) => {
+        expect(sql).toMatch(/stock_movements sm JOIN warehouses w/i);
+        expect(values).toEqual(['22']);
+        return { rows: [{ project_id: 3 }] };
+      }
+    );
+    expect(context.projectId).toBe(3);
+  });
+
+  test('uses named record parameters for location dashboards', async () => {
+    const context = await policy.resolveProjectContext(
+      { route: { path: '/locations/:locationId/dashboard' }, params: { locationId: '31' }, query: {}, body: {} },
+      'quantities',
+      async (sql, values) => {
+        expect(sql).toMatch(/FROM project_locations WHERE id/i);
+        expect(values).toEqual(['31']);
+        return { rows: [{ project_id: 4 }] };
+      }
+    );
+    expect(context.projectId).toBe(4);
   });
 });
 

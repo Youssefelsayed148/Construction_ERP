@@ -3,7 +3,7 @@ import { useLocale } from '../hooks/useLocale';
 import { authService } from '../services/api';
 import { ClipboardList, CheckCircle, XCircle, History, Inbox, Clock, Circle } from 'lucide-react';
 
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api`;
+const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
 const headers = () => {
   const token = localStorage.getItem('token');

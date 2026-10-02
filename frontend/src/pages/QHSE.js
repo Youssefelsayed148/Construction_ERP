@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
-import { ArrowLeft, Plus, FlaskConical, AlertOctagon, ShieldCheck, Siren, X, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Plus, FlaskConical, AlertOctagon, ShieldCheck, Siren, X, CheckCircle, ClipboardCheck, ListChecks, Wrench, PackageCheck, Gauge } from 'lucide-react';
+import { ItpTab, WirTab, PunchTab, CapaTab, MockUpsTab, CalibrationTab } from './QHSEExtended';
 
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api`;
+const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
 const headers = () => {
   const token = localStorage.getItem('token');
@@ -86,6 +87,12 @@ function QHSE() {
   const TABS = [
     { key: 'tests', icon: FlaskConical, label: locale === 'ar' ? 'اختبارات الجودة' : 'Quality Tests' },
     { key: 'ncrs', icon: AlertOctagon, label: locale === 'ar' ? 'تقارير عدم المطابقة' : 'NCRs' },
+    { key: 'itp', icon: ClipboardCheck, label: locale === 'ar' ? 'خطط الفحص' : 'ITP' },
+    { key: 'wirs', icon: ShieldCheck, label: locale === 'ar' ? 'فحص الأعمال' : 'WIRs' },
+    { key: 'punch', icon: ListChecks, label: locale === 'ar' ? 'بنود PUNCH' : 'Punch Items' },
+    { key: 'capa', icon: Wrench, label: locale === 'ar' ? 'إجراءات CAPA' : 'CAPA' },
+    { key: 'mockups', icon: PackageCheck, label: locale === 'ar' ? 'نماذج تجريبية' : 'Mock-ups' },
+    { key: 'calibration', icon: Gauge, label: locale === 'ar' ? 'المعايرة' : 'Calibration' },
     { key: 'inspections', icon: ShieldCheck, label: locale === 'ar' ? 'تفتيش السلامة' : 'Safety Inspections' },
     { key: 'incidents', icon: Siren, label: locale === 'ar' ? 'الحوادث' : 'Incidents' },
   ];
@@ -134,6 +141,12 @@ function QHSE() {
 
       {tab === 'tests' && <QualityTestsTab projectId={id} locale={locale} t={t} onChanged={loadSummary} />}
       {tab === 'ncrs' && <NcrsTab projectId={id} locale={locale} t={t} onChanged={loadSummary} />}
+      {tab === 'itp' && <ItpTab projectId={id} locale={locale} t={t} />}
+      {tab === 'wirs' && <WirTab projectId={id} locale={locale} t={t} />}
+      {tab === 'punch' && <PunchTab projectId={id} locale={locale} t={t} />}
+      {tab === 'capa' && <CapaTab projectId={id} locale={locale} t={t} />}
+      {tab === 'mockups' && <MockUpsTab projectId={id} locale={locale} t={t} />}
+      {tab === 'calibration' && <CalibrationTab projectId={id} locale={locale} t={t} />}
       {tab === 'inspections' && <InspectionsTab projectId={id} locale={locale} t={t} onChanged={loadSummary} />}
       {tab === 'incidents' && <IncidentsTab projectId={id} locale={locale} t={t} onChanged={loadSummary} />}
     </div>

@@ -105,6 +105,17 @@ router.delete('/:id', authenticate, authorize(), async (req, res) => {
 });
 
 // Materials
+router.get('/:id/materials', authenticate, authorize(), async (req, res) => {
+  try {
+    const wo = await query('SELECT id FROM work_orders WHERE id = $1', [req.params.id]);
+    if (wo.rows.length === 0) return res.status(404).json({ success: false, error: 'Work order not found' });
+    const r = await query(
+      'SELECT wom.*, im.code as item_code, im.name_en, im.name_ar FROM work_order_materials wom LEFT JOIN item_master im ON wom.item_id = im.id WHERE wom.work_order_id = $1 ORDER BY wom.id',
+      [req.params.id]);
+    res.json({ success: true, data: r.rows });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 router.post('/:id/materials', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
@@ -152,6 +163,15 @@ router.post('/:id/materials', authenticate, authorize(), async (req, res) => {
 });
 
 // Labor (planning only, no cost)
+router.get('/:id/labor', authenticate, authorize(), async (req, res) => {
+  try {
+    const wo = await query('SELECT id FROM work_orders WHERE id = $1', [req.params.id]);
+    if (wo.rows.length === 0) return res.status(404).json({ success: false, error: 'Work order not found' });
+    const r = await query('SELECT * FROM work_order_labor WHERE work_order_id = $1 ORDER BY work_date, id', [req.params.id]);
+    res.json({ success: true, data: r.rows });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 router.post('/:id/labor', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
@@ -171,6 +191,17 @@ router.post('/:id/labor', authenticate, authorize(), async (req, res) => {
 });
 
 // Equipment
+router.get('/:id/equipment', authenticate, authorize(), async (req, res) => {
+  try {
+    const wo = await query('SELECT id FROM work_orders WHERE id = $1', [req.params.id]);
+    if (wo.rows.length === 0) return res.status(404).json({ success: false, error: 'Work order not found' });
+    const r = await query(
+      'SELECT woe.*, a.code as equipment_code FROM work_order_equipment woe LEFT JOIN assets a ON woe.equipment_id = a.id WHERE woe.work_order_id = $1 ORDER BY woe.work_date, woe.id',
+      [req.params.id]);
+    res.json({ success: true, data: r.rows });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 router.post('/:id/equipment', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
@@ -190,6 +221,17 @@ router.post('/:id/equipment', authenticate, authorize(), async (req, res) => {
 });
 
 // Work Completions
+router.get('/:id/completions', authenticate, authorize(), async (req, res) => {
+  try {
+    const wo = await query('SELECT id FROM work_orders WHERE id = $1', [req.params.id]);
+    if (wo.rows.length === 0) return res.status(404).json({ success: false, error: 'Work order not found' });
+    const r = await query(
+      'SELECT wc.*, u.name as verified_name FROM work_completions wc LEFT JOIN users u ON wc.verified_by = u.id WHERE wc.work_order_id = $1 ORDER BY wc.completion_date, wc.id',
+      [req.params.id]);
+    res.json({ success: true, data: r.rows });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 router.post('/:id/completions', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({

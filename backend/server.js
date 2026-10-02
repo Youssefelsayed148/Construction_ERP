@@ -1,27 +1,32 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const { securityHeaders, requestId, fixedWindowRateLimit, validateRuntimeConfig } = require('./src/middleware/security');
 const logger = require('./src/utils/logger');
 const { healthCheck } = require('./src/config/database');
 
+validateRuntimeConfig();
+
 const app = express();
+const trustProxySetting = process.env.TRUST_PROXY;
+const trustProxy = trustProxySetting === 'true' ? true
+  : (/^\d+$/.test(trustProxySetting || '') ? Number(trustProxySetting) : false);
+app.set('trust proxy', trustProxy);
 
-(async () => {
-  try {
-    const health = await healthCheck();
-    if (health.status === 'healthy') {
-      console.log('PostgreSQL database connection verified - Construction ERP');
-    } else {
-      console.error('PostgreSQL database connection failed:', health.message);
-    }
-  } catch (error) {
-    console.error('Database health check failed:', error);
-  }
-})();
-
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000', credentials: true }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+const FRONTEND_ORIGIN = process.env.FRONTEND_URL || 'http://localhost:3000';
+// Phase 26: v1 also serves non-browser API clients; extra origins (sandbox UI,
+// partner portals) come in via a comma-separated env list.
+const EXTRA_ORIGINS = (process.env.CORS_EXTRA_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
+app.use(cors({ origin: [FRONTEND_ORIGIN, ...EXTRA_ORIGINS], credentials: true }));
+app.use(securityHeaders);
+app.use(requestId);
+app.use(fixedWindowRateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: parseInt(process.env.AUTH_RATE_LIMIT_PER_15_MIN || '20', 10),
+  applies: (req) => req.path === '/api/auth/login' || req.path === '/api/v1/oauth/token',
+}));
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: process.env.FORM_BODY_LIMIT || '1mb' }));
 app.use('/uploads', require('./src/routes/media'));
 
 app.use((req, res, next) => {
@@ -29,12 +34,13 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get('/api/health', (req, res) => {
-  res.json({
+app.get('/api/health', async (req, res) => {
+  const database = await healthCheck();
+  res.status(database.status === 'healthy' ? 200 : 503).json({
     name: 'Construction ERP',
     version: '1.0.0',
-    status: 'running',
-    database: 'PostgreSQL',
+    status: database.status === 'healthy' ? 'ready' : 'degraded',
+    database,
     timestamp: new Date().toISOString()
   });
 });
@@ -65,6 +71,10 @@ app.use('/api/costing', require('./src/routes/costing'));
 app.use('/api/documents', require('./src/routes/documents'));
 app.use('/api/projects', require('./src/routes/site'));
 app.use('/api/qhse', require('./src/routes/qhse'));
+app.use('/api/hse', require('./src/routes/hse'));
+app.use('/api/schedule', require('./src/routes/schedule'));
+app.use('/api/reports', require('./src/routes/reports'));
+app.use('/api/handover', require('./src/routes/handover'));
 app.use('/api/docs', require('./src/routes/doccontrol'));
 app.use('/api/sales', require('./src/routes/units'));
 app.use('/api/actions', require('./src/routes/actions'));
@@ -79,28 +89,40 @@ app.use('/api/consultant', require('./src/routes/consultant'));
 app.use('/api/client-portal', require('./src/routes/client'));
 app.use('/api/portal', require('./src/routes/portal'));
 
-// Initialize cost event listener
-require('./src/services/costEventListener').initCostEventListener();
+// Phase 26 — versioned external API: /api/v1
+app.use('/api/v1', require('./src/routes/v1').buildV1Router());
 
-// Initialize action/notification dispatcher + escalation scheduler (Phase 7)
-require('./src/services/eventDispatcher').initEventDispatcher();
-require('./src/services/escalationScheduler').initEscalationScheduler();
+// Phase 27 — MCP server (authenticates itself; same bearer tokens as v1)
+app.use('/api/mcp', require('./src/routes/mcp'));
 
-// Replenishment / auto-purchasing sweep (Phase 11)
-require('./src/services/replenishment').initReplenishmentScheduler();
-
-// Receivable reminders (Phase 14)
-require('./src/services/financeEngine').initReceivableReminderScheduler();
+// Phase 27 — admin Agent Activity surface
+app.use('/api/agent', require('./src/routes/agents'));
 
 app.use((err, req, res, next) => {
   logger.error(err.stack);
-  res.status(500).json({ success: false, error: 'Internal server error', message: err.message });
+  res.status(500).json({ success: false, error: 'Internal server error', request_id: req.requestId });
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  logger.info(`Construction ERP Server running on port ${PORT}`);
-  logger.info(`Database: ${process.env.DB_NAME || 'construction_erp'}`);
-});
+function startBackgroundServices() {
+  require('./src/services/costEventListener').initCostEventListener();
+  require('./src/services/eventDispatcher').initEventDispatcher();
+  require('./src/services/escalationScheduler').initEscalationScheduler();
+  require('./src/services/replenishment').initReplenishmentScheduler();
+  require('./src/services/financeEngine').initReceivableReminderScheduler();
+  require('./src/services/hseEngine').initPermitExpiryScheduler();
+  require('./src/services/webhookService').initWebhookEventSubscriber();
+  require('./src/routes/reports').initScheduledReportScheduler();
+}
 
-module.exports = { app };
+function startServer() {
+  startBackgroundServices();
+  return app.listen(PORT, () => {
+    logger.info(`Construction ERP Server running on port ${PORT}`);
+    logger.info(`Database: ${process.env.DB_NAME || 'construction_erp'}`);
+  });
+}
+
+if (require.main === module) startServer();
+
+module.exports = { app, startServer, startBackgroundServices };
