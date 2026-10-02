@@ -58,6 +58,8 @@ describePg('token typing (real PostgreSQL, real app)', () => {
 
   afterAll(async () => {
     await db.query('DELETE FROM service_accounts WHERE id = $1', [serviceAccountId]);
+    await db.query('DELETE FROM activity_log WHERE user_id = $1', [userId]);
+    await db.query('DELETE FROM audit_events WHERE user_id = $1', [userId]);
     await db.query('DELETE FROM users WHERE id = $1', [userId]);
     await new Promise((resolve) => server.close(resolve));
     await db.pool.end();
