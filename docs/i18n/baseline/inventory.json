@@ -2,7 +2,7 @@
   "note": "Heuristic static counts. Per-file counts may only go down (npm run i18n:check). Regenerate with npm run i18n:inventory.",
   "frontend": {
     "totals": {
-      "inlineBranches": 1192,
+      "inlineBranches": 1190,
       "hardcodedEnglish": 108,
       "rawEnumRendering": 5,
       "hardcodedFormat": 8,
@@ -40,13 +40,6 @@
       "components/ProtectedMedia.js": {
         "inlineBranches": 0,
         "hardcodedEnglish": 1,
-        "rawEnumRendering": 0,
-        "hardcodedFormat": 0,
-        "prompts": 0
-      },
-      "hooks/useLocale.js": {
-        "inlineBranches": 2,
-        "hardcodedEnglish": 0,
         "rawEnumRendering": 0,
         "hardcodedFormat": 0,
         "prompts": 0

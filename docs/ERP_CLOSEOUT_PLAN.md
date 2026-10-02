@@ -403,10 +403,10 @@ L0 Localization contract and baseline
 - Exit: every visible text category has an explicit localization policy.
 
 L1 Repair the global locale architecture
-- [ ] Global `LocaleProvider` around the app; `useLocale()` consumes it instead of creating local state. Keep the interface (`locale`, `setLocale`, `t`, `isRTL`, `loading`).
-- [ ] `setLocale()` rerenders the whole app; persist in localStorage; validate stored value and fall back safely.
-- [ ] Set `lang` and `dir` before React renders (no LTR/RTL flash); optional cross-tab sync.
-- [ ] Cached translation loading that exposes loading and failure states; interpolation and plural support instead of string concatenation.
+- [x] Global `LocaleProvider` around the app; `useLocale()` consumes it instead of creating local state. Keep the interface (`locale`, `setLocale`, `t`, `isRTL`, `loading`).
+- [x] `setLocale()` rerenders the whole app; persist in localStorage; validate stored value and fall back safely.
+- [x] Set `lang` and `dir` before React renders (no LTR/RTL flash); optional cross-tab sync.
+- [x] Cached translation loading that exposes loading and failure states; interpolation and plural support instead of string concatenation.
 - Files: hooks/useLocale.js, index.js, public/index.html, new i18n/ or context/LocaleContext.js.
 - Tests: toggle from the sidebar updates a mounted page; toggle on Login updates Login; persistence after navigation and refresh; invalid stored locale; `lang`/`dir` always correct.
 - Exit: no page reload to switch language.
