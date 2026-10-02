@@ -45,6 +45,10 @@ describePg('fail-closed authorization (real PostgreSQL, real app)', () => {
   });
 
   afterAll(async () => {
+    const ids = (await db.query('SELECT id FROM users WHERE email LIKE $1', [`fc-%-${tag}@test.io`])).rows.map((r) => r.id);
+    await db.query('DELETE FROM activity_log WHERE user_id = ANY($1)', [ids]);
+    await db.query('DELETE FROM audit_events WHERE user_id = ANY($1)', [ids]);
+    await db.query('DELETE FROM user_project_roles WHERE user_id = ANY($1) OR granted_by = ANY($1)', [ids]);
     await db.query("DELETE FROM users WHERE email LIKE $1", [`fc-%-${tag}@test.io`]);
     await new Promise((resolve) => server.close(resolve));
     await db.pool.end();
