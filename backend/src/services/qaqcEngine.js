@@ -26,6 +26,7 @@
 'use strict';
 
 const { query: defaultQuery } = require('../config/database');
+const numbering = require('./numbering');
 const workflowEngine = require('./workflowEngine');
 const { fireEvent } = require('../utils/activity');
 
@@ -76,9 +77,7 @@ function num(v) {
 
 async function nextNumber(q, table, column, prefix) {
   const year = new Date().getFullYear();
-  const r = await q(`SELECT COUNT(*) AS c FROM ${table} WHERE ${column} LIKE $1`, [`${prefix}-${year}-%`]);
-  const seq = parseInt(r.rows[0].c, 10) + 1;
-  return `${prefix}-${year}-${String(seq).padStart(4, '0')}`;
+  return numbering.nextNumber(q, { table, column, prefix: `${prefix}-${year}`, pad: 4 });
 }
 
 // ---------------------------------------------------------------------------

@@ -1,4 +1,5 @@
 const express = require('express');
+const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
@@ -207,8 +208,7 @@ const legacyCreate = async (req, res) => {
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
     if (!value.code) {
-      const cnt = await query("SELECT COUNT(*) as c FROM projects WHERE code LIKE 'PRJ-%'");
-      value.code = `PRJ-${String(parseInt(cnt.rows[0].c) + 1).padStart(4, '0')}`;
+      value.code = await nextNumber(query, { table: 'projects', column: 'code', prefix: 'PRJ', pad: 4 });
     }
 
     const result = await transaction(async (client) => {

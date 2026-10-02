@@ -1,4 +1,5 @@
 const express = require('express');
+const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
@@ -141,8 +142,7 @@ router.post('/:projectId/instructions', authenticate, authorize(), async (req, r
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const seq = await query('SELECT COUNT(*) + 1 as next FROM engineer_instructions WHERE project_id = $1', [req.params.projectId]);
-    const instructionNumber = `EI-${req.params.projectId}-${String(seq.rows[0].next).padStart(3, '0')}`;
+    const instructionNumber = await nextNumber(query, { table: 'engineer_instructions', column: 'instruction_number', prefix: `EI-${req.params.projectId}`, pad: 3 });
 
     const result = await query(
       `INSERT INTO engineer_instructions (instruction_number, project_id, title, description, priority, issued_by, issued_date, assigned_to_user_id)

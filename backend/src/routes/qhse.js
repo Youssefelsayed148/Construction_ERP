@@ -1,4 +1,5 @@
 const express = require('express');
+const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
@@ -123,8 +124,7 @@ router.post('/ncrs', authenticate, authorize(), async (req, res) => {
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
     const year = new Date().getFullYear();
-    const seq = await query(`SELECT COUNT(*) + 1 as next FROM ncrs WHERE ncr_number LIKE $1`, [`NCR-${year}-%`]);
-    const ncrNumber = `NCR-${year}-${String(seq.rows[0].next).padStart(4, '0')}`;
+    const ncrNumber = await nextNumber(query, { table: 'ncrs', column: 'ncr_number', prefix: `NCR-${year}`, pad: 4 });
 
     const result = await query(
       `INSERT INTO ncrs (ncr_number, project_id, boq_item_id, quality_test_id, description, severity, raised_by)

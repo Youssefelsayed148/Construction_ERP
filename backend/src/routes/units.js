@@ -1,4 +1,5 @@
 const express = require('express');
+const { createInvoiceRecord } = require('../services/financeEngine');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
@@ -28,17 +29,14 @@ async function createUnitSaleInvoice({ unit, building, clientId, userId, userNam
     return null;
   }
 
-  const count = await query("SELECT COUNT(*) as cnt FROM invoices WHERE invoice_number LIKE 'INV-%'");
-  const invoiceNumber = `INV-${String(parseInt(count.rows[0].cnt) + 1).padStart(4, '0')}`;
-
   const today = new Date().toISOString().split('T')[0];
 
-  const result = await query(
-    `INSERT INTO invoices (invoice_number, project_id, client_id, amount, issue_date, status, description)
-     VALUES ($1, $2, $3, $4, $5, 'sent', $6) RETURNING *`,
-    [invoiceNumber, building.project_id, clientId, amount, today,
-     `Auto-generated: Sale of unit ${unit.code} (${building.name})`]
-  );
+  const invoice = await createInvoiceRecord(query, {
+    project_id: building.project_id, client_id: clientId, amount, issue_date: today, status: 'sent',
+    description: `Auto-generated: Sale of unit ${unit.code} (${building.name})`, created_by: userId,
+  }, { actor_id: userId, actor_name: userName });
+  const invoiceNumber = invoice.invoice_number;
+  const result = { rows: [invoice] };
 
   const { logActivity } = require('../utils/activity');
   await logActivity({

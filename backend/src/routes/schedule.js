@@ -8,6 +8,7 @@
 // Every list endpoint filters by project and renders zero-record states.
 
 const express = require('express');
+const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
@@ -164,8 +165,7 @@ router.post('/activities', authenticate, authorize(), async (req, res) => {
     // Auto code when absent.
     let code = value.activity_code || null;
     if (!code) {
-      const r = await query('SELECT COUNT(*) AS c FROM schedule_activities WHERE project_id = $1', [value.project_id]);
-      code = `A${String(parseInt(r.rows[0].c, 10) + 1).padStart(4, '0')}`;
+      code = await nextNumber(query, { table: 'schedule_activities', column: 'activity_code', prefix: 'A', sep: '', pad: 4, where: { project_id: value.project_id } });
     }
     const r = await query(
       `INSERT INTO schedule_activities (project_id, activity_code, name, wbs_path, work_package, phase_id,

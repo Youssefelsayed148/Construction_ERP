@@ -1,4 +1,5 @@
 const express = require('express');
+const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
@@ -24,7 +25,7 @@ router.post('/sections', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    if (!value.code) { const cnt = await query('SELECT COUNT(*) as c FROM boq_sections WHERE project_id = $1', [value.project_id]); value.code = `SEC-${String(parseInt(cnt.rows[0].c) + 1).padStart(3, '0')}`; }
+    if (!value.code) value.code = await nextNumber(query, { table: 'boq_sections', column: 'code', prefix: 'SEC', pad: 3, where: { project_id: value.project_id } });
 
     const r = await query(
       `INSERT INTO boq_sections (project_id, code, name, name_ar, name_en, parent_id, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
@@ -99,7 +100,7 @@ router.post('/items', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    if (!value.code) { const cnt = await query('SELECT COUNT(*) as c FROM boq_items WHERE project_id = $1', [value.project_id]); value.code = `BOQ-${String(parseInt(cnt.rows[0].c) + 1).padStart(4, '0')}`; }
+    if (!value.code) value.code = await nextNumber(query, { table: 'boq_items', column: 'code', prefix: 'BOQ', pad: 4, where: { project_id: value.project_id } });
 
     const r = await query(
       `INSERT INTO boq_items (project_id, section_id, code, description, description_ar, description_en, unit, quantity, unit_rate, item_master_id, type)

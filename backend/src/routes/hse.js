@@ -10,6 +10,7 @@
 // project (the zero-record contract).
 
 const express = require('express');
+const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
@@ -591,8 +592,7 @@ router.post('/near-misses', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     const year = new Date().getFullYear();
-    const seq = (await query(`SELECT COUNT(*) AS c FROM near_misses WHERE near_miss_number LIKE $1`, [`NM-${year}-%`])).rows[0].c;
-    const nearMissNumber = `NM-${year}-${String(parseInt(seq, 10) + 1).padStart(4, '0')}`;
+    const nearMissNumber = await nextNumber(query, { table: 'near_misses', column: 'near_miss_number', prefix: `NM-${year}`, pad: 4 });
     const r = await query(
       `INSERT INTO near_misses (near_miss_number, project_id, incident_date, project_location_id, category, severity, description, immediate_action, reported_by, created_by)
        VALUES ($1,$2,COALESCE($3, CURRENT_DATE),$4,$5,$6,$7,$8,$9,$9) RETURNING *`,

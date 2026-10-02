@@ -1,4 +1,5 @@
 const express = require('express');
+const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
@@ -40,8 +41,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
     if (!value.code) {
-      const count = await query("SELECT COUNT(*) as cnt FROM clients WHERE code LIKE 'CLI-%'");
-      value.code = `CLI-${String(parseInt(count.rows[0].cnt) + 1).padStart(4, '0')}`;
+      value.code = await nextNumber(query, { table: 'clients', column: 'code', prefix: 'CLI', pad: 4 });
     }
 
     const existing = await query('SELECT id FROM clients WHERE code = $1', [value.code]);

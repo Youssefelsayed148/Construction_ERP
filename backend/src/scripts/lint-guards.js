@@ -27,7 +27,7 @@ const isMigration = (rel) =>
 const isExcluded = (rel) =>
   /(^|\/)(__tests__|test-helpers)\//.test(rel) ||
   /^scripts\/(seed-|reconcile-|review-|create-|cleanup-|verify-)/.test(rel) ||
-  rel === 'scripts/lint-guards.js';
+  rel === 'scripts/lint-guards.js' || rel === 'services/numbering.js';
 
 function walk(dir, out = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

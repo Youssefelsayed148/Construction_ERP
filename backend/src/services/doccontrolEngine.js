@@ -11,6 +11,7 @@
 'use strict';
 
 const { query: defaultQuery } = require('../config/database');
+const { nextNumber } = require('./numbering');
 const { fireEvent } = require('../utils/activity');
 
 const CONTROLLED_DOC_TYPES = ['drawing', 'specification', 'contract', 'report', 'method_statement', 'as_built', 'o_m'];
@@ -172,8 +173,7 @@ async function supersedeDocument(q, oldDocumentId, newDocumentId, user) {
 async function nextTransmittalNumber(q, projectId, direction) {
   const year = new Date().getFullYear();
   const prefix = direction === 'incoming' ? 'TRI' : 'TRO';
-  const r = await q(`SELECT COUNT(*) AS c FROM transmittals WHERE transmittal_number LIKE $1`, [`${prefix}-${year}-%`]);
-  return `${prefix}-${year}-${pad(parseInt(r.rows[0].c, 10) + 1, 4)}`;
+  return nextNumber(q, { table: 'transmittals', column: 'transmittal_number', prefix: `${prefix}-${year}`, pad: 4 });
 }
 
 async function createTransmittal(q, input, user) {
@@ -231,8 +231,7 @@ async function transitionTransmittal(q, transmittalId, toState, user, { ackNote 
 async function nextCorrNumber(q, projectId, corrType) {
   const year = new Date().getFullYear();
   const prefix = { letter: 'LTR', notice: 'NOT', instruction: 'INS', claim: 'CLM' }[corrType] || 'LTR';
-  const r = await q(`SELECT COUNT(*) AS c FROM correspondence WHERE corr_number LIKE $1`, [`${prefix}-${year}-%`]);
-  return `${prefix}-${year}-${pad(parseInt(r.rows[0].c, 10) + 1, 4)}`;
+  return nextNumber(q, { table: 'correspondence', column: 'corr_number', prefix: `${prefix}-${year}`, pad: 4 });
 }
 
 async function createCorrespondence(q, input, user) {

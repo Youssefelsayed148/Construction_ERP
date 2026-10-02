@@ -1,4 +1,5 @@
 const express = require('express');
+const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
@@ -59,8 +60,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
     if (!value.code) {
-      const cnt = await query("SELECT COUNT(*) as c FROM assets WHERE code LIKE 'EQ-%'");
-      value.code = `EQ-${String(parseInt(cnt.rows[0].c) + 1).padStart(4, '0')}`;
+      value.code = await nextNumber(query, { table: 'assets', column: 'code', prefix: 'EQ', pad: 4 });
     }
 
     const result = await query(

@@ -47,3 +47,8 @@ TWR-ARC-DWG-0001-R0
 
 All sequences are per project and year-scoped; the sequences tables live in
 `document_number_sequences` (documents) and each module's own counter.
+
+## Implementation (Phase 2.4)
+
+All numbers are built by `backend/src/services/numbering.js` (`nextNumber`). Never use `COUNT(*)+1` or `MAX()+1` of the target table (CI guard `lint:guards` fails on it). A counter row per scope (`document_counters`, key = table.column|prefix|filters) is incremented atomically; the first use of a scope is seeded from the highest number already stored. Pass the transaction client so a rolled-back document returns its number; outside a transaction numbers may have gaps but are never reused. Invoices are created only through `financeEngine.createInvoiceRecord`.
+

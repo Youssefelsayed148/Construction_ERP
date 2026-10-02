@@ -18,6 +18,8 @@
 
 'use strict';
 
+const { nextNumber } = require('./numbering');
+
 function toNum(v) {
   if (v == null) return 0;
   const n = typeof v === 'number' ? v : parseFloat(v);
@@ -231,8 +233,7 @@ async function submitPaymentApplication(q, userId, {
   const gross = Math.round(toNum(work_value) * 100) / 100;
   const netBefore = Math.max(gross - toNum(retention) - toNum(materials_deducted) - toNum(other_deductions), 0);
 
-  const count = parseInt((await safeAll(q, 'SELECT COUNT(*) AS c FROM payment_certificates', []))[0].c, 10);
-  const certificateNumber = `PC-${String(count + 1).padStart(4, '0')}`;
+  const certificateNumber = await nextNumber(q, { table: 'payment_certificates', column: 'certificate_number', prefix: 'PC', pad: 4 });
 
   const r = await q(
     `INSERT INTO payment_certificates (certificate_number, party_type, project_id, sub_contract_id,

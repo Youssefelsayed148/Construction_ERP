@@ -1,4 +1,5 @@
 const express = require('express');
+const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
@@ -48,8 +49,7 @@ router.post('/contracts', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const count = parseInt((await query('SELECT COUNT(*) FROM client_contracts')).rows[0].count);
-    const contractNumber = `CC-${String(count + 1).padStart(5, '0')}`;
+    const contractNumber = await nextNumber(query, { table: 'client_contracts', column: 'contract_number', prefix: 'CC', pad: 5 });
 
     const created = await transaction(async (client) => {
       const r = await client.query(

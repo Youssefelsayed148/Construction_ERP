@@ -1,4 +1,5 @@
 const express = require('express');
+const { createInvoiceRecord } = require('../services/financeEngine');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
@@ -94,14 +95,13 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const count = await query("SELECT COUNT(*) as cnt FROM invoices WHERE invoice_number LIKE 'INV-%'");
-    value.invoice_number = `INV-${String(parseInt(count.rows[0].cnt) + 1).padStart(4, '0')}`;
-
-    const result = await query(
-      `INSERT INTO invoices (invoice_number, project_id, client_id, amount, issue_date, due_date, status, description)
-       VALUES ($1,$2,$3,$4,$5,$6,'sent',$7) RETURNING *`,
-      [value.invoice_number, value.project_id, value.client_id, value.amount, value.issue_date, value.due_date || null, value.description]
-    );
+    const invoice = await createInvoiceRecord(query, {
+      project_id: value.project_id, client_id: value.client_id, amount: value.amount,
+      issue_date: value.issue_date, due_date: value.due_date || null, status: 'sent',
+      description: value.description, created_by: req.user.id,
+    }, { actor_id: req.user.id, actor_name: req.user.name });
+    value.invoice_number = invoice.invoice_number;
+    const result = { rows: [invoice] };
 
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
