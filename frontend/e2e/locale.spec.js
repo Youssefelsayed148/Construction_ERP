@@ -71,3 +71,27 @@ test('the choice survives logout and login', async ({ page }, testInfo) => {
   await expect(page.locator('button[type="submit"]')).toHaveText('Sign In');
   expect(await html(page)).toEqual({ lang: 'en', dir: 'ltr' });
 });
+
+// L3: in Arabic the shell (sidebar, tooltips, aria labels) shows no English except the brand and the EN switch.
+for (const role of ['owner', 'consultant', 'client', 'subcontractor', 'supplier']) {
+  test(`Arabic shell has no unconditional English (${role})`, async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name.startsWith('mobile'), 'desktop sidebar');
+    await page.addInitScript(({ jwt, who }) => {
+      localStorage.setItem('locale', 'ar');
+      localStorage.setItem('token', jwt);
+      localStorage.setItem('user', JSON.stringify({ id: 1, name: 'محمد', role: who, policy_modules: ['*'] }));
+    }, { jwt: token(), who: role });
+    await page.route('**/api/**', (route) => route.fulfill({
+      status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, data: [] }),
+    }));
+    await page.goto('/');
+    await expect(page.locator('.sidebar .nav-item').first()).toBeVisible();
+    const readable = await page.evaluate(() => {
+      const root = document.querySelector('.app-container');
+      const attrs = [...root.querySelectorAll('[aria-label],[title],[alt]')]
+        .flatMap((el) => [el.getAttribute('aria-label'), el.getAttribute('title'), el.getAttribute('alt')]).filter(Boolean);
+      return `${document.querySelector('.sidebar').innerText} ${attrs.join(' ')}`;
+    });
+    expect(readable.replace(/ConERP|EN/g, '')).not.toMatch(/[A-Za-z]/);
+  });
+}
