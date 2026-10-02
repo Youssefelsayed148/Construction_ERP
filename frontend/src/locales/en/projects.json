@@ -1,1 +1,9 @@
-{}
+{
+  "title": "Projects",
+  "new": "New project",
+  "count": {
+    "one": "{count} project",
+    "other": "{count} projects"
+  },
+  "empty": "No projects yet."
+}

@@ -37,7 +37,17 @@
   "amount": "Amount",
   "total": "Total",
   "notes": "Notes",
-  "actions": "Actions",
+  "actions": {
+    "add": "Add",
+    "remove": "Remove",
+    "saveChanges": "Save changes",
+    "discard": "Discard",
+    "apply": "Apply",
+    "reset": "Reset",
+    "refresh": "Refresh",
+    "download": "Download",
+    "upload": "Upload"
+  },
   "details": "Details",
   "phone": "Phone",
   "email": "Email",
@@ -85,5 +95,29 @@
     "myActions": "My Actions",
     "settings": "Settings",
     "accounting": "Accounting"
+  },
+  "states": {
+    "loading": "Loading...",
+    "empty": "Nothing to show yet.",
+    "noResults": "No results match your search.",
+    "error": "Something went wrong.",
+    "retry": "Try again",
+    "fileUnavailable": "This file is not available."
+  },
+  "dialogs": {
+    "confirmTitle": "Please confirm",
+    "confirmDelete": "Delete this record? This cannot be undone.",
+    "unsavedChanges": "You have unsaved changes. Leave without saving?"
+  },
+  "pagination": {
+    "page": "Page {page} of {total}",
+    "items": {
+      "one": "{count} item",
+      "other": "{count} items"
+    }
+  },
+  "language": {
+    "en": "English",
+    "ar": "Arabic"
   }
 }

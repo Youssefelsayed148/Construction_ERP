@@ -1,1 +1,5 @@
-{}
+{
+  "title": "Inventory",
+  "lowStock": "Low stock",
+  "empty": "No items yet."
+}
