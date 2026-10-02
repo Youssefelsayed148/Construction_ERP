@@ -22,6 +22,13 @@ async function main() {
        RETURNING id, name, email, role`,
       [u.name, u.email, hash, u.role, u.dept, JSON.stringify(u.perms)]
     );
+    // A user without a role assignment has no access (Phase 1.2).
+    await pool.query(
+      `INSERT INTO user_project_roles (user_id, project_id, role_id)
+       SELECT $1, NULL, id FROM roles WHERE key = $2
+       ON CONFLICT DO NOTHING`,
+      [r.rows[0].id, u.role]
+    );
     console.log('Created:', JSON.stringify(r.rows[0]));
   }
 

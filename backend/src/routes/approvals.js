@@ -180,19 +180,10 @@ router.get('/pending', authenticate, authorize(
     // hardcoded `role === 'owner' || role === 'admin'` bypass. Internal
     // approver roles hold ('*', '*') grants seeded in role_permissions;
     // module managers resolve through their per-module grants.
-    const { source, grants } = await policy.listGrants(req.user);
-    let seesAllPending;
-    let modulesForRole;
-    if (source === 'legacy') {
-      seesAllPending = role === 'owner' || role === 'admin';
-      modulesForRole = Object.entries(MODULE_MANAGER_ROLES)
-        .filter(([, roles]) => roles.includes(role))
-        .map(([mod]) => mod);
-    } else {
-      seesAllPending = grants.some((g) => policy.grantMatches(g.perm_module, g.perm_action, 'approvals', 'approve'));
-      modulesForRole = Object.keys(MODULE_MANAGER_ROLES)
-        .filter((mod) => grants.some((g) => policy.grantMatches(g.perm_module, g.perm_action, mod, 'approve')));
-    }
+    const { grants } = await policy.listGrants(req.user);
+    const seesAllPending = grants.some((g) => policy.grantMatches(g.perm_module, g.perm_action, 'approvals', 'approve'));
+    const modulesForRole = Object.keys(MODULE_MANAGER_ROLES)
+      .filter((mod) => grants.some((g) => policy.grantMatches(g.perm_module, g.perm_action, mod, 'approve')));
     if (seesAllPending) {
       result = await query(`
         SELECT ar.*, u.name as requester_name, u.email as requester_email, m.name as manager_name

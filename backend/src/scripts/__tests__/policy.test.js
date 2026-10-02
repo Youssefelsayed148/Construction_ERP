@@ -177,9 +177,9 @@ describe('policy visibility flags', () => {
     expect(flags.see_internal_cost).toBe(false);
   });
 
-  test('visibilityFlags() legacy fallback: internal roles see all, external see none', async () => {
+  test('visibilityFlags() with no role rows: nobody sees anything (no legacy fallback)', async () => {
     const internal = await policy.visibilityFlags({ id: 42, role: 'engineer' }, { query: stubQuery({}) });
-    expect(internal).toEqual({ see_internal_cost: true, see_client_price: true, see_subcontractor_price: true });
+    expect(internal).toEqual({ see_internal_cost: false, see_client_price: false, see_subcontractor_price: false });
     const external = await policy.visibilityFlags({ id: 43, role: 'client' }, { query: stubQuery({}) });
     expect(external).toEqual({ see_internal_cost: false, see_client_price: false, see_subcontractor_price: false });
   });
@@ -189,11 +189,14 @@ describe('policy visibility flags', () => {
 // Legacy fallback
 // ---------------------------------------------------------------------------
 
-describe('policy.evaluate — legacy fallback (migration incomplete)', () => {
-  test('a user with no user_project_roles rows falls back to the legacy check', async () => {
-    const d = await policy.evaluate({ user: { id: 7, role: 'staff' }, module: 'costing', action: 'view' }, { query });
-    expect(d.source).toBe('legacy');
-    expect(d.allowed).toBeNull();
+describe('policy.evaluate — no role assignment is denied (Phase 1.2)', () => {
+  test('a user with no user_project_roles rows is denied, whatever their users.role says', async () => {
+    for (const role of ['staff', 'owner', 'admin']) {
+      const d = await policy.evaluate({ user: { id: 7, role }, module: 'costing', action: 'view' }, { query });
+      expect(d.allowed).toBe(false);
+      expect(d.no_assignment).toBe(true);
+      expect(d.source).toBe('policy');
+    }
   });
 
   test('unknown user is denied outright', async () => {
@@ -215,8 +218,8 @@ describe('policy.hasPermission', () => {
     expect(await policy.hasPermission({ id: 5, role: 'client' }, 'approvals', 'approve', { query })).toBe(false);
   });
 
-  test('legacy fallback (un-migrated user): owner/admin only — same as the old bypass', async () => {
-    expect(await policy.hasPermission({ id: 7, role: 'owner' }, 'approvals', 'approve', { query })).toBe(true);
+  test('a user with no role rows has no permission, even with users.role = owner', async () => {
+    expect(await policy.hasPermission({ id: 7, role: 'owner' }, 'approvals', 'approve', { query })).toBe(false);
     expect(await policy.hasPermission({ id: 7, role: 'finance_manager' }, 'approvals', 'approve', { query })).toBe(false);
   });
 });
@@ -232,9 +235,9 @@ describe('policy.listGrants', () => {
     expect(out.grants.some((g) => g.perm_module === 'projects' && g.perm_action === 'view')).toBe(true);
   });
 
-  test('reports legacy for un-migrated users', async () => {
+  test('returns no grants for a user with no role rows', async () => {
     const out = await policy.listGrants({ id: 7, role: 'staff' }, { query });
-    expect(out.source).toBe('legacy');
+    expect(out.source).toBe('policy');
     expect(out.grants).toEqual([]);
   });
 });

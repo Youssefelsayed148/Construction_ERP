@@ -12,8 +12,9 @@
 //     roles get one, so their legacy behavior is preserved);
 //   * a row bound to a project only grants access to that project — an
 //     external user cannot ID-guess another project's endpoints;
-//   * users with NO user_project_roles rows are "migration incomplete" —
-//     middleware/auth.js falls back to the legacy role-list check for them.
+//   * users with NO user_project_roles rows have no access at all —
+//     are DENIED (Phase 1.2: no fail-open fallback). Migration 0004 and user creation
+//     give every internal user a role row.
 //
 // Everything accepts an injectable query function so unit tests can run
 // without a live database.
@@ -252,7 +253,8 @@ async function resolveProjectContext(req, module, q = query) {
 function decide({ rows, module, action, projectId }) {
   const flags = emptyFlags();
   if (rows.length === 0) {
-    return { allowed: null, flags, role_keys: [], source: 'legacy', company_wide: false, scoped_project_ids: [] };
+    // No role assignment: deny. (This used to return source 'legacy' and the middleware let the user through.)
+    return { allowed: false, flags, role_keys: [], source: 'policy', company_wide: false, scoped_project_ids: [], no_assignment: true };
   }
 
   const roleKeys = new Set();
@@ -298,8 +300,7 @@ async function loadRoleGrants(roleKey, q = query) {
 
 // Main entry point: evaluate a user against module + action (+ optional
 // project). Returns:
-//   { allowed: true|false, flags, role_keys, source: 'policy' }   — decided
-//   { allowed: null, flags, role_keys: [], source: 'legacy' }     — fallback
+//   { allowed: true|false, flags, role_keys, source: 'policy' }   — decided (no role rows => denied)
 async function evaluate({ user, module, action, projectId }, opts = {}) {
   const q = opts.query || query;
   if (!user || user.id == null) {
@@ -317,7 +318,7 @@ async function evaluateForRole(roleKey, { module, action, projectId, actorScoped
   const q = opts.query || query;
   const rows = await loadRoleGrants(roleKey, q);
   if (rows.length === 0) {
-    return { allowed: null, flags: emptyFlags(), role_keys: [], source: 'legacy' };
+    return { allowed: false, flags: emptyFlags(), role_keys: [], source: 'policy', no_assignment: true };
   }
   if (EXTERNAL_ROLES.has(roleKey) && projectId != null) {
     const scoped = actorScopedProjects.map(Number);
@@ -369,9 +370,6 @@ async function listGrants(user, opts = {}) {
   const q = opts.query || query;
   if (!user) return { source: 'policy', grants: [] };
   const rows = await loadUserPolicy(user.id, q);
-  if (rows.length === 0) {
-    return { source: 'legacy', grants: [] };
-  }
   const grants = rows
     .filter((r) => r.perm_module != null)
     .map((r) => ({ perm_module: r.perm_module, perm_action: r.perm_action, project_id: r.project_id }));
@@ -380,15 +378,11 @@ async function listGrants(user, opts = {}) {
 
 // Point check used to replace hardcoded `role === 'owner' || role === 'admin'`
 // bypasses (e.g. approvals.js "sees all pending requests").
-//   * legacy fallback (user not migrated): owner/admin only, as before;
-//   * policy path: explicit grant on (module, action), wildcards honored.
+//   * explicit grant on (module, action), wildcards honored; no role rows => false.
 async function hasPermission(user, module, action, opts = {}) {
   const q = opts.query || query;
   if (!user) return false;
   const rows = await loadUserPolicy(user.id, q);
-  if (rows.length === 0) {
-    return user.role === 'owner' || user.role === 'admin';
-  }
   return rows.some((row) => grantMatches(row.perm_module, row.perm_action, module, action));
 }
 
@@ -399,15 +393,6 @@ async function visibilityFlags(user, opts = {}) {
   const q = opts.query || query;
   if (!user) return emptyFlags();
   const rows = await loadUserPolicy(user.id, q);
-  if (rows.length === 0) {
-    // Legacy fallback: internal roles see everything, external see nothing.
-    const legacy = INTERNAL_ROLES.has(user.role);
-    return {
-      see_internal_cost: legacy,
-      see_client_price: legacy,
-      see_subcontractor_price: legacy,
-    };
-  }
   const flags = emptyFlags();
   for (const row of rows) {
     const flag = VISIBILITY_ACTION_TO_FLAG[row.perm_action];

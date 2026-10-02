@@ -591,11 +591,11 @@ describe('apiResources — v1-only lists with project scoping', () => {
     expect(r3.sql).toContain('AND project_id IN ($2)');
   });
 
-  test('legacy users: owner sees everything, others nothing (same as internal)', async () => {
+  test('users with no role rows see nothing, whatever users.role says', async () => {
     resetStub(); seedUsers();
-    stub.userPolicy.set(1, []); // no policy rows → legacy
+    stub.userPolicy.set(1, []); // no policy rows → denied
     const accessOwner = await apiResources.listAccess({ user: { id: 1, role: 'owner' } }, 'procurement');
-    expect(accessOwner.allowed).toBe(true);
+    expect(accessOwner.allowed).toBe(false);
     const accessStaff = await apiResources.listAccess({ user: { id: 1, role: 'staff' } }, 'procurement');
     expect(accessStaff.allowed).toBe(false);
     seedUsers();

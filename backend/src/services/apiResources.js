@@ -21,15 +21,12 @@ const policy = require('./policy');
 const { query } = require('../config/database');
 
 // The user's grants for a module, resolved the same way the policy engine
-// decides: policy rows when present, flat-role fallback otherwise.
+// decides. No role rows => no access.
 //   projectFilter = null  → company-wide visibility (same as internal)
 //   projectFilter = []    → project-bound role with no assignments → nothing
 //   projectFilter = [ids] → visible only on those projects
 async function listAccess(req, permModule) {
-  const { source, grants } = await policy.listGrants(req.user);
-  if (source === 'legacy') {
-    return { allowed: req.user.role === 'owner' || req.user.role === 'admin', projectFilter: null };
-  }
+  const { grants } = await policy.listGrants(req.user);
   const relevant = grants.filter((g) =>
     (g.perm_module === '*' || g.perm_module === permModule) &&
     (g.perm_action === '*' || g.perm_action === 'view' || g.perm_action === 'manage'));
@@ -106,18 +103,18 @@ async function getFamilyRecord(family, req, res) {
   const model = READ_MODELS[family];
   const id = parseInt(req.params.id, 10);
   if (!Number.isFinite(id)) return res.status(400).json({ success: false, error: 'Invalid id' });
+  // Module-level check first, so a caller with no access cannot tell a missing record (404) from a forbidden one.
+  const moduleAccess = await listAccess(req, model.module);
+  if (!moduleAccess.allowed) return res.status(403).json({ success: false, error: 'Insufficient permissions' });
   const row = (await query(`SELECT * FROM ${model.table} WHERE ${model.idColumn} = $1`, [id])).rows[0];
   if (!row) return res.status(404).json({ success: false, error: `${family} #${id} not found` });
   if (model.projectColumn && row[model.projectColumn] != null) {
     const decision = await policy.evaluate({
       user: req.user, module: model.module, action: 'view', projectId: row[model.projectColumn],
     });
-    if (decision.source === 'policy' && !decision.allowed) {
+    if (!decision.allowed) {
       return res.status(403).json({ success: false, error: 'Insufficient permissions' });
     }
-  } else {
-    const access = await listAccess(req, model.module);
-    if (!access.allowed) return res.status(403).json({ success: false, error: 'Insufficient permissions' });
   }
   return res.json({ success: true, data: row });
 }

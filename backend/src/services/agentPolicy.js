@@ -125,14 +125,22 @@ const ALLOWLIST = {
     // consultant router mounts → /api/consultant (portal-scoped)
     'list_observations', 'create_site_observation', 'add_observation_comment',
   ],
+  // Internal roles without special tools: read + draft, no gated actions.
+  manager: [...READ_ALL, ...DRAFT_ALL],
+  staff: [...READ_ALL, ...DRAFT_ALL],
+  accountant: [...READ_ALL, ...DRAFT_ALL],
+  engineer: [...READ_ALL, ...DRAFT_ALL],
+  site_supervisor: [...READ_ALL, ...DRAFT_ALL],
+  legal_mgr: [...READ_ALL, ...DRAFT_ALL],
+  maintenance_mgr: [...READ_ALL, ...DRAFT_ALL],
   client: [],
   subcontractor: [],
   supplier: [],
 };
 
 function toolsForRole(role) {
-  // Unknown/internal roles default to read + draft tools (no gated actions).
-  return new Set(ALLOWLIST[role] || [...READ_ALL, ...DRAFT_ALL]);
+  // Fail closed: a role that is not listed gets no tools (it used to get every read and draft tool).
+  return new Set(Object.prototype.hasOwnProperty.call(ALLOWLIST, role) ? ALLOWLIST[role] : []);
 }
 
 function toolAllowed(role, toolName) {
