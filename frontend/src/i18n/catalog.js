@@ -1,8 +1,12 @@
 // Loads and caches translation catalogs (src/locales/<locale>/<namespace>.json).
 // A failed namespace is reported, not thrown: the app keeps working with English / fallbacks.
+// The namespace list from docs/system_language_fix.md L2. `workorders`, `subcontractors` and `costing`
+// keep their existing names. A namespace needs a file in BOTH locales (scripts/i18n-parity.js).
 export const NAMESPACES = [
-  'common', 'auth', 'dashboard', 'inventory', 'projects', 'suppliers', 'clients', 'expenses',
-  'hr', 'payroll', 'assets', 'legal', 'approvals', 'boq', 'workorders', 'subcontractors', 'costing',
+  'common', 'auth', 'navigation', 'dashboard', 'projects', 'projectWizard', 'locations', 'boq', 'workorders',
+  'subcontractors', 'costing', 'site', 'inventory', 'procurement', 'commercial', 'finance', 'clients', 'suppliers',
+  'portals', 'qhse', 'hse', 'documentControl', 'schedule', 'reports', 'handover', 'actions', 'approvals', 'agents',
+  'hr', 'payroll', 'assets', 'expenses', 'legal', 'errors', 'enums',
 ];
 
 const cache = {};      // locale -> catalog

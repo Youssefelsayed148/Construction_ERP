@@ -295,82 +295,92 @@
     "locales": {
       "en": {
         "namespaces": {
-          "approvals": 0,
-          "assets": 1,
-          "auth": 0,
-          "boq": 0,
-          "clients": 0,
-          "common": 83,
-          "costing": 0,
-          "expenses": 0,
-          "hr": 1,
-          "inventory": 0,
-          "legal": 0,
-          "payroll": 0,
-          "projects": 0,
-          "subcontractors": 0,
-          "suppliers": 0,
-          "workorders": 0
+          "actions": 2,
+          "agents": 2,
+          "approvals": 2,
+          "assets": 2,
+          "auth": 11,
+          "boq": 2,
+          "clients": 2,
+          "commercial": 3,
+          "common": 105,
+          "costing": 2,
+          "dashboard": 4,
+          "documentControl": 3,
+          "enums": 91,
+          "errors": 11,
+          "expenses": 1,
+          "finance": 3,
+          "handover": 2,
+          "hr": 2,
+          "hse": 3,
+          "inventory": 3,
+          "legal": 1,
+          "locations": 2,
+          "navigation": 28,
+          "payroll": 1,
+          "portals": 4,
+          "procurement": 4,
+          "projects": 5,
+          "projectWizard": 4,
+          "qhse": 3,
+          "reports": 2,
+          "schedule": 3,
+          "site": 3,
+          "subcontractors": 2,
+          "suppliers": 2,
+          "workorders": 2
         }
       },
       "ar": {
         "namespaces": {
-          "approvals": 0,
-          "assets": 1,
-          "auth": 0,
-          "boq": 0,
-          "clients": 0,
-          "common": 83,
-          "costing": 0,
-          "expenses": 0,
-          "hr": 1,
-          "inventory": 0,
-          "legal": 0,
-          "payroll": 0,
-          "projects": 0,
-          "subcontractors": 0,
-          "suppliers": 0,
-          "workorders": 0
+          "actions": 2,
+          "agents": 2,
+          "approvals": 2,
+          "assets": 2,
+          "auth": 11,
+          "boq": 2,
+          "clients": 2,
+          "commercial": 3,
+          "common": 109,
+          "costing": 2,
+          "dashboard": 4,
+          "documentControl": 3,
+          "enums": 91,
+          "errors": 11,
+          "expenses": 1,
+          "finance": 3,
+          "handover": 2,
+          "hr": 2,
+          "hse": 3,
+          "inventory": 3,
+          "legal": 1,
+          "locations": 2,
+          "navigation": 28,
+          "payroll": 1,
+          "portals": 4,
+          "procurement": 4,
+          "projects": 9,
+          "projectWizard": 4,
+          "qhse": 3,
+          "reports": 2,
+          "schedule": 3,
+          "site": 3,
+          "subcontractors": 2,
+          "suppliers": 2,
+          "workorders": 2
         }
       }
     },
     "usedKeysMissingFromEn": [
-      "payroll.title"
+      "common.actions"
     ],
     "usedKeysMissingFromAr": [
-      "payroll.title"
+      "common.actions"
     ],
     "emptyNamespaces": {
-      "en": [
-        "approvals",
-        "auth",
-        "boq",
-        "clients",
-        "costing",
-        "expenses",
-        "inventory",
-        "legal",
-        "payroll",
-        "projects",
-        "subcontractors",
-        "suppliers",
-        "workorders"
-      ],
-      "ar": [
-        "approvals",
-        "auth",
-        "boq",
-        "clients",
-        "costing",
-        "expenses",
-        "inventory",
-        "legal",
-        "payroll",
-        "projects",
-        "subcontractors",
-        "suppliers",
-        "workorders"
-      ]
+      "en": [],
+      "ar": []
     },
     "usedKeys": 35,
     "dynamicKeyCalls": {
@@ -378,7 +388,16 @@
     },
     "parity": {
       "inEnNotAr": [],
-      "inArNotEn": []
+      "inArNotEn": [
+        "common.pagination.items.few",
+        "common.pagination.items.many",
+        "common.pagination.items.two",
+        "common.pagination.items.zero",
+        "projects.count.few",
+        "projects.count.many",
+        "projects.count.two",
+        "projects.count.zero"
+      ]
     }
   },
   "server": {

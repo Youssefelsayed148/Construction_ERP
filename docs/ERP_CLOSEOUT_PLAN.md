@@ -412,11 +412,11 @@ L1 Repair the global locale architecture
 - Exit: no page reload to switch language.
 
 L2 Translation catalog
-- [ ] Namespaces (keep existing key names `workorders`, `subcontractors`, `costing`): common, auth, navigation, dashboard, projects, projectWizard, locations, boq, workorders, subcontractors, costing, site, inventory, procurement, commercial, finance, clients, suppliers, portals, qhse, hse, documentControl, schedule, reports, handover, actions, approvals, agents, hr, payroll, assets, expenses, legal, errors, enums.
-- [ ] Semantic keys (`procurement.comparison.noQuotations`, `enums.status.pendingApproval`), never English-text keys.
-- [ ] Fill EN and AR for every namespace; interpolation for project numbers, counts, dates and record ids.
-- [ ] Recursive parity checker: every EN key in AR and vice versa; no missing namespace; empty namespace file fails.
-- [ ] Missing keys visible in dev/test; safe fallback in production with no raw key paths.
+- [x] Namespaces (keep existing key names `workorders`, `subcontractors`, `costing`): common, auth, navigation, dashboard, projects, projectWizard, locations, boq, workorders, subcontractors, costing, site, inventory, procurement, commercial, finance, clients, suppliers, portals, qhse, hse, documentControl, schedule, reports, handover, actions, approvals, agents, hr, payroll, assets, expenses, legal, errors, enums.
+- [x] Semantic keys (`procurement.comparison.noQuotations`, `enums.status.pendingApproval`), never English-text keys.
+- [x] Fill EN and AR for every namespace; interpolation for project numbers, counts, dates and record ids.
+- [x] Recursive parity checker: every EN key in AR and vice versa; no missing namespace; empty namespace file fails.
+- [x] Missing keys visible in dev/test; safe fallback in production with no raw key paths.
 - Exit: translation parity enforced in CI.
 
 L3 Application shell

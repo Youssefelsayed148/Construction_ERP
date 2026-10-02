@@ -1,0 +1,44 @@
+{
+  "items": {
+    "dashboard": "Dashboard",
+    "projects": "Projects",
+    "inventory": "Inventory",
+    "procurementComparison": "Procurement comparison",
+    "clients": "Clients",
+    "suppliers": "Suppliers",
+    "assets": "Equipment",
+    "hr": "HR",
+    "expenses": "Expenses",
+    "invoices": "Invoices & Payments",
+    "legal": "Legal",
+    "approvals": "Approvals",
+    "myActions": "My Actions",
+    "agentActivity": "Agent Activity",
+    "settings": "Settings"
+  },
+  "portals": {
+    "consultant": "Consultant Portal",
+    "client": "Client Portal",
+    "subcontractor": "Subcontractor Portal",
+    "supplier": "Supplier Portal"
+  },
+  "aria": {
+    "openNavigation": "Open navigation",
+    "closeNavigation": "Close navigation",
+    "mainNavigation": "Main navigation"
+  },
+  "actions": {
+    "switchLanguage": "Switch language",
+    "logout": "Log out"
+  },
+  "user": {
+    "fallbackName": "User"
+  },
+  "offline": {
+    "banner": "You are offline. Submitted changes require a connection."
+  },
+  "settings": {
+    "title": "Settings",
+    "placeholder": "Settings will be available here."
+  }
+}
