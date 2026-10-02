@@ -1,4 +1,5 @@
 const express = require('express');
+const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
@@ -41,7 +42,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    if (!value.code) { const cnt = await query("SELECT COUNT(*) as c FROM subcontractors WHERE code LIKE 'SUB-%'"); value.code = `SUB-${String(parseInt(cnt.rows[0].c) + 1).padStart(4, '0')}`; }
+    if (!value.code) value.code = await nextNumber(query, { table: 'subcontractors', column: 'code', prefix: 'SUB', pad: 4 });
 
     const r = await query(
       `INSERT INTO subcontractors (code, name, name_ar, name_en, license_no, classification, specialties, insurance_amount, insurance_expiry, contact_person, phone, email, address, bank_name, bank_account, is_active)
@@ -98,8 +99,7 @@ router.post('/contracts', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const cnt = await query('SELECT COUNT(*) as c FROM sub_contracts');
-    const contract_number = `SC-${String(parseInt(cnt.rows[0].c) + 1).padStart(4, '0')}`;
+    const contract_number = await nextNumber(query, { table: 'sub_contracts', column: 'contract_number', prefix: 'SC', pad: 4 });
 
     const businessRules = await query("SELECT rule_value FROM business_rules WHERE rule_key = 'retention_percent' AND is_active = true");
     const defaultRetention = businessRules.rows[0]?.rule_value?.value || 10;
@@ -183,8 +183,7 @@ router.post('/certificates', authenticate, authorize(), async (req, res) => {
 
     const net_payable = value.work_value - value.retention_deduction - value.previous_paid - value.penalties - value.materials_deducted;
 
-    const cnt = await query('SELECT COUNT(*) as c FROM sub_payment_certificates');
-    const cert_number = `PC-${String(parseInt(cnt.rows[0].c) + 1).padStart(4, '0')}`;
+    const cert_number = await nextNumber(query, { table: 'sub_payment_certificates', column: 'certificate_number', prefix: 'PC', pad: 4 });
 
     const r = await query(
       `INSERT INTO sub_payment_certificates (certificate_number, sub_contract_id, period_from, period_to, work_value, retention_deduction, previous_paid, penalties, materials_deducted, net_payable, notes)

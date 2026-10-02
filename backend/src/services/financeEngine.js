@@ -19,6 +19,7 @@
 'use strict';
 
 const { query: defaultQuery } = require('../config/database');
+const { nextNumber } = require('./numbering');
 const commercialEngine = require('./commercialEngine');
 
 const INVOICE_LIFECYCLE = ['draft', 'approved', 'issued', 'partially_paid', 'paid', 'overdue', 'cancelled', 'void', 'credited'];
@@ -131,25 +132,42 @@ async function createClientValuation(q, {
   const netAmount = round2(netBeforeTax + tax);
   const cumulative = round2(previousCumulative + certifiedGross);
 
-  const count = parseInt((await q('SELECT COUNT(*) FROM invoices')).rows[0].count);
-  const invoiceNumber = `INV-${String(count + 1).padStart(5, '0')}`;
+  return createInvoiceRecord(q, {
+    project_id, client_id, amount: netAmount,
+    issue_date: issue_date || new Date().toISOString().slice(0, 10),
+    due_date: due_date || null, status: 'draft', description,
+    client_contract_id, gross_current_work, approved_variations_period,
+    certified_gross: certifiedGross, retention_amount: retention, advance_recovery, other_deductions,
+    tax_pct, tax_amount: tax, net_amount: netAmount,
+    previous_cumulative: previousCumulative, cumulative_certified: cumulative,
+    company_id, cost_code_id, department, created_by,
+  }, { actor_id: created_by, actor_name });
+}
 
+// The ONE place an invoice row is created (manual invoices, unit-sale invoices and client
+// valuations all come through here): number from the numbering service, whitelisted columns,
+// audit event. Pass the transaction client as `q` to make it part of the caller's transaction.
+const INVOICE_COLUMNS = new Set([
+  'project_id', 'client_id', 'amount', 'issue_date', 'due_date', 'status', 'description',
+  'client_contract_id', 'gross_current_work', 'approved_variations_period', 'certified_gross',
+  'retention_amount', 'advance_recovery', 'other_deductions', 'tax_pct', 'tax_amount', 'net_amount',
+  'previous_cumulative', 'cumulative_certified', 'company_id', 'cost_code_id', 'department', 'created_by',
+]);
+
+async function createInvoiceRecord(q, fields, { actor_id = null, actor_name = null } = {}) {
+  const unknown = Object.keys(fields).filter((k) => !INVOICE_COLUMNS.has(k));
+  if (unknown.length) throw new Error(`createInvoiceRecord: unknown column(s) ${unknown.join(', ')}`);
+  const invoiceNumber = await nextNumber(q, { table: 'invoices', column: 'invoice_number', prefix: 'INV', pad: 4 });
+  const cols = Object.keys(fields);
   const r = await q(
-    `INSERT INTO invoices
-       (invoice_number, project_id, client_id, amount, issue_date, due_date, status, description,
-        client_contract_id, gross_current_work, approved_variations_period, certified_gross,
-        retention_amount, advance_recovery, other_deductions, tax_pct, tax_amount, net_amount,
-        previous_cumulative, cumulative_certified, company_id, cost_code_id, department, created_by)
-     VALUES ($1,$2,$3,$4,$5,$6,'draft',$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING *`,
-    [invoiceNumber, project_id, client_id, netAmount, issue_date || new Date().toISOString().slice(0, 10),
-     due_date || null, description, client_contract_id, gross_current_work, approved_variations_period,
-     certifiedGross, retention, advance_recovery, other_deductions, tax_pct, tax, netAmount,
-     previousCumulative, cumulative, company_id, cost_code_id, department, created_by]
+    `INSERT INTO invoices (invoice_number, ${cols.join(', ')})
+     VALUES ($1, ${cols.map((_, i) => `$${i + 2}`).join(', ')}) RETURNING *`,
+    [invoiceNumber, ...cols.map((c) => fields[c])]
   );
   const invoice = r.rows[0];
   await writeAuditEvent(q, {
     entity_type: 'invoice', entity_id: invoice.id, event_type: 'create',
-    actor_id: created_by, actor_name, after_state: invoice,
+    actor_id, actor_name, after_state: invoice,
   });
   return invoice;
 }
@@ -576,6 +594,7 @@ function initReceivableReminderScheduler(opts = {}) {
 }
 
 module.exports = {
+  createInvoiceRecord,
   INVOICE_LIFECYCLE,
   REMINDER_STAGES,
   DEFAULT_REMINDER_ROLES,

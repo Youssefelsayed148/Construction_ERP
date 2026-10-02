@@ -15,6 +15,7 @@
 'use strict';
 
 const { query: defaultQuery } = require('../config/database');
+const { nextNumber } = require('./numbering');
 const workflowEngine = require('./workflowEngine');
 const { fireEvent } = require('../utils/activity');
 
@@ -57,9 +58,7 @@ function parseJson(v) {
 async function nextPermitNumber(q, projectId, permitType) {
   const year = new Date().getFullYear();
   const prefix = { work: 'PTW', hot_work: 'HW', lifting: 'LIF', excavation: 'EXC', confined_space: 'CSE' }[permitType] || 'PTW';
-  const r = await q(`SELECT COUNT(*) AS c FROM permits WHERE permit_number LIKE $1`, [`${prefix}-${year}-%`]);
-  const seq = parseInt(r.rows[0].c, 10) + 1;
-  return `${prefix}-${year}-${String(seq).padStart(4, '0')}`;
+  return nextNumber(q, { table: 'permits', column: 'permit_number', prefix: `${prefix}-${year}`, pad: 4 });
 }
 
 // ---------------------------------------------------------------------------

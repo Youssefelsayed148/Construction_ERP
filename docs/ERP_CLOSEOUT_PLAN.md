@@ -135,12 +135,12 @@ Goal: the database refuses to be wrong.
 - [ ] `threeWayMatch`: query by PO/GRN id, not `SELECT *` + JS filter.
 
 2.4 Document numbering
-- [ ] One numbering service backed by `numbering_sequences` with `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` (atomic, gap-tolerant), per NUMBERING_STANDARD.md.
-- [ ] Replace all COUNT/MAX call sites; `backend/lint-guards.baseline.json` (`count-numbering`, 3-line window) is the authority and must end empty. The list that follows is only a starting point.
-- [ ] (starting point) Replace all ~15 COUNT/MAX call sites (procurementService:49, replenishment:283/310, invoices:97, units:31, boq:27/102, hr, suppliers, projects:210, qhse:126, hse:594, doccontrol, financeEngine:134).
-- [ ] Single invoice creation path (invoices.js and units.js currently duplicate it).
-- [ ] Journal entry numbers via the same service.
-- Test: 50 concurrent creates, no duplicates, no 500 on UNIQUE after deletes.
+- [x] One numbering service (`services/numbering.js`) with an atomic counter (`UPDATE ... RETURNING`, `INSERT ... ON CONFLICT DO UPDATE`), per NUMBERING_STANDARD.md. Backed by new table `document_counters`, not `numbering_sequences` (see PR: that table cannot key on year/prefix and its UNIQUE(project_id, entity) does not hold for NULL project).
+- [x] Replace all COUNT/MAX call sites; `backend/lint-guards.baseline.json` (`count-numbering`, 3-line window) is the authority and must end empty. The list that follows is only a starting point.
+- [x] (starting point) Replace all ~15 COUNT/MAX call sites (procurementService:49, replenishment:283/310, invoices:97, units:31, boq:27/102, hr, suppliers, projects:210, qhse:126, hse:594, doccontrol, financeEngine:134).
+- [x] Single invoice creation path (invoices.js and units.js currently duplicate it).
+- [x] Journal entry numbers via the same service.
+- Test (done, real PG): 50 concurrent creates, no duplicates, no reuse after deletes.
 
 2.5 Delete semantics
 - [ ] Change 171 `ON DELETE CASCADE`: financial, procurement, contractual and handover tables become RESTRICT; add `deleted_at`/`deleted_by` soft-delete.

@@ -23,6 +23,7 @@
 'use strict';
 
 const workflowEngineRef = () => require('./workflowEngine');
+const { nextNumber } = require('./numbering');
 
 function toNum(v) {
   if (v == null) return 0;
@@ -253,8 +254,7 @@ async function createVariation(q, {
   description = null, variation_type = 'client', lines = [], cost_buildup = [],
   created_by = null,
 }) {
-  const count = parseInt((await q('SELECT COUNT(*) FROM variations')).rows[0].count);
-  const variationNumber = `VAR-${String(count + 1).padStart(4, '0')}`;
+  const variationNumber = await nextNumber(q, { table: 'variations', column: 'variation_number', prefix: 'VAR', pad: 4 });
   const amount = round2(lines.reduce((s, l) => s + toNum(l.quantity) * toNum(l.unit_rate), 0));
   const r = await q(
     `INSERT INTO variations (variation_number, project_id, client_contract_id, sub_contract_id, title, description, variation_type, amount, status, created_by)

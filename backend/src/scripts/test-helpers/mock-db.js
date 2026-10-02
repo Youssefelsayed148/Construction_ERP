@@ -54,6 +54,7 @@ class MockDb {
     assertParamArity(sql, params);
     const norm = sql.replace(/\s+/g, ' ').trim();
     const upper = norm.toUpperCase();
+    if (upper.includes('DOCUMENT_COUNTERS') && !upper.startsWith('CREATE')) return this.execDocumentCounter(upper, params);
     if (upper.startsWith('CREATE TABLE')) return this.execCreateTable(norm, params);
     if (upper.startsWith('CREATE INDEX')) return this.execCreateIndex(norm);
     if (upper.startsWith('CREATE UNIQUE INDEX')) return this.execCreateIndex(norm);
@@ -63,6 +64,24 @@ class MockDb {
     if (upper.startsWith('SELECT')) return this.execSelect(norm, params);
     throw new Error(`MockDb: unhandled SQL prefix: ${norm.slice(0, 80)}`);
   };
+
+  // The two statements services/numbering.js issues against document_counters.
+  execDocumentCounter(upper, params) {
+    if (!this.counters) this.counters = new Map();
+    const key = params[0];
+    if (upper.startsWith('UPDATE')) {
+      if (!this.counters.has(key)) return { rows: [], rowCount: 0 };
+      const next = this.counters.get(key) + 1;
+      this.counters.set(key, next);
+      return { rows: [{ last_value: String(next) }], rowCount: 1 };
+    }
+    if (upper.startsWith('INSERT')) {
+      const next = this.counters.has(key) ? this.counters.get(key) + 1 : Number(params[1]);
+      this.counters.set(key, next);
+      return { rows: [{ last_value: String(next) }], rowCount: 1 };
+    }
+    throw new Error(`MockDb: unhandled document_counters SQL: ${upper.slice(0, 80)}`);
+  }
 
   // -----------------------------------------------------------------------
   // CREATE TABLE

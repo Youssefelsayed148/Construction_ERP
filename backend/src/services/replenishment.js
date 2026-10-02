@@ -27,6 +27,7 @@
 'use strict';
 
 const { query: defaultQuery } = require('../config/database');
+const numbering = require('./numbering');
 const notificationService = require('./notificationService');
 
 const MODES = ['alert_only', 'auto_draft_pr', 'auto_draft_po', 'auto_issue_po'];
@@ -281,8 +282,7 @@ async function ensureDraftPurchaseRequest(q, { item, quantity, neededBy, mode, c
   )).rows[0];
   if (existing) return { created: false, request: existing };
 
-  const count = parseInt((await q('SELECT COUNT(*) FROM purchase_requests')).rows[0].count);
-  const requestNumber = `PR-${String(count + 1).padStart(5, '0')}`;
+  const requestNumber = await numbering.nextNumber(q, { table: 'purchase_requests', column: 'request_number', prefix: 'PR', pad: 5 });
   const r = await q(
     `INSERT INTO purchase_requests
        (request_number, material_id, quantity, unit, needed_by, status, source_type, source_id, source_key, policy_mode, created_by)
@@ -311,8 +311,7 @@ async function ensurePurchaseOrder(q, { item, supplier, quantity, unitPrice, sta
   )).rows[0];
   if (existing) return { created: false, order: existing };
 
-  const count = parseInt((await q('SELECT COUNT(*) FROM purchase_orders')).rows[0].count);
-  const orderNumber = `PO-${String(count + 1).padStart(5, '0')}`;
+  const orderNumber = await numbering.nextNumber(q, { table: 'purchase_orders', column: 'order_number', prefix: 'PO', pad: 5 });
   const r = await q(
     `INSERT INTO purchase_orders
        (order_number, supplier_id, material_id, quantity, unit, unit_price, total_amount,

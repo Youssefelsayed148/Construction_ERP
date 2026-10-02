@@ -14,6 +14,8 @@
 
 'use strict';
 
+const numbering = require('./numbering');
+
 // Standard content every project gets even without a template.
 const DEFAULT_FOLDERS = [
   { code: 'contracts', name: 'Contracts', folder_type: 'documents' },
@@ -87,8 +89,7 @@ function generateProjectCode(seq) {
 }
 
 async function nextProjectNumber(client) {
-  const r = await client.query('SELECT COUNT(*) FROM projects');
-  return generateProjectCode((r.rows[0] ? Number(r.rows[0].count) : 0) + 1);
+  return numbering.nextNumber((t, p) => client.query(t, p), { table: 'projects', column: 'code', prefix: 'PRJ', pad: 4 });
 }
 
 function num(v) {

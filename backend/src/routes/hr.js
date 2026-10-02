@@ -1,4 +1,5 @@
 const express = require('express');
+const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
@@ -43,8 +44,7 @@ router.post('/employees', authenticate, authorize('owner', 'admin'), async (req,
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
     if (!value.code) {
-      const cnt = await query("SELECT COUNT(*) as c FROM employees WHERE code LIKE 'EMP-%'");
-      value.code = `EMP-${String(parseInt(cnt.rows[0].c) + 1).padStart(4, '0')}`;
+      value.code = await nextNumber(query, { table: 'employees', column: 'code', prefix: 'EMP', pad: 4 });
     }
 
     const r = await query(
@@ -218,8 +218,7 @@ router.post('/laborers', authenticate, authorize(), async (req, res) => {
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
     if (!value.code) {
-      const cnt = await query("SELECT COUNT(*) as c FROM daily_laborers WHERE code LIKE 'DL-%'");
-      value.code = `DL-${String(parseInt(cnt.rows[0].c) + 1).padStart(4, '0')}`;
+      value.code = await nextNumber(query, { table: 'daily_laborers', column: 'code', prefix: 'DL', pad: 4 });
     }
 
     const r = await query(

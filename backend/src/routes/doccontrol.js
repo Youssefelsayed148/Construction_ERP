@@ -1,4 +1,5 @@
 const express = require('express');
+const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
@@ -239,8 +240,7 @@ router.post('/rfis', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const seq = await query('SELECT COUNT(*) + 1 as next FROM project_rfis WHERE project_id = $1', [value.project_id]);
-    const rfiNumber = `RFI-${value.project_id}-${String(seq.rows[0].next).padStart(3, '0')}`;
+    const rfiNumber = await nextNumber(query, { table: 'project_rfis', column: 'rfi_number', prefix: `RFI-${value.project_id}`, pad: 3 });
 
     const result = await query(
       `INSERT INTO project_rfis (rfi_number, project_id, subject, question, category, priority, due_date, raised_by)
@@ -312,8 +312,7 @@ router.post('/submittals', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const seq = await query('SELECT COUNT(*) + 1 as next FROM project_submittals WHERE project_id = $1', [value.project_id]);
-    const subNumber = `SUB-${value.project_id}-${String(seq.rows[0].next).padStart(3, '0')}`;
+    const subNumber = await nextNumber(query, { table: 'project_submittals', column: 'submittal_number', prefix: `SUB-${value.project_id}`, pad: 3 });
 
     const result = await query(
       `INSERT INTO project_submittals (submittal_number, project_id, title, submittal_type, submitted_to, submitted_by)

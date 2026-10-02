@@ -25,6 +25,7 @@
 'use strict';
 
 const workflowEngine = require('./workflowEngine');
+const numbering = require('./numbering');
 const inventoryEngine = require('./inventoryEngine');
 
 const PRICE_VARIANCE_TOLERANCE = 0.02;   // 2% line-price tolerance
@@ -47,8 +48,7 @@ function round3(n) {
 }
 
 async function nextNumber(q, table, column, prefix) {
-  const count = parseInt((await q(`SELECT COUNT(*) FROM ${table}`)).rows[0].count);
-  return `${prefix}-${String(count + 1).padStart(5, '0')}`;
+  return numbering.nextNumber(q, { table, column, prefix, pad: 5 });
 }
 
 // ---------------------------------------------------------------------------

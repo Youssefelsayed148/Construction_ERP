@@ -1,11 +1,9 @@
 const { query } = require('../config/database');
+const numbering = require('../services/numbering');
 
 const generateJournalEntry = async ({ date, description, referenceId, referenceType, totalAmount, lines, createdBy = 1 }) => {
   try {
-    const entryNumResult = await query(
-      "SELECT COALESCE(MAX(CAST(NULLIF(regexp_replace(entry_number, '[^0-9]', '', 'g'), '') AS INTEGER)), 0) + 1 as next_num FROM journal_entries"
-    );
-    const entryNumber = 'JE-' + String(entryNumResult.rows[0].next_num).padStart(5, '0');
+    const entryNumber = await numbering.nextNumber(query, { table: 'journal_entries', column: 'entry_number', prefix: 'JE', pad: 5 });
 
     const entryResult = await query(
       `INSERT INTO journal_entries (entry_number, date, description, reference_id, reference_type, total_amount, created_by)

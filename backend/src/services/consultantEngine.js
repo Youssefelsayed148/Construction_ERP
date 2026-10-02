@@ -21,6 +21,7 @@
 'use strict';
 
 const { query: defaultQuery } = require('../config/database');
+const { nextNumber } = require('./numbering');
 const workflowEngine = require('./workflowEngine');
 
 const OBSERVATION_TRANSITIONS = {
@@ -129,8 +130,7 @@ async function createObservation(q, {
 }) {
   await assertConsultantProject(q, user, project_id);
   if (user.role === 'consultant') organization_id = (await consultantIdentity(q, user, project_id)).organization_id;
-  const count = parseInt((await q('SELECT COUNT(*) FROM observations')).rows[0].count, 10);
-  const observationNumber = `OBS-${String(count + 1).padStart(4, '0')}`;
+  const observationNumber = await nextNumber(q, { table: 'observations', column: 'observation_number', prefix: 'OBS', pad: 4 });
 
   const r = await q(
     `INSERT INTO observations (observation_number, project_id, consultant_organization_id, consultant_user_id,

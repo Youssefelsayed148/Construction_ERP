@@ -20,7 +20,7 @@ const provisioning = require('../../services/projectProvisioning');
 // ---------------------------------------------------------------------------
 
 function snapshot(db) {
-  const snap = { tables: new Map(), serial: new Map() };
+  const snap = { tables: new Map(), serial: new Map(), counters: new Map(db.counters || []) };
   for (const [name, t] of db.tables) {
     snap.tables.set(name, t.rows.map((r) => ({ ...r })));
     snap.serial.set(name, db.serial.get(name) || 0);
@@ -33,6 +33,7 @@ function restore(db, snap) {
     if (db.tables.has(name)) db.table(name).rows = rows.map((r) => ({ ...r }));
   }
   for (const [name, v] of snap.serial) db.serial.set(name, v);
+  db.counters = new Map(snap.counters); // document_counters roll back with their transaction
 }
 
 async function withTransaction(db, fn) {

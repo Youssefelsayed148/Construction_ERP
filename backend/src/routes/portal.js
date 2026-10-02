@@ -1,4 +1,5 @@
 const express = require('express');
+const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
@@ -138,8 +139,7 @@ router.post('/subcontractor/rfis', authenticate, authorize(), async (req, res) =
     const contract = await engine.subContractForOrg(query, value.sub_contract_id, req.user.id);
     if (!contract || Number(contract.project_id) !== value.project_id) return res.status(404).json({ success: false, error: 'Package not found' });
     const row = await transaction(async (client) => {
-      const next = await client.query('SELECT COUNT(*) + 1 AS next FROM project_rfis WHERE project_id = $1', [value.project_id]);
-      const number = `RFI-${value.project_id}-${String(next.rows[0].next).padStart(3, '0')}`;
+      const number = await nextNumber((t, p) => client.query(t, p), { table: 'project_rfis', column: 'rfi_number', prefix: `RFI-${value.project_id}`, pad: 3 });
       return (await client.query(
         `INSERT INTO project_rfis (rfi_number, project_id, sub_contract_id, subject, question, category, priority, due_date, raised_by, status)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'submitted') RETURNING *`,
@@ -162,8 +162,7 @@ router.post('/subcontractor/submittals', authenticate, authorize(), async (req, 
     const contract = await engine.subContractForOrg(query, value.sub_contract_id, req.user.id);
     if (!contract || Number(contract.project_id) !== value.project_id) return res.status(404).json({ success: false, error: 'Package not found' });
     const row = await transaction(async (client) => {
-      const next = await client.query('SELECT COUNT(*) + 1 AS next FROM project_submittals WHERE project_id = $1', [value.project_id]);
-      const number = `SUB-${value.project_id}-${String(next.rows[0].next).padStart(3, '0')}`;
+      const number = await nextNumber((t, p) => client.query(t, p), { table: 'project_submittals', column: 'submittal_number', prefix: `SUB-${value.project_id}`, pad: 3 });
       return (await client.query(
         `INSERT INTO project_submittals (submittal_number, project_id, sub_contract_id, title, submittal_type, submitted_to, submitted_by, status)
          VALUES ($1,$2,$3,$4,$5,$6,$7,'submitted') RETURNING *`,
