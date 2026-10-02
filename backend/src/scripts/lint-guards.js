@@ -8,8 +8,8 @@
 //   count-numbering  COUNT(*)+1 / MAX(..)+1 document numbering (use the numbering service, Phase 2.4)
 //
 // The baseline is per file. A file may not exceed its recorded count, and a file
-// with no entry may not have any. Limits: line-based, so a pattern split across
-// lines is not seen.
+// with no entry may not have any. A site is a COUNT(/MAX( line with "+ 1" in the same
+// line or the next 3. The Phase 2.4 replacement list is the authority for what must go.
 const fs = require('fs');
 const path = require('path');
 
@@ -17,11 +17,10 @@ const srcDir = path.join(__dirname, '..');
 const baselinePath = path.join(__dirname, '..', '..', 'lint-guards.baseline.json');
 
 const SILENT_CATCH = /\.catch\(\s*\(\s*\w*\s*\)\s*=>\s*\{\s*\}\s*\)/g;
-const COUNT_NUMBERING = [
-  /COUNT\(\s*\*\s*\)(?:::\w+)?\s*\)?\s*\+\s*1\b/gi,
-  /\bMAX\([^;]*\)\s*(?:,\s*0\s*\)\s*)?\+\s*1\b/gi,
-  /rows\[0\]\.(?:count|c|n)\)?\s*\+\s*1\b/g,
-];
+// A COUNT(*)/MAX( query with a "+ 1" on the same line or within the next 3 lines.
+const NUMBER_SOURCE = /\b(?:COUNT|MAX)\(/i;
+const PLUS_ONE = /\+\s*1\b/;
+const WINDOW = 3;
 
 const isMigration = (rel) =>
   /^scripts\/(migrate-[^/]+|[^/]+-migration|setupDb)\.js$/.test(rel);
@@ -49,7 +48,10 @@ function scan() {
     let numbering = 0;
     for (const line of lines) {
       if (isMigration(rel)) silent += (line.match(SILENT_CATCH) || []).length;
-      if (COUNT_NUMBERING.some((re) => { re.lastIndex = 0; return re.test(line); })) numbering += 1;
+    }
+    for (let i = 0; i < lines.length; i += 1) {
+      if (!NUMBER_SOURCE.test(lines[i])) continue;
+      if (PLUS_ONE.test(lines.slice(i, i + WINDOW + 1).join(' '))) numbering += 1;
     }
     if (silent) result['silent-catch'][rel] = silent;
     if (numbering) result['count-numbering'][rel] = numbering;

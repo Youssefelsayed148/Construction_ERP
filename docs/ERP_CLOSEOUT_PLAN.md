@@ -136,7 +136,8 @@ Goal: the database refuses to be wrong.
 
 2.4 Document numbering
 - [ ] One numbering service backed by `numbering_sequences` with `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` (atomic, gap-tolerant), per NUMBERING_STANDARD.md.
-- [ ] Replace all ~15 COUNT/MAX call sites (procurementService:49, replenishment:283/310, invoices:97, units:31, boq:27/102, hr, suppliers, projects:210, qhse:126, hse:594, doccontrol, financeEngine:134).
+- [ ] Replace all COUNT/MAX call sites; `backend/lint-guards.baseline.json` (`count-numbering`, 3-line window) is the authority and must end empty. The list that follows is only a starting point.
+- [ ] (starting point) Replace all ~15 COUNT/MAX call sites (procurementService:49, replenishment:283/310, invoices:97, units:31, boq:27/102, hr, suppliers, projects:210, qhse:126, hse:594, doccontrol, financeEngine:134).
 - [ ] Single invoice creation path (invoices.js and units.js currently duplicate it).
 - [ ] Journal entry numbers via the same service.
 - Test: 50 concurrent creates, no duplicates, no 500 on UNIQUE after deletes.
