@@ -28,10 +28,10 @@ function Login() {
         dispatch(setUser(response.data.user));
         navigate('/');
       } else {
-        setErrorMsg(response.error || 'Login failed');
+        setErrorMsg(response.error || t('auth.login.failed'));
       }
     } catch (err) {
-      setErrorMsg(err.message || 'Login failed');
+      setErrorMsg(err.message || t('auth.login.failed'));
       dispatch(setError(err.message));
     } finally {
       setLoading(false);
@@ -58,7 +58,7 @@ function Login() {
             {t('common.appName')}
           </h1>
           <p style={{ color: 'var(--color-text-secondary)', marginTop: '8px', fontSize: '0.9rem' }}>
-            {locale === 'ar' ? 'نظام إدارة مشاريع الإنشاءات' : 'Construction Project Management System'}
+            {t('auth.login.subtitle')}
           </p>
         </div>
 
@@ -74,11 +74,13 @@ function Login() {
         }}>
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label className="form-label">
-                {locale === 'ar' ? 'البريد الإلكتروني' : 'Email'}
+              <label className="form-label" htmlFor="login-email">
+                {t('auth.login.email')}
               </label>
               <input
+                id="login-email"
                 type="email"
+                dir="ltr"
                 className="form-input"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -89,25 +91,28 @@ function Login() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">
-                {locale === 'ar' ? 'كلمة المرور' : 'Password'}
+              <label className="form-label" htmlFor="login-password">
+                {t('auth.login.password')}
               </label>
               <div style={{ position: 'relative' }}>
                 <input
+                  id="login-password"
                   type={showPassword ? 'text' : 'password'}
+                  dir="ltr"
                   className="form-input"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="········"
                   required
-                  style={{ paddingRight: '40px' }}
+                  style={{ paddingInlineEnd: '40px' }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
+                  aria-label={t(showPassword ? 'auth.login.hidePassword' : 'auth.login.showPassword')}
                   style={{
                     position: 'absolute',
-                    right: '10px',
+                    insetInlineEnd: '10px',
                     top: '50%',
                     transform: 'translateY(-50%)',
                     background: 'none',
@@ -136,7 +141,7 @@ function Login() {
             >
               {loading ? (
                 <span className="spinner" />
-              ) : locale === 'ar' ? 'تسجيل الدخول' : 'Sign In'}
+              ) : t('auth.login.submit')}
             </button>
           </form>
 
@@ -148,6 +153,7 @@ function Login() {
             borderTop: '1px solid var(--color-surface-raised)',
           }}>
             <button
+              lang={locale === 'ar' ? 'en' : 'ar'}
               onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')}
               style={{
                 background: 'none',
@@ -160,7 +166,7 @@ function Login() {
                 transition: 'all var(--transition-fast)',
               }}
             >
-              {locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'}
+              {t('auth.login.switchLanguage')}
             </button>
           </div>
         </div>

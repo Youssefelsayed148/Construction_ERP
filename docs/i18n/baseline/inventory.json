@@ -2,16 +2,23 @@
   "note": "Heuristic static counts. Per-file counts may only go down (npm run i18n:check). Regenerate with npm run i18n:inventory.",
   "frontend": {
     "totals": {
-      "inlineBranches": 1190,
-      "hardcodedEnglish": 108,
+      "inlineBranches": 1189,
+      "hardcodedEnglish": 102,
       "rawEnumRendering": 5,
       "hardcodedFormat": 8,
-      "prompts": 154
+      "prompts": 155
     },
     "files": {
-      "App.js": {
+      "components/common/ConfirmDialog.js": {
         "inlineBranches": 0,
-        "hardcodedEnglish": 1,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 1
+      },
+      "components/common/States.js": {
+        "inlineBranches": 2,
+        "hardcodedEnglish": 0,
         "rawEnumRendering": 0,
         "hardcodedFormat": 0,
         "prompts": 0
@@ -23,23 +30,9 @@
         "hardcodedFormat": 0,
         "prompts": 0
       },
-      "components/layout/Layout.js": {
-        "inlineBranches": 0,
-        "hardcodedEnglish": 2,
-        "rawEnumRendering": 0,
-        "hardcodedFormat": 0,
-        "prompts": 0
-      },
       "components/layout/Sidebar.js": {
-        "inlineBranches": 2,
-        "hardcodedEnglish": 2,
-        "rawEnumRendering": 0,
-        "hardcodedFormat": 0,
-        "prompts": 0
-      },
-      "components/ProtectedMedia.js": {
-        "inlineBranches": 0,
-        "hardcodedEnglish": 1,
+        "inlineBranches": 3,
+        "hardcodedEnglish": 0,
         "rawEnumRendering": 0,
         "hardcodedFormat": 0,
         "prompts": 0
@@ -150,7 +143,7 @@
         "prompts": 0
       },
       "pages/Login.js": {
-        "inlineBranches": 6,
+        "inlineBranches": 2,
         "hardcodedEnglish": 0,
         "rawEnumRendering": 0,
         "hardcodedFormat": 0,
@@ -299,7 +292,7 @@
           "agents": 2,
           "approvals": 2,
           "assets": 2,
-          "auth": 11,
+          "auth": 10,
           "boq": 2,
           "clients": 2,
           "commercial": 3,
@@ -338,7 +331,7 @@
           "agents": 2,
           "approvals": 2,
           "assets": 2,
-          "auth": 11,
+          "auth": 10,
           "boq": 2,
           "clients": 2,
           "commercial": 3,
@@ -382,9 +375,9 @@
       "en": [],
       "ar": []
     },
-    "usedKeys": 35,
+    "usedKeys": 55,
     "dynamicKeyCalls": {
-      "components/layout/Sidebar.js": 1
+      "i18n/enums.js": 1
     },
     "parity": {
       "inEnNotAr": [],

@@ -1,5 +1,5 @@
 // Phase 10 L0: baseline screenshots of the principal routes in both languages.
-// Not part of the normal run: `npm run i18n:screenshots` (project "i18n-screenshots").
+// Skipped in the normal run; `npm run i18n:screenshots` sets I18N_SCREENSHOTS=1 and runs the i18n-screenshots project.
 // The API is mocked with empty data, so these show the shell, headings and empty states.
 const { test } = require('@playwright/test');
 const path = require('path');
@@ -33,6 +33,7 @@ const ROUTES = [
 for (const locale of ['en', 'ar']) {
   for (const route of ROUTES) {
     test(`baseline ${route.name} ${locale}`, async ({ page }) => {
+      test.skip(!process.env.I18N_SCREENSHOTS, 'on demand: npm run i18n:screenshots');
       await page.addInitScript(({ jwt, loc, role, anon }) => {
         localStorage.setItem('locale', loc);
         if (!anon) {

@@ -25,7 +25,7 @@
     "eject": "react-scripts eject",
     "i18n:inventory": "node scripts/i18n-inventory.js",
     "i18n:check": "node scripts/i18n-inventory.js --check",
-    "i18n:screenshots": "playwright test --project=i18n-screenshots",
+    "i18n:screenshots": "node scripts/i18n-screenshots.js",
     "i18n:parity": "node scripts/i18n-parity.js"
   },
   "eslintConfig": {

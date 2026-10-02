@@ -420,8 +420,8 @@ L2 Translation catalog
 - Exit: translation parity enforced in CI.
 
 L3 Application shell
-- [ ] Sidebar, portal navigation, Agent Activity and Procurement Comparison links (the English items in the Arabic sidebar), language and logout tooltips, user and role display, mobile nav aria-labels, offline banner, Settings placeholder, file-unavailable messages, generic loading/empty/error states, confirm dialogs and form actions.
-- [ ] Translate role names for display, keep role codes; mirror directional icons (back/next) in RTL.
+- [x] Sidebar, portal navigation, Agent Activity and Procurement Comparison links (the English items in the Arabic sidebar), language and logout tooltips, user and role display, mobile nav aria-labels, offline banner, Settings placeholder, file-unavailable messages, generic loading/empty/error states, confirm dialogs and form actions.
+- [x] Translate role names for display, keep role codes; mirror directional icons (back/next) in RTL.
 - Exit: shell has no unconditional English in Arabic mode.
 
 L4 English-only expansion screens

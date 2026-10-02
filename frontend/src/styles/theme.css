@@ -163,7 +163,7 @@ body {
 
 /* Main content area */
 .main-content {
-  margin-left: 260px;
+  margin-inline-start: 260px;
   flex: 1;
   padding: 24px;
   min-height: 100vh;
@@ -594,9 +594,11 @@ html[dir='rtl'] .table td {
   width: 260px;
   flex-shrink: 0;
   background: var(--color-surface);
-  border-right: 1px solid var(--color-surface-raised);
+  border-inline-end: 1px solid var(--color-surface-raised);
   color: var(--color-text-primary);
   position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
   height: 100vh;
   overflow-y: auto;
   display: flex;
@@ -651,25 +653,9 @@ html[dir='rtl'] .table td {
   content: '';
   position: absolute;
   bottom: 0;
-  left: 8px;
-  right: 8px;
+  inset-inline: 8px;
   height: 1px;
   background: var(--color-accent);
-}
-
-html[dir='rtl'] .nav-item.active::after {
-  left: 8px;
-  right: 8px;
-}
-
-html[dir='rtl'] .sidebar {
-  left: auto;
-  right: 0;
-}
-
-html[dir='rtl'] .main-content {
-  margin-left: 0;
-  margin-right: 260px;
 }
 
 .sidebar-footer {
@@ -778,10 +764,8 @@ html[dir='rtl'] .main-content {
 }
 
 @media (max-width: 900px) {
-  .main-content,
-  html[dir='rtl'] .main-content {
-    margin-left: 0;
-    margin-right: 0;
+  .main-content {
+    margin-inline: 0;
     width: 100%;
     padding: 72px 16px 24px;
   }
@@ -790,7 +774,7 @@ html[dir='rtl'] .main-content {
     display: inline-flex;
     position: fixed;
     top: 14px;
-    left: 16px;
+    inset-inline-start: 16px;
     z-index: 1200;
     width: 44px;
     height: 44px;
@@ -800,11 +784,6 @@ html[dir='rtl'] .main-content {
     background: var(--color-surface-raised);
     border: 1px solid var(--color-accent-muted);
     border-radius: var(--radius-md);
-  }
-
-  html[dir='rtl'] .mobile-menu-button {
-    left: auto;
-    right: 16px;
   }
 
   .sidebar {
@@ -906,4 +885,18 @@ html[dir='rtl'] .main-content {
   .operations-tabs .btn {
     flex: 0 0 auto;
   }
+}
+
+/* Generic states (components/common/States.js) */
+.state-message {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  color: var(--color-text-secondary);
+}
+
+.locale-loading {
+  min-height: 100vh;
+  background: var(--color-base);
 }

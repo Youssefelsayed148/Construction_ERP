@@ -33,6 +33,7 @@ import PortalDashboard from './pages/PortalDashboard';
 import ProcurementReview from './pages/ProcurementReview';
 import AgentActivity from './pages/AgentActivity';
 import ProjectOperations from './pages/ProjectOperations';
+import Settings from './pages/Settings';
 import { authService } from './services/api';
 import './styles/index.css';
 import './styles/portal.css';
@@ -103,7 +104,7 @@ function App() {
           <Route path="projects/:id/handover" element={<Handover />} />
           <Route path="projects/:id/documents" element={<ProjectDocuments />} />
           <Route path="projects/:id/units" element={<UnitsSales />} />
-          <Route path="settings" element={<div className="page-container"><h1>Settings</h1></div>} />
+          <Route path="settings" element={<Settings />} />
           {/* Phase 27 — Agent Activity (owner/admin; backend enforces) */}
           <Route path="agent-activity" element={<AgentActivity />} />
         </Route>
