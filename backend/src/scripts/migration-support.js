@@ -12,9 +12,8 @@ const ident = (name) => {
 };
 
 // Line endings are normalised so a Windows checkout (CRLF) and a Linux build (LF) agree.
-const checksumOf = (file) => crypto.createHash('sha256').update(fs.readFileSync(file, 'utf8').replace(/
-/g, '
-')).digest('hex');
+const normalise = (text) => text.split('\r\n').join('\n');
+const checksumOf = (file) => crypto.createHash('sha256').update(normalise(fs.readFileSync(file, 'utf8'))).digest('hex');
 
 async function ensureMigrationsTable(q, table = DEFAULT_TABLE) {
   await q(`CREATE TABLE IF NOT EXISTS ${ident(table)} (
