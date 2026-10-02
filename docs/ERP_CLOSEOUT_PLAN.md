@@ -48,7 +48,7 @@ Tasks
 - [x] Commit the localization plan into docs/system_language_fix.md (currently empty and untracked); it is the source for Phase 10.
 - [x] Add a CI job that fails on new `.catch(() => {})` in migrations and on new `COUNT(*)+1` numbering (grep-based lint).
 - [x] Add a CI job that runs backend tests against real Postgres 16 (already used for migrate; extend to a `test:pg` suite).
-- [ ] Create the tracking board: one issue per checkbox in this file, labelled by phase and severity. (generator ready: `node scripts/plan-to-issues.js`, 221 items; not run with --create, awaiting owner go-ahead)
+- [x] Tracking board: by decision the checklist in this file is the board; `scripts/plan-to-issues.js` stays a dry run.
 - [x] Backend Dockerfile: add a build-stage test step (or enforce CI before image build).
 
 Exit gate: CI has three green gates (mock-db jest, real-PG jest, build+Playwright); status doc matches reality.

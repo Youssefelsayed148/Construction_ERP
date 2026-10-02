@@ -8,7 +8,7 @@ Basis: the audits were static reads. Each finding is reproduced with a failing t
 
 | Phase | Name | Status |
 |---|---|---|
-| 0 | Baseline, docs truth, CI gates | Done except the tracking board (awaiting go-ahead) |
+| 0 | Baseline, docs truth, CI gates | Done (PR #1; first CI run green after one frontend lint fix) |
 | 1 | Security blockers | Not started |
 | 2 | Data integrity foundation | Not started |
 | 3 | Cost and cross-module sync | Not started (needs the cost accrual decision) |
