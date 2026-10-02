@@ -27,6 +27,8 @@ function walk(dir, out = []) {
   return out;
 }
 const rel = (f) => path.relative(srcDir, f).split(path.sep).join('/');
+// The i18n infrastructure itself (src/i18n) legitimately inspects the locale; it is not screen text.
+const isInfrastructure = (relPath) => relPath.startsWith('i18n/');
 const count = (text, re) => (text.match(re) || []).length;
 
 const INLINE = /locale\s*===?\s*['"]ar['"]|locale\s*!==?\s*['"]ar['"]|isRTL\s*\?/g;
@@ -39,6 +41,7 @@ const PROMPTS = /(?<![\w.])(?:prompt|confirm|alert)\(|window\.(?:prompt|confirm|
 function scanFrontend() {
   const files = {};
   for (const f of walk(srcDir)) {
+    if (isInfrastructure(rel(f))) continue;
     const text = fs.readFileSync(f, 'utf8');
     const entry = {
       inlineBranches: count(text, INLINE),
