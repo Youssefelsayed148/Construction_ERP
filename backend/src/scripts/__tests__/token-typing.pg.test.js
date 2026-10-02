@@ -2,6 +2,7 @@
 // Phase 1.1 (token typing). Findings reproduced here first: a v1 token and a refresh token were
 // accepted on internal routes / as v1 bearers, a preview token could write through v1 and MCP,
 // the refresh TTL was 30 seconds, and a session token survived a password change for 7 days.
+process.env.AUTH_RATE_LIMIT_PER_15_MIN = '1000'; // many logins in one run
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
