@@ -15,6 +15,8 @@
 // approved) is seeded here for the sign-off-before-work permit types
 // (hot work, confined space, lifting).
 
+const { setSequenceToMax } = require('./migration-support');
+
 const DDL = [
   // ------------------------------------------------------------------
   // Incidents (typed) — created beside the legacy table; the copy +
@@ -266,9 +268,11 @@ async function convertLegacy(query) {
     `SELECT COUNT(*)::int AS c FROM information_schema.views WHERE table_name = 'safety_incidents'`
   )).rows[0].c > 0;
   if (hasLegacy.rows[0] && !isView) {
-    await query(`INSERT INTO incidents (${incidentCols}) SELECT ${incidentCols} FROM safety_incidents`);
-    await query(`DROP TABLE safety_incidents`);
-    await query(`CREATE VIEW safety_incidents AS SELECT ${incidentCols} FROM incidents`);
+    // One multi-statement query = one implicit transaction: copy, drop and view succeed or fail together.
+    await query(`INSERT INTO incidents (${incidentCols}) SELECT ${incidentCols} FROM safety_incidents;
+                 DROP TABLE safety_incidents;
+                 CREATE VIEW safety_incidents AS SELECT ${incidentCols} FROM incidents;`);
+    await setSequenceToMax(query, 'incidents');
   }
 
   // safety_inspections → hse_inspections
@@ -281,10 +285,10 @@ async function convertLegacy(query) {
     `SELECT COUNT(*)::int AS c FROM information_schema.views WHERE table_name = 'safety_inspections'`
   )).rows[0].c > 0;
   if (hasLegacyI.rows[0] && !isViewI) {
-    await query(`INSERT INTO hse_inspections (id, project_id, inspection_date, inspector_id, checklist_items, findings, status, created_at)
-                 SELECT id, project_id, inspection_date, inspector_id, checklist_items, findings, status, created_at FROM safety_inspections`);
-    await query(`DROP TABLE safety_inspections`);
-    await query(`CREATE VIEW safety_inspections AS SELECT id, project_id, inspection_date, inspector_id, checklist_items, findings, status, created_at FROM hse_inspections`);
+    await query(`INSERT INTO hse_inspections (${inspectionCols}) SELECT ${inspectionCols} FROM safety_inspections;
+                 DROP TABLE safety_inspections;
+                 CREATE VIEW safety_inspections AS SELECT ${inspectionCols} FROM hse_inspections;`);
+    await setSequenceToMax(query, 'hse_inspections');
   }
 }
 

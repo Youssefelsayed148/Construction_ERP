@@ -114,12 +114,12 @@ Exit gate: security test suite (token, scope, IDOR, approval race, SSRF) green o
 Goal: the database refuses to be wrong.
 
 2.1 Migrations system
-- [ ] Add `schema_migrations` version table; run each migration in a transaction; record checksum.
-- [ ] Remove silent `.catch(() => {})` in migrate-8 and 18 others; make failures fatal.
-- [ ] Fix hse-migration.js:262-287 (copy, DROP TABLE, CREATE VIEW) into one transaction.
-- [ ] `setval` after every explicit-id insert and after db_dump init; resolve the docker-compose `db_dump/` init conflict with the migrator.
-- [ ] migrate-39: backfill `project_id` for legal_documents, maintenance_reminders, agent_action_requests so existing rows are visible to scoped users.
-- [ ] Review the silent column drops in migrate-12 and migrate-15.
+- [x] Add `schema_migrations` version table; run each migration in a transaction; record checksum.
+- [x] Remove silent `.catch(() => {})`; make failures fatal. (19 removed from migrate-1.3/1.4/2.1/11/12/13; migrate-8 had none)
+- [x] Fix hse-migration.js:262-287 (copy, DROP TABLE, CREATE VIEW) into one transaction.
+- [x] `setval` after every explicit-id insert and after db_dump init; resolve the docker-compose `db_dump/` init conflict with the migrator.
+- [x] migrate-39: backfill `project_id` for legal_documents, maintenance_reminders, agent_action_requests so existing rows are visible to scoped users. (reminders and agent requests done in `0001_backfill_project_scope.sql`; legal_documents has nothing to derive a project from and stays company-wide)
+- [x] Review the silent column drops in migrate-12 and migrate-15.
 
 2.2 Inventory atomicity
 - [ ] Wrap all warehouses.js movement/reservation routes (:110,141,175,342,367) in `transaction()`.

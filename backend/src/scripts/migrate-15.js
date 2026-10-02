@@ -10,12 +10,18 @@ async function migrate() {
   await query(`ALTER TABLE project_team ADD COLUMN IF NOT EXISTS employee_id INTEGER`);
   console.log('[OK] project_team.employee_id column');
 
-  await query(`DELETE FROM project_team WHERE employee_id IS NULL`);
-  console.log('[OK] cleared legacy user-based team rows');
+  // Destructive step, only while the legacy user_id column still exists, so a re-run can never delete rows.
+  const legacyColumn = await query(
+    `SELECT 1 AS ok FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'project_team' AND column_name = 'user_id'`
+  );
+  if (legacyColumn.rows.length) {
+    await query(`DELETE FROM project_team WHERE employee_id IS NULL`);
+    console.log('[OK] cleared legacy user-based team rows');
 
-  await query(`ALTER TABLE project_team DROP CONSTRAINT IF EXISTS project_team_user_id_fkey`);
-  await query(`ALTER TABLE project_team DROP COLUMN IF EXISTS user_id`);
-  console.log('[OK] dropped old user_id column + FK');
+    await query(`ALTER TABLE project_team DROP CONSTRAINT IF EXISTS project_team_user_id_fkey`);
+    await query(`ALTER TABLE project_team DROP COLUMN user_id`);
+    console.log('[OK] dropped old user_id column + FK');
+  }
 
   await query(`ALTER TABLE project_team DROP CONSTRAINT IF EXISTS project_team_employee_id_fkey`);
   await query(`ALTER TABLE project_team

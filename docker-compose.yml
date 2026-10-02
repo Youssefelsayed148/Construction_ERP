@@ -8,10 +8,11 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - db_data:/var/lib/postgresql/data
-      # First-boot only: postgres auto-runs any .sql file found here when the
-      # data directory is empty. Drop the handed-off dump at db_dump/init.sql
-      # before first `docker compose up` if you want the seeded/test data
-      # loaded; omit it for a schema-only fresh start.
+      # First-boot only: postgres runs any .sql in db_dump/ when the data directory is empty.
+      # Treat a dump as DATA/SCHEMA SEED only. The migrator (npm run migrate, run by the
+      # backend on start) is the authority: it records every migration in schema_migrations,
+      # runs the legacy scripts once on top of a dump (they are idempotent) and then moves
+      # every sequence past the loaded rows. Omit the dump for a schema-only fresh start.
       - ./db_dump:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-construction_erp_user} -d ${DB_NAME:-construction_erp}"]
