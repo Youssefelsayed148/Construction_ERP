@@ -33,10 +33,10 @@ async function migrate() {
   console.log('[OK] equipment_usage_logs');
 
   // Also ensure assets table has the equipment columns (if running on existing DB)
-  await query(`ALTER TABLE assets ADD COLUMN IF NOT EXISTS equipment_type VARCHAR(50)`).catch(() => {});
-  await query(`ALTER TABLE assets ADD COLUMN IF NOT EXISTS hourly_rate DECIMAL(15,2) DEFAULT 0`).catch(() => {});
-  await query(`ALTER TABLE assets ADD COLUMN IF NOT EXISTS daily_rate DECIMAL(15,2) DEFAULT 0`).catch(() => {});
-  await query(`ALTER TABLE assets ADD COLUMN IF NOT EXISTS operator_required BOOLEAN DEFAULT false`).catch(() => {});
+  await query(`ALTER TABLE assets ADD COLUMN IF NOT EXISTS equipment_type VARCHAR(50)`);
+  await query(`ALTER TABLE assets ADD COLUMN IF NOT EXISTS hourly_rate DECIMAL(15,2) DEFAULT 0`);
+  await query(`ALTER TABLE assets ADD COLUMN IF NOT EXISTS daily_rate DECIMAL(15,2) DEFAULT 0`);
+  await query(`ALTER TABLE assets ADD COLUMN IF NOT EXISTS operator_required BOOLEAN DEFAULT false`);
 
   console.log('\nMigration complete!');
   process.exit(0);

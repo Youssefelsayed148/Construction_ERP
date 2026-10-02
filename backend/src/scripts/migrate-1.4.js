@@ -41,8 +41,8 @@ async function migrate() {
   console.log('[OK] labor_payments');
 
   // Ensure employees table has bilingual name columns
-  await query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS name_en VARCHAR(255)`).catch(() => {});
-  await query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS name_ar VARCHAR(255)`).catch(() => {});
+  await query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS name_en VARCHAR(255)`);
+  await query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS name_ar VARCHAR(255)`);
 
   console.log('\nMigration complete!');
   process.exit(0);

@@ -21,13 +21,13 @@ async function migrate() {
   `);
   console.log('[OK] invoices');
 
-  await query(`CREATE INDEX IF NOT EXISTS idx_invoices_project_id ON invoices(project_id)`).catch(() => {});
+  await query(`CREATE INDEX IF NOT EXISTS idx_invoices_project_id ON invoices(project_id)`);
   console.log('[OK] idx_invoices_project_id');
 
-  await query(`CREATE INDEX IF NOT EXISTS idx_invoices_client_id ON invoices(client_id)`).catch(() => {});
+  await query(`CREATE INDEX IF NOT EXISTS idx_invoices_client_id ON invoices(client_id)`);
   console.log('[OK] idx_invoices_client_id');
 
-  await query(`CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status)`).catch(() => {});
+  await query(`CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status)`);
   console.log('[OK] idx_invoices_status');
 
   await query(`
@@ -46,13 +46,13 @@ async function migrate() {
   `);
   console.log('[OK] payments');
 
-  await query(`CREATE INDEX IF NOT EXISTS idx_payments_invoice_id ON payments(invoice_id)`).catch(() => {});
+  await query(`CREATE INDEX IF NOT EXISTS idx_payments_invoice_id ON payments(invoice_id)`);
   console.log('[OK] idx_payments_invoice_id');
 
-  await query(`CREATE INDEX IF NOT EXISTS idx_payments_project_id ON payments(project_id)`).catch(() => {});
+  await query(`CREATE INDEX IF NOT EXISTS idx_payments_project_id ON payments(project_id)`);
   console.log('[OK] idx_payments_project_id');
 
-  await query(`CREATE INDEX IF NOT EXISTS idx_payments_client_id ON payments(client_id)`).catch(() => {});
+  await query(`CREATE INDEX IF NOT EXISTS idx_payments_client_id ON payments(client_id)`);
   console.log('[OK] idx_payments_client_id');
 
   console.log('\nMigration complete!');

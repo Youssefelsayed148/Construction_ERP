@@ -4,13 +4,20 @@ const { query } = require('../config/database');
 async function migrate() {
   console.log('Running Prompt 12 migration (form audit fixes + supplier-materials linking)...\n');
 
-  await query(`ALTER TABLE assets ADD COLUMN IF NOT EXISTS current_project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL`).catch(() => {});
+  await query(`ALTER TABLE assets ADD COLUMN IF NOT EXISTS current_project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL`);
   console.log('[OK] assets.current_project_id');
 
-  await query(`ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS city VARCHAR(100)`).catch(() => {});
+  await query(`ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS city VARCHAR(100)`);
   console.log('[OK] suppliers.city');
 
-  await query(`ALTER TABLE projects DROP COLUMN IF EXISTS location`).catch(() => {});
+  // Keep the data: fold location into address before the column goes.
+  const hasLocation = await query(
+    `SELECT 1 AS ok FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'projects' AND column_name = 'location'`
+  );
+  if (hasLocation.rows.length) {
+    await query(`UPDATE projects SET address = location WHERE (address IS NULL OR address = '') AND location IS NOT NULL AND location <> ''`);
+    await query(`ALTER TABLE projects DROP COLUMN location`);
+  }
   console.log('[OK] projects.location dropped (redundant with address + city)');
 
   await query(`
