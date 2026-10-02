@@ -290,7 +290,7 @@ describe('oauth client_credentials (service accounts)', () => {
     });
     expect(result.token_type).toBe('Bearer');
     expect(result.scope).toBe('projects:read');
-    const decoded = jwt.verify(result.access_token, SECRET);
+    const decoded = require('../../services/tokens').verify(result.access_token, ['v1']);
     expect(decoded.kind).toBe('v1');
     expect(decoded.userId).toBe(1);
     expect(decoded.serviceAccountId).toBe(1);
@@ -319,7 +319,7 @@ describe('oauth client_credentials (service accounts)', () => {
   });
 
   test('verifyToken treats an INTERNAL (UI) token as full parity', async () => {
-    const token = jwt.sign({ userId: 1 }, SECRET);
+    const token = require('../../services/tokens').signSession({ userId: 1 });
     const auth = await oauthService.verifyToken(token);
     expect(auth.type).toBe('internal');
     expect(auth.scopes).toBeNull();
@@ -340,7 +340,7 @@ describe('oauth client_credentials (service accounts)', () => {
     const refresh = oauthService.signRefreshToken({ sub: 'service:1', userId: 1, serviceAccountId: 1, scope: ['projects:read'] });
     const result = await oauthService.issueForRefresh({ grant_type: 'refresh_token', refresh_token: refresh });
     expect(result.access_token).toBeTruthy();
-    const decoded = jwt.verify(result.access_token, SECRET);
+    const decoded = require('../../services/tokens').verify(result.access_token, ['v1']);
     expect(decoded.scope).toBe('projects:read');
   });
 
@@ -351,7 +351,7 @@ describe('oauth client_credentials (service accounts)', () => {
     const result = await oauthService.issueForPassword({
       grant_type: 'password', username: 'delegated@x.com', password: 'user-password', scope: 'projects:read',
     });
-    const decoded = jwt.verify(result.access_token, SECRET);
+    const decoded = require('../../services/tokens').verify(result.access_token, ['v1']);
     expect(decoded.kind).toBe('v1');
     expect(decoded.userId).toBe(7);
     expect(decoded.serviceAccountId).toBeNull();
@@ -693,7 +693,7 @@ describe('v1 ↔ internal permission parity', () => {
   }
 
   function tokenFor(userId) {
-    return jwt.sign({ userId }, SECRET, { expiresIn: '10m' });
+    return require('../../services/tokens').signSession({ userId }, 600);
   }
 
   test('the remounted chain resolves the same policy module and decision', async () => {

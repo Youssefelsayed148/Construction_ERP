@@ -125,7 +125,7 @@ beforeEach(() => {
 });
 
 function tokenFor(userId) {
-  return jwt.sign({ userId }, SECRET, { expiresIn: '10m' });
+  return require('../../services/tokens').signSession({ userId }, 600);
 }
 
 function makeCtx(userId) {

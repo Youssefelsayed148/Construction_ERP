@@ -25,7 +25,6 @@
 
 'use strict';
 
-const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { query } = require('../config/database');
 const agentPolicy = require('./agentPolicy');
@@ -43,8 +42,6 @@ function getV1() {
 
 const PROTOCOL_VERSION = '2024-11-05';
 const SERVER_INFO = { name: 'construction-erp-mcp', version: '1.0.0' };
-const SECRET = process.env.JWT_SECRET;
-if (!SECRET) throw new Error('JWT_SECRET environment variable is required');
 
 // ---------------------------------------------------------------------------
 // Tool → input schema (JSON Schema for tools/list)
@@ -84,10 +81,6 @@ function toolDescriptor(name, def) {
 // Internal execution — the SAME handler chains as the API layer
 // ---------------------------------------------------------------------------
 
-function mintUserToken(user) {
-  return jwt.sign({ userId: user.id }, SECRET, { expiresIn: '5m' });
-}
-
 function makeResponseStub() {
   const res = {
     statusCode: 200,
@@ -102,7 +95,7 @@ function makeResponseStub() {
   return res;
 }
 
-function buildSyntheticRequest(def, routerName, args, user) {
+function buildSyntheticRequest(def, routerName, args, user, readOnly = false) {
   const argMap = def.argMap || {};
   const params = {}; const query = {}; const body = {};
   const { reason: _reason, ...toolArgs } = args || {};
@@ -118,7 +111,10 @@ function buildSyntheticRequest(def, routerName, args, user) {
     params,
     query,
     body,
-    headers: { authorization: `Bearer ${mintUserToken(user)}`, 'x-request-id': `mcp-${crypto.randomUUID()}` },
+    // Already authenticated by routes/mcp.js (typed token); the handler chain must not re-verify.
+    user, preAuthenticated: true,
+    preview: readOnly ? { actor_id: user.id, role: user.role, read_only: true } : undefined,
+    headers: { 'x-request-id': `mcp-${crypto.randomUUID()}` },
     originalUrl: `${internalMount}${def.path}`,
     ip: 'mcp-session',
     baseUrl: '/api/mcp',
@@ -126,9 +122,9 @@ function buildSyntheticRequest(def, routerName, args, user) {
 }
 
 // Execute one internal operation through its exact guarded handler chain.
-async function invokeInternal(routerName, method, path, def, args, user) {
+async function invokeInternal(routerName, method, path, def, args, user, readOnly = false) {
   const chain = getV1().remountFrom({ router: getV1().ROUTERS[routerName].router, internalMount: getV1().ROUTERS[routerName].mount, method, path });
-  const req = buildSyntheticRequest(def, routerName, args, user);
+  const req = buildSyntheticRequest(def, routerName, args, user, readOnly);
   const res = makeResponseStub();
   let chainError = null;
   try {
@@ -199,9 +195,12 @@ async function createConfirmationRecord({ toolName, def, args, reason, user, age
 // Tool execution
 // ---------------------------------------------------------------------------
 
-async function callTool({ toolName, args, reason, user, agentSession, flags }) {
+async function callTool({ toolName, args, reason, user, agentSession, flags, readOnly = false }) {
   const def = agentPolicy.TOOLS[toolName];
   if (!def) return { ok: false, status: 400, body: { success: false, error: `Unknown tool '${toolName}'` } };
+  if (readOnly && def.risk !== 'read') {
+    return { ok: false, status: 403, body: { success: false, error: 'Preview mode is read-only' } };
+  }
   if (!agentPolicy.toolAllowed(user.role, toolName)) {
     return { ok: false, status: 403, body: { success: false, error: `Tool '${toolName}' is not allowed for role '${user.role}'` } };
   }
@@ -248,13 +247,13 @@ async function callTool({ toolName, args, reason, user, agentSession, flags }) {
   }
 
   // ---- read / draft (mapped): run the internal chain immediately ----------
-  const result = await invokeInternal(def.router, def.method, def.path, def, args, user);
+  const result = await invokeInternal(def.router, def.method, def.path, def, args, user, readOnly);
   const ok = result.status < 400;
   return { ok, status: result.status, body: result.body };
 }
 
 // Tool-call wrapper that redacts the response and logs the call.
-async function executeTool({ toolName, args, reason, user, agentSession, correlationId }) {
+async function executeTool({ toolName, args, reason, user, agentSession, correlationId, readOnly = false }) {
   const def = agentPolicy.TOOLS[toolName];
   if (!def) return { status: 400, body: { success: false, error: `Unknown tool '${toolName}'` } };
 
@@ -263,7 +262,7 @@ async function executeTool({ toolName, args, reason, user, agentSession, correla
   if (!allowed) {
     result = { ok: false, status: 403, body: { success: false, error: `Tool '${toolName}' is not allowed for role '${user.role}'` } };
   } else {
-    result = await callTool({ toolName, args, reason, user, agentSession });
+    result = await callTool({ toolName, args, reason, user, agentSession, readOnly });
   }
 
   // Redact before anything model-facing is built (point 8). Gated/draft
@@ -420,7 +419,7 @@ async function handleRpcMessage(message, ctx) {
       const reason = args && args.reason;
       const execution = await executeTool({
         toolName, args, reason, user: ctx.user,
-        agentSession: ctx.agentSession, correlationId: ctx.correlationId,
+        agentSession: ctx.agentSession, correlationId: ctx.correlationId, readOnly: !!ctx.readOnly,
       });
       const payload = execution.body;
       const isError = payload && payload.success === false;
@@ -482,5 +481,4 @@ module.exports = {
   handleRpc,
   redactBody,
   invokeInternal,
-  mintUserToken,
 };

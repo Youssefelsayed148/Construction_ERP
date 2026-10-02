@@ -1,9 +1,6 @@
-const jwt = require('jsonwebtoken');
 const { query } = require('../config/database');
 const policy = require('../services/policy');
-
-const SECRET = process.env.JWT_SECRET;
-if (!SECRET) throw new Error('JWT_SECRET environment variable is required');
+const tokens = require('../services/tokens');
 
 const READ_ONLY_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const EXTERNAL_PORTAL_PATHS = {
@@ -55,22 +52,12 @@ function filterScopedPayload(value, allowedProjectIds) {
 // the role being previewed; authenticate() swaps req.user.role to the
 // previewed role and forces read-only. Every preview start is audited by the
 // endpoint that issues the token (POST /api/users/preview/:role).
-const createPreviewToken = ({ user, role, scopedProjectIds = [], expiresIn = '30m' }) => {
-  return jwt.sign(
-    {
-      userId: user.id,
-      email: user.email,
-      name: user.name,
-      preview: true,
-      previewRole: role,
-      scopedProjectIds,
-    },
-    SECRET,
-    { expiresIn }
-  );
-};
+const createPreviewToken = ({ user, role, scopedProjectIds = [] }) => tokens.signPreview({ user, role, scopedProjectIds });
 
 const authenticate = async (req, res, next) => {
+  // v1 and MCP authenticate the bearer themselves (typed, scoped, revocation-checked) and then
+  // run the internal handler chain. Only server code can set this flag; a request header cannot.
+  if (req.preAuthenticated === true && req.user) return next();
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -78,10 +65,11 @@ const authenticate = async (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, SECRET);
+    // Only session and preview tokens authenticate the internal API; v1 access and refresh tokens do not.
+    const decoded = tokens.verify(token, ['session', 'preview']);
 
     const result = await query(
-      'SELECT id, email, name, role, department, is_active FROM users WHERE id = $1',
+      'SELECT id, email, name, role, department, is_active, token_version FROM users WHERE id = $1',
       [decoded.userId]
     );
     const user = result.rows[0];
@@ -94,19 +82,24 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ success: false, error: 'Account is disabled' });
     }
 
+    if ((decoded.tv || 0) !== (user.token_version || 0)) {
+      return res.status(401).json({ success: false, error: 'Session expired' });
+    }
+
     req.user = {
       id: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
-      department: user.department
+      department: user.department,
+      token_version: user.token_version,
     };
     req.token = token;
 
     // Preview-as-role demo mode: an authorized admin's read-only session
     // viewed as another role. The acting user stays in req.user.id (audit
     // attribution), the effective role is the previewed one.
-    if (decoded.preview && decoded.previewRole) {
+    if (decoded.kind === 'preview' && decoded.previewRole) {
       if (!READ_ONLY_METHODS.has(req.method)) {
         return res.status(403).json({ success: false, error: 'Preview mode is read-only' });
       }

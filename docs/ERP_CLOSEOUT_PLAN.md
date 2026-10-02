@@ -60,11 +60,11 @@ Exit gate: CI has three green gates (mock-db jest, real-PG jest, build+Playwrigh
 Goal: no credential or role can do more than it was issued for.
 
 1.1 Token typing (Critical)
-- [ ] Separate signing secrets per token type: internal session, v1 access, v1 refresh, preview.
-- [ ] Every verifier enforces `iss`, `aud`, `kind`. Refresh tokens never authenticate API calls. Preview tokens are read-only on `/api/*`, `/api/v1` and `/api/mcp`.
-- [ ] Fix refresh TTL bug (`parseInt('30 * 24 * 3600')` yields 30 seconds, oauthService.js:39): parse a numeric env var or a constant.
-- [ ] Session JWT: shorten from 7 days, add revocation (token version on user row or denylist), invalidate on password change, audit password change.
-- Tests: scoped token on internal route is 401/403; refresh token as bearer is 401; preview token cannot write via v1/MCP.
+- [x] Separate signing secrets per token type: internal session, v1 access, v1 refresh, preview.
+- [x] Every verifier enforces `iss`, `aud`, `kind`. Refresh tokens never authenticate API calls. Preview tokens are read-only on `/api/*`, `/api/v1` and `/api/mcp`.
+- [x] Fix refresh TTL bug (`parseInt('30 * 24 * 3600')` yields 30 seconds, oauthService.js:39): parse a numeric env var or a constant.
+- [x] Session JWT: shorten from 7 days, add revocation (token version on user row or denylist), invalidate on password change, audit password change.
+- Tests (done, real PG + real app: `token-typing.pg.test.js`, `tokens.test.js`): scoped token on internal route is 401; refresh token as bearer is 401; preview token cannot write via v1/MCP.
 
 1.2 Remove fail-open paths (Critical)
 - [ ] `authorize()` legacy path: users with no `user_project_roles` rows are denied (or forced through the migration), not allowed.
