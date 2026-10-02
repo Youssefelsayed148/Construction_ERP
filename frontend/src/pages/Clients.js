@@ -64,7 +64,6 @@ function Clients() {
   };
 
   const clientName = (c) => locale === 'ar' ? c.name_ar : c.name_en;
-  const clientTypeLabel = (type) => CLIENT_TYPE_LABELS[locale]?.[type] || type;
   const cityDisplay = (city) => {
     if (!city) return '-';
     const match = EGYPT_CITIES.find(c => c.en === city);

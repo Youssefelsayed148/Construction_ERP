@@ -4,7 +4,7 @@
 // empty state (the zero-records requirement), never a blank screen.
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, FileText, ClipboardCheck, ListChecks, Wrench, PackageCheck, Gauge, ShieldCheck, Download } from 'lucide-react';
+import { Plus, ClipboardCheck, ListChecks, Wrench, PackageCheck, Gauge, ShieldCheck, Download } from 'lucide-react';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 

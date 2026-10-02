@@ -4,7 +4,7 @@
 // explicit empty state (the zero-records requirement), never a blank screen.
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Send, CheckCircle, FileText, Search, Download, AlertTriangle } from 'lucide-react';
+import { Plus, Send, FileText, Search, Download, AlertTriangle } from 'lucide-react';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
@@ -36,8 +36,6 @@ const fmtDate = (d) => {
   return `${dt.getDate().toString().padStart(2, '0')}/${(dt.getMonth() + 1).toString().padStart(2, '0')}/${dt.getFullYear()}`;
 };
 
-const DOC_TYPE_OPTIONS = ['drawing', 'specification', 'contract', 'report', 'method_statement', 'as_built', 'o_m'];
-const DISCIPLINE_OPTIONS = ['architectural', 'structural', 'civil', 'mechanical', 'electrical', 'plumbing', 'hvac', 'fire', 'general'];
 
 const TR_STATUS_BADGE = { draft: 'badge-info', sent: 'badge-warning', acknowledged: 'badge-success', closed: 'badge-info' };
 const CORR_STATUS_BADGE = { draft: 'badge-info', sent: 'badge-warning', received: 'badge-info', responded: 'badge-success', closed: 'badge-info' };

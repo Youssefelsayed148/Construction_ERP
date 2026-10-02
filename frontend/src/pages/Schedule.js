@@ -51,7 +51,6 @@ function GanttList({ activities }) {
       {activities.map(a => {
         const s = a.planned_start ? new Date(a.planned_start).getTime() : null;
         const f = a.planned_finish ? new Date(a.planned_finish).getTime() : null;
-        const left = s != null ? ((s - min) / span) * 100 : 0;
         const width = s != null && f != null ? Math.max(1, ((f - s) / span) * 100) : 1;
         const crit = a.cpm?.critical;
         return (

@@ -51,7 +51,7 @@ export default function Handover() {
   const [data, setData] = useState(null);
   const [assets, setAssets] = useState([]);
   const [claims, setClaims] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);

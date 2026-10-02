@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocale } from '../hooks/useLocale';
-import { Search, Plus, Edit, Trash2, DollarSign, Filter, X } from 'lucide-react';
+import { Plus, Edit, Trash2, DollarSign, Filter, X } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;

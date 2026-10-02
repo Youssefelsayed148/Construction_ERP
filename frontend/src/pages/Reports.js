@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
-import { ArrowLeft, Download, FileSpreadsheet, BellRing, Save, Package } from 'lucide-react';
+import { ArrowLeft, Save, Package } from 'lucide-react';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
@@ -32,17 +32,10 @@ function download(url, filename) {
   }).catch(e => alert(e.message));
 }
 
-const fmtDate = (d) => {
-  if (!d) return '-';
-  const dt = new Date(d);
-  if (isNaN(dt.getTime())) return d;
-  return `${dt.getDate().toString().padStart(2, '0')}/${(dt.getMonth() + 1).toString().padStart(2, '0')}/${dt.getFullYear()}`;
-};
-
 export default function Reports() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { t, locale } = useLocale();
+  const { locale } = useLocale();
   const [catalog, setCatalog] = useState(null);
   const [savedViews, setSavedViews] = useState([]);
   const [scheduled, setScheduled] = useState([]);
