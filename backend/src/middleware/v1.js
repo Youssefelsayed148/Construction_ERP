@@ -88,9 +88,19 @@ function authenticateV1(req, res, next) {
   }
   oauthService.verifyToken(header.slice(7)).then((auth) => {
     req.user = auth.user;           // same shape the internal API produces
-    req.authType = auth.type;       // 'internal' | 'v1'
-    req.v1Scopes = auth.scopes;     // null for internal tokens
+    req.preAuthenticated = true;    // the remounted internal authenticate() must not re-verify
+    req.authType = auth.type;       // 'internal' | 'v1' | 'preview'
+    req.v1Scopes = auth.scopes;     // null for internal and preview tokens
     req.v1ServiceAccountId = auth.serviceAccountId;
+    if (auth.type === 'preview') {
+      // Same rule as the internal API: a preview session is read-only everywhere.
+      if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+        const err = new Error('Preview mode is read-only');
+        err.status = 403; err.code = 'preview_read_only';
+        return next(err);
+      }
+      req.preview = { actor_id: auth.actorId, role: auth.previewRole, read_only: true };
+    }
     next();
   }).catch((e) => {
     e.status = e.status || 401; e.code = e.code || 'invalid_token';

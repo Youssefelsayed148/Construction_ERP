@@ -18,25 +18,23 @@
 //     userId, serviceAccountId?, aud: 'construction-erp:api-v1',
 //     iss: 'construction-erp', exp }
 //
-// Internal UI tokens (no `kind: 'v1'`) are also accepted — those carry full
-// internal permissions and skip scope checks, which keeps "same user, same
-// permission result" literally true between the UI and v1.
+// Session tokens (kind 'session') are also accepted — those carry full internal permissions
+// and skip scope checks, which keeps "same user, same permission result" literally true
+// between the UI and v1. Preview tokens are accepted read-only. Refresh tokens are accepted
+// ONLY by the refresh grant, never as a bearer. See services/tokens.js.
 
 'use strict';
 
-const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const Joi = require('joi');
 const { query } = require('../config/database');
 
-const SECRET = process.env.JWT_SECRET;
-if (!SECRET) throw new Error('JWT_SECRET environment variable is required');
+const tokens = require('./tokens');
 
-const ISSUER = 'construction-erp';
-const AUDIENCE = 'construction-erp:api-v1';
-const ACCESS_TTL_SECONDS = parseInt(process.env.V1_TOKEN_TTL_SECONDS || '3600', 10);
-const REFRESH_TTL_SECONDS = parseInt(process.env.V1_REFRESH_TTL_SECONDS || '30 * 24 * 3600', 10);
+const ISSUER = tokens.ISSUER;
+const AUDIENCE = tokens.KINDS.v1.audience;
+const ACCESS_TTL_SECONDS = tokens.TTL_SECONDS.v1;
 
 // ---------------------------------------------------------------------------
 // Scopes
@@ -81,20 +79,12 @@ function intersectScopes(requested, granted) {
 // Token issuance
 // ---------------------------------------------------------------------------
 
-function signAccessToken({ sub, userId, serviceAccountId = null, scope, ttlSeconds = ACCESS_TTL_SECONDS }) {
-  return jwt.sign(
-    { sub, kind: 'v1', userId, serviceAccountId, scope: scope.join(' ') },
-    SECRET,
-    { expiresIn: ttlSeconds, audience: AUDIENCE, issuer: ISSUER }
-  );
+function signAccessToken({ sub, userId, serviceAccountId = null, scope, tokenVersion = 0, ttlSeconds = ACCESS_TTL_SECONDS }) {
+  return tokens.signV1Access({ sub, userId, serviceAccountId, scope, tokenVersion, ttlSeconds });
 }
 
 function signRefreshToken({ sub, userId, serviceAccountId, scope }) {
-  return jwt.sign(
-    { tok: 'refresh', sub, userId, serviceAccountId, scope: scope.join(' ') },
-    SECRET,
-    { expiresIn: REFRESH_TTL_SECONDS, audience: AUDIENCE, issuer: ISSUER }
-  );
+  return tokens.signRefresh({ sub, userId, serviceAccountId, scope });
 }
 
 function randomSecret() {
@@ -133,7 +123,7 @@ async function issueForPassword(body) {
   if (error) throw Object.assign(new Error(error.details[0].message), { code: 'invalid_request', status: 400 });
 
   const u = (await query(
-    'SELECT id, name, email, password, role, is_active FROM users WHERE email = $1',
+    'SELECT id, name, email, password, role, is_active, token_version FROM users WHERE email = $1',
     [value.username]
   )).rows[0];
   if (!u || !u.is_active || !(await bcrypt.compare(value.password, u.password))) {
@@ -148,7 +138,7 @@ async function issueForPassword(body) {
   // are still gated by the policy engine per request; scope here is a coarse
   // reduction, never an expansion.
   const granted = requested && requested.length ? requested : ['api:read'];
-  const token = signAccessToken({ sub: `user:${u.id}`, userId: u.id, scope: granted });
+  const token = signAccessToken({ sub: `user:${u.id}`, userId: u.id, scope: granted, tokenVersion: u.token_version });
   await auditIssuance({ subject: `user:${u.id}`, kind: 'password', scopes: granted });
   return {
     access_token: token,
@@ -209,12 +199,9 @@ async function issueForRefresh(body) {
   if (error) throw Object.assign(new Error(error.details[0].message), { code: 'invalid_request', status: 400 });
   let decoded;
   try {
-    decoded = jwt.verify(value.refresh_token, SECRET, { issuer: ISSUER });
+    decoded = tokens.verify(value.refresh_token, ['refresh']);
   } catch (e) {
     throw Object.assign(new Error('Invalid refresh token'), { code: 'invalid_grant', status: 401 });
-  }
-  if (decoded.tok !== 'refresh') {
-    throw Object.assign(new Error('Not a refresh token'), { code: 'invalid_grant', status: 401 });
   }
   // Re-issue directly from the stored service account so a revoked account or
   // disabled linked user stops refreshing immediately. No secret echo — the
@@ -266,47 +253,50 @@ async function auditIssuance({ subject, kind, scopes }) {
 // ---------------------------------------------------------------------------
 
 // Returns:
-//   { type: 'internal', user }        — legacy UI token, full permissions
+//   { type: 'internal', user }                  session token, full permissions
 //   { type: 'v1', user, scopes, serviceAccountId }
-// Throws { code, message, status } on any failure.
+//   { type: 'preview', user, previewRole, scopes: null, readOnly: true }
+// Throws { code, message, status } on any failure. Refresh tokens are not accepted here.
+const USER_SQL = 'SELECT id, email, name, role, department, is_active, token_version FROM users WHERE id = $1';
+const publicUser = (u) => ({ id: u.id, email: u.email, name: u.name, role: u.role, department: u.department, token_version: u.token_version });
+
 async function verifyToken(rawToken) {
   let decoded;
   try {
-    decoded = jwt.verify(rawToken, SECRET);
+    decoded = tokens.verify(rawToken, ['session', 'preview', 'v1']);
   } catch (e) {
     throw Object.assign(new Error('Invalid or expired token'), { code: 'invalid_token', status: 401 });
   }
 
+  const u = (await query(USER_SQL, [decoded.userId])).rows[0];
+  if (!u) throw Object.assign(new Error('User not found'), { code: 'invalid_grant', status: 401 });
+  if (!u.is_active) throw Object.assign(new Error('Account is disabled'), { code: 'invalid_grant', status: 401 });
+
   if (decoded.kind === 'v1') {
-    // v1 access token (service account or user-delegated).
-    const u = (await query('SELECT id, email, name, role, department, is_active FROM users WHERE id = $1', [decoded.userId])).rows[0];
-    if (!u || !u.is_active) {
-      throw Object.assign(new Error('Account is disabled'), { code: 'invalid_grant', status: 401 });
-    }
     if (decoded.serviceAccountId != null) {
       const acct = (await query('SELECT id, is_active FROM service_accounts WHERE id = $1', [decoded.serviceAccountId])).rows[0];
       if (!acct || !acct.is_active) {
         throw Object.assign(new Error('Service account is disabled'), { code: 'invalid_grant', status: 401 });
       }
+    } else if ((decoded.tv || 0) !== (u.token_version || 0)) {
+      // User-delegated token: revoked by a password change or logout-everywhere.
+      throw Object.assign(new Error('Token revoked'), { code: 'invalid_token', status: 401 });
     }
     return {
       type: 'v1',
-      user: { id: u.id, email: u.email, name: u.name, role: u.role, department: u.department },
+      user: publicUser(u),
       scopes: String(decoded.scope || '').split(/\s+/).filter(Boolean),
       serviceAccountId: decoded.serviceAccountId || null,
     };
   }
 
-  // Internal (UI) token: resolve the user exactly like middleware/auth.js so
-  // the same authorization decision is reachable through v1.
-  const u = (await query('SELECT id, email, name, role, department, is_active FROM users WHERE id = $1', [decoded.userId])).rows[0];
-  if (!u) throw Object.assign(new Error('User not found'), { code: 'invalid_grant', status: 401 });
-  if (!u.is_active) throw Object.assign(new Error('Account is disabled'), { code: 'invalid_grant', status: 401 });
-  return {
-    type: 'internal',
-    user: { id: u.id, email: u.email, name: u.name, role: u.role, department: u.department },
-    scopes: null, // unlimited — full internal parity
-  };
+  if ((decoded.tv || 0) !== (u.token_version || 0)) {
+    throw Object.assign(new Error('Session expired'), { code: 'invalid_token', status: 401 });
+  }
+  if (decoded.kind === 'preview') {
+    return { type: 'preview', user: { ...publicUser(u), role: decoded.previewRole }, previewRole: decoded.previewRole, actorId: u.id, scopes: null, readOnly: true };
+  }
+  return { type: 'internal', user: publicUser(u), scopes: null }; // unlimited — full internal parity
 }
 
 module.exports = {

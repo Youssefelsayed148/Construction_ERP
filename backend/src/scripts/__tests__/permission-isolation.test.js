@@ -431,7 +431,7 @@ describe('preview-as-role demo mode', () => {
   });
 
   test('tampered preview tokens (missing preview claim) authenticate as the real user', async () => {
-    const plain = jwt.sign({ userId: 1 }, process.env.JWT_SECRET);
+    const plain = require('../../services/tokens').signSession({ userId: 1 });
     const { req, res, next } = await runAuth({
       method: 'POST',
       headers: { authorization: `Bearer ${plain}` },

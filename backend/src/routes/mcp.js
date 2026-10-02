@@ -30,8 +30,11 @@ router.use(async (req, res, next) => {
   try {
     const auth = await oauthService.verifyToken(header.slice(7));
     req.user = auth.user;
+    req.preAuthenticated = true;
     req.authType = auth.type;
     req.v1Scopes = auth.scopes;
+    req.readOnly = auth.type === 'preview';
+    req.actorUserId = auth.actorId || null;
     next();
   } catch (e) {
     res.status(401).json({ jsonrpc: '2.0', id: null, error: { code: -32001, message: e.message || 'Invalid token' } });
@@ -42,6 +45,7 @@ router.post('/', async (req, res) => {
   const ctx = {
     user: req.user,
     authType: req.authType,
+    readOnly: req.readOnly,
     scopes: req.v1Scopes,
     agentSession: req.headers['mcp-session-id'] || `sess-${Date.now().toString(36)}`,
     correlationId: req.correlationId,
