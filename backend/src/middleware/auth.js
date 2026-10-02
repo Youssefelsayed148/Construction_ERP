@@ -126,12 +126,9 @@ const authenticate = async (req, res, next) => {
 //   1. The policy service (services/policy.js) resolves the user's
 //      user_project_roles rows against the request's module (Express mount
 //      path), action (HTTP method) and project (path/query params).
-//   2. Legacy fallback: only when the user has NO user_project_roles rows yet
-//      (migration not complete for that user) is the flat role-list check
-//      used, matching pre-Phase-4 behavior exactly. The old hardcoded
-//      `role === 'owner' || role === 'admin'` bypass is gone — owner/admin
-//      are granted via explicit seeded policy grants (('*', '*')) and the
-//      coarse role list passed by the call site.
+//   2. No fallback: a user with NO user_project_roles rows is denied (Phase 1.2).
+//      owner/admin are granted via explicit seeded policy grants (('*', '*')) and
+//      the coarse role list passed by the call site.
 //   3. When a role list is passed, it still acts as a coarse filter on top of
 //      the policy decision, so owner|admin-only endpoints stay that way in
 //      both paths.
@@ -150,14 +147,6 @@ const authorize = (...roles) => {
     } catch (error) {
       // Fail closed on policy evaluation errors.
       return res.status(500).json({ success: false, error: 'Policy evaluation failed' });
-    }
-
-    if (decision.source === 'legacy') {
-      // Migration incomplete for this user — legacy flat check.
-      if (roles.length > 0 && !roles.includes(req.user.role)) {
-        return res.status(403).json({ success: false, error: 'Insufficient permissions' });
-      }
-      return next();
     }
 
     if (!decision.allowed) {

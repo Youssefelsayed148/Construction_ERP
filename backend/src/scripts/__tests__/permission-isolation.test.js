@@ -98,6 +98,8 @@ function policyRowsFor(role) {
 beforeAll(() => {
   query.mockImplementation(async (sql, params) => {
     if (/FROM\s+user_project_roles/i.test(sql)) {
+      // User 3 is an internal site_supervisor with the seeded company-wide grant.
+      if (params[0] === 3) return { rows: [{ role_key: 'site_supervisor', project_id: null, organization_id: null, perm_module: '*', perm_action: '*' }] };
       const role = { 4: 'consultant', 5: 'client', 6: 'subcontractor', 8: 'supplier' }[params[0]];
       return { rows: role ? policyRowsFor(role) : [] };
     }
@@ -330,22 +332,23 @@ describe('positive controls: internal roles are unaffected', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  test('legacy fallback: a user without user_project_roles rows keeps pre-Phase-4 behavior', async () => {
+  test('a user without user_project_roles rows is denied (no legacy fallback)', async () => {
     query.mockImplementationOnce(async (sql) => {
       if (/FROM\s+user_project_roles/i.test(sql)) return { rows: [] };
       return { rows: [] };
     });
     const route = allRoutes.find((r) => r.file === 'costing' && r.path === '/project/:projectId');
     const legacyStaff = { id: 77, email: 'old@x.com', name: 'Old', role: 'staff' };
-    const { next } = await runAuthorize(route.authorizeMws[0], legacyStaff, {
+    const { res, next } = await runAuthorize(route.authorizeMws[0], legacyStaff, {
       method: 'GET',
       baseUrl: '/api/costing',
       params: { projectId: 5 },
     });
-    expect(next).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(next).not.toHaveBeenCalled();
   });
 
-  test('legacy fallback still enforces explicit role lists (un-migrated client is denied users)', async () => {
+  test('a client with no role rows is denied the users endpoint', async () => {
     const route = allRoutes.find((r) => r.file === 'users' && r.path === '/');
     const legacyClient = { id: 78, email: 'oldc@x.com', name: 'OldC', role: 'client' };
     const { res, next } = await runAuthorize(route.authorizeMws[0], legacyClient, {

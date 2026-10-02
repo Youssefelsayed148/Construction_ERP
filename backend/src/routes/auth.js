@@ -31,11 +31,21 @@ router.post('/register', authenticate, authorize('owner', 'admin'), async (req, 
 
     const hashedPassword = await bcrypt.hash(value.password, 10);
 
-    const result = await query(
-      `INSERT INTO users (name, email, password, role, department, module_permissions, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, true) RETURNING id, name, email, role, department, module_permissions, is_active, created_at`,
-      [value.name, value.email, hashedPassword, value.role, value.department || null, value.module_permissions || []]
-    );
+    // The user and their company-wide role assignment are created together: a user without a
+    // user_project_roles row has no access at all (Phase 1.2).
+    const result = await transaction(async (client) => {
+      const created = await client.query(
+        `INSERT INTO users (name, email, password, role, department, module_permissions, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, true) RETURNING id, name, email, role, department, module_permissions, is_active, created_at`,
+        [value.name, value.email, hashedPassword, value.role, value.department || null, value.module_permissions || []]
+      );
+      await client.query(
+        `INSERT INTO user_project_roles (user_id, project_id, role_id, granted_by)
+         SELECT $1, NULL, id, $3 FROM roles WHERE key = $2`,
+        [created.rows[0].id, value.role, req.user.id]
+      );
+      return created;
+    });
 
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
@@ -90,9 +100,7 @@ router.post('/login', async (req, res) => {
     });
 
     const access = await policy.listGrants(user);
-    const policyModules = access.source === 'policy'
-      ? [...new Set(access.grants.map((grant) => grant.perm_module).filter(Boolean))]
-      : (user.module_permissions || []);
+    const policyModules = [...new Set(access.grants.map((grant) => grant.perm_module).filter(Boolean))];
 
     res.json({
       success: true,

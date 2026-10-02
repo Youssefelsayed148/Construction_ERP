@@ -67,10 +67,10 @@ Goal: no credential or role can do more than it was issued for.
 - Tests (done, real PG + real app: `token-typing.pg.test.js`, `tokens.test.js`): scoped token on internal route is 401; refresh token as bearer is 401; preview token cannot write via v1/MCP.
 
 1.2 Remove fail-open paths (Critical)
-- [ ] `authorize()` legacy path: users with no `user_project_roles` rows are denied (or forced through the migration), not allowed.
-- [ ] `apiResources.js` single-record reads: remove the `source==='legacy'` skip.
-- [ ] `agentPolicy.js` unknown roles get no tools by default.
-- Test: user with zero role rows is denied on hr, payroll, suppliers, items, legal, expenses, projects, schedule.
+- [x] `authorize()` legacy path: users with no `user_project_roles` rows are denied (or forced through the migration), not allowed.
+- [x] `apiResources.js` single-record reads: remove the `source==='legacy'` skip.
+- [x] `agentPolicy.js` unknown roles get no tools by default.
+- Test (done, real PG: `fail-closed.pg.test.js`): user with zero role rows is denied on hr, payroll, suppliers, items, legal, expenses, projects, schedule.
 
 1.3 Record scoping (Critical)
 - [ ] Rework `policy.recordScopeRule` to key on resource and id, not on `req.route.path`, so it works under `/api/v1/*` and MCP synthetic requests.
