@@ -1,0 +1,22 @@
+{
+  "silent-catch": {
+    "scripts/migrate-1.3.js": 4,
+    "scripts/migrate-1.4.js": 2,
+    "scripts/migrate-11.js": 2,
+    "scripts/migrate-12.js": 3,
+    "scripts/migrate-13.js": 6,
+    "scripts/migrate-2.1.js": 2
+  },
+  "count-numbering": {
+    "routes/assets.js": 1,
+    "routes/boq.js": 2,
+    "routes/doccontrol.js": 2,
+    "routes/hr.js": 2,
+    "routes/portal.js": 2,
+    "routes/projects.js": 1,
+    "routes/qhse.js": 1,
+    "routes/site.js": 1,
+    "routes/subcontractors.js": 3,
+    "utils/journal.js": 1
+  }
+}
