@@ -394,11 +394,11 @@ Target behavior
 Sequence: L0 -> L1 -> L2 -> L3 must come first (later translation work would otherwise rely on the broken non-reactive toggle). L1-L3 run beside Phases 0-2 and must finish before Phase 6 screens are built. Each sub-phase is a separate reviewable change.
 
 L0 Localization contract and baseline
-- [ ] Supported locales: `en` and `ar-EG`. Keep stored/API values `ar` and `en`; use `ar-EG` only for Intl formatting.
-- [ ] Glossary for BOQ, RFI, WIR, MIR, NCR, JSA, HSE, QA/QC, procurement, retention, variation, snag/punch, handover, DLP, roles, workflow actions and financial terms; decide which acronyms stay Latin in Arabic.
-- [ ] Content rules: UI labels and system text are translated; user-entered text is never auto-translated; IDs, document numbers, codes and route paths unchanged; database enums stay English machine identifiers.
-- [ ] Baseline inventory: hard-coded English, inline `locale === 'ar'` branches, empty or missing namespaces, raw enums rendered to the UI, English server messages.
-- [ ] Screenshots of principal routes in both languages.
+- [x] Supported locales: `en` and `ar-EG`. Keep stored/API values `ar` and `en`; use `ar-EG` only for Intl formatting.
+- [x] Glossary for BOQ, RFI, WIR, MIR, NCR, JSA, HSE, QA/QC, procurement, retention, variation, snag/punch, handover, DLP, roles, workflow actions and financial terms; decide which acronyms stay Latin in Arabic.
+- [x] Content rules: UI labels and system text are translated; user-entered text is never auto-translated; IDs, document numbers, codes and route paths unchanged; database enums stay English machine identifiers.
+- [x] Baseline inventory: hard-coded English, inline `locale === 'ar'` branches, empty or missing namespaces, raw enums rendered to the UI, English server messages.
+- [x] Screenshots of principal routes in both languages.
 - Deliverables: Arabic glossary, route/module checklist, machine-readable missing-key report, baseline screenshots.
 - Exit: every visible text category has an explicit localization policy.
 
