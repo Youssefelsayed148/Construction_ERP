@@ -1,4 +1,4 @@
--- Preflight for the versioned migrations 0001-0011. READ ONLY: run it against a restored copy of the real
+-- Preflight for the versioned migrations 0001-0012. READ ONLY: run it against a restored copy of the real
 -- database before applying them (psql -X -f scripts/preflight-upgrade.sql <dsn>). It changes nothing.
 --
 -- Each row is: migration | what it will do to existing rows | how many rows are affected.
@@ -87,6 +87,30 @@ SELECT migration, effect, kind, affected_rows FROM (
   UNION ALL
   SELECT '0011', 'a trigger now refuses every DELETE on users; any process that deletes users (scripts, manual SQL) must deactivate instead', 'attention',
          (SELECT count(*) FROM users)
+  -- 0012: CHECK constraints (added NOT VALID, validated when clean)
+  UNION ALL
+  SELECT '0012', 'rows with a non-positive quantity on PO, PR, RFQ, delivery or return lines (their constraints stay NOT VALID)', 'will_stay_invalid',
+         (SELECT count(*) FROM purchase_order_lines WHERE quantity <= 0) + (SELECT count(*) FROM purchase_request_lines WHERE quantity <= 0)
+         + (SELECT count(*) FROM rfq_lines WHERE quantity <= 0) + (SELECT count(*) FROM delivery_lines WHERE quantity <= 0)
+         + (SELECT count(*) FROM supplier_return_lines WHERE quantity <= 0)
+  UNION ALL
+  SELECT '0012', 'invoices or payments with amount <= 0 (constraint stays NOT VALID)', 'will_stay_invalid',
+         (SELECT count(*) FROM invoices WHERE amount <= 0) + (SELECT count(*) FROM payments WHERE amount <= 0)
+  UNION ALL
+  SELECT '0012', 'negative money on PO lines, POs, supplier invoices, expenses or BOQ items (constraints stay NOT VALID)', 'will_stay_invalid',
+         (SELECT count(*) FROM purchase_order_lines WHERE unit_rate < 0) + (SELECT count(*) FROM purchase_orders WHERE total_amount < 0)
+         + (SELECT count(*) FROM supplier_invoices WHERE total_amount < 0 OR tax_amount < 0) + (SELECT count(*) FROM expenses WHERE amount < 0)
+         + (SELECT count(*) FROM boq_items WHERE quantity < 0 OR unit_rate < 0)
+  UNION ALL
+  SELECT '0012', 'rows whose status is outside the known vocabulary on invoices, work orders, projects, phases, milestones, units, buildings, expenses (constraints stay NOT VALID)', 'will_stay_invalid',
+         (SELECT count(*) FROM invoices WHERE status NOT IN ('draft','sent','approved','issued','partially_paid','paid','overdue','cancelled','void','credited'))
+         + (SELECT count(*) FROM work_orders WHERE status NOT IN ('planned','in_progress','completed','cancelled'))
+         + (SELECT count(*) FROM projects WHERE status NOT IN ('planning','active','on_hold','completed','closed'))
+         + (SELECT count(*) FROM project_phases WHERE status NOT IN ('planning','active','completed','on_hold'))
+         + (SELECT count(*) FROM project_milestones WHERE status NOT IN ('pending','achieved','delayed'))
+         + (SELECT count(*) FROM units WHERE status NOT IN ('available','reserved','contracted','delivered','blocked','closed'))
+         + (SELECT count(*) FROM buildings WHERE status NOT IN ('planning','under_construction','completed'))
+         + (SELECT count(*) FROM expenses WHERE status NOT IN ('pending','approved','rejected'))
 ) report
 ORDER BY migration, kind, effect;
 

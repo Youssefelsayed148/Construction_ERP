@@ -77,3 +77,12 @@ The backend stack (#17, #18) and the frontend stack (#19 on #6-#9) are merged in
 - Tests: `users-policy.pg.test.js` (4, real PG). One existing suite (`fail-closed.pg.test.js`) deleted its fixture users in teardown; it deactivates them now. Backend mock 968, real-PG 165.
 - Open: a privacy erasure procedure (anonymise a user row) is not designed; say if it is needed before go-live.
 - Phase 2.5 is complete: all five items checked.
+
+## 2026-10-03: Phase 2.6a, CHECK constraints (migration 0012)
+
+- Reproduced first: 17 real-PG probes failed on the old schema: quantity 0 or -5 on PO/PR/RFQ/delivery/return lines, invoices and payments of 0 or less, negative money, and a work order with status 'banana' were all accepted by the database.
+- Migration `0012_check_constraints.sql`: 22 CHECKs, each added NOT VALID (enforced on new writes at once), validated if no existing row breaks it, otherwise left NOT VALID with a NOTICE and listed by `npm run data-cleaning-report` (never auto-fixed). **Existing rows: untouched.** Preflight rows added to `scripts/preflight-upgrade.sql` count the rows that would keep each group NOT VALID.
+- Status vocabularies only for tables whose writers I could read to a closed list: invoices (lifecycle plus legacy `sent`), work orders, projects, phases, milestones, units, buildings, expenses. I did not constrain the other ~75 status columns: procurement, quality, HSE, doc-control and handover statuses are written from several places and by the workflow engine's approve/reject maps, and a wrong list would reject legitimate writes. A runtime status audit on a restored copy of the real database is the safe way to do it.
+- Probe technique: a CHECK is evaluated before the foreign-key triggers, so a probe row pointing at a missing parent answers 23514 when the CHECK rejects it and 23503 when it accepts it. No fixtures.
+- Tests: `constraints.pg.test.js` (17, real PG). The whole real-PG suite (19 suites, 182 tests) and backend mock (968) pass with the constraints in force, which exercises invoices, payments, work orders, procurement and inventory flows.
+- Open questions: (1) status audit for the remaining workflow tables on real data (needs a restored copy); (2) invoices `amount > 0` rejects zero-value valuations: tell me if a zero or credit invoice is a real case.

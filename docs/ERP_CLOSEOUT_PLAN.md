@@ -156,7 +156,8 @@ Goal: the database refuses to be wrong.
 - [x] Data-cleaning report for NOT VALID constraints (0007, 0008 and every later one): `npm run data-cleaning-report`, lists offenders, never auto-fixes. `scripts/preflight-upgrade.sql` reports what migrations 0001-0008 do to existing rows.
 
 2.6 Constraints
-- [ ] Add CHECKs: PO line qty > 0, delivered <= ordered (+tolerance), invoice amount > 0, status enums on all workflow tables, non-negative money where applicable.
+- [x] Add CHECKs (2.6a, migration 0012): PO/PR/RFQ/delivery/return line qty > 0, delivered <= ordered (+tolerance) (2.3), invoice and payment amount > 0, non-negative money on PO lines, POs, supplier invoices, expenses, BOQ.
+- [ ] Status enums: done for invoices, work orders, projects, phases, milestones, units, buildings, expenses (vocabularies read from the writing code). Open: the other ~75 workflow tables, which need a status audit first (procurement, quality, HSE, doc control, handover are written from several places and by the workflow engine maps).
 - [ ] Unify money columns (NUMERIC(14,2) vs DECIMAL(15,2)) to one standard.
 - [ ] Partial UNIQUE index on pending approvals (module_name, request_id, request_type); UNIQUE one-current-revision on doc revisions.
 - [ ] Remove the legacy single `material_id` on PR/PO headers and the try/catch fallbacks for missing line tables.
