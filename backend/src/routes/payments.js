@@ -5,10 +5,12 @@ const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const finance = require('../services/financeEngine');
+const { reasonFrom } = require('../utils/reason');
 
 const PAYMENT_METHODS = ['cash', 'bank_transfer', 'check', 'other'];
 
 function computeInvoiceStatus(invoice, totalPaid) {
+  if (['void', 'cancelled', 'credited'].includes(invoice.status)) return invoice.status;
   const paid = parseFloat(totalPaid) || 0;
   const amount = parseFloat(invoice.net_amount) > 0 ? parseFloat(invoice.net_amount) : (parseFloat(invoice.amount) || 0);
   if (paid >= amount) return 'paid';
@@ -22,7 +24,7 @@ async function recalcInvoiceStatus(q, invoiceId) {
   const inv = await q('SELECT * FROM invoices WHERE id = $1', [invoiceId]);
   if (inv.rows.length === 0) return;
   const invoice = inv.rows[0];
-  const paid = await q("SELECT COALESCE(SUM(amount), 0) as total FROM payment_allocations WHERE invoice_id = $1 AND target_type = 'client_invoice'", [invoiceId]);
+  const paid = await q("SELECT COALESCE(SUM(amount), 0) as total FROM payment_allocations WHERE invoice_id = $1 AND target_type = 'client_invoice' AND voided_at IS NULL", [invoiceId]);
   const totalPaid = parseFloat(paid.rows[0].total) || 0;
   const newStatus = computeInvoiceStatus(invoice, totalPaid);
   if (newStatus !== invoice.status) {
@@ -113,26 +115,45 @@ router.post('/', authenticate, authorize(), async (req, res) => {
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 
+// Void, never delete: the payment row, its allocations and its history stay; the money stops counting.
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
+  const reason = reasonFrom(req);
+  if (!reason) return res.status(400).json({ success: false, error: 'A reason is required to void a payment' });
   try {
-    const payment = await transaction(async (client) => {
+    const outcome = await transaction(async (client) => {
       const q = client.query.bind(client);
       const existing = (await q('SELECT * FROM payments WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
-      if (!existing) return null;
-      if (existing.invoice_id) await q('SELECT id FROM invoices WHERE id = $1 FOR UPDATE', [existing.invoice_id]);
-      await q('DELETE FROM payments WHERE id = $1', [req.params.id]);
-      if (existing.invoice_id) await recalcInvoiceStatus(q, existing.invoice_id);
-      return existing;
+      if (!existing) return { notFound: true };
+      if (existing.voided_at) return { conflict: true };
+      const allocs = (await q('SELECT DISTINCT invoice_id, supplier_invoice_id FROM payment_allocations WHERE payment_id = $1 AND voided_at IS NULL', [existing.id])).rows;
+      const invoiceIds = [...new Set([existing.invoice_id, ...allocs.map((a) => a.invoice_id)].filter(Boolean))].sort((x, y) => x - y);
+      const supplierInvoiceIds = [...new Set(allocs.map((a) => a.supplier_invoice_id).filter(Boolean))].sort((x, y) => x - y);
+      if (invoiceIds.length) await q('SELECT id FROM invoices WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE', [invoiceIds]);
+      if (supplierInvoiceIds.length) await q('SELECT id FROM supplier_invoices WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE', [supplierInvoiceIds]);
+      await q('UPDATE payments SET voided_at = NOW(), voided_by = $2, void_reason = $3 WHERE id = $1', [existing.id, req.user.id, reason]);
+      await q('UPDATE payment_allocations SET voided_at = NOW() WHERE payment_id = $1 AND voided_at IS NULL', [existing.id]);
+      for (const invoiceId of invoiceIds) await recalcInvoiceStatus(q, invoiceId);
+      for (const supplierInvoiceId of supplierInvoiceIds) {
+        // Paid supplier invoices that are no longer fully allocated go back to 'received'.
+        const bal = await finance.supplierInvoiceOutstanding(q, supplierInvoiceId);
+        if (bal.outstanding > 1e-9) await q("UPDATE supplier_invoices SET status = 'received' WHERE id = $1 AND status = 'paid'", [supplierInvoiceId]);
+      }
+      await finance.writeAuditEvent(q, {
+        entity_type: 'payment', entity_id: existing.id, event_type: 'void', actor_id: req.user.id, actor_name: req.user.name,
+        before_state: { amount: existing.amount, invoice_id: existing.invoice_id }, after_state: { voided: true, reason },
+      });
+      return { payment: existing };
     });
-    if (!payment) return res.status(404).json({ success: false, error: 'Payment not found' });
+    if (outcome.notFound) return res.status(404).json({ success: false, error: 'Payment not found' });
+    if (outcome.conflict) return res.status(409).json({ success: false, error: 'Payment is already void' });
 
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'delete', module: 'payments',
-      description: `Deleted payment #${req.params.id}`,
+      action: 'void', module: 'payments',
+      description: `Voided payment #${req.params.id}: ${reason}`,
       entityId: req.params.id, entityType: 'payment'
     });
-    res.json({ success: true, message: 'Payment deleted' });
+    res.json({ success: true, message: 'Payment voided' });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 

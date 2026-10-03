@@ -164,12 +164,12 @@ router.get('/overview', authenticate, authorize(), async (req, res) => {
 
     // Mirrors GET /api/finance/summary exactly so the two views never disagree.
     query(`SELECT
-             COALESCE((SELECT SUM(amount) FROM payments), 0) AS collected,
-             COALESCE((SELECT SUM(amount) FROM invoices), 0) AS invoiced,
+             COALESCE((SELECT SUM(amount) FROM payments WHERE voided_at IS NULL), 0) AS collected,
+             COALESCE((SELECT SUM(amount) FROM invoices WHERE status NOT IN ('void', 'cancelled', 'credited')), 0) AS invoiced,
              COALESCE((SELECT SUM(amount) FROM expenses), 0) AS expenses,
              (SELECT COUNT(*) FROM invoices
                WHERE status = 'overdue'
-                  OR (due_date IS NOT NULL AND due_date < CURRENT_DATE AND status != 'paid'))::int AS overdue`).catch(
+                  OR (due_date IS NOT NULL AND due_date < CURRENT_DATE AND status NOT IN ('paid', 'void', 'cancelled', 'credited')))::int AS overdue`).catch(
       () => zero([{ collected: 0, invoiced: 0, expenses: 0, overdue: 0 }])),
 
     query(`SELECT
@@ -177,7 +177,7 @@ router.get('/overview', authenticate, authorize(), async (req, res) => {
              COUNT(*) FILTER (WHERE status = 'sent')::int AS sent,
              COUNT(*) FILTER (WHERE status = 'paid')::int AS paid,
              COUNT(*) FILTER (WHERE status = 'overdue'
-                OR (due_date IS NOT NULL AND due_date < CURRENT_DATE AND status != 'paid'))::int AS overdue
+                OR (due_date IS NOT NULL AND due_date < CURRENT_DATE AND status NOT IN ('paid', 'void', 'cancelled', 'credited')))::int AS overdue
            FROM invoices`).catch(() => zero([{ total: 0, sent: 0, paid: 0, overdue: 0 }])),
 
     query(`SELECT

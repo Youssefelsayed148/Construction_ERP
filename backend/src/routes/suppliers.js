@@ -5,6 +5,7 @@ const Joi = require('joi');
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
+const { reasonFrom } = require('../utils/reason');
 
 const SPECIALTIES = ['concrete', 'steel', 'electrical', 'plumbing', 'wood', 'paint_coating', 'aggregate', 'equipment', 'safety', 'general', 'other'];
 
@@ -14,6 +15,7 @@ router.get('/', authenticate, authorize(), async (req, res) => {
     let conditions = [];
     let params = [];
     let idx = 1;
+    if (req.query.include_deleted !== 'true') conditions.push('deleted_at IS NULL');
 
     if (specialty && SPECIALTIES.includes(specialty)) {
       conditions.push(`specialty = $${idx++}`);
@@ -133,12 +135,30 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
   }
 });
 
+// Soft delete: POs, GRNs and invoices keep resolving the supplier; lists and pickers hide it.
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const result = await query('DELETE FROM suppliers WHERE id = $1 RETURNING code', [req.params.id]);
+    const reason = reasonFrom(req) || null;
+    const result = await query(
+      `UPDATE suppliers SET deleted_at = NOW(), deleted_by = $2, delete_reason = $3, is_active = false, updated_at = NOW()
+        WHERE id = $1 AND deleted_at IS NULL RETURNING code`,
+      [req.params.id, req.user.id, reason]);
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Supplier not found' });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'suppliers', description: `Deleted supplier ${result.rows[0].code}`, entityId: req.params.id, entityType: 'supplier' });
+    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'suppliers', description: `Deleted supplier ${result.rows[0].code}${reason ? `: ${reason}` : ''}`, entityId: req.params.id, entityType: 'supplier' });
     res.json({ success: true, message: 'Supplier deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/:id/restore', authenticate, authorize(), async (req, res) => {
+  try {
+    const result = await query(
+      `UPDATE suppliers SET deleted_at = NULL, deleted_by = NULL, delete_reason = NULL, is_active = true, updated_at = NOW()
+        WHERE id = $1 AND deleted_at IS NOT NULL RETURNING *`, [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Deleted supplier not found' });
+    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'restore', module: 'suppliers', description: `Restored supplier ${result.rows[0].code}`, entityId: req.params.id, entityType: 'supplier' });
+    res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

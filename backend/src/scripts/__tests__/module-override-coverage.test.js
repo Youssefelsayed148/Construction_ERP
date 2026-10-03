@@ -28,6 +28,7 @@ describe('action overrides', () => {
   const MOUNT_FILES = {
     approvals: 'approvals', commercial: 'commercial', docs: 'doccontrol', 'finance-ledger': 'financeLedger', handover: 'handover',
     procurement: 'procurement', qhse: 'qhse', subcontractors: 'subcontractors', 'work-orders': 'workorders', reports: 'reports',
+    invoices: 'invoices', items: 'items', payments: 'payments', suppliers: 'suppliers',
   };
 
   test('every override matches a real route with that method', () => {
@@ -45,5 +46,11 @@ describe('action overrides', () => {
     expect(act('procurement', 'POST', '/po/:id/issue')).toBe('issue_financial_document');
     expect(act('docs', 'POST', '/rfis')).toBe('create');
     expect(act('docs', 'GET', '/documents')).toBe('view');
+    // voiding a financial record and restoring a master are not plain deletes/creates
+    expect(act('payments', 'DELETE', '/:id')).toBe('void');
+    expect(act('invoices', 'DELETE', '/:id')).toBe('void');
+    expect(act('items', 'POST', '/:id/restore')).toBe('delete');
+    expect(act('suppliers', 'POST', '/:id/restore')).toBe('delete');
+    expect(act('items', 'DELETE', '/:id')).toBe('delete');
   });
 });

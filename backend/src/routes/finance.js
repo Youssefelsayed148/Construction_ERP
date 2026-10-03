@@ -11,11 +11,11 @@ router.get('/project/:id', authenticate, authorize(), async (req, res) => {
     if (proj.rows.length === 0) return res.status(404).json({ success: false, error: 'Project not found' });
 
     const totalInvoiced = await query(
-      'SELECT COALESCE(SUM(amount), 0) as total FROM invoices WHERE project_id = $1',
+      "SELECT COALESCE(SUM(amount), 0) as total FROM invoices WHERE project_id = $1 AND status NOT IN ('void', 'cancelled', 'credited')",
       [projectId]
     );
     const totalPaid = await query(
-      'SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE project_id = $1',
+      'SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE project_id = $1 AND voided_at IS NULL',
       [projectId]
     );
     const totalExpenses = await query(
@@ -57,12 +57,12 @@ router.get('/project/:id', authenticate, authorize(), async (req, res) => {
 
 router.get('/summary', authenticate, authorize(), async (req, res) => {
   try {
-    const totalCollected = await query('SELECT COALESCE(SUM(amount), 0) as total FROM payments');
-    const totalInvoiced = await query('SELECT COALESCE(SUM(amount), 0) as total FROM invoices');
+    const totalCollected = await query('SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE voided_at IS NULL');
+    const totalInvoiced = await query("SELECT COALESCE(SUM(amount), 0) as total FROM invoices WHERE status NOT IN ('void', 'cancelled', 'credited')");
     const totalExpenses = await query('SELECT COALESCE(SUM(amount), 0) as total FROM expenses');
     const overdueCount = await query(
       `SELECT COUNT(*) as cnt FROM invoices
-       WHERE status = 'overdue' OR (due_date IS NOT NULL AND due_date < CURRENT_DATE AND status != 'paid')`
+       WHERE status = 'overdue' OR (due_date IS NOT NULL AND due_date < CURRENT_DATE AND status NOT IN ('paid', 'void', 'cancelled', 'credited'))`
     );
 
     res.json({

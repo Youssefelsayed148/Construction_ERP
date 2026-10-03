@@ -84,7 +84,7 @@ const TOOLS = {
   record_payment:                { risk: 'gated', movesMoney: true, method: 'POST', router: 'payments',    path: '/', approver: 'finance' },
   approve_payment_certificate:   { risk: 'gated', movesMoney: true, method: 'PUT',  router: 'subcontractors', path: '/certificates/:id', argMap: { certificate_id: 'id' }, approver: 'finance' },
   release_retention:             { risk: 'gated', movesMoney: true, method: 'POST', router: 'financeLedger', path: '/retention', approver: 'finance' },
-  void_financial_record:         { risk: 'gated', movesMoney: true, method: 'DELETE', router: 'invoices', path: '/:id', argMap: { record_id: 'id' }, approver: 'finance' },
+  void_financial_record:         { risk: 'gated', movesMoney: true, method: 'DELETE', router: 'invoices', path: '/:id', argMap: { record_id: 'id' }, approver: 'finance', reasonInBody: true },
   change_authority_rules:        { risk: 'gated', companyWide: true, method: 'PUT',  router: 'users',       path: '/:id', argMap: { user_id: 'id' }, approver: 'owner' },
   close_project:                 { risk: 'gated', method: 'PUT',  router: 'projects',    path: '/:id', argMap: { project_id: 'id' }, approver: 'owner' },
   // These notify a person or declare work finished, so an agent cannot do them alone: a human approves,
@@ -289,7 +289,8 @@ const TOOL_BODY = {
   record_payment: { invoice_id: id.allow(null), project_id: id.required(), client_id: id.required(), amount: Joi.number().positive().required(), payment_date: text(40).required(), payment_method: text(60), reference_number: optText(120), notes: optText() },
   approve_payment_certificate: { certificate_id: id.required(), status: Joi.string().valid('certified', 'paid').required() },
   release_retention: { project_id: id.required(), party_type: Joi.string().valid('client', 'subcontractor').required(), direction: Joi.string().valid('held', 'released').required(), amount: Joi.number().positive().required(), source_type: optText(60), source_id: id.allow(null) },
-  void_financial_record: { record_id: id.required() },
+  // The invoice route voids with a recorded reason (no hard delete), so the tool must carry one.
+  void_financial_record: { record_id: id.required(), reason: Joi.string().trim().min(3).max(500).required() },
   change_authority_rules: { user_id: id.required(), role: text(60), department: optText(120), module_permissions: Joi.array().items(text(100)).max(100), is_active: Joi.boolean() },
   close_project: { project_id: id.required(), status: text(40), end_date: optText(40), notes: optText() },
 };
@@ -297,7 +298,7 @@ const TOOL_BODY = {
 function schemaForTool(name) {
   const def = TOOLS[name];
   if (!def) return null;
-  if (TOOL_BODY[name]) return Joi.object({ ...TOOL_BODY[name], ...reasonKey });
+  if (TOOL_BODY[name]) return Joi.object({ ...reasonKey, ...TOOL_BODY[name] });
   const keys = { ...READ_FILTERS, ...reasonKey };
   if (def.argMap) for (const arg of Object.keys(def.argMap)) keys[arg] = id.required();
   if (def.pick) keys[def.pick] = id;

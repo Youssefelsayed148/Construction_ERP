@@ -114,7 +114,7 @@ async function clientFinancials(q, projectId) {
   let paid = 0;
   let certified = 0;
   try {
-    const allocs = (await safeAll(q, "SELECT * FROM payment_allocations WHERE target_type = 'client_invoice'", []));
+    const allocs = (await safeAll(q, "SELECT * FROM payment_allocations WHERE target_type = 'client_invoice' AND voided_at IS NULL", []));
     const byInvoice = new Map();
     for (const a of allocs) {
       byInvoice.set(toNum(a.invoice_id), (byInvoice.get(toNum(a.invoice_id)) || 0) + toNum(a.amount));
