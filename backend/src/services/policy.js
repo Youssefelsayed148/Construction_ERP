@@ -137,7 +137,7 @@ function extractProjectId(req, module) {
 // a constant owned by the server; request input is used only as a parameter.
 const RECORD_SCOPE_RULES = Object.freeze({
   actions: [[/^\/:id(?:\/|$)/, 'action_items']],
-  agents: [[/^\/requests\/:id(?:\/|$)/, 'agent_action_requests']],
+  agent: [[/^\/requests\/:id(?:\/|$)/, 'agent_action_requests']],
   boq: [[/^\/sections\/:id(?:\/|$)/, 'boq_sections'], [/^\/items\/:id(?:\/|$)/, 'boq_items']],
   commercial: [[/^\/variations\/:id(?:\/|$)/, 'variations']],
   consultant: [
@@ -172,6 +172,10 @@ const RECORD_SCOPE_RULES = Object.freeze({
     [/^\/wirs\/:id(?:\/|$)/, 'wirs'],
     [/^\/mirs\/:id(?:\/|$)/, 'material_inspection_requests'],
     [/^\/punch-items\/:id(?:\/|$)/, 'punch_items'],
+    [/^\/inspections\/:id(?:\/|$)/, 'safety_inspections'],
+    [/^\/incidents\/:id(?:\/|$)/, 'safety_incidents'],
+    [/^\/checklists\/instances\/:id(?:\/|$)/, 'checklist_instances'],
+    [/^\/mock-ups\/:id(?:\/|$)/, 'mock_ups'],
   ],
   hse: [
     [/^\/incidents\/:id(?:\/|$)/, 'incidents'],
@@ -202,15 +206,49 @@ const RECORD_SCOPE_RULES = Object.freeze({
   quantities: [
     [/^\/allocations\/:id(?:\/|$)/, 'boq_location_allocations'],
     [/^\/measurements\/:id(?:\/|$)/, 'quantity_measurements'],
+    [/^\/allocations\/:boqItemId(?:\/|$)/, 'boq_items', 'boqItemId'],
     [/^\/progress\/location\/:locationId(?:\/|$)/, 'project_locations', 'locationId'],
     [/^\/locations\/:locationId(?:\/|$)/, 'project_locations', 'locationId'],
   ],
-  schedule: [[/^\/activities\/:id(?:\/|$)/, 'schedule_activities']],
-  'work-orders': [[/^\/:id(?:\/|$)/, 'work_orders']],
+  schedule: [
+    [/^\/activities\/:id(?:\/|$)/, 'schedule_activities'],
+    [/^\/relationships\/:id(?:\/|$)/, 'activity_relationships'],
+    [/^\/schedule\/milestones\/:id(?:\/|$)/, 'project_milestones'],
+  ],
+  // /api/projects also serves the site router, so its record routes live here. The :projectId in these
+  // paths is checked against the record's real project (ownershipMatches), not just trusted.
+  projects: [
+    [/^\/:projectId\/phases\/:phaseId(?:\/|$)/, 'project_phases', 'phaseId'],
+    [/^\/:projectId\/milestones\/:milestoneId(?:\/|$)/, 'project_milestones', 'milestoneId'],
+    [/^\/:projectId\/team\/:teamId(?:\/|$)/, 'project_team', 'teamId'],
+    [/^\/:projectId\/site-reports\/:id(?:\/|$)/, 'site_daily_reports'],
+    [/^\/:projectId\/instructions\/:id(?:\/|$)/, 'engineer_instructions'],
+    [/^\/:projectId\/site-visits\/:id(?:\/|$)/, 'site_visits'],
+    [/^\/:projectId\/sticky-notes\/:id(?:\/|$)/, 'sticky_notes'],
+  ],
+  sales: [
+    [/^\/buildings\/:id(?:\/|$)/, 'buildings'],
+    [/^\/buildings\/:buildingId(?:\/|$)/, 'buildings', 'buildingId'],
+    [/^\/units\/:id(?:\/|$)/, 'SELECT b.project_id FROM units u JOIN buildings b ON b.id = u.building_id WHERE u.id = $1'],
+  ],
+  subcontractors: [
+    [/^\/verifications\/:contractId(?:\/|$)/, 'sub_contracts', 'contractId'],
+    [/^\/certificates\/:contractId(?:\/|$)/, 'sub_contracts', 'contractId'],
+    [/^\/verifications\/:id(?:\/|$)/, 'SELECT sc.project_id FROM sub_work_verifications v JOIN sub_contracts sc ON sc.id = v.sub_contract_id WHERE v.id = $1'],
+    [/^\/certificates\/:id(?:\/|$)/, 'SELECT sc.project_id FROM sub_payment_certificates c JOIN sub_contracts sc ON sc.id = c.sub_contract_id WHERE c.id = $1'],
+    [/^\/verifications$/, 'sub_contracts', 'sub_contract_id', 'body'],
+    [/^\/certificates$/, 'sub_contracts', 'sub_contract_id', 'body'],
+  ],
+  'work-orders': [
+    [/^\/:woId\/completions\/:compId(?:\/|$)/, 'SELECT wo.project_id FROM work_completions c JOIN work_orders wo ON wo.id = c.work_order_id WHERE c.id = $1', 'compId'],
+    [/^\/:id(?:\/|$)/, 'work_orders'],
+  ],
 });
 
+// The internal route path the request is being served by. Express sets req.route for a normal mount; the
+// v1 remount and MCP synthetic requests run the handler chain directly, so remountFrom sets policyRoute.
 function recordScopeRule(req, module) {
-  const routePath = String(req.route?.path || '');
+  const routePath = String(req.policyRoute || req.route?.path || '');
   return (RECORD_SCOPE_RULES[module] || []).find(([pattern]) => pattern.test(routePath)) || null;
 }
 
@@ -221,8 +259,8 @@ async function resolveProjectContext(req, module, q = query) {
     if (explicit != null) return { projectId: explicit, recordScoped: false, recordFound: true };
     return { projectId: null, recordScoped: false, recordFound: true };
   }
-  const [, source, paramName = 'id'] = rule;
-  const recordId = req.params?.[paramName];
+  const [, source, paramName = 'id', from = 'params'] = rule;
+  const recordId = from === 'body' ? req.body?.[paramName] : req.params?.[paramName];
   if (recordId == null) return { projectId: null, recordScoped: true, recordFound: false };
   const sql = /^SELECT\s/i.test(source)
     ? source

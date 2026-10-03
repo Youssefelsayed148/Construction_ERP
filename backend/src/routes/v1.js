@@ -82,6 +82,8 @@ function remountFrom({ router, internalMount, method, path }) {
   return function v1Remounted(req, res, next) {
     const prevBaseUrl = req.baseUrl;
     req.baseUrl = internalMount;
+    // The chain is run by hand, so Express never sets req.route: tell the policy which internal route this is.
+    req.policyRoute = path;
     let idx = 0;
     // The wrapper resolves when the chain finalized a response (json/send/end)
     // or when it exhausted — direct callers (MCP tool execution) need to await

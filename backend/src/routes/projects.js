@@ -19,16 +19,28 @@ function wizardEnabled() {
   return ['1', 'true', 'on'].includes(String(process.env.PROJECT_CREATION_WIZARD || '').toLowerCase());
 }
 
+// Project-bound users only see the projects they are assigned to (budget and contract value included).
+// req.accessScope is set by authorize(); null means company-wide.
+function projectScope(req, params, column = 'p.id') {
+  const ids = req.accessScope && !req.accessScope.companyWide ? req.accessScope.projectIds : null;
+  if (ids == null) return '';
+  params.push(ids);
+  return `${column} = ANY($${params.length}::int[])`;
+}
+
 router.get('/portfolio', authenticate, authorize(), async (req, res) => {
   try {
+    const params = [];
+    const scope = projectScope(req, params);
     const data = await query(`
       SELECT p.*, c.name_ar as client_name, c.name_en as client_name_en,
              e.name_ar as project_manager_name, e.name_en as project_manager_name_en
       FROM projects p
       LEFT JOIN clients c ON p.client_id = c.id
       LEFT JOIN employees e ON p.project_manager_id = e.id
+      ${scope ? `WHERE ${scope}` : ''}
       ORDER BY p.status, p.created_at DESC
-    `);
+    `, params);
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -40,6 +52,8 @@ router.get('/', authenticate, authorize(), async (req, res) => {
     if (status && PROJECT_STATUSES.includes(status)) { conds.push(`p.status = $${i++}`); p.push(status); }
     if (project_type && PROJECT_TYPES.includes(project_type)) { conds.push(`p.project_type = $${i++}`); p.push(project_type); }
     if (search) { conds.push(`(p.code ILIKE $${i} OR p.name_en ILIKE $${i} OR p.name_ar ILIKE $${i})`); p.push(`%${search}%`); i++; }
+    const scope = projectScope(req, p);
+    if (scope) { conds.push(scope); i++; }
     const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
     const data = await query(
       `SELECT p.*, c.name_ar as client_name, c.name_en as client_name_en, e.name_ar as project_manager_name, e.name_en as project_manager_name_en FROM projects p LEFT JOIN clients c ON p.client_id = c.id LEFT JOIN employees e ON p.project_manager_id = e.id ${w} ORDER BY p.created_at DESC LIMIT $${i++} OFFSET $${i}`,
@@ -291,8 +305,8 @@ router.put('/:projectId/phases/:phaseId', authenticate, authorize(), async (req,
     for (const [k, v] of Object.entries(value)) {
       if (v !== undefined) { sets.push(`${k} = $${i++}`); p.push(v); }
     }
-    p.push(req.params.phaseId);
-    const r = await query(`UPDATE project_phases SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`, p);
+    p.push(req.params.phaseId, req.params.projectId);
+    const r = await query(`UPDATE project_phases SET ${sets.join(', ')} WHERE id = $${i} AND project_id = $${i + 1} RETURNING *`, p);
     if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Phase not found' });
     res.json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
@@ -360,15 +374,15 @@ router.put('/:projectId/milestones/:milestoneId', authenticate, authorize(), asy
     for (const [k, v] of Object.entries(value)) {
       if (v !== undefined) { sets.push(`${k} = $${i++}`); p.push(v); }
     }
-    p.push(req.params.milestoneId);
-    const r = await query(`UPDATE project_milestones SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`, p);
+    p.push(req.params.milestoneId, req.params.projectId);
+    const r = await query(`UPDATE project_milestones SET ${sets.join(', ')} WHERE id = $${i} AND project_id = $${i + 1} RETURNING *`, p);
     if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Milestone not found' });
     res.json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 router.delete('/:projectId/milestones/:milestoneId', authenticate, authorize(), async (req, res) => {
-  const r = await query('DELETE FROM project_milestones WHERE id = $1', [req.params.milestoneId]);
+  const r = await query('DELETE FROM project_milestones WHERE id = $1 AND project_id = $2', [req.params.milestoneId, req.params.projectId]);
   if (r.rowCount === 0) return res.status(404).json({ success: false, error: 'Milestone not found' });
   res.json({ success: true, message: 'Deleted' });
 });
