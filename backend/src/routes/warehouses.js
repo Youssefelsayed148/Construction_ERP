@@ -32,7 +32,10 @@ const movementBodySchema = {
   notes: Joi.string().optional().allow(null, ''),
   // MIR gate evidence: a GRN is only accepted with an accepted MIR.
   mir_accepted: Joi.boolean().optional(),
+  // Receipt cost only. Outbound movements are valued by the database at the weighted average (migration 0007).
+  unit_cost: Joi.number().min(0).optional(),
 };
+const COST_BEARING_TYPES = ['grn', 'quarantine', 'return', 'adjustment'];
 
 // ---------------------------------------------------------------------------
 // Warehouses
@@ -107,17 +110,25 @@ router.post('/:id/movements', authenticate, authorize(), async (req, res) => {
       }
     }
 
-    const movement = await engine.createMovement(query, {
-      warehouse_id: parseInt(req.params.id, 10),
-      material_id: value.material_id,
-      movement_type: value.movement_type,
-      quantity: value.quantity,
-      reference_type: value.reference_type || null,
-      reference_id: value.reference_id || null,
-      notes: value.notes || null,
-      created_by: req.user.id,
+    if (value.unit_cost != null && !COST_BEARING_TYPES.includes(value.movement_type)) {
+      return res.status(400).json({ success: false, error: `unit_cost is not accepted on a ${value.movement_type} movement: it is valued at the current weighted average` });
+    }
+
+    const { movement, balances } = await transaction(async (client) => {
+      const tq = client.query.bind(client);
+      const created = await engine.createMovement(tq, {
+        warehouse_id: parseInt(req.params.id, 10),
+        material_id: value.material_id,
+        movement_type: value.movement_type,
+        quantity: value.quantity,
+        reference_type: value.reference_type || null,
+        reference_id: value.reference_id || null,
+        notes: value.notes || null,
+        created_by: req.user.id,
+        unit_cost: value.unit_cost == null ? null : value.unit_cost,
+      });
+      return { movement: created, balances: await engine.getBalances(tq, created.warehouse_id, created.material_id) };
     });
-    const balances = await engine.getBalances(query, movement.warehouse_id, movement.material_id);
 
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
@@ -138,10 +149,10 @@ router.post('/movements/:id/reverse', authenticate, authorize(), async (req, res
     const { error, value } = schema.validate(req.body || {});
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const movement = await engine.reverseMovement(query, parseInt(req.params.id, 10), {
+    const movement = await transaction((client) => engine.reverseMovement(client.query.bind(client), parseInt(req.params.id, 10), {
       reason: value.reason || null,
       created_by: req.user.id,
-    });
+    }));
 
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
@@ -172,17 +183,20 @@ router.post('/movements/:id/mir', authenticate, authorize(), async (req, res) =>
       return res.status(400).json({ success: false, error: `Movement #${original.id} is not a quarantined receipt` });
     }
 
-    const movement = await engine.createMovement(query, {
-      warehouse_id: original.warehouse_id,
-      material_id: original.material_id,
-      movement_type: value.result === 'accepted' ? 'quarantine_release' : 'quarantine_reject',
-      quantity: original.quantity,
-      reference_type: 'mir',
-      reference_id: value.mir_id || null,
-      notes: value.notes || (value.result === 'accepted' ? 'MIR accepted' : 'MIR rejected'),
-      created_by: req.user.id,
+    const { movement, balances } = await transaction(async (client) => {
+      const tq = client.query.bind(client);
+      const created = await engine.createMovement(tq, {
+        warehouse_id: original.warehouse_id,
+        material_id: original.material_id,
+        movement_type: value.result === 'accepted' ? 'quarantine_release' : 'quarantine_reject',
+        quantity: original.quantity,
+        reference_type: 'mir',
+        reference_id: value.mir_id || null,
+        notes: value.notes || (value.result === 'accepted' ? 'MIR accepted' : 'MIR rejected'),
+        created_by: req.user.id,
+      });
+      return { movement: created, balances: await engine.getBalances(tq, original.warehouse_id, original.material_id) };
     });
-    const balances = await engine.getBalances(query, original.warehouse_id, original.material_id);
 
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
@@ -258,6 +272,17 @@ router.put('/transfers/:id/complete', authenticate, authorize(), async (req, res
 
     await transaction(async (client) => {
       const txQuery = client.query.bind(client);
+      // Claim the transfer first: only the caller whose UPDATE returns the row completes it.
+      const claimed = await client.query(
+        `UPDATE inventory_transfers SET status = 'completed', approved_by = $1, transferred_at = NOW(), updated_at = NOW()
+          WHERE id = $2 AND status = 'draft' RETURNING id`,
+        [req.user.id, req.params.id]
+      );
+      if (claimed.rows.length === 0) throw new Error('Transfer already processed');
+      // Lock every (warehouse, material) pair up front, in sorted order, so concurrent transfers cannot deadlock.
+      await engine.lockPairs(txQuery, items.rows.flatMap((item) => [
+        [transfer.rows[0].from_warehouse_id, item.item_id], [transfer.rows[0].to_warehouse_id, item.item_id],
+      ]));
       // Pre-flight: usable (available) stock at the source for every item.
       for (const item of items.rows) {
         const balances = await engine.getBalances(txQuery, transfer.rows[0].from_warehouse_id, item.item_id);
@@ -267,7 +292,7 @@ router.put('/transfers/:id/complete', authenticate, authorize(), async (req, res
       }
       // Paired movements in one transaction: transfer_out + transfer_in.
       for (const item of items.rows) {
-        await engine.createMovement(txQuery, {
+        const out = await engine.createMovement(txQuery, {
           warehouse_id: transfer.rows[0].from_warehouse_id,
           material_id: item.item_id,
           movement_type: 'transfer_out',
@@ -276,6 +301,7 @@ router.put('/transfers/:id/complete', authenticate, authorize(), async (req, res
           reference_id: transfer.rows[0].id,
           created_by: req.user.id,
         });
+        // The receiving warehouse takes the stock in at the cost it left the source.
         await engine.createMovement(txQuery, {
           warehouse_id: transfer.rows[0].to_warehouse_id,
           material_id: item.item_id,
@@ -284,12 +310,9 @@ router.put('/transfers/:id/complete', authenticate, authorize(), async (req, res
           reference_type: 'inventory_transfer',
           reference_id: transfer.rows[0].id,
           created_by: req.user.id,
+          unit_cost: out.unit_cost == null ? null : out.unit_cost,
         });
       }
-      await client.query(
-        `UPDATE inventory_transfers SET status = 'completed', approved_by = $1, transferred_at = NOW(), updated_at = NOW() WHERE id = $2`,
-        [req.user.id, req.params.id]
-      );
     });
 
     await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'complete', module: 'inventory', description: `Completed inventory transfer #${req.params.id} as paired stock movements`, entityId: req.params.id, entityType: 'inventory_transfer' });
@@ -339,7 +362,7 @@ router.post('/reservations', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const reservation = await engine.createReservation(query, {
+    const reservation = await transaction((client) => engine.createReservation(client.query.bind(client), {
       material_id: value.material_id,
       project_id: value.project_id || null,
       location_id: value.location_id || null,
@@ -349,7 +372,7 @@ router.post('/reservations', authenticate, authorize(), async (req, res) => {
       reference_type: value.reference_type || null,
       reference_id: value.reference_id || null,
       created_by: req.user.id,
-    });
+    }));
 
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
@@ -364,10 +387,10 @@ router.post('/reservations', authenticate, authorize(), async (req, res) => {
 // POST /api/warehouses/reservations/:id/release
 router.post('/reservations/:id/release', authenticate, authorize(), async (req, res) => {
   try {
-    const reservation = await engine.releaseReservation(query, parseInt(req.params.id, 10), {
+    const reservation = await transaction((client) => engine.releaseReservation(client.query.bind(client), parseInt(req.params.id, 10), {
       status: 'released',
       created_by: req.user.id,
-    });
+    }));
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       action: 'update', module: 'inventory',

@@ -23,6 +23,26 @@
 
 'use strict';
 
+const database = require('../config/database');
+
+// Every ledger write runs in ONE transaction that holds a per-(warehouse, material) advisory lock from the
+// balance check to the projection update, so concurrent movements queue instead of racing. Callers inside a
+// transaction pass their client's query function; a caller that passes the pool gets a transaction here.
+function inTransaction(q, fn) {
+  if (q === database.query && typeof database.transaction === 'function') {
+    return database.transaction((client) => fn((text, params) => client.query(text, params)));
+  }
+  return fn(q);
+}
+
+// pg_advisory_xact_lock(int, int): released automatically at COMMIT/ROLLBACK. Locks are taken in sorted order
+// so two transactions touching the same pairs cannot deadlock each other.
+async function lockPairs(q, pairs) {
+  const unique = [...new Map(pairs.map(([w, m]) => [`${w}:${m}`, [Number(w), Number(m)]])).values()]
+    .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  for (const [w, m] of unique) await q('SELECT pg_advisory_xact_lock($1, $2)', [w, m]);
+}
+
 function toNum(v) {
   if (v == null) return 0;
   const n = typeof v === 'number' ? v : parseFloat(v);
@@ -126,7 +146,11 @@ async function rebuildWarehouseStock(q, { warehouseId, materialId } = {}) {
 
   // 2. Active reservations keyed by (warehouse, material) — only
   //    warehouse-scoped reservations subtract from a warehouse's Available.
-  const reservations = (await q("SELECT * FROM stock_reservations WHERE status = 'active'")).rows;
+  const rconds = ["status = 'active'"];
+  const rp = [];
+  if (warehouseId != null) { rp.push(warehouseId); rconds.push(`warehouse_id = $${rp.length}`); }
+  if (materialId != null) { rp.push(materialId); rconds.push(`material_id = $${rp.length}`); }
+  const reservations = (await q(`SELECT * FROM stock_reservations WHERE ${rconds.join(' AND ')}`, rp)).rows;
   const reservedByKey = new Map();
   for (const r of reservations) {
     if (r.warehouse_id == null) continue; // planning-level reservation, not warehouse stock
@@ -215,9 +239,13 @@ async function getBalances(q, warehouseId, materialId) {
 // Append one movement + rebuild the affected projection row. The only way
 // stock moves. Adjustment/reversal carry signed quantities; every other type
 // is strictly positive. Outbound types are gated on available stock.
-async function createMovement(q, {
+async function createMovement(q, args) {
+  return inTransaction(q, (tq) => createMovementLocked(tq, args));
+}
+
+async function createMovementLocked(q, {
   warehouse_id, material_id, movement_type, quantity,
-  reference_type = null, reference_id = null, notes = null, created_by = null,
+  reference_type = null, reference_id = null, notes = null, created_by = null, unit_cost = null,
 }) {
   if (!MOVEMENT_TYPES.includes(movement_type)) {
     throw new Error(`Invalid movement_type: ${movement_type}`);
@@ -230,9 +258,11 @@ async function createMovement(q, {
     throw new Error(`${movement_type} quantity must be positive — direction is encoded by the movement type`);
   }
 
+  await lockPairs(q, [[warehouse_id, material_id]]);
+
   // Balance gate: outbound movements draw down available stock; the MIR
   // bucket movements (release/reject) draw down the quarantined bucket.
-  // transfer_in / quarantine are receipts — never gated.
+  // transfer_in / quarantine are receipts — never gated. Checked under the pair lock.
   if (OUTBOUND_TYPES.includes(movement_type) || movement_type === 'quarantine_release' || movement_type === 'quarantine_reject') {
     const balances = await getBalances(q, warehouse_id, material_id);
     const fromQuarantine = movement_type === 'quarantine_release' || movement_type === 'quarantine_reject';
@@ -242,23 +272,58 @@ async function createMovement(q, {
     }
   }
 
+  // unit_cost is only meaningful on receipts; the database derives it for everything else (see migration 0007).
   const r = await q(
     `INSERT INTO stock_movements
-       (warehouse_id, material_id, movement_type, quantity, reference_type, reference_id, notes, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-    [warehouse_id, material_id, movement_type, qty, reference_type, reference_id, notes || null, created_by]
+       (warehouse_id, material_id, movement_type, quantity, reference_type, reference_id, notes, created_by, unit_cost)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+    [warehouse_id, material_id, movement_type, qty, reference_type, reference_id, notes || null, created_by, unit_cost]
   );
   const movement = r.rows[0];
-  await rebuildWarehouseStock(q, { warehouseId: warehouse_id, materialId: material_id });
+  await applyMovementToProjection(q, movement);
   return movement;
+}
+
+// Incremental projection update, in the same transaction as the insert: the physical and quarantined buckets
+// move by this movement's signed contribution; reserved is re-read for this pair only (it can expire).
+// A missing row is built from the pair's ledger.
+async function applyMovementToProjection(q, movement) {
+  const w = movement.warehouse_id;
+  const m = movement.material_id;
+  const existing = (await q(
+    'SELECT id, quantity, quarantined_quantity FROM warehouse_stock WHERE warehouse_id = $1 AND item_id = $2', [w, m]
+  )).rows[0];
+  const qty = toNum(movement.quantity);
+  const physicalDelta = (PHYSICAL_SIGNS[movement.movement_type] || 0) * qty;
+  const quarantineDelta = (QUARANTINE_SIGNS[movement.movement_type] || 0) * qty;
+  if (!existing) return rebuildWarehouseStock(q, { warehouseId: w, materialId: m });
+  const reservations = (await q(
+    "SELECT * FROM stock_reservations WHERE warehouse_id = $1 AND material_id = $2 AND status = 'active'", [w, m]
+  )).rows;
+  const reserved = reservedStock(reservations);
+  const physical = round3(toNum(existing.quantity) + physicalDelta);
+  const quarantined = round3(toNum(existing.quarantined_quantity) + quarantineDelta);
+  await q(
+    `UPDATE warehouse_stock
+        SET quantity = $1, reserved_quantity = $2, quarantined_quantity = $3, available_quantity = $4, updated_at = $5
+      WHERE id = $6`,
+    [physical, reserved, quarantined, availableStock(physical, reserved, quarantined), new Date(), existing.id]
+  );
+  return 1;
 }
 
 // Append-only corrections: reverseMovement posts a signed 'reversal' (or a
 // 'quarantine_reject' for quarantined receipts) referencing the original.
 // The original row is never touched.
-async function reverseMovement(q, movementId, { reason = null, created_by = null } = {}) {
+async function reverseMovement(q, movementId, options = {}) {
+  return inTransaction(q, (tq) => reverseMovementLocked(tq, movementId, options));
+}
+
+async function reverseMovementLocked(q, movementId, { reason = null, created_by = null } = {}) {
   const original = (await q('SELECT * FROM stock_movements WHERE id = $1', [movementId])).rows[0];
   if (!original) throw new Error(`Stock movement #${movementId} not found`);
+  // The "already reversed?" check and the reversal must not interleave with another reversal of this row.
+  await lockPairs(q, [[original.warehouse_id, original.material_id]]);
   const prior = (await q(
     `SELECT id FROM stock_movements
      WHERE reference_type = 'stock_movement' AND reference_id = $1
@@ -315,6 +380,7 @@ async function reverseMovement(q, movementId, { reason = null, created_by = null
     reference_id: original.id,
     notes: reason || `Reversal of movement #${original.id}`,
     created_by,
+    unit_cost: original.unit_cost,
   });
 }
 
@@ -322,14 +388,20 @@ async function reverseMovement(q, movementId, { reason = null, created_by = null
 // Reservations
 // ---------------------------------------------------------------------------
 
-async function createReservation(q, {
+async function createReservation(q, args) {
+  return inTransaction(q, (tq) => createReservationLocked(tq, args));
+}
+
+async function createReservationLocked(q, {
   material_id, project_id = null, location_id = null, warehouse_id = null,
   quantity, expires_at = null, reference_type = null, reference_id = null, created_by = null,
 }) {
   const qty = toNum(quantity);
   if (!(qty > 0)) throw new Error('Reservation quantity must be positive');
-  // Warehouse-scoped reservations are gated on available stock at creation.
+  // Warehouse-scoped reservations are gated on available stock, checked under the pair lock so two
+  // concurrent reservations cannot both pass the check.
   if (warehouse_id != null) {
+    await lockPairs(q, [[warehouse_id, material_id]]);
     const balances = await getBalances(q, warehouse_id, material_id);
     if (balances.available < qty) {
       throw new Error(`Insufficient available stock: ${balances.available} available, ${qty} requested`);
@@ -347,16 +419,22 @@ async function createReservation(q, {
   return r.rows[0];
 }
 
-async function releaseReservation(q, reservationId, { status = 'released', created_by = null } = {}) {
+async function releaseReservation(q, reservationId, options = {}) {
+  return inTransaction(q, (tq) => releaseReservationLocked(tq, reservationId, options));
+}
+
+async function releaseReservationLocked(q, reservationId, { status = 'released' } = {}) {
   const existing = (await q('SELECT * FROM stock_reservations WHERE id = $1', [reservationId])).rows[0];
   if (!existing) throw new Error(`Reservation #${reservationId} not found`);
-  if (existing.status !== 'active') throw new Error(`Reservation #${reservationId} is already ${existing.status}`);
+  if (existing.warehouse_id != null) await lockPairs(q, [[existing.warehouse_id, existing.material_id]]);
+  // Only the caller whose UPDATE returns the row releases it.
   const r = await q(
     `UPDATE stock_reservations
-     SET status = $1, released_at = $2, updated_at = $3
-     WHERE id = $4 RETURNING *`,
+        SET status = $1, released_at = $2, updated_at = $3
+      WHERE id = $4 AND status = 'active' RETURNING *`,
     [status, new Date(), new Date(), reservationId]
   );
+  if (!r.rows[0]) throw new Error(`Reservation #${reservationId} is already ${existing.status === 'active' ? 'released' : existing.status}`);
   if (existing.warehouse_id != null) {
     await rebuildWarehouseStock(q, { warehouseId: existing.warehouse_id, materialId: existing.material_id });
   }
@@ -376,6 +454,8 @@ module.exports = {
   availableStock,
   aggregateMovements,
   rebuildWarehouseStock,
+  inTransaction,
+  lockPairs,
   getBalances,
   createMovement,
   reverseMovement,

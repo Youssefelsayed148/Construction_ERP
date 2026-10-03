@@ -121,12 +121,12 @@ router.post('/:id/materials', authenticate, authorize(), async (req, res) => {
     const schema = Joi.object({
       item_id: Joi.number().integer().required(), boq_item_id: Joi.number().integer().optional(),
       planned_quantity: Joi.number().min(0).default(0), actual_quantity: Joi.number().min(0).default(0),
-      unit_cost: Joi.number().min(0).default(0), warehouse_id: Joi.number().integer().optional(),
+      // Cost is derived from the stock ledger (weighted average) when material is issued; a client-supplied
+      // unit_cost is ignored.
+      unit_cost: Joi.any().strip(), warehouse_id: Joi.number().integer().optional(),
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-
-    const total_cost = value.actual_quantity * value.unit_cost;
 
     await transaction(async (client) => {
       const txQuery = client.query.bind(client);
@@ -141,12 +141,12 @@ router.post('/:id/materials', authenticate, authorize(), async (req, res) => {
 
       const wom = await client.query(
         `INSERT INTO work_order_materials (work_order_id, item_id, boq_item_id, planned_quantity, actual_quantity, unit_cost, total_cost, warehouse_id, issued_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
-        [req.params.id, value.item_id, value.boq_item_id, value.planned_quantity, value.actual_quantity, value.unit_cost, total_cost, value.warehouse_id, req.user.id]
+         VALUES ($1,$2,$3,$4,$5,0,0,$6,$7) RETURNING id`,
+        [req.params.id, value.item_id, value.boq_item_id, value.planned_quantity, value.actual_quantity, value.warehouse_id, req.user.id]
       );
 
       if (value.warehouse_id && value.actual_quantity > 0) {
-        await inventoryEngine.createMovement(txQuery, {
+        const issued = await inventoryEngine.createMovement(txQuery, {
           warehouse_id: value.warehouse_id,
           material_id: value.item_id,
           movement_type: 'issue',
@@ -155,6 +155,11 @@ router.post('/:id/materials', authenticate, authorize(), async (req, res) => {
           reference_id: wom.rows[0].id,
           created_by: req.user.id,
         });
+        // The cost of what was issued is the ledger's weighted average, exactly as the database computed it.
+        await client.query(
+          'UPDATE work_order_materials SET unit_cost = $1, total_cost = $2 WHERE id = $3',
+          [issued.unit_cost == null ? 0 : issued.unit_cost, issued.total_cost == null ? 0 : issued.total_cost, wom.rows[0].id]
+        );
       }
     });
 
