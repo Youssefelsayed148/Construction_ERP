@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
-const { query } = require('../config/database');
+const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { journalExpenseCreated } = require('../utils/journal');
@@ -44,15 +44,19 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const result = await query(
-      `INSERT INTO expenses (category, description, amount, date, project_id, paid_by, notes, created_by)
-       VALUES ($1,$2,$3,COALESCE($4,CURRENT_DATE),$5,$6,$7,$8) RETURNING *`,
-      [value.category, value.description, value.amount, value.date, value.project_id || null, value.paid_by, value.notes, req.user.id]
-    );
+    // The expense and its ledger entry commit together; a posting failure fails the request and creates nothing.
+    const result = await transaction(async (client) => {
+      const q = (text, params) => client.query(text, params);
+      const inserted = await q(
+        `INSERT INTO expenses (category, description, amount, date, project_id, paid_by, notes, created_by)
+         VALUES ($1,$2,$3,COALESCE($4,CURRENT_DATE),$5,$6,$7,$8) RETURNING *`,
+        [value.category, value.description, value.amount, value.date, value.project_id || null, value.paid_by, value.notes, req.user.id]
+      );
+      await journalExpenseCreated(q, inserted.rows[0], req.user.id);
+      return inserted;
+    });
 
     await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'expenses', description: `Created expense: ${value.category} - ${value.amount} EGP`, entityId: result.rows[0].id, entityType: 'expense', amount: value.amount });
-
-    journalExpenseCreated(result.rows[0]).catch(e => console.error('[JOURNAL] Expense entry failed:', e.message));
 
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }

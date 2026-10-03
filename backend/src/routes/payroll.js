@@ -94,10 +94,17 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
       if (v !== undefined) { sets.push(`${k} = $${i++}`); p.push(v); }
     }
     p.push(req.params.id);
-    const r = await query(`UPDATE payroll_periods SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`, p);
+    // The update and, the first time it is posted to finance, its ledger entry commit together.
+    const r = await transaction(async (client) => {
+      const q = (text, params) => client.query(text, params);
+      const locked = await q('SELECT posted_to_finance FROM payroll_periods WHERE id = $1 FOR UPDATE', [req.params.id]);
+      const alreadyPosted = locked.rows[0] && locked.rows[0].posted_to_finance === true;
+      const updated = await q(`UPDATE payroll_periods SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`, p);
+      if (value.posted_to_finance && !alreadyPosted) await journalPayrollPosted(q, updated.rows[0], req.user.id);
+      return updated;
+    });
 
     if (value.posted_to_finance) {
-      journalPayrollPosted(r.rows[0]).catch(e => console.error('[JOURNAL] Payroll entry failed:', e.message));
       await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'post_to_finance', module: 'payroll', description: `Posted payroll to finance`, entityId: req.params.id, entityType: 'payroll_period' });
     }
 
