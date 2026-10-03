@@ -53,12 +53,15 @@ const stub = {
 
 const OWNER = { id: 1, email: 'owner@x.com', name: 'Owner', role: 'owner', department: null, is_active: true };
 const CONSULTANT = { id: 4, email: 'consultant@x.com', name: 'Consultant', role: 'consultant', department: null, is_active: true };
+const ADMIN = { id: 5, email: 'admin@x.com', name: 'Admin', role: 'admin', department: null, is_active: true };
 const SUPERVISOR = { id: 3, email: 'super@x.com', name: 'Supervisor', role: 'site_supervisor', department: null, is_active: true };
 
 function seedUsers() {
   stub.users.set(1, OWNER);
   stub.users.set(3, SUPERVISOR);
   stub.users.set(4, CONSULTANT);
+  stub.users.set(5, ADMIN);
+  stub.userPolicy.set(5, [{ role_key: 'admin', project_id: null, organization_id: 1, perm_module: '*', perm_action: '*' }]);
   // Internal full grants (company-wide) — parity with the UI for owner.
   stub.userPolicy.set(1, [
     { role_key: 'owner', project_id: null, organization_id: 1, perm_module: '*', perm_action: '*' },
@@ -162,26 +165,52 @@ describe('agent policy', () => {
   });
 
   test('every gated tool resolves a required approver role', () => {
-    expect(agentPolicy.requiredApproverRole('issue_purchase_order')).toBe('finance_manager');
-    expect(agentPolicy.requiredApproverRole('change_permission_rules')).toBe('owner');
+    expect(agentPolicy.requiredApproverRole('issue_purchase_order')).toBe('owner');   // moves money: owner until approval limits exist
+    expect(agentPolicy.requiredApproverRole('approve_variation')).toBe('finance_manager');
+    expect(agentPolicy.requiredApproverRole('complete_action_with_evidence')).toBe('project_manager');
+    expect(agentPolicy.requiredApproverRole('change_authority_rules')).toBe('owner');
     expect(agentPolicy.requiredApproverRole('close_project')).toBe('owner');
     expect(agentPolicy.requiredApproverRole('list_projects')).toBeNull();
   });
 
   test('redaction strips monetary fields without visibility flags, keeps them with flags', () => {
     const data = { summary: { contract_value: 100, amount: 50, name: 'X' }, rows: [{ unit_price: 9, item: 'steel' }] };
-    const fullFlags = { see_internal_cost: true, see_client_value: true, see_subcontract_value: true };
+    const fullFlags = { see_internal_cost: true, see_client_price: true, see_subcontractor_price: true };
     const redacted = agentPolicy.redactForUser(data, fullFlags);
     expect(redacted.summary.name).toBe('X');
     expect(redacted.summary.amount).toBe(50);
     expect(redacted.summary.contract_value).toBe(100);
 
-    const noFlags = { see_internal_cost: false, see_client_value: false, see_subcontract_value: false };
+    const noFlags = { see_internal_cost: false, see_client_price: false, see_subcontractor_price: false };
     const stripped = agentPolicy.redactForUser(data, noFlags);
     expect(stripped.summary.amount).toBeUndefined();
     expect(stripped.summary.contract_value).toBeUndefined();
     expect(stripped.rows[0].unit_price).toBeUndefined();
     expect(stripped.rows[0].item).toBe('steel');
+  });
+
+  test('each money group is unlocked only by its own flag', () => {
+    const row = { unit_cost: 1, labor_cost: 2, unit_price: 3, net_amount: 4, net_payable: 5, work_value: 6, name: 'n' };
+    const only = (flag) => agentPolicy.redactForUser(row, { see_internal_cost: false, see_client_price: false, see_subcontractor_price: false, [flag]: true });
+    expect(only('see_internal_cost')).toEqual({ unit_cost: 1, labor_cost: 2, name: 'n' });
+    expect(only('see_client_price')).toEqual({ unit_price: 3, net_amount: 4, name: 'n' });
+    expect(only('see_subcontractor_price')).toEqual({ net_payable: 5, work_value: 6, name: 'n' });
+  });
+
+  test('the consultant allow-list keeps every field the inbox and the audit trail need (12_CONSULTANT_PORTAL.md)', () => {
+    const flags = { see_internal_cost: false, see_client_price: false, see_subcontractor_price: false };
+    const inboxRow = { type: 'rfi', id: 1, project_id: 1, number: 'RFI-1-001', title: 't', due_date: null, priority: 'normal', status: 'open', discipline: null, location_id: null };
+    expect(agentPolicy.redactForUser(inboxRow, flags, 'consultant')).toEqual(inboxRow);
+    const comment = { id: 1, observation_id: 2, author_user_id: 3, organization_id: 4, comment_type: 'comment', body: 'b', created_at: 'x' };
+    expect(agentPolicy.redactForUser(comment, flags, 'consultant')).toEqual(comment);
+  });
+
+  test('external roles get an allow-list of fields, so a new column never leaks by default', () => {
+    const flags = { see_internal_cost: true, see_client_price: true, see_subcontractor_price: true };
+    const out = agentPolicy.redactForUser({ success: true, data: [{ id: 1, title: 'Crack', internal_note: 'do not share', raised_by_user_id: 9 }] }, flags, 'consultant');
+    expect(out.data[0]).toEqual({ id: 1, title: 'Crack' });
+    // Internal roles keep non-money fields.
+    expect(agentPolicy.redactForUser({ internal_note: 'x' }, flags, 'engineer')).toEqual({ internal_note: 'x' });
   });
 });
 
@@ -330,8 +359,8 @@ describe('MCP ↔ UI authorization parity', () => {
     }, ctx)).body;
     const requestId = JSON.parse(out.result.content[0].text).data.request_id;
 
-    // Owner approves → executes as the REQUESTING user (re-resolved through policy).
-    const decided = await mcpService.decideRequest(requestId, OWNER, 'approve', 'verified on site');
+    // A different approver decides (a requester cannot approve their own request) → executes as the REQUESTING user.
+    const decided = await mcpService.decideRequest(requestId, ADMIN, 'approve', 'verified on site');
     const decidedRow = (await q('SELECT * FROM agent_action_requests WHERE id = $1', [requestId])).rows[0];
     expect(decidedRow.decision).toBe('approved');
     const project = (await q('SELECT * FROM projects WHERE id = $1', [1])).rows[0];

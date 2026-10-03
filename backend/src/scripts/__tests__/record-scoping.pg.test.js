@@ -177,8 +177,12 @@ describePg('record scoping across surfaces (real PostgreSQL, real app)', () => {
       const list = await run('list_projects', {});
       const rows = (list.body && list.body.data) || [];
       expect(rows.map((p) => p.id)).not.toContain(ids.pB);
-      const complete = await run('complete_action_with_evidence', { action_id: ids.actB, evidence: 'photo' });
-      expect(denied(complete)).toBe(true);
+      // Completing work is a proposal now; when it is approved it still executes as the requester, who is
+      // bound to project A, so project B's action stays untouched.
+      const complete = await run('complete_action_with_evidence', { action_id: ids.actB, evidence: 'photo of the finished slab' });
+      expect(complete.status).toBe(202);
+      const decided = await mcp.decideRequest(complete.request.id, { id: users.owner.id, role: 'owner' }, 'approve');
+      expect(decided.execution.status).toBe(403);
       expect((await one('SELECT status FROM action_items WHERE id = $1', [ids.actB])).status).not.toBe('completed');
       const own = await run('get_project', { id: ids.pA });
       expect(own.status).toBe(200);

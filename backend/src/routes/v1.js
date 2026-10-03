@@ -523,46 +523,51 @@ function buildV1Router() {
     } catch (e) { next(e); }
   });
 
+  // Every v1-only route declares its family so a token's scopes apply to it (UI sessions are unaffected).
+  const scoped = (family) => (req, res, next) => { req.family = family; v1.requireScope(req, res, next); };
+
   // --- v1-only read lists (thin, policy-gated, project-scoped) ---
-  api.get('/organizations', (req, res, next) =>
+  api.get('/organizations', scoped('organizations'), (req, res, next) =>
     apiResources.listFamily('organizations', req, res).catch(next));
-  api.get('/organizations/:id', (req, res, next) =>
+  api.get('/organizations/:id', scoped('organizations'), (req, res, next) =>
     apiResources.getFamilyRecord('organizations', req, res).catch(next));
-  api.get('/purchase-requisitions', (req, res, next) =>
+  api.get('/purchase-requisitions', scoped('purchase-requisitions'), (req, res, next) =>
     apiResources.listFamily('purchase-requisitions', req, res).catch(next));
-  api.get('/purchase-requisitions/:id', (req, res, next) =>
+  api.get('/purchase-requisitions/:id', scoped('purchase-requisitions'), (req, res, next) =>
     apiResources.getFamilyRecord('purchase-requisitions', req, res).catch(next));
-  api.get('/purchase-orders', (req, res, next) =>
+  api.get('/purchase-orders', scoped('purchase-orders'), (req, res, next) =>
     apiResources.listFamily('purchase-orders', req, res).catch(next));
-  api.get('/purchase-orders/:id', (req, res, next) =>
+  api.get('/purchase-orders/:id', scoped('purchase-orders'), (req, res, next) =>
     apiResources.getFamilyRecord('purchase-orders', req, res).catch(next));
-  api.get('/deliveries', (req, res, next) =>
+  api.get('/deliveries', scoped('deliveries'), (req, res, next) =>
     apiResources.listFamily('deliveries', req, res).catch(next));
-  api.get('/deliveries/:id', (req, res, next) =>
+  api.get('/deliveries/:id', scoped('deliveries'), (req, res, next) =>
     apiResources.getFamilyRecord('deliveries', req, res).catch(next));
-  api.get('/grns', (req, res, next) =>
+  api.get('/grns', scoped('grns'), (req, res, next) =>
     apiResources.listFamily('grns', req, res).catch(next));
-  api.get('/grns/:id', (req, res, next) =>
+  api.get('/grns/:id', scoped('grns'), (req, res, next) =>
     apiResources.getFamilyRecord('grns', req, res).catch(next));
-  api.get('/payment-certificates', (req, res, next) =>
+  api.get('/payment-certificates', scoped('payment-certificates'), (req, res, next) =>
     apiResources.listFamily('payment-certificates', req, res).catch(next));
-  api.get('/payment-certificates/:id', (req, res, next) =>
+  api.get('/payment-certificates/:id', scoped('payment-certificates'), (req, res, next) =>
     apiResources.getFamilyRecord('payment-certificates', req, res).catch(next));
-  api.get('/observations', (req, res, next) =>
+  api.get('/observations', scoped('observations'), (req, res, next) =>
     apiResources.listFamily('observations', req, res).catch(next));
 
   // --- Phase 28: the six assistants (orchestration on the Phase 27 tools) ---
-  api.get('/assistants/:assistant/summary', (req, res, next) => {
+  api.get('/assistants/:assistant/summary', scoped('assistants'), (req, res, next) => {
     if (!assistantService.ASSISTANTS.includes(req.params.assistant)) {
       return res.status(404).json({ success: false, error: `Unknown assistant '${req.params.assistant}'` });
     }
-    assistantService.summarize(req.params.assistant, req.user, {
+    // Tool calls the assistant makes on this user's behalf carry the token's scopes.
+    const actingUser = Object.defineProperty({ ...req.user }, 'tokenScopes', { value: req.authType === 'v1' ? req.v1Scopes : null, enumerable: false });
+    assistantService.summarize(req.params.assistant, actingUser, {
       project_id: req.query.project_id ? Number(req.query.project_id) : undefined,
       rfq_id: req.query.rfq_id ? Number(req.query.rfq_id) : undefined,
       q: req.query.q,
     }).then((data) => res.json({ success: true, data })).catch(next);
   });
-  api.post('/assistants/:assistant/draft', (req, res, next) => {
+  api.post('/assistants/:assistant/draft', scoped('assistants'), (req, res, next) => {
     if (!assistantService.ASSISTANTS.includes(req.params.assistant)) {
       return res.status(404).json({ success: false, error: `Unknown assistant '${req.params.assistant}'` });
     }

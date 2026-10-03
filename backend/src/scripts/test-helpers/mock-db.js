@@ -252,7 +252,12 @@ class MockDb {
     const targetAlias = m[2] || null;
     const setBody = m[3];
     const fromBody = m[4] || null;
-    const whereBody = m[5] || null;
+    let whereBody = m[5] || null;
+    // UPDATE ... WHERE ... RETURNING cols
+    let returning = null;
+    const rm = whereBody && whereBody.match(/^([\s\S]*?)\s+RETURNING\s+([\s\S]+)$/i);
+    if (rm) { whereBody = rm[1]; returning = rm[2].trim(); }
+    const touched = [];
 
     const sets = [];
     for (const raw of splitTopLevel(setBody, ',')) {
@@ -355,6 +360,11 @@ class MockDb {
         row[s.col] = val;
       }
       updated++;
+      touched.push(row);
+    }
+    if (returning) {
+      const retCols = returning === '*' ? null : extractColList(returning);
+      return { rows: touched.map((r) => (retCols ? pickCols(r, retCols) : { ...r })), rowCount: updated };
     }
     return { rows: [], rowCount: updated };
   }

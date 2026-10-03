@@ -82,14 +82,15 @@ Goal: no credential or role can do more than it was issued for.
 - Test matrix (done, real PG, `record-scoping.pg.test.js`): project-bound user A against project B's records, across internal, v1 and MCP, for read, update, delete and transition.
 
 1.4 Approval gate and agent safety (Critical/High)
-- [ ] `decideRequest`: atomic `UPDATE ... WHERE decision IS NULL RETURNING`, execute only on a returned row.
-- [ ] Require approver != requester, approver project authority, and monetary limits per spec 21.
-- [ ] Enforce v1 scopes in `mcpService.callTool/executeTool` and on `/api/v1/assistants/*` and v1-only lists.
-- [ ] Validate tool args against schema (required fields, `additionalProperties:false`).
-- [ ] Rate limit `/api/mcp`; cap JSON-RPC batch size; stop trusting the client `session id` header.
-- [ ] Mark record text as untrusted content in tool output; make draft tools that notify or complete work (`assign_action`, `complete_action_with_evidence`) require evidence/gating.
-- [ ] Replace key-name redaction with an allow-list per role; apply `see_client_value` and `see_subcontract_value`; redact before logging.
-- [ ] Align gated tool names with the catalog (`void_financial_record`, `change_authority_rules`).
+- [x] `decideRequest`: atomic `UPDATE ... WHERE decision IS NULL RETURNING`, execute only on a returned row.
+- [x] Require approver != requester and approver project authority.
+- [ ] Monetary approval limits per spec 21: no limit values exist in the two source documents; built in Phase 5.1 as a configurable role/action/max-amount table. Until then every tool flagged `movesMoney` (payment, retention, certificate, invoice issue, void, PO issue) can only be approved by an owner (admin excluded). Gated requests must resolve to a project (from `project_id` or the target record) or are refused.
+- [x] Enforce v1 scopes in `mcpService.callTool/executeTool` and on `/api/v1/assistants/*` and v1-only lists.
+- [x] Validate tool args against schema (required fields, `additionalProperties:false`).
+- [x] Rate limit `/api/mcp`; cap JSON-RPC batch size; stop trusting the client `session id` header.
+- [x] Mark record text as untrusted content in tool output; make draft tools that notify or complete work (`assign_action`, `complete_action_with_evidence`) require evidence/gating.
+- [x] Replace key-name redaction with an allow-list per role; apply `see_client_value` and `see_subcontract_value`; redact before logging.
+- [x] Align gated tool names with the catalog (`void_financial_record`, `change_authority_rules`).
 
 1.5 Webhooks (High)
 - [ ] SSRF guard: block private/loopback/link-local ranges, resolve-then-pin IP, disable redirects.
@@ -241,6 +242,7 @@ About 35 of ~190 spec entities have no table. Deliver in vertical slices; each s
 - [ ] External portal isolation tests (mandatory per spec 04): consultant cannot reach internal budget endpoints; client cannot see supplier/subcontractor rates unless permitted; subcontractor cannot see another subcontractor's commercial records; supplier cannot see other suppliers' quotations; external users cannot enumerate unassigned projects; MCP tools return the same authorization result as UI/API.
 - [ ] Team assignment inherits access: role-template grants, notification subscriptions, expiry, revoke on removal (6-point inheritance outside the wizard).
 - [ ] Delegation of authority with dates and limits (feeds approval limits from Phase 1.4).
+- [ ] Approval limits table: role, action, max amount (configurable). Replaces the interim owner-only rule on `movesMoney` agent tools.
 
 5.2 Project setup (spec 05, 06)
 - Tables: ProjectSetting, ProjectCalendar, WorkPackage links (location, BOQ, activity, participant).
