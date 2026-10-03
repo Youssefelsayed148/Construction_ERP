@@ -153,6 +153,7 @@ Goal: the database refuses to be wrong.
 - [ ] Convert hard-delete routes (items.js:212, suppliers.js:138, payments.js:123, invoices.js:166) to soft-delete or void-with-reason.
 - [ ] 135 `REFERENCES users` with no ON DELETE: define policy (RESTRICT plus deactivate-only users).
 - [ ] stock_movements immutability: ensure parent delete is blocked cleanly rather than raising a trigger error.
+- [x] Data-cleaning report for NOT VALID constraints (0007, 0008 and every later one): `npm run data-cleaning-report`, lists offenders, never auto-fixes. `scripts/preflight-upgrade.sql` reports what migrations 0001-0008 do to existing rows.
 
 2.6 Constraints
 - [ ] Add CHECKs: PO line qty > 0, delivered <= ordered (+tolerance), invoice amount > 0, status enums on all workflow tables, non-negative money where applicable.
