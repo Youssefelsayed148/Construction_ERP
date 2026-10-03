@@ -121,7 +121,7 @@ describePg('numbering service (real PostgreSQL)', () => {
     const project = (await pool.query("INSERT INTO projects (code, name) VALUES ($1, 'Numbering') RETURNING id", [tag])).rows[0].id;
     const client = (await pool.query("INSERT INTO clients (code, name_ar) VALUES ($1, 'Numbering Client') RETURNING id", [tag])).rows[0].id;
     const make = () => createInvoiceRecord((t, p) => pool.query(t, p), {
-      project_id: project, client_id: client, amount: 100, issue_date: '2026-01-01', status: 'sent',
+      project_id: project, client_id: client, amount: 100, issue_date: '2026-01-01', status: 'draft',
     });
     try {
       const created = await Promise.all(Array.from({ length: 50 }, make));

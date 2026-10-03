@@ -165,7 +165,7 @@ Goal: the database refuses to be wrong.
 2.7 Journal / GL
 - [x] `utils/journal.js` runs inside the caller's transaction and throws on failure (2.7a, migration 0015; expense and payroll routes post in their own transaction).
 - [x] Account ids come from configuration (`gl_account_map`, seeded by chart code), not hard-coded 1/8/9/10; real `createdBy` (2.7a).
-- [ ] Post client invoices, payments and supplier invoices to the ledger, with balanced-entry checks.
+- [ ] Post client invoices, payments and supplier invoices to the ledger, with balanced-entry checks. Client invoices and client payments (and their voids) done in 2.7b (migration 0016, `services/glPosting.js`); supplier invoices and payments are posted with the cost accrual in 3.1 (no approve step exists yet, and the accrual point decides the posting).
 
 2.8 Approvals
 - [ ] Insert `approval_requests` and start the workflow in one transaction.

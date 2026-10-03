@@ -1,6 +1,8 @@
 const express = require('express');
 const { createInvoiceRecord, writeAuditEvent } = require('../services/financeEngine');
 const { reasonFrom } = require('../utils/reason');
+const glPosting = require('../services/glPosting');
+const journal = require('../utils/journal');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
@@ -97,11 +99,12 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const invoice = await createInvoiceRecord(query, {
+    // The invoice and its ledger entry commit together.
+    const invoice = await transaction((client) => createInvoiceRecord(client.query.bind(client), {
       project_id: value.project_id, client_id: value.client_id, amount: value.amount,
       issue_date: value.issue_date, due_date: value.due_date || null, status: 'sent',
       description: value.description, created_by: req.user.id,
-    }, { actor_id: req.user.id, actor_name: req.user.name });
+    }, { actor_id: req.user.id, actor_name: req.user.name }));
     value.invoice_number = invoice.invoice_number;
     const result = { rows: [invoice] };
 
@@ -123,9 +126,6 @@ router.post('/', authenticate, authorize(), async (req, res) => {
 
 router.put('/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const existing = await query('SELECT * FROM invoices WHERE id = $1', [req.params.id]);
-    if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Invoice not found' });
-
     const schema = Joi.object({
       client_id: Joi.number().integer(), amount: Joi.number().positive(),
       issue_date: Joi.date().iso(), due_date: Joi.date().iso().allow(null),
@@ -140,18 +140,30 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
       if (v !== undefined) { sets.push(`${k} = $${idx++}`); params.push(v); }
     }
     params.push(req.params.id);
-    const result = await query(
-      `UPDATE invoices SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`,
-      params
-    );
+    // Locked, edited and posted in one transaction; a posted invoice's amount is fixed (void it and issue a new one).
+    const outcome = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const existing = (await q('SELECT * FROM invoices WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!existing) return { notFound: true };
+      if (value.amount !== undefined && Number(value.amount) !== Number(existing.amount)
+          && (await journal.findEntries(q, 'client_invoice', existing.id)).length) return { posted: true };
+      const updated = (await q(
+        `UPDATE invoices SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`,
+        params
+      )).rows[0];
+      await glPosting.syncInvoicePosting(q, existing, updated, { userId: req.user.id });
+      return { invoice: updated, number: existing.invoice_number };
+    });
+    if (outcome.notFound) return res.status(404).json({ success: false, error: 'Invoice not found' });
+    if (outcome.posted) return res.status(409).json({ success: false, error: 'This invoice is already posted to the ledger; void it and issue a new one instead of changing its amount' });
 
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       action: 'update', module: 'invoices',
-      description: `Updated invoice ${existing.rows[0].invoice_number}`,
+      description: `Updated invoice ${outcome.number}`,
       entityId: req.params.id, entityType: 'invoice'
     });
-    res.json({ success: true, data: result.rows[0] });
+    res.json({ success: true, data: outcome.invoice });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -174,6 +186,7 @@ router.delete('/:id', authenticate, authorize(), async (req, res) => {
         entity_type: 'invoice', entity_id: existing.id, event_type: 'void', actor_id: req.user.id, actor_name: req.user.name,
         before_state: { status: existing.status }, after_state: { status: 'void', reason },
       });
+      await glPosting.syncInvoicePosting(q, existing, updated, { userId: req.user.id });
       return { invoice: updated };
     });
     if (outcome.notFound) return res.status(404).json({ success: false, error: 'Invoice not found' });
