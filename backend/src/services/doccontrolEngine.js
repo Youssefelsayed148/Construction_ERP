@@ -11,7 +11,7 @@
 'use strict';
 
 const { query: defaultQuery } = require('../config/database');
-const { nextNumber } = require('./numbering');
+const { nextNumber, bumpCounter } = require('./numbering');
 const { fireEvent } = require('../utils/activity');
 
 const CONTROLLED_DOC_TYPES = ['drawing', 'specification', 'contract', 'report', 'method_statement', 'as_built', 'o_m'];
@@ -44,40 +44,40 @@ async function loadSettings(q, projectId) {
   // Default settings per project (created on demand, configurable after).
   const project = (await q('SELECT code, id FROM projects WHERE id = $1', [num(projectId)])).rows[0];
   const prefix = (project && project.code) || `P${projectId}`;
-  const ins = await q(
+  await q(
     `INSERT INTO project_numbering_settings (project_id, doc_prefix, include_discipline, include_type, seq_pad, rev_prefix)
-     VALUES ($1,$2,true,true,4,'R')`,
+     VALUES ($1,$2,true,true,4,'R')
+     ON CONFLICT (project_id) DO NOTHING`,
     [num(projectId), prefix]
   );
   return (await q('SELECT * FROM project_numbering_settings WHERE project_id = $1', [num(projectId)])).rows[0];
 }
 
-async function bumpSequence(q, projectId, discipline, docType) {
-  const key = [num(projectId), discipline || '-', docType || '-'];
-  const existing = (await q(
-    'SELECT id, seq FROM document_number_sequences WHERE project_id = $1 AND discipline = $2 AND doc_type = $3', key
-  )).rows[0];
-  if (!existing) {
-    try {
-      await q(
-        'INSERT INTO document_number_sequences (project_id, discipline, doc_type, seq) VALUES ($1,$2,$3,0)',
-        key
-      );
-    } catch (e) { /* unique conflict on concurrent first bump — re-select */ }
-    const again = (await q(
-      'SELECT id, seq FROM document_number_sequences WHERE project_id = $1 AND discipline = $2 AND doc_type = $3', key
-    )).rows[0];
-    if (!again) throw new Error('Unable to initialize document number sequence');
-    return again;
-  }
-  await q('UPDATE document_number_sequences SET seq = $1 WHERE id = $2', [num(existing.seq) + 1, existing.id]);
-  return (await q('SELECT id, seq FROM document_number_sequences WHERE id = $1', [existing.id])).rows[0];
+// The sequence is per (project, discipline, type). The counter lives in document_counters like every
+// other number; the first use of a scope continues after the highest SEQ already registered.
+// doc_number is PREFIX[-DISC][-TYPE]-SEQ-REV, so SEQ is the second-to-last segment.
+async function nextSequence(q, projectId, discipline, docType) {
+  const disc = discipline || '-';
+  const type = docType || '-';
+  const key = `project_documents.doc_number|project=${num(projectId)}|discipline=${disc}|doc_type=${type}`;
+  return bumpCounter(q, key, async () => {
+    const rows = (await q(
+      'SELECT doc_number, discipline, doc_type FROM project_documents WHERE project_id = $1 AND doc_number IS NOT NULL',
+      [num(projectId)]
+    )).rows.filter((r) => (r.discipline || '-') === disc && (r.doc_type || '-') === type);
+    let max = 0;
+    for (const { doc_number: n } of rows) {
+      const seq = parseInt(String(n).split('-').slice(-2, -1)[0], 10);
+      if (Number.isFinite(seq)) max = Math.max(max, seq);
+    }
+    return max;
+  });
 }
 
 // Compose the number; settings decide which parts are included.
 async function nextDocNumber(q, { project_id, discipline, doc_type, rev_code = 'R0' }) {
   const settings = await loadSettings(q, project_id);
-  const seq = await bumpSequence(q, project_id, discipline, doc_type);
+  const seq = await nextSequence(q, project_id, discipline, doc_type);
   const prefix = settings.doc_prefix || `P${project_id}`;
   const parts = [prefix];
   if (settings.include_discipline !== false) {
@@ -86,7 +86,7 @@ async function nextDocNumber(q, { project_id, discipline, doc_type, rev_code = '
   if (settings.include_type !== false) {
     parts.push(TYPE_CODES[doc_type] || (doc_type || 'OTH').slice(0, 3).toUpperCase());
   }
-  parts.push(pad(num(seq.seq) + 1, settings.seq_pad));
+  parts.push(pad(seq, settings.seq_pad));
   parts.push(`${settings.rev_prefix || 'R'}${String(rev_code || 'R0').replace(/^[Rr]/, '')}`);
   return parts.join('-');
 }

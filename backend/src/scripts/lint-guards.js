@@ -6,6 +6,8 @@
 // Rules
 //   silent-catch  empty .catch(() => {}) in migration scripts (a failed migration step must be fatal)
 //   count-numbering  COUNT(*)+1 / MAX(..)+1 document numbering (use the numbering service, Phase 2.4)
+//   counter-rmw  read-then-write sequence counters: `row.seq + 1` computed in JS, or
+//                `UPDATE ... SET seq = $1` with a value the caller read earlier (use bumpCounter/nextNumber)
 //
 // The baseline is per file. A file may not exceed its recorded count, and a file
 // with no entry may not have any. A site is a COUNT(/MAX( line with "+ 1" in the same
@@ -21,6 +23,13 @@ const SILENT_CATCH = /\.catch\(\s*\(\s*\w*\s*\)\s*=>\s*\{\s*\}\s*\)/g;
 const NUMBER_SOURCE = /\b(?:COUNT|MAX)\(/i;
 const PLUS_ONE = /\+\s*1\b/;
 const WINDOW = 3;
+// Counter-like column names: seq, next_value, last_value, next_number, counter, *_seq, *_counter.
+// JS: `existing.seq + 1`, `Number(row.next_value) + 1`, `num(seq.seq) + 1`
+const JS_COUNTER_PLUS_ONE = /\.(?:seq|next_value|last_value|next_number|last_number|counter|\w+_seq|\w+_counter)\)?\s*\+\s*1\b/i;
+// SQL: SET seq = $1 (a bound value). `SET seq = seq + 1` is atomic and fine.
+const SQL_SET_BOUND = /\bSET\s+(?:seq|next_value|last_value|next_number|last_number|counter|\w+_seq|\w+_counter)\s*=\s*\$\d/i;
+const countCounterIncrements = (text) =>
+  text.split(/\r?\n/).filter((l) => JS_COUNTER_PLUS_ONE.test(l) || SQL_SET_BOUND.test(l)).length;
 
 const isMigration = (rel) =>
   /^scripts\/(migrate-[^/]+|[^/]+-migration|setupDb)\.js$/.test(rel);
@@ -39,11 +48,12 @@ function walk(dir, out = []) {
 }
 
 function scan() {
-  const result = { 'silent-catch': {}, 'count-numbering': {} };
+  const result = { 'silent-catch': {}, 'count-numbering': {}, 'counter-rmw': {} };
   for (const file of walk(srcDir)) {
     const rel = path.relative(srcDir, file).split(path.sep).join('/');
     if (isExcluded(rel)) continue;
-    const lines = fs.readFileSync(file, 'utf8').split('\n');
+    const text = fs.readFileSync(file, 'utf8');
+    const lines = text.split('\n');
     let silent = 0;
     let numbering = 0;
     for (const line of lines) {
@@ -55,6 +65,8 @@ function scan() {
     }
     if (silent) result['silent-catch'][rel] = silent;
     if (numbering) result['count-numbering'][rel] = numbering;
+    const rmw = countCounterIncrements(text);
+    if (rmw) result['counter-rmw'][rel] = rmw;
   }
   return result;
 }
@@ -87,7 +99,7 @@ function main() {
   improvements.forEach((m) => console.log(`improved  ${m} (run with --update to lock it in)`));
   if (failures.length) {
     failures.forEach((m) => console.error(`FAIL  ${m}`));
-    console.error('New silent migration catches or COUNT/MAX numbering are not allowed. See docs/ERP_CLOSEOUT_PLAN.md Phase 0 / 2.4.');
+    console.error('New silent migration catches, COUNT/MAX numbering or read-then-write counters are not allowed. See docs/ERP_CLOSEOUT_PLAN.md Phase 0 / 2.4.');
     return 1;
   }
   console.log('lint-guards: ok');
@@ -95,4 +107,4 @@ function main() {
 }
 
 if (require.main === module) process.exit(main());
-module.exports = { scan, compare };
+module.exports = { scan, compare, countCounterIncrements };

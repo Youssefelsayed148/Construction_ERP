@@ -48,23 +48,28 @@ async function existingMax(q, { table, column, prefix, sep, where }) {
   return max;
 }
 
-async function nextSequence(q, spec) {
-  const key = scopeKey(spec);
+// Increment the counter row for `key`. `seed` (async, returns the highest value already issued in
+// that scope) is only called the first time a scope is used.
+async function bumpCounter(q, key, seed) {
   const bumped = await q(
     'UPDATE document_counters SET last_value = last_value + 1 WHERE scope_key = $1 RETURNING last_value',
     [key]
   );
   if (bumped.rows[0]) return Number(bumped.rows[0].last_value);
 
-  const seed = await existingMax(q, spec);
+  const start = await seed();
   // Two first-time callers both get here: the second one's conflict branch increments instead.
   const created = await q(
     `INSERT INTO document_counters (scope_key, last_value) VALUES ($1, $2)
      ON CONFLICT (scope_key) DO UPDATE SET last_value = document_counters.last_value + 1
      RETURNING last_value`,
-    [key, seed + 1]
+    [key, start + 1]
   );
   return Number(created.rows[0].last_value);
+}
+
+async function nextSequence(q, spec) {
+  return bumpCounter(q, scopeKey(spec), () => existingMax(q, spec));
 }
 
 async function nextNumber(q, { table, column, prefix, pad = 4, sep = '-', where = null }) {
@@ -73,4 +78,4 @@ async function nextNumber(q, { table, column, prefix, pad = 4, sep = '-', where 
   return `${prefix}${sep}${String(seq).padStart(pad, '0')}`;
 }
 
-module.exports = { nextNumber, nextSequence, existingMax, scopeKey };
+module.exports = { nextNumber, nextSequence, bumpCounter, existingMax, scopeKey };
