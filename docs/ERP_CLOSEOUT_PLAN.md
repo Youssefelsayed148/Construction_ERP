@@ -160,7 +160,7 @@ Goal: the database refuses to be wrong.
 - [ ] Status enums (`scripts/status-audit.sql` lists every distinct status value per table for a restored copy): done for invoices, work orders, projects, phases, milestones, units, buildings, expenses (vocabularies read from the writing code). Open: the other ~75 workflow tables, which need a status audit first (procurement, quality, HSE, doc control, handover are written from several places and by the workflow engine maps).
 - [x] Unify money columns to one standard (2.6b, migration 0013): money amounts NUMERIC(15,2); invoices.amount, payments.amount, supplier_materials.unit_price, units.price_per_m2 were narrower and are widened. Valuation stays NUMERIC(18,4) unit, (18,2) total. A test fails if a money column is narrower again.
 - [x] Partial UNIQUE index on pending approvals (module_name, request_type, request_id) and one current version per document (2.6b, migration 0013). Also fixed: uploading a revision left no version current; version numbers raced. The migration stops (nothing changed) if duplicates exist.
-- [ ] Remove the legacy single `material_id` on PR/PO headers and the try/catch fallbacks for missing line tables.
+- [x] Remove the legacy single `material_id` on PR/PO headers and the try/catch fallbacks for missing line tables (2.6c, migration 0014): replenishment writes and reads lines only, header material_id stays NULL and is marked deprecated; migration 0014 adds one line to every header-only PO and PR. The column itself is not dropped yet (decision after a restored copy is checked).
 
 2.7 Journal / GL
 - [ ] `utils/journal.js` runs inside the caller's transaction and throws on failure.

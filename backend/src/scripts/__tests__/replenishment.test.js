@@ -39,6 +39,12 @@ async function count(table, where = '') {
   return (await q(`SELECT * FROM ${table}${where}`)).rows.length;
 }
 
+// The purchase order whose line carries the material (lines are authoritative, 2.6c).
+async function orderFor(materialId) {
+  const line = (await q('SELECT * FROM purchase_order_lines WHERE material_id = $1', [materialId])).rows[0];
+  return line ? (await q('SELECT * FROM purchase_orders WHERE id = $1', [line.purchase_order_id])).rows[0] : undefined;
+}
+
 async function insertMaterial(id, category) {
   await q(`INSERT INTO item_master
       (id, code, category, unit, is_active, min_stock, max_stock, safety_stock,
@@ -179,22 +185,15 @@ describe('migration', () => {
 // ---------------------------------------------------------------------------
 
 describe('replenishment formulas', () => {
-  test('confirmed incoming counts each PO line once and includes partial deliveries', async () => {
+  test('confirmed incoming is the undelivered part of each open PO line (header-only orders were backfilled to lines by 0014)', async () => {
     const fakeQuery = async (sql) => {
-      if (sql.includes('FROM purchase_orders WHERE material_id')) return { rows: [
-        { id: 1, quantity: 10, delivered_quantity: 2 },
-        { id: 3, quantity: 4, delivered_quantity: 1 },
-      ] };
-      if (sql.includes('FROM purchase_orders WHERE status')) return { rows: [{ id: 1 }, { id: 2 }, { id: 3 }] };
       if (sql.includes('FROM purchase_order_lines')) return { rows: [
-        { purchase_order_id: 1, quantity: 10, delivered_quantity: 2 },
-        { purchase_order_id: 2, quantity: 5, delivered_quantity: 1 },
+        { quantity: 10, delivered_quantity: 2 },
+        { quantity: 5, delivered_quantity: 1 },
       ] };
       return { rows: [] };
     };
-    // PO 1 appears in both representations, PO 2 only in lines, PO 3 only
-    // in the legacy header: 8 + 4 + 3, never 23.
-    expect(await replenishment.openConfirmedQuantity(fakeQuery, 50)).toBe(15);
+    expect(await replenishment.openConfirmedQuantity(fakeQuery, 50)).toBe(12);
   });
   test('Lead-Time Demand = forecast daily usage × supplier lead-time days', () => {
     expect(replenishment.leadTimeDemand(12, 10)).toBe(120);
@@ -285,7 +284,7 @@ describe('sweep idempotency (acceptance)', () => {
     const first = await replenishment.runReplenishmentSweep(q, { now: NOW, notify: false });
     const second = await replenishment.runReplenishmentSweep(q, { now: NOW, notify: false });
 
-    const drafts = (await q("SELECT * FROM purchase_requests WHERE material_id = $1 AND status = 'draft'", [MAT])).rows;
+    const drafts = (await q("SELECT * FROM purchase_requests WHERE source_key = $1 AND status = 'draft'", [`replenishment:${MAT}`])).rows;
     expect(drafts.length).toBe(1);
     expect(drafts[0].source_key).toBe('replenishment:50');
     expect(drafts[0].status).toBe('draft');
@@ -311,15 +310,15 @@ describe('sweep idempotency (acceptance)', () => {
     expect(result.mode).toBe('alert_only');
     expect(result.actions.purchase_request).toBe(null);
     expect(result.actions.purchase_order).toBe(null);
-    expect(await count('purchase_requests', ' WHERE material_id = 53')).toBe(0);
-    expect(await count('purchase_orders', ' WHERE material_id = 53')).toBe(0);
+    expect(await count('purchase_request_lines', ' WHERE material_id = 53')).toBe(0);
+    expect(await count('purchase_order_lines', ' WHERE material_id = 53')).toBe(0);
   });
 });
 
 describe('authority-ceiling gate (acceptance)', () => {
   test('a material priced above the authority ceiling produces a draft PO awaiting approval, not an issued one', async () => {
     await replenishment.runReplenishmentSweep(q, { now: NOW, notify: false });
-    const po = (await q('SELECT * FROM purchase_orders WHERE material_id = $1', [MAT_CEIL])).rows[0];
+    const po = await orderFor(MAT_CEIL);
     expect(po).toBeTruthy();
     expect(po.status).toBe('draft');
     expect(po.issuance_basis).toBe('awaiting_approval');
@@ -329,7 +328,7 @@ describe('authority-ceiling gate (acceptance)', () => {
 
   test('strictly below the ceiling with a pre-approved supplier → the PO issues', async () => {
     await replenishment.runReplenishmentSweep(q, { now: NOW, notify: false });
-    const po = (await q('SELECT * FROM purchase_orders WHERE material_id = $1', [MAT_OK])).rows[0];
+    const po = await orderFor(MAT_OK);
     expect(po.status).toBe('issued');
     expect(po.issuance_basis).toBe('authority_ceiling');
     expect(parseFloat(po.total_amount)).toBeLessThan(parseFloat(po.authority_ceiling));
@@ -337,8 +336,8 @@ describe('authority-ceiling gate (acceptance)', () => {
 
   test('the sweep never stacks a second PO on the same material', async () => {
     await replenishment.runReplenishmentSweep(q, { now: NOW, notify: false });
-    expect(await count('purchase_orders', ' WHERE material_id = 52')).toBe(1);
-    expect(await count('purchase_orders', ' WHERE material_id = 51')).toBe(1);
+    expect(await count('purchase_order_lines', ' WHERE material_id = 52')).toBe(1);
+    expect(await count('purchase_order_lines', ' WHERE material_id = 51')).toBe(1);
   });
 });
 
