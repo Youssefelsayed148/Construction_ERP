@@ -307,39 +307,58 @@ async function decideRequest(requestId, approver, decision, comment) {
   if (!canDecide) {
     throw Object.assign(new Error(`Requires '${request.required_approver_role}' authority`), { status: 403 });
   }
+  // Four-eyes: the person (or agent session) that asked is never the one who approves.
+  if (Number(request.requesting_user_id) === Number(approver.id)) {
+    throw Object.assign(new Error('You cannot decide a request you made'), { status: 403 });
+  }
+  // The approver needs authority over the request's project (company-wide requests need company-wide authority).
+  const authority = await policy.evaluate({ user: approver, module: 'agent', action: 'create', projectId: request.project_id });
+  const hasAuthority = request.project_id == null ? authority.company_wide : authority.allowed;
+  if (!hasAuthority) {
+    throw Object.assign(new Error('You do not have authority over the project of this request'), { status: 403 });
+  }
 
   const def = agentPolicy.TOOLS[request.tool] || {};
+  const args = typeof request.payload === 'string' ? JSON.parse(request.payload) : request.payload;
+
+  let requestingUser = null;
+  if (decision !== 'reject') {
+    requestingUser = (await query(
+      'SELECT id, email, name, role, department, is_active FROM users WHERE id = $1',
+      [request.requesting_user_id]
+    )).rows[0];
+    if (!requestingUser || !requestingUser.is_active) {
+      throw Object.assign(new Error('Requesting user is inactive — cannot execute'), { status: 409 });
+    }
+  }
+
+  // Claim the request atomically. Only the caller whose UPDATE returns the row may act on it, so two
+  // concurrent approvals (or an approve racing a reject) cannot both run the stored operation.
+  const claimed = (await query(
+    `UPDATE agent_action_requests
+        SET decision = $2, approver_user_id = $3, decision_comment = $4, decided_at = NOW(),
+            execution_status = $5, updated_at = NOW()
+      WHERE id = $1 AND decision IS NULL RETURNING *`,
+    [requestId, decision === 'reject' ? 'rejected' : 'approved', approver.id, comment || null,
+      decision === 'reject' ? 'rejected' : 'executing']
+  )).rows[0];
+  if (!claimed) throw Object.assign(new Error('Request already decided'), { status: 409 });
 
   if (decision === 'reject') {
-    const r = await query(
-      `UPDATE agent_action_requests SET decision = 'rejected', approver_user_id = $2,
-         decision_comment = $3, decided_at = NOW(), execution_status = 'rejected', updated_at = NOW()
-       WHERE id = $1 RETURNING *`,
-      [requestId, approver.id, comment || null]
-    );
     await logToolCall({
       toolName: request.tool, def: { risk: 'gated' }, user: { id: request.requesting_user_id },
-      agentSession: request.agent_session, args: typeof request.payload === 'string' ? JSON.parse(request.payload) : request.payload,
+      agentSession: request.agent_session, args,
       authorized: true, authorizationDetail: { decision: 'rejected', approver: approver.id },
       result: { status: 200, body: { success: true } }, requestId, correlationId: null,
     });
-    return r.rows[0];
+    return claimed;
   }
 
   // Approve → execute the stored payload as the requesting user.
-  const requestingUser = (await query(
-    'SELECT id, email, name, role, department, is_active FROM users WHERE id = $1',
-    [request.requesting_user_id]
-  )).rows[0];
-  if (!requestingUser || !requestingUser.is_active) {
-    throw Object.assign(new Error('Requesting user is inactive — cannot execute'), { status: 409 });
-  }
-
   let executionResult;
   let executionStatus = 'executed';
   let transactionId = null;
   const op = typeof request.operation === 'string' ? JSON.parse(request.operation) : request.operation;
-  const args = typeof request.payload === 'string' ? JSON.parse(request.payload) : request.payload;
 
   try {
     if (op.router) {
@@ -361,11 +380,9 @@ async function decideRequest(requestId, approver, decision, comment) {
 
   const r = await query(
     `UPDATE agent_action_requests
-       SET decision = $2, approver_user_id = $3, decision_comment = $4, decided_at = NOW(),
-           execution_status = $5, execution_result = $6, executed_transaction_id = $7, updated_at = NOW()
+       SET execution_status = $2, execution_result = $3, executed_transaction_id = $4, updated_at = NOW()
      WHERE id = $1 RETURNING *`,
-    [requestId, decision === 'approve' ? 'approved' : decision, approver.id, comment || null,
-      executionStatus, JSON.stringify(executionResult.body || {}), transactionId]
+    [requestId, executionStatus, JSON.stringify(executionResult.body || {}), transactionId]
   );
   await logToolCall({
     toolName: request.tool, def: { risk: 'gated' }, user: requestingUser, agentSession: request.agent_session,

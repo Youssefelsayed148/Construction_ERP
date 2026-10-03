@@ -53,12 +53,15 @@ const stub = {
 
 const OWNER = { id: 1, email: 'owner@x.com', name: 'Owner', role: 'owner', department: null, is_active: true };
 const CONSULTANT = { id: 4, email: 'consultant@x.com', name: 'Consultant', role: 'consultant', department: null, is_active: true };
+const ADMIN = { id: 5, email: 'admin@x.com', name: 'Admin', role: 'admin', department: null, is_active: true };
 const SUPERVISOR = { id: 3, email: 'super@x.com', name: 'Supervisor', role: 'site_supervisor', department: null, is_active: true };
 
 function seedUsers() {
   stub.users.set(1, OWNER);
   stub.users.set(3, SUPERVISOR);
   stub.users.set(4, CONSULTANT);
+  stub.users.set(5, ADMIN);
+  stub.userPolicy.set(5, [{ role_key: 'admin', project_id: null, organization_id: 1, perm_module: '*', perm_action: '*' }]);
   // Internal full grants (company-wide) — parity with the UI for owner.
   stub.userPolicy.set(1, [
     { role_key: 'owner', project_id: null, organization_id: 1, perm_module: '*', perm_action: '*' },
@@ -330,8 +333,8 @@ describe('MCP ↔ UI authorization parity', () => {
     }, ctx)).body;
     const requestId = JSON.parse(out.result.content[0].text).data.request_id;
 
-    // Owner approves → executes as the REQUESTING user (re-resolved through policy).
-    const decided = await mcpService.decideRequest(requestId, OWNER, 'approve', 'verified on site');
+    // A different approver decides (a requester cannot approve their own request) → executes as the REQUESTING user.
+    const decided = await mcpService.decideRequest(requestId, ADMIN, 'approve', 'verified on site');
     const decidedRow = (await q('SELECT * FROM agent_action_requests WHERE id = $1', [requestId])).rows[0];
     expect(decidedRow.decision).toBe('approved');
     const project = (await q('SELECT * FROM projects WHERE id = $1', [1])).rows[0];
