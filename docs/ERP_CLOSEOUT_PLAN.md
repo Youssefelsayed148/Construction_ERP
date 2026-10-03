@@ -125,11 +125,11 @@ Goal: the database refuses to be wrong.
 - [x] Review the silent column drops in migrate-12 and migrate-15.
 
 2.2 Inventory atomicity
-- [ ] Wrap all warehouses.js movement/reservation routes (:110,141,175,342,367) in `transaction()`.
-- [ ] `createMovement`: take a row lock or advisory lock on (warehouse, material) before the availability check; make the projection update incremental inside the same transaction.
-- [ ] Add `CHECK (quantity >= 0)` on warehouse_stock; lock reservations; scope `rebuildWarehouseStock` to the affected pairs (stop reading every reservation and the full ledger).
-- [ ] Add valuation columns to stock_movements (unit cost, total) and make issue cost server-derived (weighted average), not client-supplied (`work_order_materials.unit_cost`).
-- Test: N concurrent issues against limited stock; stock never goes negative; crash between insert and projection leaves consistent state.
+- [x] Wrap all warehouses.js movement/reservation routes (:110,141,175,342,367) in `transaction()`.
+- [x] `createMovement`: take a row lock or advisory lock on (warehouse, material) before the availability check; make the projection update incremental inside the same transaction.
+- [x] Add `CHECK (quantity >= 0)` on warehouse_stock; lock reservations; scope `rebuildWarehouseStock` to the affected pairs (stop reading every reservation and the full ledger).
+- [x] Add valuation columns to stock_movements (unit cost, total) and make issue cost server-derived (weighted average), not client-supplied (`work_order_materials.unit_cost`).
+- Test (done, real PG, `inventory-integrity.pg.test.js`): N concurrent issues against limited stock; stock never goes negative; crash between insert and projection leaves consistent state.
 
 2.3 Procurement locking
 - [ ] `createDelivery`: lock PO lines (`FOR UPDATE`), enforce `delivered <= ordered + tolerance` in code and via CHECK.

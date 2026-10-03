@@ -55,6 +55,7 @@ class MockDb {
     const norm = sql.replace(/\s+/g, ' ').trim();
     const upper = norm.toUpperCase();
     if (upper.includes('DOCUMENT_COUNTERS') && !upper.startsWith('CREATE')) return this.execDocumentCounter(upper, params);
+    if (upper.includes('PG_ADVISORY_XACT_LOCK')) return { rows: [{}], rowCount: 1 };   // single-connection mock: nothing to wait for
     if (upper.startsWith('CREATE TABLE')) return this.execCreateTable(norm, params);
     if (upper.startsWith('CREATE INDEX')) return this.execCreateIndex(norm);
     if (upper.startsWith('CREATE UNIQUE INDEX')) return this.execCreateIndex(norm);
