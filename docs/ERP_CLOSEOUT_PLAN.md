@@ -70,7 +70,8 @@ Goal: no credential or role can do more than it was issued for.
 - [x] `authorize()` legacy path: users with no `user_project_roles` rows are denied (or forced through the migration), not allowed.
 - [x] `apiResources.js` single-record reads: remove the `source==='legacy'` skip.
 - [x] `agentPolicy.js` unknown roles get no tools by default.
-- Test (done, real PG: `fail-closed.pg.test.js`): user with zero role rows is denied on hr, payroll, suppliers, items, legal, expenses, projects, schedule.
+- [x] `PUT /api/users/:id` role change syncs `user_project_roles` (old role's rows replaced by the new role's company-wide row; external roles get none), bumps `token_version`, accepts every key in `roles`, audits `role_change`, and only an owner can grant or change `owner`.
+- Test (done, real PG: `fail-closed.pg.test.js`): user with zero role rows is denied on hr, payroll, suppliers, items, legal, expenses, projects, schedule. Role changes: `role-sync.pg.test.js`.
 
 1.3 Record scoping (Critical)
 - [ ] Rework `policy.recordScopeRule` to key on resource and id, not on `req.route.path`, so it works under `/api/v1/*` and MCP synthetic requests.
