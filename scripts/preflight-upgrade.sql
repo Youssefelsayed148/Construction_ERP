@@ -130,6 +130,16 @@ SELECT migration, effect, kind, affected_rows FROM (
   SELECT '0014', 'purchase requests with a header material and no lines: one line row is ADDED per request (header kept)', 'will_change',
          (SELECT count(*) FROM purchase_requests pr WHERE pr.material_id IS NOT NULL AND pr.quantity > 0
             AND NOT EXISTS (SELECT 1 FROM purchase_request_lines l WHERE l.purchase_request_id = pr.id))
+  -- 0015: ledger accounts from configuration, balanced entries
+  UNION ALL
+  SELECT '0015', 'ledger account keys that will be mapped from the chart by code (cash 1000, receivable 1100, inventory 1200, payable 2000, revenue 4000, salary_expense 5000, material_cost 5100, other_expense 5200); a key with no account of that code stays unmapped and posting needing it fails until an owner maps it', 'will_change',
+         (SELECT count(*) FROM accounts WHERE code IN ('1000','1100','1200','2000','4000','5000','5100','5200'))
+  UNION ALL
+  SELECT '0015', 'existing journal entries whose debits differ from their credits (left as they are; the new trigger only checks entries touched later)', 'attention',
+         (SELECT count(*) FROM (SELECT journal_entry_id FROM journal_entry_lines GROUP BY journal_entry_id HAVING COALESCE(SUM(debit), 0) <> COALESCE(SUM(credit), 0)) d)
+  UNION ALL
+  SELECT '0015', 'journal lines with a negative amount or an amount on both sides (constraint stays NOT VALID)', 'will_stay_invalid',
+         (SELECT count(*) FROM journal_entry_lines WHERE COALESCE(debit, 0) < 0 OR COALESCE(credit, 0) < 0 OR (COALESCE(debit, 0) > 0 AND COALESCE(credit, 0) > 0))
 ) report
 ORDER BY migration, kind, effect;
 

@@ -163,8 +163,8 @@ Goal: the database refuses to be wrong.
 - [x] Remove the legacy single `material_id` on PR/PO headers and the try/catch fallbacks for missing line tables (2.6c, migration 0014): replenishment writes and reads lines only, header material_id stays NULL and is marked deprecated; migration 0014 adds one line to every header-only PO and PR. The column itself is not dropped yet (decision after a restored copy is checked).
 
 2.7 Journal / GL
-- [ ] `utils/journal.js` runs inside the caller's transaction and throws on failure.
-- [ ] Account ids come from configuration (chart of accounts), not hard-coded 1/8/9/10; real `createdBy`.
+- [x] `utils/journal.js` runs inside the caller's transaction and throws on failure (2.7a, migration 0015; expense and payroll routes post in their own transaction).
+- [x] Account ids come from configuration (`gl_account_map`, seeded by chart code), not hard-coded 1/8/9/10; real `createdBy` (2.7a).
 - [ ] Post client invoices, payments and supplier invoices to the ledger, with balanced-entry checks.
 
 2.8 Approvals
