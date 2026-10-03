@@ -106,22 +106,23 @@ router.post('/request', authenticate, authorize(), async (req, res) => {
   try {
     const { module_name, request_type, request_id, notes } = req.body;
 
-    const existing = await query(
-      `SELECT * FROM approval_requests
-       WHERE module_name = $1 AND request_id = $2 AND request_type = $3 AND status = 'pending'`,
-      [module_name, request_id, request_type]
-    );
-    if (existing.rows.length > 0) {
-      return res.json({ success: true, requires_approval: true, request: existing.rows[0], message: 'Approval request already exists' });
-    }
-
     const stage = DIRECT_TO_OWNER_MODULES.includes(module_name) ? 'owner_review' : 'manager_review';
 
+    // The unique index uq_approval_requests_one_pending decides who wins a race; the loser reads the winner's row.
     const result = await query(
       `INSERT INTO approval_requests (module_name, request_type, request_id, requester_id, notes, status, stage)
-       VALUES ($1, $2, $3, $4, $5, 'pending', $6) RETURNING *`,
+       VALUES ($1, $2, $3, $4, $5, 'pending', $6)
+       ON CONFLICT (module_name, request_type, request_id) WHERE status = 'pending' DO NOTHING RETURNING *`,
       [module_name, request_type, request_id, req.user.id, notes, stage]
     );
+    if (result.rows.length === 0) {
+      const existing = await query(
+        `SELECT * FROM approval_requests
+         WHERE module_name = $1 AND request_id = $2 AND request_type = $3 AND status = 'pending'`,
+        [module_name, request_id, request_type]
+      );
+      return res.json({ success: true, requires_approval: true, request: existing.rows[0], message: 'Approval request already exists' });
+    }
 
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,

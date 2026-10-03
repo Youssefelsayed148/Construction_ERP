@@ -2,7 +2,7 @@ const express = require('express');
 const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
-const { query } = require('../config/database');
+const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 
@@ -136,25 +136,35 @@ router.post('/documents/:id/versions', authenticate, authorize(), async (req, re
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const existing = await query('SELECT * FROM project_documents WHERE id = $1', [req.params.id]);
-    if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Document not found' });
-    const doc = existing.rows[0];
-
-    const newVersion = doc.version + 1;
-    const revisionCode = doc.revision_code
-      ? `R${(parseInt(String(doc.revision_code).replace(/^R/i, ''), 10) || 0) + 1}`
-      : 'R0';
-    const result = await query(
-      `INSERT INTO document_versions (document_id, version_no, file_url, file_type, file_size_bytes, change_description, uploaded_by, revision_code, is_current, status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,true,'current') RETURNING *`,
-      [req.params.id, newVersion, value.file_url, value.file_type, value.file_size_bytes, value.change_description, req.user.id, revisionCode]
-    );
-    // New revision: supersede previous versions + reset the document to draft pending re-approval
-    await doccontrolEngine.supersedeForNewRevision(query, req.params.id, revisionCode);
-    const updated = await query('SELECT * FROM project_documents WHERE id = $1', [req.params.id]);
+    // One transaction, serialised on the document row: the previous current version is superseded first,
+    // then the new one is inserted as the only current version (a unique index enforces that).
+    const uploaded = await transaction(async (client) => {
+      const q = (text, params) => client.query(text, params);
+      const locked = await q('SELECT * FROM project_documents WHERE id = $1 FOR UPDATE', [req.params.id]);
+      if (locked.rows.length === 0) return null;
+      const doc = locked.rows[0];
+      // The document row is locked, so reading the latest version number and adding one cannot race.
+      const latest = await q('SELECT version_no FROM document_versions WHERE document_id = $1 ORDER BY version_no DESC LIMIT 1', [doc.id]);
+      const lastNo = latest.rows.length ? Number(latest.rows[0].version_no) : 0;
+      const newVersion = (lastNo > (Number(doc.version) || 0) ? lastNo : Number(doc.version) || 0) + 1;
+      const revisionCode = doc.revision_code
+        ? `R${(parseInt(String(doc.revision_code).replace(/^R/i, ''), 10) || 0) + 1}`
+        : 'R0';
+      await doccontrolEngine.supersedeForNewRevision(q, doc.id, revisionCode);
+      await q('UPDATE project_documents SET version = $1 WHERE id = $2', [newVersion, doc.id]);
+      const inserted = await q(
+        `INSERT INTO document_versions (document_id, version_no, file_url, file_type, file_size_bytes, change_description, uploaded_by, revision_code, is_current, status)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,true,'current') RETURNING *`,
+        [doc.id, newVersion, value.file_url, value.file_type, value.file_size_bytes, value.change_description, req.user.id, revisionCode]
+      );
+      const updated = await q('SELECT * FROM project_documents WHERE id = $1', [doc.id]);
+      return { doc, newVersion, revisionCode, revision: inserted.rows[0], updated: updated.rows[0] };
+    });
+    if (!uploaded) return res.status(404).json({ success: false, error: 'Document not found' });
+    const { doc, newVersion, revisionCode } = uploaded;
 
     await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `Uploaded v${newVersion} (${revisionCode}) of "${doc.title}" — previous revision superseded`, entityId: req.params.id, entityType: 'project_document' });
-    res.status(201).json({ success: true, data: updated.rows[0], revision: result.rows[0] });
+    res.status(201).json({ success: true, data: uploaded.updated, revision: uploaded.revision });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
