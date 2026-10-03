@@ -155,6 +155,9 @@ const MODULE_OVERRIDES = Object.freeze({
 // [mount module, METHOD, route path pattern, action | (req) => action]
 const ACTION_OVERRIDES = Object.freeze([
   ['approvals', 'PUT', /^\/:id\/approve$/, 'approve'],
+  // Phase 3.5: progress columns are derived; setting one by hand is a distinct permission, not 'edit'.
+  ['projects', 'PUT', /^\/:id$/, (req) => (req.body && req.body.completion_percentage != null ? 'override_progress' : 'edit')],
+  ['projects', 'PUT', /^\/:projectId\/phases\/:phaseId$/, (req) => (req.body && req.body.completion_percentage != null ? 'override_progress' : 'edit')],
   ['invoices', 'DELETE', /^\/:id$/, 'void'],
   ['items', 'POST', /^\/:id\/restore$/, 'delete'],
   ['payments', 'DELETE', /^\/:id$/, 'void'],

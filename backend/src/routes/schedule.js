@@ -219,6 +219,11 @@ router.put('/activities/:id', authenticate, authorize(), async (req, res) => {
         payload: { project_id: r.rows[0].project_id, percent_complete: r.rows[0].percent_complete },
       });
     } catch (e) { /* event is best-effort */ }
+    // Phase 3.5: a schedule change recomputes the project's derived (duration-weighted) progress.
+    try {
+      const progressEngine = require('../services/progressEngine');
+      await progressEngine.syncProjectProgress(query, r.rows[0].project_id);
+    } catch (e) { console.error('[SCHEDULE] project progress recompute failed:', e.message); }
     res.json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -244,6 +249,11 @@ router.post('/activities/:id/progress', authenticate, authorize('owner', 'admin'
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     const updated = await engine.updateProgress(query, req.params.id, value, req.user);
     await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'schedule', description: `Activity ${updated.activity_code} progress → ${updated.percent_complete}%`, entityId: updated.id, entityType: 'schedule_activity' });
+    // Phase 3.5: the project's derived progress follows activity progress changes.
+    try {
+      const progressEngine = require('../services/progressEngine');
+      await progressEngine.syncProjectProgress(query, updated.project_id);
+    } catch (e) { console.error('[SCHEDULE] project progress recompute failed:', e.message); }
     res.json({ success: true, data: updated });
   } catch (error) {
     res.status(error.statusCode || 500).json({ success: false, error: error.message });

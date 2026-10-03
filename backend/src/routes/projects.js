@@ -265,6 +265,14 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
     p.push(req.params.id);
     const r = await query(`UPDATE projects SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`, p);
 
+    // Phase 3.5: a manual progress override is a distinct, audited act — the policy engine only reaches
+    // this handler for users holding the explicit ('projects','override_progress') permission
+    // (policy.js ACTION_OVERRIDES maps the field's presence to that action). The derived value rewrites
+    // this column at the next recompute point; this is the escape hatch for out-of-band corrections.
+    if (value.completion_percentage !== undefined) {
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'override_progress', module: 'projects', description: `Manual progress override on project ${existing.rows[0].code}: ${existing.rows[0].completion_percentage}% -> ${value.completion_percentage}%`, entityId: req.params.id, entityType: 'project' });
+    }
+
     await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'projects', description: `Updated project ${existing.rows[0].code}`, entityId: req.params.id, entityType: 'project' });
     res.json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
@@ -308,6 +316,10 @@ router.put('/:projectId/phases/:phaseId', authenticate, authorize(), async (req,
     p.push(req.params.phaseId, req.params.projectId);
     const r = await query(`UPDATE project_phases SET ${sets.join(', ')} WHERE id = $${i} AND project_id = $${i + 1} RETURNING *`, p);
     if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Phase not found' });
+    // Phase 3.5: a manual phase-progress override is gated on ('projects','override_progress') and audited.
+    if (value.completion_percentage !== undefined) {
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'override_progress', module: 'projects', description: `Manual progress override on phase ${r.rows[0].code || r.rows[0].id} of project #${req.params.projectId}`, entityId: req.params.phaseId, entityType: 'project_phase' });
+    }
     res.json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
