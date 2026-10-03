@@ -135,12 +135,14 @@ Goal: the database refuses to be wrong.
 - [ ] `threeWayMatch`: query by PO/GRN id, not `SELECT *` + JS filter.
 
 2.4 Document numbering
-- [x] One numbering service (`services/numbering.js`) with an atomic counter (`UPDATE ... RETURNING`, `INSERT ... ON CONFLICT DO UPDATE`), per NUMBERING_STANDARD.md. Backed by new table `document_counters`, not `numbering_sequences` (see PR: that table cannot key on year/prefix and its UNIQUE(project_id, entity) does not hold for NULL project).
+- [x] One numbering service (`services/numbering.js`) with an atomic counter (`UPDATE ... RETURNING`, `INSERT ... ON CONFLICT DO UPDATE`), per NUMBERING_STANDARD.md. Backed by new table `document_counters`, which is the only counter: `numbering_sequences` (cannot key on year/prefix; UNIQUE(project_id, entity) does not hold for NULL project) and `document_number_sequences` are no longer incremented.
 - [x] Replace all COUNT/MAX call sites; `backend/lint-guards.baseline.json` (`count-numbering`, 3-line window) is the authority and must end empty. The list that follows is only a starting point.
 - [x] (starting point) Replace all ~15 COUNT/MAX call sites (procurementService:49, replenishment:283/310, invoices:97, units:31, boq:27/102, hr, suppliers, projects:210, qhse:126, hse:594, doccontrol, financeEngine:134).
 - [x] Single invoice creation path (invoices.js and units.js currently duplicate it).
 - [x] Journal entry numbers via the same service.
-- Test (done, real PG): 50 concurrent creates, no duplicates, no reuse after deletes.
+- [x] Document control (`doccontrolEngine`, PREFIX-DISCIPLINE-TYPE-SEQ-REV) allocates SEQ through `document_counters` (it did read, JS +1, write). Migration 0005 copies the old per-scope values, drops the dead `numbering_sequences.next_value`, and the default `project_numbering_settings` insert is now `ON CONFLICT DO NOTHING`.
+- [x] Guard rule `counter-rmw` flags read-then-write counters (`row.seq + 1`, `SET seq = $1`).
+- Test (done, real PG): 50 concurrent creates, no duplicates, no reuse after deletes; 50 concurrent document registrations (`doccontrol-numbering.pg.test.js`).
 
 2.5 Delete semantics
 - [ ] Change 171 `ON DELETE CASCADE`: financial, procurement, contractual and handover tables become RESTRICT; add `deleted_at`/`deleted_by` soft-delete.

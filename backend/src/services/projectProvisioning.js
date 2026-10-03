@@ -388,7 +388,7 @@ async function provisionNumbering(client, project) {
   let count = 0;
   for (const entity of NUMBERED_ENTITIES) {
     await client.query(
-      'INSERT INTO numbering_sequences (project_id, entity, prefix, next_value) VALUES ($1, $2, $3, 1)',
+      'INSERT INTO numbering_sequences (project_id, entity, prefix) VALUES ($1, $2, $3)',
       [project.id, entity, `${project.code}-${entity.slice(0, 3).toUpperCase()}-`]
     );
     count++;
