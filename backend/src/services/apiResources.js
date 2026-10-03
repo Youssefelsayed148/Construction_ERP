@@ -61,15 +61,15 @@ const READ_MODELS = {
     select: 'SELECT * FROM purchase_orders', idColumn: 'id', projectColumn: 'project_id',
   },
   deliveries: {
-    module: 'procurement', table: 'deliveries',
+    module: 'inventory', table: 'deliveries',
     select: 'SELECT * FROM deliveries', idColumn: 'id', projectColumn: 'project_id',
   },
   mirs: {
-    module: 'procurement', table: 'material_inspection_requests',
+    module: 'inventory', table: 'material_inspection_requests',
     select: 'SELECT * FROM material_inspection_requests', idColumn: 'id', projectColumn: 'project_id',
   },
   grns: {
-    module: 'procurement', table: 'goods_receipt_notes',
+    module: 'inventory', table: 'goods_receipt_notes',
     select: 'SELECT * FROM goods_receipt_notes', idColumn: 'id', projectColumn: 'project_id',
   },
   organizations: {

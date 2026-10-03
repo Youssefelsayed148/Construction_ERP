@@ -131,6 +131,70 @@ function extractProjectId(req, module) {
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// Resource-derived module and action (Phase 5.1)
+//
+// The policy module normally comes from the mount prefix and the action from the HTTP verb. Two things do not
+// fit that: some routers share a mount (the site router lives under /api/projects, delivery/MIR/GRN routes
+// under /api/procurement), and approve/decide/issue/verify routes are POSTs that would count as plain `create`.
+// Both are decided here from (mount module, method, internal route path), the same key the record scope rules
+// use, so internal requests, the /api/v1 remount and MCP synthetic requests all get the same answer.
+// ---------------------------------------------------------------------------
+const MODULE_OVERRIDES = Object.freeze({
+  projects: [
+    [/^\/:projectId\/(?:site-reports|instructions|site-visits|workspace|photos|sticky-notes)(?:\/|$)/, 'site'],
+  ],
+  procurement: [
+    [/^\/deliveries(?:\/|$)/, 'inventory'],
+    [/^\/mir\//, 'inventory'],
+    [/^\/grn\//, 'inventory'],
+    [/^\/documents\/grn\//, 'inventory'],
+  ],
+});
+
+// [mount module, METHOD, route path pattern, action | (req) => action]
+const ACTION_OVERRIDES = Object.freeze([
+  ['approvals', 'PUT', /^\/:id\/approve$/, 'approve'],
+  ['approvals', 'PUT', /^\/:id\/reject$/, 'reject'],
+  ['commercial', 'POST', /^\/variations\/:id\/start$/, 'submit'],
+  ['commercial', 'POST', /^\/variations\/:id\/decide$/, 'approve'],
+  ['docs', 'POST', /^\/documents\/:id\/submit$/, 'submit'],
+  ['docs', 'POST', /^\/documents\/:id\/:action/, (req) => (req.params && req.params.action === 'reject' ? 'reject' : 'approve')],
+  ['finance-ledger', 'POST', /^\/invoices\/:id\/transition$/, 'issue_financial_document'],
+  ['finance-ledger', 'POST', /^\/payments\/:id\/allocate$/, 'record_payment'],
+  ['handover', 'POST', /^\/process\/:id\/transition$/, 'approve'],
+  ['handover', 'POST', /^\/package\/items\/:id\/verify$/, 'approve'],
+  ['procurement', 'POST', /^\/pr\/:id\/submit$/, 'submit'],
+  ['procurement', 'POST', /^\/pr\/:id\/decide$/, 'approve'],
+  ['procurement', 'POST', /^\/rfq\/:id\/award$/, 'approve'],
+  ['procurement', 'POST', /^\/po\/:id\/issue$/, 'issue_financial_document'],
+  ['procurement', 'POST', /^\/po\/:id\/decide$/, 'approve'],
+  ['procurement', 'POST', /^\/mir\/:id\/decide$/, 'approve'],
+  ['qhse', 'POST', /^\/ncrs\/:id\/verify$/, 'approve'],
+  ['qhse', 'POST', /^\/wirs\/:id\/submit$/, 'submit'],
+  ['subcontractors', 'PUT', /^\/certificates\/:id$/, 'approve'],
+  ['work-orders', 'PUT', /^\/:woId\/completions\/:compId\/verify$/, 'approve'],
+  ['reports', 'GET', /^\/export\//, 'export'],
+]);
+
+function routePathOf(req) {
+  return String(req.policyRoute || (req.route && req.route.path) || '');
+}
+
+function effectiveModule(req, mountModule) {
+  const routePath = routePathOf(req);
+  const hit = (MODULE_OVERRIDES[mountModule] || []).find(([pattern]) => pattern.test(routePath));
+  return hit ? hit[1] : mountModule;
+}
+
+function effectiveAction(req, mountModule) {
+  const routePath = routePathOf(req);
+  const method = String(req.method || '').toUpperCase();
+  const hit = ACTION_OVERRIDES.find(([mod, m, pattern]) => mod === mountModule && m === method && pattern.test(routePath));
+  if (!hit) return actionFromRequest(req);
+  return typeof hit[3] === 'function' ? hit[3](req) : hit[3];
+}
+
 // Routes such as /invoices/:id carry a record id, not a project id. Resolve
 // those records before policy evaluation so a project-scoped grant cannot be
 // bypassed by guessing another project's record id. Every table name below is
@@ -374,10 +438,12 @@ async function evaluateForRole(roleKey, { module, action, projectId, actorScoped
 
 // Request-shaped convenience wrapper used by middleware/auth.js.
 async function evaluateRequest(req, opts = {}) {
-  const module = moduleFromRequest(req);
-  const action = actionFromRequest(req);
+  const mountModule = moduleFromRequest(req);
+  const module = effectiveModule(req, mountModule);
+  const action = effectiveAction(req, mountModule);
   const q = opts.query || query;
-  const context = await resolveProjectContext(req, module, q);
+  // Record scope rules are keyed on the mount; the grant decision uses the resource-derived module.
+  const context = await resolveProjectContext(req, mountModule, q);
   const { projectId } = context;
   if (context.recordScoped && !context.recordFound) {
     return { allowed: false, flags: emptyFlags(), role_keys: [], source: 'policy', project_id: null };
@@ -471,6 +537,10 @@ module.exports = {
   actionFromRequest,
   extractProjectId,
   RECORD_SCOPE_RULES,
+  MODULE_OVERRIDES,
+  ACTION_OVERRIDES,
+  effectiveModule,
+  effectiveAction,
   recordScopeRule,
   resolveProjectContext,
   loadUserPolicy,

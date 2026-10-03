@@ -184,6 +184,24 @@ router.put('/documents/:id', authenticate, authorize(), async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
+// Submit for approval (document controllers submit; approving needs the separate `approve` action).
+router.post('/documents/:id/submit', authenticate, authorize(), async (req, res) => {
+  try {
+    const result = await query(
+      `UPDATE project_documents SET status = 'submitted', updated_at = NOW()
+        WHERE id = $1 AND status IN ('draft', 'rejected') RETURNING *`,
+      [req.params.id]
+    );
+    if (result.rows.length === 0) {
+      const exists = await query('SELECT status FROM project_documents WHERE id = $1', [req.params.id]);
+      if (exists.rows.length === 0) return res.status(404).json({ success: false, error: 'Document not found' });
+      return res.status(409).json({ success: false, error: `A ${exists.rows[0].status} document cannot be submitted` });
+    }
+    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'submit', module: 'documents', description: `Document "${result.rows[0].title}" submitted for approval`, entityId: req.params.id, entityType: 'project_document' });
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
 router.post('/documents/:id/:action(approve|reject)', authenticate, authorize(), async (req, res) => {
   try {
     const newStatus = req.params.action === 'approve' ? 'approved' : 'rejected';

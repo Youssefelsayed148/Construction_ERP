@@ -16,7 +16,8 @@ router.post('/register', authenticate, authorize('owner', 'admin'), async (req, 
       name: Joi.string().required(),
       email: Joi.string().email().required(),
       password: Joi.string().min(12).required(),
-      role: Joi.string().valid('admin', 'manager', 'staff', 'accountant', 'engineer', 'site_supervisor').default('staff'),
+      // Any key in `roles`; new accounts default to the least-privilege role, not a working role.
+      role: Joi.string().pattern(/^[a-z][a-z0-9_]*$/).default('viewer'),
       department: Joi.string().optional(),
       module_permissions: Joi.array().items(Joi.string()).optional()
     });
@@ -27,6 +28,11 @@ router.post('/register', authenticate, authorize('owner', 'admin'), async (req, 
     const existing = await query('SELECT id FROM users WHERE email = $1', [value.email]);
     if (existing.rows.length > 0) {
       return res.status(400).json({ success: false, error: 'Email already registered' });
+    }
+    const knownRole = await query('SELECT 1 FROM roles WHERE key = $1', [value.role]);
+    if (knownRole.rows.length === 0) return res.status(400).json({ success: false, error: `Unknown role: ${value.role}` });
+    if (value.role === 'owner' && req.user.role !== 'owner') {
+      return res.status(403).json({ success: false, error: 'Only an owner can create an owner' });
     }
 
     const hashedPassword = await bcrypt.hash(value.password, 10);
@@ -39,11 +45,14 @@ router.post('/register', authenticate, authorize('owner', 'admin'), async (req, 
          VALUES ($1, $2, $3, $4, $5, $6, true) RETURNING id, name, email, role, department, module_permissions, is_active, created_at`,
         [value.name, value.email, hashedPassword, value.role, value.department || null, value.module_permissions || []]
       );
-      await client.query(
-        `INSERT INTO user_project_roles (user_id, project_id, role_id, granted_by)
-         SELECT $1, NULL, id, $3 FROM roles WHERE key = $2`,
-        [created.rows[0].id, value.role, req.user.id]
-      );
+      // Project-bound external roles get no company-wide row; they are assigned per project.
+      if (!policy.EXTERNAL_ROLES.has(value.role)) {
+        await client.query(
+          `INSERT INTO user_project_roles (user_id, project_id, role_id, granted_by)
+           SELECT $1, NULL, id, $3 FROM roles WHERE key = $2`,
+          [created.rows[0].id, value.role, req.user.id]
+        );
+      }
       return created;
     });
 
