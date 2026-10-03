@@ -12,32 +12,32 @@ const logActivity = async ({ userId, userName, userRole, action, module, descrip
   }
 };
 
-// fireEvent — durable event_log row + synchronous emit on global.eventBus.
-// opts.query lets transaction-bound callers (workflowEngine) reuse their own
-// executor; production callers use the default pool.
-const fireEvent = async ({ eventType, entityType, entityId, userId, userName, userRole, payload }, opts = {}) => {
-  try {
-    const q = opts.query || query;
-    const result = await q(
-      `INSERT INTO event_log (event_type, entity_type, entity_id, user_id, user_name, user_role, payload)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-      [eventType, entityType, entityId, userId, userName, userRole, JSON.stringify(payload || {})]
-    );
+// fireEvent — durable domain event, written in the caller's transaction (Phase 3.3).
+// The row goes to event_log (audit trail of what happened) and event_outbox (delivery queue). Both
+// inserts run on the caller's query function, so an event enqueued inside a transaction never escapes a
+// rollback. The in-process bus is no longer fired here: routed consumers (notifications, action items,
+// material recompute, cost postings) are delivered by services/outboxDispatcher.js after the claim, and
+// unrouted types (webhooks, the rest) are emitted on the bus by the dispatcher too — post-commit, never
+// inside the state-changing transaction. This function THROWS on a failed enqueue (an event lost to a
+// swallowed error is a lost side effect); it no longer returns a partial row as a silent failure.
+const fireEvent = async ({ eventType, entityType, entityId, userId, userName, userRole, payload, eventId = null }, opts = {}) => {
+  const q = opts.query || query;
+  const result = await q(
+    `INSERT INTO event_log (event_type, entity_type, entity_id, user_id, user_name, user_role, payload)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+    [eventType, entityType, entityId, userId, userName, userRole, JSON.stringify(payload || {})]
+  );
+  const logId = result.rows[0] ? result.rows[0].id : null;
 
-    console.log(`[EVENT] ${eventType} fired for ${entityType} #${entityId}`);
+  await q(
+    `INSERT INTO event_outbox (event_id, event_type, entity_type, entity_id, user_id, user_name, user_role, payload, source_event_log_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)`,
+    [eventId || `log-${logId}`, eventType, entityType, entityId, userId, userName, userRole,
+     JSON.stringify(payload || {}), logId]
+  );
 
-    if (global.eventBus && typeof global.eventBus.emit === 'function') {
-      global.eventBus.emit(eventType, {
-        eventType, entityType, entityId, userId, userName, userRole, payload,
-        eventId: result.rows[0] ? result.rows[0].id : null,
-      });
-    }
-
-    return result.rows[0];
-  } catch (error) {
-    console.error('[EVENT_LOG] Failed to fire event:', error.message);
-    return null;
-  }
+  console.log(`[EVENT] ${eventType} fired for ${entityType} #${entityId}`);
+  return result.rows[0];
 };
 
 const getRecentActivities = async (limit = 20) => {

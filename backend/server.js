@@ -105,8 +105,11 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 function startBackgroundServices() {
-  require('./src/services/costEventListener').initCostEventListener();
-  require('./src/services/eventDispatcher').initEventDispatcher();
+  // The routed event consumers (notifications, action items, material recompute, cost postings) are
+  // delivered from the transactional outbox; unrouted events reach the bus through the dispatcher, so
+  // the webhook subscriber sees the same events it always did, but post-commit and never inside a
+  // state-changing transaction.
+  require('./src/services/outboxDispatcher').initOutboxDispatcher();
   require('./src/services/escalationScheduler').initEscalationScheduler();
   require('./src/services/replenishment').initReplenishmentScheduler();
   require('./src/services/financeEngine').initReceivableReminderScheduler();
