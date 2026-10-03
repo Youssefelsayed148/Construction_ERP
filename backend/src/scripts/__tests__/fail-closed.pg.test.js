@@ -49,7 +49,8 @@ describePg('fail-closed authorization (real PostgreSQL, real app)', () => {
     await db.query('DELETE FROM activity_log WHERE user_id = ANY($1)', [ids]);
     await db.query('DELETE FROM audit_events WHERE user_id = ANY($1)', [ids]);
     await db.query('DELETE FROM user_project_roles WHERE user_id = ANY($1) OR granted_by = ANY($1)', [ids]);
-    await db.query("DELETE FROM users WHERE email LIKE $1", [`fc-%-${tag}@test.io`]);
+    // users are deactivated, never deleted (migration 0011)
+    await db.query("UPDATE users SET is_active = false WHERE email LIKE $1", [`fc-%-${tag}@test.io`]);
     await new Promise((resolve) => server.close(resolve));
     await db.pool.end();
   });

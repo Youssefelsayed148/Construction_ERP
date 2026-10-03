@@ -1,4 +1,4 @@
--- Preflight for the versioned migrations 0001-0010. READ ONLY: run it against a restored copy of the real
+-- Preflight for the versioned migrations 0001-0011. READ ONLY: run it against a restored copy of the real
 -- database before applying them (psql -X -f scripts/preflight-upgrade.sql <dsn>). It changes nothing.
 --
 -- Each row is: migration | what it will do to existing rows | how many rows are affected.
@@ -80,6 +80,13 @@ SELECT migration, effect, kind, affected_rows FROM (
   UNION ALL
   SELECT '0010', 'rows the old SET NULL links already detached (purchase orders with no supplier, BOQ items with no section): they stay as they are', 'attention',
          (SELECT count(*) FROM purchase_orders WHERE supplier_id IS NULL) + (SELECT count(*) FROM boq_items WHERE section_id IS NULL)
+  -- 0011: users are never deleted
+  UNION ALL
+  SELECT '0011', 'foreign keys to users replaced by ON DELETE RESTRICT (constraint rows changed, no data rows)', 'will_change',
+         (SELECT count(*) FROM pg_constraint WHERE contype = 'f' AND confrelid = 'users'::regclass AND confdeltype IN ('c', 'n'))
+  UNION ALL
+  SELECT '0011', 'a trigger now refuses every DELETE on users; any process that deletes users (scripts, manual SQL) must deactivate instead', 'attention',
+         (SELECT count(*) FROM users)
 ) report
 ORDER BY migration, kind, effect;
 
