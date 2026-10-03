@@ -21,7 +21,13 @@ async function resolveAccounts(q, lines) {
   return lines.map((l, i) => {
     if (l.accountId != null) return l.accountId;
     if (l.account == null) throw new JournalError(`Journal line ${i + 1} names no account`);
-    if (!found.has(l.account)) throw new JournalError(`Ledger account "${l.account}" is not configured (gl_account_map)`);
+    if (!found.has(l.account)) {
+      // The key travels on the error so routes can answer with error_code ledger_account_not_mapped
+      // and error_params { key } (localization plan L7) without parsing the message.
+      const err = new JournalError(`Ledger account "${l.account}" is not configured (gl_account_map)`);
+      err.key = l.account;
+      throw err;
+    }
     return found.get(l.account);
   });
 }

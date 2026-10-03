@@ -7,17 +7,20 @@
 //
 //   client_invoice  Dr receivable (amount owed)  |  Cr revenue (amount - tax)  |  Cr tax account (tax, only if tax > 0)
 //   client_payment  Dr cash (amount)             |  Cr receivable (amount)
+//   supplier_payment Dr payable (amount)         |  Cr cash (amount)          (Phase 3.1; direction 'ap' payments)
 //   reversal        the original entry's lines with debit and credit swapped, posted once, kind '<kind>_void'
 //
 // Retention held, advance recovery and other deductions are already inside the invoice amount (it is the net the
 // client owes), so no separate retention or advance accounts are posted yet; that needs chart accounts and is part of
-// the Phase 8 finance engine. Supplier invoices and supplier payments are posted with the cost accrual point in 3.1.
+// the Phase 8 finance engine. Supplier INVOICES are posted by services/costAccrual.js at the accrual point
+// (GRN for stocked materials, approval for services) — not here, so the same cost is never counted twice.
 const journal = require('../utils/journal');
 const money = require('../utils/money');
 
 const POSTING_RULES = {
   client_invoice: { receivable: 'receivable', revenue: 'revenue', tax: 'vat_output' },
   client_payment: { cash: 'cash', receivable: 'receivable' },
+  supplier_payment: { payable: 'payable', cash: 'cash' },
 };
 
 // Statuses in which an invoice has been issued to the client (legacy 'sent' counts as issued).
@@ -87,6 +90,26 @@ async function postClientPayment(q, payment, { userId = null } = {}) {
 const reverseClientPayment = (q, payment, { userId = null } = {}) =>
   reverseEntry(q, 'client_payment', payment.id, { userId, description: `Payment #${payment.id} voided` });
 
+// Supplier payment (direction 'ap'): the money leaves and the payable shrinks. Posted by the payment route
+// inside its transaction; the void route reverses it exactly once.
+async function postSupplierPayment(q, payment, { userId = null } = {}) {
+  if ((await journal.findEntries(q, 'supplier_payment', payment.id)).length) return null;
+  const rule = POSTING_RULES.supplier_payment;
+  const amount = money.format(money.toMinor(payment.amount));
+  return journal.postJournalEntry(q, {
+    date: payment.payment_date, description: `Supplier payment${payment.reference_number ? ` ${payment.reference_number}` : ''}`,
+    reference_type: 'supplier_payment', reference_id: payment.id, created_by: userId,
+    lines: [
+      { account: rule.payable, debit: amount, description: 'Payable settled' },
+      { account: rule.cash, credit: amount, description: 'Cash paid to supplier' },
+    ],
+  });
+}
+
+const reverseSupplierPayment = (q, payment, { userId = null } = {}) =>
+  reverseEntry(q, 'supplier_payment', payment.id, { userId, description: `Supplier payment #${payment.id} voided` });
+
 module.exports = {
-  POSTING_RULES, ISSUED_STATUSES, postClientInvoice, reverseClientInvoice, syncInvoicePosting, postClientPayment, reverseClientPayment,
+  POSTING_RULES, ISSUED_STATUSES, postClientInvoice, reverseClientInvoice, syncInvoicePosting,
+  postClientPayment, reverseClientPayment, postSupplierPayment, reverseSupplierPayment,
 };

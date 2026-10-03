@@ -70,12 +70,20 @@ describePg('role matrix on internal, v1 and MCP (real PostgreSQL, real app)', ()
     ids.sc = (await one("INSERT INTO sub_contracts (contract_number, project_id, subcontractor_id, contract_value) VALUES ($1, $2, $3, 100) RETURNING id", [`RM-SC-${tag}`, ids.pA, sub])).id;
     ids.cert = (await one("INSERT INTO sub_payment_certificates (certificate_number, sub_contract_id) VALUES ($1, $2) RETURNING id", [`RM-PC-${tag}`, ids.sc])).id;
     ids.doc = (await one("INSERT INTO project_documents (project_id, title, status) VALUES ($1, 'rm doc', 'draft') RETURNING id", [ids.pA])).id;
+    ids.supplier = (await one('INSERT INTO suppliers (code, name_en, name_ar) VALUES ($1, $1, $1) RETURNING id', [`RM-SUP-${tag}`])).id;
+    // Supplier invoices resolve their project through their PO; a PO in project A keeps them in scope.
+    ids.supplierPo = (await one("INSERT INTO purchase_orders (order_number, supplier_id, project_id, status) VALUES ($1, $2, $3, 'issued') RETURNING id", [`RM-SPO-${tag}`, ids.supplier, ids.pA])).id;
+    ids.supplierInvoice = await newSupplierInvoice();
     for (const role of ['site_engineer', 'storekeeper', 'quantity_surveyor', 'document_controller', 'viewer']) await makeUser(role, role);
     await makeUser('owner', 'owner');
   });
   afterAll(async () => {
     const uids = Object.values(users).map((u) => u.id);
     await db.query('DELETE FROM agent_tool_calls WHERE user_id = ANY($1)', [uids]);
+    await db.query('DELETE FROM agent_action_requests WHERE requesting_user_id = ANY($1) OR approver_user_id = ANY($1)', [uids]);
+    await db.query('DELETE FROM supplier_invoice_lines WHERE supplier_invoice_id IN (SELECT id FROM supplier_invoices WHERE supplier_id = (SELECT id FROM suppliers WHERE code = $1))', [`RM-SUP-${tag}`]);
+    await db.query('DELETE FROM supplier_invoices WHERE supplier_id = (SELECT id FROM suppliers WHERE code = $1)', [`RM-SUP-${tag}`]);
+    await db.query('DELETE FROM purchase_orders WHERE supplier_id = (SELECT id FROM suppliers WHERE code = $1) AND order_number LIKE $2', [`RM-SUP-${tag}`, `RM-SPO-${tag}%`]);
     await db.query('DELETE FROM site_daily_reports WHERE project_id = $1', [ids.pA]);
     await db.query('DELETE FROM project_documents WHERE project_id = $1', [ids.pA]);
     await db.query('DELETE FROM sub_payment_certificates WHERE id = $1', [ids.cert]);
@@ -83,7 +91,8 @@ describePg('role matrix on internal, v1 and MCP (real PostgreSQL, real app)', ()
     await db.query('DELETE FROM material_inspection_requests WHERE purchase_order_id = $1', [ids.po]);
     await db.query('DELETE FROM deliveries WHERE purchase_order_id = $1', [ids.po]);
     await db.query('DELETE FROM purchase_orders WHERE id = $1', [ids.po]);
-    await db.query('DELETE FROM suppliers WHERE id = $1', [ids.supplier]);
+    // (the mechanism block overwrites ids.supplier; the fixture supplier goes by its code)
+    await db.query('DELETE FROM suppliers WHERE id IN (SELECT id FROM suppliers WHERE code IN ($1, $2))', [`RM-SUP-${tag}`, `rm-sup-${tag}`]);
     await db.query('DELETE FROM invoices WHERE id = $1', [ids.inv]);
     await db.query('DELETE FROM user_project_roles WHERE user_id = ANY($1)', [uids]);
     await db.query('UPDATE users SET is_active = false WHERE id = ANY($1)', [uids]);
@@ -92,12 +101,18 @@ describePg('role matrix on internal, v1 and MCP (real PostgreSQL, real app)', ()
       await db.query('DELETE FROM roles WHERE key = $1', [key]);
     }
     await db.query('DELETE FROM clients WHERE id = $1', [ids.client]);
+    // The owner's supplier-invoice approvals accrue project_costs rows on project A (Phase 3.1).
+    await db.query('DELETE FROM project_costs WHERE project_id = $1', [ids.pA]);
     await db.query('DELETE FROM projects WHERE id = $1', [ids.pA]);
     await new Promise((resolve) => server.close(resolve));
     await db.pool.end();
   });
 
   const newDoc = async () => (await one("INSERT INTO project_documents (project_id, title, status) VALUES ($1, 'rm doc', 'draft') RETURNING id", [ids.pA])).id;
+  const newSupplierInvoice = async () => (await one(
+    "INSERT INTO supplier_invoices (invoice_number, supplier_id, purchase_order_id, total_amount, status) VALUES ($1, $2, $3, 100, 'received') RETURNING id",
+    [`RM-SI-${tag}-${Date.now() % 1000000}-${Math.floor(Math.random() * 10000)}`, ids.supplier, ids.supplierPo]
+  )).id;
   const A = () => ids.pA;
   let day = 0;
   const report = () => { day += 1; return { report_date: `2026-02-${String(day).padStart(2, '0')}`, work_summary: 'poured slab' }; };
@@ -134,6 +149,8 @@ describePg('role matrix on internal, v1 and MCP (real PostgreSQL, real app)', ()
       ['allow', 'views the project', () => ({ i: ['GET', `/api/projects/${A()}`], v: ['GET', `/api/v1/projects/${A()}`], m: ['get_project', { id: A() }] })],
       ['deny', 'lists invoices', () => ({ i: ['GET', '/api/invoices'], v: ['GET', '/api/v1/invoices'], m: ['list_invoices', {}] })],
       ['deny', 'writes a site report', () => { const [a, b, c] = sameReport(); return { i: ['POST', `/api/projects/${A()}/site-reports`, a], v: ['POST', `/api/v1/daily-reports/${A()}`, b], m: ['update_daily_report_draft', { project_id: A(), ...c }] }; }],
+      // Phase 3.1: approving a supplier invoice is the cost accrual point for services.
+      ['deny', 'approves a supplier invoice', () => ({ i: ['POST', `/api/procurement/invoices/${ids.supplierInvoice}/approve`], v: ['POST', `/api/v1/supplier-invoices/${ids.supplierInvoice}/approve`], m: ['approve_supplier_invoice', { supplier_invoice_id: ids.supplierInvoice }] })],
     ],
   };
 
@@ -151,6 +168,14 @@ describePg('role matrix on internal, v1 and MCP (real PostgreSQL, real app)', ()
   test('control: an owner can do the same approve and issue actions the roles above are refused', async () => {
     expect(await call('POST', `/api/docs/documents/${ids.doc}/approve`, users.owner.token)).toBe(200);
     expect(await call('POST', `/api/v1/documents/${ids.doc}/approve`, users.owner.token)).toBe(200);
+    // Phase 3.1: the owner approves a supplier invoice; the MCP tool proposes it and the gated decision
+    // (separate surface, tested in the approval-gate suite) executes it. Each surface gets its own
+    // invoice because approval moves the row to 'approved'.
+    const a = await newSupplierInvoice();
+    const b = await newSupplierInvoice();
+    expect(await call('POST', `/api/procurement/invoices/${a}/approve`, users.owner.token)).toBe(200);
+    expect(await call('POST', `/api/v1/supplier-invoices/${b}/approve`, users.owner.token)).toBe(200);
+    expect((await mcp.executeTool({ toolName: 'approve_supplier_invoice', args: { supplier_invoice_id: await newSupplierInvoice() }, user: users.owner, agentSession: 'rm-test' })).status).toBe(202);
   });
 
   describe('mechanisms (ad-hoc roles, independent of the seeded matrix)', () => {

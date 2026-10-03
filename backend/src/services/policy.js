@@ -174,6 +174,7 @@ const ACTION_OVERRIDES = Object.freeze([
   ['procurement', 'POST', /^\/po\/:id\/issue$/, 'issue_financial_document'],
   ['procurement', 'POST', /^\/po\/:id\/decide$/, 'approve'],
   ['procurement', 'POST', /^\/mir\/:id\/decide$/, 'approve'],
+  ['procurement', 'POST', /^\/invoices\/:id\/approve$/, 'approve'],
   ['qhse', 'POST', /^\/ncrs\/:id\/verify$/, 'approve'],
   ['qhse', 'POST', /^\/wirs\/:id\/submit$/, 'submit'],
   ['subcontractors', 'PUT', /^\/certificates\/:id$/, 'approve'],
@@ -232,6 +233,8 @@ const RECORD_SCOPE_RULES = Object.freeze({
     [/^\/deliveries\/:id(?:\/|$)/, 'SELECT po.project_id FROM deliveries d JOIN purchase_orders po ON po.id = d.purchase_order_id WHERE d.id = $1'],
     [/^\/mir\/:id(?:\/|$)/, 'material_inspection_requests'],
     [/^\/(?:documents\/)?grn\/:id(?:\/|$)/, 'SELECT po.project_id FROM goods_receipt_notes g JOIN purchase_orders po ON po.id = g.purchase_order_id WHERE g.id = $1'],
+    // Phase 3.1: supplier invoices resolve their project through the PO when one exists.
+    [/^\/invoices\/:id(?:\/|$)/, 'SELECT po.project_id FROM supplier_invoices si LEFT JOIN purchase_orders po ON po.id = si.purchase_order_id WHERE si.id = $1'],
   ],
   qhse: [
     [/^\/quality-tests\/:id(?:\/|$)/, 'quality_tests'],
