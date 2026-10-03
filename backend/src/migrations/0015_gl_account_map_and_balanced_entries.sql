@@ -26,7 +26,7 @@ SELECT m.key, a.id
   JOIN accounts a ON a.code = m.code
 ON CONFLICT (key) DO NOTHING;
 
-CREATE FUNCTION pg_temp.add_check(tbl regclass, cname text, expr text) RETURNS void AS $fn$
+CREATE OR REPLACE FUNCTION pg_temp.add_check(tbl regclass, cname text, expr text) RETURNS void AS $fn$
 DECLARE
   bad BIGINT;
 BEGIN
