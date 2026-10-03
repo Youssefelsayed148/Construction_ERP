@@ -82,14 +82,15 @@ Goal: no credential or role can do more than it was issued for.
 - Test matrix (done, real PG, `record-scoping.pg.test.js`): project-bound user A against project B's records, across internal, v1 and MCP, for read, update, delete and transition.
 
 1.4 Approval gate and agent safety (Critical/High)
-- [ ] `decideRequest`: atomic `UPDATE ... WHERE decision IS NULL RETURNING`, execute only on a returned row.
-- [ ] Require approver != requester, approver project authority, and monetary limits per spec 21.
-- [ ] Enforce v1 scopes in `mcpService.callTool/executeTool` and on `/api/v1/assistants/*` and v1-only lists.
-- [ ] Validate tool args against schema (required fields, `additionalProperties:false`).
-- [ ] Rate limit `/api/mcp`; cap JSON-RPC batch size; stop trusting the client `session id` header.
-- [ ] Mark record text as untrusted content in tool output; make draft tools that notify or complete work (`assign_action`, `complete_action_with_evidence`) require evidence/gating.
-- [ ] Replace key-name redaction with an allow-list per role; apply `see_client_value` and `see_subcontract_value`; redact before logging.
-- [ ] Align gated tool names with the catalog (`void_financial_record`, `change_authority_rules`).
+- [x] `decideRequest`: atomic `UPDATE ... WHERE decision IS NULL RETURNING`, execute only on a returned row.
+- [x] Require approver != requester and approver project authority.
+- [ ] Monetary approval limits per spec 21: no limit values exist in the two source documents (Phase 5.1 delegation of authority feeds them). Needs a product decision before building.
+- [x] Enforce v1 scopes in `mcpService.callTool/executeTool` and on `/api/v1/assistants/*` and v1-only lists.
+- [x] Validate tool args against schema (required fields, `additionalProperties:false`).
+- [x] Rate limit `/api/mcp`; cap JSON-RPC batch size; stop trusting the client `session id` header.
+- [x] Mark record text as untrusted content in tool output; make draft tools that notify or complete work (`assign_action`, `complete_action_with_evidence`) require evidence/gating.
+- [x] Replace key-name redaction with an allow-list per role; apply `see_client_value` and `see_subcontract_value`; redact before logging.
+- [x] Align gated tool names with the catalog (`void_financial_record`, `change_authority_rules`).
 
 1.5 Webhooks (High)
 - [ ] SSRF guard: block private/loopback/link-local ranges, resolve-then-pin IP, disable redirects.

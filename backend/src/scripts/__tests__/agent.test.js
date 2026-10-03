@@ -166,25 +166,41 @@ describe('agent policy', () => {
 
   test('every gated tool resolves a required approver role', () => {
     expect(agentPolicy.requiredApproverRole('issue_purchase_order')).toBe('finance_manager');
-    expect(agentPolicy.requiredApproverRole('change_permission_rules')).toBe('owner');
+    expect(agentPolicy.requiredApproverRole('change_authority_rules')).toBe('owner');
     expect(agentPolicy.requiredApproverRole('close_project')).toBe('owner');
     expect(agentPolicy.requiredApproverRole('list_projects')).toBeNull();
   });
 
   test('redaction strips monetary fields without visibility flags, keeps them with flags', () => {
     const data = { summary: { contract_value: 100, amount: 50, name: 'X' }, rows: [{ unit_price: 9, item: 'steel' }] };
-    const fullFlags = { see_internal_cost: true, see_client_value: true, see_subcontract_value: true };
+    const fullFlags = { see_internal_cost: true, see_client_price: true, see_subcontractor_price: true };
     const redacted = agentPolicy.redactForUser(data, fullFlags);
     expect(redacted.summary.name).toBe('X');
     expect(redacted.summary.amount).toBe(50);
     expect(redacted.summary.contract_value).toBe(100);
 
-    const noFlags = { see_internal_cost: false, see_client_value: false, see_subcontract_value: false };
+    const noFlags = { see_internal_cost: false, see_client_price: false, see_subcontractor_price: false };
     const stripped = agentPolicy.redactForUser(data, noFlags);
     expect(stripped.summary.amount).toBeUndefined();
     expect(stripped.summary.contract_value).toBeUndefined();
     expect(stripped.rows[0].unit_price).toBeUndefined();
     expect(stripped.rows[0].item).toBe('steel');
+  });
+
+  test('each money group is unlocked only by its own flag', () => {
+    const row = { unit_cost: 1, labor_cost: 2, unit_price: 3, net_amount: 4, net_payable: 5, work_value: 6, name: 'n' };
+    const only = (flag) => agentPolicy.redactForUser(row, { see_internal_cost: false, see_client_price: false, see_subcontractor_price: false, [flag]: true });
+    expect(only('see_internal_cost')).toEqual({ unit_cost: 1, labor_cost: 2, name: 'n' });
+    expect(only('see_client_price')).toEqual({ unit_price: 3, net_amount: 4, name: 'n' });
+    expect(only('see_subcontractor_price')).toEqual({ net_payable: 5, work_value: 6, name: 'n' });
+  });
+
+  test('external roles get an allow-list of fields, so a new column never leaks by default', () => {
+    const flags = { see_internal_cost: true, see_client_price: true, see_subcontractor_price: true };
+    const out = agentPolicy.redactForUser({ success: true, data: [{ id: 1, title: 'Crack', internal_note: 'do not share', raised_by_user_id: 9 }] }, flags, 'consultant');
+    expect(out.data[0]).toEqual({ id: 1, title: 'Crack' });
+    // Internal roles keep non-money fields.
+    expect(agentPolicy.redactForUser({ internal_note: 'x' }, flags, 'engineer')).toEqual({ internal_note: 'x' });
   });
 });
 

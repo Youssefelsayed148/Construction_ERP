@@ -49,7 +49,7 @@ const FAMILIES = [
   'variations', 'payment-certificates', 'invoices', 'payments',
   'daily-reports', 'site-visits', 'observations', 'rfis', 'submittals',
   'inspections', 'ncrs', 'documents', 'transmittals', 'schedule', 'actions',
-  'notifications', 'reports',
+  'notifications', 'reports', 'assistants',
 ];
 
 const SCOPE_RE = /^(api|([a-z-]+)):(read|write)$/;
