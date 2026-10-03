@@ -138,4 +138,51 @@ describePg('PUT /api/users/:id role changes (real PostgreSQL, real app)', () => 
     expect(ev[0].after.role).toBe('staff');
     expect(ev[0].user_id).toBe(users.owner.id);
   });
+
+  // Runs fn with `keepIds` as the only active owners, then restores the others.
+  const withOwners = async (keepIds, fn) => {
+    const others = (await db.query("SELECT id FROM users WHERE role = 'owner' AND is_active = true AND id <> ALL($1)", [keepIds])).rows.map((r) => r.id);
+    await db.query('UPDATE users SET is_active = false WHERE id = ANY($1)', [others]);
+    try { await fn(); } finally { await db.query('UPDATE users SET is_active = true WHERE id = ANY($1)', [others]); }
+  };
+
+  test('a user cannot change their own role', async () => {
+    await makeUser('self_admin', 'admin');
+    const r1 = await call('PUT', `/api/users/${users.self_admin.id}`, users.self_admin.token, { role: 'staff' });
+    expect(r1.status).toBe(403);
+    await makeUser('self_owner', 'owner');
+    const r2 = await call('PUT', `/api/users/${users.self_owner.id}`, users.self_owner.token, { role: 'admin' });
+    expect(r2.status).toBe(403);
+    expect((await roleRows(users.self_admin.id)).map((r) => r.role)).toEqual(['admin']);
+  });
+
+  test('only an owner can change an admin\'s role', async () => {
+    await makeUser('target_admin', 'admin');
+    const byAdmin = await call('PUT', `/api/users/${users.target_admin.id}`, users.admin.token, { role: 'staff' });
+    expect(byAdmin.status).toBe(403);
+    expect((await roleRows(users.target_admin.id)).map((r) => r.role)).toEqual(['admin']);
+    const byOwner = await call('PUT', `/api/users/${users.target_admin.id}`, users.owner.token, { role: 'staff' });
+    expect(byOwner.status).toBe(200);
+  });
+
+  test('an admin cannot deactivate an owner', async () => {
+    await makeUser('owner_b', 'owner');
+    expect((await call('DELETE', `/api/users/${users.owner_b.id}`, users.admin.token)).status).toBe(403);
+    expect((await call('PUT', `/api/users/${users.owner_b.id}`, users.admin.token, { is_active: false })).status).toBe(403);
+  });
+
+  test('the last active owner cannot be deactivated or demoted', async () => {
+    await makeUser('last_owner', 'owner');
+    await makeUser('second_owner', 'owner');
+    await withOwners([users.last_owner.id], async () => {
+      expect((await call('DELETE', `/api/users/${users.last_owner.id}`, users.last_owner.token)).status).toBe(409);
+      expect((await call('PUT', `/api/users/${users.last_owner.id}`, users.last_owner.token, { is_active: false })).status).toBe(409);
+      expect((await db.query('SELECT is_active FROM users WHERE id = $1', [users.last_owner.id])).rows[0].is_active).toBe(true);
+    });
+    // With a second owner around, an owner can demote or deactivate the other one; the last one is then protected.
+    await withOwners([users.last_owner.id, users.second_owner.id], async () => {
+      expect((await call('PUT', `/api/users/${users.second_owner.id}`, users.last_owner.token, { role: 'admin' })).status).toBe(200);
+      expect((await call('PUT', `/api/users/${users.last_owner.id}`, users.last_owner.token, { is_active: false })).status).toBe(409);
+    });
+  });
 });

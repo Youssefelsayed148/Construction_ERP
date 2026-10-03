@@ -43,6 +43,31 @@ router.get('/:id', authenticate, authorize('owner', 'admin'), async (req, res) =
   }
 });
 
+// Guards shared by PUT and DELETE. Returns { status, error } or null.
+//  - nobody changes their own role (no self-promotion, no self-lockout);
+//  - only an owner changes an admin's or an owner's role, grants owner, or deactivates an owner;
+//  - the last active owner can be neither demoted nor deactivated.
+async function accessChangeGuard(q, req, current, { newRole, deactivating }) {
+  const roleChanging = newRole !== undefined && newRole !== current.role;
+  const isOwner = req.user.role === 'owner';
+  if (roleChanging && Number(current.id) === Number(req.user.id)) {
+    return { status: 403, error: 'You cannot change your own role' };
+  }
+  if (roleChanging && (current.role === 'admin' || current.role === 'owner' || newRole === 'owner') && !isOwner) {
+    return { status: 403, error: 'Only an owner can change an admin or owner role or grant the owner role' };
+  }
+  if (deactivating && current.role === 'owner' && !isOwner) {
+    return { status: 403, error: 'Only an owner can deactivate an owner' };
+  }
+  if (current.role === 'owner' && current.is_active && (deactivating || roleChanging)) {
+    const others = (await q(
+      "SELECT id FROM users WHERE role = 'owner' AND is_active = true AND id <> $1 FOR UPDATE", [current.id]
+    )).rows;
+    if (others.length === 0) return { status: 409, error: 'The last active owner cannot be demoted or deactivated' };
+  }
+  return null;
+}
+
 // PUT /api/users/:id
 // A role change is an access change: in one transaction it updates users.role, replaces the user's grants
 // for the old role (user_project_roles, company-wide and per-project) with the new role's, and bumps
@@ -65,18 +90,18 @@ router.put('/:id', authenticate, authorize('owner', 'admin'), async (req, res) =
 
     const outcome = await transaction(async (client) => {
       const q = (text, params) => client.query(text, params);
-      const current = (await q('SELECT id, role FROM users WHERE id = $1 FOR UPDATE', [id])).rows[0];
+      const current = (await q('SELECT id, role, is_active FROM users WHERE id = $1 FOR UPDATE', [id])).rows[0];
       if (!current) return { status: 404, error: 'User not found' };
 
       const roleChanging = value.role !== undefined && value.role !== current.role;
       if (roleChanging) {
         const known = (await q('SELECT 1 FROM roles WHERE key = $1', [value.role])).rows.length > 0;
         if (!known) return { status: 400, error: `Unknown role: ${value.role}` };
-        // Only an owner may grant the owner role or change an owner's role.
-        if ((value.role === 'owner' || current.role === 'owner') && req.user.role !== 'owner') {
-          return { status: 403, error: 'Only an owner can grant or change the owner role' };
-        }
       }
+      const refused = await accessChangeGuard(q, req, current, {
+        newRole: value.role, deactivating: value.is_active === false && current.is_active,
+      });
+      if (refused) return refused;
 
       const sets = [];
       const params = [];
@@ -130,16 +155,21 @@ router.put('/:id', authenticate, authorize('owner', 'admin'), async (req, res) =
 // DELETE /api/users/:id (soft-deactivate)
 router.delete('/:id', authenticate, authorize('owner', 'admin'), async (req, res) => {
   try {
-    const result = await query(
-      'UPDATE users SET is_active = false, updated_at = NOW() WHERE id = $1 RETURNING name',
-      [req.params.id]
-    );
-    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'User not found' });
+    const outcome = await transaction(async (client) => {
+      const q = (text, params) => client.query(text, params);
+      const current = (await q('SELECT id, name, role, is_active FROM users WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!current) return { status: 404, error: 'User not found' };
+      const refused = await accessChangeGuard(q, req, current, { deactivating: current.is_active });
+      if (refused) return refused;
+      await q('UPDATE users SET is_active = false, updated_at = NOW() WHERE id = $1', [current.id]);
+      return { name: current.name };
+    });
+    if (outcome.error) return res.status(outcome.status).json({ success: false, error: outcome.error });
 
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       action: 'deactivate', module: 'users',
-      description: `Deactivated user ${result.rows[0].name}`,
+      description: `Deactivated user ${outcome.name}`,
       entityId: req.params.id, entityType: 'user'
     });
 
