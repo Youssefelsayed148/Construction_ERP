@@ -180,29 +180,29 @@ Exit gate: reconcile-database.js expanded (see Phase 11) passes on a copy of pro
 Goal: one truthful chain, from requirement to cost.
 
 3.1 Cost posting
-- [ ] Post to `project_costs` (idempotent, same transaction) from: material issue, GRN accepted, supplier invoice approved, expenses, payroll allocation, supplier payment allocation. Define which event is the accrual point per type, to avoid double counting between GRN and invoice.
-- [ ] `UNIQUE (source_type, source_id)` on project_costs.
+- [ ] Post to `project_costs` (idempotent, same transaction) from: material issue, GRN accepted, supplier invoice approved, expenses, payroll allocation, supplier payment allocation. Define which event is the accrual point per type, to avoid double counting between GRN and invoice. (Done in Phase 3.1 for GRN accepted (stocked materials) and supplier invoice approved (services), via `services/costAccrual.js` COST_ACCRUAL_RULES; material issue, expenses and payroll allocation to project_costs remain open — expenses/payroll already post to the ledger via 2.7a. Supplier payments post to the ledger (Dr payable / Cr cash) and reverse exactly once on void.)
+- [x] `UNIQUE (source_type, source_id)` on project_costs. (migration 0018; preflight reports duplicates and the migration stops if any exist. The 0016 one-posting-per-kind journal index was widened to the new posting kinds.)
 - [ ] Dashboards, commercialEngine and costing read one cost view; remove the 20 `.catch(() => ({rows:[]}))` guards that turn failures into zeros.
 
 3.2 Events
-- [ ] Introduce an outbox table; write events in the same transaction as the change; a dispatcher delivers after commit with `dispatched_at` and retry (generalise what eventDispatcher does for its 9 events).
-- [ ] costEventListener consumes from the outbox: idempotent, with catch-up after restart.
+- [x] Introduce an outbox table; write events in the same transaction as the change; a dispatcher delivers after commit with `dispatched_at` and retry (generalise what eventDispatcher does for its 9 events). (migration 0020 `event_outbox` + `services/outboxDispatcher.js`: FOR UPDATE SKIP LOCKED claims, attempts + exponential backoff, dead-letter state, stable `event_id`; safe with N instances.)
+- [x] costEventListener consumes from the outbox: idempotent, with catch-up after restart. (The three cost consumers moved onto the outbox without their logging swallows; idempotent via 0018; legacy event_log rows seeded with stable id `log-<id>`.)
 - [ ] Fix mismatches: `rfi.created` vs `rfi.submitted`; `invoice.overdue` actually emitted; module `purchase_orders` mapped to `purchase_requisition.*` naming.
 - [ ] Add routes for unrouted events: purchase_order.issued, delivery.received, payment.received, invoice.created, variation.approved, handover.advanced, permit.*, wir.submitted, instruction.*, mir.*, transmittal.*.
-- [ ] fireEvent never emits before commit and never swallows errors silently.
+- [x] fireEvent never emits before commit and never swallows errors silently. (fireEvent writes event_log + event_outbox in the caller's transaction and throws on failure; routed consumers and the bus are fed by the dispatcher post-commit.)
 
 3.3 Replenishment to procurement
 - [ ] Replenishment creates a PR (not a PO) through the PR workflow; carries project_id and material; respects project stock; uses the shared numbering service.
 - [ ] Add PR location, cost code and work package; implement the budget-check step in the PR workflow.
 
 3.4 Progress single source of truth
-- [ ] Derive `projects.completion_percentage` from weighted schedule/quantity progress (quantityEngine policies); manual override only with permission and audit.
+- [x] Derive `projects.completion_percentage` from weighted schedule/quantity progress (quantityEngine policies); manual override only with permission and audit. (Rule in docs/PROGRESS_DERIVATION.md: quantity-weighted by BOQ value where quantities exist, otherwise duration-weighted from schedule tasks; no source → stored value untouched. `('projects','override_progress')` gates manual overrides, migration 0021 seeds the permission; overrides audited.)
 - [ ] Site daily-report measurements push to measurements, schedule activities and project progress.
-- [ ] Schedule percent recomputes on measurement changes, not only on explicit PUT.
+- [x] Schedule percent recomputes on measurement changes, not only on explicit PUT. (Quantity-driven activities linked to the measured BOQ item recompute on measurement insert/review; the project's derived progress follows.)
 - [ ] Dashboard PM progress uses the weighted figure.
 
 3.5 Background jobs
-- [ ] Leader lock (Postgres advisory lock) for the five setInterval sweeps (escalation, finance, HSE, replenishment, webhooks), or move to a job table; safe under multiple replicas.
+- [x] Leader lock (Postgres advisory lock) for the five setInterval sweeps (escalation, finance, HSE, replenishment, webhooks), or move to a job table; safe under multiple replicas. (services/sweepLeader.js: session-level pg_try_advisory_lock on a dedicated connection per sweep; runs and failures recorded in background_sweep_runs, counted by `npm run outbox:stats`. Six sweeps total — the plan's five plus the scheduled-reports sweep in routes/reports.js, added by owner decision.)
 
 Exit gate: golden-chain skeleton test (Phase 4) shows requirement -> PR -> PO -> GRN -> invoice -> payment -> cost, with totals reconciled.
 

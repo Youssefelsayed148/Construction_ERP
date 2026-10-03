@@ -808,6 +808,32 @@ async function recordLegacyDecision({ approvalId, userId, userName, role, notes,
   return { statusCode: 200, body: { success: true, request: updated } };
 }
 
+// Phase 3 (open item): cancel a stale workflow. The instance and its open steps stop; nothing is deleted.
+// Used by the approvals cancel route (and by scripts/cancel-stale-approvals.js --cancel). Runs on the
+// caller's query function; the caller audits the decision itself.
+async function cancelWorkflowInstance(q, instanceId, { userId = null, reason = null } = {}) {
+  const claimed = (await q(
+    `UPDATE workflow_instances
+        SET status = 'cancelled', updated_at = now()
+      WHERE id = $1 AND status = 'active' RETURNING id`,
+    [instanceId]
+  )).rows[0];
+  if (!claimed) return null; // already finished/cancelled: nothing to do, no error
+  await q(
+    `UPDATE workflow_step_instances
+        SET status = 'cancelled', completed_at = now()
+      WHERE instance_id = $1 AND status = 'pending'`,
+    [instanceId]
+  );
+  // The workflow's open action items close too, so nobody is asked to act on a cancelled workflow.
+  const steps = (await q('SELECT id FROM workflow_step_instances WHERE instance_id = $1', [instanceId])).rows;
+  for (const step of steps) {
+    await actionService.closeForWorkflowStep(instanceId, step.id, 'cancelled', { query: q });
+  }
+  void userId; void reason; // carried by the audit log on the caller (approvals route), not duplicated here
+  return claimed.id;
+}
+
 module.exports = {
   MODULE_MANAGER_ROLES,
   DIRECT_TO_OWNER_MODULES,
@@ -829,4 +855,6 @@ module.exports = {
   loadInstance,
   loadStepInstances,
   syncExternalState,
+  // Phase 3 (open item): non-destructive cancellation of a stale workflow.
+  cancelWorkflowInstance,
 };
