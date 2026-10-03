@@ -13,6 +13,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { REPORTS, REPORT_PACKS, parseListQuery, toCsv, visibleColumns, csvField } = require('../utils/reporting');
 const { renderDocument } = require('../utils/procurementPdf');
+const sweepLeader = require('../services/sweepLeader');
 
 const PORTAL_ROLES = ['consultant', 'client', 'subcontractor', 'supplier'];
 
@@ -374,8 +375,8 @@ function initScheduledReportScheduler(opts = {}) {
     }
   };
   run();
-  const timer = setInterval(run, 60 * 60 * 1000);
-  if (typeof timer.unref === 'function') timer.unref();
+  // Phase 3.4: one leader across backend instances (sweepLeader).
+  const { timer } = sweepLeader.leaderInterval('scheduled_reports', 60 * 60 * 1000, run);
 }
 
 module.exports = Object.assign(router, { initScheduledReportScheduler });

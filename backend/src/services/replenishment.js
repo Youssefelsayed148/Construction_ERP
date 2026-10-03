@@ -30,6 +30,7 @@ const { query: defaultQuery } = require('../config/database');
 const numbering = require('./numbering');
 const notificationService = require('./notificationService');
 const procurementService = require('./procurementService');
+const sweepLeader = require('./sweepLeader');
 
 const MODES = ['alert_only', 'auto_draft_pr', 'auto_draft_po', 'auto_issue_po'];
 const DEFAULT_MODE = 'alert_only';
@@ -649,12 +650,10 @@ async function evaluateOtherAlerts(q, opts = {}) {
 
 function initReplenishmentScheduler(opts = {}) {
   const intervalHours = toNum(opts.intervalHours) || 6;
-  const timer = setInterval(() => {
-    runReplenishmentSweep().catch((e) => console.error('[REPLENISH] sweep failed:', e.message));
-  }, intervalHours * 3600 * 1000);
-  if (typeof timer.unref === 'function') timer.unref();
-  runReplenishmentSweep().catch((e) => console.error('[REPLENISH] initial sweep failed:', e.message));
-  console.log(`[REPLENISH] scheduler initialized — sweep every ${intervalHours}h`);
+  // Phase 3.4: one leader across backend instances (sweepLeader).
+  const { timer, execute } = sweepLeader.leaderInterval('replenishment', intervalHours * 3600 * 1000, () => runReplenishmentSweep());
+  execute().catch((e) => console.error('[REPLENISH] initial sweep failed:', e.message));
+  console.log(`[REPLENISH] scheduler initialized — sweep every ${intervalHours}h (leader-locked)`);
   return timer;
 }
 

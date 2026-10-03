@@ -22,6 +22,7 @@ const { query: defaultQuery } = require('../config/database');
 const { nextNumber } = require('./numbering');
 const commercialEngine = require('./commercialEngine');
 const glPosting = require('./glPosting');
+const sweepLeader = require('./sweepLeader');
 
 const INVOICE_LIFECYCLE = ['draft', 'approved', 'issued', 'partially_paid', 'paid', 'overdue', 'cancelled', 'void', 'credited'];
 const REMINDER_STAGES = [
@@ -590,11 +591,9 @@ function daysOverdueOf(invoice, now) {
 
 function initReceivableReminderScheduler(opts = {}) {
   const intervalHours = toNum(opts.intervalHours) || 12;
-  const timer = setInterval(() => {
-    runReceivableReminderSweep(defaultQuery).catch((e) => console.error('[RECEIVABLE] sweep failed:', e.message));
-  }, intervalHours * 3600 * 1000);
-  if (typeof timer.unref === 'function') timer.unref();
-  console.log(`[RECEIVABLE] reminder scheduler initialized — sweep every ${intervalHours}h`);
+  // Phase 3.4: one leader across backend instances (sweepLeader).
+  const { timer } = sweepLeader.leaderInterval('receivable_reminders', intervalHours * 3600 * 1000, () => runReceivableReminderSweep(defaultQuery));
+  console.log(`[RECEIVABLE] reminder scheduler initialized — sweep every ${intervalHours}h (leader-locked)`);
   return timer;
 }
 
