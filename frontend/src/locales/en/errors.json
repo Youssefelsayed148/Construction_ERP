@@ -1,0 +1,13 @@
+{
+  "requestFailed": "The request could not be completed.",
+  "networkError": "Cannot reach the server. Check your connection.",
+  "unauthorized": "Please sign in to continue.",
+  "forbidden": "You do not have permission to do this.",
+  "notFound": "The requested record was not found.",
+  "validation": "Some fields are invalid. Please review and try again.",
+  "conflict": "This record was changed by someone else.",
+  "rateLimited": "Too many requests. Please wait a moment.",
+  "serverError": "Something went wrong on our side.",
+  "sessionExpired": "Your session has expired.",
+  "unknown": "An unexpected error occurred."
+}

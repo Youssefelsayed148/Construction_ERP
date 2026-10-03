@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Menu, WifiOff, X } from 'lucide-react';
 import Sidebar from './Sidebar';
+import { useLocale } from '../../hooks/useLocale';
 
 function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [online, setOnline] = useState(() => navigator.onLine);
   const location = useLocation();
+  const { t } = useLocale();
 
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
   useEffect(() => {
@@ -20,16 +22,17 @@ function Layout() {
     };
   }, []);
 
+  const navLabel = t(menuOpen ? 'navigation.aria.closeNavigation' : 'navigation.aria.openNavigation');
   return (
     <div className="app-container">
-      <button className="mobile-menu-button" aria-label={menuOpen ? 'Close navigation' : 'Open navigation'}
+      <button className="mobile-menu-button" aria-label={navLabel}
         aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}>
-        {menuOpen ? <X size={22} /> : <Menu size={22} />}
+        {menuOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
       </button>
-      {menuOpen && <button className="sidebar-backdrop" aria-label="Close navigation" onClick={() => setMenuOpen(false)} />}
+      {menuOpen && <button className="sidebar-backdrop" aria-label={t('navigation.aria.closeNavigation')} onClick={() => setMenuOpen(false)} />}
       <Sidebar mobileOpen={menuOpen} onNavigate={() => setMenuOpen(false)} />
       <main className="main-content">
-        {!online && <div className="offline-banner" role="status"><WifiOff size={16} /> You are offline. Submitted changes require a connection.</div>}
+        {!online && <div className="offline-banner" role="status"><WifiOff size={16} aria-hidden="true" /> {t('navigation.offline.banner')}</div>}
         <Outlet />
       </main>
     </div>

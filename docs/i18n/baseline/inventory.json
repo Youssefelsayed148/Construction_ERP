@@ -1,0 +1,593 @@
+{
+  "note": "Heuristic static counts. Per-file counts may only go down (npm run i18n:check). Regenerate with npm run i18n:inventory.",
+  "frontend": {
+    "totals": {
+      "inlineBranches": 1176,
+      "hardcodedEnglish": 102,
+      "rawEnumRendering": 5,
+      "hardcodedFormat": 8,
+      "prompts": 155
+    },
+    "files": {
+      "components/common/ConfirmDialog.js": {
+        "inlineBranches": 0,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 1
+      },
+      "components/common/States.js": {
+        "inlineBranches": 2,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 0
+      },
+      "components/DocumentUpload.js": {
+        "inlineBranches": 3,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 0
+      },
+      "components/layout/Sidebar.js": {
+        "inlineBranches": 3,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 0
+      },
+      "pages/AgentActivity.js": {
+        "inlineBranches": 26,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 1
+      },
+      "pages/Approvals.js": {
+        "inlineBranches": 48,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 1,
+        "prompts": 2
+      },
+      "pages/Assets.js": {
+        "inlineBranches": 32,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 3
+      },
+      "pages/BOQ.js": {
+        "inlineBranches": 31,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 1,
+        "prompts": 2
+      },
+      "pages/Clients.js": {
+        "inlineBranches": 33,
+        "hardcodedEnglish": 1,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 4,
+        "prompts": 3
+      },
+      "pages/Dashboard.js": {
+        "inlineBranches": 1,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 0
+      },
+      "pages/DocControlExtended.js": {
+        "inlineBranches": 51,
+        "hardcodedEnglish": 6,
+        "rawEnumRendering": 1,
+        "hardcodedFormat": 0,
+        "prompts": 9
+      },
+      "pages/Expenses.js": {
+        "inlineBranches": 25,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 3
+      },
+      "pages/Handover.js": {
+        "inlineBranches": 32,
+        "hardcodedEnglish": 9,
+        "rawEnumRendering": 1,
+        "hardcodedFormat": 0,
+        "prompts": 10
+      },
+      "pages/HR.js": {
+        "inlineBranches": 67,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 6
+      },
+      "pages/HSE.js": {
+        "inlineBranches": 112,
+        "hardcodedEnglish": 20,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 9
+      },
+      "pages/Invoices.js": {
+        "inlineBranches": 57,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 5
+      },
+      "pages/Items.js": {
+        "inlineBranches": 17,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 3
+      },
+      "pages/Legal.js": {
+        "inlineBranches": 22,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 4
+      },
+      "pages/LocationDashboard.js": {
+        "inlineBranches": 2,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 0
+      },
+      "pages/Login.js": {
+        "inlineBranches": 2,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 0
+      },
+      "pages/MyActions.js": {
+        "inlineBranches": 3,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 0
+      },
+      "pages/Payroll.js": {
+        "inlineBranches": 25,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 0
+      },
+      "pages/PortalDashboard.js": {
+        "inlineBranches": 0,
+        "hardcodedEnglish": 7,
+        "rawEnumRendering": 1,
+        "hardcodedFormat": 0,
+        "prompts": 43
+      },
+      "pages/ProcurementReview.js": {
+        "inlineBranches": 0,
+        "hardcodedEnglish": 4,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 0
+      },
+      "pages/ProjectDetail.js": {
+        "inlineBranches": 65,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 1
+      },
+      "pages/ProjectDocuments.js": {
+        "inlineBranches": 66,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 6
+      },
+      "pages/ProjectOperations.js": {
+        "inlineBranches": 0,
+        "hardcodedEnglish": 26,
+        "rawEnumRendering": 2,
+        "hardcodedFormat": 0,
+        "prompts": 0
+      },
+      "pages/Projects.js": {
+        "inlineBranches": 15,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 0
+      },
+      "pages/ProjectWizard.js": {
+        "inlineBranches": 7,
+        "hardcodedEnglish": 2,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 0
+      },
+      "pages/QHSE.js": {
+        "inlineBranches": 64,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 3
+      },
+      "pages/QHSEExtended.js": {
+        "inlineBranches": 88,
+        "hardcodedEnglish": 14,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 14
+      },
+      "pages/Reports.js": {
+        "inlineBranches": 6,
+        "hardcodedEnglish": 4,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 5
+      },
+      "pages/Schedule.js": {
+        "inlineBranches": 33,
+        "hardcodedEnglish": 8,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 4
+      },
+      "pages/SiteManagement.js": {
+        "inlineBranches": 46,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 5
+      },
+      "pages/SiteWorkspace.js": {
+        "inlineBranches": 26,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 1
+      },
+      "pages/Suppliers.js": {
+        "inlineBranches": 37,
+        "hardcodedEnglish": 1,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 3
+      },
+      "pages/UnitsSales.js": {
+        "inlineBranches": 43,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 4
+      },
+      "pages/WorkOrders.js": {
+        "inlineBranches": 86,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 0,
+        "prompts": 5
+      },
+      "utils/formatters.js": {
+        "inlineBranches": 0,
+        "hardcodedEnglish": 0,
+        "rawEnumRendering": 0,
+        "hardcodedFormat": 2,
+        "prompts": 0
+      }
+    }
+  },
+  "catalog": {
+    "locales": {
+      "en": {
+        "namespaces": {
+          "actions": 2,
+          "agents": 2,
+          "approvals": 2,
+          "assets": 2,
+          "auth": 10,
+          "boq": 2,
+          "clients": 2,
+          "commercial": 3,
+          "common": 105,
+          "costing": 2,
+          "dashboard": 4,
+          "documentControl": 3,
+          "enums": 91,
+          "errors": 11,
+          "expenses": 1,
+          "finance": 3,
+          "handover": 2,
+          "hr": 2,
+          "hse": 3,
+          "inventory": 3,
+          "legal": 1,
+          "locations": 2,
+          "navigation": 28,
+          "payroll": 1,
+          "portals": 4,
+          "procurement": 4,
+          "projects": 26,
+          "projectWizard": 4,
+          "qhse": 3,
+          "reports": 2,
+          "schedule": 3,
+          "site": 3,
+          "subcontractors": 2,
+          "suppliers": 2,
+          "workorders": 2
+        }
+      },
+      "ar": {
+        "namespaces": {
+          "actions": 2,
+          "agents": 2,
+          "approvals": 2,
+          "assets": 2,
+          "auth": 10,
+          "boq": 2,
+          "clients": 2,
+          "commercial": 3,
+          "common": 109,
+          "costing": 2,
+          "dashboard": 4,
+          "documentControl": 3,
+          "enums": 91,
+          "errors": 11,
+          "expenses": 1,
+          "finance": 3,
+          "handover": 2,
+          "hr": 2,
+          "hse": 3,
+          "inventory": 3,
+          "legal": 1,
+          "locations": 2,
+          "navigation": 28,
+          "payroll": 1,
+          "portals": 4,
+          "procurement": 4,
+          "projects": 30,
+          "projectWizard": 4,
+          "qhse": 3,
+          "reports": 2,
+          "schedule": 3,
+          "site": 3,
+          "subcontractors": 2,
+          "suppliers": 2,
+          "workorders": 2
+        }
+      }
+    },
+    "usedKeysMissingFromEn": [
+      "common.actions"
+    ],
+    "usedKeysMissingFromAr": [
+      "common.actions"
+    ],
+    "emptyNamespaces": {
+      "en": [],
+      "ar": []
+    },
+    "usedKeys": 57,
+    "dynamicKeyCalls": {
+      "components/project/ProjectShell.js": 2,
+      "i18n/enums.js": 1
+    },
+    "parity": {
+      "inEnNotAr": [],
+      "inArNotEn": [
+        "common.pagination.items.few",
+        "common.pagination.items.many",
+        "common.pagination.items.two",
+        "common.pagination.items.zero",
+        "projects.count.few",
+        "projects.count.many",
+        "projects.count.two",
+        "projects.count.zero"
+      ]
+    }
+  },
+  "server": {
+    "totals": {
+      "englishLiteral": 255,
+      "exceptionMessage": 480
+    },
+    "files": {
+      "actions.js": {
+        "englishLiteral": 0,
+        "exceptionMessage": 5
+      },
+      "activity.js": {
+        "englishLiteral": 0,
+        "exceptionMessage": 1
+      },
+      "agents.js": {
+        "englishLiteral": 0,
+        "exceptionMessage": 3
+      },
+      "approvals.js": {
+        "englishLiteral": 2,
+        "exceptionMessage": 8
+      },
+      "assets.js": {
+        "englishLiteral": 3,
+        "exceptionMessage": 9
+      },
+      "auth.js": {
+        "englishLiteral": 6,
+        "exceptionMessage": 3
+      },
+      "boq.js": {
+        "englishLiteral": 4,
+        "exceptionMessage": 7
+      },
+      "client.js": {
+        "englishLiteral": 1,
+        "exceptionMessage": 5
+      },
+      "clients.js": {
+        "englishLiteral": 4,
+        "exceptionMessage": 5
+      },
+      "commercial.js": {
+        "englishLiteral": 1,
+        "exceptionMessage": 8
+      },
+      "consultant.js": {
+        "englishLiteral": 0,
+        "exceptionMessage": 9
+      },
+      "costing.js": {
+        "englishLiteral": 1,
+        "exceptionMessage": 4
+      },
+      "dashboard.js": {
+        "englishLiteral": 1,
+        "exceptionMessage": 5
+      },
+      "doccontrol.js": {
+        "englishLiteral": 13,
+        "exceptionMessage": 35
+      },
+      "documents.js": {
+        "englishLiteral": 2,
+        "exceptionMessage": 1
+      },
+      "expenses.js": {
+        "englishLiteral": 3,
+        "exceptionMessage": 5
+      },
+      "finance.js": {
+        "englishLiteral": 1,
+        "exceptionMessage": 2
+      },
+      "financeLedger.js": {
+        "englishLiteral": 1,
+        "exceptionMessage": 11
+      },
+      "handover.js": {
+        "englishLiteral": 2,
+        "exceptionMessage": 17
+      },
+      "hr.js": {
+        "englishLiteral": 10,
+        "exceptionMessage": 18
+      },
+      "hse.js": {
+        "englishLiteral": 15,
+        "exceptionMessage": 38
+      },
+      "invoices.js": {
+        "englishLiteral": 4,
+        "exceptionMessage": 5
+      },
+      "items.js": {
+        "englishLiteral": 6,
+        "exceptionMessage": 6
+      },
+      "legal.js": {
+        "englishLiteral": 3,
+        "exceptionMessage": 5
+      },
+      "locations.js": {
+        "englishLiteral": 6,
+        "exceptionMessage": 5
+      },
+      "maintenance.js": {
+        "englishLiteral": 3,
+        "exceptionMessage": 5
+      },
+      "materials.js": {
+        "englishLiteral": 5,
+        "exceptionMessage": 7
+      },
+      "mcp.js": {
+        "englishLiteral": 1,
+        "exceptionMessage": 0
+      },
+      "media.js": {
+        "englishLiteral": 2,
+        "exceptionMessage": 1
+      },
+      "notifications.js": {
+        "englishLiteral": 0,
+        "exceptionMessage": 4
+      },
+      "payments.js": {
+        "englishLiteral": 1,
+        "exceptionMessage": 3
+      },
+      "payroll.js": {
+        "englishLiteral": 4,
+        "exceptionMessage": 5
+      },
+      "portal.js": {
+        "englishLiteral": 20,
+        "exceptionMessage": 20
+      },
+      "procurement.js": {
+        "englishLiteral": 14,
+        "exceptionMessage": 23
+      },
+      "projects.js": {
+        "englishLiteral": 10,
+        "exceptionMessage": 12
+      },
+      "qhse.js": {
+        "englishLiteral": 30,
+        "exceptionMessage": 55
+      },
+      "quantities.js": {
+        "englishLiteral": 4,
+        "exceptionMessage": 9
+      },
+      "reports.js": {
+        "englishLiteral": 5,
+        "exceptionMessage": 11
+      },
+      "schedule.js": {
+        "englishLiteral": 7,
+        "exceptionMessage": 23
+      },
+      "site.js": {
+        "englishLiteral": 9,
+        "exceptionMessage": 19
+      },
+      "subcontractors.js": {
+        "englishLiteral": 6,
+        "exceptionMessage": 12
+      },
+      "suppliers.js": {
+        "englishLiteral": 9,
+        "exceptionMessage": 8
+      },
+      "units.js": {
+        "englishLiteral": 12,
+        "exceptionMessage": 11
+      },
+      "users.js": {
+        "englishLiteral": 6,
+        "exceptionMessage": 6
+      },
+      "v1.js": {
+        "englishLiteral": 2,
+        "exceptionMessage": 0
+      },
+      "warehouses.js": {
+        "englishLiteral": 6,
+        "exceptionMessage": 12
+      },
+      "workorders.js": {
+        "englishLiteral": 10,
+        "exceptionMessage": 14
+      }
+    }
+  }
+}

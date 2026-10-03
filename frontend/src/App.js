@@ -18,6 +18,7 @@ import Payroll from './pages/Payroll';
 import Projects from './pages/Projects';
 import ProjectWizard from './pages/ProjectWizard';
 import ProjectDetail from './pages/ProjectDetail';
+import ProjectShell from './components/project/ProjectShell';
 import BOQ from './pages/BOQ';
 import WorkOrders from './pages/WorkOrders';
 import SiteManagement from './pages/SiteManagement';
@@ -33,6 +34,7 @@ import PortalDashboard from './pages/PortalDashboard';
 import ProcurementReview from './pages/ProcurementReview';
 import AgentActivity from './pages/AgentActivity';
 import ProjectOperations from './pages/ProjectOperations';
+import Settings from './pages/Settings';
 import { authService } from './services/api';
 import './styles/index.css';
 import './styles/portal.css';
@@ -89,21 +91,24 @@ function App() {
           {/* Phase 5: the 11-step creation wizard. Declared before the :id
               route so "new" is never read as a project id. */}
           <Route path="projects/new" element={<ProjectWizard />} />
-          <Route path="projects/:id" element={<ProjectDetail />} />
-          <Route path="projects/:id/boq" element={<BOQ />} />
-          <Route path="projects/:id/work-orders" element={<WorkOrders />} />
-          <Route path="projects/:id/site" element={<SiteManagement />} />
-          <Route path="projects/:id/site-workspace" element={<SiteWorkspace />} />
-          <Route path="projects/:id/operations" element={<ProjectOperations />} />
-          <Route path="projects/:id/locations" element={<LocationDashboard />} />
-          <Route path="projects/:id/qhse" element={<QHSE />} />
-          <Route path="projects/:id/hse" element={<HSE />} />
-          <Route path="projects/:id/schedule" element={<Schedule />} />
-          <Route path="projects/:id/reports" element={<Reports />} />
-          <Route path="projects/:id/handover" element={<Handover />} />
-          <Route path="projects/:id/documents" element={<ProjectDocuments />} />
-          <Route path="projects/:id/units" element={<UnitsSales />} />
-          <Route path="settings" element={<div className="page-container"><h1>Settings</h1></div>} />
+          {/* Project page: tabbed shell (six groups, utils/projectNav.js); sub-page URLs are unchanged. */}
+          <Route path="projects/:id" element={<ProjectShell />}>
+            <Route index element={<ProjectDetail />} />
+            <Route path="boq" element={<BOQ />} />
+            <Route path="work-orders" element={<WorkOrders />} />
+            <Route path="site" element={<SiteManagement />} />
+            <Route path="site-workspace" element={<SiteWorkspace />} />
+            <Route path="operations" element={<ProjectOperations />} />
+            <Route path="locations" element={<LocationDashboard />} />
+            <Route path="qhse" element={<QHSE />} />
+            <Route path="hse" element={<HSE />} />
+            <Route path="schedule" element={<Schedule />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="handover" element={<Handover />} />
+            <Route path="documents" element={<ProjectDocuments />} />
+            <Route path="units" element={<UnitsSales />} />
+          </Route>
+          <Route path="settings" element={<Settings />} />
           {/* Phase 27 — Agent Activity (owner/admin; backend enforces) */}
           <Route path="agent-activity" element={<AgentActivity />} />
         </Route>

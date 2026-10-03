@@ -301,7 +301,8 @@ Rule: every new screen uses translation keys from the Phase 10 catalog and the s
 - [ ] Shared form kit: validated modal forms, file upload, confirm dialogs, toasts (build once, reuse everywhere).
 - [ ] Admin: Organizations, Users, Roles and permissions matrix, Delegations, Settings (currently a literal placeholder in App.js:106), Workflow template editor, Replenishment policy, Numbering config, Notification rules, Webhooks and API tokens.
 - [ ] Project: WBS and work packages, team with role templates, project settings and calendars.
-- [ ] Project page restructure and role-based navigation (spec 30: "navigation derives from role and project permissions"):
+- [x] Project page restructure and role-based navigation, first slice (six groups with sub-tabs as a layout route, one visibility map `frontend/src/utils/projectNav.js`, financial cards hidden for roles without the procurement and cost group, Units & Sales only for unit-selling project types). Still open from this item: tab count badges, the Overview "needs attention" list, the spec 30 record layout, a permission-driven path after 5.1, and `hidden group => API 403` tests (Phase 4).
+- Reference for the item above (spec 30: "navigation derives from role and project permissions"):
   - Today `ProjectDetail.js` shows 13 hard-coded module links to every internal role with no role check, and internal roles all hold `('*','*')`, so permission-driven filtering shows everything until Phase 5.1 grants are real.
   - Replace the 13 links with 6 groups, each with sub-tabs: **Overview** (default: summary cards, phases, milestones, team, "needs attention" list), **Scope & Planning** (BOQ, Locations & Quantities, Schedule), **Site & Quality** (Site Management, Site Workspace, Work Orders, QHSE, HSE; merged by Phase 5.7), **Procurement & Cost** (Materials & Commercial; PR/PO/GRN, variations, invoices as they land), **Documents & Reports**, **Handover & Sales** (Units & Sales only for project types that sell units).
   - One visibility map (role -> groups and sub-tabs) kept in a single module, with a permission-driven path once Phase 5.1 grants exist. The sidebar already filters by `roles` and `policy_modules`; reuse that mechanism rather than adding a second one. Hiding a tab is presentation only; the backend policy stays the enforcement point (Phase 1).
@@ -405,34 +406,34 @@ Target behavior
 Sequence: L0 -> L1 -> L2 -> L3 must come first (later translation work would otherwise rely on the broken non-reactive toggle). L1-L3 run beside Phases 0-2 and must finish before Phase 6 screens are built. Each sub-phase is a separate reviewable change.
 
 L0 Localization contract and baseline
-- [ ] Supported locales: `en` and `ar-EG`. Keep stored/API values `ar` and `en`; use `ar-EG` only for Intl formatting.
-- [ ] Glossary for BOQ, RFI, WIR, MIR, NCR, JSA, HSE, QA/QC, procurement, retention, variation, snag/punch, handover, DLP, roles, workflow actions and financial terms; decide which acronyms stay Latin in Arabic.
-- [ ] Content rules: UI labels and system text are translated; user-entered text is never auto-translated; IDs, document numbers, codes and route paths unchanged; database enums stay English machine identifiers.
-- [ ] Baseline inventory: hard-coded English, inline `locale === 'ar'` branches, empty or missing namespaces, raw enums rendered to the UI, English server messages.
-- [ ] Screenshots of principal routes in both languages.
+- [x] Supported locales: `en` and `ar-EG`. Keep stored/API values `ar` and `en`; use `ar-EG` only for Intl formatting.
+- [x] Glossary for BOQ, RFI, WIR, MIR, NCR, JSA, HSE, QA/QC, procurement, retention, variation, snag/punch, handover, DLP, roles, workflow actions and financial terms; decide which acronyms stay Latin in Arabic.
+- [x] Content rules: UI labels and system text are translated; user-entered text is never auto-translated; IDs, document numbers, codes and route paths unchanged; database enums stay English machine identifiers.
+- [x] Baseline inventory: hard-coded English, inline `locale === 'ar'` branches, empty or missing namespaces, raw enums rendered to the UI, English server messages.
+- [x] Screenshots of principal routes in both languages.
 - Deliverables: Arabic glossary, route/module checklist, machine-readable missing-key report, baseline screenshots.
 - Exit: every visible text category has an explicit localization policy.
 
 L1 Repair the global locale architecture
-- [ ] Global `LocaleProvider` around the app; `useLocale()` consumes it instead of creating local state. Keep the interface (`locale`, `setLocale`, `t`, `isRTL`, `loading`).
-- [ ] `setLocale()` rerenders the whole app; persist in localStorage; validate stored value and fall back safely.
-- [ ] Set `lang` and `dir` before React renders (no LTR/RTL flash); optional cross-tab sync.
-- [ ] Cached translation loading that exposes loading and failure states; interpolation and plural support instead of string concatenation.
+- [x] Global `LocaleProvider` around the app; `useLocale()` consumes it instead of creating local state. Keep the interface (`locale`, `setLocale`, `t`, `isRTL`, `loading`).
+- [x] `setLocale()` rerenders the whole app; persist in localStorage; validate stored value and fall back safely.
+- [x] Set `lang` and `dir` before React renders (no LTR/RTL flash); optional cross-tab sync.
+- [x] Cached translation loading that exposes loading and failure states; interpolation and plural support instead of string concatenation.
 - Files: hooks/useLocale.js, index.js, public/index.html, new i18n/ or context/LocaleContext.js.
 - Tests: toggle from the sidebar updates a mounted page; toggle on Login updates Login; persistence after navigation and refresh; invalid stored locale; `lang`/`dir` always correct.
 - Exit: no page reload to switch language.
 
 L2 Translation catalog
-- [ ] Namespaces (keep existing key names `workorders`, `subcontractors`, `costing`): common, auth, navigation, dashboard, projects, projectWizard, locations, boq, workorders, subcontractors, costing, site, inventory, procurement, commercial, finance, clients, suppliers, portals, qhse, hse, documentControl, schedule, reports, handover, actions, approvals, agents, hr, payroll, assets, expenses, legal, errors, enums.
-- [ ] Semantic keys (`procurement.comparison.noQuotations`, `enums.status.pendingApproval`), never English-text keys.
-- [ ] Fill EN and AR for every namespace; interpolation for project numbers, counts, dates and record ids.
-- [ ] Recursive parity checker: every EN key in AR and vice versa; no missing namespace; empty namespace file fails.
-- [ ] Missing keys visible in dev/test; safe fallback in production with no raw key paths.
+- [x] Namespaces (keep existing key names `workorders`, `subcontractors`, `costing`): common, auth, navigation, dashboard, projects, projectWizard, locations, boq, workorders, subcontractors, costing, site, inventory, procurement, commercial, finance, clients, suppliers, portals, qhse, hse, documentControl, schedule, reports, handover, actions, approvals, agents, hr, payroll, assets, expenses, legal, errors, enums.
+- [x] Semantic keys (`procurement.comparison.noQuotations`, `enums.status.pendingApproval`), never English-text keys.
+- [x] Fill EN and AR for every namespace; interpolation for project numbers, counts, dates and record ids.
+- [x] Recursive parity checker: every EN key in AR and vice versa; no missing namespace; empty namespace file fails.
+- [x] Missing keys visible in dev/test; safe fallback in production with no raw key paths.
 - Exit: translation parity enforced in CI.
 
 L3 Application shell
-- [ ] Sidebar, portal navigation, Agent Activity and Procurement Comparison links (the English items in the Arabic sidebar), language and logout tooltips, user and role display, mobile nav aria-labels, offline banner, Settings placeholder, file-unavailable messages, generic loading/empty/error states, confirm dialogs and form actions.
-- [ ] Translate role names for display, keep role codes; mirror directional icons (back/next) in RTL.
+- [x] Sidebar, portal navigation, Agent Activity and Procurement Comparison links (the English items in the Arabic sidebar), language and logout tooltips, user and role display, mobile nav aria-labels, offline banner, Settings placeholder, file-unavailable messages, generic loading/empty/error states, confirm dialogs and form actions.
+- [x] Translate role names for display, keep role codes; mirror directional icons (back/next) in RTL.
 - Exit: shell has no unconditional English in Arabic mode.
 
 L4 English-only expansion screens

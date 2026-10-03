@@ -1,0 +1,10 @@
+{
+  "title": "Dashboard",
+  "welcome": "Welcome back, {name}",
+  "widgets": {
+    "title": "Overview"
+  },
+  "alerts": {
+    "title": "Alerts"
+  }
+}

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useLocale } from '../hooks/useLocale';
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
 
@@ -6,7 +7,7 @@ async function fetchMedia(fileUrl) {
   const response = await fetch(`${API_BASE_URL}${fileUrl}`, {
     headers: { Authorization: `Bearer ${sessionStorage.getItem('clientPreviewToken') || localStorage.getItem('token')}` },
   });
-  if (!response.ok) throw new Error('File is unavailable');
+  if (!response.ok) throw Object.assign(new Error('File is unavailable'), { code: 'file_unavailable' });
   return response.blob();
 }
 
@@ -23,6 +24,7 @@ export async function openProtectedFile(fileUrl) {
 }
 
 export function ProtectedImage({ fileUrl, alt, ...props }) {
+  const { t } = useLocale();
   const [src, setSrc] = useState(null);
   useEffect(() => {
     let active = true;
@@ -34,6 +36,6 @@ export function ProtectedImage({ fileUrl, alt, ...props }) {
     }).catch(() => { if (active) setSrc(null); });
     return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [fileUrl]);
-  if (!src) return <span aria-label={alt}>File unavailable</span>;
+  if (!src) return <span aria-label={alt}>{t('common.states.fileUnavailable')}</span>;
   return <img src={src} alt={alt} {...props} />;
 }
