@@ -204,7 +204,20 @@ async function recordActivity({ tool, user, detail }) {
   void detail;
 }
 
-async function createConfirmationRecord({ toolName, def, args, reason, user, agentSession }) {
+// The project a gated request belongs to: the project_id argument, else the project of the record the tool
+// targets (resolved through the same scope rules as a normal request). null when it cannot be resolved.
+async function resolveRequestProject(def, args) {
+  if (args && args.project_id != null) return Number(args.project_id);
+  if (!def.router || !def.argMap) return null;
+  const params = {};
+  for (const [arg, param] of Object.entries(def.argMap)) if (args[arg] != null) params[param] = String(args[arg]);
+  const mount = getV1().ROUTERS[def.router].mount;
+  const module = String(mount).split('/').filter(Boolean).slice(1)[0];
+  const ctx = await policy.resolveProjectContext({ policyRoute: def.path, params, query: {}, body: {} }, module);
+  return ctx.recordScoped && ctx.recordFound && ctx.projectId != null ? ctx.projectId : null;
+}
+
+async function createConfirmationRecord({ toolName, def, args, reason, user, agentSession, projectId }) {
   const requiredApproverRole = agentPolicy.requiredApproverRole(toolName);
   const r = await query(
     `INSERT INTO agent_action_requests
@@ -218,7 +231,7 @@ async function createConfirmationRecord({ toolName, def, args, reason, user, age
       user.id,
       requiredApproverRole,
       def.draftOnly ? 'draft' : 'awaiting_approval',
-      args?.project_id == null ? null : Number(args.project_id)]
+      projectId == null ? null : Number(projectId)]
   );
   return r.rows[0];
 }
@@ -248,7 +261,11 @@ async function callTool({ toolName, args, reason, user, agentSession, flags, rea
 
   // ---- gated: propose, never execute immediately --------------------------
   if (def.risk === 'gated') {
-    const request = await createConfirmationRecord({ toolName, def, args, reason, user, agentSession });
+    const projectId = await resolveRequestProject(def, args);
+    if (projectId == null && !def.companyWide) {
+      return { ok: false, status: 422, body: { success: false, code: 'project_unresolved', error: 'The project this request belongs to could not be determined, so it cannot be submitted for approval' } };
+    }
+    const request = await createConfirmationRecord({ toolName, def, args, reason, user, agentSession, projectId });
     return {
       ok: true,
       status: 202,
@@ -269,7 +286,7 @@ async function callTool({ toolName, args, reason, user, agentSession, flags, rea
 
   // ---- draft-only (no safe internal write path): store a draft proposal ---
   if (def.draftOnly) {
-    const request = await createConfirmationRecord({ toolName, def, args, reason, user, agentSession });
+    const request = await createConfirmationRecord({ toolName, def, args, reason, user, agentSession, projectId: args && args.project_id });
     return {
       ok: true,
       status: 201,
@@ -349,6 +366,10 @@ async function decideRequest(requestId, approver, decision, comment) {
     || approver.role === request.required_approver_role;
   if (!canDecide) {
     throw Object.assign(new Error(`Requires '${request.required_approver_role}' authority`), { status: 403 });
+  }
+  // Until approval limits exist (Phase 5.1), anything that moves money needs an owner, not an admin.
+  if ((agentPolicy.TOOLS[request.tool] || {}).movesMoney && approver.role !== 'owner') {
+    throw Object.assign(new Error('Only an owner can approve an action that moves money'), { status: 403 });
   }
   // Four-eyes: the person (or agent session) that asked is never the one who approves.
   if (Number(request.requesting_user_id) === Number(approver.id)) {

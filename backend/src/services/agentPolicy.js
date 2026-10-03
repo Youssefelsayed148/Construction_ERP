@@ -78,14 +78,14 @@ const TOOLS = {
   create_transmittal_draft: { risk: 'draft', method: 'POST', router: 'doccontrol', path: '/transmittals' },
 
   // ---- HIGH-RISK GATED ACTIONS (human approval required before execution)
-  issue_purchase_order:          { risk: 'gated', method: 'POST', router: 'procurement', path: '/po/:id/issue', argMap: { purchase_order_id: 'id' }, approver: 'finance' },
+  issue_purchase_order:          { risk: 'gated', movesMoney: true, method: 'POST', router: 'procurement', path: '/po/:id/issue', argMap: { purchase_order_id: 'id' }, approver: 'finance' },
   approve_variation:             { risk: 'gated', method: 'POST', router: 'commercial',  path: '/variations/:id/decide', argMap: { variation_id: 'id' }, approver: 'commercial' },
-  issue_client_invoice:          { risk: 'gated', method: 'POST', router: 'financeLedger', path: '/invoices/:id/transition', argMap: { invoice_id: 'id' }, approver: 'finance' },
-  record_payment:                { risk: 'gated', method: 'POST', router: 'payments',    path: '/', approver: 'finance' },
-  approve_payment_certificate:   { risk: 'gated', method: 'PUT',  router: 'subcontractors', path: '/certificates/:id', argMap: { certificate_id: 'id' }, approver: 'finance' },
-  release_retention:             { risk: 'gated', method: 'POST', router: 'financeLedger', path: '/retention', approver: 'finance' },
-  void_financial_record:         { risk: 'gated', method: 'DELETE', router: 'invoices', path: '/:id', argMap: { record_id: 'id' }, approver: 'finance' },
-  change_authority_rules:        { risk: 'gated', method: 'PUT',  router: 'users',       path: '/:id', argMap: { user_id: 'id' }, approver: 'owner' },
+  issue_client_invoice:          { risk: 'gated', movesMoney: true, method: 'POST', router: 'financeLedger', path: '/invoices/:id/transition', argMap: { invoice_id: 'id' }, approver: 'finance' },
+  record_payment:                { risk: 'gated', movesMoney: true, method: 'POST', router: 'payments',    path: '/', approver: 'finance' },
+  approve_payment_certificate:   { risk: 'gated', movesMoney: true, method: 'PUT',  router: 'subcontractors', path: '/certificates/:id', argMap: { certificate_id: 'id' }, approver: 'finance' },
+  release_retention:             { risk: 'gated', movesMoney: true, method: 'POST', router: 'financeLedger', path: '/retention', approver: 'finance' },
+  void_financial_record:         { risk: 'gated', movesMoney: true, method: 'DELETE', router: 'invoices', path: '/:id', argMap: { record_id: 'id' }, approver: 'finance' },
+  change_authority_rules:        { risk: 'gated', companyWide: true, method: 'PUT',  router: 'users',       path: '/:id', argMap: { user_id: 'id' }, approver: 'owner' },
   close_project:                 { risk: 'gated', method: 'PUT',  router: 'projects',    path: '/:id', argMap: { project_id: 'id' }, approver: 'owner' },
   // These notify a person or declare work finished, so an agent cannot do them alone: a human approves,
   // and completing needs written evidence (see TOOL_BODY).
@@ -192,6 +192,9 @@ const EXTERNAL_FIELD_ALLOWLIST = {
     'success', 'data', 'error', 'id', 'observation_number', 'project_id', 'discipline', 'location_id', 'title', 'description',
     'severity', 'status', 'raised_at', 'acknowledged_at', 'closed_at', 'created_at', 'updated_at',
     'observation_id', 'comment_type', 'body', 'type', 'name', 'code', 'due_date',
+    // Inbox rows (consultantEngine.myReviews) and the audit trail 12_CONSULTANT_PORTAL.md requires
+    // (user, organization, date/time, revision, comments, attachments).
+    'number', 'priority', 'author_user_id', 'organization_id', 'revision_code', 'attachments', 'photos',
   ]),
   client: new Set(['success', 'data', 'error', 'id', 'project_id', 'title', 'description', 'status', 'created_at', 'updated_at']),
   subcontractor: new Set(['success', 'data', 'error', 'id', 'project_id', 'title', 'description', 'status', 'created_at', 'updated_at']),
@@ -258,7 +261,7 @@ const TOOL_BODY = {
   add_rfi_comment: { rfi_id: id.required(), comment: text(4000).required() },
   attach_observation_photo: { observation_id: id.required(), photo_url: text(1000).required(), caption: optText(500) },
   create_invoice_draft: { project_id: id, client_id: id, invoice_id: id, amount: Joi.number().positive(), description: optText(), issue_date: optText(40), due_date: optText(40) },
-  assign_action: { source_type: text(60), source_id: id.allow(null), project_id: id.allow(null), location_id: id.allow(null), title: text(300).required(), description: optText(), assigned_user_id: id.allow(null), assigned_role: optText(60), assigned_organization_id: id.allow(null), priority: Joi.string().valid('low', 'medium', 'high', 'normal', 'urgent'), due_date: optText(40) },
+  assign_action: { source_type: text(60), source_id: id.allow(null), project_id: id.required(), location_id: id.allow(null), title: text(300).required(), description: optText(), assigned_user_id: id.allow(null), assigned_role: optText(60), assigned_organization_id: id.allow(null), priority: Joi.string().valid('low', 'medium', 'high', 'normal', 'urgent'), due_date: optText(40) },
   // Completing work needs written evidence the approver can check.
   complete_action_with_evidence: { action_id: id.required(), evidence: text(4000).min(10).required(), attachment_ids: Joi.array().items(id).max(50) },
   issue_purchase_order: { purchase_order_id: id.required() },
@@ -302,9 +305,11 @@ const APPROVER_ROLES = {
   owner: 'owner',
 };
 
+// Until configurable approval limits exist (Phase 5.1), anything that moves money needs an owner.
 function requiredApproverRole(toolName) {
   const def = TOOLS[toolName];
   if (!def || def.risk !== 'gated') return null;
+  if (def.movesMoney) return 'owner';
   return APPROVER_ROLES[def.approver] || 'owner';
 }
 

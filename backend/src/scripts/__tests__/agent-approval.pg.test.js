@@ -96,4 +96,37 @@ describePg('agent approval gate (real PostgreSQL)', () => {
     expect((await one('SELECT decision FROM agent_action_requests WHERE id = $1', [id])).decision).toBeNull();
     await expect(mcp.decideRequest(id, users.owner1, 'reject')).resolves.toBeTruthy();
   });
+
+  describe('project of a request, and money', () => {
+    const run = (user, toolName, args) => mcp.executeTool({ toolName, args, user, agentSession: 'aa-test' });
+
+    test('a completion request takes its project from the action', async () => {
+      const action = await one("INSERT INTO action_items (source_type, title, project_id) VALUES ('manual', $1, $2) RETURNING id", [`aa-${tag}`, projectB]);
+      const res = await run(users.owner1, 'complete_action_with_evidence', { action_id: action.id, evidence: 'photo of the finished slab' });
+      expect(res.status).toBe(202);
+      expect(res.request.project_id).toBe(projectB);
+      // so an approver bound to project A cannot decide it
+      await expect(mcp.decideRequest(res.request.id, { ...users.finA, role: 'project_manager' }, 'approve')).rejects.toMatchObject({ status: 403 });
+      await db.query('DELETE FROM agent_action_requests WHERE id = $1', [res.request.id]);
+      await db.query('DELETE FROM action_items WHERE id = $1', [action.id]);
+    });
+
+    test('a request whose project cannot be resolved is refused', async () => {
+      const orphan = await one("INSERT INTO action_items (source_type, title) VALUES ('manual', $1) RETURNING id", [`aa-${tag}-orphan`]);
+      const res = await run(users.owner1, 'complete_action_with_evidence', { action_id: orphan.id, evidence: 'photo of the finished slab' });
+      expect(res.status).toBe(422);
+      expect(res.body.code).toBe('project_unresolved');
+      const missing = await run(users.owner1, 'complete_action_with_evidence', { action_id: 99999999, evidence: 'photo of the finished slab' });
+      expect(missing.status).toBe(422);
+      await db.query('DELETE FROM action_items WHERE id = $1', [orphan.id]);
+    });
+
+    test('anything that moves money needs an owner to approve it', async () => {
+      const id = await propose(users.fin, projectA);
+      expect((await one('SELECT required_approver_role FROM agent_action_requests WHERE id = $1', [id])).required_approver_role).toBe('owner');
+      await expect(mcp.decideRequest(id, { ...users.owner1, role: 'admin' }, 'approve')).rejects.toMatchObject({ status: 403 });
+      await expect(mcp.decideRequest(id, { id: users.fin.id + 0, role: 'finance_manager' }, 'approve')).rejects.toMatchObject({ status: 403 });
+      await expect(mcp.decideRequest(id, users.owner1, 'approve')).resolves.toBeTruthy();
+    });
+  });
 });

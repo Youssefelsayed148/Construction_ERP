@@ -165,7 +165,9 @@ describe('agent policy', () => {
   });
 
   test('every gated tool resolves a required approver role', () => {
-    expect(agentPolicy.requiredApproverRole('issue_purchase_order')).toBe('finance_manager');
+    expect(agentPolicy.requiredApproverRole('issue_purchase_order')).toBe('owner');   // moves money: owner until approval limits exist
+    expect(agentPolicy.requiredApproverRole('approve_variation')).toBe('finance_manager');
+    expect(agentPolicy.requiredApproverRole('complete_action_with_evidence')).toBe('project_manager');
     expect(agentPolicy.requiredApproverRole('change_authority_rules')).toBe('owner');
     expect(agentPolicy.requiredApproverRole('close_project')).toBe('owner');
     expect(agentPolicy.requiredApproverRole('list_projects')).toBeNull();
@@ -193,6 +195,14 @@ describe('agent policy', () => {
     expect(only('see_internal_cost')).toEqual({ unit_cost: 1, labor_cost: 2, name: 'n' });
     expect(only('see_client_price')).toEqual({ unit_price: 3, net_amount: 4, name: 'n' });
     expect(only('see_subcontractor_price')).toEqual({ net_payable: 5, work_value: 6, name: 'n' });
+  });
+
+  test('the consultant allow-list keeps every field the inbox and the audit trail need (12_CONSULTANT_PORTAL.md)', () => {
+    const flags = { see_internal_cost: false, see_client_price: false, see_subcontractor_price: false };
+    const inboxRow = { type: 'rfi', id: 1, project_id: 1, number: 'RFI-1-001', title: 't', due_date: null, priority: 'normal', status: 'open', discipline: null, location_id: null };
+    expect(agentPolicy.redactForUser(inboxRow, flags, 'consultant')).toEqual(inboxRow);
+    const comment = { id: 1, observation_id: 2, author_user_id: 3, organization_id: 4, comment_type: 'comment', body: 'b', created_at: 'x' };
+    expect(agentPolicy.redactForUser(comment, flags, 'consultant')).toEqual(comment);
   });
 
   test('external roles get an allow-list of fields, so a new column never leaks by default', () => {
