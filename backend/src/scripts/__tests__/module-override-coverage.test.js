@@ -27,7 +27,7 @@ describe('module overrides', () => {
 describe('action overrides', () => {
   const MOUNT_FILES = {
     approvals: 'approvals', commercial: 'commercial', docs: 'doccontrol', 'finance-ledger': 'financeLedger', handover: 'handover',
-    procurement: 'procurement', qhse: 'qhse', subcontractors: 'subcontractors', 'work-orders': 'workorders', reports: 'reports',
+    procurement: 'procurement', projects: 'projects', qhse: 'qhse', subcontractors: 'subcontractors', 'work-orders': 'workorders', reports: 'reports',
     invoices: 'invoices', items: 'items', payments: 'payments', suppliers: 'suppliers',
   };
 

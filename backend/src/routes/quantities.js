@@ -6,6 +6,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const engine = require('../services/quantityEngine');
 const materialDemand = require('../services/materialDemand');
+const progressEngine = require('../services/progressEngine');
 
 // Phase 8 — quantity surface. Executed quantity is NEVER edited on a summary
 // row: it only enters the system as a quantity_measurements row. Allocation
@@ -211,6 +212,11 @@ router.post('/measurements', authenticate, authorize(), async (req, res) => {
     await engine.syncAllocations(query, { boqItemId: value.boq_item_id });
     await engine.syncBoqItemCompletedQuantity(query, value.boq_item_id);
 
+    // Phase 3.5 — measurement changes push to quantity-driven schedule activities and to the project's
+    // derived progress (stored completion_percentage); no explicit PUT needed.
+    await progressEngine.syncActivityProgressForBoqItem(query, value.boq_item_id);
+    await progressEngine.syncProjectProgress(query, value.project_id);
+
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       action: 'create', module: 'quantities',
@@ -237,6 +243,9 @@ router.post('/measurements/:id/review', authenticate, authorize(), async (req, r
     );
     await engine.syncAllocations(query, { boqItemId: existing.boq_item_id });
     await engine.syncBoqItemCompletedQuantity(query, existing.boq_item_id);
+    // Phase 3.5 — the review is a measurement change: schedule activities and derived progress follow.
+    await progressEngine.syncActivityProgressForBoqItem(query, existing.boq_item_id);
+    await progressEngine.syncProjectProgress(query, existing.project_id);
     res.json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
