@@ -1,14 +1,16 @@
 const express = require('express');
-const { createInvoiceRecord } = require('../services/financeEngine');
+const { createInvoiceRecord, writeAuditEvent } = require('../services/financeEngine');
+const { reasonFrom } = require('../utils/reason');
 const router = express.Router();
 const Joi = require('joi');
-const { query } = require('../config/database');
+const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 
-const INVOICE_STATUSES = ['draft', 'sent', 'partially_paid', 'paid', 'overdue'];
+const INVOICE_STATUSES = ['draft', 'sent', 'partially_paid', 'paid', 'overdue', 'void'];
 
 function computeInvoiceStatus(invoice, totalPaid) {
+  if (['void', 'cancelled', 'credited'].includes(invoice.status)) return invoice.status;
   const paid = parseFloat(totalPaid) || 0;
   const amount = parseFloat(invoice.amount) || 0;
   if (paid >= amount) return 'paid';
@@ -30,7 +32,7 @@ router.get('/', authenticate, authorize(), async (req, res) => {
     const dataResult = await query(
       `SELECT i.*, p.name_ar as project_name_ar, p.name_en as project_name_en, p.code as project_code,
               c.name_ar as client_name_ar, c.name_en as client_name_en, c.code as client_code,
-              COALESCE((SELECT SUM(pm.amount) FROM payments pm WHERE pm.invoice_id = i.id), 0) as total_paid
+              COALESCE((SELECT SUM(pm.amount) FROM payments pm WHERE pm.invoice_id = i.id AND pm.voided_at IS NULL), 0) as total_paid
        FROM invoices i
        LEFT JOIN projects p ON i.project_id = p.id
        LEFT JOIN clients c ON i.client_id = c.id
@@ -57,7 +59,7 @@ router.get('/:id', authenticate, authorize(), async (req, res) => {
     const result = await query(
       `SELECT i.*, p.name_ar as project_name_ar, p.name_en as project_name_en, p.code as project_code,
               c.name_ar as client_name_ar, c.name_en as client_name_en, c.code as client_code,
-              COALESCE((SELECT SUM(pm.amount) FROM payments pm WHERE pm.invoice_id = i.id), 0) as total_paid
+              COALESCE((SELECT SUM(pm.amount) FROM payments pm WHERE pm.invoice_id = i.id AND pm.voided_at IS NULL), 0) as total_paid
        FROM invoices i
        LEFT JOIN projects p ON i.project_id = p.id
        LEFT JOIN clients c ON i.client_id = c.id
@@ -153,26 +155,44 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
+// Void, never delete. An invoice with live payments has to have those payments voided first.
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
+  const reason = reasonFrom(req);
+  if (!reason) return res.status(400).json({ success: false, error: 'A reason is required to void an invoice' });
   try {
-    const payments = await query('SELECT COUNT(*) as cnt FROM payments WHERE invoice_id = $1', [req.params.id]);
-    if (parseInt(payments.rows[0].cnt) > 0) {
+    const outcome = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const existing = (await q('SELECT * FROM invoices WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!existing) return { notFound: true };
+      if (['void', 'cancelled', 'credited'].includes(existing.status)) return { conflict: existing.status };
+      const live = parseInt((await q('SELECT COUNT(*) AS cnt FROM payments WHERE invoice_id = $1 AND voided_at IS NULL', [existing.id])).rows[0].cnt, 10);
+      if (live > 0) return { paymentCount: live };
+      const updated = (await q(
+        "UPDATE invoices SET status = 'void', voided_at = NOW(), voided_by = $2, void_reason = $3, updated_at = NOW() WHERE id = $1 RETURNING *",
+        [existing.id, req.user.id, reason])).rows[0];
+      await writeAuditEvent(q, {
+        entity_type: 'invoice', entity_id: existing.id, event_type: 'void', actor_id: req.user.id, actor_name: req.user.name,
+        before_state: { status: existing.status }, after_state: { status: 'void', reason },
+      });
+      return { invoice: updated };
+    });
+    if (outcome.notFound) return res.status(404).json({ success: false, error: 'Invoice not found' });
+    if (outcome.conflict) return res.status(409).json({ success: false, error: `Invoice is already ${outcome.conflict}` });
+    if (outcome.paymentCount) {
       return res.status(400).json({
         success: false,
-        error: 'Cannot delete invoice with linked payments. Remove all payments first.',
-        paymentCount: parseInt(payments.rows[0].cnt)
+        error: 'Cannot void an invoice with live payments. Void the payments first.',
+        paymentCount: outcome.paymentCount,
       });
     }
-    const result = await query('DELETE FROM invoices WHERE id = $1 RETURNING id, invoice_number', [req.params.id]);
-    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Invoice not found' });
 
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'delete', module: 'invoices',
-      description: `Deleted invoice ${result.rows[0].invoice_number}`,
+      action: 'void', module: 'invoices',
+      description: `Voided invoice ${outcome.invoice.invoice_number}: ${reason}`,
       entityId: req.params.id, entityType: 'invoice'
     });
-    res.json({ success: true, message: 'Invoice deleted' });
+    res.json({ success: true, message: 'Invoice voided' });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 

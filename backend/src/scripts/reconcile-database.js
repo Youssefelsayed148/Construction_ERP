@@ -10,7 +10,7 @@ const CHECKS = Object.freeze([
     name: 'payment allocations do not exceed payment amounts',
     sql: `SELECT COUNT(*)::int AS violations FROM (
       SELECT p.id FROM payments p
-      JOIN payment_allocations a ON a.payment_id = p.id
+      JOIN payment_allocations a ON a.payment_id = p.id AND a.voided_at IS NULL
       GROUP BY p.id, p.amount HAVING SUM(a.amount) > p.amount
     ) violations`,
   },
@@ -18,7 +18,7 @@ const CHECKS = Object.freeze([
     name: 'client invoice allocations do not exceed invoice amounts',
     sql: `SELECT COUNT(*)::int AS violations FROM (
       SELECT i.id FROM invoices i
-      JOIN payment_allocations a ON a.invoice_id = i.id AND a.target_type = 'client_invoice'
+      JOIN payment_allocations a ON a.invoice_id = i.id AND a.target_type = 'client_invoice' AND a.voided_at IS NULL
       GROUP BY i.id, i.amount HAVING SUM(a.amount) > i.amount
     ) violations`,
   },

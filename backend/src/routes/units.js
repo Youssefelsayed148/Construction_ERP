@@ -442,8 +442,8 @@ router.get('/summary', authenticate, authorize(), async (req, res) => {
          FROM units u
          JOIN buildings b ON u.building_id = b.id
          LEFT JOIN clients c ON u.client_id = c.id
-         LEFT JOIN invoices i ON i.description LIKE '%' || u.code || '%' AND i.project_id = b.project_id
-         LEFT JOIN payments pm ON pm.invoice_id = i.id
+         LEFT JOIN invoices i ON i.description LIKE '%' || u.code || '%' AND i.project_id = b.project_id AND i.status NOT IN ('void', 'cancelled', 'credited')
+         LEFT JOIN payments pm ON pm.invoice_id = i.id AND pm.voided_at IS NULL
          WHERE b.project_id = $1 AND u.client_id IS NOT NULL
          GROUP BY c.id, c.name_en, c.name_ar
          ORDER BY total_contracted DESC`,

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocale } from '../hooks/useLocale';
-import { Search, Plus, Edit, Trash2, Package, X } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Package, X, RotateCcw } from 'lucide-react';
+import ReasonDialog from '../components/common/ReasonDialog';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
@@ -71,6 +72,10 @@ function Items() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [dialogError, setDialogError] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -79,28 +84,31 @@ function Items() {
       if (selectedCategory) params.append('category', selectedCategory);
       if (searchQuery) params.append('search', searchQuery);
       params.append('limit', '200');
+      if (showDeleted) params.append('include_deleted', 'true');
       const res = await fetchApi(`${API_URL}/items?${params}`);
       if (res.success) setItems(res.data || []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, [selectedCategory, searchQuery]);
+  }, [selectedCategory, searchQuery, showDeleted]);
 
   useEffect(() => { loadItems(); }, [loadItems]);
 
-  const handleDelete = async (id) => {
-    if (locale === 'ar') {
-      const name = prompt('اكتب اسم العنصر للحذف:');
-      const item = items.find(i => i.id === id);
-      if (name !== item?.name_en && name !== item?.name_ar) return;
-    } else {
-      const name = prompt('Type item name to confirm delete:');
-      const item = items.find(i => i.id === id);
-      if (name !== item?.name_en && name !== item?.name_ar) return;
-    }
+  // Soft delete: the item is hidden, not destroyed; a reason is optional for masters.
+  const confirmDelete = async (reason) => {
+    setBusy(true); setDialogError('');
     try {
-      await fetchApi(`${API_URL}/items/${id}`, { method: 'DELETE' });
+      await fetchApi(`${API_URL}/items/${deleteTarget.id}`, { method: 'DELETE', body: JSON.stringify({ reason }) });
+      setDeleteTarget(null);
       loadItems();
-    } catch (e) { alert(e.message); }
+    } catch (e) { setDialogError(e.message); }
+    finally { setBusy(false); }
+  };
+
+  const restoreItem = async (id) => {
+    try {
+      await fetchApi(`${API_URL}/items/${id}/restore`, { method: 'POST' });
+      loadItems();
+    } catch (e) { setDialogError(e.message); }
   };
 
   const categoryLabel = (cat) => CATEGORY_LABELS[locale]?.[cat] || cat;
@@ -164,6 +172,11 @@ function Items() {
         </div>
       </div>
 
+      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '12px', fontSize: '13px' }}>
+        <input type="checkbox" checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} />
+        {t('inventory.record.showDeleted')}
+      </label>
+
       {/* Items table */}
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
@@ -200,7 +213,7 @@ function Items() {
                   <td>{unitLabel(item.unit)}</td>
                   <td>
                     <span className={`badge ${item.is_active ? 'badge-success' : 'badge-danger'}`}>
-                      {item.is_active ? (locale === 'ar' ? 'نشط' : 'Active') : (locale === 'ar' ? 'غير نشط' : 'Inactive')}
+                      {item.deleted_at ? t('inventory.record.deletedBadge') : item.is_active ? t('common.statuses.active') : t('common.statuses.inactive')}
                     </span>
                   </td>
                   <td>
@@ -208,9 +221,15 @@ function Items() {
                       <button className="btn" style={{ padding: '6px 10px' }} onClick={() => { setEditingItem(item); setShowModal(true); }}>
                         <Edit size={14} />
                       </button>
-                      <button className="btn btn-danger" style={{ padding: '6px 10px' }} onClick={() => handleDelete(item.id)}>
-                        <Trash2 size={14} />
-                      </button>
+                      {item.deleted_at ? (
+                        <button className="btn" style={{ padding: '6px 10px' }} title={t('inventory.record.restore')} aria-label={t('inventory.record.restore')} onClick={() => restoreItem(item.id)}>
+                          <RotateCcw size={14} />
+                        </button>
+                      ) : (
+                        <button className="btn btn-danger" style={{ padding: '6px 10px' }} title={t('common.delete')} aria-label={t('common.delete')} onClick={() => { setDialogError(''); setDeleteTarget(item); }}>
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -219,6 +238,17 @@ function Items() {
           </table>
         </div>
       )}
+
+      <ReasonDialog
+        open={Boolean(deleteTarget)}
+        title={t('inventory.record.deleteTitle')}
+        message={deleteTarget ? t('inventory.record.deleteMessage', { name: itemName(deleteTarget) }) : ''}
+        confirmLabel={t('inventory.record.deleteConfirm')}
+        busy={busy}
+        error={dialogError}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
 
       {/* Create/Edit Modal */}
       {showModal && <ItemModal

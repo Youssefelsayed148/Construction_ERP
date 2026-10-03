@@ -155,6 +155,10 @@ const MODULE_OVERRIDES = Object.freeze({
 // [mount module, METHOD, route path pattern, action | (req) => action]
 const ACTION_OVERRIDES = Object.freeze([
   ['approvals', 'PUT', /^\/:id\/approve$/, 'approve'],
+  ['invoices', 'DELETE', /^\/:id$/, 'void'],
+  ['items', 'POST', /^\/:id\/restore$/, 'delete'],
+  ['payments', 'DELETE', /^\/:id$/, 'void'],
+  ['suppliers', 'POST', /^\/:id\/restore$/, 'delete'],
   ['approvals', 'PUT', /^\/:id\/reject$/, 'reject'],
   ['commercial', 'POST', /^\/variations\/:id\/start$/, 'submit'],
   ['commercial', 'POST', /^\/variations\/:id\/decide$/, 'approve'],

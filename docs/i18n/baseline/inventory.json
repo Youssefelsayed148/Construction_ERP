@@ -2,11 +2,11 @@
   "note": "Heuristic static counts. Per-file counts may only go down (npm run i18n:check). Regenerate with npm run i18n:inventory.",
   "frontend": {
     "totals": {
-      "inlineBranches": 1176,
+      "inlineBranches": 1167,
       "hardcodedEnglish": 102,
       "rawEnumRendering": 5,
       "hardcodedFormat": 8,
-      "prompts": 155
+      "prompts": 145
     },
     "files": {
       "components/common/ConfirmDialog.js": {
@@ -115,18 +115,18 @@
         "prompts": 9
       },
       "pages/Invoices.js": {
-        "inlineBranches": 57,
+        "inlineBranches": 55,
         "hardcodedEnglish": 0,
         "rawEnumRendering": 0,
         "hardcodedFormat": 0,
-        "prompts": 5
+        "prompts": 1
       },
       "pages/Items.js": {
-        "inlineBranches": 17,
+        "inlineBranches": 14,
         "hardcodedEnglish": 0,
         "rawEnumRendering": 0,
         "hardcodedFormat": 0,
-        "prompts": 3
+        "prompts": 0
       },
       "pages/Legal.js": {
         "inlineBranches": 22,
@@ -255,11 +255,11 @@
         "prompts": 1
       },
       "pages/Suppliers.js": {
-        "inlineBranches": 37,
+        "inlineBranches": 34,
         "hardcodedEnglish": 1,
         "rawEnumRendering": 0,
         "hardcodedFormat": 0,
-        "prompts": 3
+        "prompts": 0
       },
       "pages/UnitsSales.js": {
         "inlineBranches": 43,
@@ -269,7 +269,7 @@
         "prompts": 4
       },
       "pages/WorkOrders.js": {
-        "inlineBranches": 86,
+        "inlineBranches": 85,
         "hardcodedEnglish": 0,
         "rawEnumRendering": 0,
         "hardcodedFormat": 0,
@@ -296,18 +296,18 @@
           "boq": 2,
           "clients": 2,
           "commercial": 3,
-          "common": 105,
+          "common": 109,
           "costing": 2,
           "dashboard": 4,
           "documentControl": 3,
           "enums": 91,
           "errors": 11,
           "expenses": 1,
-          "finance": 3,
+          "finance": 10,
           "handover": 2,
           "hr": 2,
           "hse": 3,
-          "inventory": 3,
+          "inventory": 9,
           "legal": 1,
           "locations": 2,
           "navigation": 28,
@@ -321,7 +321,7 @@
           "schedule": 3,
           "site": 3,
           "subcontractors": 2,
-          "suppliers": 2,
+          "suppliers": 8,
           "workorders": 2
         }
       },
@@ -335,18 +335,18 @@
           "boq": 2,
           "clients": 2,
           "commercial": 3,
-          "common": 109,
+          "common": 113,
           "costing": 2,
           "dashboard": 4,
           "documentControl": 3,
           "enums": 91,
           "errors": 11,
           "expenses": 1,
-          "finance": 3,
+          "finance": 10,
           "handover": 2,
           "hr": 2,
           "hse": 3,
-          "inventory": 3,
+          "inventory": 9,
           "legal": 1,
           "locations": 2,
           "navigation": 28,
@@ -360,22 +360,18 @@
           "schedule": 3,
           "site": 3,
           "subcontractors": 2,
-          "suppliers": 2,
+          "suppliers": 8,
           "workorders": 2
         }
       }
     },
-    "usedKeysMissingFromEn": [
-      "common.actions"
-    ],
-    "usedKeysMissingFromAr": [
-      "common.actions"
-    ],
+    "usedKeysMissingFromEn": [],
+    "usedKeysMissingFromAr": [],
     "emptyNamespaces": {
       "en": [],
       "ar": []
     },
-    "usedKeys": 57,
+    "usedKeys": 82,
     "dynamicKeyCalls": {
       "components/project/ProjectShell.js": 2,
       "i18n/enums.js": 1
@@ -396,8 +392,8 @@
   },
   "server": {
     "totals": {
-      "englishLiteral": 255,
-      "exceptionMessage": 480
+      "englishLiteral": 270,
+      "exceptionMessage": 484
     },
     "files": {
       "actions.js": {
@@ -421,8 +417,8 @@
         "exceptionMessage": 9
       },
       "auth.js": {
-        "englishLiteral": 6,
-        "exceptionMessage": 3
+        "englishLiteral": 8,
+        "exceptionMessage": 4
       },
       "boq.js": {
         "englishLiteral": 4,
@@ -453,8 +449,8 @@
         "exceptionMessage": 5
       },
       "doccontrol.js": {
-        "englishLiteral": 13,
-        "exceptionMessage": 35
+        "englishLiteral": 15,
+        "exceptionMessage": 36
       },
       "documents.js": {
         "englishLiteral": 2,
@@ -485,12 +481,12 @@
         "exceptionMessage": 38
       },
       "invoices.js": {
-        "englishLiteral": 4,
+        "englishLiteral": 6,
         "exceptionMessage": 5
       },
       "items.js": {
-        "englishLiteral": 6,
-        "exceptionMessage": 6
+        "englishLiteral": 7,
+        "exceptionMessage": 7
       },
       "legal.js": {
         "englishLiteral": 3,
@@ -521,7 +517,7 @@
         "exceptionMessage": 4
       },
       "payments.js": {
-        "englishLiteral": 1,
+        "englishLiteral": 3,
         "exceptionMessage": 3
       },
       "payroll.js": {
@@ -565,15 +561,15 @@
         "exceptionMessage": 12
       },
       "suppliers.js": {
-        "englishLiteral": 9,
-        "exceptionMessage": 8
+        "englishLiteral": 10,
+        "exceptionMessage": 9
       },
       "units.js": {
         "englishLiteral": 12,
         "exceptionMessage": 11
       },
       "users.js": {
-        "englishLiteral": 6,
+        "englishLiteral": 11,
         "exceptionMessage": 6
       },
       "v1.js": {

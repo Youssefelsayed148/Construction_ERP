@@ -308,7 +308,7 @@ async function autoProjectReport(q, projectId, user) {
   const variations = await safe('SELECT * FROM variations WHERE project_id = $1', [projectId]);
   sections.push({ key: 'variations', title: 'Variations', lines: [`Count: ${count(variations)}, value: ${Math.round(sum(variations, 'amount') * 100) / 100}`] });
   const invoicesRows = await safe('SELECT * FROM invoices WHERE project_id = $1', [projectId]);
-  const paymentsRows = await safe('SELECT * FROM payments WHERE project_id = $1', [projectId]);
+  const paymentsRows = await safe('SELECT * FROM payments WHERE project_id = $1 AND voided_at IS NULL', [projectId]);
   const expensesRows = await safe('SELECT * FROM expenses WHERE project_id = $1', [projectId]);
   sections.push({
     key: 'financial_status', title: 'Financial status',

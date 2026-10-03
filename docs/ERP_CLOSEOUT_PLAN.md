@@ -150,7 +150,7 @@ Goal: the database refuses to be wrong.
 
 2.5 Delete semantics
 - [ ] Change 171 `ON DELETE CASCADE`: financial, procurement, contractual and handover tables become RESTRICT; add `deleted_at`/`deleted_by` soft-delete.
-- [ ] Convert hard-delete routes (items.js:212, suppliers.js:138, payments.js:123, invoices.js:166) to soft-delete or void-with-reason.
+- [x] Convert hard-delete routes (items, suppliers, payments, invoices) to soft-delete or void-with-reason (2.5a, migration 0009, UI in the same PR). Still hard-deleting, to convert in the slice that restricts their FKs: assets, boq sections/items, clients, doccontrol documents, expenses, hr employees/laborers/labor-payments, legal, locations, maintenance, materials recipe lines, payroll, project phases/team/milestones, qhse tests, reports views, schedule activities/relationships, site visits, supplier materials, units/buildings, workorders (none of these is financial ledger, but several are contractual or hold cost: work orders, boq, expenses, payroll).
 - [ ] 135 `REFERENCES users` with no ON DELETE: define policy (RESTRICT plus deactivate-only users).
 - [ ] stock_movements immutability: ensure parent delete is blocked cleanly rather than raising a trigger error.
 - [x] Data-cleaning report for NOT VALID constraints (0007, 0008 and every later one): `npm run data-cleaning-report`, lists offenders, never auto-fixes. `scripts/preflight-upgrade.sql` reports what migrations 0001-0008 do to existing rows.

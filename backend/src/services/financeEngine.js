@@ -230,7 +230,7 @@ async function invoiceOutstanding(q, invoiceId) {
   if (!inv) throw new Error(`Invoice #${invoiceId} not found`);
   const net = inv.net_amount != null && toNum(inv.net_amount) > 0 ? toNum(inv.net_amount) : toNum(inv.amount);
   const allocs = (await q(
-    "SELECT * FROM payment_allocations WHERE invoice_id = $1 AND target_type = 'client_invoice'",
+    "SELECT * FROM payment_allocations WHERE invoice_id = $1 AND target_type = 'client_invoice' AND voided_at IS NULL",
     [invoiceId]
   )).rows;
   const allocatedSum = round2(allocs.reduce((s, a) => s + toNum(a.amount), 0));
@@ -241,7 +241,7 @@ async function supplierInvoiceOutstanding(q, supplierInvoiceId) {
   const inv = (await q('SELECT * FROM supplier_invoices WHERE id = $1', [supplierInvoiceId])).rows[0];
   if (!inv) throw new Error(`Supplier invoice #${supplierInvoiceId} not found`);
   const allocs = (await q(
-    "SELECT * FROM payment_allocations WHERE supplier_invoice_id = $1 AND target_type = 'supplier_invoice'",
+    "SELECT * FROM payment_allocations WHERE supplier_invoice_id = $1 AND target_type = 'supplier_invoice' AND voided_at IS NULL",
     [supplierInvoiceId]
   )).rows;
   const allocated = round2(allocs.reduce((s, a) => s + toNum(a.amount), 0));
@@ -256,9 +256,10 @@ async function allocatePayment(q, {
 }) {
   const payment = (await q('SELECT * FROM payments WHERE id = $1', [payment_id])).rows[0];
   if (!payment) throw new Error(`Payment #${payment_id} not found`);
+  if (payment.voided_at) throw new Error(`Payment #${payment_id} is void and cannot be allocated`);
 
   const existing = (await q(
-    'SELECT * FROM payment_allocations WHERE payment_id = $1',
+    'SELECT * FROM payment_allocations WHERE payment_id = $1 AND voided_at IS NULL',
     [payment_id]
   )).rows;
   const alreadyAllocated = round2(existing.reduce((s, a) => s + toNum(a.amount), 0));
@@ -429,7 +430,7 @@ async function arAging(q, { now = new Date() } = {}) {
     const net = inv.net_amount != null && toNum(inv.net_amount) > 0 ? toNum(inv.net_amount) : toNum(inv.amount);
     if (net <= 0) continue;
     const allocs = (await q(
-      "SELECT * FROM payment_allocations WHERE invoice_id = $1 AND target_type = 'client_invoice'",
+      "SELECT * FROM payment_allocations WHERE invoice_id = $1 AND target_type = 'client_invoice' AND voided_at IS NULL",
       [inv.id]
     )).rows;
     const outstanding = round2(net - allocatedSum(allocs));
@@ -446,7 +447,7 @@ async function apAging(q, { now = new Date() } = {}) {
   const nowMs = new Date(now).getTime();
   for (const inv of invoices) {
     const allocs = (await q(
-      "SELECT * FROM payment_allocations WHERE supplier_invoice_id = $1 AND target_type = 'supplier_invoice'",
+      "SELECT * FROM payment_allocations WHERE supplier_invoice_id = $1 AND target_type = 'supplier_invoice' AND voided_at IS NULL",
       [inv.id]
     )).rows;
     const outstanding = round2(toNum(inv.total_amount) - allocatedSum(allocs));
@@ -476,7 +477,7 @@ async function companyFinanceDashboard(q, { now = new Date() } = {}) {
   }
 
   // Cash collected (AR) and payments due (open AP).
-  const arPayments = (await q("SELECT * FROM payments WHERE direction = 'ar'")).rows;
+  const arPayments = (await q("SELECT * FROM payments WHERE direction = 'ar' AND voided_at IS NULL")).rows;
   const cashCollected = round2(arPayments.reduce((s, p) => s + toNum(p.amount), 0));
   const openPos = (await q("SELECT * FROM purchase_orders WHERE status IN ('issued','approved','confirmed')")).rows;
   const paymentsDue = round2(openPos.reduce((s, p) => s + toNum(p.total_amount), 0));
@@ -535,7 +536,7 @@ async function runReceivableReminderSweep(q = defaultQuery, opts = {}) {
   for (const inv of invoices) {
     const net = inv.net_amount != null && toNum(inv.net_amount) > 0 ? toNum(inv.net_amount) : toNum(inv.amount);
     const allocs = (await q(
-      "SELECT * FROM payment_allocations WHERE invoice_id = $1 AND target_type = 'client_invoice'",
+      "SELECT * FROM payment_allocations WHERE invoice_id = $1 AND target_type = 'client_invoice' AND voided_at IS NULL",
       [inv.id]
     )).rows;
     const outstanding = round2(net - allocatedSum(allocs));

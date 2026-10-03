@@ -132,6 +132,7 @@ function buildSyntheticRequest(def, routerName, args, user, readOnly = false) {
   const params = {}; const query = {}; const body = {};
   const { reason: _reason, ...toolArgs } = args || {};
   void _reason;
+  if (def.reasonInBody && _reason) body.reason = _reason; // e.g. void_financial_record: the void reason is recorded on the invoice
   for (const [key, value] of Object.entries(toolArgs)) {
     if (argMap[key]) params[argMap[key]] = String(value);
     else if (def.method === 'GET') query[key] = value;

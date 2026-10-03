@@ -1,4 +1,12 @@
 {
   "title": "Suppliers",
-  "empty": "No suppliers yet."
+  "empty": "No suppliers yet.",
+  "record": {
+    "deleteTitle": "Delete supplier",
+    "deleteMessage": "{name} will be hidden from lists and pickers. Existing orders, deliveries and invoices keep it, and you can restore it later.",
+    "deleteConfirm": "Delete",
+    "restore": "Restore",
+    "showDeleted": "Show deleted suppliers",
+    "deletedBadge": "Deleted"
+  }
 }

@@ -5,6 +5,7 @@ const Joi = require('joi');
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
+const { reasonFrom } = require('../utils/reason');
 
 const CATEGORIES = ['raw_material', 'finished_material', 'equipment_rental', 'consumable', 'tool', 'safety', 'other'];
 const SUB_CATEGORIES = {
@@ -50,9 +51,11 @@ router.get('/categories', authenticate, authorize(), (req, res) => {
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
     const { category, sub_category, search, is_active, limit = 100, offset = 0 } = req.query;
+    // Soft-deleted items are hidden unless asked for (include_deleted=true).
     let conditions = [];
     let params = [];
     let idx = 1;
+    if (req.query.include_deleted !== 'true') conditions.push('deleted_at IS NULL');
 
     if (category && CATEGORIES.includes(category)) {
       conditions.push(`category = $${idx++}`);
@@ -73,11 +76,12 @@ router.get('/', authenticate, authorize(), async (req, res) => {
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const filterParams = [...params];
     params.push(parseInt(limit), parseInt(offset));
 
     const [dataResult, countResult] = await Promise.all([
       query(`SELECT * FROM item_master ${where} ORDER BY category, sub_category, code LIMIT $${idx++} OFFSET $${idx}`, params),
-      query(`SELECT COUNT(*) as total FROM item_master ${where.replace(/\$\d+/g, (m) => `$${parseInt(m.slice(1)) - 2}`)}`, params.slice(0, -2))
+      query(`SELECT COUNT(*) as total FROM item_master ${where}`, filterParams)
     ]);
 
     res.json({ success: true, data: dataResult.rows, meta: { total: parseInt(countResult.rows[0].total), limit: parseInt(limit), offset: parseInt(offset) } });
@@ -207,19 +211,41 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
   }
 });
 
+// Soft delete: the item stays referenced by its purchase orders, GRNs and stock history; lists and pickers hide it.
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const result = await query('DELETE FROM item_master WHERE id = $1 RETURNING code, name_en', [req.params.id]);
+    const reason = reasonFrom(req) || null;
+    const result = await query(
+      `UPDATE item_master SET deleted_at = NOW(), deleted_by = $2, delete_reason = $3, is_active = false
+        WHERE id = $1 AND deleted_at IS NULL RETURNING code, name_en`,
+      [req.params.id, req.user.id, reason]);
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Item not found' });
 
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       action: 'delete', module: 'items',
-      description: `Deleted item ${result.rows[0].code}`,
+      description: `Deleted item ${result.rows[0].code}${reason ? `: ${reason}` : ''}`,
       entityId: req.params.id, entityType: 'item'
     });
 
     res.json({ success: true, message: 'Item deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/:id/restore', authenticate, authorize(), async (req, res) => {
+  try {
+    const result = await query(
+      `UPDATE item_master SET deleted_at = NULL, deleted_by = NULL, delete_reason = NULL, is_active = true
+        WHERE id = $1 AND deleted_at IS NOT NULL RETURNING *`, [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Deleted item not found' });
+    await logActivity({
+      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+      action: 'restore', module: 'items', description: `Restored item ${result.rows[0].code}`,
+      entityId: req.params.id, entityType: 'item'
+    });
+    res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
