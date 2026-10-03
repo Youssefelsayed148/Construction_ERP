@@ -111,6 +111,16 @@ SELECT migration, effect, kind, affected_rows FROM (
          + (SELECT count(*) FROM units WHERE status NOT IN ('available','reserved','contracted','delivered','blocked','closed'))
          + (SELECT count(*) FROM buildings WHERE status NOT IN ('planning','under_construction','completed'))
          + (SELECT count(*) FROM expenses WHERE status NOT IN ('pending','approved','rejected'))
+  -- 0013: money standard and unique indexes
+  UNION ALL
+  SELECT '0013', 'money columns widened to NUMERIC(15,2) (invoices.amount, payments.amount, supplier_materials.unit_price, units.price_per_m2): values unchanged, tables rewritten once', 'will_change',
+         (SELECT count(*) FROM invoices) + (SELECT count(*) FROM payments) + (SELECT count(*) FROM supplier_materials) + (SELECT count(*) FROM units)
+  UNION ALL
+  SELECT '0013', 'records with more than one pending approval request: the migration STOPS until these are resolved by a person', 'attention',
+         (SELECT count(*) FROM (SELECT 1 FROM approval_requests WHERE status = 'pending' GROUP BY module_name, request_type, request_id HAVING count(*) > 1) d)
+  UNION ALL
+  SELECT '0013', 'documents with more than one current version: the migration STOPS until these are resolved by a person', 'attention',
+         (SELECT count(*) FROM (SELECT 1 FROM document_versions WHERE is_current GROUP BY document_id HAVING count(*) > 1) d)
 ) report
 ORDER BY migration, kind, effect;
 

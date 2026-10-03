@@ -157,9 +157,9 @@ Goal: the database refuses to be wrong.
 
 2.6 Constraints
 - [x] Add CHECKs (2.6a, migration 0012): PO/PR/RFQ/delivery/return line qty > 0, delivered <= ordered (+tolerance) (2.3), invoice and payment amount > 0, non-negative money on PO lines, POs, supplier invoices, expenses, BOQ.
-- [ ] Status enums: done for invoices, work orders, projects, phases, milestones, units, buildings, expenses (vocabularies read from the writing code). Open: the other ~75 workflow tables, which need a status audit first (procurement, quality, HSE, doc control, handover are written from several places and by the workflow engine maps).
-- [ ] Unify money columns (NUMERIC(14,2) vs DECIMAL(15,2)) to one standard.
-- [ ] Partial UNIQUE index on pending approvals (module_name, request_id, request_type); UNIQUE one-current-revision on doc revisions.
+- [ ] Status enums (`scripts/status-audit.sql` lists every distinct status value per table for a restored copy): done for invoices, work orders, projects, phases, milestones, units, buildings, expenses (vocabularies read from the writing code). Open: the other ~75 workflow tables, which need a status audit first (procurement, quality, HSE, doc control, handover are written from several places and by the workflow engine maps).
+- [x] Unify money columns to one standard (2.6b, migration 0013): money amounts NUMERIC(15,2); invoices.amount, payments.amount, supplier_materials.unit_price, units.price_per_m2 were narrower and are widened. Valuation stays NUMERIC(18,4) unit, (18,2) total. A test fails if a money column is narrower again.
+- [x] Partial UNIQUE index on pending approvals (module_name, request_type, request_id) and one current version per document (2.6b, migration 0013). Also fixed: uploading a revision left no version current; version numbers raced. The migration stops (nothing changed) if duplicates exist.
 - [ ] Remove the legacy single `material_id` on PR/PO headers and the try/catch fallbacks for missing line tables.
 
 2.7 Journal / GL
