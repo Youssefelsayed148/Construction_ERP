@@ -378,7 +378,17 @@ router.post('/invoices', authenticate, authorize(), async (req, res) => {
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     const result = await atomic((q) => svc.recordSupplierInvoice(q, { ...value, created_by: req.user.id }));
     res.status(201).json({ success: true, data: result });
-  } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+  } catch (e) {
+    // Phase 3.2: the unique constraint (supplier_id, invoice_number) is the database backstop; whether the
+    // service check or the constraint wins the race, the client sees the same 409 with a stable code.
+    if (e.status === 409 || e.code === '23505') {
+      return res.status(409).json({
+        success: false, error: e.code === '23505' ? 'Duplicate invoice: this supplier already submitted this invoice number' : e.message,
+        error_code: 'supplier_invoice_duplicate', error_params: { supplier_id: req.body.supplier_id, invoice_number: req.body.invoice_number },
+      });
+    }
+    res.status(400).json({ success: false, error: e.message });
+  }
 });
 
 // Phase 3.1 — approval is the accrual point for services. An unmapped ledger account fails the whole

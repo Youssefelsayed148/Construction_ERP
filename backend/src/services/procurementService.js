@@ -807,7 +807,7 @@ async function recordSupplierInvoice(q, {
     'SELECT * FROM supplier_invoices WHERE supplier_id = $1 AND invoice_number = $2',
     [supplier_id, invoice_number]
   )).rows[0];
-  if (duplicate) throw new Error('Duplicate invoice: this supplier already submitted this invoice number');
+  if (duplicate) throw new ConflictError('Duplicate invoice: this supplier already submitted this invoice number');
 
   const r = await q(
     `INSERT INTO supplier_invoices
