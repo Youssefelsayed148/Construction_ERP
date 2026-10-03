@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import { ArrowLeft, Edit, Plus, Users, Calendar, Flag, MapPin, X, Briefcase, TrendingUp, TrendingDown } from 'lucide-react';
 import { formatCurrency, formatDate, formatPercent } from '../utils/formatters';
+import { authService } from '../services/api';
+import { canSeeFinancials } from '../utils/projectNav';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
@@ -159,17 +161,19 @@ function ProjectDetail() {
 
   if (!project) return null;
 
+  // Presentation only: the API still decides what each role may read (utils/projectNav.js).
+  const showFinancials = canSeeFinancials(authService.getCurrentUser()?.role);
   const infoCards = [
     { icon: Briefcase, label: locale === 'ar' ? 'العميل' : 'Client', value: clientName() },
     { icon: Users, label: locale === 'ar' ? 'مدير المشروع' : 'Project Manager', value: (locale === 'ar' ? project.project_manager_name : (project.project_manager_name_en || project.project_manager_name)) || '-' },
     { icon: MapPin, label: locale === 'ar' ? 'العنوان' : 'Address', value: project.address || '-' },
-    { icon: Flag, label: locale === 'ar' ? 'قيمة العقد' : 'Contract Value', value: formatCurrency(project.contract_value), accent: true },
-    { icon: Flag, label: locale === 'ar' ? 'الميزانية' : 'Budget', value: formatCurrency(project.budget), accent: true },
+    { icon: Flag, label: locale === 'ar' ? 'قيمة العقد' : 'Contract Value', value: formatCurrency(project.contract_value), accent: true, financial: true },
+    { icon: Flag, label: locale === 'ar' ? 'الميزانية' : 'Budget', value: formatCurrency(project.budget), accent: true, financial: true },
     { icon: Calendar, label: locale === 'ar' ? 'تاريخ البدء' : 'Start Date', value: formatDate(project.start_date) },
     { icon: Calendar, label: locale === 'ar' ? 'المتوقع' : 'Expected', value: project.expected_completion ? formatDate(project.expected_completion) : '-' },
-  ];
+  ].filter((card) => showFinancials || !card.financial);
 
-  if (finance) {
+  if (finance && showFinancials) {
     infoCards.push(
       { icon: TrendingUp, label: locale === 'ar' ? 'المدفوعات' : 'Payments Collected', value: formatCurrency(finance.total_paid), accent: true },
       { icon: Flag, label: locale === 'ar' ? 'المستحق' : 'Outstanding', value: formatCurrency(finance.outstanding_balance), accent: true },
@@ -206,30 +210,6 @@ function ProjectDetail() {
       </div>
 
       <div className="level-line" />
-
-      {/* Module quick links */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
-        {[
-          { path: 'boq', label: locale === 'ar' ? 'جدول الكميات' : 'BOQ' },
-          { path: 'work-orders', label: locale === 'ar' ? 'أوامر العمل' : 'Work Orders' },
-          { path: 'site', label: locale === 'ar' ? 'إدارة الموقع' : 'Site Management' },
-          { path: 'site-workspace', label: locale === 'ar' ? 'مساحة عمل الموقع' : 'Site Workspace' },
-          { path: 'operations', label: locale === 'ar' ? 'المواد والمشتريات' : 'Materials & Commercial' },
-          { path: 'locations', label: locale === 'ar' ? 'المواقع والكميات' : 'Locations & Quantities' },
-          { path: 'qhse', label: locale === 'ar' ? 'الجودة والسلامة' : 'Quality & HSE' },
-          { path: 'hse', label: locale === 'ar' ? 'الصحة والسلامة' : 'HSE Workspace' },
-          { path: 'schedule', label: locale === 'ar' ? 'الجدولة' : 'Schedule' },
-          { path: 'reports', label: locale === 'ar' ? 'التقارير' : 'Reports' },
-          { path: 'handover', label: locale === 'ar' ? 'التسليم والإغلاق' : 'Handover & closeout' },
-          { path: 'documents', label: locale === 'ar' ? 'المستندات' : 'Documents' },
-          { path: 'units', label: locale === 'ar' ? 'الوحدات والمبيعات' : 'Units & Sales' },
-        ].map(m => (
-          <button key={m.path} className="btn" style={{ padding: '6px 14px', fontSize: '13px' }}
-            onClick={() => navigate(`/projects/${id}/${m.path}`)}>
-            {m.label}
-          </button>
-        ))}
-      </div>
 
       {/* Info cards row */}
       <div className="stats-grid">

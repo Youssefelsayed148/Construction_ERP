@@ -2,7 +2,7 @@
   "note": "Heuristic static counts. Per-file counts may only go down (npm run i18n:check). Regenerate with npm run i18n:inventory.",
   "frontend": {
     "totals": {
-      "inlineBranches": 1189,
+      "inlineBranches": 1176,
       "hardcodedEnglish": 102,
       "rawEnumRendering": 5,
       "hardcodedFormat": 8,
@@ -178,7 +178,7 @@
         "prompts": 0
       },
       "pages/ProjectDetail.js": {
-        "inlineBranches": 78,
+        "inlineBranches": 65,
         "hardcodedEnglish": 0,
         "rawEnumRendering": 0,
         "hardcodedFormat": 0,
@@ -314,7 +314,7 @@
           "payroll": 1,
           "portals": 4,
           "procurement": 4,
-          "projects": 5,
+          "projects": 26,
           "projectWizard": 4,
           "qhse": 3,
           "reports": 2,
@@ -353,7 +353,7 @@
           "payroll": 1,
           "portals": 4,
           "procurement": 4,
-          "projects": 9,
+          "projects": 30,
           "projectWizard": 4,
           "qhse": 3,
           "reports": 2,
@@ -375,8 +375,9 @@
       "en": [],
       "ar": []
     },
-    "usedKeys": 55,
+    "usedKeys": 57,
     "dynamicKeyCalls": {
+      "components/project/ProjectShell.js": 2,
       "i18n/enums.js": 1
     },
     "parity": {
