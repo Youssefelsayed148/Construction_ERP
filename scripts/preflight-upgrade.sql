@@ -147,6 +147,21 @@ SELECT migration, effect, kind, affected_rows FROM (
   UNION ALL
   SELECT '0016', 'invoices already issued (sent, issued, partially_paid, paid, overdue) have no ledger entry and get none: postings start with new issues, no backfill; decide on an opening balance separately', 'attention',
          (SELECT count(*) FROM invoices WHERE status IN ('sent','issued','partially_paid','paid','overdue'))
+  -- 0017: approval requests and their workflow instances
+  UNION ALL
+  SELECT '0017', 'active workflow instances with no legacy_approval_id whose context names a request nobody else claims: they get linked (column NULL -> id)', 'will_change',
+         (SELECT count(*) FROM workflow_instances wi
+           WHERE wi.legacy_approval_id IS NULL AND wi.context ->> 'legacy_approval_id' ~ '^[0-9]+$'
+             AND EXISTS (SELECT 1 FROM approval_requests ar WHERE ar.id = (wi.context ->> 'legacy_approval_id')::integer)
+             AND NOT EXISTS (SELECT 1 FROM workflow_instances o WHERE o.legacy_approval_id = (wi.context ->> 'legacy_approval_id')::integer))
+  UNION ALL
+  SELECT '0017', 'instances with no legacy_approval_id whose request already has a linked twin: stale duplicates, left as they are, a person must cancel them', 'attention',
+         (SELECT count(*) FROM workflow_instances wi
+           WHERE wi.legacy_approval_id IS NULL AND wi.context ->> 'legacy_approval_id' ~ '^[0-9]+$'
+             AND EXISTS (SELECT 1 FROM workflow_instances o WHERE o.legacy_approval_id = (wi.context ->> 'legacy_approval_id')::integer))
+  UNION ALL
+  SELECT '0017', 'approval requests with more than one linked workflow instance: the migration STOPS until a person resolves these', 'attention',
+         (SELECT count(*) FROM (SELECT 1 FROM workflow_instances WHERE legacy_approval_id IS NOT NULL GROUP BY legacy_approval_id HAVING count(*) > 1) d)
 ) report
 ORDER BY migration, kind, effect;
 

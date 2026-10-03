@@ -168,8 +168,8 @@ Goal: the database refuses to be wrong.
 - [ ] Post client invoices, payments and supplier invoices to the ledger, with balanced-entry checks. Client invoices and client payments (and their voids) done in 2.7b (migration 0016, `services/glPosting.js`); supplier invoices and payments are posted with the cost accrual in 3.1 (no approve step exists yet, and the accrual point decides the posting).
 
 2.8 Approvals
-- [ ] Insert `approval_requests` and start the workflow in one transaction.
-- [ ] Lock in `recordLegacyDecision`; plan retirement of the legacy approval system (see Phase 8 note) with parity script until removed.
+- [x] Insert `approval_requests` and start the workflow in one transaction (2.8, migration 0017; the instance is now linked by `legacy_approval_id`, which the old code never set).
+- [x] Lock in `recordLegacyDecision` (row lock inside one transaction); retirement plan in `docs/APPROVALS_RETIREMENT.md`, parity script kept as `npm run approvals-parity` until removed (Phase 8).
 
 Exit gate: reconcile-database.js expanded (see Phase 11) passes on a copy of production-like data; concurrency suite green.
 

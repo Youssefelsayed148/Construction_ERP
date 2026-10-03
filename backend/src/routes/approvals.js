@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { query } = require('../config/database');
+const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const policy = require('../services/policy');
 const workflowEngine = require('../services/workflowEngine');
@@ -23,6 +23,9 @@ const MODULE_MANAGER_ROLES = {
   project_budgets: ['project_manager'],
   sub_contracts: ['project_manager'],
 };
+
+// Modules the legacy approval workflow handles.
+const APPROVAL_MODULES = [...Object.keys(MODULE_MANAGER_ROLES), ...DIRECT_TO_OWNER_MODULES];
 
 // Structured summary of the underlying record, attached to each list row so the
 // client can render/localize it instead of the bare "expense #19" FK pointer.
@@ -95,34 +98,61 @@ async function enrichApprovalRows(rows) {
 // and returns the identical external response shape so Approvals.js and the
 // approval-detail modal need no changes yet.
 async function advanceApproval({ approvalId, userId, userName, role, notes, action }) {
-  return workflowEngine.recordLegacyDecision(
+  // One transaction; recordLegacyDecision locks the request row, so a request is decided once.
+  return transaction((client) => workflowEngine.recordLegacyDecision(
     { approvalId, userId, userName, role, notes, action },
-    { query, logActivity }
-  );
+    { client, logActivity }
+  ));
 }
 
 // POST /api/approvals/request - Create approval request
 router.post('/request', authenticate, authorize(), async (req, res) => {
   try {
-    const { module_name, request_type, request_id, notes } = req.body;
+    const { module_name, request_type, notes } = req.body;
+    const request_id = Number.isInteger(Number(req.body.request_id)) ? Number(req.body.request_id) : req.body.request_id;
+
+    if (!APPROVAL_MODULES.includes(module_name)) {
+      return res.status(400).json({ success: false, error: `Unknown approval module "${module_name}"; expected one of ${APPROVAL_MODULES.join(', ')}` });
+    }
+    if (!Number.isInteger(request_id) || !request_type) {
+      return res.status(400).json({ success: false, error: 'request_type and an integer request_id are required' });
+    }
 
     const stage = DIRECT_TO_OWNER_MODULES.includes(module_name) ? 'owner_review' : 'manager_review';
 
-    // The unique index uq_approval_requests_one_pending decides who wins a race; the loser reads the winner's row.
-    const result = await query(
-      `INSERT INTO approval_requests (module_name, request_type, request_id, requester_id, notes, status, stage)
-       VALUES ($1, $2, $3, $4, $5, 'pending', $6)
-       ON CONFLICT (module_name, request_type, request_id) WHERE status = 'pending' DO NOTHING RETURNING *`,
-      [module_name, request_type, request_id, req.user.id, notes, stage]
-    );
-    if (result.rows.length === 0) {
-      const existing = await query(
-        `SELECT * FROM approval_requests
-         WHERE module_name = $1 AND request_id = $2 AND request_type = $3 AND status = 'pending'`,
-        [module_name, request_id, request_type]
+    // The request row and its workflow instance are created in one transaction (linked by legacy_approval_id);
+    // if the workflow cannot start, nothing is saved and the caller gets the error. The unique index
+    // uq_approval_requests_one_pending decides who wins a race; the loser reads the winner's row.
+    const created = await transaction(async (client) => {
+      const q = (text, params) => client.query(text, params);
+      const inserted = await q(
+        `INSERT INTO approval_requests (module_name, request_type, request_id, requester_id, notes, status, stage)
+         VALUES ($1, $2, $3, $4, $5, 'pending', $6)
+         ON CONFLICT (module_name, request_type, request_id) WHERE status = 'pending' DO NOTHING RETURNING *`,
+        [module_name, request_type, request_id, req.user.id, notes, stage]
       );
-      return res.json({ success: true, requires_approval: true, request: existing.rows[0], message: 'Approval request already exists' });
+      if (inserted.rows.length === 0) {
+        const existing = await q(
+          `SELECT * FROM approval_requests
+           WHERE module_name = $1 AND request_id = $2 AND request_type = $3 AND status = 'pending'`,
+          [module_name, request_id, request_type]
+        );
+        return { existing: existing.rows[0] };
+      }
+      await workflowEngine.startWorkflow('legacy_module_approval', module_name, request_id, {
+        module_name,
+        request_type,
+        request_id,
+        requester_id: req.user.id,
+        legacy_approval_id: inserted.rows[0].id,
+        notes: notes || null,
+      }, { client });
+      return { result: inserted };
+    });
+    if (created.existing) {
+      return res.json({ success: true, requires_approval: true, request: created.existing, message: 'Approval request already exists' });
     }
+    const result = created.result;
 
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
@@ -130,22 +160,6 @@ router.post('/request', authenticate, authorize(), async (req, res) => {
       description: `Approval requested for ${request_type} #${request_id}`,
       entityId: result.rows[0].id, entityType: 'approval_request'
     });
-
-    // Phase 6: start the matching workflow instance (legacy template) so the
-    // engine tracks the request from birth. Best-effort — the request row is
-    // the contract; migrateLegacyApprovals backfills any stragglers.
-    try {
-      await workflowEngine.startWorkflow('legacy_module_approval', module_name, request_id, {
-        module_name,
-        request_type,
-        request_id,
-        requester_id: req.user.id,
-        legacy_approval_id: result.rows[0].id,
-        notes: notes || null,
-      }, { query });
-    } catch (wfError) {
-      console.error('workflowEngine.startWorkflow failed for legacy request:', wfError.message);
-    }
 
     // Phase 7: event hook point — let the people who can act on this request
     // know (dispatcher routes 'approval.requested' to owner/admin + module

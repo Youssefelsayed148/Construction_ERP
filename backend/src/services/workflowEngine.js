@@ -183,14 +183,15 @@ async function startWorkflow(templateKey, entityType, entityId, context, opts = 
 
   const first = applicable[0];
   const inst = await client.query(
-    `INSERT INTO workflow_instances (template_id, template_key, entity_type, entity_id, project_id, context, current_step_key, status, requester_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', $8) RETURNING id`,
+    `INSERT INTO workflow_instances (template_id, template_key, entity_type, entity_id, project_id, context, current_step_key, status, requester_id, legacy_approval_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', $8, $9) RETURNING id`,
     [
       template.id, template.key, str(entityType), num(entityId),
       ctx.project_id == null ? null : num(ctx.project_id),
       JSON.stringify(ctx),
       first.step_key,
       ctx.requester_id == null ? null : num(ctx.requester_id),
+      ctx.legacy_approval_id == null ? null : num(ctx.legacy_approval_id),
     ]
   );
   const instanceId = inst.rows[0].id;
@@ -707,7 +708,9 @@ async function recordLegacyDecision({ approvalId, userId, userName, role, notes,
   const client = opts.client || { query: opts.query || defaultQuery };
   const logFn = opts.logActivity || null;
 
-  const pending = await client.query('SELECT * FROM approval_requests WHERE id = $1', [approvalId]);
+  // Row lock: concurrent decisions on one request queue here (the caller runs this in a transaction), and the
+  // loser sees the winner's status and is refused as already processed.
+  const pending = await client.query('SELECT * FROM approval_requests WHERE id = $1 FOR UPDATE', [approvalId]);
   if (pending.rows.length === 0) {
     return { statusCode: 404, body: { success: false, error: 'Request not found' } };
   }
