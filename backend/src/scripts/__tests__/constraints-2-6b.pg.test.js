@@ -41,7 +41,7 @@ describePg('2.6b constraints (real PostgreSQL, real app)', () => {
     owner = { id: row.id, token: tokens.signSession({ userId: row.id, tokenVersion: row.token_version }) };
   });
   afterAll(async () => {
-    await db.query("DELETE FROM approval_requests WHERE module_name = $1", [`c26b${tag}`]);
+    await db.query("DELETE FROM approval_requests WHERE module_name = $1 OR request_type = $1", [`c26b${tag}`]);
     await db.query('DELETE FROM user_project_roles WHERE user_id = $1', [owner.id]);
     await db.query('UPDATE users SET is_active = false WHERE id = $1', [owner.id]);
     await new Promise((resolve) => server.close(resolve));
@@ -72,10 +72,10 @@ describePg('2.6b constraints (real PostgreSQL, real app)', () => {
     });
 
     test('ten concurrent requests for the same record create one pending row and all answer success', async () => {
-      const body = { module_name: mod(), request_type: 'budget', request_id: 77, notes: 'race' };
+      const body = { module_name: 'expenses', request_type: mod(), request_id: 77, notes: 'race' }; // a module the workflow handles (2.8)
       const results = await Promise.all(Array.from({ length: 10 }, () => call('POST', '/api/approvals/request', body)));
       expect(results.map((r) => r.status)).toEqual(Array(10).fill(200));
-      const rows = (await db.query("SELECT id FROM approval_requests WHERE module_name = $1 AND request_id = 77 AND status = 'pending'", [mod()])).rows;
+      const rows = (await db.query("SELECT id FROM approval_requests WHERE module_name = 'expenses' AND request_type = $1 AND request_id = 77 AND status = 'pending'", [mod()])).rows;
       expect(rows).toHaveLength(1);
       expect(new Set(results.map((r) => r.body.request.id)).size).toBe(1);
     });
