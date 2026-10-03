@@ -80,6 +80,10 @@ describePg('role matrix on internal, v1 and MCP (real PostgreSQL, real app)', ()
     await db.query('DELETE FROM project_documents WHERE project_id = $1', [ids.pA]);
     await db.query('DELETE FROM sub_payment_certificates WHERE id = $1', [ids.cert]);
     await db.query('DELETE FROM sub_contracts WHERE id = $1', [ids.sc]);
+    await db.query('DELETE FROM material_inspection_requests WHERE purchase_order_id = $1', [ids.po]);
+    await db.query('DELETE FROM deliveries WHERE purchase_order_id = $1', [ids.po]);
+    await db.query('DELETE FROM purchase_orders WHERE id = $1', [ids.po]);
+    await db.query('DELETE FROM suppliers WHERE id = $1', [ids.supplier]);
     await db.query('DELETE FROM invoices WHERE id = $1', [ids.inv]);
     await db.query('DELETE FROM user_project_roles WHERE user_id = ANY($1)', [uids]);
     await db.query('UPDATE users SET is_active = false WHERE id = ANY($1)', [uids]);
@@ -170,10 +174,14 @@ describePg('role matrix on internal, v1 and MCP (real PostgreSQL, real app)', ()
     test('delivery, MIR and GRN routes are judged as module "inventory", not "procurement"', async () => {
       const role = await makeRole('inventory_only', [['inventory', 'create'], ['inventory', 'view']]);
       await makeUser('inventory_only', 'engineer', role);
-      // Reaches the handler (which then reports the missing record): not a 403.
+      // Reaches the handler (which then reports a business error): not a 403.
+      const supplier = (await one("INSERT INTO suppliers (name_ar, name_en) VALUES ($1, $1) RETURNING id", [`rm-sup-${tag}`])).id;
+      const po = (await one("INSERT INTO purchase_orders (order_number, supplier_id, project_id, status) VALUES ($1, $2, $3, 'issued') RETURNING id", [`RM-PO-${tag}`, supplier, ids.pA])).id;
+      const delivery = (await one("INSERT INTO deliveries (purchase_order_id, supplier_id) VALUES ($1, $2) RETURNING id", [po, supplier])).id;
+      ids.po = po; ids.supplier = supplier;
       const statuses = [
         await call('POST', '/api/procurement/deliveries', users.inventory_only.token, {}),
-        await call('POST', '/api/v1/deliveries/1/mir', users.inventory_only.token, {}),
+        await call('POST', `/api/v1/deliveries/${delivery}/mir`, users.inventory_only.token, {}),
       ];
       for (const s of statuses) expect(s).not.toBe(403);
       // procurement.create alone does not unlock them.

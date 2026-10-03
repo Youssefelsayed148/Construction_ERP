@@ -225,9 +225,9 @@ const RECORD_SCOPE_RULES = Object.freeze({
     [/^\/(?:documents\/)?pr\/:id(?:\/|$)/, 'purchase_requests'],
     [/^\/rfq\/:id(?:\/|$)/, 'rfqs'],
     [/^\/(?:documents\/)?po\/:id(?:\/|$)/, 'purchase_orders'],
-    [/^\/deliveries\/:id(?:\/|$)/, 'deliveries'],
+    [/^\/deliveries\/:id(?:\/|$)/, 'SELECT po.project_id FROM deliveries d JOIN purchase_orders po ON po.id = d.purchase_order_id WHERE d.id = $1'],
     [/^\/mir\/:id(?:\/|$)/, 'material_inspection_requests'],
-    [/^\/(?:documents\/)?grn\/:id(?:\/|$)/, 'goods_receipt_notes'],
+    [/^\/(?:documents\/)?grn\/:id(?:\/|$)/, 'SELECT po.project_id FROM goods_receipt_notes g JOIN purchase_orders po ON po.id = g.purchase_order_id WHERE g.id = $1'],
   ],
   qhse: [
     [/^\/quality-tests\/:id(?:\/|$)/, 'quality_tests'],
@@ -244,7 +244,7 @@ const RECORD_SCOPE_RULES = Object.freeze({
   hse: [
     [/^\/incidents\/:id(?:\/|$)/, 'incidents'],
     [/^\/inspections\/:id(?:\/|$)/, 'hse_inspections'],
-    [/^\/permits\/:id(?:\/|$)/, 'work_permits'],
+    [/^\/permits\/:id(?:\/|$)/, 'permits'],
     [/^\/jsas\/:id(?:\/|$)/, 'jsas'],
     [/^\/risk-assessments\/:id(?:\/|$)/, 'risk_assessments'],
     [/^\/near-misses\/:id(?:\/|$)/, 'near_misses'],
@@ -268,7 +268,7 @@ const RECORD_SCOPE_RULES = Object.freeze({
     [/^\/claims\/:id(?:\/|$)/, 'warranty_claims'],
   ],
   quantities: [
-    [/^\/allocations\/:id(?:\/|$)/, 'boq_location_allocations'],
+    [/^\/allocations\/:id(?:\/|$)/, 'SELECT bi.project_id FROM boq_location_allocations a JOIN boq_items bi ON bi.id = a.boq_item_id WHERE a.id = $1'],
     [/^\/measurements\/:id(?:\/|$)/, 'quantity_measurements'],
     [/^\/allocations\/:boqItemId(?:\/|$)/, 'boq_items', 'boqItemId'],
     [/^\/progress\/location\/:locationId(?:\/|$)/, 'project_locations', 'locationId'],

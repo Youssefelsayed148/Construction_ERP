@@ -458,18 +458,26 @@ async function poDeliveryTotals(q, poId) {
 async function createDelivery(q, {
   purchase_order_id, warehouse_id, delivery_date = null, lines = [], received_by = null,
 }) {
-  const po = (await q('SELECT * FROM purchase_orders WHERE id = $1', [purchase_order_id])).rows[0];
+  // The PO row and its lines are locked for the rest of the transaction: concurrent deliveries against the
+  // same PO queue here, so the cumulative check below reads the true delivered quantity.
+  const po = (await q('SELECT * FROM purchase_orders WHERE id = $1 FOR UPDATE', [purchase_order_id])).rows[0];
   if (!po) throw new Error(`Purchase order #${purchase_order_id} not found`);
   if (!PO_OPEN_STATUSES.includes(po.status)) throw new Error(`PO is ${po.status} — deliveries require an issued/open PO`);
 
-  const poLines = (await q('SELECT * FROM purchase_order_lines WHERE purchase_order_id = $1', [purchase_order_id])).rows;
+  const poLines = (await q('SELECT * FROM purchase_order_lines WHERE purchase_order_id = $1 ORDER BY id FOR UPDATE', [purchase_order_id])).rows;
+  // Several delivery lines may hit one PO line: check the sum, not each line on its own.
+  const requested = new Map();
   for (const line of lines) {
     const poLine = poLines.find((pl) => pl.id === toNum(line.purchase_order_line_id));
     if (!poLine) throw new Error(`Delivery line does not reference a PO line of PO #${purchase_order_id}`);
-    const deliveredCum = toNum(poLine.delivered_quantity) + toNum(line.quantity);
+    requested.set(poLine.id, round3((requested.get(poLine.id) || 0) + toNum(line.quantity)));
+  }
+  for (const [poLineId, qty] of requested) {
+    const poLine = poLines.find((pl) => pl.id === poLineId);
+    const deliveredCum = round3(toNum(poLine.delivered_quantity) + qty);
     const maxAllowed = round3(toNum(poLine.quantity) * (1 + toNum(po.tolerance_pct) / 100));
     if (deliveredCum > maxAllowed + 1e-9) {
-      throw new Error(`Delivered cumulative ${deliveredCum} exceeds ordered ${toNum(poLine.quantity)} + tolerance ${toNum(po.tolerance_pct)}% for PO line #${line.purchase_order_line_id}`);
+      throw new Error(`Delivered cumulative ${deliveredCum} exceeds ordered ${toNum(poLine.quantity)} + tolerance ${toNum(po.tolerance_pct)}% for PO line #${poLineId}`);
     }
   }
 
@@ -480,6 +488,7 @@ async function createDelivery(q, {
     [deliveryNumber, purchase_order_id, po.supplier_id, warehouse_id, delivery_date || new Date().toISOString().slice(0, 10), received_by]
   );
   const delivery = r.rows[0];
+  const deliveredNow = new Map(poLines.map((pl) => [pl.id, toNum(pl.delivered_quantity)]));
   for (const line of lines) {
     const poLine = poLines.find((pl) => pl.id === toNum(line.purchase_order_line_id));
     await q(
@@ -493,9 +502,10 @@ async function createDelivery(q, {
       movement_type: 'quarantine', quantity: line.quantity,
       reference_type: 'delivery', reference_id: delivery.id, created_by: received_by,
     });
+    deliveredNow.set(poLine.id, round3(deliveredNow.get(poLine.id) + toNum(line.quantity)));
     await q(
       'UPDATE purchase_order_lines SET delivered_quantity = $1 WHERE id = $2',
-      [round3(toNum(poLine.delivered_quantity) + toNum(line.quantity)), line.purchase_order_line_id]
+      [deliveredNow.get(poLine.id), line.purchase_order_line_id]
     );
   }
   // The delivered states of the catalog are driven by real quantities.
@@ -541,8 +551,11 @@ async function decideMir(q, mirId, user, decision, { accepted = null, notes = nu
   if (mir.status !== 'pending') throw new Error(`MIR is already ${mir.status}`);
   if (!['accept', 'reject'].includes(decision)) throw new Error(`Invalid MIR decision: ${decision}`);
 
-  const mirLines = (await q('SELECT * FROM mir_lines WHERE mir_id = $1', [mirId])).rows;
+  const mirLines = (await q('SELECT * FROM mir_lines WHERE mir_id = $1 ORDER BY id', [mirId])).rows;
   if (mirLines.length === 0) throw new Error('MIR has no lines');
+
+  // 1. Work out the outcome without writing anything.
+  const plan = [];
   let acceptedQty = 0;
   let inspectedQty = 0;
   for (const line of mirLines) {
@@ -553,10 +566,26 @@ async function decideMir(q, mirId, user, decision, { accepted = null, notes = nu
     if (lineAccepted < 0 || lineAccepted > inspected + 1e-9) {
       throw new Error(`Accepted quantity ${lineAccepted} is outside MIR line #${line.id} quantity ${inspected}`);
     }
-    const rejected = round3(inspected - lineAccepted);
+    plan.push({ line, lineAccepted, rejected: round3(inspected - lineAccepted) });
     inspectedQty = round3(inspectedQty + inspected);
     acceptedQty = round3(acceptedQty + lineAccepted);
+  }
+  const status = acceptedQty === 0 ? 'rejected'
+    : acceptedQty < inspectedQty ? 'partially_accepted' : 'accepted';
 
+  // 2. Lock the PO lines (same order as createDelivery), then claim the MIR. Only the caller whose UPDATE
+  //    returns the row posts movements, so two decisions can never both release the same quarantined stock.
+  const poLineIds = [...new Set(plan.map((p) => p.line.purchase_order_line_id).filter((id) => id != null))].sort((x, y) => x - y);
+  if (poLineIds.length) await q('SELECT id FROM purchase_order_lines WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE', [poLineIds]);
+  const claimed = (await q(
+    `UPDATE material_inspection_requests SET status = $1, inspected_by = $2, decided_at = $3, notes = $4
+      WHERE id = $5 AND status = 'pending' RETURNING *`,
+    [status, user ? user.id : null, new Date(), notes, mirId]
+  )).rows[0];
+  if (!claimed) throw new Error('MIR is already decided');
+
+  // 3. Post the movements and bookkeeping.
+  for (const { line, lineAccepted, rejected } of plan) {
     if (lineAccepted > 0) {
       await inventoryEngine.createMovement(q, {
         warehouse_id: mir.warehouse_id, material_id: line.material_id,
@@ -585,13 +614,6 @@ async function decideMir(q, mirId, user, decision, { accepted = null, notes = nu
       }
     }
   }
-
-  const status = acceptedQty === 0 ? 'rejected'
-    : acceptedQty < inspectedQty ? 'partially_accepted' : 'accepted';
-  await q(
-    'UPDATE material_inspection_requests SET status = $1, inspected_by = $2, decided_at = $3, notes = $4 WHERE id = $5',
-    [status, user ? user.id : null, new Date(), notes, mirId]
-  );
   return (await q('SELECT * FROM material_inspection_requests WHERE id = $1', [mirId])).rows[0];
 }
 
@@ -599,7 +621,8 @@ async function decideMir(q, mirId, user, decision, { accepted = null, notes = nu
 // usable stock already moved at MIR accept (quarantine_release), so the GRN
 // posts no second movement (accepted-cumulative bookkeeping only).
 async function createGrn(q, { mir_id, warehouse_id, created_by = null, received_by = null }) {
-  const mir = (await q('SELECT * FROM material_inspection_requests WHERE id = $1', [mir_id])).rows[0];
+  // The MIR row lock serialises concurrent GRN creation for the same MIR.
+  const mir = (await q('SELECT * FROM material_inspection_requests WHERE id = $1 FOR UPDATE', [mir_id])).rows[0];
   if (!mir) throw new Error(`MIR #${mir_id} not found`);
   if (!['accepted', 'partially_accepted'].includes(mir.status)) {
     throw new Error(`MIR ${mir.status} — a GRN can only be created for MIR-accepted quantities`);
@@ -617,8 +640,8 @@ async function createGrn(q, { mir_id, warehouse_id, created_by = null, received_
     const poLine = (await q('SELECT * FROM purchase_order_lines WHERE id = $1', [line.purchase_order_line_id])).rows[0];
     const ok = grnConstraintOk({
       ordered: poLine.quantity,
-      deliveredCum: poLine.delivered_quantity,
-      acceptedCum: toNum(poLine.accepted_quantity),
+      deliveredCumulative: poLine.delivered_quantity,
+      acceptedCumulative: toNum(poLine.accepted_quantity),
       tolerancePct: po ? po.tolerance_pct : 5,
     });
     if (!ok) {
@@ -644,13 +667,41 @@ async function createGrn(q, { mir_id, warehouse_id, created_by = null, received_
   return grn;
 }
 
-// Supplier return — draws the material back out of stock (Phase 10 ledger).
+// Supplier return — draws the material back out of stock (Phase 10 ledger). A return is checked against what
+// the GRN accepted and not yet returned, and decrements it (grn_lines.returned_quantity) and the PO line's
+// accepted quantity, all under row locks.
 async function createSupplierReturn(q, { grn_id, reason = null, lines = [], created_by = null }) {
   const grn = (await q('SELECT * FROM goods_receipt_notes WHERE id = $1', [grn_id])).rows[0];
   if (!grn) throw new Error(`GRN #${grn_id} not found`);
   const po = (await q('SELECT * FROM purchase_orders WHERE id = $1', [grn.purchase_order_id])).rows[0];
-  const returnNumber = await nextNumber(q, 'supplier_returns', 'return_number', 'SRN');
 
+  // Lock the PO lines first (the order every other flow uses), then the GRN lines.
+  const grnLines = (await q('SELECT * FROM grn_lines WHERE grn_id = $1 ORDER BY id', [grn_id])).rows;
+  const poLineIds = [...new Set(grnLines.map((l) => l.purchase_order_line_id).filter((id) => id != null))].sort((x, y) => x - y);
+  if (poLineIds.length) await q('SELECT id FROM purchase_order_lines WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE', [poLineIds]);
+  const locked = (await q('SELECT * FROM grn_lines WHERE grn_id = $1 ORDER BY id FOR UPDATE', [grn_id])).rows;
+
+  // Allocate each requested quantity across the GRN lines of that material.
+  const returnedNow = new Map(locked.map((l) => [l.id, toNum(l.returned_quantity)]));
+  const allocations = [];
+  for (const line of lines) {
+    let remaining = round3(toNum(line.quantity));
+    const candidates = locked.filter((l) => toNum(l.material_id) === toNum(line.material_id));
+    const returnable = round3(candidates.reduce((sum, l) => sum + toNum(l.quantity) - returnedNow.get(l.id), 0));
+    if (remaining > returnable + 1e-9) {
+      throw new Error(`Cannot return ${remaining} of material #${line.material_id}: only ${returnable} accepted on GRN #${grn_id} is returnable`);
+    }
+    for (const gl of candidates) {
+      if (remaining <= 0) break;
+      const take = Math.min(remaining, round3(toNum(gl.quantity) - returnedNow.get(gl.id)));
+      if (take <= 0) continue;
+      returnedNow.set(gl.id, round3(returnedNow.get(gl.id) + take));
+      allocations.push({ grnLine: gl, quantity: round3(take) });
+      remaining = round3(remaining - take);
+    }
+  }
+
+  const returnNumber = await nextNumber(q, 'supplier_returns', 'return_number', 'SRN');
   const r = await q(
     `INSERT INTO supplier_returns (return_number, purchase_order_id, grn_id, supplier_id, warehouse_id, reason, status, created_by)
      VALUES ($1, $2, $3, $4, $5, $6, 'returned', $7) RETURNING *`,
@@ -668,6 +719,18 @@ async function createSupplierReturn(q, { grn_id, reason = null, lines = [], crea
       movement_type: 'supplier_return', quantity: line.quantity,
       reference_type: 'supplier_return', reference_id: supplierReturn.id, created_by,
     });
+  }
+  for (const { grnLine, quantity } of allocations) {
+    await q('UPDATE grn_lines SET returned_quantity = $1 WHERE id = $2', [returnedNow.get(grnLine.id), grnLine.id]);
+    if (grnLine.purchase_order_line_id != null) {
+      const poLine = (await q('SELECT * FROM purchase_order_lines WHERE id = $1', [grnLine.purchase_order_line_id])).rows[0];
+      if (poLine) {
+        await q(
+          'UPDATE purchase_order_lines SET accepted_quantity = $1 WHERE id = $2',
+          [round3(Math.max(0, toNum(poLine.accepted_quantity) - quantity)), grnLine.purchase_order_line_id]
+        );
+      }
+    }
   }
   return supplierReturn;
 }
@@ -738,13 +801,14 @@ async function threeWayMatch(q, invoiceId) {
   const invLines = (await q('SELECT * FROM supplier_invoice_lines WHERE supplier_invoice_id = $1', [invoiceId])).rows;
   let grnLines = [];
   if (invoice.purchase_order_id != null) {
+    // Only this PO's GRN lines, fetched by id (it used to load every GRN line and filter in JS).
     const grnIds = (await q('SELECT id FROM goods_receipt_notes WHERE purchase_order_id = $1', [invoice.purchase_order_id])).rows.map((r) => r.id);
-    const allGrnLines = (await q('SELECT * FROM grn_lines')).rows;
-    grnLines = allGrnLines.filter((l) => grnIds.includes(l.grn_id));
+    if (grnIds.length) grnLines = (await q('SELECT * FROM grn_lines WHERE grn_id = ANY($1::int[])', [grnIds])).rows;
   }
+  // What can be billed is what was accepted and kept: goods sent back are not invoiceable.
   const grnQtyFor = (poLineId) => grnLines
     .filter((r) => r.purchase_order_line_id === poLineId)
-    .reduce((s, r) => s + toNum(r.quantity), 0);
+    .reduce((s, r) => s + toNum(r.quantity) - toNum(r.returned_quantity), 0);
 
   const exceptions = [];
   const lineResults = [];
