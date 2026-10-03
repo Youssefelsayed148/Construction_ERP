@@ -409,12 +409,11 @@ function WOMaterialsTab({ wo, projectId, locale, t }) {
   );
 }
 
-function WOMaterialFormModal({ wo, items, warehouses, locale, t, onClose, onSave }) {
+export function WOMaterialFormModal({ wo, items, warehouses, locale, t, onClose, onSave }) {
   const [form, setForm] = useState({
     item_id: '',
     planned_quantity: '',
     actual_quantity: '',
-    unit_cost: '',
     warehouse_id: '',
   });
   const [saving, setSaving] = useState(false);
@@ -431,7 +430,6 @@ function WOMaterialFormModal({ wo, items, warehouses, locale, t, onClose, onSave
         item_id: Number(form.item_id),
         planned_quantity: form.planned_quantity ? Number(form.planned_quantity) : null,
         actual_quantity: form.actual_quantity ? Number(form.actual_quantity) : null,
-        unit_cost: form.unit_cost ? Number(form.unit_cost) : null,
         warehouse_id: form.warehouse_id ? Number(form.warehouse_id) : null,
       };
       const res = await fetchApi(`${API_URL}/work-orders/${wo.id}/materials`, { method: 'POST', body: JSON.stringify(body) });
@@ -472,11 +470,7 @@ function WOMaterialFormModal({ wo, items, warehouses, locale, t, onClose, onSave
                   <input className="form-input" type="number" step="0.01" min="0" value={form.actual_quantity} onChange={e => handleChange('actual_quantity', e.target.value)} />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'تكلفة الوحدة' : 'Unit Cost'}</label>
-                  <input className="form-input" type="number" step="0.01" min="0" value={form.unit_cost} onChange={e => handleChange('unit_cost', e.target.value)} />
-                </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'المستودع' : 'Warehouse'}</label>
                   <select className="form-select" value={form.warehouse_id} onChange={e => handleChange('warehouse_id', e.target.value)}>
