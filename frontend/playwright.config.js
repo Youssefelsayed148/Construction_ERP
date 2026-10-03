@@ -14,7 +14,9 @@ module.exports = defineConfig({
     env: { BROWSER: 'none' },
   },
   projects: [
-    { name: 'desktop-chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'mobile-chromium', use: { ...devices['Pixel 7'] } },
+    { name: 'desktop-chromium', testIgnore: /i18n-baseline/, use: { ...devices['Desktop Chrome'] } },
+    { name: 'mobile-chromium', testIgnore: /i18n-baseline/, use: { ...devices['Pixel 7'] } },
+    // Baseline screenshots (Phase 10 L0); run on demand with `npm run i18n:screenshots`.
+    { name: 'i18n-screenshots', testMatch: /i18n-baseline/, use: { ...devices['Desktop Chrome'] } },
   ],
 });
