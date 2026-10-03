@@ -21,6 +21,7 @@
 const { query: defaultQuery } = require('../config/database');
 const { nextNumber } = require('./numbering');
 const commercialEngine = require('./commercialEngine');
+const glPosting = require('./glPosting');
 
 const INVOICE_LIFECYCLE = ['draft', 'approved', 'issued', 'partially_paid', 'paid', 'overdue', 'cancelled', 'void', 'credited'];
 const REMINDER_STAGES = [
@@ -169,6 +170,8 @@ async function createInvoiceRecord(q, fields, { actor_id = null, actor_name = nu
     entity_type: 'invoice', entity_id: invoice.id, event_type: 'create',
     actor_id, actor_name, after_state: invoice,
   });
+  // An invoice created already issued (manual, unit sale) is posted with its creation; a failure fails the caller.
+  await glPosting.syncInvoicePosting(q, null, invoice, { userId: actor_id });
   return invoice;
 }
 
@@ -206,6 +209,7 @@ async function transitionInvoice(q, invoiceId, newStatus, user, extra = {}) {
     actor_id: user ? user.id : null, actor_name: user ? user.name : null,
     before_state: existing, after_state: updated,
   });
+  await glPosting.syncInvoicePosting(q, existing, updated, { userId: user ? user.id : null, date: new Date().toISOString().split('T')[0] });
   return updated;
 }
 

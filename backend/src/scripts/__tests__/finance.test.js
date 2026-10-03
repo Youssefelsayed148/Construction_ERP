@@ -107,8 +107,25 @@ async function buildFixture() {
   await q(`INSERT INTO projects (id, name, contract_value, budget) VALUES ($1,$2,$3,$4)`, [1, 'Finance Test Project', 100000, 80000]);
 }
 
+// Issuing an invoice posts it to the ledger (2.7b), so the lifecycle tests need the ledger tables and the account map.
+async function buildLedgerFixture() {
+  await q('CREATE TABLE IF NOT EXISTS accounts (id SERIAL PRIMARY KEY, code VARCHAR(20), name VARCHAR(255), type VARCHAR(30))');
+  await q('CREATE TABLE IF NOT EXISTS gl_account_map (key VARCHAR(50) PRIMARY KEY, account_id INTEGER)');
+  await q(`CREATE TABLE IF NOT EXISTS journal_entries (
+    id SERIAL PRIMARY KEY, entry_number VARCHAR(50), date DATE, description TEXT, reference_id INTEGER,
+    reference_type VARCHAR(100), total_amount DECIMAL(15,2) DEFAULT 0, created_by INTEGER, created_at TIMESTAMPTZ)`);
+  await q(`CREATE TABLE IF NOT EXISTS journal_entry_lines (
+    id SERIAL PRIMARY KEY, journal_entry_id INTEGER, account_id INTEGER, debit DECIMAL(15,2) DEFAULT 0,
+    credit DECIMAL(15,2) DEFAULT 0, description TEXT, line_order INTEGER)`);
+  for (const [key, code] of [['cash', '1000'], ['receivable', '1100'], ['revenue', '4000'], ['vat_output', '2100']]) {
+    const account = (await q('INSERT INTO accounts (code, name, type) VALUES ($1, $1, $1) RETURNING id', [code])).rows[0];
+    await q('INSERT INTO gl_account_map (key, account_id) VALUES ($1, $2)', [key, account.id]);
+  }
+}
+
 beforeAll(async () => {
   await buildFixture();
+  await buildLedgerFixture();
   await finance.ensureTaxCodes(q);
 });
 

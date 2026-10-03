@@ -31,10 +31,10 @@ async function createUnitSaleInvoice({ unit, building, clientId, userId, userNam
 
   const today = new Date().toISOString().split('T')[0];
 
-  const invoice = await createInvoiceRecord(query, {
+  const invoice = await transaction((client) => createInvoiceRecord(client.query.bind(client), {
     project_id: building.project_id, client_id: clientId, amount, issue_date: today, status: 'sent',
     description: `Auto-generated: Sale of unit ${unit.code} (${building.name})`, created_by: userId,
-  }, { actor_id: userId, actor_name: userName });
+  }, { actor_id: userId, actor_name: userName }));
   const invoiceNumber = invoice.invoice_number;
   const result = { rows: [invoice] };
 

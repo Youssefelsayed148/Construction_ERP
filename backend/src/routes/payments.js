@@ -6,6 +6,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const finance = require('../services/financeEngine');
 const { reasonFrom } = require('../utils/reason');
+const glPosting = require('../services/glPosting');
 
 const PAYMENT_METHODS = ['cash', 'bank_transfer', 'check', 'other'];
 
@@ -89,6 +90,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
         [value.invoice_id || null, value.project_id, value.client_id, value.amount,
          value.payment_date, value.payment_method, value.reference_number, value.notes]
       )).rows[0];
+      await glPosting.postClientPayment(q, row, { userId: req.user.id });
       if (value.invoice_id) {
         await finance.allocatePayment(q, {
           payment_id: row.id,
@@ -132,6 +134,7 @@ router.delete('/:id', authenticate, authorize(), async (req, res) => {
       if (supplierInvoiceIds.length) await q('SELECT id FROM supplier_invoices WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE', [supplierInvoiceIds]);
       await q('UPDATE payments SET voided_at = NOW(), voided_by = $2, void_reason = $3 WHERE id = $1', [existing.id, req.user.id, reason]);
       await q('UPDATE payment_allocations SET voided_at = NOW() WHERE payment_id = $1 AND voided_at IS NULL', [existing.id]);
+      await glPosting.reverseClientPayment(q, existing, { userId: req.user.id });
       for (const invoiceId of invoiceIds) await recalcInvoiceStatus(q, invoiceId);
       for (const supplierInvoiceId of supplierInvoiceIds) {
         // Paid supplier invoices that are no longer fully allocated go back to 'received'.

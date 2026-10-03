@@ -140,6 +140,13 @@ SELECT migration, effect, kind, affected_rows FROM (
   UNION ALL
   SELECT '0015', 'journal lines with a negative amount or an amount on both sides (constraint stays NOT VALID)', 'will_stay_invalid',
          (SELECT count(*) FROM journal_entry_lines WHERE COALESCE(debit, 0) < 0 OR COALESCE(credit, 0) < 0 OR (COALESCE(debit, 0) > 0 AND COALESCE(credit, 0) > 0))
+  -- 0016: one posting per document, output VAT account
+  UNION ALL
+  SELECT '0016', 'chart of accounts gets ONE new account (2100 Output VAT Payable, mapped as vat_output) when no account with code 2100 exists; nothing else in the chart changes', 'will_change',
+         (SELECT CASE WHEN EXISTS (SELECT 1 FROM accounts WHERE code = '2100') THEN 0 ELSE 1 END)
+  UNION ALL
+  SELECT '0016', 'invoices already issued (sent, issued, partially_paid, paid, overdue) have no ledger entry and get none: postings start with new issues, no backfill; decide on an opening balance separately', 'attention',
+         (SELECT count(*) FROM invoices WHERE status IN ('sent','issued','partially_paid','paid','overdue'))
 ) report
 ORDER BY migration, kind, effect;
 
