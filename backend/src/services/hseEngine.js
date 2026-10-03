@@ -18,6 +18,7 @@ const { query: defaultQuery } = require('../config/database');
 const { nextNumber } = require('./numbering');
 const workflowEngine = require('./workflowEngine');
 const { fireEvent } = require('../utils/activity');
+const sweepLeader = require('./sweepLeader');
 
 const SIGN_OFF_TYPES = ['hot_work', 'confined_space', 'lifting'];
 
@@ -332,11 +333,11 @@ async function hseDashboard(q, { projectId = null } = {}) {
 function initPermitExpiryScheduler(opts = {}) {
   const { query } = require('../config/database');
   const run = () => expireOverduePermits(opts.query || query)
-    .then((n) => { if (n > 0) console.log(`[HSE] expired ${n} permit(s)`); })
-    .catch((e) => console.error('[HSE] permit expiry sweep failed:', e.message));
-  run();
-  const timer = setInterval(run, 60 * 60 * 1000);
-  if (typeof timer.unref === 'function') timer.unref();
+    .then((n) => { if (n > 0) console.log(`[HSE] expired ${n} permit(s)`); });
+  // Phase 3.4: one leader across backend instances (sweepLeader); failures are logged with context and
+  // recorded in background_sweep_runs by the leader itself.
+  const { timer, execute } = sweepLeader.leaderInterval('permit_expiry', 60 * 60 * 1000, run, { query: opts.query || query, immediate: false });
+  execute().catch((e) => console.error('[HSE] initial permit expiry sweep failed:', e.message));
 }
 
 module.exports = {

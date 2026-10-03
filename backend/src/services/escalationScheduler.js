@@ -28,6 +28,7 @@
 const { query: defaultQuery } = require('../config/database');
 const notificationService = require('./notificationService');
 const { fireEvent } = require('../utils/activity');
+const sweepLeader = require('./sweepLeader');
 
 function parseJson(v) {
   if (v == null) return {};
@@ -178,11 +179,10 @@ async function runEscalationSweep(query, opts = {}) {
 function initEscalationScheduler(opts = {}) {
   const minutes = opts.intervalMinutes
     || parseInt(process.env.ESCALATION_SWEEP_MINUTES || '15', 10);
-  const timer = setInterval(() => {
-    runEscalationSweep().catch((e) => console.error('[ESCALATION] sweep failed:', e.message));
-  }, minutes * 60 * 1000);
-  if (timer.unref) timer.unref();
-  console.log(`[ESCALATION] scheduler initialized — sweep every ${minutes} min`);
+  // Phase 3.4: with N backend instances only one runs this sweep (advisory-lock leader, see sweepLeader).
+  const { timer, execute } = sweepLeader.leaderInterval('escalation', minutes * 60 * 1000, runEscalationSweep);
+  if (opts.immediate !== false) execute().catch((e) => console.error('[ESCALATION] initial sweep failed:', e.message));
+  console.log(`[ESCALATION] scheduler initialized — sweep every ${minutes} min (leader-locked)`);
   return timer;
 }
 

@@ -22,6 +22,7 @@
 
 const crypto = require('crypto');
 const { query: defaultQuery } = require('../config/database');
+const sweepLeader = require('./sweepLeader');
 
 // Canonical subscribable events (Phase 2 architecture list + the internal
 // events that carry the same meaning). '*' matches any prefix; an exact
@@ -261,11 +262,10 @@ function initWebhookEventSubscriber(queryFn = defaultQuery) {
   // Safety net: subscribe to all event_log-derived emits via a catch-all on
   // 'event' is not supported by EventEmitter; the dispatcher poll pattern is
   // the durable path. A sweep timer also drains queued deliveries.
-  const timer = setInterval(() => {
-    sweepDueDeliveries().catch((e) => console.error('[WEBHOOKS] sweep failed:', e.message));
-  }, SWEEP_INTERVAL_MS);
-  if (timer.unref) timer.unref();
-  console.log('[WEBHOOKS] event subscriber initialized — sweep every 60s');
+  // Phase 3.4: one leader across backend instances (sweepLeader).
+  const { timer, execute } = sweepLeader.leaderInterval('webhook_deliveries', SWEEP_INTERVAL_MS, () => sweepDueDeliveries());
+  execute().catch((e) => console.error('[WEBHOOKS] initial sweep failed:', e.message));
+  console.log('[WEBHOOKS] event subscriber initialized — sweep every 60s (leader-locked)');
   return timer;
 }
 
