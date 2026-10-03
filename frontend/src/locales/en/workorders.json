@@ -1,4 +1,10 @@
 {
   "title": "Work orders",
-  "empty": "No work orders yet."
+  "empty": "No work orders yet.",
+  "cancel": {
+    "action": "Cancel work order",
+    "title": "Cancel work order",
+    "message": "{title} will be marked cancelled. Its materials, labor and completions are kept for the cost record.",
+    "confirm": "Cancel work order"
+  }
 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
+import ConfirmDialog from '../components/common/ConfirmDialog';
 import { ArrowLeft, Plus, Edit, Trash2, ChevronDown, ChevronRight, FileText } from 'lucide-react';
 import { formatCurrency, formatPercent } from '../utils/formatters';
 
@@ -12,7 +13,7 @@ const headers = () => {
 };
 
 const fetchApi = (url, options) => fetch(url, { headers: headers(), ...options }).then(r => {
-  if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
+  if (!r.ok) return r.json().then(e => { const err = new Error(e.error || 'Request failed'); err.code = e.code; throw err; });
   return r.json();
 });
 
@@ -54,6 +55,8 @@ function BOQ() {
   const [editingItem, setEditingItem] = useState(null);
   const [masterItems, setMasterItems] = useState([]);
   const [itemSearch, setItemSearch] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState(null); // { kind: 'item' | 'section', id }
+  const [deleteError, setDeleteError] = useState('');
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -90,19 +93,18 @@ function BOQ() {
   const sectionName = (s) => locale === 'ar' ? (s.name_ar || s.name_en) : (s.name_en || s.name_ar);
   const itemDesc = (it) => locale === 'ar' ? (it.description_ar || it.description_en) : (it.description_en || it.description_ar);
 
-  const handleDeleteItem = async (itemId) => {
+  // Contractual rows: the server refuses (409 record_in_use) while measurements, allocations or recipes reference the entry.
+  const confirmDelete = async () => {
+    const { kind, id } = deleteTarget;
+    setDeleteTarget(null);
+    setDeleteError('');
     try {
-      await fetchApi(`${API_URL}/boq/items/${itemId}`, { method: 'DELETE' });
+      await fetchApi(`${API_URL}/boq/${kind === 'item' ? 'items' : 'sections'}/${id}`, { method: 'DELETE' });
       loadData();
-    } catch (e) { alert(e.message); }
+    } catch (e) { setDeleteError(e.code === 'record_in_use' ? t('errors.recordInUse') : e.message); }
   };
-
-  const handleDeleteSection = async (sectionId) => {
-    try {
-      await fetchApi(`${API_URL}/boq/sections/${sectionId}`, { method: 'DELETE' });
-      loadData();
-    } catch (e) { alert(e.message); }
-  };
+  const handleDeleteItem = (itemId) => setDeleteTarget({ kind: 'item', id: itemId });
+  const handleDeleteSection = (sectionId) => setDeleteTarget({ kind: 'section', id: sectionId });
 
   const totalsByType = ITEM_TYPES.reduce((acc, tp) => {
     const typeItems = items.filter(i => i.type === tp);
@@ -171,6 +173,8 @@ function BOQ() {
         </div>
       </div>
 
+      {deleteError && <div className="alert alert-danger" role="alert">{deleteError}</div>}
+
       <div className="card" style={{ marginBottom: '20px' }}>
         <div className="card-header">
           <h3 className="card-title">{locale === 'ar' ? 'ملخص التكاليف حسب النوع' : 'BOQ Summary by Type'}</h3>
@@ -220,6 +224,16 @@ function BOQ() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title={deleteTarget?.kind === 'section' ? t('boq.delete.sectionTitle') : t('boq.delete.itemTitle')}
+        message={t('boq.delete.message')}
+        confirmLabel={t('common.delete')}
+        destructive
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
 
       {showSectionModal && (
         <SectionModal

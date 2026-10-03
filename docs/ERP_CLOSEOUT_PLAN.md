@@ -149,10 +149,10 @@ Goal: the database refuses to be wrong.
 - Test (done, real PG): 50 concurrent creates, no duplicates, no reuse after deletes; 50 concurrent document registrations (`doccontrol-numbering.pg.test.js`).
 
 2.5 Delete semantics
-- [ ] Change 171 `ON DELETE CASCADE`: financial, procurement, contractual and handover tables become RESTRICT; add `deleted_at`/`deleted_by` soft-delete.
+- [x] Change `ON DELETE CASCADE` (163 found, not 171): financial, procurement, contractual, inventory and handover tables become RESTRICT, and so do their `SET NULL` links (except to users, see the users item); soft-delete columns on items, suppliers, payments, invoices (2.5a) and cancel columns on work orders (2.5b). Migration 0010, `fk-restrict.pg.test.js` pins the protected list and classifies every cascade that remains. 104 cascades remain on configuration, workflow, quality/HSE, template, schedule and document tables.
 - [x] Convert hard-delete routes (items, suppliers, payments, invoices) to soft-delete or void-with-reason (2.5a, migration 0009, UI in the same PR). Still hard-deleting, to convert in the slice that restricts their FKs: assets, boq sections/items, clients, doccontrol documents, expenses, hr employees/laborers/labor-payments, legal, locations, maintenance, materials recipe lines, payroll, project phases/team/milestones, qhse tests, reports views, schedule activities/relationships, site visits, supplier materials, units/buildings, workorders (none of these is financial ledger, but several are contractual or hold cost: work orders, boq, expenses, payroll).
 - [ ] 135 `REFERENCES users` with no ON DELETE: define policy (RESTRICT plus deactivate-only users).
-- [ ] stock_movements immutability: ensure parent delete is blocked cleanly rather than raising a trigger error.
+- [x] stock_movements immutability: deleting a warehouse that has movements is refused with 23503 (RESTRICT) instead of a cascade that tripped the append-only trigger.
 - [x] Data-cleaning report for NOT VALID constraints (0007, 0008 and every later one): `npm run data-cleaning-report`, lists offenders, never auto-fixes. `scripts/preflight-upgrade.sql` reports what migrations 0001-0008 do to existing rows.
 
 2.6 Constraints

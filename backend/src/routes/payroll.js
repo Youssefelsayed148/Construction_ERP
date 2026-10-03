@@ -3,6 +3,7 @@ const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
+const { isReferenceViolation, recordInUse } = require('../utils/references');
 const { logActivity } = require('../utils/activity');
 const { journalPayrollPosted } = require('../utils/journal');
 
@@ -109,7 +110,10 @@ router.delete('/:id', authenticate, authorize('owner', 'admin'), async (req, res
     const r = await query('DELETE FROM payroll_periods WHERE id = $1 RETURNING id', [req.params.id]);
     if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Not found' });
     res.json({ success: true, message: 'Deleted' });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) {
+    if (isReferenceViolation(e)) return recordInUse(res, 'Payroll period');   // it has payroll details
+    res.status(500).json({ success: false, error: e.message });
+  }
 });
 
 module.exports = router;

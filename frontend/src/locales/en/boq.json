@@ -1,4 +1,9 @@
 {
   "title": "Bill of Quantities",
-  "empty": "No BOQ items yet."
+  "empty": "No BOQ items yet.",
+  "delete": {
+    "itemTitle": "Delete BOQ item",
+    "sectionTitle": "Delete BOQ section",
+    "message": "This removes the entry from the BOQ. It is refused if measurements, allocations, recipes or other records use it."
+  }
 }

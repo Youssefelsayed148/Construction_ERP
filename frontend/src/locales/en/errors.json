@@ -9,5 +9,6 @@
   "rateLimited": "Too many requests. Please wait a moment.",
   "serverError": "Something went wrong on our side.",
   "sessionExpired": "Your session has expired.",
-  "unknown": "An unexpected error occurred."
+  "unknown": "An unexpected error occurred.",
+  "recordInUse": "This record is used by other records and cannot be deleted."
 }
