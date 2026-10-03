@@ -11,7 +11,8 @@
     "dev": "nodemon server.js",
     "test": "jest",
     "test:pg": "jest --config jest.pg.config.js --runInBand --forceExit",
-    "lint:guards": "node src/scripts/lint-guards.js"
+    "lint:guards": "node src/scripts/lint-guards.js",
+    "data-cleaning-report": "node src/scripts/data-cleaning-report.js"
   },
   "keywords": [
     "construction",
