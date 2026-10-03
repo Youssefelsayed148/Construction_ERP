@@ -52,7 +52,8 @@ class MockDb {
 
   query = async (sql, params = []) => {
     assertParamArity(sql, params);
-    const norm = sql.replace(/\s+/g, ' ').trim();
+    // Row locks mean nothing to a single-connection mock.
+    const norm = sql.replace(/\s+/g, ' ').trim().replace(/\s+FOR UPDATE(?:\s+OF\s+\w+)?\s*$/i, '');
     const upper = norm.toUpperCase();
     if (upper.includes('DOCUMENT_COUNTERS') && !upper.startsWith('CREATE')) return this.execDocumentCounter(upper, params);
     if (upper.includes('PG_ADVISORY_XACT_LOCK')) return { rows: [{}], rowCount: 1 };   // single-connection mock: nothing to wait for

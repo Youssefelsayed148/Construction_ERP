@@ -132,10 +132,11 @@ Goal: the database refuses to be wrong.
 - Test (done, real PG, `inventory-integrity.pg.test.js`): N concurrent issues against limited stock; stock never goes negative; crash between insert and projection leaves consistent state.
 
 2.3 Procurement locking
-- [ ] `createDelivery`: lock PO lines (`FOR UPDATE`), enforce `delivered <= ordered + tolerance` in code and via CHECK.
-- [ ] `decideMir`: atomic status transition (`UPDATE ... WHERE status='pending'`).
-- [ ] `createSupplierReturn`: validate against GRN accepted quantity and decrement it.
-- [ ] `threeWayMatch`: query by PO/GRN id, not `SELECT *` + JS filter.
+- [x] `createDelivery`: lock PO lines (`FOR UPDATE`), enforce `delivered <= ordered + tolerance` in code and via CHECK.
+- [x] `decideMir`: atomic status transition (`UPDATE ... WHERE status='pending'`).
+- [x] `createSupplierReturn`: validate against GRN accepted quantity and decrement it.
+- [x] `threeWayMatch`: query by PO/GRN id, not `SELECT *` + JS filter.
+- Tests (done, real PG): `procurement-locking.pg.test.js`, `record-scope-rules.pg.test.js` (every record scope rule runs against the real schema; it found four rules naming columns that do not exist).
 
 2.4 Document numbering
 - [x] One numbering service (`services/numbering.js`) with an atomic counter (`UPDATE ... RETURNING`, `INSERT ... ON CONFLICT DO UPDATE`), per NUMBERING_STANDARD.md. Backed by new table `document_counters`, which is the only counter: `numbering_sequences` (cannot key on year/prefix; UNIQUE(project_id, entity) does not hold for NULL project) and `document_number_sequences` are no longer incremented.
