@@ -5,6 +5,7 @@ const Joi = require('joi');
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
+const { isReferenceViolation, recordInUse } = require('../utils/references');
 
 const BOQ_ITEM_TYPES = ['material', 'labor', 'equipment', 'subcontract'];
 
@@ -50,10 +51,17 @@ router.put('/sections/:id', authenticate, authorize(), async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// Contractual rows: a section or item that anything references (items, measurements, allocations, recipes)
+// cannot be removed; the foreign keys are RESTRICT. Only an unreferenced entry made by mistake can go.
 router.delete('/sections/:id', authenticate, authorize(), async (req, res) => {
-  const r = await query('DELETE FROM boq_sections WHERE id = $1 RETURNING id', [req.params.id]);
-  if (r.rowCount === 0) return res.status(404).json({ success: false, error: 'Section not found' });
-  res.json({ success: true, message: 'Deleted' });
+  try {
+    const r = await query('DELETE FROM boq_sections WHERE id = $1 RETURNING id', [req.params.id]);
+    if (r.rowCount === 0) return res.status(404).json({ success: false, error: 'Section not found' });
+    res.json({ success: true, message: 'Deleted' });
+  } catch (e) {
+    if (isReferenceViolation(e)) return recordInUse(res, 'BOQ section');
+    res.status(500).json({ success: false, error: e.message });
+  }
 });
 
 // BOQ Items
@@ -127,9 +135,14 @@ router.put('/items/:id', authenticate, authorize(), async (req, res) => {
 });
 
 router.delete('/items/:id', authenticate, authorize(), async (req, res) => {
-  const r = await query('DELETE FROM boq_items WHERE id = $1 RETURNING id', [req.params.id]);
-  if (r.rowCount === 0) return res.status(404).json({ success: false, error: 'Item not found' });
-  res.json({ success: true, message: 'Deleted' });
+  try {
+    const r = await query('DELETE FROM boq_items WHERE id = $1 RETURNING id', [req.params.id]);
+    if (r.rowCount === 0) return res.status(404).json({ success: false, error: 'Item not found' });
+    res.json({ success: true, message: 'Deleted' });
+  } catch (e) {
+    if (isReferenceViolation(e)) return recordInUse(res, 'BOQ item');
+    res.status(500).json({ success: false, error: e.message });
+  }
 });
 
 // BOQ Summary

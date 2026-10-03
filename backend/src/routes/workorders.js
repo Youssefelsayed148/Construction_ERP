@@ -5,6 +5,7 @@ const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const inventoryEngine = require('../services/inventoryEngine');
+const { reasonFrom } = require('../utils/reason');
 
 const WO_STATUSES = ['planned', 'in_progress', 'completed', 'cancelled'];
 
@@ -92,15 +93,23 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// A work order carries cost records (materials issued from stock, labor, equipment, completions), so it is
+// cancelled, never deleted. The route keeps its verb for existing clients; the row and its children stay.
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const existing = await query('SELECT * FROM work_orders WHERE id = $1', [req.params.id]);
-    if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Work order not found' });
+    const reason = reasonFrom(req) || null;
+    const r = await query(
+      `UPDATE work_orders SET status = 'cancelled', cancelled_at = NOW(), cancelled_by = $2, cancel_reason = $3, updated_at = NOW()
+        WHERE id = $1 AND status <> 'cancelled' RETURNING title, title_ar`,
+      [req.params.id, req.user.id, reason]);
+    if (r.rows.length === 0) {
+      const exists = await query('SELECT status FROM work_orders WHERE id = $1', [req.params.id]);
+      if (exists.rows.length === 0) return res.status(404).json({ success: false, error: 'Work order not found' });
+      return res.status(409).json({ success: false, error: 'Work order is already cancelled' });
+    }
 
-    await query('DELETE FROM work_orders WHERE id = $1', [req.params.id]);
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'work_orders', description: `Deleted WO: ${existing.rows[0].title_ar}`, entityId: req.params.id, entityType: 'work_order' });
-    res.json({ success: true, message: 'Work order deleted' });
+    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'cancel', module: 'work_orders', description: `Cancelled WO: ${r.rows[0].title_ar || r.rows[0].title}${reason ? `: ${reason}` : ''}`, entityId: req.params.id, entityType: 'work_order' });
+    res.json({ success: true, message: 'Work order cancelled' });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 

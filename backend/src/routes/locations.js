@@ -3,6 +3,7 @@ const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
+const { isReferenceViolation, recordInUse } = require('../utils/references');
 const { logActivity, fireEvent } = require('../utils/activity');
 
 // Full CRUD over the project location tree: site/building/zone/floor/area/
@@ -140,7 +141,10 @@ router.delete('/:id', authenticate, authorize(), async (req, res) => {
     const r = await query('DELETE FROM project_locations WHERE id = $1 RETURNING id', [req.params.id]);
     if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Location not found' });
     res.json({ success: true, message: 'Deleted' });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) {
+    if (isReferenceViolation(e)) return recordInUse(res, 'Location');   // BOQ allocations point at it
+    res.status(500).json({ success: false, error: e.message });
+  }
 });
 
 module.exports = router;

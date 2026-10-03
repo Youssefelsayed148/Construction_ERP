@@ -1,4 +1,4 @@
--- Preflight for the versioned migrations 0001-0008. READ ONLY: run it against a restored copy of the real
+-- Preflight for the versioned migrations 0001-0010. READ ONLY: run it against a restored copy of the real
 -- database before applying them (psql -X -f scripts/preflight-upgrade.sql <dsn>). It changes nothing.
 --
 -- Each row is: migration | what it will do to existing rows | how many rows are affected.
@@ -60,6 +60,26 @@ SELECT migration, effect, kind, affected_rows FROM (
   SELECT '0008', 'purchase_order_lines already over-delivered past ordered + tolerance (not blocked from unrelated updates)', 'attention',
          (SELECT count(*) FROM purchase_order_lines l JOIN purchase_orders o ON o.id = l.purchase_order_id
            WHERE COALESCE(l.delivered_quantity,0) > ROUND(l.quantity * (1 + COALESCE(o.tolerance_pct,5) / 100), 3))
+  -- 0009: additive columns only
+  UNION ALL
+  SELECT '0009', 'soft delete and void columns added (deleted_at, voided_at, ...); no row is read, rewritten or hidden', 'unchanged',
+         (SELECT count(*) FROM item_master) + (SELECT count(*) FROM suppliers) + (SELECT count(*) FROM payments) + (SELECT count(*) FROM invoices)
+  -- 0010: foreign keys become RESTRICT; rows are untouched, constraints are replaced
+  UNION ALL
+  SELECT '0010', 'foreign keys replaced by ON DELETE RESTRICT (constraint rows changed, no data rows); the child table is re-checked once, lock it in a maintenance window if it is large', 'will_change',
+         (SELECT count(*) FROM pg_constraint c
+           WHERE c.contype = 'f' AND c.confdeltype IN ('c', 'n') AND c.confrelid::regclass::text <> 'users'
+             AND c.conrelid::regclass::text = ANY (ARRAY[
+               'bid_comparisons','deliveries','delivery_lines','grn_lines','mir_lines','purchase_order_lines','purchase_orders','purchase_request_lines','purchase_requests',
+               'rfq_lines','rfq_vendors','supplier_invoice_lines','supplier_invoices','supplier_quotation_lines','supplier_quotations','supplier_return_lines',
+               'stock_movements','stock_reservations','warehouse_stock','inventory_transfer_items','advance_ledger','ap_review_queue','budget_changes','commitments',
+               'commercial_snapshots','journal_entry_lines','payment_allocations','payment_certificates','payroll_details','project_budgets','receivable_reminders',
+               'retention_ledger','variation_cost_buildup','variation_lines','variations','boq_items','boq_sections','boq_location_allocations','client_contracts',
+               'contract_lines','engineer_instructions','sub_contract_changes','sub_contract_lines','warranty_claims','quantity_measurements','handover_package_items',
+               'handover_processes','work_order_materials','work_order_labor','work_order_equipment','work_completions','payments','invoices','work_orders']))
+  UNION ALL
+  SELECT '0010', 'rows the old SET NULL links already detached (purchase orders with no supplier, BOQ items with no section): they stay as they are', 'attention',
+         (SELECT count(*) FROM purchase_orders WHERE supplier_id IS NULL) + (SELECT count(*) FROM boq_items WHERE section_id IS NULL)
 ) report
 ORDER BY migration, kind, effect;
 

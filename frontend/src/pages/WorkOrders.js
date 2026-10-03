@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
+import ReasonDialog from '../components/common/ReasonDialog';
 import { ArrowLeft, Plus, Edit, Trash2, ClipboardList, CheckCircle, XCircle, Package, Wrench, Users, Calendar } from 'lucide-react';
 import { formatCurrency, formatDate, formatPercent } from '../utils/formatters';
 
@@ -52,6 +53,9 @@ function WorkOrders() {
   const [editingWO, setEditingWO] = useState(null);
   const [expandedWO, setExpandedWO] = useState(null);
   const [activeDetailTab, setActiveDetailTab] = useState('materials');
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelError, setCancelError] = useState('');
+  const [cancelBusy, setCancelBusy] = useState(false);
 
   const [phases, setPhases] = useState([]);
   const [boqSections, setBoqSections] = useState([]);
@@ -95,21 +99,16 @@ function WorkOrders() {
     return locale === 'ar' ? (wo.boq_section_name_ar || wo.boq_section_name_en) : (wo.boq_section_name_en || wo.boq_section_name_ar);
   };
 
-  const handleDelete = async (woId) => {
-    if (locale === 'ar') {
-      const name = prompt('اكتب اسم أمر العمل للحذف:');
-      const wo = workOrders.find(w => w.id === woId);
-      if (name !== wo?.title_ar && name !== wo?.title_en) return;
-    } else {
-      const name = prompt('Type work order title to confirm delete:');
-      const wo = workOrders.find(w => w.id === woId);
-      if (name !== wo?.title_en && name !== wo?.title_ar) return;
-    }
+  // A work order carries cost records, so DELETE cancels it (the server keeps the row and its children).
+  const confirmCancel = async (reason) => {
+    setCancelBusy(true); setCancelError('');
     try {
-      await fetchApi(`${API_URL}/work-orders/${woId}`, { method: 'DELETE' });
+      await fetchApi(`${API_URL}/work-orders/${cancelTarget.id}`, { method: 'DELETE', body: JSON.stringify({ reason }) });
+      if (expandedWO === cancelTarget.id) setExpandedWO(null);
+      setCancelTarget(null);
       loadWorkOrders();
-      if (expandedWO === woId) setExpandedWO(null);
-    } catch (e) { alert(e.message); }
+    } catch (e) { setCancelError(e.message); }
+    finally { setCancelBusy(false); }
   };
 
   const toggleExpand = (woId) => {
@@ -237,9 +236,11 @@ function WorkOrders() {
                     <button className="btn" style={{ padding: '6px 12px' }} onClick={() => { setEditingWO(wo); setShowCreateModal(true); loadRefData(); }}>
                       <Edit size={14} />
                     </button>
-                    <button className="btn btn-danger" style={{ padding: '6px 12px' }} onClick={() => handleDelete(wo.id)}>
-                      <Trash2 size={14} />
-                    </button>
+                    {wo.status !== 'cancelled' && (
+                      <button className="btn btn-danger" style={{ padding: '6px 12px' }} title={t('workorders.cancel.action')} aria-label={t('workorders.cancel.action')} onClick={() => { setCancelError(''); setCancelTarget(wo); }}>
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                     <button className="btn" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => toggleExpand(wo.id)}>
                       {expandedWO === wo.id
                         ? (locale === 'ar' ? 'طي' : 'Collapse')
@@ -265,6 +266,17 @@ function WorkOrders() {
           ))}
         </div>
       )}
+
+      <ReasonDialog
+        open={Boolean(cancelTarget)}
+        title={t('workorders.cancel.title')}
+        message={cancelTarget ? t('workorders.cancel.message', { title: (locale === 'ar' ? cancelTarget.title_ar : cancelTarget.title_en) || cancelTarget.title || cancelTarget.title_ar || '' }) : ''}
+        confirmLabel={t('workorders.cancel.confirm')}
+        busy={cancelBusy}
+        error={cancelError}
+        onConfirm={confirmCancel}
+        onCancel={() => setCancelTarget(null)}
+      />
 
       {showCreateModal && (
         <WorkOrderModal

@@ -6,7 +6,7 @@
       "hardcodedEnglish": 102,
       "rawEnumRendering": 5,
       "hardcodedFormat": 8,
-      "prompts": 145
+      "prompts": 140
     },
     "files": {
       "components/common/ConfirmDialog.js": {
@@ -63,7 +63,7 @@
         "hardcodedEnglish": 0,
         "rawEnumRendering": 0,
         "hardcodedFormat": 1,
-        "prompts": 2
+        "prompts": 0
       },
       "pages/Clients.js": {
         "inlineBranches": 33,
@@ -273,7 +273,7 @@
         "hardcodedEnglish": 0,
         "rawEnumRendering": 0,
         "hardcodedFormat": 0,
-        "prompts": 5
+        "prompts": 2
       },
       "utils/formatters.js": {
         "inlineBranches": 0,
@@ -293,7 +293,7 @@
           "approvals": 2,
           "assets": 2,
           "auth": 10,
-          "boq": 2,
+          "boq": 5,
           "clients": 2,
           "commercial": 3,
           "common": 109,
@@ -301,7 +301,7 @@
           "dashboard": 4,
           "documentControl": 3,
           "enums": 91,
-          "errors": 11,
+          "errors": 12,
           "expenses": 1,
           "finance": 10,
           "handover": 2,
@@ -322,7 +322,7 @@
           "site": 3,
           "subcontractors": 2,
           "suppliers": 8,
-          "workorders": 2
+          "workorders": 6
         }
       },
       "ar": {
@@ -332,7 +332,7 @@
           "approvals": 2,
           "assets": 2,
           "auth": 10,
-          "boq": 2,
+          "boq": 5,
           "clients": 2,
           "commercial": 3,
           "common": 113,
@@ -340,7 +340,7 @@
           "dashboard": 4,
           "documentControl": 3,
           "enums": 91,
-          "errors": 11,
+          "errors": 12,
           "expenses": 1,
           "finance": 10,
           "handover": 2,
@@ -361,7 +361,7 @@
           "site": 3,
           "subcontractors": 2,
           "suppliers": 8,
-          "workorders": 2
+          "workorders": 6
         }
       }
     },
@@ -371,7 +371,7 @@
       "en": [],
       "ar": []
     },
-    "usedKeys": 82,
+    "usedKeys": 90,
     "dynamicKeyCalls": {
       "components/project/ProjectShell.js": 2,
       "i18n/enums.js": 1
@@ -392,8 +392,8 @@
   },
   "server": {
     "totals": {
-      "englishLiteral": 270,
-      "exceptionMessage": 484
+      "englishLiteral": 271,
+      "exceptionMessage": 486
     },
     "files": {
       "actions.js": {
@@ -422,7 +422,7 @@
       },
       "boq.js": {
         "englishLiteral": 4,
-        "exceptionMessage": 7
+        "exceptionMessage": 9
       },
       "client.js": {
         "englishLiteral": 1,
@@ -581,7 +581,7 @@
         "exceptionMessage": 12
       },
       "workorders.js": {
-        "englishLiteral": 10,
+        "englishLiteral": 11,
         "exceptionMessage": 14
       }
     }
