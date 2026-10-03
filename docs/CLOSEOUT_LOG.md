@@ -68,3 +68,12 @@ The backend stack (#17, #18) and the frontend stack (#19 on #6-#9) are merged in
 - UI (same PR): WorkOrders uses `ReasonDialog` to cancel (no `prompt()`, no button on cancelled orders); BOQ now confirms before deleting (it deleted on a single click) and shows the translated refusal (`errors.recordInUse`).
 - Tests: `fk-restrict.pg.test.js` (9, real PG): protected list has no cascade or set null, names exist, every remaining cascade is classified (a new cascade must be added on purpose), PO/warehouse/invoice/payment/project deletes refused with 23503, supplier delete no longer detaches POs, work order cancel keeps children, BOQ 409 and the free item still deletable. Playwright `restrict-delete.spec.js` (2 journeys x desktop and mobile). Whole backend mock 968, real-PG 161, frontend unit 72, Playwright 32, build, i18n check ok.
 - Open questions: (1) BOQ hard delete of unreferenced entries: keep, or soft-delete BOQ rows too (touches every BOQ read)? (2) Many other delete routes remain hard (listed in the plan); none now cascades into protected rows.
+
+## 2026-10-03: Phase 2.5c, users are deactivated, never deleted (migration 0011)
+
+- Reproduced first: any user without references could be deleted with plain SQL; deleting one cascaded into `user_project_roles`, `organization_users` and `saved_views`; 33 foreign keys to users were SET NULL, so `created_by` / `approved_by` on financial documents would silently become NULL. 3 of 4 new tests failed on the old schema.
+- Migration `0011_users_deactivate_only.sql`: the 36 CASCADE/SET NULL foreign keys to users become RESTRICT (the 128 NO ACTION keys already refuse a delete while children exist, left as they are); a BEFORE DELETE trigger refuses every delete with SQLSTATE 23001 and a message that names the policy. **Existing rows: untouched** (constraints replaced, child tables re-checked once). Preflight rows added to `scripts/preflight-upgrade.sql`; anything that deletes users (scripts, manual SQL) must deactivate instead.
+- `DELETE /api/users/:id` already deactivated; there is no Users screen yet (Phase 6 admin), so no UI changes in this PR.
+- Tests: `users-policy.pg.test.js` (4, real PG). One existing suite (`fail-closed.pg.test.js`) deleted its fixture users in teardown; it deactivates them now. Backend mock 968, real-PG 165.
+- Open: a privacy erasure procedure (anonymise a user row) is not designed; say if it is needed before go-live.
+- Phase 2.5 is complete: all five items checked.
