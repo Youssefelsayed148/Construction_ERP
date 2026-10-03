@@ -26,8 +26,9 @@ function initCostEventListener() {
 
       if (totalCost > 0) {
         await query(
-          `INSERT INTO project_costs (project_id, cost_code_id, source_type, source_id, amount, description)
-           VALUES ($1, (SELECT id FROM cost_codes WHERE code = '11' LIMIT 1), 'work_completion', $2, $3, $4)`,
+           `INSERT INTO project_costs (project_id, cost_code_id, source_type, source_id, amount, description)
+            VALUES ($1, (SELECT id FROM cost_codes WHERE code = '11' LIMIT 1), 'work_completion', $2, $3, $4)
+            ON CONFLICT (source_type, source_id) DO NOTHING`,
           [projectId, entityId, totalCost, `Work completion #${entityId} - labor + equipment for WO #${woId}`]
         );
         console.log(`[COSTING] Work completion #${entityId}: ${totalCost} EGP → project #${projectId}`);
@@ -41,7 +42,8 @@ function initCostEventListener() {
 
       await query(
         `INSERT INTO project_costs (project_id, cost_code_id, source_type, source_id, amount, description)
-         VALUES ($1, (SELECT id FROM cost_codes WHERE code = '11' LIMIT 1), 'labor_payment', $2, $3, $4)`,
+         VALUES ($1, (SELECT id FROM cost_codes WHERE code = '11' LIMIT 1), 'labor_payment', $2, $3, $4)
+         ON CONFLICT (source_type, source_id) DO NOTHING`,
         [payload.project_id, entityId, payload.amount, `Labor payment #${entityId} - ${payload.amount} EGP`]
       );
       console.log(`[COSTING] Labor payment #${entityId}: ${payload.amount} EGP → project #${payload.project_id}`);
@@ -61,7 +63,8 @@ function initCostEventListener() {
 
       await query(
         `INSERT INTO project_costs (project_id, cost_code_id, source_type, source_id, amount, description)
-         VALUES ($1, (SELECT id FROM cost_codes WHERE code = '12' LIMIT 1), 'sub_payment', $2, $3, $4)`,
+         VALUES ($1, (SELECT id FROM cost_codes WHERE code = '12' LIMIT 1), 'sub_payment', $2, $3, $4)
+         ON CONFLICT (source_type, source_id) DO NOTHING`,
         [projectId, entityId, payload.amount, `Subcontractor payment cert #${entityId} - ${payload.amount} EGP`]
       );
       console.log(`[COSTING] Sub payment #${entityId}: ${payload.amount} EGP → project #${projectId}`);

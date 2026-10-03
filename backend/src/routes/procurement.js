@@ -381,6 +381,20 @@ router.post('/invoices', authenticate, authorize(), async (req, res) => {
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
 
+// Phase 3.1 — approval is the accrual point for services. An unmapped ledger account fails the whole
+// approval (nothing saved) with the key named in the error and in error_params (L7 error contract).
+router.post('/invoices/:id/approve', authenticate, authorize(), async (req, res) => {
+  try {
+    const result = await atomic((q) => svc.approveSupplierInvoice(q, parseInt(req.params.id, 10), req.user));
+    res.json({ success: true, data: result });
+  } catch (e) {
+    if (e.status === 404) return res.status(404).json({ success: false, error: e.message });
+    if (e.status === 409) return res.status(409).json({ success: false, error: e.message, error_code: 'supplier_invoice_not_approvable', error_params: {} });
+    if (e.key) return res.status(500).json({ success: false, error: e.message, error_code: 'ledger_account_not_mapped', error_params: { key: e.key } });
+    res.status(400).json({ success: false, error: e.message });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Branded, numbered PDF documents
 // ---------------------------------------------------------------------------

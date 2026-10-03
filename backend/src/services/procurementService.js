@@ -27,6 +27,7 @@
 const workflowEngine = require('./workflowEngine');
 const numbering = require('./numbering');
 const inventoryEngine = require('./inventoryEngine');
+const costAccrual = require('./costAccrual');
 
 const PRICE_VARIANCE_TOLERANCE = 0.02;   // 2% line-price tolerance
 const TAX_MATCH_TOLERANCE = 1.0;         // absolute currency tolerance
@@ -72,6 +73,13 @@ function grnConstraintOk({ ordered, deliveredCumulative, acceptedCumulative, tol
   return toNum(acceptedCumulative) <= round3(maxAllowed)
     && toNum(deliveredCumulative) <= round3(maxAllowed)
     && toNum(acceptedCumulative) <= toNum(deliveredCumulative) + 1e-9;
+}
+
+class NotFoundError extends Error {
+  constructor(message) { super(message); this.status = 404; }
+}
+class ConflictError extends Error {
+  constructor(message) { super(message); this.status = 409; }
 }
 
 // ---------------------------------------------------------------------------
@@ -664,7 +672,33 @@ async function createGrn(q, { mir_id, warehouse_id, created_by = null, received_
       [grn.id, line.id, line.purchase_order_line_id, line.material_id, line.accepted_quantity, null]
     );
   }
+  // Phase 3.1 accrual rule: stocked materials accrue their cost HERE, at the GRN, inside this same
+  // transaction (idempotent on (source_type, source_id) — migration 0018). Service lines accrue when
+  // their supplier invoice is approved, never here.
+  await costAccrual.accrueGrnCost(q, grn, { userId: created_by });
   return grn;
+}
+
+// Supplier invoice approval (Phase 3.1): the accrual point for services. The claim is atomic
+// (UPDATE ... WHERE status = 'received' RETURNING) so two concurrent approvals cannot both accrue;
+// the accrual and its ledger entry commit or roll back with the approval. An invoice whose goods
+// already accrued at the GRN accrues nothing here (no double count).
+async function approveSupplierInvoice(q, invoiceId, user) {
+  const invoice = (await q('SELECT * FROM supplier_invoices WHERE id = $1', [invoiceId])).rows[0];
+  if (!invoice) throw new NotFoundError(`Supplier invoice #${invoiceId} not found`);
+  if (invoice.status === 'approved') throw new ConflictError('Supplier invoice is already approved');
+  const claimed = (await q(
+    `UPDATE supplier_invoices
+        SET status = 'approved', approved_by = $2, approved_at = NOW()
+      WHERE id = $1 AND status = 'received' RETURNING *`,
+    [invoiceId, user ? user.id : null]
+  )).rows[0];
+  if (!claimed) {
+    if (invoice.status === 'received') throw new ConflictError('Supplier invoice is already approved');
+    throw new ConflictError(`Supplier invoice is ${invoice.status} — only a received invoice can be approved`);
+  }
+  const accrual = await costAccrual.accrueSupplierInvoiceCost(q, claimed, { userId: user ? user.id : null });
+  return { invoice: claimed, accrual };
 }
 
 // Supplier return — draws the material back out of stock (Phase 10 ledger). A return is checked against what
@@ -910,6 +944,7 @@ module.exports = {
   createSupplierReturn,
   matchInvoiceLine,
   recordSupplierInvoice,
+  approveSupplierInvoice,
   threeWayMatch,
   issueMaterialToWorkPackage,
 };

@@ -58,12 +58,16 @@ router.get('/', authenticate, authorize(), async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
+// Client (AR) and supplier (AP) payments. An AP payment names a supplier instead of a client; it posts
+// Dr payable | Cr cash (services/glPosting.js POSTING_RULES.supplier_payment, Phase 3.1).
 router.post('/', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       invoice_id: Joi.number().integer().optional().allow(null),
       project_id: Joi.number().integer().required(),
-      client_id: Joi.number().integer().required(),
+      client_id: Joi.number().integer().optional().allow(null),
+      direction: Joi.string().valid('ar', 'ap').default('ar'),
+      supplier_id: Joi.number().integer().optional().allow(null),
       amount: Joi.number().positive().required(),
       payment_date: Joi.date().iso().required(),
       payment_method: Joi.string().valid(...PAYMENT_METHODS).default('bank_transfer'),
@@ -72,10 +76,19 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (value.direction === 'ap' && !value.supplier_id) {
+      return res.status(400).json({ success: false, error: 'A supplier payment needs supplier_id', error_code: 'supplier_required', error_params: {} });
+    }
+    if (value.direction === 'ar' && !value.client_id) {
+      return res.status(400).json({ success: false, error: 'A client payment needs client_id', error_code: 'client_required', error_params: {} });
+    }
+    if (value.direction === 'ap' && value.invoice_id) {
+      return res.status(400).json({ success: false, error: 'A supplier payment does not take a client invoice', error_code: 'supplier_payment_no_client_invoice', error_params: {} });
+    }
 
     const payment = await transaction(async (client) => {
       const q = client.query.bind(client);
-      if (value.invoice_id) {
+      if (value.direction === 'ar' && value.invoice_id) {
         const inv = (await q('SELECT * FROM invoices WHERE id = $1 FOR UPDATE', [value.invoice_id])).rows[0];
         if (!inv || Number(inv.project_id) !== value.project_id || Number(inv.client_id) !== value.client_id) {
           throw new Error('Invoice does not belong to the selected project and client');
@@ -85,13 +98,15 @@ router.post('/', authenticate, authorize(), async (req, res) => {
         if (value.amount > balance.outstanding + 1e-9) throw new Error('Payment exceeds invoice outstanding balance');
       }
       const row = (await q(
-        `INSERT INTO payments (invoice_id, project_id, client_id, amount, payment_date, payment_method, reference_number, notes)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-        [value.invoice_id || null, value.project_id, value.client_id, value.amount,
+        `INSERT INTO payments (invoice_id, project_id, client_id, direction, supplier_id, amount, payment_date, payment_method, reference_number, notes)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+        [value.invoice_id || null, value.project_id, value.direction === 'ap' ? null : value.client_id,
+         value.direction, value.direction === 'ap' ? value.supplier_id : null, value.amount,
          value.payment_date, value.payment_method, value.reference_number, value.notes]
       )).rows[0];
-      await glPosting.postClientPayment(q, row, { userId: req.user.id });
-      if (value.invoice_id) {
+      if (value.direction === 'ap') await glPosting.postSupplierPayment(q, row, { userId: req.user.id });
+      else await glPosting.postClientPayment(q, row, { userId: req.user.id });
+      if (value.direction === 'ar' && value.invoice_id) {
         await finance.allocatePayment(q, {
           payment_id: row.id,
           allocations: [{ target_type: 'client_invoice', invoice_id: value.invoice_id, amount: value.amount }],
@@ -100,7 +115,6 @@ router.post('/', authenticate, authorize(), async (req, res) => {
       }
       return row;
     });
-
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       action: 'create', module: 'payments',
@@ -134,7 +148,8 @@ router.delete('/:id', authenticate, authorize(), async (req, res) => {
       if (supplierInvoiceIds.length) await q('SELECT id FROM supplier_invoices WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE', [supplierInvoiceIds]);
       await q('UPDATE payments SET voided_at = NOW(), voided_by = $2, void_reason = $3 WHERE id = $1', [existing.id, req.user.id, reason]);
       await q('UPDATE payment_allocations SET voided_at = NOW() WHERE payment_id = $1 AND voided_at IS NULL', [existing.id]);
-      await glPosting.reverseClientPayment(q, existing, { userId: req.user.id });
+      if (existing.direction === 'ap') await glPosting.reverseSupplierPayment(q, existing, { userId: req.user.id });
+      else await glPosting.reverseClientPayment(q, existing, { userId: req.user.id });
       for (const invoiceId of invoiceIds) await recalcInvoiceStatus(q, invoiceId);
       for (const supplierInvoiceId of supplierInvoiceIds) {
         // Paid supplier invoices that are no longer fully allocated go back to 'received'.

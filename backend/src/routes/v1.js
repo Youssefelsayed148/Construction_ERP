@@ -228,6 +228,10 @@ const FAMILY_MAP = {
     ['procurement', 'POST', '/mir/:id/grn', '/from-mir/:id'],
     ['procurement', 'POST', '/grn/:id/returns', '/:id/returns'],
   ],
+  'supplier-invoices': [
+    ['procurement', 'POST', '/invoices', '/'],
+    ['procurement', 'POST', '/invoices/:id/approve', '/:id/approve'],
+  ],
   contracts: [
     ['commercial', 'GET', '/contracts/:projectId', '/:projectId'],
     ['commercial', 'POST', '/contracts', '/'],
