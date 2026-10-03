@@ -8,7 +8,10 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD || '',
   max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
+  // 5s in every environment by default. Slow hosts (WSL2 port-forwarding to Docker Desktop) can
+  // exceed it while a connection is opening and turn a pool wait into 'timeout exceeded when
+  // trying to connect'; set DB_CONNECT_TIMEOUT_MS there instead of weakening the default.
+  connectionTimeoutMillis: parseInt(process.env.DB_CONNECT_TIMEOUT_MS || '5000', 10),
 });
 
 pool.on('connect', () => {
