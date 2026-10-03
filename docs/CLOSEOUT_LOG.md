@@ -96,3 +96,12 @@ The backend stack (#17, #18) and the frontend stack (#19 on #6-#9) are merged in
 - Tests: `constraints-2-6b.pg.test.js` (6, real PG). Backend mock 968, real-PG 188.
 - Not done in 2.6: status enums for the other workflow tables (needs the audit on real data); removing the legacy header `material_id` (next slice, 2.6c: needs a backfill of lines for header-only POs, so it is a data-writing migration).
 - Open questions: none new.
+
+## 2026-10-03: Phase 2.6c, purchase lines are authoritative (migration 0014)
+
+- Reproduced first (4 of 6 real-PG tests failed on the old code): replenishment wrote one material into the PO and PR header and found open orders through that header column; `openConfirmedQuantity` wrapped its line query in `try { ... } catch (e) { /* database before line tables */ }`, hiding any error; a delayed PO raised its alert for the header material only.
+- Code: replenishment creates the PR/PO header without a material and always writes the line (the `if (!/purchase_request_lines/.test(e.message))` fallbacks are gone); the open-order and incoming-quantity queries go through lines; idempotency of PRs uses `source_key`; delayed-PO alerts are raised per line material; the PO header quantity and total are derived by `recomputePoTotals`.
+- Migration `0014_backfill_header_only_lines.sql`: **adds** one line to every PO and PR that has a header material and positive quantity but no lines (copied from the header; repeatable; documents that already have lines are untouched). **Existing rows: none changed or deleted; line rows added.** Header columns are kept and commented as deprecated; dropping them is a later decision. Preflight rows added (`will_change` counts).
+- Behaviour change to be aware of: before, a header-only legacy PO counted as incoming stock through its header quantity; after the migration it counts through its backfilled line. A legacy PO partly delivered before line tables existed has no delivered quantity on the new line, so its incoming quantity is the full header quantity (same as before, since the header had no delivered column).
+- Tests: `legacy-headers.pg.test.js` (6, real PG). `replenishment.test.js` (mock) updated to query by lines and source_key (its fake-query test asserted the header double counting). Mock 968, real-PG 194, lint guards ok.
+- Open questions: drop the deprecated header columns after checking a restored copy? (I would, in a later migration.)

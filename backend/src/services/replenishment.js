@@ -29,10 +29,17 @@
 const { query: defaultQuery } = require('../config/database');
 const numbering = require('./numbering');
 const notificationService = require('./notificationService');
+const procurementService = require('./procurementService');
 
 const MODES = ['alert_only', 'auto_draft_pr', 'auto_draft_po', 'auto_issue_po'];
 const DEFAULT_MODE = 'alert_only';
 const OPEN_PO_STATUSES = ['approved', 'issued', 'confirmed'];
+// Orders whose undelivered quantity still counts as incoming stock.
+const OPEN_INCOMING_PO_STATUSES = ['approved', 'issued', 'confirmed', 'partially_delivered'];
+// Orders a sweep must not stack another order on top of.
+const OPEN_DRAFT_PO_STATUSES = ['draft', 'issued', 'approved'];
+// Fixed status constants rendered as an SQL list (never user input).
+const inList = (values) => values.map((v) => `'${v}'`).join(', ');
 const ALERT_ROLES = ['purchasing_mgr', 'owner'];
 const USAGE_LOOKBACK_DAYS = 90;
 const SCHEDULED_HORIZON_DAYS = 90;
@@ -175,22 +182,14 @@ async function forecastDailyUsage(q, materialId, { now = new Date(), days = USAG
 
 // Open confirmed POs = committed, not-yet-received incoming quantity.
 async function openConfirmedQuantity(q, materialId) {
-  const orders = (await q(
-    `SELECT * FROM purchase_orders WHERE material_id = $1 AND status IN ('approved','issued','confirmed','partially_delivered')`,
+  // Lines only (2.6c): header-only orders got a line from migration 0014.
+  const lines = (await q(
+    `SELECT l.quantity, l.delivered_quantity FROM purchase_order_lines l
+       JOIN purchase_orders po ON po.id = l.purchase_order_id
+      WHERE l.material_id = $1 AND po.status IN (${inList(OPEN_INCOMING_PO_STATUSES)})`,
     [materialId]
   )).rows;
-  let headerOnly = orders;
-  let lineTotal = 0;
-  try {
-    const openOrders = (await q("SELECT * FROM purchase_orders WHERE status IN ('approved','issued','confirmed','partially_delivered')")).rows;
-    const openIds = new Set(openOrders.map((po) => po.id));
-    const lines = (await q('SELECT * FROM purchase_order_lines WHERE material_id = $1', [materialId])).rows;
-    const ordersWithLines = new Set(lines.map((line) => line.purchase_order_id));
-    headerOnly = orders.filter((po) => !ordersWithLines.has(po.id));
-    lineTotal = lines.filter((line) => openIds.has(line.purchase_order_id))
-      .reduce((s, line) => s + Math.max(toNum(line.quantity) - toNum(line.delivered_quantity), 0), 0);
-  } catch (e) { /* Phase 11 database before line tables: header total above is authoritative. */ }
-  return round3(headerOnly.reduce((s, r) => s + Math.max(toNum(r.quantity) - toNum(r.delivered_quantity), 0), 0) + lineTotal);
+  return round3(lines.reduce((s, line) => s + Math.max(toNum(line.quantity) - toNum(line.delivered_quantity), 0), 0));
 }
 
 // Scheduled demand = future planned material_requirements rows (Phase 9).
@@ -276,63 +275,60 @@ async function resolveSupplier(q, item, policy) {
 
 async function ensureDraftPurchaseRequest(q, { item, quantity, neededBy, mode, createdBy = null }) {
   const sourceKey = `replenishment:${item.id}`;
+  // source_key is per material, so it is the idempotency key; the material itself lives on the line.
   const existing = (await q(
-    "SELECT * FROM purchase_requests WHERE material_id = $1 AND status = 'draft' AND source_key = $2",
-    [item.id, sourceKey]
+    "SELECT * FROM purchase_requests WHERE status = 'draft' AND source_key = $1",
+    [sourceKey]
   )).rows[0];
   if (existing) return { created: false, request: existing };
 
   const requestNumber = await numbering.nextNumber(q, { table: 'purchase_requests', column: 'request_number', prefix: 'PR', pad: 5 });
   const r = await q(
     `INSERT INTO purchase_requests
-       (request_number, material_id, quantity, unit, needed_by, status, source_type, source_id, source_key, policy_mode, created_by)
-     VALUES ($1, $2, $3, $4, $5, 'draft', 'replenishment', $6, $7, $8, $9) RETURNING *`,
-    [requestNumber, item.id, quantity, item.unit || null, neededBy || null, item.id, sourceKey, mode, createdBy]
+       (request_number, quantity, unit, needed_by, status, source_type, source_id, source_key, policy_mode, created_by)
+     VALUES ($1, $2, $3, $4, 'draft', 'replenishment', $5, $6, $7, $8) RETURNING *`,
+    [requestNumber, quantity, item.unit || null, neededBy || null, item.id, sourceKey, mode, createdBy]
   );
-  try {
-    await q(
-      `INSERT INTO purchase_request_lines
-         (purchase_request_id, material_id, description, quantity, unit, needed_by)
-       VALUES ($1,$2,$3,$4,$5,$6)`,
-      [r.rows[0].id, item.id, item.name_en || item.name_ar || item.code, quantity, item.unit || null, neededBy || null]
-    );
-  } catch (e) {
-    if (!/purchase_request_lines/.test(e.message)) throw e;
-  }
+  await q(
+    `INSERT INTO purchase_request_lines
+       (purchase_request_id, material_id, description, quantity, unit, needed_by)
+     VALUES ($1,$2,$3,$4,$5,$6)`,
+    [r.rows[0].id, item.id, item.name_en || item.name_ar || item.code, quantity, item.unit || null, neededBy || null]
+  );
   return { created: true, request: r.rows[0] };
 }
 
 async function ensurePurchaseOrder(q, { item, supplier, quantity, unitPrice, status, basis, ceiling = null, neededBy = null, createdBy = null }) {
   const sourceKey = `replenishment:${item.id}`;
   // One open PO per material — a second sweep must never stack orders.
-  const existing = (await q(
-    "SELECT * FROM purchase_orders WHERE material_id = $1 AND status IN ('draft','issued','approved')",
+  const open = (await q(
+    `SELECT po.id FROM purchase_order_lines l
+       JOIN purchase_orders po ON po.id = l.purchase_order_id
+      WHERE l.material_id = $1 AND po.status IN (${inList(OPEN_DRAFT_PO_STATUSES)})
+      ORDER BY po.id LIMIT 1`,
     [item.id]
   )).rows[0];
+  const existing = open ? (await q('SELECT * FROM purchase_orders WHERE id = $1', [open.id])).rows[0] : null;
   if (existing) return { created: false, order: existing };
 
   const orderNumber = await numbering.nextNumber(q, { table: 'purchase_orders', column: 'order_number', prefix: 'PO', pad: 5 });
   const r = await q(
     `INSERT INTO purchase_orders
-       (order_number, supplier_id, material_id, quantity, unit, unit_price, total_amount,
-        status, issuance_basis, authority_ceiling, needed_by, source_type, source_id, source_key, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
-    [orderNumber, supplier ? supplier.supplier_id : null, item.id, quantity, item.unit || null,
-     unitPrice, round3(toNum(quantity) * toNum(unitPrice)), status, basis, ceiling, neededBy,
+       (order_number, supplier_id, unit, status, issuance_basis, authority_ceiling, needed_by, source_type, source_id, source_key, created_by)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+    [orderNumber, supplier ? supplier.supplier_id : null, item.unit || null, status, basis, ceiling, neededBy,
      'replenishment', item.id, sourceKey, createdBy]
   );
-  try {
-    await q(
-      `INSERT INTO purchase_order_lines
-         (purchase_order_id, material_id, description, quantity, unit, unit_rate, needed_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-      [r.rows[0].id, item.id, item.name_en || item.name_ar || item.code, quantity,
-       item.unit || null, unitPrice || 0, neededBy]
-    );
-  } catch (e) {
-    if (!/purchase_order_lines/.test(e.message)) throw e;
-  }
-  return { created: true, order: r.rows[0] };
+  await q(
+    `INSERT INTO purchase_order_lines
+       (purchase_order_id, material_id, description, quantity, unit, unit_rate, needed_by)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+    [r.rows[0].id, item.id, item.name_en || item.name_ar || item.code, quantity,
+     item.unit || null, unitPrice || 0, neededBy]
+  );
+  // Header quantity and total are derived from the lines in one place.
+  const order = await procurementService.recomputePoTotals(q, r.rows[0].id);
+  return { created: true, order };
 }
 
 // ---------------------------------------------------------------------------
@@ -602,15 +598,20 @@ async function evaluateOtherAlerts(q, opts = {}) {
   const pos = (await q("SELECT * FROM purchase_orders WHERE status = 'issued'")).rows;
   for (const po of pos) {
     const overdue = po.needed_by != null && new Date(po.needed_by).getTime() < now.getTime();
-    if (overdue) {
-      const r = await raiseAlert(q, {
-        materialId: po.material_id, purchaseOrderId: po.id, alertType: 'delayed_po',
-        snapshot: { summary: `PO ${po.order_number || po.id} overdue since ${po.needed_by}` },
-        notify: opts.notify !== false,
-      });
-      if (r.created) raised.delayed_po++;
-    } else {
-      await resolveAlerts(q, { materialId: po.material_id, alertTypes: ['delayed_po'] });
+    const materials = (await q(
+      'SELECT DISTINCT material_id FROM purchase_order_lines WHERE purchase_order_id = $1 AND material_id IS NOT NULL', [po.id]
+    )).rows;
+    for (const { material_id: materialId } of materials) {
+      if (overdue) {
+        const r = await raiseAlert(q, {
+          materialId, purchaseOrderId: po.id, alertType: 'delayed_po',
+          snapshot: { summary: `PO ${po.order_number || po.id} overdue since ${po.needed_by}` },
+          notify: opts.notify !== false,
+        });
+        if (r.created) raised.delayed_po++;
+      } else {
+        await resolveAlerts(q, { materialId, alertTypes: ['delayed_po'] });
+      }
     }
   }
 

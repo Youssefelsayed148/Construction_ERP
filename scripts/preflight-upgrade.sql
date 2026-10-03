@@ -121,6 +121,15 @@ SELECT migration, effect, kind, affected_rows FROM (
   UNION ALL
   SELECT '0013', 'documents with more than one current version: the migration STOPS until these are resolved by a person', 'attention',
          (SELECT count(*) FROM (SELECT 1 FROM document_versions WHERE is_current GROUP BY document_id HAVING count(*) > 1) d)
+  -- 0014: header-only purchase orders and requests get one line
+  UNION ALL
+  SELECT '0014', 'purchase orders with a header material and no lines: one line row is ADDED per order (header kept)', 'will_change',
+         (SELECT count(*) FROM purchase_orders po WHERE po.material_id IS NOT NULL AND po.quantity > 0
+            AND NOT EXISTS (SELECT 1 FROM purchase_order_lines l WHERE l.purchase_order_id = po.id))
+  UNION ALL
+  SELECT '0014', 'purchase requests with a header material and no lines: one line row is ADDED per request (header kept)', 'will_change',
+         (SELECT count(*) FROM purchase_requests pr WHERE pr.material_id IS NOT NULL AND pr.quantity > 0
+            AND NOT EXISTS (SELECT 1 FROM purchase_request_lines l WHERE l.purchase_request_id = pr.id))
 ) report
 ORDER BY migration, kind, effect;
 
