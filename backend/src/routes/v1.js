@@ -55,6 +55,7 @@ const ROUTERS = {
   financeLedger: { router: require('./financeLedger'), mount: '/api/finance-ledger' },
   invoices: { router: require('./invoices'), mount: '/api/invoices' },
   payments: { router: require('./payments'), mount: '/api/payments' },
+  approvals: { router: require('./approvals'), mount: '/api/approvals' },
   consultant: { router: require('./consultant'), mount: '/api/consultant' },
   doccontrol: { router: require('./doccontrol'), mount: '/api/docs' },
   qhse: { router: require('./qhse'), mount: '/api/qhse' },
@@ -231,6 +232,11 @@ const FAMILY_MAP = {
   'supplier-invoices': [
     ['procurement', 'POST', '/invoices', '/'],
     ['procurement', 'POST', '/invoices/:id/approve', '/:id/approve'],
+  ],
+  approvals: [
+    // Phase 3 (open item): non-destructive cancel for stale approvals + its dry-run report.
+    ['approvals', 'PUT', '/:id/cancel', '/:id/cancel'],
+    ['approvals', 'GET', '/stale', '/stale'],
   ],
   contracts: [
     ['commercial', 'GET', '/contracts/:projectId', '/:projectId'],

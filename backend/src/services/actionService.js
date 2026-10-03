@@ -181,7 +181,9 @@ async function createForWorkflowStep(instance, stepInstance, templateStep, opts 
 // The step was decided → close its action item.
 async function closeForWorkflowStep(instanceId, stepInstanceId, outcomeStatus, opts = {}) {
   const client = opts.client || { query: opts.query || defaultQuery };
-  const status = outcomeStatus === 'rejected' ? 'cancelled' : 'completed';
+  // 'rejected' (and, from Phase 3.3/3.4-era cancellations, 'cancelled') close the item as cancelled;
+  // every other outcome completes it.
+  const status = outcomeStatus === 'rejected' || outcomeStatus === 'cancelled' ? 'cancelled' : 'completed';
   const res = await client.query(
     `UPDATE action_items SET status = $1, completed_at = $3, updated_at = $3
      WHERE workflow_instance_id = $2 AND workflow_step_instance_id = $4 AND status IN ('open','in_progress')`,

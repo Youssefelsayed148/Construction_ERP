@@ -244,9 +244,89 @@ router.put('/:id/approve', authenticate, authorize(), async (req, res) => {
   }
 });
 
-// PUT /api/approvals/:id/reject
-router.put('/:id/reject', authenticate, authorize(), async (req, res) => {
+// PUT /api/approvals/:id/cancel — Phase 3 (open item): a non-destructive cancel for stale approvals.
+// status 'cancelled' with cancelled_by, cancelled_at and a required reason; audit-logged; the linked
+// workflow instance is cancelled with it. Nothing is deleted (cleanup-orphan-approvals.js --apply stays
+// the destructive last resort). The claim is atomic, so a cancel racing a decision cannot double-write.
+router.put('/:id/cancel', authenticate, authorize(), async (req, res) => {
   try {
+    const { id } = req.params;
+    const reason = (req.body && req.body.reason) || null;
+    if (!reason || String(reason).trim().length < 3) {
+      return res.status(400).json({ success: false, error: 'A reason (min 3 characters) is required to cancel an approval', error_code: 'cancel_reason_required', error_params: {} });
+    }
+    const { role, id: userId, name: userName } = req.user;
+    const result = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const existing = (await q('SELECT * FROM approval_requests WHERE id = $1 FOR UPDATE', [id])).rows[0];
+      if (!existing) return { notFound: true };
+      if (existing.status !== 'pending') return { conflict: existing.status };
+      const cancelled = (await q(
+        `UPDATE approval_requests
+            SET status = 'cancelled', cancelled_by = $2, cancelled_at = now(), cancel_reason = $3, updated_at = now()
+          WHERE id = $1 AND status = 'pending' RETURNING *`,
+        [id, userId, reason]
+      )).rows[0];
+      // The workflow linked to this legacy approval (legacy_approval_id) stops with it, if one exists.
+      const instances = (await q('SELECT id FROM workflow_instances WHERE legacy_approval_id = $1 AND status = $2', [id, 'active'])).rows;
+      let workflowCancelled = 0;
+      for (const inst of instances) {
+        if (await workflowEngine.cancelWorkflowInstance(q, inst.id, { userId, reason })) workflowCancelled += 1;
+      }
+      return { cancelled, workflowCancelled };
+    });
+    if (result.notFound) return res.status(404).json({ success: false, error: 'Approval not found' });
+    if (result.conflict) return res.status(409).json({ success: false, error: `Approval is already ${result.conflict}`, error_code: 'approval_not_cancellable', error_params: { status: result.conflict } });
+    await logActivity({
+      userId, userName, userRole: role,
+      action: 'cancel', module: 'approvals',
+      description: `Cancelled approval #${id} (${result.cancelled.module_name}): ${reason}${result.workflowCancelled ? ` — ${result.workflowCancelled} workflow instance(s) cancelled` : ''}`,
+      entityId: parseInt(id, 10), entityType: 'approval_request',
+    });
+    return res.json({ success: true, data: result.cancelled, workflows_cancelled: result.workflowCancelled });
+  } catch (error) {
+    console.error('Error cancelling approval:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/approvals/stale — the dry-run report: what a cancel sweep would touch, touching nothing.
+// owner/admin only (the cancel route itself is policy-gated; the report lists requesters and records).
+router.get('/stale', authenticate, authorize('owner', 'admin'), async (req, res) => {
+  try {
+    const olderThanDays = Math.max(1, parseInt(req.query.older_than_days || '30', 10));
+    const rows = (await query(
+      `SELECT ar.id, ar.module_name, ar.request_type, ar.request_id, ar.status, ar.created_at,
+              requester.name AS requester_name, requester.role AS requester_role,
+              wi.id AS workflow_instance_id, wi.status AS workflow_status
+         FROM approval_requests ar
+         LEFT JOIN users requester ON ar.requester_id = requester.id
+         LEFT JOIN workflow_instances wi ON wi.legacy_approval_id = ar.id
+        WHERE ar.status = 'pending'
+          AND ar.created_at < now() - ($1 || ' days')::interval
+        ORDER BY ar.created_at ASC
+        LIMIT 500`,
+      [String(olderThanDays)]
+    )).rows;
+    const byModule = {};
+    for (const r of rows) byModule[r.module_name] = (byModule[r.module_name] || 0) + 1;
+    res.json({
+      success: true,
+      data: {
+        older_than_days: olderThanDays,
+        total: rows.length,
+        by_module: byModule,
+        rows,
+      },
+    });
+  } catch (error) {
+    console.error('Error building the stale-approvals report:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /api/approvals/:id/reject
+router.put('/:id/reject', authenticate, authorize(), async (req, res) => {  try {
     const { id } = req.params;
     const { notes } = req.body;
     const { role, id: userId, name: userName } = req.user;
