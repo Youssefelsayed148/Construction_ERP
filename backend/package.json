@@ -12,6 +12,7 @@
     "test": "jest",
     "test:pg": "jest --config jest.pg.config.js --runInBand --forceExit",
     "lint:guards": "node src/scripts/lint-guards.js",
+    "outbox:stats": "node src/scripts/outbox-stats.js",
     "data-cleaning-report": "node src/scripts/data-cleaning-report.js",
     "approvals-parity": "node src/scripts/verify-approval-parity.js"
   },

@@ -233,32 +233,25 @@ async function catchUp(query, opts = {}) {
 }
 
 // ---------------------------------------------------------------------------
-// init — wire the sync listeners (repo pattern: global.eventBus) + backfill
+// init — the routed consumers are delivered out of the transactional outbox
+// (services/outboxDispatcher.js) with retries, backoff, a dead-letter state and
+// a stable event id. This initializer stays for the catch-up poll only: it seeds
+// legacy event_log rows (written before the outbox existed) into the outbox and
+// reaps any dispatch left stuck, so nothing written before the cutover is lost.
 // ---------------------------------------------------------------------------
 
 function initEventDispatcher(opts = {}) {
-  if (!global.eventBus) {
-    const EventEmitter = require('events');
-    global.eventBus = new EventEmitter();
-  }
-
-  for (const eventType of Object.keys(EVENT_ROUTES)) {
-    global.eventBus.on(eventType, (evt) => {
-      dispatchEvent(eventType, evt, {}).catch((e) =>
-        console.error(`[EVENT_DISPATCH] ${eventType}:`, e.message));
-      // Stamp the originating row when fireEvent gave us its id so the
-      // catch-up poll does not re-process it.
-      if (evt && evt.eventId != null) {
-        defaultQuery('UPDATE event_log SET dispatched_at = $1 WHERE id = $2 AND dispatched_at IS NULL', [new Date(), evt.eventId])
-          .catch((e) => console.error('[EVENT_DISPATCH] stamp failed:', e.message));
-      }
-    });
-  }
-
-  // Backfill anything the synchronous path missed (restarts, past failures).
-  catchUp(opts.query).catch((e) => console.error('[EVENT_DISPATCH] catch-up failed:', e.message));
-
-  console.log(`[EVENT_DISPATCH] initialized — routes: ${Object.keys(EVENT_ROUTES).join(', ')}`);
+  const outbox = require('./outboxDispatcher');
+  (async () => {
+    try {
+      await outbox.seedLegacyEventLog(opts.query);
+      await outbox.reap(opts.query);
+    } catch (e) {
+      console.error('[EVENT_DISPATCH] outbox catch-up failed:', e.message);
+    }
+  })();
+  console.log('[EVENT_DISPATCH] consuming from the event_outbox (no direct bus subscription)');
+  return null;
 }
 
 module.exports = {
