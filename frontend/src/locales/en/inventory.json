@@ -1,5 +1,13 @@
 {
   "title": "Inventory",
   "lowStock": "Low stock",
-  "empty": "No items yet."
+  "empty": "No items yet.",
+  "record": {
+    "deleteTitle": "Delete item",
+    "deleteMessage": "{name} will be hidden from lists and pickers. Existing orders and stock history keep it, and you can restore it later.",
+    "deleteConfirm": "Delete",
+    "restore": "Restore",
+    "showDeleted": "Show deleted items",
+    "deletedBadge": "Deleted"
+  }
 }

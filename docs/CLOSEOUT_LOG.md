@@ -40,3 +40,22 @@ Frontend stack (off the L3 shell branch, because it needs the L1-L3 catalog): PR
 - Tests: `projectNav.test.js` (22: matrix per role, legacy mapping, type gating), `ProjectShell.test.js` (5: rendered tabs per role), Playwright `project-page.spec.js` (3 x desktop and mobile: owner, site engineer, Arabic RTL). Whole frontend suite 65/65.
 - Not done (left open in the plan): count badges, "needs attention" list, spec 30 record layout, permission-driven path, `hidden group => 403` tests.
 - Open questions: (1) `equipment_manager` sees Overview only because no equipment sub-page exists yet; (2) unit-selling project types are my assumption.
+
+## 2026-10-03: integration base
+
+The backend stack (#17, #18) and the frontend stack (#19 on #6-#9) are merged into `integration-base`, which is the base of every PR from here on (UI work needs the L1-L3 catalog, and each converted delete route ships its UI in the same PR). CLOSEOUT_LOG.md conflicted add/add; both sides kept. Merge only, no new code.
+
+## 2026-10-03: Phase 2.5a, soft delete and void-with-reason (items, suppliers, payments, invoices)
+
+- Reproduced first: the four routes ran `DELETE FROM`; deleting an item or supplier cascaded into POs, order lines, quotations and supplier invoices. 16 real-PG tests failed on the old code (missing columns and hard deletes).
+- Migration `0009_soft_delete_masters_and_voids.sql` (additive only, existing rows untouched, nothing to preflight): `deleted_at/deleted_by/delete_reason` on item_master and suppliers; `voided_at/voided_by/void_reason` on payments; `voided_at` on payment_allocations; `voided_by/void_reason` on invoices; CHECKs that a void names a reason and a user (new columns, cannot break existing rows).
+- Items and suppliers: DELETE sets deleted_at, hides from lists (`include_deleted=true` shows), sets is_active=false, stays readable by id so history resolves; `POST /:id/restore`.
+- Payments: DELETE needs a reason, voids the payment and its allocations in one transaction (row locks on the payment and its invoices, concurrent voids: one 200, rest 409), recalculates invoice status, returns paid supplier invoices to `received`. All sums over payments and allocations now filter `voided_at IS NULL` (finance, dashboard, invoices, units, reports, financeEngine, clientEngine, reconcile). A voided payment cannot be allocated.
+- Invoices: DELETE needs a reason and sets status `void` (kept; refused while live payments exist). Bug found and fixed on the way: reading a voided invoice that was past due flipped it back to `overdue`; voided/cancelled/credited invoices were also counted in project and company invoiced totals and overdue counts.
+- Bug found and fixed: `GET /api/items` returned 500 for any filter (the count query renumbered placeholders by -2).
+- Bug found and fixed (frontend, from L2): `common.actions` was an object, so every table's Actions header rendered a missing-key marker; the object is now `common.buttons` and `common.actions` is the column label.
+- Policy: new `void` action for DELETE on payments and invoices, `delete` action for the two restore routes (`ACTION_OVERRIDES`). MCP: `void_financial_record` now requires a `reason` and passes it to the invoice void.
+- UI (same PR): shared `ReasonDialog` (validated, accessible), used by Items, Suppliers (optional reason, show deleted, restore) and Invoices (void invoice, void payment with required reason, voided payments struck through, void status and filter). No `prompt()`/`confirm()` left on these four flows.
+- Tests: `soft-delete.pg.test.js` (16, real PG: rows kept, lists, history, restore, concurrency, totals, allocation block, void stays void, permission for `void` on internal API, `/api/v1` has no delete or void route for these, MCP reason), module-override-coverage (+5 assertions), `ReasonDialog.test.js` (5), Playwright `void-delete.spec.js` (3 journeys x desktop and mobile, English and Arabic). Backend mock suite, real-PG suite, frontend unit suite (72), Playwright (28) all pass locally.
+- Not done in 2.5a: FKs are still CASCADE (next slice), supplier invoice and other hard deletes listed in the plan, new POs/RFQs do not yet refuse a soft-deleted supplier or item.
+- Open questions: should a new PO/RFQ refuse a soft-deleted supplier or item? (I would say yes; it is a one-line guard per route, and I held back to keep this PR to what was asked.)

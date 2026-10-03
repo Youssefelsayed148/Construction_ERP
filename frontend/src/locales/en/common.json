@@ -37,7 +37,7 @@
   "amount": "Amount",
   "total": "Total",
   "notes": "Notes",
-  "actions": {
+  "buttons": {
     "add": "Add",
     "remove": "Remove",
     "saveChanges": "Save changes",
@@ -48,6 +48,7 @@
     "download": "Download",
     "upload": "Upload"
   },
+  "actions": "Actions",
   "details": "Details",
   "phone": "Phone",
   "email": "Email",
@@ -107,7 +108,10 @@
   "dialogs": {
     "confirmTitle": "Please confirm",
     "confirmDelete": "Delete this record? This cannot be undone.",
-    "unsavedChanges": "You have unsaved changes. Leave without saving?"
+    "unsavedChanges": "You have unsaved changes. Leave without saving?",
+    "reasonLabel": "Reason",
+    "reasonOptionalLabel": "Reason (optional)",
+    "reasonRequired": "Please enter a reason."
   },
   "pagination": {
     "page": "Page {page} of {total}",

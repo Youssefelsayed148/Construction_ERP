@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocale } from '../hooks/useLocale';
+import ReasonDialog from '../components/common/ReasonDialog';
 import { Search, Plus, Edit, Trash2, FileText, Receipt, Eye, X, CreditCard } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
@@ -16,12 +17,12 @@ const fetchApi = (url, options) => fetch(url, { headers: headers(), ...options }
 });
 
 const STATUS_LABELS = {
-  en: { all: 'All', draft: 'Draft', sent: 'Sent', partially_paid: 'Partially Paid', paid: 'Paid', overdue: 'Overdue' },
-  ar: { all: 'الكل', draft: 'مسودة', sent: 'مرسلة', partially_paid: 'مدفوعة جزئياً', paid: 'مدفوعة بالكامل', overdue: 'متأخرة' }
+  en: { all: 'All', draft: 'Draft', sent: 'Sent', partially_paid: 'Partially Paid', paid: 'Paid', overdue: 'Overdue', void: 'Void' },
+  ar: { all: 'الكل', draft: 'مسودة', sent: 'مرسلة', partially_paid: 'مدفوعة جزئياً', paid: 'مدفوعة بالكامل', overdue: 'متأخرة', void: 'ملغاة' }
 };
 
 const STATUS_BADGE = {
-  draft: 'badge-info', sent: 'badge-warning', partially_paid: 'badge-warning', paid: 'badge-success', overdue: 'badge-danger'
+  draft: 'badge-info', sent: 'badge-warning', partially_paid: 'badge-warning', paid: 'badge-success', overdue: 'badge-danger', void: 'badge-danger'
 };
 
 const PAYMENT_METHOD_LABELS = {
@@ -30,7 +31,7 @@ const PAYMENT_METHOD_LABELS = {
 };
 
 const PAYMENT_METHODS = ['cash', 'bank_transfer', 'check', 'other'];
-const ALL_STATUSES = ['draft', 'sent', 'partially_paid', 'paid', 'overdue'];
+const ALL_STATUSES = ['draft', 'sent', 'partially_paid', 'paid', 'overdue', 'void'];
 
 function Invoices() {
   const { t, locale } = useLocale();
@@ -44,6 +45,9 @@ function Invoices() {
   const [editingInvoice, setEditingInvoice] = useState(null);
   const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
+  const [voidTarget, setVoidTarget] = useState(null);
+  const [dialogError, setDialogError] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -81,17 +85,16 @@ function Invoices() {
 
   useEffect(() => { loadInvoices(); loadSummary(); }, [loadInvoices, loadSummary]);
 
-  const handleDelete = async (id, invoiceNumber) => {
-    const confirmMsg = locale === 'ar'
-      ? `اكتب رقم الفاتورة للحذف: ${invoiceNumber}`
-      : `Type invoice number to delete: ${invoiceNumber}`;
-    const name = prompt(confirmMsg);
-    if (name !== invoiceNumber) return;
+  // Void with a reason, never delete: the invoice stays in the register with status void.
+  const confirmVoid = async (reason) => {
+    setBusy(true); setDialogError('');
     try {
-      await fetchApi(`${API_URL}/invoices/${id}`, { method: 'DELETE' });
+      await fetchApi(`${API_URL}/invoices/${voidTarget.id}`, { method: 'DELETE', body: JSON.stringify({ reason }) });
+      setVoidTarget(null);
       loadInvoices();
       loadSummary();
-    } catch (e) { alert(e.message); }
+    } catch (e) { setDialogError(e.message); }
+    finally { setBusy(false); }
   };
 
   const openDetail = async (inv) => {
@@ -250,8 +253,8 @@ function Invoices() {
                         <button className="btn" style={{ padding: '6px 10px' }} onClick={() => { setEditingInvoice(inv); loadProjects(); loadClients(); setShowAddModal(true); }}>
                           <Edit size={14} />
                         </button>
-                        {paid === 0 && (
-                          <button className="btn btn-danger" style={{ padding: '6px 10px' }} onClick={() => handleDelete(inv.id, inv.invoice_number)}>
+                        {paid === 0 && inv.status !== 'void' && (
+                          <button className="btn btn-danger" style={{ padding: '6px 10px' }} title={t('finance.void.action')} aria-label={t('finance.void.action')} onClick={() => { setDialogError(''); setVoidTarget(inv); }}>
                             <Trash2 size={14} />
                           </button>
                         )}
@@ -276,6 +279,18 @@ function Invoices() {
           onSave={() => { loadInvoices(); loadSummary(); setShowAddModal(false); setEditingInvoice(null); }}
         />
       )}
+
+      <ReasonDialog
+        open={Boolean(voidTarget)}
+        title={t('finance.void.invoiceTitle')}
+        message={voidTarget ? t('finance.void.invoiceMessage', { number: voidTarget.invoice_number }) : ''}
+        confirmLabel={t('finance.void.confirm')}
+        reasonRequired
+        busy={busy}
+        error={dialogError}
+        onConfirm={confirmVoid}
+        onCancel={() => setVoidTarget(null)}
+      />
 
       {showDetailModal && (
         <InvoiceDetailModal
@@ -414,10 +429,13 @@ function InvoiceDetailModal({ invoice, locale, t, onClose, onPaymentSaved }) {
   const [payments, setPayments] = useState(invoice.payments || []);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [recalcInvoice, setRecalcInvoice] = useState(invoice);
+  const [voidPayment, setVoidPayment] = useState(null);
+  const [voidError, setVoidError] = useState('');
+  const [voidBusy, setVoidBusy] = useState(false);
 
   const methodLabel = (m) => PAYMENT_METHOD_LABELS[locale]?.[m] || m;
 
-  const totalPaid = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+  const totalPaid = payments.filter((p) => !p.voided_at).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
   const remaining = (parseFloat(invoice.amount) || 0) - totalPaid;
 
   const refreshInvoice = async () => {
@@ -431,13 +449,15 @@ function InvoiceDetailModal({ invoice, locale, t, onClose, onPaymentSaved }) {
     } catch (e) { console.error(e); }
   };
 
-  const handleDeletePayment = async (paymentId) => {
-    if (!window.confirm(locale === 'ar' ? 'هل أنت متأكد من حذف هذه الدفعة؟' : 'Delete this payment?')) return;
+  const confirmVoidPayment = async (reason) => {
+    setVoidBusy(true); setVoidError('');
     try {
-      await fetchApi(`${API_URL}/payments/${paymentId}`, { method: 'DELETE' });
+      await fetchApi(`${API_URL}/payments/${voidPayment.id}`, { method: 'DELETE', body: JSON.stringify({ reason }) });
+      setVoidPayment(null);
       await refreshInvoice();
       onPaymentSaved();
-    } catch (e) { alert(e.message); }
+    } catch (e) { setVoidError(e.message); }
+    finally { setVoidBusy(false); }
   };
 
   const statusLabel = (s) => STATUS_LABELS[locale]?.[s] || s;
@@ -532,7 +552,7 @@ function InvoiceDetailModal({ invoice, locale, t, onClose, onPaymentSaved }) {
                 </thead>
                 <tbody>
                   {payments.map(pm => (
-                    <tr key={pm.id}>
+                    <tr key={pm.id} style={pm.voided_at ? { opacity: 0.55, textDecoration: 'line-through' } : undefined}>
                       <td style={{ fontFamily: 'monospace', color: 'var(--color-success)', fontWeight: 500 }}>
                         {formatCurrency(pm.amount)}
                       </td>
@@ -546,9 +566,13 @@ function InvoiceDetailModal({ invoice, locale, t, onClose, onPaymentSaved }) {
                         {pm.reference_number || '-'}
                       </td>
                       <td>
-                        <button className="btn btn-danger" style={{ padding: '4px 8px' }} onClick={() => handleDeletePayment(pm.id)}>
-                          <Trash2 size={12} />
-                        </button>
+                        {pm.voided_at ? (
+                          <span className="badge badge-danger" title={pm.void_reason || ''}>{t('finance.void.voidedBadge')}</span>
+                        ) : (
+                          <button className="btn btn-danger" style={{ padding: '4px 8px' }} title={t('finance.void.action')} aria-label={t('finance.void.action')} onClick={() => { setVoidError(''); setVoidPayment(pm); }}>
+                            <Trash2 size={12} />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -556,6 +580,18 @@ function InvoiceDetailModal({ invoice, locale, t, onClose, onPaymentSaved }) {
               </table>
             </div>
           )}
+
+          <ReasonDialog
+            open={Boolean(voidPayment)}
+            title={t('finance.void.paymentTitle')}
+            message={t('finance.void.paymentMessage')}
+            confirmLabel={t('finance.void.confirm')}
+            reasonRequired
+            busy={voidBusy}
+            error={voidError}
+            onConfirm={confirmVoidPayment}
+            onCancel={() => setVoidPayment(null)}
+          />
 
           {showPaymentForm && (
             <PaymentForm

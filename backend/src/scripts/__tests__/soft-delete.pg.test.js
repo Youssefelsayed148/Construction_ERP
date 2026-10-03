@@ -197,6 +197,7 @@ describePg('soft delete and void-with-reason (real PostgreSQL, real app)', () =>
 
   describe('permissions for the new void action (internal API, /api/v1 and MCP)', () => {
     let probe;
+    const probeRoles = [];
     const makeUser = async (roleKey, grants) => {
       const role = (await one("INSERT INTO roles (key, name, is_system) VALUES ($1, $1, false) RETURNING id", [`${roleKey}-${tag}`])).id;
       for (const [module, action] of grants) {
@@ -205,6 +206,7 @@ describePg('soft delete and void-with-reason (real PostgreSQL, real app)', () =>
       }
       const u = await one("INSERT INTO users (name, email, password, role) VALUES ($1, $2, 'x', $3) RETURNING id, token_version", [`sd-${roleKey}`, `sd-${roleKey}-${tag}@test.io`, `${roleKey}-${tag}`]);
       await db.query('INSERT INTO user_project_roles (user_id, project_id, role_id) VALUES ($1, NULL, $2)', [u.id, role]);
+      probeRoles.push(role);
       return { id: u.id, role, token: tokens.signSession({ userId: u.id, tokenVersion: u.token_version }) };
     };
     const asUser = async (u, method, path, body) => {
@@ -216,6 +218,9 @@ describePg('soft delete and void-with-reason (real PostgreSQL, real app)', () =>
         await db.query('DELETE FROM user_project_roles WHERE user_id = $1', [u.id]);
         await db.query('UPDATE users SET is_active = false WHERE id = $1', [u.id]);
       }
+      // The probe roles are test fixtures; other suites list every role in the table.
+      await db.query('DELETE FROM role_permissions WHERE role_id = ANY($1)', [probeRoles]);
+      await db.query('DELETE FROM roles WHERE id = ANY($1)', [probeRoles]);
     });
 
     test('a role with delete but not void cannot void a payment or an invoice; with void it can', async () => {

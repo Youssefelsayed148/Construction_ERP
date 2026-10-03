@@ -1,5 +1,14 @@
 {
   "title": "Finance",
   "invoices": "Invoices",
-  "payments": "Payments"
+  "payments": "Payments",
+  "void": {
+    "invoiceTitle": "Void invoice",
+    "invoiceMessage": "Invoice {number} will be marked void and stop counting toward totals. It cannot be paid afterwards. The record is kept.",
+    "paymentTitle": "Void payment",
+    "paymentMessage": "This payment will be marked void and stop counting toward what the invoice has been paid. The record is kept.",
+    "confirm": "Void",
+    "voidedBadge": "Void",
+    "action": "Void"
+  }
 }

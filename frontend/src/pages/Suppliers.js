@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocale } from '../hooks/useLocale';
-import { Search, Plus, Edit, Trash2, Truck, X } from 'lucide-react';
+import ReasonDialog from '../components/common/ReasonDialog';
+import { Search, Plus, Edit, Trash2, Truck, X, RotateCcw } from 'lucide-react';
 import EGYPT_CITIES from '../constants/egyptCities';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
@@ -38,6 +39,10 @@ function Suppliers() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState(null);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [dialogError, setDialogError] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const loadSuppliers = useCallback(async () => {
     setLoading(true);
@@ -46,28 +51,31 @@ function Suppliers() {
       if (selectedSpecialty) params.append('specialty', selectedSpecialty);
       if (searchQuery) params.append('search', searchQuery);
       params.append('limit', '200');
+      if (showDeleted) params.append('include_deleted', 'true');
       const res = await fetchApi(`${API_URL}/suppliers?${params}`);
       if (res.success) setSuppliers(res.data || []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, [selectedSpecialty, searchQuery]);
+  }, [selectedSpecialty, searchQuery, showDeleted]);
 
   useEffect(() => { loadSuppliers(); }, [loadSuppliers]);
 
-  const handleDelete = async (id) => {
-    if (locale === 'ar') {
-      const name = prompt('اكتب اسم المورد للحذف:');
-      const supplier = suppliers.find(i => i.id === id);
-      if (name !== supplier?.name_en && name !== supplier?.name_ar) return;
-    } else {
-      const name = prompt('Type supplier name to confirm delete:');
-      const supplier = suppliers.find(i => i.id === id);
-      if (name !== supplier?.name_en && name !== supplier?.name_ar) return;
-    }
+  // Soft delete: the supplier is hidden, not destroyed; a reason is optional for masters.
+  const confirmDelete = async (reason) => {
+    setBusy(true); setDialogError('');
     try {
-      await fetchApi(`${API_URL}/suppliers/${id}`, { method: 'DELETE' });
+      await fetchApi(`${API_URL}/suppliers/${deleteTarget.id}`, { method: 'DELETE', body: JSON.stringify({ reason }) });
+      setDeleteTarget(null);
       loadSuppliers();
-    } catch (e) { alert(e.message); }
+    } catch (e) { setDialogError(e.message); }
+    finally { setBusy(false); }
+  };
+
+  const restoreSupplier = async (id) => {
+    try {
+      await fetchApi(`${API_URL}/suppliers/${id}/restore`, { method: 'POST' });
+      loadSuppliers();
+    } catch (e) { setDialogError(e.message); }
   };
 
   const specialtyLabel = (s) => SPECIALTY_LABELS[locale]?.[s] || s;
@@ -131,6 +139,11 @@ function Suppliers() {
         </div>
       </div>
 
+      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '12px', fontSize: '13px' }}>
+        <input type="checkbox" checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} />
+        {t('suppliers.record.showDeleted')}
+      </label>
+
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
           <span className="spinner" />
@@ -170,7 +183,7 @@ function Suppliers() {
                   </td>
                   <td>
                     <span className={`badge ${s.is_active ? 'badge-success' : 'badge-danger'}`}>
-                      {s.is_active ? (locale === 'ar' ? 'نشط' : 'Active') : (locale === 'ar' ? 'غير نشط' : 'Inactive')}
+                      {s.deleted_at ? t('suppliers.record.deletedBadge') : s.is_active ? t('common.statuses.active') : t('common.statuses.inactive')}
                     </span>
                   </td>
                   <td>
@@ -178,9 +191,15 @@ function Suppliers() {
                       <button className="btn" style={{ padding: '6px 10px' }} onClick={() => { setEditingSupplier(s); setShowModal(true); }}>
                         <Edit size={14} />
                       </button>
-                      <button className="btn btn-danger" style={{ padding: '6px 10px' }} onClick={() => handleDelete(s.id)}>
-                        <Trash2 size={14} />
-                      </button>
+                      {s.deleted_at ? (
+                        <button className="btn" style={{ padding: '6px 10px' }} title={t('suppliers.record.restore')} aria-label={t('suppliers.record.restore')} onClick={() => restoreSupplier(s.id)}>
+                          <RotateCcw size={14} />
+                        </button>
+                      ) : (
+                        <button className="btn btn-danger" style={{ padding: '6px 10px' }} title={t('common.delete')} aria-label={t('common.delete')} onClick={() => { setDialogError(''); setDeleteTarget(s); }}>
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -189,6 +208,17 @@ function Suppliers() {
           </table>
         </div>
       )}
+
+      <ReasonDialog
+        open={Boolean(deleteTarget)}
+        title={t('suppliers.record.deleteTitle')}
+        message={deleteTarget ? t('suppliers.record.deleteMessage', { name: supplierName(deleteTarget) }) : ''}
+        confirmLabel={t('suppliers.record.deleteConfirm')}
+        busy={busy}
+        error={dialogError}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
 
       {showModal && <SupplierModal
         supplier={editingSupplier}

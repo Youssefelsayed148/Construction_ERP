@@ -37,7 +37,7 @@
   "amount": "المبلغ",
   "total": "الإجمالي",
   "notes": "ملاحظات",
-  "actions": {
+  "buttons": {
     "add": "إضافة",
     "remove": "إزالة",
     "saveChanges": "حفظ التغييرات",
@@ -48,6 +48,7 @@
     "download": "تنزيل",
     "upload": "رفع"
   },
+  "actions": "الإجراءات",
   "details": "تفاصيل",
   "phone": "الهاتف",
   "email": "البريد",
@@ -107,7 +108,10 @@
   "dialogs": {
     "confirmTitle": "يرجى التأكيد",
     "confirmDelete": "هل تريد حذف هذا السجل؟ لا يمكن التراجع عن هذا الإجراء.",
-    "unsavedChanges": "لديك تغييرات غير محفوظة. هل تريد المغادرة دون حفظ؟"
+    "unsavedChanges": "لديك تغييرات غير محفوظة. هل تريد المغادرة دون حفظ؟",
+    "reasonLabel": "السبب",
+    "reasonOptionalLabel": "السبب (اختياري)",
+    "reasonRequired": "يرجى إدخال السبب."
   },
   "pagination": {
     "page": "صفحة {page} من {total}",
