@@ -74,11 +74,12 @@ Goal: no credential or role can do more than it was issued for.
 - Test (done, real PG: `fail-closed.pg.test.js`): user with zero role rows is denied on hr, payroll, suppliers, items, legal, expenses, projects, schedule. Role changes: `role-sync.pg.test.js`.
 
 1.3 Record scoping (Critical)
-- [ ] Rework `policy.recordScopeRule` to key on resource and id, not on `req.route.path`, so it works under `/api/v1/*` and MCP synthetic requests.
-- [ ] Add project filters to UPDATE/DELETE in projects.js (phase PUT :295, milestone PUT :361, DELETE :371) and subcontractors.js (`/certificates/:id`, `/verifications/:id`); add their RECORD_SCOPE_RULES.
-- [ ] Fix the `agents` scope-rule key vs the `/api/agent` mount.
-- [ ] Scope the project list (projects.js:21-49) so project-bound users do not see other projects' budget and contract value.
-- Test matrix: project-bound user A against project B's records, across internal, v1 and MCP, for read, update, delete and transition.
+- [x] Rework `policy.recordScopeRule` to key on resource and id, not on `req.route.path`, so it works under `/api/v1/*` and MCP synthetic requests.
+- [x] Add project filters to UPDATE/DELETE in projects.js (phase PUT :295, milestone PUT :361, DELETE :371) and subcontractors.js (`/certificates/:id`, `/verifications/:id`); add their RECORD_SCOPE_RULES.
+- [x] Fix the `agents` scope-rule key vs the `/api/agent` mount.
+- [x] Scope the project list (projects.js:21-49) so project-bound users do not see other projects' budget and contract value.
+- Note: `record-scope-coverage.test.js` lists every record-id route without a rule; 2 project-owned routes (qhse actions status/pdf, table chosen at runtime) remain as known gaps, and the list may only shrink.
+- Test matrix (done, real PG, `record-scoping.pg.test.js`): project-bound user A against project B's records, across internal, v1 and MCP, for read, update, delete and transition.
 
 1.4 Approval gate and agent safety (Critical/High)
 - [ ] `decideRequest`: atomic `UPDATE ... WHERE decision IS NULL RETURNING`, execute only on a returned row.

@@ -56,6 +56,7 @@ const stub = {
   deliveries: new Map(),
   deliverySeq: 0,
   webhookSeq: 0,
+  purchaseRequests: new Map([['5', 1], ['6', 2]]),   // id -> project_id
 };
 
 function resetStub() {
@@ -73,6 +74,7 @@ query.mockImplementation(async (sql, params = []) => {
   }
   if (/FROM user_project_roles/i.test(s)) return { rows: stub.userPolicy.get(params[0]) || [] };
   if (/FROM roles WHERE/i.test(s)) return { rows: stub.userPolicy.get(params[0]) || [] };
+  if (/^SELECT project_id FROM purchase_requests WHERE id/i.test(s)) return { rows: stub.purchaseRequests.has(String(params[0])) ? [{ project_id: stub.purchaseRequests.get(String(params[0])) }] : [] };
   if (/INSERT INTO audit_events/i.test(s)) return { rows: [{ id: 1 }] };
   if (/FROM service_accounts/i.test(s)) {
     const acct = [...stub.serviceAccounts.values()].find((a) => a.id === params[0] || a.client_id === params[0]);
@@ -748,6 +750,30 @@ describe('v1 ↔ internal permission parity', () => {
     expect((await run(1)).status).toBe(200);
     const denied = await run(2);
     expect(denied.status).toBe(403);
+    seedUsers();
+  });
+
+  test('record ids are scoped on the remounted chain too (req.route is never set there)', async () => {
+    resetStub(); seedUsers();
+    const SUPERVISOR = { id: 3, email: 'super@x.com', name: 'Supervisor', role: 'site_supervisor', department: null, is_active: true };
+    stub.users.set(3, SUPERVISOR);
+    stub.userPolicy.set(3, projectBoundView('site_supervisor', [1], ['procurement']));
+    const { remountFrom } = require('../../routes/v1');
+    const { authenticate, authorize } = require('../../middleware/auth');
+    const internal = express.Router();
+    internal.get('/pr/:id', authenticate, authorize(), (req, res) => res.json({ success: true }));
+    const v1Handler = remountFrom({ router: internal, internalMount: '/api/procurement', method: 'GET', path: '/pr/:id' });
+    const run = async (id) => {
+      const req = {
+        method: 'GET', headers: { authorization: `Bearer ${tokenFor(3)}` },
+        params: { id }, query: {},
+        originalUrl: `/api/v1/purchase-requisitions/${id}`, baseUrl: '/api/v1/purchase-requisitions',
+      };
+      const { res } = await callChain([v1Handler], req);
+      return res.statusCode;
+    };
+    expect(await run('5')).toBe(200);   // PR 5 is in project 1
+    expect(await run('6')).toBe(403);   // PR 6 is in project 2
     seedUsers();
   });
 });

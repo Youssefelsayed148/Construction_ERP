@@ -157,6 +157,12 @@ const authorize = (...roles) => {
       return res.status(403).json({ success: false, error: 'Insufficient permissions' });
     }
 
+    // Handlers that list across projects read this to filter at the query, not after the fact.
+    req.accessScope = {
+      companyWide: Boolean(decision.company_wide),
+      projectIds: decision.scoped_project_ids || [],
+    };
+
     if (!decision.company_wide && decision.project_id == null && decision.scoped_project_ids?.length) {
       const originalJson = res.json.bind(res);
       res.json = (payload) => originalJson(filterScopedPayload(payload, decision.scoped_project_ids));
