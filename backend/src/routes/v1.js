@@ -319,6 +319,7 @@ const FAMILY_MAP = {
     ['doccontrol', 'PUT', '/documents/:id', '/:id'],
     ['doccontrol', 'DELETE', '/documents/:id', '/:id'],
     ['doccontrol', 'POST', '/documents/:id/versions', '/:id/versions'],
+    ['doccontrol', 'POST', '/documents/:id/submit', '/:id/submit'],
     ['doccontrol', 'POST', '/documents/:id/:action(approve|reject)', '/:id/:action(approve|reject)'],
     ['doccontrol', 'GET', '/documents/:id/revisions', '/:id/revisions'],
     ['doccontrol', 'GET', '/search', '/search'],

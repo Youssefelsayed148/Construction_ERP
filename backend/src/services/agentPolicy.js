@@ -137,6 +137,25 @@ const ALLOWLIST = {
   site_supervisor: [...READ_ALL, ...DRAFT_ALL, ...PROPOSE_ALL],
   legal_mgr: [...READ_ALL, ...DRAFT_ALL, ...PROPOSE_ALL],
   maintenance_mgr: [...READ_ALL, ...DRAFT_ALL, ...PROPOSE_ALL],
+  // Phase 5.1 role templates: only the tools that match what the role's grants allow (the policy still decides each call).
+  site_engineer: [
+    'list_projects', 'get_project', 'get_project_team', 'get_project_progress', 'list_locations', 'get_location_status',
+    'get_boq', 'get_quantity_status', 'get_material_requirements', 'get_material_shortages', 'list_rfis', 'get_rfi',
+    'list_submittals', 'get_submittal', 'list_inspections', 'list_ncrs', 'search_documents', 'list_documents',
+    'get_my_actions', 'get_schedule_delays', 'get_schedule_alerts',
+    'create_rfi', 'create_inspection_request', 'update_daily_report_draft', ...PROPOSE_ALL,
+  ],
+  storekeeper: ['list_projects', 'get_project', 'get_inventory_status', 'get_material_requirements', 'get_material_shortages', 'get_my_actions'],
+  quantity_surveyor: [
+    'list_projects', 'get_project', 'get_project_progress', 'list_locations', 'get_boq', 'get_quantity_status',
+    'get_project_cost_summary', 'list_invoices', 'list_payments', 'list_variations', 'get_retention',
+    'search_documents', 'list_documents', 'get_my_actions', 'create_variation_draft',
+  ],
+  document_controller: [
+    'list_projects', 'get_project', 'list_rfis', 'get_rfi', 'list_submittals', 'get_submittal', 'search_documents',
+    'list_documents', 'get_my_actions', 'create_rfi', 'create_transmittal_draft',
+  ],
+  viewer: ['list_projects', 'get_project'],
   client: [],
   subcontractor: [],
   supplier: [],
