@@ -37,7 +37,17 @@
   "amount": "المبلغ",
   "total": "الإجمالي",
   "notes": "ملاحظات",
-  "actions": "إجراءات",
+  "actions": {
+    "add": "إضافة",
+    "remove": "إزالة",
+    "saveChanges": "حفظ التغييرات",
+    "discard": "تجاهل",
+    "apply": "تطبيق",
+    "reset": "إعادة تعيين",
+    "refresh": "تحديث",
+    "download": "تنزيل",
+    "upload": "رفع"
+  },
   "details": "تفاصيل",
   "phone": "الهاتف",
   "email": "البريد",
@@ -85,5 +95,33 @@
     "myActions": "مهامي",
     "settings": "الإعدادات",
     "accounting": "المحاسبة"
+  },
+  "states": {
+    "loading": "جارٍ التحميل...",
+    "empty": "لا يوجد ما يمكن عرضه بعد.",
+    "noResults": "لا توجد نتائج مطابقة للبحث.",
+    "error": "حدث خطأ ما.",
+    "retry": "إعادة المحاولة",
+    "fileUnavailable": "هذا الملف غير متاح."
+  },
+  "dialogs": {
+    "confirmTitle": "يرجى التأكيد",
+    "confirmDelete": "هل تريد حذف هذا السجل؟ لا يمكن التراجع عن هذا الإجراء.",
+    "unsavedChanges": "لديك تغييرات غير محفوظة. هل تريد المغادرة دون حفظ؟"
+  },
+  "pagination": {
+    "page": "صفحة {page} من {total}",
+    "items": {
+      "zero": "لا عناصر",
+      "one": "عنصر واحد",
+      "two": "عنصران",
+      "few": "{count} عناصر",
+      "many": "{count} عنصرًا",
+      "other": "{count} عنصر"
+    }
+  },
+  "language": {
+    "en": "English",
+    "ar": "العربية"
   }
 }

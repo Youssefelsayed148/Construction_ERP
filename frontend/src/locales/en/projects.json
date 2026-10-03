@@ -1,1 +1,38 @@
-{}
+{
+  "title": "Projects",
+  "new": "New project",
+  "count": {
+    "one": "{count} project",
+    "other": "{count} projects"
+  },
+  "empty": "No projects yet.",
+  "nav": {
+    "aria": {
+      "groups": "Project sections",
+      "tabs": "{group} pages"
+    },
+    "groups": {
+      "overview": "Overview",
+      "scope": "Scope & Planning",
+      "site": "Site & Quality",
+      "procurement": "Procurement & Cost",
+      "documents": "Documents & Reports",
+      "handover": "Handover & Sales"
+    },
+    "tabs": {
+      "boq": "BOQ",
+      "locations": "Locations & Quantities",
+      "schedule": "Schedule",
+      "site": "Site Management",
+      "siteWorkspace": "Site Workspace",
+      "workOrders": "Work Orders",
+      "qhse": "Quality & HSE",
+      "hse": "HSE Workspace",
+      "operations": "Materials & Commercial",
+      "documents": "Documents",
+      "reports": "Reports",
+      "handover": "Handover & Closeout",
+      "units": "Units & Sales"
+    }
+  }
+}

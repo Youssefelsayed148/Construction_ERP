@@ -1,0 +1,44 @@
+{
+  "items": {
+    "dashboard": "لوحة التحكم",
+    "projects": "المشاريع",
+    "inventory": "المخزون",
+    "procurementComparison": "مقارنة المشتريات",
+    "clients": "العملاء",
+    "suppliers": "الموردين",
+    "assets": "المعدات",
+    "hr": "الموارد البشرية",
+    "expenses": "المصروفات",
+    "invoices": "الفواتير والمدفوعات",
+    "legal": "القسم القانوني",
+    "approvals": "الموافقات",
+    "myActions": "مهامي",
+    "agentActivity": "نشاط الوكلاء",
+    "settings": "الإعدادات"
+  },
+  "portals": {
+    "consultant": "بوابة الاستشاري",
+    "client": "بوابة العميل",
+    "subcontractor": "بوابة مقاول الباطن",
+    "supplier": "بوابة المورد"
+  },
+  "aria": {
+    "openNavigation": "فتح القائمة",
+    "closeNavigation": "إغلاق القائمة",
+    "mainNavigation": "القائمة الرئيسية"
+  },
+  "actions": {
+    "switchLanguage": "تغيير اللغة",
+    "logout": "تسجيل الخروج"
+  },
+  "user": {
+    "fallbackName": "مستخدم"
+  },
+  "offline": {
+    "banner": "أنت غير متصل بالإنترنت. تحتاج التغييرات المرسلة إلى اتصال."
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "placeholder": "ستتوفر الإعدادات هنا."
+  }
+}
