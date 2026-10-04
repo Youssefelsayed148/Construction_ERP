@@ -172,7 +172,7 @@ describePg('procurement flows (real PostgreSQL, real app)', () => {
     expect(vendorView[0].supplier_id).toBe(w.supplier.id);
 
     // Award recorded on the quotation and the RFQ.
-    const awarded = (await call('POST', `/api/procurement/rfq/${rfq.id}/award`, { quotation_id: quotes[v2].id })).body.data;
+    const awarded = (await call('POST', `/api/procurement/rfq/${rfq.id}/award`, { quotation_id: quotes[v2].id, justification: 'direct award by the owner for the flow test' })).body.data;
     expect(awarded.awarded).toBe(true);
     expect((await one('SELECT status FROM supplier_quotations WHERE id = $1', [quotes[v2].id])).status).toBe('awarded');
     expect((await one('SELECT status FROM supplier_quotations WHERE id = $1', [quotes[v3].id])).status).toBe('not_awarded');

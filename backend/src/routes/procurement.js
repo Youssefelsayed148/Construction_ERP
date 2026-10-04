@@ -203,19 +203,190 @@ router.get('/rfq/:id/quotations/vendor/:supplierId', authenticate, authorize(), 
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
 
-router.post('/rfq/:id/award', authenticate, authorize(), async (req, res) => {
+// Direct award: the owner/admin shortcut. It is ON THE RECORD: an approved 'direct_award' recommendation with a
+// mandatory justification is written with it. Everyone else recommends (POST /rfq/:id/award-recommendations).
+router.post('/rfq/:id/award', authenticate, authorize('owner', 'admin'), async (req, res) => {
   try {
-    const schema = Joi.object({ quotation_id: Joi.number().integer().required() });
+    const schema = Joi.object({ quotation_id: Joi.number().integer().required(), justification: Joi.string().allow('', null) });
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const quotation = await atomic((q) => svc.awardRfq(q, parseInt(req.params.id, 10), value.quotation_id, req.user));
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
+    const quotation = await atomic((q) => awards.directAward(q, parseInt(req.params.id, 10), value.quotation_id, req.user, value.justification));
     res.json({ success: true, data: quotation });
-  } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+  } catch (e) { return typedFail(res, e); }
 });
 
 // ---------------------------------------------------------------------------
 // Purchase orders
 // ---------------------------------------------------------------------------
+
+
+// ---------------------------------------------------------------------------
+// Phase 5.4: RFQ reads, award recommendations (a real entity with an approval), PR/PO update and cancel,
+// vendor performance and spend. Typed errors carry error_code and error_params.
+// ---------------------------------------------------------------------------
+const awards = require('../services/awardService');
+const docsSvc = require('../services/procurementDocuments');
+const analytics = require('../services/procurementAnalytics');
+
+function typedFail(res, e) {
+  if (e && e.error_code && e.status) {
+    return res.status(e.status).json({ success: false, error: e.message, error_code: e.error_code, error_params: e.error_params || {} });
+  }
+  console.error('[PROCUREMENT]', e);
+  return res.status(e.status || 400).json({ success: false, error: e.message });
+}
+const typedBody = (schema, req, res) => {
+  const { error, value } = schema.validate(req.body || {});
+  if (error) {
+    res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
+    return null;
+  }
+  return value;
+};
+const auditProc = (req, action, description, entityType, entityId) => logActivity({
+  userId: req.user.id, userName: req.user.name, userRole: req.user.role, action, module: 'procurement', description, entityId, entityType,
+});
+
+router.get('/rfq', authenticate, authorize(), async (req, res) => {
+  try { res.json({ success: true, data: await docsSvc.listRfqs(query, req.query) }); } catch (e) { return typedFail(res, e); }
+});
+
+router.get('/rfq/:id', authenticate, authorize(), async (req, res) => {
+  try { res.json({ success: true, data: await docsSvc.getRfq(query, req.params.id) }); } catch (e) { return typedFail(res, e); }
+});
+
+router.get('/award-recommendations', authenticate, authorize(), async (req, res) => {
+  try { res.json({ success: true, data: await awards.list(query, req.query) }); } catch (e) { return typedFail(res, e); }
+});
+
+router.get('/award-recommendations/:id', authenticate, authorize(), async (req, res) => {
+  try { res.json({ success: true, data: await awards.get(query, req.params.id) }); } catch (e) { return typedFail(res, e); }
+});
+
+router.post('/rfq/:id/award-recommendations', authenticate, authorize(), async (req, res) => {
+  try {
+    const value = typedBody(Joi.object({
+      quotation_id: Joi.number().integer().required(), basis: Joi.string().required(), justification: Joi.string().required(),
+    }), req, res);
+    if (!value) return;
+    const rec = await atomic((q) => awards.create(q, { ...value, rfq_id: parseInt(req.params.id, 10), created_by: req.user.id }));
+    await auditProc(req, 'create', `Award recommendation ${rec.recommendation_number}`, 'rfq_award_recommendation', rec.id);
+    res.status(201).json({ success: true, data: rec });
+  } catch (e) { return typedFail(res, e); }
+});
+
+router.post('/award-recommendations/:id/submit', authenticate, authorize(), async (req, res) => {
+  try {
+    const rec = await atomic((q) => awards.submit(q, parseInt(req.params.id, 10), req.user));
+    await auditProc(req, 'submit', `Award recommendation ${rec.recommendation_number} submitted`, 'rfq_award_recommendation', rec.id);
+    res.json({ success: true, data: rec });
+  } catch (e) { return typedFail(res, e); }
+});
+
+router.post('/award-recommendations/:id/decide', authenticate, authorize(), async (req, res) => {
+  try {
+    const value = typedBody(Joi.object({ decision: Joi.string().valid('approve', 'reject').required(), comment: Joi.string().allow('', null) }), req, res);
+    if (!value) return;
+    const rec = await atomic((q) => awards.decide(q, parseInt(req.params.id, 10), req.user, value.decision, value.comment));
+    await auditProc(req, value.decision === 'approve' ? 'approve' : 'reject', `Award recommendation ${rec.recommendation_number}: ${rec.status}`, 'rfq_award_recommendation', rec.id);
+    res.json({ success: true, data: rec });
+  } catch (e) { return typedFail(res, e); }
+});
+
+router.post('/award-recommendations/:id/withdraw', authenticate, authorize(), async (req, res) => {
+  try {
+    const value = typedBody(Joi.object({ reason: Joi.string().required() }), req, res);
+    if (!value) return;
+    const rec = await atomic((q) => awards.withdraw(q, parseInt(req.params.id, 10), req.user, value.reason));
+    await auditProc(req, 'update', `Award recommendation ${rec.recommendation_number} withdrawn`, 'rfq_award_recommendation', rec.id);
+    res.json({ success: true, data: rec });
+  } catch (e) { return typedFail(res, e); }
+});
+
+const prEditSchema = Joi.object({
+  title: Joi.string(), project_id: Joi.number().integer().allow(null), location_id: Joi.number().integer().allow(null),
+  cost_code_id: Joi.number().integer().allow(null), work_package_id: Joi.number().integer().allow(null),
+  priority: Joi.string().valid('low', 'normal', 'high', 'urgent'), needed_by: Joi.date().iso().allow(null), notes: Joi.string().allow('', null),
+  lines: Joi.array().items(prLineSchema).min(1),
+}).min(1);
+
+router.get('/pr/:id', authenticate, authorize(), async (req, res) => {
+  try { res.json({ success: true, data: await docsSvc.getPurchaseRequest(query, req.params.id) }); } catch (e) { return typedFail(res, e); }
+});
+
+router.put('/pr/:id', authenticate, authorize(), async (req, res) => {
+  try {
+    const value = typedBody(prEditSchema, req, res);
+    if (!value) return;
+    const pr = await atomic((q) => docsSvc.updatePurchaseRequest(q, req.params.id, value));
+    await auditProc(req, 'update', `Edited purchase requisition ${pr.request_number}`, 'purchase_request', pr.id);
+    res.json({ success: true, data: pr });
+  } catch (e) { return typedFail(res, e); }
+});
+
+router.post('/pr/:id/cancel', authenticate, authorize(), async (req, res) => {
+  try {
+    const value = typedBody(Joi.object({ reason: Joi.string().required() }), req, res);
+    if (!value) return;
+    const pr = await atomic((q) => docsSvc.cancelPurchaseRequest(q, req.params.id, req.user, value.reason));
+    await auditProc(req, 'cancel', `Cancelled purchase requisition ${pr.request_number}: ${value.reason}`, 'purchase_request', pr.id);
+    res.json({ success: true, data: pr });
+  } catch (e) { return typedFail(res, e); }
+});
+
+const poEditSchema = Joi.object({
+  supplier_id: Joi.number().integer(), needed_by: Joi.date().iso().allow(null), tolerance_pct: Joi.number().min(0).max(50),
+  taxes: Joi.number().min(0), freight: Joi.number().min(0), approved_charges: Joi.number().min(0),
+  payment_terms: Joi.string().allow('', null), delivery_terms: Joi.string().allow('', null),
+  lines: Joi.array().items(Joi.object({
+    material_id: Joi.number().integer().optional().allow(null), description: Joi.string().optional().allow('', null),
+    quantity: Joi.number().positive().required(), unit: Joi.string().optional().allow('', null),
+    unit_rate: Joi.number().min(0).default(0), discount: Joi.number().min(0).default(0),
+    needed_by: Joi.date().iso().optional().allow(null), notes: Joi.string().optional().allow('', null),
+  })).min(1),
+}).min(1);
+
+router.get('/po/:id', authenticate, authorize(), async (req, res) => {
+  try { res.json({ success: true, data: await docsSvc.getPurchaseOrder(query, req.params.id) }); } catch (e) { return typedFail(res, e); }
+});
+
+router.put('/po/:id', authenticate, authorize(), async (req, res) => {
+  try {
+    const value = typedBody(poEditSchema, req, res);
+    if (!value) return;
+    const po = await atomic((q) => docsSvc.updatePurchaseOrder(q, req.params.id, value));
+    await auditProc(req, 'update', `Edited purchase order ${po.order_number}`, 'purchase_order', po.id);
+    res.json({ success: true, data: po });
+  } catch (e) { return typedFail(res, e); }
+});
+
+router.post('/po/:id/cancel', authenticate, authorize(), async (req, res) => {
+  try {
+    const value = typedBody(Joi.object({ reason: Joi.string().required() }), req, res);
+    if (!value) return;
+    const po = await atomic((q) => docsSvc.cancelPurchaseOrder(q, req.params.id, req.user, value.reason));
+    await auditProc(req, 'cancel', `Cancelled purchase order ${po.order_number}: ${value.reason}`, 'purchase_order', po.id);
+    res.json({ success: true, data: po });
+  } catch (e) { return typedFail(res, e); }
+});
+
+// Analytics: derived from the documents (see services/procurementAnalytics for every definition). The action is
+// see_supplier_value (policy.ACTION_OVERRIDES): this is supplier commercial data.
+const scopeIds = (req) => (req.accessScope && !req.accessScope.companyWide ? req.accessScope.projectIds : null);
+
+router.get('/analytics/spend', authenticate, authorize(), async (req, res) => {
+  try {
+    const data = await analytics.spend(query, { ...req.query, projectIds: scopeIds(req) });
+    res.json({ success: true, data });
+  } catch (e) { return typedFail(res, e); }
+});
+
+router.get('/analytics/vendor-performance', authenticate, authorize(), async (req, res) => {
+  try {
+    const data = await analytics.vendorPerformance(query, { ...req.query, projectIds: scopeIds(req) });
+    res.json({ success: true, data });
+  } catch (e) { return typedFail(res, e); }
+});
 
 router.post('/po', authenticate, authorize(), async (req, res) => {
   try {

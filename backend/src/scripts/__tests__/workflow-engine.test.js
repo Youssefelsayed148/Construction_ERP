@@ -192,6 +192,32 @@ describe('ported self-approval guard', () => {
     expect(full.ok).toBe(true);
     expect(full.workflow.instance.status).toBe('approved');
   });
+
+  // Closeout 5.4: the guard stops a requester DECIDING their own request; it must not stop them completing
+  // their own requester steps (Draft, Submit), which before this were open to owner, admin and system only.
+  test('a requester of any role completes their own requester steps, but still cannot decide their own request', async () => {
+    const wf = await engine.startWorkflow('rfq_award', 'rfq_award_recommendation', 9001,
+      { module_name: 'rfq_award', requester_id: 77, amount: 100 }, { client });
+    const submit = await engine.recordDecision(wf.instance.id, null, 77, 'approve', 'Submitted', { client, role: 'staff', userName: 'Requester' });
+    expect(submit.ok).toBe(true);
+    expect(submit.workflow.instance.current_step_key).toBe('procurement_review');
+    // the next step is a decision (role purchasing_mgr): the requester is refused, as an approver and as themselves
+    const own = await engine.recordDecision(wf.instance.id, null, 77, 'approve', null, { client, role: 'staff', userName: 'Requester' });
+    expect([own.ok, own.statusCode, own.error]).toEqual([false, 403, 'You cannot approve or reject your own request']);
+    const ownReviewer = await engine.recordDecision(wf.instance.id, null, 77, 'approve', null, { client, role: 'purchasing_mgr', userName: 'Requester' });
+    expect([ownReviewer.ok, ownReviewer.error]).toEqual([false, 'You cannot approve or reject your own request']);
+    // somebody else with the right role decides
+    const other = await engine.recordDecision(wf.instance.id, null, 78, 'approve', null, { client, role: 'purchasing_mgr', userName: 'Reviewer' });
+    expect(other.ok).toBe(true);
+  });
+
+  test('somebody else cannot complete another requester\'s requester step', async () => {
+    const wf = await engine.startWorkflow('rfq_award', 'rfq_award_recommendation', 9002,
+      { module_name: 'rfq_award', requester_id: 77, amount: 100 }, { client });
+    const stranger = await engine.recordDecision(wf.instance.id, null, 99, 'approve', null, { client, role: 'staff', userName: 'Stranger' });
+    expect(stranger.ok).toBe(false);
+    expect(stranger.statusCode).toBe(403);
+  });
 });
 
 // ---------------------------------------------------------------------------
