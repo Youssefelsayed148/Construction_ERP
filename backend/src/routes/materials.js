@@ -119,7 +119,7 @@ router.post('/recipes', authenticate, authorize(), async (req, res) => {
       eventType: 'recipe.changed', entityType: 'material_recipe', entityId: recipe.rows[0].id,
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       payload: { recipe_id: recipe.rows[0].id, project_id: value.project_id ?? null, boq_item_id: value.boq_item_id ?? null },
-    }).catch(() => {});
+    });
 
     res.status(201).json({ success: true, data: recipe.rows[0] });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
@@ -161,7 +161,7 @@ router.put('/recipes/:id', authenticate, authorize(), async (req, res) => {
       eventType: 'recipe.changed', entityType: 'material_recipe', entityId: existing.id,
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       payload: { recipe_id: existing.id, project_id: existing.project_id, boq_item_id: value.boq_item_id ?? existing.boq_item_id },
-    }).catch(() => {});
+    });
 
     res.json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
@@ -194,7 +194,7 @@ router.post('/recipes/:id/lines', authenticate, authorize(), async (req, res) =>
       eventType: 'recipe.changed', entityType: 'material_recipe', entityId: recipe.id,
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       payload: { recipe_id: recipe.id, project_id: recipe.project_id, boq_item_id: recipe.boq_item_id },
-    }).catch(() => {});
+    });
 
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
@@ -209,7 +209,7 @@ router.delete('/recipes/:id/lines/:lineId', authenticate, authorize(), async (re
       eventType: 'recipe.changed', entityType: 'material_recipe', entityId: parseInt(req.params.id, 10),
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       payload: { recipe_id: parseInt(req.params.id, 10) },
-    }).catch(() => {});
+    });
     res.json({ success: true, message: 'Line deleted' });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });

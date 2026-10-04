@@ -148,16 +148,18 @@ router.post('/variations/:id/decide', authenticate, authorize(), async (req, res
     const schema = Joi.object({ decision: Joi.string().valid('approve', 'reject').required(), comment: Joi.string().allow('', null) });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const result = await transaction((client) => engine.decideVariation(
-      client.query.bind(client), parseInt(req.params.id, 10), req.user, value.decision, value.comment
-    ));
-    if (value.decision === 'approve') {
-      await fireEvent({
-        eventType: 'variation.approved', entityType: 'variation', entityId: parseInt(req.params.id, 10),
-        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-        payload: { variation_id: parseInt(req.params.id, 10), status: result.status },
-      });
-    }
+    const result = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const decided = await engine.decideVariation(q, parseInt(req.params.id, 10), req.user, value.decision, value.comment);
+      if (value.decision === 'approve') {
+        await fireEvent({
+          eventType: 'variation.approved', entityType: 'variation', entityId: parseInt(req.params.id, 10),
+          userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+          payload: { variation_id: parseInt(req.params.id, 10), status: decided.status },
+        }, { query: q });
+      }
+      return decided;
+    });
     res.json({ success: true, data: result });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });

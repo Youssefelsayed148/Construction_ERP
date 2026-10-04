@@ -528,6 +528,13 @@ async function reminderConfig(q, { project_id = null, client_id = null } = {}) {
   return { enabled: true, config_key: 'receivable_reminder_config:company' };
 }
 
+// One reminder's row and event in one transaction. The real database gets a transaction; a caller-supplied query
+// function (a test double or an enclosing transaction) is used as given.
+async function runInTransaction(q, fn) {
+  if (q === defaultQuery) return require('../config/database').transaction((client) => fn(client.query.bind(client)));
+  return fn(q);
+}
+
 async function runReceivableReminderSweep(q = defaultQuery, opts = {}) {
   const now = opts.now || new Date();
   const nowMs = new Date(now).getTime();
@@ -538,6 +545,7 @@ async function runReceivableReminderSweep(q = defaultQuery, opts = {}) {
     (i) => !['draft', 'cancelled', 'void', 'credited', 'paid'].includes(i.status === 'sent' ? 'issued' : i.status)
   );
   let sent = 0;
+  const failures = [];
   for (const inv of invoices) {
     const net = inv.net_amount != null && toNum(inv.net_amount) > 0 ? toNum(inv.net_amount) : toNum(inv.amount);
     const allocs = (await q(
@@ -565,23 +573,35 @@ async function runReceivableReminderSweep(q = defaultQuery, opts = {}) {
     if (existing) continue;
 
     const roles = (config.escalation_roles && config.escalation_roles[stage]) || DEFAULT_REMINDER_ROLES[stage];
+    // Closeout A2.5: the reminder row and the event commit together, so a reminder is never recorded as sent for an
+    // event that was lost (the old code logged a failed notification, swallowed it and wrote the row anyway).
+    // invoice.overdue (stages overdue_7/14/30) and invoice.due (due_soon, due_today) go through the outbox; the
+    // dispatcher's route notifies the stage's roles. One failing invoice does not stop the others; the run fails at
+    // the end so the sweep leader records it.
     try {
-      await require('./notificationService').notifyRoles(roles, {
-        title: `[${stage}] invoice ${inv.invoice_number} — ${outstanding} outstanding`,
-        body: `Due ${inv.due_date}. Outstanding balance ${outstanding}.`,
-        eventType: `receivable.${stage}`,
-        entityType: 'invoice',
-        entityId: inv.id,
-      }, { query: q });
+      await runInTransaction(q, async (tq) => {
+        const reminder = (await tq(
+          'INSERT INTO receivable_reminders (invoice_id, reminder_type, escalated_to) VALUES ($1, $2, $3) RETURNING id',
+          [inv.id, stage, roles.join(',')]
+        )).rows[0];
+        await require('../utils/activity').fireEvent({
+          eventType: stage.startsWith('overdue') ? 'invoice.overdue' : 'invoice.due',
+          entityType: 'invoice', entityId: inv.id, userId: null, userName: null, userRole: 'system',
+          payload: {
+            stage, reminder_id: reminder.id, roles, invoice_number: inv.invoice_number, outstanding, due_date: inv.due_date,
+            days_overdue: daysOverdueOf(inv, now),
+            title: `[${stage}] invoice ${inv.invoice_number} — ${outstanding} outstanding`,
+            body: `Due ${inv.due_date}. Outstanding balance ${outstanding}.`,
+          },
+        }, { query: tq });
+      });
+      sent++;
     } catch (e) {
-      console.error('[RECEIVABLE] notification failed:', e.message);
+      console.error(`[RECEIVABLE] reminder ${stage} for invoice ${inv.id} failed:`, e.message);
+      failures.push(e);
     }
-    await q(
-      'INSERT INTO receivable_reminders (invoice_id, reminder_type, escalated_to) VALUES ($1, $2, $3)',
-      [inv.id, stage, roles.join(',')]
-    );
-    sent++;
   }
+  if (failures.length) throw new Error(`${failures.length} receivable reminder(s) failed: ${failures[0].message}`);
   return { reminders_sent: sent };
 }
 function daysOverdueOf(invoice, now) {

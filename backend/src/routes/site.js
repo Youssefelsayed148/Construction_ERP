@@ -2,7 +2,7 @@ const express = require('express');
 const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
-const { query } = require('../config/database');
+const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const actionService = require('../services/actionService');
@@ -56,20 +56,24 @@ router.post('/:projectId/site-reports', authenticate, authorize(), async (req, r
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const result = await query(
-      `INSERT INTO site_daily_reports (project_id, report_date, weather, temperature, workers_count, work_summary, material_received, equipment_on_site, issues_notes, photos, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11) RETURNING *`,
-      [req.params.projectId, value.report_date, value.weather, value.temperature, value.workers_count,
-       value.work_summary, value.material_received, value.equipment_on_site, value.issues_notes,
-       JSON.stringify(value.photos), req.user.id]
-    );
-
-    if (global.eventBus) {
-      global.eventBus.emit('site_report.created', {
-        entityType: 'site_daily_report', entityId: result.rows[0].id,
-        payload: { project_id: parseInt(req.params.projectId), report_date: value.report_date },
-      });
-    }
+    // The report and its created event commit together; the event goes through the outbox (it used to be emitted
+    // straight on the in-process bus, outside any transaction).
+    const result = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const inserted = await q(
+        `INSERT INTO site_daily_reports (project_id, report_date, weather, temperature, workers_count, work_summary, material_received, equipment_on_site, issues_notes, photos, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11) RETURNING *`,
+        [req.params.projectId, value.report_date, value.weather, value.temperature, value.workers_count,
+         value.work_summary, value.material_received, value.equipment_on_site, value.issues_notes,
+         JSON.stringify(value.photos), req.user.id]
+      );
+      await fireEvent({
+        eventType: 'site_report.created', entityType: 'site_daily_report', entityId: inserted.rows[0].id,
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        payload: { project_id: parseInt(req.params.projectId, 10), report_date: value.report_date },
+      }, { query: q });
+      return inserted;
+    });
 
     await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'site', description: `Filed daily site report for project #${req.params.projectId}`, entityId: result.rows[0].id, entityType: 'site_daily_report' });
     res.status(201).json({ success: true, data: result.rows[0] });

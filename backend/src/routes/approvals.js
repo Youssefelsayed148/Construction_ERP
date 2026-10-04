@@ -147,6 +147,19 @@ router.post('/request', authenticate, authorize(), async (req, res) => {
         legacy_approval_id: inserted.rows[0].id,
         notes: notes || null,
       }, { client });
+      // Phase 7 event hook: the people who can act on the request are told (dispatcher routes 'approval.requested'
+      // to owner/admin + the module manager). Enqueued with the request, so it commits or rolls back with it.
+      await fireEvent({
+        eventType: 'approval.requested',
+        entityType: 'approval_request',
+        entityId: inserted.rows[0].id,
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        payload: {
+          module_name, request_type, request_id,
+          manager_role: (workflowEngine.MODULE_MANAGER_ROLES[module_name] || [])[0] || null,
+          title: `Approval requested: ${request_type} #${request_id}`,
+        },
+      }, { query: q });
       return { result: inserted };
     });
     if (created.existing) {
@@ -160,21 +173,6 @@ router.post('/request', authenticate, authorize(), async (req, res) => {
       description: `Approval requested for ${request_type} #${request_id}`,
       entityId: result.rows[0].id, entityType: 'approval_request'
     });
-
-    // Phase 7: event hook point — let the people who can act on this request
-    // know (dispatcher routes 'approval.requested' to owner/admin + module
-    // manager).
-    fireEvent({
-      eventType: 'approval.requested',
-      entityType: 'approval_request',
-      entityId: result.rows[0].id,
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      payload: {
-        module_name, request_type, request_id,
-        manager_role: (workflowEngine.MODULE_MANAGER_ROLES[module_name] || [])[0] || null,
-        title: `Approval requested: ${request_type} #${request_id}`,
-      },
-    }).catch(() => {});
 
     res.json({ success: true, requires_approval: true, request: result.rows[0] });
   } catch (error) {

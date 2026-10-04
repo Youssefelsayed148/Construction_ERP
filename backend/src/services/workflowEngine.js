@@ -225,25 +225,26 @@ async function startWorkflow(templateKey, entityType, entityId, context, opts = 
   return getInstance(client, instanceId);
 }
 
-// Final decision → durable module event. `purchase_orders` publishes under
-// the catalog name; every other module emits `${module}.${outcome}`. Later
-// phases add routes to the dispatcher for the ones they care about.
+// Workflow module -> catalog event name. The PR workflow (module 'purchase_request') publishes under the
+// catalog's purchase_requisition.*; a purchase order (module 'purchase_orders' from the legacy approvals,
+// 'purchase_order' from the PO workflow) publishes purchase_order.* (it used to be announced as a requisition,
+// closeout A2.5). Every other module emits `${module}.${outcome}`.
+const MODULE_EVENT_PREFIX = { purchase_request: 'purchase_requisition', purchase_orders: 'purchase_order', purchase_order: 'purchase_order' };
+
+// Final decision → durable module event, enqueued in the decision's transaction. A failed enqueue fails the
+// decision (it used to be logged and dropped: the workflow moved on and nobody was told).
 async function emitModuleEvent(client, instance, outcome, actor) {
-  try {
-    const context = parseJson(instance.context);
-    const moduleName = context.module_name || instance.entity_type;
-    if (!moduleName) return;
-    const eventType = moduleName === 'purchase_orders' ? `purchase_requisition.${outcome}` : `${moduleName}.${outcome}`;
-    await fireEvent({
-      eventType,
-      entityType: moduleName,
-      entityId: instance.entity_id,
-      userId: actor.userId, userName: actor.userName, userRole: actor.role,
-      payload: { requester_id: instance.requester_id, module_name: moduleName, request_type: context.request_type },
-    }, { query: client.query });
-  } catch (e) {
-    console.error('[WORKFLOW] event emission failed:', e.message);
-  }
+  const context = parseJson(instance.context);
+  const moduleName = context.module_name || instance.entity_type;
+  if (!moduleName) return;
+  const eventType = `${MODULE_EVENT_PREFIX[moduleName] || moduleName}.${outcome}`;
+  await fireEvent({
+    eventType,
+    entityType: moduleName,
+    entityId: instance.entity_id,
+    userId: actor.userId, userName: actor.userName, userRole: actor.role,
+    payload: { requester_id: instance.requester_id, module_name: moduleName, request_type: context.request_type },
+  }, { query: (text, params) => client.query(text, params) });
 }
 
 // The current step is the first applicable step that is not yet terminal-done.
@@ -845,6 +846,8 @@ module.exports = {
   REJECTED_STATUS,
   startWorkflow,
   recordDecision,
+  emitModuleEvent,
+  MODULE_EVENT_PREFIX,
   recordLegacyDecision,
   getPendingFor,
   migrateLegacyApprovals,

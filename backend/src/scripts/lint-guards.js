@@ -10,6 +10,8 @@
 //                `UPDATE ... SET seq = $1` with a value the caller read earlier (use bumpCounter/nextNumber)
 //   catch-to-zero  `.catch(() => ({ rows: [...] }))` / `.catch(() => zero(...))`: a failed query turned into an
 //                  empty or zero result (closeout A2.4; failures surface as errors with context)
+//   event-swallow  a fireEvent(...) call that is not awaited or returned, or is followed by .catch(...) (closeout A2.5:
+//                  a failed enqueue is an error, never a lost event)
 //   cost-view  project_costs read outside the cost accrual code and services/costView.js: totals come from the
 //              shared cost view so dashboards, costing and the commercial engine never disagree (closeout A2.4)
 //
@@ -41,6 +43,25 @@ const CATCH_TO_ZERO = /\.catch\(\s*\(\s*\w*\s*\)\s*=>\s*(?:\(\s*\{\s*rows\s*:|ze
 const COST_VIEW_ALLOWED = new Set(['services/costView.js', 'services/costAccrual.js', 'services/costEventListener.js', 'routes/expenses.js']);
 const isRuntimeCode = (rel) => /^(routes|services)\//.test(rel);
 
+// fireEvent( calls that are fire-and-forget (no await/return/assignment on the line) or swallow a rejection.
+function countEventSwallows(text) {
+  const s = text.replace(/\r\n/g, '\n');
+  let count = 0;
+  let i = 0;
+  while ((i = s.indexOf('fireEvent(', i)) >= 0) {
+    const lineStart = s.lastIndexOf('\n', i) + 1;
+    const prefix = s.slice(lineStart, i);
+    if (/function\s+$/.test(prefix)) { i += 10; continue; } // a declaration, not a call
+    let depth = 0; let k = i + 9;
+    for (; k < s.length; k += 1) { if (s[k] === '(') depth += 1; if (s[k] === ')') { depth -= 1; if (depth === 0) break; } }
+    const after = s.slice(k + 1, k + 30);
+    const awaited = /\b(await|return)\b|=\s*$|\(\s*$/.test(prefix);
+    if (!awaited || /^\s*\.catch\(/.test(after)) count += 1;
+    i = k;
+  }
+  return count;
+}
+
 const isMigration = (rel) =>
   /^scripts\/(migrate-[^/]+|[^/]+-migration|setupDb)\.js$/.test(rel);
 const isExcluded = (rel) =>
@@ -58,7 +79,7 @@ function walk(dir, out = []) {
 }
 
 function scan() {
-  const result = { 'silent-catch': {}, 'count-numbering': {}, 'counter-rmw': {}, 'catch-to-zero': {}, 'cost-view': {} };
+  const result = { 'silent-catch': {}, 'count-numbering': {}, 'counter-rmw': {}, 'catch-to-zero': {}, 'cost-view': {}, 'event-swallow': {} };
   for (const file of walk(srcDir)) {
     const rel = path.relative(srcDir, file).split(path.sep).join('/');
     if (isExcluded(rel)) continue;
@@ -76,6 +97,8 @@ function scan() {
     if (silent) result['silent-catch'][rel] = silent;
     if (numbering) result['count-numbering'][rel] = numbering;
     if (isRuntimeCode(rel)) {
+      const swallowed = countEventSwallows(text);
+      if (swallowed) result['event-swallow'][rel] = swallowed;
       const zeros = (text.match(CATCH_TO_ZERO) || []).length;
       if (zeros) result['catch-to-zero'][rel] = zeros;
       if (!COST_VIEW_ALLOWED.has(rel)) {
@@ -126,4 +149,4 @@ function main() {
 }
 
 if (require.main === module) process.exit(main());
-module.exports = { scan, compare, countCounterIncrements };
+module.exports = { scan, compare, countCounterIncrements, countEventSwallows };

@@ -187,8 +187,8 @@ Goal: one truthful chain, from requirement to cost.
 3.2 Events
 - [x] Introduce an outbox table; write events in the same transaction as the change; a dispatcher delivers after commit with `dispatched_at` and retry (generalise what eventDispatcher does for its 9 events). (migration 0020 `event_outbox` + `services/outboxDispatcher.js`: FOR UPDATE SKIP LOCKED claims, attempts + exponential backoff, dead-letter state, stable `event_id`; safe with N instances.)
 - [x] costEventListener consumes from the outbox: idempotent, with catch-up after restart. (The three cost consumers moved onto the outbox without their logging swallows; idempotent via 0018; legacy event_log rows seeded with stable id `log-<id>`.)
-- [ ] Fix mismatches: `rfi.created` vs `rfi.submitted`; `invoice.overdue` actually emitted; module `purchase_orders` mapped to `purchase_requisition.*` naming.
-- [ ] Add routes for unrouted events: purchase_order.issued, delivery.received, payment.received, invoice.created, variation.approved, handover.advanced, permit.*, wir.submitted, instruction.*, mir.*, transmittal.*.
+- [x] Fix mismatches: `rfi.created` vs `rfi.submitted`; `invoice.overdue` actually emitted; module `purchase_orders` mapped to `purchase_requisition.*` naming. (A2.5, #40: the RFI route emits rfi.submitted and the old name still routes; the reminder sweep emits invoice.overdue/invoice.due through the outbox; the PR workflow publishes purchase_requisition.*, a PO publishes purchase_order.*.)
+- [x] Add routes for unrouted events: purchase_order.issued, delivery.received, payment.received, invoice.created, variation.approved, handover.advanced, permit.*, wir.submitted, instruction.*, mir.*, transmittal.*. (A2.5: NOTIFY_RULES and PATTERN_RULES in eventDispatcher; every delivered event still reaches the bus for webhooks, which stay out of scope: plan 1.5.)
 - [x] fireEvent never emits before commit and never swallows errors silently. (fireEvent writes event_log + event_outbox in the caller's transaction and throws on failure; routed consumers and the bus are fed by the dispatcher post-commit.)
 
 3.3 Replenishment to procurement

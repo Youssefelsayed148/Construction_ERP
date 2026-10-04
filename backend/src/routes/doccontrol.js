@@ -276,7 +276,7 @@ router.post('/rfis', authenticate, authorize(), async (req, res) => {
       [rfiNumber, value.project_id, value.subject, value.question, value.category, value.priority, value.due_date, req.user.id]
     );
     await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Raised ${rfiNumber}: ${value.subject}`, entityId: result.rows[0].id, entityType: 'project_rfi' });
-    await fireEvent({ eventType: 'rfi.created', entityType: 'project_rfi', entityId: result.rows[0].id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: value.project_id, rfi_number: rfiNumber, subject: value.subject, status: 'open' } });
+    await fireEvent({ eventType: 'rfi.submitted', entityType: 'project_rfi', entityId: result.rows[0].id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: value.project_id, rfi_number: rfiNumber, subject: value.subject, status: 'open' } });
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

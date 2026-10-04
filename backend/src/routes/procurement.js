@@ -255,14 +255,17 @@ router.post('/po/:id/decide', authenticate, authorize(), async (req, res) => {
     const schema = Joi.object({ decision: Joi.string().valid('approve', 'reject').required(), comment: Joi.string().allow('', null) });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const result = await atomic((q) => svc.decideOnDocument(q, 'purchase_order', parseInt(req.params.id, 10), req.user, value.decision, value.comment));
-    if (result.status === 'issued') {
-      await fireEvent({
-        eventType: 'purchase_order.issued', entityType: 'purchase_order', entityId: parseInt(req.params.id, 10),
-        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-        payload: { purchase_order_id: parseInt(req.params.id, 10), status: result.status },
-      });
-    }
+    const result = await atomic(async (q) => {
+      const decided = await svc.decideOnDocument(q, 'purchase_order', parseInt(req.params.id, 10), req.user, value.decision, value.comment);
+      if (decided.status === 'issued') {
+        await fireEvent({
+          eventType: 'purchase_order.issued', entityType: 'purchase_order', entityId: parseInt(req.params.id, 10),
+          userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+          payload: { purchase_order_id: parseInt(req.params.id, 10), status: decided.status },
+        }, { query: q });
+      }
+      return decided;
+    });
     res.json({ success: true, data: result });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -308,15 +311,16 @@ router.post('/mir/:id/decide', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const mir = await transaction((client) => svc.decideMir(
-      client.query.bind(client), parseInt(req.params.id, 10), req.user, value.decision,
-      { accepted: value.accepted, notes: value.notes }
-    ));
-    await fireEvent({
-      eventType: value.decision === 'accept' ? 'mir.accepted' : 'mir.rejected',
-      entityType: 'material_inspection_request', entityId: parseInt(req.params.id, 10),
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      payload: { mir_id: parseInt(req.params.id, 10), status: mir.status },
+    const mir = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const decided = await svc.decideMir(q, parseInt(req.params.id, 10), req.user, value.decision, { accepted: value.accepted, notes: value.notes });
+      await fireEvent({
+        eventType: value.decision === 'accept' ? 'mir.accepted' : 'mir.rejected',
+        entityType: 'material_inspection_request', entityId: parseInt(req.params.id, 10),
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        payload: { mir_id: parseInt(req.params.id, 10), status: decided.status },
+      }, { query: q });
+      return decided;
     });
     res.json({ success: true, data: mir });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
@@ -324,17 +328,20 @@ router.post('/mir/:id/decide', authenticate, authorize(), async (req, res) => {
 
 router.post('/mir/:id/grn', authenticate, authorize(), async (req, res) => {
   try {
-    const grn = await atomic((q) => svc.createGrn(q, { mir_id: parseInt(req.params.id, 10), created_by: req.user.id, received_by: req.user.id }));
+    const grn = await atomic(async (q) => {
+      const created = await svc.createGrn(q, { mir_id: parseInt(req.params.id, 10), created_by: req.user.id, received_by: req.user.id });
+      await fireEvent({
+        eventType: 'delivery.received', entityType: 'goods_receipt_note', entityId: created.id,
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        payload: { grn_id: created.id, grn_number: created.grn_number, mir_id: created.mir_id, purchase_order_id: created.purchase_order_id, warehouse_id: created.warehouse_id },
+      }, { query: q });
+      return created;
+    });
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       action: 'create', module: 'procurement',
       description: `Created GRN ${grn.grn_number} from MIR #${req.params.id}`,
       entityId: grn.id, entityType: 'goods_receipt_note',
-    });
-    await fireEvent({
-      eventType: 'delivery.received', entityType: 'goods_receipt_note', entityId: grn.id,
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      payload: { grn_id: grn.id, grn_number: grn.grn_number, mir_id: grn.mir_id, purchase_order_id: grn.purchase_order_id, warehouse_id: grn.warehouse_id },
     });
     res.status(201).json({ success: true, data: grn });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }

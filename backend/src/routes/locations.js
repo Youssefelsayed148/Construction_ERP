@@ -90,11 +90,11 @@ router.post('/', authenticate, authorize(), async (req, res) => {
       [value.project_id, parentId, typeId, value.code, value.name, value.name_en || value.name, value.name_ar || value.name_en || value.name, value.sort_order]
     );
 
-    fireEvent({
+    await fireEvent({
       eventType: 'location.created', entityType: 'project_location', entityId: r.rows[0].id,
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       payload: { project_id: value.project_id, location_type_code: value.location_type_code },
-    }).catch(() => {});
+    });
 
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) {

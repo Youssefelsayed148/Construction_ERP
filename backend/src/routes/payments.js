@@ -113,6 +113,11 @@ router.post('/', authenticate, authorize(), async (req, res) => {
           allocated_by: req.user.id, actor_name: req.user.name,
         });
       }
+      await fireEvent({
+        eventType: 'payment.received', entityType: 'payment', entityId: row.id,
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        payload: { payment_id: row.id, amount: value.amount, invoice_id: value.invoice_id || null, project_id: value.project_id, client_id: value.client_id },
+      }, { query: q });
       return row;
     });
     await logActivity({
@@ -121,12 +126,6 @@ router.post('/', authenticate, authorize(), async (req, res) => {
       description: `Recorded payment of ${value.amount} EGP`,
       entityId: payment.id, entityType: 'payment', amount: value.amount
     });
-    await fireEvent({
-      eventType: 'payment.received', entityType: 'payment', entityId: payment.id,
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      payload: { payment_id: payment.id, amount: value.amount, invoice_id: value.invoice_id || null, project_id: value.project_id, client_id: value.client_id },
-    });
-
     res.status(201).json({ success: true, data: payment });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });

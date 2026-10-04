@@ -2,7 +2,7 @@ const express = require('express');
 const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
-const { query } = require('../config/database');
+const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 
@@ -292,21 +292,25 @@ router.post('/labor-payments', authenticate, authorize(), async (req, res) => {
 
     const total_amount = value.days_worked * value.daily_rate;
 
-    const r = await query(
-      `INSERT INTO labor_payments (project_id, laborer_id, work_order_id, payment_date, days_worked, daily_rate, total_amount, paid_by, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-      [value.project_id, value.laborer_id, value.work_order_id || null, value.payment_date, value.days_worked, value.daily_rate, total_amount, value.paid_by, value.notes]
-    );
-
-    // Fire event for job costing (Phase 5 listener)
+    // The payment and the event that books its project cost commit together: a failed enqueue creates no payment
+    // (it used to be swallowed, silently losing the cost).
     const { fireEvent } = require('../utils/activity');
-    fireEvent({
-      eventType: 'labor_payment.created',
-      entityType: 'labor_payment',
-      entityId: r.rows[0].id,
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      payload: { project_id: value.project_id, amount: total_amount, laborer_id: value.laborer_id }
-    }).catch(() => {});
+    const r = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const inserted = await q(
+        `INSERT INTO labor_payments (project_id, laborer_id, work_order_id, payment_date, days_worked, daily_rate, total_amount, paid_by, notes)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+        [value.project_id, value.laborer_id, value.work_order_id || null, value.payment_date, value.days_worked, value.daily_rate, total_amount, value.paid_by, value.notes]
+      );
+      await fireEvent({
+        eventType: 'labor_payment.created',
+        entityType: 'labor_payment',
+        entityId: inserted.rows[0].id,
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        payload: { project_id: value.project_id, amount: total_amount, laborer_id: value.laborer_id }
+      }, { query: q });
+      return inserted;
+    });
 
     await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hr', description: `Labor payment: ${total_amount} EGP`, entityId: r.rows[0].id, entityType: 'labor_payment', amount: total_amount });
     res.status(201).json({ success: true, data: r.rows[0] });
