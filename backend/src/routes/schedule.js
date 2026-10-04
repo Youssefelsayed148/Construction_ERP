@@ -210,15 +210,13 @@ router.put('/activities/:id', authenticate, authorize(), async (req, res) => {
     params.push(req.params.id);
     const r = await query(`UPDATE schedule_activities SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
     if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Activity not found' });
-    // Date/quantity changes recompute demand (Phase 9 event hook, already routed).
-    try {
-      const { fireEvent } = require('../utils/activity');
-      await fireEvent({
-        eventType: 'schedule.activity.changed', entityType: 'schedule_activity', entityId: parseInt(req.params.id, 10),
-        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-        payload: { project_id: r.rows[0].project_id, percent_complete: r.rows[0].percent_complete },
-      });
-    } catch (e) { /* event is best-effort */ }
+    // Date/quantity changes recompute demand (Phase 9 event hook, already routed). A failed enqueue is an error.
+    const { fireEvent } = require('../utils/activity');
+    await fireEvent({
+      eventType: 'schedule.activity.changed', entityType: 'schedule_activity', entityId: parseInt(req.params.id, 10),
+      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+      payload: { project_id: r.rows[0].project_id, percent_complete: r.rows[0].percent_complete },
+    });
     // Phase 3.5: a schedule change recomputes the project's derived (duration-weighted) progress.
     try {
       const progressEngine = require('../services/progressEngine');

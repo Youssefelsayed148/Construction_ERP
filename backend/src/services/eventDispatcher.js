@@ -112,9 +112,11 @@ async function routePurchaseRequisitionApproved(evt, opts) {
   }, opts);
 }
 
+// invoice.overdue (reminder stages overdue_7/14/30) and invoice.due (due_soon, due_today), emitted by the
+// receivable reminder sweep through the outbox. The stage's escalation roles ride in the payload.
 async function routeInvoiceOverdue(evt, opts) {
   const payload = evt.payload || {};
-  await notificationService.notifyRoles(['finance_manager', 'owner', 'admin'], {
+  await notificationService.notifyRoles(Array.isArray(payload.roles) && payload.roles.length ? payload.roles : ['finance_manager', 'owner', 'admin'], {
     title: payload.title || `Invoice overdue: #${evt.entityId}`,
     body: payload.body || null,
     eventType: evt.eventType,
@@ -173,24 +175,70 @@ async function routeRecipeChanged(evt, opts) {
   await materialDemand.recomputeForRecipeEvent(q, evt, opts);
 }
 
+// Closeout A2.5: the previously unrouted events. Each is a row here: who to tell and what to call it. The
+// title always names the record; a payload title/body only adds detail. Webhook fan-out is separate (plan 1.5):
+// the outbox dispatcher still emits every delivered event on the bus for webhookService.
+const NOTIFY_RULES = {
+  'purchase_order.issued': { roles: ['purchasing_mgr', 'finance_manager'], label: 'Purchase order issued' },
+  'purchase_order.approved': { roles: ['purchasing_mgr', 'owner'], label: 'Purchase order approved' },
+  'purchase_order.rejected': { roles: ['purchasing_mgr', 'owner'], label: 'Purchase order rejected' },
+  'delivery.received': { roles: ['storekeeper', 'purchasing_mgr'], label: 'Goods received' },
+  'payment.received': { roles: ['finance_manager', 'accountant'], label: 'Payment received' },
+  'invoice.created': { roles: ['finance_manager', 'accountant'], label: 'Invoice created' },
+  'variation.approved': { roles: ['project_manager', 'finance_manager', 'quantity_surveyor'], label: 'Variation approved' },
+  'handover.advanced': { roles: ['project_manager', 'owner'], label: 'Handover advanced' },
+  'wir.submitted': { roles: ['engineer', 'project_manager'], label: 'Work inspection request submitted' },
+};
+// Families of events named by prefix (the state is the suffix): permit.*, instruction.*, mir.*, transmittal.*.
+const PATTERN_RULES = [
+  ['permit.', { roles: ['project_manager', 'site_supervisor'], label: 'Permit' }],
+  ['instruction.', { roles: ['site_supervisor', 'project_manager'], label: 'Instruction' }],
+  ['mir.', { roles: ['storekeeper', 'engineer'], label: 'Material inspection' }],
+  ['transmittal.', { roles: ['document_controller', 'project_manager'], label: 'Transmittal' }],
+];
+
+const notifyRoute = (rule) => async (evt, opts) => {
+  const payload = evt.payload || {};
+  const state = String(evt.eventType).split('.').slice(1).join('.').replace(/_/g, ' ');
+  await notificationService.notifyRoles(rule.roles, {
+    title: `${rule.label}${rule.prefixed ? `: ${state}` : ''} #${evt.entityId}`,
+    body: payload.title || payload.body || null,
+    eventType: evt.eventType,
+    entityType: evt.entityType,
+    entityId: evt.entityId,
+    excludeUserId: evt.userId,
+  }, opts);
+};
+
 const EVENT_ROUTES = {
   'observation.created': routeObservationCreated,
   'rfi.submitted': routeRfiSubmitted,
+  // The RFI route used to emit rfi.created; rows enqueued under that name before the rename still deliver.
+  'rfi.created': routeRfiSubmitted,
   'purchase_requisition.approved': routePurchaseRequisitionApproved,
   'invoice.overdue': routeInvoiceOverdue,
+  'invoice.due': routeInvoiceOverdue,
   'action.overdue': routeActionOverdue,
   'approval.requested': routeApprovalRequested,
   'allocation.quantity_changed': routeAllocationQuantityChanged,
   'schedule.activity.changed': routeScheduleActivityChanged,
   'recipe.changed': routeRecipeChanged,
 };
+for (const [eventType, rule] of Object.entries(NOTIFY_RULES)) EVENT_ROUTES[eventType] = notifyRoute(rule);
+
+// The handler for an event type: an exact route, else the family it belongs to, else none.
+function resolveRoute(eventType) {
+  if (Object.prototype.hasOwnProperty.call(EVENT_ROUTES, eventType)) return EVENT_ROUTES[eventType];
+  const family = PATTERN_RULES.find(([prefix]) => String(eventType).startsWith(prefix));
+  return family ? notifyRoute({ ...family[1], prefixed: true }) : null;
+}
 
 // ---------------------------------------------------------------------------
 // dispatch
 // ---------------------------------------------------------------------------
 
 async function dispatchEvent(eventType, evt, opts = {}) {
-  const handler = EVENT_ROUTES[eventType];
+  const handler = resolveRoute(eventType);
   if (!handler) return { handled: false };
   try {
     await handler(evt, opts);
@@ -256,6 +304,9 @@ function initEventDispatcher(opts = {}) {
 
 module.exports = {
   EVENT_ROUTES,
+  NOTIFY_RULES,
+  PATTERN_RULES,
+  resolveRoute,
   dispatchEvent,
   catchUp,
   initEventDispatcher,

@@ -122,7 +122,15 @@ async function deliverClaimed(q, claimed, { handlers = null, maxAttempts = MAX_A
     if (Date.now() - started > DISPATCH_BUDGET_MS) break;
     const evt = fromRow(row);
     try {
-      await (routes[row.event_type] || defaultDeliver)(evt, { query: q });
+      // An exact route, else the event's family (permit.*, mir.*, ...), else the bus alone. Every delivered event
+      // also reaches the in-process bus afterwards (webhook fan-out subscribes there, plan 1.5).
+      const handler = routes[row.event_type] || eventDispatcher.resolveRoute(row.event_type);
+      if (handler) {
+        await handler(evt, { query: q });
+        await defaultDeliver(evt);
+      } else {
+        await defaultDeliver(evt);
+      }
       await q(
         "UPDATE event_outbox SET status = 'delivered', dispatched_at = now(), last_error = NULL, updated_at = now() WHERE id = $1",
         [row.id]

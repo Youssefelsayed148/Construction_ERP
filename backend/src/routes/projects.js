@@ -187,6 +187,7 @@ const wizardCreate = async (req, res) => {
 
     const result = await transaction(async (client) => {
       const out = await provisioning.provisionProject(value, { client, templateKey: value.template_key });
+      await fireEvent({ eventType: 'project.created', entityType: 'project', entityId: out.project.id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: out.project.id, code: out.project.code, name: out.project.name, via: 'wizard' } }, { query: client.query.bind(client) });
       return out;
     });
 
@@ -196,7 +197,6 @@ const wizardCreate = async (req, res) => {
       description: `Provisioned project ${result.project.code} via wizard (${result.steps.length} steps)`,
       entityId: result.project.id, entityType: 'project'
     });
-    await fireEvent({ eventType: 'project.created', entityType: 'project', entityId: result.project.id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: result.project.id, code: result.project.code, name: result.project.name, via: 'wizard' } });
     res.status(201).json({ success: true, data: result.project, counts: result.counts, steps: result.steps });
   } catch (e) {
     console.error('Wizard provisioning failed:', e);
@@ -231,11 +231,12 @@ const legacyCreate = async (req, res) => {
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
         [value.code, value.name_ar, value.name_ar, value.name_en || value.name_ar, value.address, value.city, value.project_type, value.client_id, value.project_manager_id, value.contract_value, value.budget, value.start_date, value.expected_completion, value.status]
       );
-      return project.rows[0];
+      const createdProject = project.rows[0];
+      await fireEvent({ eventType: 'project.created', entityType: 'project', entityId: createdProject.id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: createdProject.id, code: createdProject.code, name: createdProject.name } }, { query: client.query.bind(client) });
+      return createdProject;
     });
 
     await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'projects', description: `Created project ${value.code}`, entityId: result.id, entityType: 'project' });
-    await fireEvent({ eventType: 'project.created', entityType: 'project', entityId: result.id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: result.id, code: result.code, name: result.name } });
     res.status(201).json({ success: true, data: result });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 };

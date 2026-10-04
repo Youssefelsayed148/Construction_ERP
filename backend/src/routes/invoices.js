@@ -100,11 +100,20 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
     // The invoice and its ledger entry commit together.
-    const invoice = await transaction((client) => createInvoiceRecord(client.query.bind(client), {
-      project_id: value.project_id, client_id: value.client_id, amount: value.amount,
-      issue_date: value.issue_date, due_date: value.due_date || null, status: 'sent',
-      description: value.description, created_by: req.user.id,
-    }, { actor_id: req.user.id, actor_name: req.user.name }));
+    const invoice = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const created = await createInvoiceRecord(q, {
+        project_id: value.project_id, client_id: value.client_id, amount: value.amount,
+        issue_date: value.issue_date, due_date: value.due_date || null, status: 'sent',
+        description: value.description, created_by: req.user.id,
+      }, { actor_id: req.user.id, actor_name: req.user.name });
+      await fireEvent({
+        eventType: 'invoice.created', entityType: 'invoice', entityId: created.id,
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        payload: { invoice_id: created.id, invoice_number: created.invoice_number, amount: value.amount, project_id: value.project_id, status: 'sent' },
+      }, { query: q });
+      return created;
+    });
     value.invoice_number = invoice.invoice_number;
     const result = { rows: [invoice] };
 
@@ -114,12 +123,6 @@ router.post('/', authenticate, authorize(), async (req, res) => {
       description: `Created invoice ${value.invoice_number} — ${value.amount} EGP`,
       entityId: result.rows[0].id, entityType: 'invoice', amount: value.amount
     });
-    await fireEvent({
-      eventType: 'invoice.created', entityType: 'invoice', entityId: result.rows[0].id,
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      payload: { invoice_id: result.rows[0].id, invoice_number: value.invoice_number, amount: value.amount, project_id: value.project_id, status: 'sent' },
-    });
-
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

@@ -109,7 +109,7 @@ router.post('/allocations', authenticate, authorize(), async (req, res) => {
       eventType: 'allocation.quantity_changed', entityType: 'boq_location_allocation', entityId: alloc.id,
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       payload: { boq_item_id: value.boq_item_id, project_location_id: value.project_location_id, planned_quantity: value.planned_quantity },
-    }).catch(() => {});
+    });
 
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
@@ -147,7 +147,7 @@ router.put('/allocations/:id', authenticate, authorize(), async (req, res) => {
         eventType: 'allocation.quantity_changed', entityType: 'boq_location_allocation', entityId: r.rows[0].id,
         userId: req.user.id, userName: req.user.name, userRole: req.user.role,
         payload: { boq_item_id: r.rows[0].boq_item_id, planned_quantity: value.planned_quantity },
-      }).catch(() => {});
+      });
     }
     res.json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }

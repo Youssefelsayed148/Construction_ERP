@@ -398,11 +398,17 @@ describe('receivable reminders', () => {
     const again = await finance.runReceivableReminderSweep(q, { now: NOW });
     expect(again.reminders_sent).toBe(0);
 
-    // Notifications went through the Phase 7 engine — one per alerting role:
-    // due_soon → PM (1), due_today → PM+CFO (2), overdue_14 → CFO+Owner (2).
-    const allNotes = (await q('SELECT * FROM notifications')).rows;
-    const notes = allNotes.filter((n) => (n.event_type || '').startsWith('receivable.'));
-    expect(notes.length).toBe(5);
+    // Closeout A2.5: the sweep emits events through the outbox (the dispatcher's route notifies the roles, covered
+    // on real PostgreSQL in event-integrity.pg.test.js): invoice.due for due_soon and due_today, invoice.overdue for
+    // the overdue ladder, each carrying its stage's escalation roles.
+    const events = (await q('SELECT * FROM event_outbox')).rows
+      .map((e) => ({ type: e.event_type, payload: typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload }))
+      .filter((e) => ['invoice.due', 'invoice.overdue'].includes(e.type));
+    expect(events.map((e) => [e.type, e.payload.stage]).sort()).toEqual([
+      ['invoice.due', 'due_soon'], ['invoice.due', 'due_today'], ['invoice.overdue', 'overdue_14'],
+    ]);
+    const rolesOf = (stage) => events.find((e) => e.payload.stage === stage).payload.roles.length;
+    expect([rolesOf('due_soon'), rolesOf('due_today'), rolesOf('overdue_14')]).toEqual([1, 2, 2]);
   });
 });
 

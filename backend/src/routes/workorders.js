@@ -332,14 +332,15 @@ router.put('/:woId/completions/:compId/verify', authenticate, authorize(), async
         await engine.syncAllocations((q, p) => client.query(q, p), { boqItemId: comp.rows[0].boq_item_id });
         await engine.syncBoqItemCompletedQuantity((q, p) => client.query(q, p), comp.rows[0].boq_item_id);
 
-        // Fire event for job costing
-        fireEvent({
+        // Job costing consumes this event: it is enqueued in THIS transaction, so it is delivered only after the
+        // verification commits and is lost never (a failed enqueue rolls the verification back).
+        await fireEvent({
           eventType: 'work_completion.verified',
           entityType: 'work_completion',
           entityId: req.params.compId,
           userId: req.user.id, userName: req.user.name, userRole: req.user.role,
           payload: { work_order_id: comp.rows[0].work_order_id, boq_item_id: comp.rows[0].boq_item_id, quantity: comp.rows[0].quantity_completed }
-        }).catch(() => {});
+        }, { query: (text, params) => client.query(text, params) });
       }
     });
 

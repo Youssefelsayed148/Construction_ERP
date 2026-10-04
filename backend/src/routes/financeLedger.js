@@ -44,11 +44,15 @@ router.post('/invoices/:id/transition', authenticate, authorize(), async (req, r
     const schema = Joi.object({ status: Joi.string().valid(...finance.INVOICE_LIFECYCLE).required() });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const invoice = await transaction((client) => finance.transitionInvoice(client.query.bind(client), parseInt(req.params.id, 10), value.status, req.user));
-    await fireEvent({
-      eventType: `invoice.${value.status}`, entityType: 'invoice', entityId: invoice.id,
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      payload: { invoice_id: invoice.id, status: value.status },
+    const invoice = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const transitioned = await finance.transitionInvoice(q, parseInt(req.params.id, 10), value.status, req.user);
+      await fireEvent({
+        eventType: `invoice.${value.status}`, entityType: 'invoice', entityId: transitioned.id,
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        payload: { invoice_id: transitioned.id, status: value.status },
+      }, { query: q });
+      return transitioned;
     });
     res.json({ success: true, data: invoice });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }

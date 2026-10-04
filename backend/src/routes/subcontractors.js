@@ -199,21 +199,27 @@ router.put('/certificates/:id', authenticate, authorize(), async (req, res) => {
     const { status } = req.body;
     if (!['certified', 'paid'].includes(status)) return res.status(400).json({ success: false, error: 'Invalid status' });
 
-    const r = await query(
-      `UPDATE sub_payment_certificates SET status = $1, certified_by = COALESCE(certified_by, $2), paid_at = CASE WHEN $1 = 'paid' THEN NOW() ELSE paid_at END, updated_at = NOW() WHERE id = $3 RETURNING *`,
-      [status, req.user.id, req.params.id]
-    );
+    // The status change and the payment event (which books the project cost) commit together.
+    const r = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const updated = await q(
+        `UPDATE sub_payment_certificates SET status = $1, certified_by = COALESCE(certified_by, $2), paid_at = CASE WHEN $4::boolean THEN NOW() ELSE paid_at END, updated_at = NOW() WHERE id = $3 RETURNING *`,
+        // $4 is separate from $1: using one parameter as both the status and the 'paid' comparison made PostgreSQL deduce
+        // two types for it, so this update failed on every call (found by the A2.5 tests).
+        [status, req.user.id, req.params.id, status === 'paid']
+      );
+      if (updated.rows.length > 0 && status === 'paid') {
+        await fireEvent({
+          eventType: 'sub_payment.paid',
+          entityType: 'sub_payment_certificate',
+          entityId: req.params.id,
+          userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+          payload: { sub_contract_id: updated.rows[0].sub_contract_id, amount: updated.rows[0].net_payable, project_id: updated.rows[0].project_id }
+        }, { query: q });
+      }
+      return updated;
+    });
     if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Certificate not found' });
-
-    if (status === 'paid') {
-      fireEvent({
-        eventType: 'sub_payment.paid',
-        entityType: 'sub_payment_certificate',
-        entityId: req.params.id,
-        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-        payload: { sub_contract_id: r.rows[0].sub_contract_id, amount: r.rows[0].net_payable, project_id: r.rows[0].project_id }
-      }).catch(() => {});
-    }
 
     res.json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }

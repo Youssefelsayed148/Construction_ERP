@@ -18,6 +18,7 @@ describePg('approvals: non-destructive cancel (real PostgreSQL, real app)', () =
   const tag = String(Date.now()).slice(-6) + Math.random().toString(36).slice(2, 5);
   const one = async (sql, params) => (await db.query(sql, params)).rows[0];
   const users = {};
+  let requestSeq = 0;
   const ids = {};
   const call = async (method, path, body, token) => {
     const res = await fetch(`${base}${path}`, {
@@ -37,7 +38,9 @@ describePg('approvals: non-destructive cancel (real PostgreSQL, real app)', () =
 
   const makeStaleApproval = async ({ module_name = 'expenses', daysOld = 40 }) => {
     const requester = await makeUser(`req-${Object.keys(users).length}`, 'engineer');
-    const requestId = 42000 + Math.floor(Math.random() * 100000); // unique per row: (module, type, request_id) is unique among pending rows (0013)
+    // Unique per run and per row: (module, type, request_id) is unique among pending rows (0013), and earlier runs leave pending rows behind.
+    requestSeq += 1;
+    const requestId = 1000000 + (Date.now() % 800000) * 100 + requestSeq;
     const id = (await one(
       `INSERT INTO approval_requests (module_name, request_type, request_id, requester_id, status)
        VALUES ($1, 'create', $3, $2, 'pending') RETURNING id`,
