@@ -288,6 +288,9 @@ function normalizeResponses(req, res, next) {
           message: typeof payload.error === 'string' ? payload.error : (payload.error?.message || 'Request failed'),
           correlation_id: req.correlationId,
           details: payload.details || payload.error?.details || undefined,
+          // The stable machine-readable code of the internal response (when it has one) passes through.
+          error_code: payload.error_code || undefined,
+          error_params: payload.error_code ? (payload.error_params || {}) : undefined,
         },
       };
       return originalJson(body);
