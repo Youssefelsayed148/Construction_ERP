@@ -187,3 +187,10 @@ The backend stack (#17, #18) and the frontend stack (#19 on #6-#9) are merged in
 - New guard `event-swallow` (lint-guards, baseline empty): a fireEvent call that is not awaited/returned or is followed by .catch.
 - Bonus bug found by the new test: `PUT /api/subcontractors/certificates/:id` failed on EVERY call on real PostgreSQL ("inconsistent types deduced for parameter $1": one parameter used as the status and in a CASE comparison). Certifying or paying a subcontractor certificate never worked; mock-db could not see it. Fixed with a separate boolean parameter.
 - Out of scope, as the plan says: webhook fan-out (plan 1.5). Not changed: `escalationScheduler`, `actionService` and `siteEngine` emit through their own paths.
+
+## 2026-10-04: Closeout A2.6, progress wiring (no migration)
+
+- Reproduced first (`daily-report-progress.pg.test.js`, 8 of 8 failed on the old code): a daily report carried no measurements (`daily_report` was an allowed source nothing produced); verifying a work completion approved its measurements and re-synced allocations but never recomputed the quantity-driven activities or the project's progress; the PM dashboard's progress was the plain mean of activity percents and the portfolio/overview averages plain means of project percents.
+- Now: one hook `progressEngine.onMeasurementsChanged` for every measurement source; one writer `quantityEngine.recordMeasurement` (also checks the BOQ item, location and work package belong to the project: the measurement route used to trust the ids it was given); daily reports take measurements (pending, in the report's transaction); PM/portfolio/overview figures are weighted.
+- Decision applied, flag if you disagree: daily-report quantities enter as `pending`. Executed progress counts approved/certified quantities only, so a report moves progress once a reviewer approves its lines. If site-reported quantities should count immediately, that is one line in `recordReportMeasurements` plus the executed-state rule.
+- The soft-delete scenario for schedule_activities stays skipped until soft delete lands (the `deleted_at` guard in durationWeighted is already there).

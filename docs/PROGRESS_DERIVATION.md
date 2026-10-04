@@ -43,3 +43,9 @@ recorded here.
 - Site daily reports do not yet create measurements automatically (plan item 3.4 "daily-report
   measurements push to measurements" is a later slice); the derivation consumes measurements from any
   source, so that integration needs no change here.
+
+## Closeout A2.6 additions
+
+- Every measurement source (the measurement route, a review, a verified work completion, a daily report) calls one hook, `progressEngine.onMeasurementsChanged`: derived allocation figures, then the quantity-driven schedule activities, then the project (and phase) progress. The work-completion verify path used to skip the last two steps.
+- Daily reports: `POST /api/projects/:id/site-reports` takes `measurements: [{ project_location_id, boq_item_id, work_package_id?, quantity, unit? }]`. Each becomes a `pending` `quantity_measurements` row (`source_type 'daily_report'`, `source_id` the report) in the report's transaction; ids that belong to another project are refused (`measurement_wrong_project`). Pending quantities do not count as executed (executed = approved or certified), so progress moves when a reviewer approves them, exactly like every other source. `PUT` with `measurements` replaces the report's pending lines; once any was reviewed it answers 409 `measurements_already_reviewed`.
+- Dashboards: the PM widget shows the project's derived progress (measured quantities weighted by BOQ value, else tasks weighted by duration), or tasks weighted by duration across projects; the portfolio widget and the overview weight projects by contract value (else budget, else equally). Never the plain mean.

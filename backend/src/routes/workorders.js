@@ -329,8 +329,11 @@ router.put('/:woId/completions/:compId/verify', authenticate, authorize(), async
            WHERE source_type = 'work_completion' AND source_id = $2`,
           [req.user.id, req.params.compId]
         );
-        await engine.syncAllocations((q, p) => client.query(q, p), { boqItemId: comp.rows[0].boq_item_id });
-        await engine.syncBoqItemCompletedQuantity((q, p) => client.query(q, p), comp.rows[0].boq_item_id);
+        // Allocations, quantity-driven activities and the project's derived progress follow the approval.
+        const woProject = (await client.query('SELECT project_id FROM work_orders WHERE id = $1', [comp.rows[0].work_order_id])).rows[0];
+        await require('../services/progressEngine').onMeasurementsChanged(
+          (q, p) => client.query(q, p), { boqItemId: comp.rows[0].boq_item_id, projectId: woProject.project_id }
+        );
 
         // Job costing consumes this event: it is enqueued in THIS transaction, so it is delivered only after the
         // verification commits and is lost never (a failed enqueue rolls the verification back).

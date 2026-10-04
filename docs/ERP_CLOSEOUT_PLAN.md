@@ -197,9 +197,9 @@ Goal: one truthful chain, from requirement to cost.
 
 3.4 Progress single source of truth
 - [x] Derive `projects.completion_percentage` from weighted schedule/quantity progress (quantityEngine policies); manual override only with permission and audit. (Rule in docs/PROGRESS_DERIVATION.md: quantity-weighted by BOQ value where quantities exist, otherwise duration-weighted from schedule tasks; no source → stored value untouched. `('projects','override_progress')` gates manual overrides, migration 0021 seeds the permission; overrides audited.)
-- [ ] Site daily-report measurements push to measurements, schedule activities and project progress.
+- [x] Site daily-report measurements push to measurements, schedule activities and project progress. (A2.6, #41: a report carries `measurements`; they enter as pending `daily_report` measurements in the report's transaction, and every measurement source now runs the one `progressEngine.onMeasurementsChanged` hook, which the work-completion verify path was missing.)
 - [x] Schedule percent recomputes on measurement changes, not only on explicit PUT. (Quantity-driven activities linked to the measured BOQ item recompute on measurement insert/review; the project's derived progress follows.)
-- [ ] Dashboard PM progress uses the weighted figure.
+- [x] Dashboard PM progress uses the weighted figure. (A2.6: PM widget = derived BOQ-value/duration-weighted progress; portfolio widget and overview weight projects by contract value.)
 
 3.5 Background jobs
 - [x] Leader lock (Postgres advisory lock) for the five setInterval sweeps (escalation, finance, HSE, replenishment, webhooks), or move to a job table; safe under multiple replicas. (services/sweepLeader.js: session-level pg_try_advisory_lock on a dedicated connection per sweep; runs and failures recorded in background_sweep_runs, counted by `npm run outbox:stats`. Six sweeps total — the plan's five plus the scheduled-reports sweep in routes/reports.js, added by owner decision.)

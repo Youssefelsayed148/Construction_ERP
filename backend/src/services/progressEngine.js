@@ -123,7 +123,38 @@ async function syncActivityProgressForBoqItem(q, boqItemId) {
   return changed;
 }
 
+// The one hook for "measurements of this BOQ item changed" (a new measurement, a review, a verified work
+// completion, a daily report): derived allocation figures first, then the quantity-driven activities, then the
+// project's progress (and its phases). Every measurement source calls this, so none can forget a step.
+async function onMeasurementsChanged(q, { boqItemId, projectId }) {
+  await quantityEngine.syncAllocations(q, { boqItemId });
+  await quantityEngine.syncBoqItemCompletedQuantity(q, boqItemId);
+  const activities = await syncActivityProgressForBoqItem(q, boqItemId);
+  const project = await syncProjectProgress(q, projectId);
+  return { activities, project };
+}
+
+// Portfolio figure over several projects: each project's progress weighted by its contract value, else its
+// budget, else equally. A small project counts for less than the main contract (the plain mean treated them alike).
+function portfolioWeight(project) {
+  const contract = toNum(project.contract_value);
+  if (contract > 0) return contract;
+  const budget = toNum(project.budget);
+  return budget > 0 ? budget : 1;
+}
+function weightedPortfolioProgress(projects) {
+  let sum = 0;
+  let weight = 0;
+  for (const p of projects) {
+    const pct = Math.min(100, Math.max(0, toNum(p.completion_percentage)));
+    const w = portfolioWeight(p);
+    sum += pct * w;
+    weight += w;
+  }
+  return weight > 0 ? sum / weight : 0;
+}
+
 module.exports = {
   deriveProjectProgress, derivePhaseProgress, syncProjectProgress, syncPhaseProgressForProject,
-  syncActivityProgressForBoqItem, durationWeighted,
+  syncActivityProgressForBoqItem, onMeasurementsChanged, weightedPortfolioProgress, durationWeighted,
 };
