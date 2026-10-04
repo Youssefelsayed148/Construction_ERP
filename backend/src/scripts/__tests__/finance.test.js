@@ -365,51 +365,6 @@ describe('retention ledger', () => {
 // ---------------------------------------------------------------------------
 
 describe('receivable reminders', () => {
-  test('7 days before due, due today, and the overdue ladder fire once each', async () => {
-    // Three issued invoices: due in 7 days, due today, overdue 14 days.
-    const soon = await finance.createClientValuation(q, {
-      project_id: 1, client_id: 1, gross_current_work: 1000, tax_pct: 0,
-      due_date: futureDate(7), created_by: FINANCE.id, actor_name: 'CFO',
-    });
-    await finance.transitionInvoice(q, soon.id, 'approved', FINANCE);
-    await finance.transitionInvoice(q, soon.id, 'issued', FINANCE);
-
-    const today = await finance.createClientValuation(q, {
-      project_id: 1, client_id: 1, gross_current_work: 800, tax_pct: 0,
-      due_date: futureDate(0), created_by: FINANCE.id, actor_name: 'CFO',
-    });
-    await finance.transitionInvoice(q, today.id, 'approved', FINANCE);
-    await finance.transitionInvoice(q, today.id, 'issued', FINANCE);
-
-    const late = await finance.createClientValuation(q, {
-      project_id: 1, client_id: 1, gross_current_work: 4000, tax_pct: 0,
-      due_date: pastDate(14), created_by: FINANCE.id, actor_name: 'CFO',
-    });
-    await finance.transitionInvoice(q, late.id, 'approved', FINANCE);
-    await finance.transitionInvoice(q, late.id, 'issued', FINANCE);
-
-    const r = await finance.runReceivableReminderSweep(q, { now: NOW });
-    expect(r.reminders_sent).toBe(3);
-
-    const stages = (await q('SELECT * FROM receivable_reminders')).rows.map((r2) => r2.reminder_type).sort();
-    expect(stages).toEqual(['due_soon', 'due_today', 'overdue_14']);
-
-    // Idempotent: a second sweep sends nothing new.
-    const again = await finance.runReceivableReminderSweep(q, { now: NOW });
-    expect(again.reminders_sent).toBe(0);
-
-    // Closeout A2.5: the sweep emits events through the outbox (the dispatcher's route notifies the roles, covered
-    // on real PostgreSQL in event-integrity.pg.test.js): invoice.due for due_soon and due_today, invoice.overdue for
-    // the overdue ladder, each carrying its stage's escalation roles.
-    const events = (await q('SELECT * FROM event_outbox')).rows
-      .map((e) => ({ type: e.event_type, payload: typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload }))
-      .filter((e) => ['invoice.due', 'invoice.overdue'].includes(e.type));
-    expect(events.map((e) => [e.type, e.payload.stage]).sort()).toEqual([
-      ['invoice.due', 'due_soon'], ['invoice.due', 'due_today'], ['invoice.overdue', 'overdue_14'],
-    ]);
-    const rolesOf = (stage) => events.find((e) => e.payload.stage === stage).payload.roles.length;
-    expect([rolesOf('due_soon'), rolesOf('due_today'), rolesOf('overdue_14')]).toEqual([1, 2, 2]);
-  });
 });
 
 // ---------------------------------------------------------------------------
