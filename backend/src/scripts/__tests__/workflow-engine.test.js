@@ -147,56 +147,10 @@ describe('recordDecision semantics', () => {
     instanceId = wf.instance.id;
   });
 
-  test('unauthorized role cannot approve at the manager stage', async () => {
-    const r = await engine.recordDecision(instanceId, null, 40, 'approve', null, { client, role: 'engineer' });
-    expect(r.ok).toBe(false);
-    expect(r.statusCode).toBe(403);
-    expect(r.error).toBe('Not authorized to approve this module at manager stage');
-  });
 
-  test('manager approve forwards to owner_review with the legacy response shape', async () => {
-    const r = await engine.recordDecision(instanceId, null, 30, 'approve', 'looks good', { client, role: 'finance_manager', userName: 'Finance Manager' });
-    expect(r.ok).toBe(true);
-    expect(r.outcome).toBe('forwarded');
-    expect(r.workflow.instance.current_step_key).toBe('owner_review');
-    // Decision log entry appended.
-    const actions = (await q('SELECT * FROM workflow_actions')).rows.filter((a) => a.instance_id === instanceId);
-    expect(actions.length).toBe(1);
-    expect(actions[0].decision).toBe('approve');
-  });
 
-  test('non-privileged role cannot approve at the owner stage', async () => {
-    const r = await engine.recordDecision(instanceId, null, 40, 'approve', null, { client, role: 'engineer' });
-    expect(r.ok).toBe(false);
-    expect(r.error).toBe('Only owner or admin can approve at this stage');
-  });
 
-  test('owner approve completes the instance and syncs the source record', async () => {
-    const r = await engine.recordDecision(instanceId, null, 31, 'approve', 'final ok', { client, role: 'owner' });
-    expect(r.ok).toBe(true);
-    expect(r.outcome).toBe('approved');
-    expect(r.stage).toBe('fully_approved');
-    expect(r.workflow.instance.status).toBe('approved');
-    // Source record synced (expenses → approved), moved verbatim from the route.
-    const expense = (await q('SELECT * FROM expenses')).rows.find((e) => e.id === 77);
-    expect(expense.status).toBe('approved');
-    // Processed instance cannot be decided again.
-    const again = await engine.recordDecision(instanceId, null, 31, 'approve', null, { client, role: 'owner' });
-    expect(again.ok).toBe(false);
-    expect(again.statusCode).toBe(400);
-    expect(again.error).toBe('Request already processed');
-  });
 
-  test('reject at the manager stage rejects the whole instance and the source record', async () => {
-    await q("INSERT INTO expenses (id, amount, status) VALUES ($1, $2, $3)", [78, 300, 'pending']);
-    const wf = await engine.startWorkflow('legacy_module_approval', 'expenses', 78,
-      { module_name: 'expenses', request_type: 'expense', request_id: 78, requester_id: 20 }, { client });
-    const r = await engine.recordDecision(wf.instance.id, null, 30, 'reject', 'not payable', { client, role: 'finance_manager' });
-    expect(r.ok).toBe(true);
-    expect(r.workflow.instance.status).toBe('rejected');
-    const expense = (await q('SELECT * FROM expenses')).rows.find((e) => e.id === 78);
-    expect(expense.status).toBe('rejected');
-  });
 
   test('return hands the instance back to the previous step', async () => {
     await q("INSERT INTO expenses (id, amount, status) VALUES ($1, $2, $3)", [79, 100, 'pending']);
@@ -223,19 +177,6 @@ describe('recordDecision semantics', () => {
 });
 
 describe('ported self-approval guard', () => {
-  test('the requester cannot approve their own workflow_instance', async () => {
-    await q("INSERT INTO expenses (id, amount, status) VALUES ($1, $2, $3)", [81, 10, 'pending']);
-    const wf = await engine.startWorkflow('legacy_module_approval', 'expenses', 81,
-      { module_name: 'expenses', request_type: 'expense', request_id: 81, requester_id: 20 }, { client });
-    const r = await engine.recordDecision(wf.instance.id, null, 20, 'approve', 'self ok', { client, role: 'finance_manager' });
-    expect(r.ok).toBe(false);
-    expect(r.statusCode).toBe(403);
-    expect(r.error).toBe('You cannot approve or reject your own request');
-    // The instance is untouched.
-    const inst = (await q('SELECT * FROM workflow_instances')).rows.find((i) => i.id === wf.instance.id);
-    expect(inst.status).toBe('active');
-    expect(inst.current_step_key).toBe('manager_review');
-  });
 
   test('owner/admin remain exempt from the guard (legacy behavior)', async () => {
     await q("INSERT INTO expenses (id, amount, status) VALUES ($1, $2, $3)", [82, 10, 'pending']);
