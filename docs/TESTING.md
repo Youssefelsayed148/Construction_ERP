@@ -68,20 +68,34 @@ Three jobs, all required green on every PR:
 
 ## Exit gate: spec 26's 12 layers
 
-| # | Layer (spec 26) | Automated CI test |
-| --- | --- | --- |
-| 1 | Auth / token typing | `token-typing.pg.test.js`, `tokens.test.js` |
-| 2 | Authorization (roles, policy, scoping) | `role-matrix.pg.test.js`, `record-scoping.pg.test.js`, `fail-closed.pg.test.js` |
-| 3 | Migration integrity | `migration-runner.pg.test.js`, `migration-bootstrap.test.js`, fresh-migrate-twice in CI |
-| 4 | Money and ledger correctness | `journal.pg.test.js`, `ledger-postings.pg.test.js`, `golden-chain.pg.test.js` |
-| 5 | Inventory integrity | `inventory-integrity.pg.test.js`, `procurement-locking.pg.test.js`, `concurrency.pg.test.js` |
-| 6 | Workflow engine | `approvals-atomic.pg.test.js`, `mcp-safety.pg.test.js` |
-| 7 | Event/outbox integrity | `outbox.pg.test.js`, `event-integrity.pg.test.js` |
-| 8 | API contract (envelopes, error codes) | `external-api.test.js` (mock); live contract test pending (B5) |
-| 9 | Input validation | `route-guards.test.js`, service validation asserts |
-| 10 | Frontend localization | `frontend/src/i18n/*` unit tests, `i18n:check` guard, e2e `locale.spec.js` |
-| 11 | Portal isolation | `portal.test.js` (mock); real-PG portal isolation pending (B6/B12) |
-| 12 | Performance / load | load baselines pending (B11, docs file to be linked here) |
+| # | Layer (spec 26) | Automated CI test | Runs in CI? |
+| --- | --- | --- | --- |
+| 1 | Auth / token typing | `token-typing.pg.test.js` (PG), `tokens.test.js`, `shell.spec.js` | mock + PG + frontend |
+| 2 | Authorization (roles, policy, scoping) | `role-matrix.pg.test.js`, `record-scoping.pg`, `record-scope-rules.pg`, `fail-closed.pg`, `policy-matrix.pg` (B6), `nav-visibility.pg` (B7) | mock + PG |
+| 3 | Migration integrity | `migration-runner.pg.test.js`, `migration-bootstrap.test.js`, fresh-migrate-twice in CI | mock + PG |
+| 4 | Money and ledger correctness | `journal.pg`, `ledger-postings.pg`, `cost-accrual.pg`, `golden-chain.pg` | mock(ads) + PG |
+| 5 | Inventory integrity | `inventory-integrity.pg`, `procurement-locking.pg`, `inventory-flows.pg` (B2), `concurrency.pg` (B3), `constraints-b4.pg` (B4) | PG |
+| 6 | Workflow engine | `approvals-atomic.pg`, `approvals-cancel.pg`, `mcp-safety.pg`, `workflow-flows.pg` (B2) | mock + PG |
+| 7 | Event/outbox integrity | `outbox.pg`, `event-integrity.pg`, `concurrency.pg` (dispatcher race) | PG |
+| 8 | API contract (envelopes, error codes) | `external-api.test.js` + live `v1-contract.pg.test.js` (B5) | mock + PG |
+| 9 | Input validation | `route-guards.test.js`, service validation asserts, `v1-contract.pg` 400-envelope check (B5) | mock + PG |
+| 10 | Frontend localization | `frontend/src/i18n/*` unit tests, `i18n:check` guard, e2e `locale.spec.js`, `Shell.i18n.test.js` | all three |
+| 11 | Portal isolation | `portal.test.js`, `portal-acceptance.pg.test.js` (B12), `policy-matrix.pg` external rows (B6) | mock + PG |
+| 12 | Performance / load | `scripts/load-profiling.js` with recorded baselines (`docs/LOAD_BASELINES.md`, B11) — **NOT in CI** (plan rule: baselines only, run manual/throwaway) | n/a by plan |
+
+Backend journeys (`journeys-backend.spec.js`, B10) are **gated** (`E2E_BACKEND=1`): they need a
+seeded owner, so CI skips them; run them per the section below. Layers with only mock-backend
+coverage are marked; every layer except 12 has at least one automated CI test (12 is recorded
+manually by plan decision — no thresholds yet).
+
+## Real-backend Playwright journeys (B10)
+
+`frontend/e2e/journeys-backend.spec.js` — gated, not API-mocked, desktop + mobile viewports,
+Arabic-first shell assertions (Phase 10 boundary respected). One seeded owner per throwaway
+database: in `backend/`, `SEED_DEFAULT_OWNER=true DEFAULT_OWNER_EMAIL=<journey email>
+DEFAULT_OWNER_PASSWORD=<12+ chars> node src/scripts/setupDb.js` (joi's default TLD rule rejects
+invented TLDs like `.erp` — use a plausible domain), then run the app and
+`E2E_BACKEND=1 npx playwright test e2e/journeys-backend.spec.js` from `frontend/`.
 
 (Last updated in the Part B slice of the closeout; keep this table in sync when a layer lands.)
 
