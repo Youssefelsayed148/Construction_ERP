@@ -206,6 +206,13 @@ const ACTION_OVERRIDES = Object.freeze([
   ['procurement', 'POST', /^\/po\/:id\/issue$/, 'issue_financial_document'],
   ['procurement', 'POST', /^\/po\/:id\/decide$/, 'approve'],
   ['procurement', 'POST', /^\/mir\/:id\/decide$/, 'approve'],
+  // Phase 5.4: the award recommendation is submitted, approved and withdrawn like any other document; cancelling
+  // a requisition or an order is the cancel/void action; spend and vendor performance are supplier commercial data.
+  ['procurement', 'POST', /^\/award-recommendations\/:id\/submit$/, 'submit'],
+  ['procurement', 'POST', /^\/award-recommendations\/:id\/decide$/, 'approve'],
+  ['procurement', 'POST', /^\/award-recommendations\/:id\/withdraw$/, 'void'],
+  ['procurement', 'POST', /^\/(?:pr|po)\/:id\/cancel$/, 'void'],
+  ['procurement', 'GET', /^\/analytics\//, 'see_supplier_value'],
   // Phase 5.3: posting an adjustment changes stock without a movement document of the business (a count
   // correction), so it needs approve; a void of any inventory document is its own action.
   ['inventory', 'POST', /^\/adjustments\/:id\/post$/, 'approve'],
@@ -273,6 +280,7 @@ const RECORD_SCOPE_RULES = Object.freeze({
   procurement: [
     [/^\/(?:documents\/)?pr\/:id(?:\/|$)/, 'purchase_requests'],
     [/^\/rfq\/:id(?:\/|$)/, 'rfqs'],
+    [/^\/award-recommendations\/:id(?:\/|$)/, 'SELECT r.project_id FROM rfq_award_recommendations a JOIN rfqs r ON r.id = a.rfq_id WHERE a.id = $1'],
     [/^\/(?:documents\/)?po\/:id(?:\/|$)/, 'purchase_orders'],
     [/^\/deliveries\/:id(?:\/|$)/, 'SELECT po.project_id FROM deliveries d JOIN purchase_orders po ON po.id = d.purchase_order_id WHERE d.id = $1'],
     [/^\/mir\/:id(?:\/|$)/, 'material_inspection_requests'],

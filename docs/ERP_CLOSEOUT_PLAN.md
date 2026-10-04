@@ -263,8 +263,8 @@ About 35 of ~190 spec entities have no table. Deliver in vertical slices; each s
 - [x] Single "open procurement requirement" formula.
 
 5.4 Procurement (spec 08)
-- [ ] Award recommendation as a real entity with approval; vendor-performance and spend-by-category/project queries.
-- [ ] PR/PO update and cancel; RFQ list and GET by id.
+- [x] Award recommendation as a real entity with approval; vendor-performance and spend-by-category/project queries.
+- [x] PR/PO update and cancel; RFQ list and GET by id.
 
 5.5 Commercial and finance (spec 09, 10)
 - Tables: ContractParty, Guarantee, Insurance, PaymentApplication, InvoiceLine, CurrencyRate, BudgetVersion/Line, ForecastVersion/Line, credit note, payment batch, maker/checker, bank accounts.

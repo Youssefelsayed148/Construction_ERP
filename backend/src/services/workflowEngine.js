@@ -317,13 +317,6 @@ async function recordDecision(instanceId, stepId, userId, decision, comment, opt
     return { ok: false, statusCode: 400, error: 'Request already processed' };
   }
 
-  // Self-approval guard — ported verbatim from the legacy control
-  // (approvals.js: requester_id === userId && role not owner/admin → 403).
-  if (!system && instance.requester_id != null && num(instance.requester_id) === num(userId)
-      && role !== 'owner' && role !== 'admin') {
-    return { ok: false, statusCode: 403, error: 'You cannot approve or reject your own request' };
-  }
-
   const stepInstances = await loadStepInstances(client, instanceId);
   let current = stepInstances.find((s) => s.step_key === instance.current_step_key && s.status === 'pending');
   if (!current) {
@@ -337,10 +330,22 @@ async function recordDecision(instanceId, stepId, userId, decision, comment, opt
   const templateStep = steps.find((s) => s.step_key === current.step_key);
   const context = parseJson(instance.context);
 
+  // Self-approval guard — ported from the legacy control (approvals.js: requester_id === userId && role not
+  // owner/admin -> 403). It guards DECISIONS, not the requester's own steps: a step whose resolver is 'requester'
+  // (Draft, Submit, Delivered, Closed...) is exactly the requester's action, so the requester completes it.
+  // Before this, only an owner, an admin or the system could submit a requisition or issue an order: the
+  // requester of any other role was refused at their own Draft step.
+  const requesterStep = Boolean(templateStep && templateStep.resolver_type === 'requester');
+  const ownRequest = instance.requester_id != null && num(instance.requester_id) === num(userId);
+  if (!system && ownRequest && !requesterStep && role !== 'owner' && role !== 'admin') {
+    return { ok: false, statusCode: 403, error: 'You cannot approve or reject your own request' };
+  }
+
   // Authorization — mirrors the legacy stage checks (module manager map at the
   // manager stage; owner/admin only at the owner stage; privileged bypass).
   const allowed = role === 'owner' || role === 'admin' ||
-    (system && templateStep && templateStep.resolver_type === 'requester') ||
+    (system && requesterStep) ||
+    (requesterStep && ownRequest) ||
     allowedRolesFor(templateStep, context).includes(role);
 
   if (!allowed) {

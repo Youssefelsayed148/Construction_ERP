@@ -269,6 +269,16 @@ const WORKFLOW_CATALOG = [
       { step_key: 'closed', name: 'Closed', resolver: 'role', resolver_value: 'project_manager', is_terminal: true },
     ],
   },
+  // Phase 5.4: the award recommendation of an RFQ. Approval of the last step awards the RFQ.
+  {
+    key: 'rfq_award',
+    name: 'RFQ Award Recommendation',
+    steps: [
+      { step_key: 'draft', name: 'Draft', resolver: 'requester' },
+      { step_key: 'procurement_review', name: 'Procurement Review', resolver: 'role', resolver_value: 'purchasing_mgr' },
+      { step_key: 'authority_approval', name: 'Authority Approval', resolver: 'role', resolver_value: 'owner', is_terminal: true },
+    ],
+  },
 ];
 
 // The legacy two-stage approval — reproduces approvals.js exactly:
