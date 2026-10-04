@@ -28,7 +28,7 @@ describe('action overrides', () => {
   const MOUNT_FILES = {
     approvals: 'approvals', commercial: 'commercial', docs: 'doccontrol', 'finance-ledger': 'financeLedger', handover: 'handover',
     procurement: 'procurement', projects: 'projects', qhse: 'qhse', subcontractors: 'subcontractors', 'work-orders': 'workorders', reports: 'reports',
-    invoices: 'invoices', items: 'items', payments: 'payments', suppliers: 'suppliers',
+    invoices: 'invoices', items: 'items', payments: 'payments', suppliers: 'suppliers', inventory: 'inventory', materials: 'materials',
   };
 
   test('every override matches a real route with that method', () => {

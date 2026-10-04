@@ -206,6 +206,13 @@ const ACTION_OVERRIDES = Object.freeze([
   ['procurement', 'POST', /^\/po\/:id\/issue$/, 'issue_financial_document'],
   ['procurement', 'POST', /^\/po\/:id\/decide$/, 'approve'],
   ['procurement', 'POST', /^\/mir\/:id\/decide$/, 'approve'],
+  // Phase 5.3: posting an adjustment changes stock without a movement document of the business (a count
+  // correction), so it needs approve; a void of any inventory document is its own action.
+  ['inventory', 'POST', /^\/adjustments\/:id\/post$/, 'approve'],
+  ['inventory', 'POST', /^\/(?:issues|returns|adjustments)\/:id\/void$/, 'void'],
+  // Replenishment: changing the policy is configuration, running a sweep may raise requisitions.
+  ['materials', 'POST', /^\/replenishment\/sweep$/, 'approve'],
+  ['materials', 'DELETE', /^\/replenishment\/policies$/, 'edit'],
   ['procurement', 'POST', /^\/invoices\/:id\/approve$/, 'approve'],
   ['qhse', 'POST', /^\/ncrs\/:id\/verify$/, 'approve'],
   ['qhse', 'POST', /^\/wirs\/:id\/submit$/, 'submit'],
@@ -258,6 +265,11 @@ const RECORD_SCOPE_RULES = Object.freeze({
   invoices: [[/^\/:id(?:\/|$)/, 'invoices']],
   locations: [[/^\/:id(?:\/|$)/, 'project_locations']],
   materials: [[/^\/recipes\/:id(?:\/|$)/, 'material_recipes']],
+  // Phase 5.3: lots and stock documents belong to a warehouse, hence to its project (company-level warehouses: none).
+  inventory: [
+    [/^\/lots\/:id(?:\/|$)/, 'SELECT w.project_id FROM stock_lots l JOIN warehouses w ON w.id = l.warehouse_id WHERE l.id = $1'],
+    [/^\/(?:issues|returns|adjustments)\/:id(?:\/|$)/, 'SELECT COALESCE(d.project_id, w.project_id) AS project_id FROM inventory_documents d JOIN warehouses w ON w.id = d.warehouse_id WHERE d.id = $1'],
+  ],
   procurement: [
     [/^\/(?:documents\/)?pr\/:id(?:\/|$)/, 'purchase_requests'],
     [/^\/rfq\/:id(?:\/|$)/, 'rfqs'],

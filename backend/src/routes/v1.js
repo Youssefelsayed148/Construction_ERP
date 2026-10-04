@@ -49,6 +49,7 @@ const ROUTERS = {
   materials: { router: require('./materials'), mount: '/api/materials' },
   items: { router: require('./items'), mount: '/api/items' },
   warehouses: { router: require('./warehouses'), mount: '/api/warehouses' },
+  inventory: { router: require('./inventory'), mount: '/api/inventory' },
   procurement: { router: require('./procurement'), mount: '/api/procurement' },
   dashboard: { router: require('./dashboard'), mount: '/api/dashboard' },
   commercial: { router: require('./commercial'), mount: '/api/commercial' },
@@ -120,6 +121,23 @@ function remount(routerName, method, fromPath) {
 // FAMILY MAP — v1 family → remounted internal operations.
 // [routerName, method, internalPath, v1Path]
 // ---------------------------------------------------------------------------
+
+// 5.3 inventory: lots, unit conversions and the three stock documents, remounted from /api/inventory.
+const inventoryOps = [
+  ['inventory', 'GET', '/lots', '/lots'], ['inventory', 'GET', '/lots/expiring', '/lots/expiring'],
+  ['inventory', 'GET', '/lots/:id', '/lots/:id'], ['inventory', 'POST', '/lots', '/lots'],
+  ['inventory', 'PUT', '/lots/:id/status', '/lots/:id/status'],
+  ['inventory', 'GET', '/conversions', '/conversions'], ['inventory', 'GET', '/conversions/convert', '/conversions/convert'],
+  ['inventory', 'POST', '/conversions', '/conversions'], ['inventory', 'PUT', '/conversions/:id', '/conversions/:id'],
+  ['inventory', 'DELETE', '/conversions/:id', '/conversions/:id'],
+];
+for (const plural of ['issues', 'returns', 'adjustments']) {
+  inventoryOps.push(
+    ['inventory', 'GET', `/${plural}`, `/${plural}`], ['inventory', 'GET', `/${plural}/:id`, `/${plural}/:id`],
+    ['inventory', 'POST', `/${plural}`, `/${plural}`], ['inventory', 'PUT', `/${plural}/:id`, `/${plural}/:id`],
+    ['inventory', 'POST', `/${plural}/:id/post`, `/${plural}/:id/post`], ['inventory', 'POST', `/${plural}/:id/void`, `/${plural}/:id/void`]
+  );
+}
 
 const FAMILY_MAP = {
   companies: [
@@ -204,8 +222,16 @@ const FAMILY_MAP = {
     ['materials', 'POST', '/recipes', '/recipes'],
     ['materials', 'PUT', '/recipes/:id', '/recipes/:id'],
     ['materials', 'GET', '/requirements', '/requirements'],
+    // 5.3 replenishment: alerts, policy/mode configuration, the manual sweep and the open requirement
+    ['materials', 'GET', '/replenishment/alerts', '/replenishment/alerts'],
+    ['materials', 'GET', '/replenishment/policies', '/replenishment/policies'],
+    ['materials', 'PUT', '/replenishment/policies', '/replenishment/policies'],
+    ['materials', 'DELETE', '/replenishment/policies', '/replenishment/policies'],
+    ['materials', 'POST', '/replenishment/sweep', '/replenishment/sweep'],
+    ['materials', 'GET', '/replenishment/open-requirements', '/replenishment/open-requirements'],
   ],
   inventory: [
+    ...inventoryOps,
     ['warehouses', 'GET', '/', '/warehouses'],
     ['warehouses', 'GET', '/:id', '/warehouses/:id'],
     ['warehouses', 'GET', '/:id/movements', '/warehouses/:id/movements'],

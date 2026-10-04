@@ -36,6 +36,7 @@ const { query: defaultQuery, transaction } = require('../config/database');
 const notificationService = require('./notificationService');
 const procurementService = require('./procurementService');
 const sweepLeader = require('./sweepLeader');
+const inventoryLots = require('./inventoryLots');
 
 const MODES = ['alert_only', 'auto_draft_pr', 'auto_draft_po', 'auto_issue_po'];
 const DEFAULT_MODE = 'alert_only';
@@ -54,6 +55,7 @@ const ALERT_ROLES = ['purchasing_mgr', 'owner'];
 const USAGE_LOOKBACK_DAYS = 90;
 const SCHEDULED_HORIZON_DAYS = 90;
 const WASTAGE_ALERT_THRESHOLD = 0.10; // waste+damage > 10% of issued volume
+const EXPIRY_WINDOW_DAYS = 30;
 
 const DAY_MS = 86400000;
 
@@ -322,6 +324,41 @@ async function demandByProject(q, materialId, { now = new Date() } = {}) {
     .sort((x, y) => x.project_id - y.project_id);
 }
 
+// THE open procurement requirement of a material (and, with a project, of that project): the scheduled demand
+// that neither stock nor anything already on its way covers.
+//
+//   open requirement = max( scheduled demand - (available + open order quantity + open requisition quantity), 0 )
+//
+// "Open order quantity" is the undelivered part of approved/issued/confirmed/partially delivered orders,
+// "open requisition quantity" is requisitions still in the PR workflow (or approved and not yet ordered).
+// Scoped to a project, only that project's stock (and company-level stock), orders and requisitions count.
+// The replenishment sweep (per-project requisitions), the open-requirements endpoint and the screens all
+// read this one function. (The projected_shortage ALERT stays a supply-risk signal: it counts confirmed
+// incoming orders only, because a requisition that nobody has ordered yet is not stock on its way.)
+async function openProcurementRequirement(q, materialId, { projectId = null, now = new Date() } = {}) {
+  let demandTotal;
+  let earliest = null;
+  if (projectId != null) {
+    const mine = (await demandByProject(q, materialId, { now })).find((d) => Number(d.project_id) === Number(projectId));
+    demandTotal = mine ? mine.total : 0;
+    earliest = mine ? mine.earliest_date : null;
+  } else {
+    const all = await scheduledDemand(q, materialId, { now });
+    demandTotal = all.total;
+    earliest = all.earliest_date;
+  }
+  const stock = await availableNow(q, materialId, projectId != null ? { projectId } : {});
+  const incomingOrders = await openConfirmedQuantity(q, materialId, projectId != null ? { projectId } : {});
+  const openRequests = await openRequestQuantity(q, materialId, projectId);
+  const incoming = round3(incomingOrders + openRequests);
+  return {
+    material_id: materialId, project_id: projectId,
+    scheduled_demand: demandTotal, earliest_date: earliest,
+    available: stock.available, open_orders: incomingOrders, open_requests: openRequests, incoming,
+    requirement: shortage(demandTotal, stock.available, incoming),
+  };
+}
+
 // The requisition already on its way for a source key: open in the workflow, or approved and still waiting for
 // its order. Returns the row or undefined.
 async function openRequestFor(q, sourceKey) {
@@ -338,12 +375,14 @@ async function openRequestFor(q, sourceKey) {
 // Open requisition quantity for a material and project: counts as incoming, so a need that a requisition
 // already covers is not raised again.
 async function openRequestQuantity(q, materialId, projectId) {
+  // projectId null = open requisitions of the material in every project (the company-level view).
+  const scoped = projectId != null;
   const rows = (await q(
     `SELECT l.quantity FROM purchase_request_lines l JOIN purchase_requests pr ON pr.id = l.purchase_request_id
-      WHERE l.material_id = $1 AND pr.project_id = $2
+      WHERE l.material_id = $1${scoped ? ' AND pr.project_id = $2' : ''}
         AND (pr.status IN (${inList(OPEN_PR_STATUSES)})
              OR (pr.status = 'procurement' AND NOT EXISTS (SELECT 1 FROM purchase_orders po WHERE po.purchase_request_id = pr.id)))`,
-    [materialId, projectId]
+    scoped ? [materialId, projectId] : [materialId]
   )).rows;
   return round3(rows.reduce((sum, r) => sum + toNum(r.quantity), 0));
 }
@@ -516,12 +555,8 @@ async function evaluateMaterial(q, item, opts = {}) {
     });
     let projectNeeds = 0;
     for (const scope of await demandByProject(q, item.id, { now })) {
-      const own = await availableNow(q, item.id, { projectId: scope.project_id });
-      const incomingP = round3(
-        (await openConfirmedQuantity(q, item.id, { projectId: scope.project_id })) +
-        (await openRequestQuantity(q, item.id, scope.project_id))
-      );
-      const projectShortfall = shortage(scope.total, own.available, incomingP);
+      const open = await openProcurementRequirement(q, item.id, { projectId: scope.project_id, now });
+      const projectShortfall = open.requirement;
       if (projectShortfall <= 0) continue;
       const quantity = rounded(projectShortfall);
       if (quantity <= 0) continue;
@@ -683,9 +718,33 @@ async function evaluateOtherAlerts(q, opts = {}) {
     }
   }
 
-  // Expiring material: shelf life is tracked per material (Phase 9), but lots
-  // only exist once GRN/lot tracking lands (Phase 12). The hook is here; the
-  // data is not — this class stays silent rather than inventing expiry dates.
+  // Expiring material (5.3): lots that still hold stock and expire within the window (default 30 days, or
+  // opts.expiryWindowDays), or have already expired. First the lots whose date has passed are marked expired
+  // (idempotent), then one alert per material lists them; the alert resolves itself when no such lot holds stock.
+  const expiryWindow = toNum(opts.expiryWindowDays) || EXPIRY_WINDOW_DAYS;
+  await inventoryLots.markExpired(q);
+  const expiring = await inventoryLots.expiringLots(q, { withinDays: expiryWindow });
+  const byMaterialLots = new Map();
+  for (const lot of expiring) {
+    if (!byMaterialLots.has(lot.material_id)) byMaterialLots.set(lot.material_id, []);
+    byMaterialLots.get(lot.material_id).push(lot);
+  }
+  for (const [materialId, list] of byMaterialLots.entries()) {
+    const expired = list.filter((l) => l.days_to_expiry < 0);
+    const r = await raiseAlert(q, {
+      materialId, alertType: 'expiring_material',
+      snapshot: {
+        summary: `${list.length} lot(s) expire within ${expiryWindow} days${expired.length ? `, ${expired.length} already expired (write off with an adjustment)` : ''}`,
+        lots: list.map((l) => ({ lot_id: l.lot_id, lot_number: l.lot_number, warehouse_id: l.warehouse_id, physical: l.physical, expiry_date: inventoryLots.isoDate(l.expiry_date), days_to_expiry: l.days_to_expiry })),
+      },
+      notify: opts.notify !== false,
+    });
+    if (r.created) raised.expiring_material++;
+  }
+  const openExpiry = (await q("SELECT DISTINCT material_id FROM replenishment_alerts WHERE alert_type = 'expiring_material' AND status = 'open'")).rows;
+  for (const { material_id: materialId } of openExpiry) {
+    if (!byMaterialLots.has(materialId)) await resolveAlerts(q, { materialId, alertTypes: ['expiring_material'] });
+  }
   return raised;
 }
 
@@ -729,6 +788,7 @@ module.exports = {
   demandByProject,
   openRequestFor,
   openRequestQuantity,
+  openProcurementRequirement,
   ensureReplenishmentRequest,
   evaluateMaterial,
   evaluateOtherAlerts,

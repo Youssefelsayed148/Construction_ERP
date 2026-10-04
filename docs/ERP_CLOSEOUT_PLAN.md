@@ -258,9 +258,9 @@ About 35 of ~190 spec entities have no table. Deliver in vertical slices; each s
 
 5.3 Materials and inventory (spec 07)
 - Tables: StockLot, unit-conversion table; material issue/return/adjustment as first-class documents referencing stock_movements.
-- [ ] Lot tracking, batch and expiry; implement the expiry alert (currently a no-op).
-- [ ] Replenishment endpoints: alerts list, policy/mode config, manual sweep.
-- [ ] Single "open procurement requirement" formula.
+- [x] Lot tracking, batch and expiry; implement the expiry alert (currently a no-op).
+- [x] Replenishment endpoints: alerts list, policy/mode config, manual sweep.
+- [x] Single "open procurement requirement" formula.
 
 5.4 Procurement (spec 08)
 - [ ] Award recommendation as a real entity with approval; vendor-performance and spend-by-category/project queries.

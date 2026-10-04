@@ -246,4 +246,127 @@ router.get('/requirements', authenticate, authorize(), async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// ---------------------------------------------------------------------------
+// Replenishment (5.3): alerts, policy/mode configuration, the manual sweep and the open requirement.
+// The policy store is business_rules ('replenishment_policy:material:<id>' > ':category:<cat>' > ':default'),
+// exactly what services/replenishment.getPolicy reads, so this surface and the sweep cannot disagree.
+// ---------------------------------------------------------------------------
+const replenishment = require('../services/replenishment');
+const sweepLeader = require('../services/sweepLeader');
+
+const replFail = (res, status, code, message, params = {}) =>
+  res.status(status).json({ success: false, error: message, error_code: code, error_params: params });
+
+// GET /api/materials/replenishment/alerts?status=open&alert_type=&material_id=
+router.get('/replenishment/alerts', authenticate, authorize(), async (req, res) => {
+  try {
+    const conds = []; const p = [];
+    const status = req.query.status || 'open';
+    if (status !== 'all') conds.push(`a.status = $${p.push(status)}`);
+    if (req.query.alert_type) conds.push(`a.alert_type = $${p.push(req.query.alert_type)}`);
+    if (req.query.material_id) conds.push(`a.material_id = $${p.push(parseInt(req.query.material_id, 10))}`);
+    const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
+    const rows = (await query(
+      `SELECT a.*, im.code AS material_code, im.name_en AS material_name_en, im.name_ar AS material_name_ar
+         FROM replenishment_alerts a LEFT JOIN item_master im ON im.id = a.material_id ${where}
+        ORDER BY a.created_at DESC, a.id DESC LIMIT 500`, p)).rows;
+    res.json({ success: true, data: rows });
+  } catch (e) { console.error('[MATERIALS] alerts', e); return replFail(res, 500, 'replenishment_error', e.message); }
+});
+
+// GET /api/materials/replenishment/policies  (every stored policy row, plus the modes the sweep understands)
+router.get('/replenishment/policies', authenticate, authorize(), async (req, res) => {
+  try {
+    const rows = (await query("SELECT rule_key, rule_value, is_active, updated_at FROM business_rules WHERE rule_key LIKE 'replenishment_policy:%' ORDER BY rule_key")).rows;
+    res.json({ success: true, data: rows, modes: replenishment.MODES, default_mode: replenishment.DEFAULT_MODE });
+  } catch (e) { console.error('[MATERIALS] policies', e); return replFail(res, 500, 'replenishment_error', e.message); }
+});
+
+const policyBody = Joi.object({
+  scope: Joi.string().valid('default', 'category', 'material').required(),
+  ref: Joi.alternatives().conditional('scope', { is: 'default', then: Joi.any().strip(), otherwise: Joi.string().required() }),
+  mode: Joi.string().valid(...replenishment.MODES).required(),
+  authority_ceiling: Joi.number().min(0).allow(null),
+  target_max_stock: Joi.number().min(0).allow(null),
+  enabled: Joi.boolean().default(true),
+});
+
+function policyKeyOf({ scope, ref }) {
+  return scope === 'default' ? 'replenishment_policy:default' : `replenishment_policy:${scope}:${ref}`;
+}
+
+// PUT /api/materials/replenishment/policies  { scope, ref, mode, ... }
+router.put('/replenishment/policies', authenticate, authorize(), async (req, res) => {
+  try {
+    const { error, value } = policyBody.validate(req.body);
+    if (error) return replFail(res, 400, 'validation_error', error.details[0].message, { field: error.details[0].path.join('.') });
+    if (value.scope === 'material') {
+      const item = (await query('SELECT id FROM item_master WHERE id = $1', [parseInt(value.ref, 10)])).rows[0];
+      if (!item) return replFail(res, 404, 'material_not_found', `Material #${value.ref} not found`, { material_id: value.ref });
+    }
+    const ruleValue = { mode: value.mode, enabled: value.enabled };
+    if (value.authority_ceiling != null) ruleValue.authority_ceiling = value.authority_ceiling;
+    if (value.target_max_stock != null) ruleValue.target_max_stock = value.target_max_stock;
+    const key = policyKeyOf(value);
+    const row = (await query(
+      `INSERT INTO business_rules (rule_key, rule_value, description) VALUES ($1, $2::jsonb, 'Replenishment policy')
+       ON CONFLICT (rule_key) DO UPDATE SET rule_value = EXCLUDED.rule_value, is_active = true, updated_at = NOW() RETURNING rule_key, rule_value, updated_at`,
+      [key, JSON.stringify(ruleValue)])).rows[0];
+    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'materials', description: `Replenishment policy ${key} set to ${value.mode}`, entityId: null, entityType: 'replenishment_policy' });
+    res.json({ success: true, data: row });
+  } catch (e) { console.error('[MATERIALS] policy put', e); return replFail(res, 500, 'replenishment_error', e.message); }
+});
+
+// DELETE /api/materials/replenishment/policies?scope=material&ref=12 : drop an override (the default row stays)
+router.delete('/replenishment/policies', authenticate, authorize(), async (req, res) => {
+  try {
+    const scope = req.query.scope;
+    if (!['category', 'material'].includes(scope) || !req.query.ref) {
+      return replFail(res, 400, 'policy_scope_invalid', 'Only a category or material override can be removed (scope and ref are required); the default policy stays', { scope });
+    }
+    const key = policyKeyOf({ scope, ref: req.query.ref });
+    const r = await query('DELETE FROM business_rules WHERE rule_key = $1 RETURNING rule_key', [key]);
+    if (r.rows.length === 0) return replFail(res, 404, 'policy_not_found', `No policy ${key}`, { rule_key: key });
+    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'materials', description: `Replenishment policy ${key} removed`, entityId: null, entityType: 'replenishment_policy' });
+    res.json({ success: true, data: { rule_key: key } });
+  } catch (e) { console.error('[MATERIALS] policy delete', e); return replFail(res, 500, 'replenishment_error', e.message); }
+});
+
+// POST /api/materials/replenishment/sweep : the same sweep the scheduler runs, under the same leader lock, so a
+// manual run and a scheduled one never overlap. Idempotent: it raises nothing the data does not call for.
+router.post('/replenishment/sweep', authenticate, authorize(), async (req, res) => {
+  try {
+    let outcome = null;
+    const run = await sweepLeader.runSweepAsLeader('replenishment', async () => { outcome = await replenishment.runReplenishmentSweep(); });
+    if (!run.ran) return replFail(res, 409, 'sweep_already_running', 'A replenishment sweep is already running', {});
+    if (run.record.status === 'failed') return replFail(res, 500, 'sweep_failed', run.record.error || 'Replenishment sweep failed', {});
+    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'materials', description: `Manual replenishment sweep: ${outcome.evaluated} evaluated`, entityId: null, entityType: 'replenishment_sweep' });
+    res.json({
+      success: true,
+      data: {
+        evaluated: outcome.evaluated, skipped: outcome.skipped, other_alerts: outcome.other_alerts,
+        requisitions_raised: outcome.results.reduce((n, r) => n + ((r.actions && r.actions.purchase_requests) || []).filter((x) => x.created).length, 0),
+      },
+    });
+  } catch (e) { console.error('[MATERIALS] sweep', e); return replFail(res, 500, 'replenishment_error', e.message); }
+});
+
+// GET /api/materials/replenishment/open-requirements?project_id=&material_id= : the one formula, per material
+router.get('/replenishment/open-requirements', authenticate, authorize(), async (req, res) => {
+  try {
+    const projectId = req.query.project_id ? parseInt(req.query.project_id, 10) : null;
+    if (req.query.project_id && !Number.isInteger(projectId)) return replFail(res, 400, 'project_id_invalid', 'project_id must be an integer', {});
+    const materialIds = req.query.material_id
+      ? [parseInt(req.query.material_id, 10)]
+      : (await query("SELECT DISTINCT material_id FROM material_requirements WHERE status = 'planned' AND material_id IS NOT NULL")).rows.map((r) => r.material_id);
+    const data = [];
+    for (const materialId of materialIds) {
+      const row = await replenishment.openProcurementRequirement(query, materialId, { projectId });
+      const item = (await query('SELECT code, name_en, name_ar, unit FROM item_master WHERE id = $1', [materialId])).rows[0] || {};
+      data.push({ ...row, material_code: item.code, material_name_en: item.name_en, material_name_ar: item.name_ar, unit: item.unit });
+    }
+    res.json({ success: true, data: data.filter((d) => req.query.include_zero === 'true' || d.requirement > 0) });
+  } catch (e) { console.error('[MATERIALS] open requirements', e); return replFail(res, 500, 'replenishment_error', e.message); }
+});
+
 module.exports = router;

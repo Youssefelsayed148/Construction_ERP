@@ -64,6 +64,7 @@ app.use('/api/hr', require('./src/routes/hr'));
 app.use('/api/payroll', require('./src/routes/payroll'));
 app.use('/api/projects', require('./src/routes/projects'));
 app.use('/api/warehouses', require('./src/routes/warehouses'));
+app.use('/api/inventory', require('./src/routes/inventory'));
 app.use('/api/boq', require('./src/routes/boq'));
 app.use('/api/work-orders', require('./src/routes/workorders'));
 app.use('/api/subcontractors', require('./src/routes/subcontractors'));

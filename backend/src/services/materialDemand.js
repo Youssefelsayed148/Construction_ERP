@@ -26,6 +26,8 @@
 'use strict';
 
 const { query: defaultQuery } = require('../config/database');
+const { convertQuantity } = require('../utils/units');
+const unitConversions = require('./unitConversions');
 
 function toNum(v) {
   if (v == null) return 0;
@@ -40,32 +42,6 @@ function round4(n) {
 function parseJson(v) {
   if (Array.isArray(v)) return v;
   try { return JSON.parse(v || '[]'); } catch (e) { return []; }
-}
-
-function convertQuantity(quantity, fromUnit, toUnit, conversions = []) {
-  if (!fromUnit || !toUnit || fromUnit === toUnit) return round4(quantity);
-  const graph = new Map();
-  const add = (from, to, factor) => {
-    if (!graph.has(from)) graph.set(from, []);
-    graph.get(from).push({ to, factor });
-  };
-  for (const c of parseJson(conversions)) {
-    const factor = toNum(c.factor);
-    if (!c.from_unit || !c.to_unit || factor <= 0) continue;
-    add(c.from_unit, c.to_unit, factor);
-    add(c.to_unit, c.from_unit, 1 / factor);
-  }
-  const queue = [{ unit: fromUnit, factor: 1 }];
-  const seen = new Set([fromUnit]);
-  while (queue.length) {
-    const current = queue.shift();
-    for (const edge of graph.get(current.unit) || []) {
-      const factor = current.factor * edge.factor;
-      if (edge.to === toUnit) return round4(toNum(quantity) * factor);
-      if (!seen.has(edge.to)) { seen.add(edge.to); queue.push({ unit: edge.to, factor }); }
-    }
-  }
-  throw new Error(`No unit conversion from ${fromUnit} to ${toUnit}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -197,7 +173,7 @@ async function recomputeAllocation(q, allocationId, opts = {}) {
     const requirementUnit = material.base_unit || material.unit || line.unit || null;
     const gross = convertQuantity(
       grossRequirement(alloc.planned_quantity, line.factor_per_unit),
-      line.unit || requirementUnit, requirementUnit, material.unit_conversions
+      line.unit || requirementUnit, requirementUnit, await unitConversions.conversionsFor(q, material.id)
     );
     const wastage = toNum(line.wastage_pct);
     const used = toNum(consumed[line.material_id]);
