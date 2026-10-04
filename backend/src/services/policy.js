@@ -61,6 +61,8 @@ const VISIBILITY_ACTION_TO_FLAG = {
 
 // One row per (user role row × permission). Rows with no permissions yield
 // one row with NULL perm columns (LEFT JOIN keeps role/project bindings).
+// Expiry (5.1): a team assignment whose expires_at has passed grants nothing; NULL = no expiry,
+// so every existing row behaves exactly as before.
 const USER_POLICY_SQL = `
   SELECT r.key AS role_key,
          upr.project_id,
@@ -71,7 +73,22 @@ const USER_POLICY_SQL = `
   JOIN roles r ON r.id = upr.role_id
   LEFT JOIN role_permissions rp ON rp.role_id = r.id
   LEFT JOIN permissions p ON p.id = rp.permission_id
-  WHERE upr.user_id = $1`;
+  WHERE upr.user_id = $1
+    AND (upr.expires_at IS NULL OR upr.expires_at >= CURRENT_DATE)`;
+
+// Phase 5.1: modules that are ORGANIZATION-scope only — they carry no project scoping at all
+// (their record routes must not inherit a project id from a request body and their decisions are
+// made on module/action grants alone, i.e. company-wide = project_id NULL rows; a project-bound
+// role can still hold these grants because team seats can name an organization inside a project).
+// team deliberately stays PROJECT-scoped: a project-bound seat granted team rights must not be
+// able to assign seats on projects it does not belong to.
+const ORGANIZATION_MODULES = new Set([
+  'organizations',  // the organizations router (mounted at /api/organizations)
+  'delegations',    // delegations of authority (mounted at /api/delegations)
+  'notifications',  // user notification feeds are user-owned, never project-owned
+  'actions',        // action items/user feed (same rationale)
+  'admin',          // reserved for a future /api/admin mount; documented here so the set is complete
+]);
 
 // Same shape for a bare role (used by preview-as-role demo mode, where the
 // acting user is an admin but the decision must be made as the previewed role).
@@ -149,6 +166,18 @@ const MODULE_OVERRIDES = Object.freeze({
     [/^\/mir\//, 'inventory'],
     [/^\/grn\//, 'inventory'],
     [/^\/documents\/grn\//, 'inventory'],
+  ],
+  // Phase 5.1: the organization mounts are pinned explicitly (identity mappings) so that a future
+  // reorganization (e.g. delegations nested under organizations) cannot silently re-key the grants
+  // an organization mount is judged under. They resolve the same module the mount name already gives.
+  organizations: [
+    [/.*/, 'organizations'],
+  ],
+  delegations: [
+    [/.*/, 'delegations'],
+  ],
+  team: [
+    [/.*/, 'team'],
   ],
 });
 
@@ -454,7 +483,11 @@ async function evaluateRequest(req, opts = {}) {
   const q = opts.query || query;
   // Record scope rules are keyed on the mount; the grant decision uses the resource-derived module.
   const context = await resolveProjectContext(req, mountModule, q);
-  const { projectId } = context;
+  // Organization-scope modules (5.1): their grants are module/action only — an organization is not
+  // project data, so a ?project_id=/body id on such a request can never scope the decision. No record
+  // scope rule exists for these modules either by design. team stays project-scoped (see the set).
+  const orgScopeOnly = ORGANIZATION_MODULES.has(module) && !context.recordScoped;
+  const projectId = orgScopeOnly ? null : context.projectId;
   if (context.recordScoped && !context.recordFound) {
     return { allowed: false, flags: emptyFlags(), role_keys: [], source: 'policy', project_id: null };
   }
@@ -474,7 +507,69 @@ async function evaluateRequest(req, opts = {}) {
     return constrainRecordDecision(decision);
   }
   const decision = await evaluate({ user: req.user, module, action, projectId }, opts);
-  return constrainRecordDecision(decision);
+  const constrained = constrainRecordDecision(decision);
+  if (constrained.allowed) return constrained;
+  // Phase 5.1 delegation of authority: an active delegation lets the DELEGATE act as the DELEGATOR
+  // on approvals (and only the approvals module), within the row's window and amount. It AMPLIFIES
+  // an existing role identity: a caller with no role rows at all is never amplified (fail-closed).
+  const amplified = await evaluateViaDelegation(req, module, action, opts);
+  return amplified || constrained;
+}
+
+// --- the delegation hook ----------------------------------------------------
+// Amounts of approval records: the decision amount the delegation cap is measured against. Returned
+// NULL when no amount exists on the source record (e.g. an asset) — an unknown amount is never
+// an unknown amount is never capped on the hook side; the delegation cap still applies to every
+// amount-carrying approval record named in DELEGATION_AMOUNTS.
+const DELEGATION_AMOUNTS = Object.freeze({
+  expenses: 'SELECT amount FROM expenses',
+  payroll: 'SELECT total_net_salary FROM payroll_periods',
+  project_budgets: 'SELECT budget_amount FROM project_budgets',
+  sub_contracts: 'SELECT contract_value FROM sub_contracts',
+  purchase_orders: 'SELECT total_amount FROM purchase_orders',
+});
+
+async function evaluateViaDelegation(req, module, action, opts = {}) {
+  // (approvals only, and only approve/reject — the decisions the delegated authority covers)
+  if (module !== 'approvals' || !['approve', 'reject'].includes(action)) return null;
+  if (!req.user || !Number.isFinite(Number(req.user.id))) return null;
+  const routePath = String(req.policyRoute || req.route?.path || '');
+  const approvalId = routePath === '/:id/approve' || routePath === '/:id/reject' ? Number(req.params?.id) : NaN;
+  const q = opts.query || query;
+  const delegatorFilters = { module: 'approvals', amount: null, approvalId: Number.isFinite(approvalId) ? approvalId : null };
+  if (Number.isFinite(approvalId)) {
+    const row = (await q('SELECT module_name, request_id FROM approval_requests WHERE id = $1', [approvalId])).rows[0];
+    if (row && row.module_name && DELEGATION_AMOUNTS[row.module_name]) {
+      const amountRow = (await q(`${DELEGATION_AMOUNTS[row.module_name]} WHERE id = $1`, [row.request_id])).rows[0];
+      if (amountRow) delegatorFilters.amount = amountRow.amount != null ? Number(amountRow.amount) : null;
+    }
+  }
+  const delegationService = require('./delegationService');
+  const hits = await delegationService.findActiveForDelegate(q, req.user.id, {
+    module: 'approvals', amount: delegatorFilters.amount, now: Date.now(),
+  });
+  const userRows = await loadUserPolicy(req.user.id, q);
+  if (userRows.length === 0) return null; // fail-closed: no identity, no amplification (fail-closed contract)
+  for (const delegation of hits) {
+    const delegatorRows = await loadUserPolicy(delegation.delegate_from_user_id, q);
+    if (delegatorRows.length === 0) continue;
+    const outcome = decide({
+      rows: delegatorRows.map((r) => ({ ...r, project_id: null })), // delegated authority is company-wide on approvals
+      module, action, projectId: null,
+    });
+    if (outcome.allowed) {
+      return {
+        ...outcome,
+        via_delegation: {
+          delegation_id: delegation.id,
+          delegator_user_id: delegation.delegate_from_user_id,
+          amount: delegatorFilters.amount,           // resolved amount the cap was measured against
+          max_amount: delegation.max_amount,
+        },
+      };
+    }
+  }
+  return null;
 }
 
 // Raw grants + decision source for a user. Used by routes that need to
@@ -539,6 +634,7 @@ module.exports = {
   INTERNAL_ROLES,
   METHOD_ACTIONS,
   VISIBILITY_ACTION_TO_FLAG,
+  ORGANIZATION_MODULES,
   USER_POLICY_SQL,
   ROLE_POLICY_SQL,
   emptyFlags,
