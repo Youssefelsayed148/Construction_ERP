@@ -34,5 +34,12 @@
       "handover": "Handover & Closeout",
       "units": "Units & Sales"
     }
+  },
+  "workPackage": {
+    "label": "Work package",
+    "none": "No work package",
+    "loading": "Loading work packages...",
+    "loadFailed": "Work packages could not be loaded.",
+    "empty": "This project has no work packages yet. Create them under Scope & Planning first."
   }
 }

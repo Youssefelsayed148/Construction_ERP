@@ -8,6 +8,7 @@
 // Every list endpoint filters by project and renders zero-record states.
 
 const express = require('express');
+const projectSetup = require('../services/projectSetupService');
 const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
@@ -144,6 +145,7 @@ router.post('/activities', authenticate, authorize(), async (req, res) => {
       name: Joi.string().required(),
       wbs_path: Joi.string().allow('', null).optional(),
       work_package: Joi.string().allow('', null).optional(),
+      work_package_id: Joi.number().integer().allow(null).optional(),
       phase_id: Joi.number().integer().allow(null).optional(),
       project_location_id: Joi.number().integer().allow(null).optional(),
       boq_item_id: Joi.number().integer().allow(null).optional(),
@@ -162,23 +164,25 @@ router.post('/activities', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    const wp = await projectSetup.resolveOrRespond(query, res, value.project_id, value);
+    if (!wp) return;
     // Auto code when absent.
     let code = value.activity_code || null;
     if (!code) {
       code = await nextNumber(query, { table: 'schedule_activities', column: 'activity_code', prefix: 'A', sep: '', pad: 4, where: { project_id: value.project_id } });
     }
     const r = await query(
-      `INSERT INTO schedule_activities (project_id, activity_code, name, wbs_path, work_package, phase_id,
+      `INSERT INTO schedule_activities (project_id, activity_code, name, wbs_path, work_package, work_package_id, phase_id,
          project_location_id, boq_item_id, boq_location_allocation_id, calendar_id, responsible_organization_id,
          responsible_user_id, subcontractor_organization_id, planned_start, planned_finish, original_duration,
          planned_quantity, progress_source, is_milestone, notes, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING *`,
-      [value.project_id, code, value.name, value.wbs_path || null, value.work_package || null, value.phase_id || null,
+       VALUES ($1,$2,$3,$4,$5,$22,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING *`,
+      [value.project_id, code, value.name, value.wbs_path || null, wp.text, value.phase_id || null,
        value.project_location_id || null, value.boq_item_id || null, value.boq_location_allocation_id || null,
        value.calendar_id || null, value.responsible_organization_id || null, value.responsible_user_id || null,
        value.subcontractor_organization_id || null, value.planned_start || null, value.planned_finish || null,
        value.is_milestone ? 0 : value.original_duration, value.planned_quantity || null,
-       value.progress_source, value.is_milestone, value.notes || null, req.user.id]);
+       value.progress_source, value.is_milestone, value.notes || null, req.user.id, wp.id]);
     await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'schedule', description: `Created activity ${code}: ${value.name}`, entityId: r.rows[0].id, entityType: 'schedule_activity' });
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
@@ -188,7 +192,8 @@ router.put('/activities/:id', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       name: Joi.string(), activity_code: Joi.string().allow('', null), wbs_path: Joi.string().allow('', null),
-      work_package: Joi.string().allow('', null), phase_id: Joi.number().integer().allow(null),
+      work_package: Joi.string().allow('', null), work_package_id: Joi.number().integer().allow(null),
+      phase_id: Joi.number().integer().allow(null),
       project_location_id: Joi.number().integer().allow(null), boq_item_id: Joi.number().integer().allow(null),
       boq_location_allocation_id: Joi.number().integer().allow(null), calendar_id: Joi.number().integer().allow(null),
       responsible_organization_id: Joi.number().integer().allow(null), responsible_user_id: Joi.number().integer().allow(null),
@@ -201,6 +206,14 @@ router.put('/activities/:id', authenticate, authorize(), async (req, res) => {
     }).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if ('work_package' in value || 'work_package_id' in value) {
+      const owner = await query('SELECT project_id FROM schedule_activities WHERE id = $1', [req.params.id]);
+      if (owner.rows.length === 0) return res.status(404).json({ success: false, error: 'Activity not found' });
+      const wp = await projectSetup.resolveOrRespond(query, res, owner.rows[0].project_id, value);
+      if (!wp) return;
+      value.work_package = wp.text;
+      value.work_package_id = wp.id;
+    }
     const sets = []; const params = []; let idx = 1;
     for (const [k, v] of Object.entries(value)) {
       if (v === undefined) continue;
@@ -486,9 +499,22 @@ router.post('/activities/import', authenticate, authorize('owner', 'admin', 'pro
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
+    const lines = value.csv.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    // Every work package the file names must exist BEFORE anything is deleted or written: a refused row
+    // must not leave a half-imported (or replaced-then-empty) schedule behind.
+    let preMode = null;
+    for (const line of lines) {
+      if (/^predecessor,successor/i.test(line)) { preMode = 'rels'; continue; }
+      if (/^activity_code,/i.test(line)) { preMode = 'acts'; continue; }
+      if (preMode !== 'acts') continue;
+      const preFields = line.match(/("([^"]|"")*"|[^,]*)(,|$)/g)?.map((f) => f.replace(/,$/, '').replace(/^"|"$/g, '').replace(/""/g, '"')) || [];
+      if (!preFields[1]) continue;
+      const checked = await projectSetup.resolveOrRespond(query, res, value.project_id, { work_package: preFields[3] });
+      if (!checked) return;
+    }
+
     if (value.replace) await query('DELETE FROM schedule_activities WHERE project_id = $1', [value.project_id]);
 
-    const lines = value.csv.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     let mode = null;
     let created = 0, relsCreated = 0, skipped = 0;
     const byCode = new Map();
@@ -499,6 +525,7 @@ router.post('/activities/import', authenticate, authorize('owner', 'admin', 'pro
       if (mode === 'acts') {
         const [activity_code, name, wbs_path, work_package, planned_start, planned_finish, original_duration, planned_quantity, percent_complete, is_milestone] = fields;
         if (!name) { skipped++; continue; }
+        const wp = await projectSetup.resolveWorkPackage(query, value.project_id, { work_package });
         const existing = (await query(
           'SELECT id FROM schedule_activities WHERE project_id = $1 AND activity_code = $2',
           [value.project_id, activity_code]
@@ -506,19 +533,19 @@ router.post('/activities/import', authenticate, authorize('owner', 'admin', 'pro
         if (existing) {
           await query(
             `UPDATE schedule_activities SET name = $1, wbs_path = $2, work_package = $3, planned_start = $4,
-               planned_finish = $5, original_duration = $6, planned_quantity = $7, updated_at = NOW() WHERE id = $8`,
-            [name, wbs_path || null, work_package || null, planned_start || null, planned_finish || null,
-             parseInt(original_duration, 10) || 0, planned_quantity ? parseFloat(planned_quantity) : null, existing.id]
+               planned_finish = $5, original_duration = $6, planned_quantity = $7, work_package_id = $9, updated_at = NOW() WHERE id = $8`,
+            [name, wbs_path || null, wp.text, planned_start || null, planned_finish || null,
+             parseInt(original_duration, 10) || 0, planned_quantity ? parseFloat(planned_quantity) : null, existing.id, wp.id]
           );
           byCode.set(activity_code, existing.id);
           continue;
         }
         const r = await query(
-          `INSERT INTO schedule_activities (project_id, activity_code, name, wbs_path, work_package, planned_start, planned_finish, original_duration, planned_quantity, percent_complete, created_by)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
-          [value.project_id, activity_code || `IMP${Date.now()}${created}`, name, wbs_path || null, work_package || null,
+          `INSERT INTO schedule_activities (project_id, activity_code, name, wbs_path, work_package, work_package_id, planned_start, planned_finish, original_duration, planned_quantity, percent_complete, created_by)
+           VALUES ($1,$2,$3,$4,$5,$12,$6,$7,$8,$9,$10,$11) RETURNING id`,
+          [value.project_id, activity_code || `IMP${Date.now()}${created}`, name, wbs_path || null, wp.text,
            planned_start || null, planned_finish || null, parseInt(original_duration, 10) || 0,
-           planned_quantity ? parseFloat(planned_quantity) : null, percent_complete ? Math.min(100, parseFloat(percent_complete)) : 0, req.user.id]
+           planned_quantity ? parseFloat(planned_quantity) : null, percent_complete ? Math.min(100, parseFloat(percent_complete)) : 0, req.user.id, wp.id]
         );
         byCode.set(activity_code, r.rows[0].id);
         created++;

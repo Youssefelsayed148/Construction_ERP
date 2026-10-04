@@ -11,3 +11,6 @@ frontend/test-results/
 .DS_Store
 db_dump/
 .env.docker
+
+# Local agent worktrees (never part of the repository)
+.claude/worktrees/

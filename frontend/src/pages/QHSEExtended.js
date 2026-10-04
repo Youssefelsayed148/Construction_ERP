@@ -4,6 +4,7 @@
 // empty state (the zero-records requirement), never a blank screen.
 
 import React, { useState, useEffect, useCallback } from 'react';
+import WorkPackageSelect from '../components/project/WorkPackageSelect';
 import { Plus, ClipboardCheck, ListChecks, Wrench, PackageCheck, Gauge, ShieldCheck, Download } from 'lucide-react';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
@@ -72,7 +73,7 @@ export function ItpTab({ projectId, locale, t }) {
   const [showModal, setShowModal] = useState(false);
   const [expanded, setExpanded] = useState(null);
   const [points, setPoints] = useState([]);
-  const [form, setForm] = useState({ title: '', discipline: '', work_package: '', project_location_id: '' });
+  const [form, setForm] = useState({ title: '', discipline: '', work_package_id: null, project_location_id: '' });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -103,10 +104,10 @@ export function ItpTab({ projectId, locale, t }) {
     try {
       await fetchApi(`${API_URL}/qhse/itps`, { method: 'POST', body: JSON.stringify({
         project_id: Number(projectId), title: form.title, discipline: form.discipline,
-        work_package: form.work_package, project_location_id: form.project_location_id ? Number(form.project_location_id) : null,
+        work_package_id: form.work_package_id, project_location_id: form.project_location_id ? Number(form.project_location_id) : null,
         points: [],
       }) });
-      setShowModal(false); setForm({ title: '', discipline: '', work_package: '', project_location_id: '' });
+      setShowModal(false); setForm({ title: '', discipline: '', work_package_id: null, project_location_id: '' });
       load();
     } catch (err) { alert(err.message); }
   };
@@ -134,7 +135,7 @@ export function ItpTab({ projectId, locale, t }) {
           <input className="input" required placeholder={locale === 'ar' ? 'العنوان' : 'Title'} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <input className="input" placeholder={locale === 'ar' ? 'التخصص' : 'Discipline'} value={form.discipline} onChange={e => setForm({ ...form, discipline: e.target.value })} />
-            <input className="input" placeholder={locale === 'ar' ? 'حزمة العمل' : 'Work package'} value={form.work_package} onChange={e => setForm({ ...form, work_package: e.target.value })} />
+            <WorkPackageSelect projectId={projectId} value={form.work_package_id} onChange={(v) => setForm({ ...form, work_package_id: v })} />
           </div>
           <select className="input" value={form.project_location_id} onChange={e => setForm({ ...form, project_location_id: e.target.value })}>
             <option value="">{locale === 'ar' ? '— الموقع —' : '— Location —'}</option>
@@ -218,7 +219,7 @@ export function WirTab({ projectId, locale, t }) {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [itps, setItps] = useState([]);
-  const [form, setForm] = useState({ work_package: '', itp_id: '', notes: '' });
+  const [form, setForm] = useState({ work_package_id: null, itp_id: '', notes: '' });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -239,10 +240,10 @@ export function WirTab({ projectId, locale, t }) {
     e.preventDefault();
     try {
       await fetchApi(`${API_URL}/qhse/wirs`, { method: 'POST', body: JSON.stringify({
-        project_id: Number(projectId), work_package: form.work_package,
+        project_id: Number(projectId), work_package_id: form.work_package_id,
         itp_id: form.itp_id ? Number(form.itp_id) : null, notes: form.notes,
       }) });
-      setShowModal(false); setForm({ work_package: '', itp_id: '', notes: '' });
+      setShowModal(false); setForm({ work_package_id: null, itp_id: '', notes: '' });
       load();
     } catch (err) { alert(err.message); }
   };
@@ -261,7 +262,7 @@ export function WirTab({ projectId, locale, t }) {
       </div>
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: '16px', display: 'grid', gap: '10px' }}>
-          <input className="input" required placeholder={locale === 'ar' ? 'حزمة العمل' : 'Work package'} value={form.work_package} onChange={e => setForm({ ...form, work_package: e.target.value })} />
+          <WorkPackageSelect projectId={projectId} required value={form.work_package_id} onChange={(v) => setForm({ ...form, work_package_id: v })} />
           <select className="input" value={form.itp_id} onChange={e => setForm({ ...form, itp_id: e.target.value })}>
             <option value="">{locale === 'ar' ? '— ITP (اختياري) —' : '— ITP (optional) —'}</option>
             {itps.map(i => <option key={i.id} value={i.id}>{i.itp_number} — {i.title}</option>)}

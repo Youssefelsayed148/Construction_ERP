@@ -3,6 +3,7 @@
 // S-curve, alerts, baselines and CSV import/export.
 // Zero-record states render explicitly, never a blank screen.
 
+import WorkPackageSelect from '../components/project/WorkPackageSelect';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
@@ -84,7 +85,7 @@ function ActivitiesTab({ projectId, locale, t }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ name: '', work_package: '', planned_start: '', planned_finish: '', original_duration: 0, is_milestone: false });
+  const [form, setForm] = useState({ name: '', work_package_id: null, planned_start: '', planned_finish: '', original_duration: 0, is_milestone: false });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -101,12 +102,12 @@ function ActivitiesTab({ projectId, locale, t }) {
     e.preventDefault();
     try {
       await fetchApi(`${API_URL}/schedule/activities`, { method: 'POST', body: JSON.stringify({
-        project_id: Number(projectId), name: form.name, work_package: form.work_package || null,
+        project_id: Number(projectId), name: form.name, work_package_id: form.work_package_id,
         planned_start: form.planned_start || null, planned_finish: form.planned_finish || null,
         original_duration: Number(form.original_duration) || 0, is_milestone: form.is_milestone,
       }) });
       setShowModal(false);
-      setForm({ name: '', work_package: '', planned_start: '', planned_finish: '', original_duration: 0, is_milestone: false });
+      setForm({ name: '', work_package_id: null, planned_start: '', planned_finish: '', original_duration: 0, is_milestone: false });
       load();
     } catch (err) { alert(err.message); }
   };
@@ -139,7 +140,7 @@ function ActivitiesTab({ projectId, locale, t }) {
             <input className="input" type="date" title="Planned finish" value={form.planned_finish} onChange={e => setForm({ ...form, planned_finish: e.target.value })} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <input className="input" placeholder={locale === 'ar' ? 'حزمة العمل' : 'Work package'} value={form.work_package} onChange={e => setForm({ ...form, work_package: e.target.value })} />
+            <WorkPackageSelect projectId={projectId} value={form.work_package_id} onChange={(v) => setForm({ ...form, work_package_id: v })} />
             <input className="input" type="number" min="0" placeholder={locale === 'ar' ? 'المدة (أيام)' : 'Duration (days)'} value={form.original_duration} onChange={e => setForm({ ...form, original_duration: e.target.value })} />
           </div>
           <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}>

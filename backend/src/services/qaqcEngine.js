@@ -27,6 +27,7 @@
 
 const { query: defaultQuery } = require('../config/database');
 const numbering = require('./numbering');
+const projectSetup = require('./projectSetupService');
 const workflowEngine = require('./workflowEngine');
 const { fireEvent } = require('../utils/activity');
 
@@ -85,20 +86,21 @@ async function nextNumber(q, table, column, prefix) {
 // ---------------------------------------------------------------------------
 
 async function createWir(q, input, user) {
+  const wp = await projectSetup.resolveWorkPackage(q, input.project_id, input);
   const wirNumber = await nextNumber(q, 'wirs', 'wir_number', 'WIR');
   const r = await q(
     `INSERT INTO wirs (wir_number, project_id, itp_id, itp_point_id, boq_item_id, project_location_id,
-       work_package, subcontractor_organization_id, inspection_date, latest_drawing_ref,
+       work_package, work_package_id, subcontractor_organization_id, inspection_date, latest_drawing_ref,
        method_statement_ref, checklist_instance_id, photos, notes, status, submitted_by, created_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9, CURRENT_DATE),$10,$11,$12,$13::jsonb,$14,'draft',$15,$15) RETURNING *`,
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$16,$8,COALESCE($9, CURRENT_DATE),$10,$11,$12,$13::jsonb,$14,'draft',$15,$15) RETURNING *`,
     [wirNumber, input.project_id, input.itp_id == null ? null : num(input.itp_id),
      input.itp_point_id == null ? null : num(input.itp_point_id),
      input.boq_item_id == null ? null : num(input.boq_item_id),
      input.project_location_id == null ? null : num(input.project_location_id),
-     input.work_package || null, input.subcontractor_organization_id == null ? null : num(input.subcontractor_organization_id),
+     wp.text, input.subcontractor_organization_id == null ? null : num(input.subcontractor_organization_id),
      input.inspection_date || null, input.latest_drawing_ref || null, input.method_statement_ref || null,
      input.checklist_instance_id == null ? null : num(input.checklist_instance_id),
-     JSON.stringify(input.photos || []), input.notes || null, user.id]
+     JSON.stringify(input.photos || []), input.notes || null, user.id, wp.id]
   );
   const wir = r.rows[0];
 
