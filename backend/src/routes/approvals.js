@@ -248,6 +248,7 @@ router.put('/:id/approve', authenticate, authorize(), async (req, res) => {
 // status 'cancelled' with cancelled_by, cancelled_at and a required reason; audit-logged; the linked
 // workflow instance is cancelled with it. Nothing is deleted (cleanup-orphan-approvals.js --apply stays
 // the destructive last resort). The claim is atomic, so a cancel racing a decision cannot double-write.
+const CANCEL_ANY_ROLES = ['owner', 'admin'];
 router.put('/:id/cancel', authenticate, authorize(), async (req, res) => {
   try {
     const { id } = req.params;
@@ -260,6 +261,8 @@ router.put('/:id/cancel', authenticate, authorize(), async (req, res) => {
       const q = client.query.bind(client);
       const existing = (await q('SELECT * FROM approval_requests WHERE id = $1 FOR UPDATE', [id])).rows[0];
       if (!existing) return { notFound: true };
+      // Decision 4: only an owner or admin, or the original requester, may cancel.
+      if (!CANCEL_ANY_ROLES.includes(role) && existing.requester_id !== userId) return { forbidden: true };
       if (existing.status !== 'pending') return { conflict: existing.status };
       const cancelled = (await q(
         `UPDATE approval_requests
@@ -276,6 +279,7 @@ router.put('/:id/cancel', authenticate, authorize(), async (req, res) => {
       return { cancelled, workflowCancelled };
     });
     if (result.notFound) return res.status(404).json({ success: false, error: 'Approval not found' });
+    if (result.forbidden) return res.status(403).json({ success: false, error: 'Only an owner, an admin or the original requester can cancel this approval', error_code: 'approval_cancel_forbidden', error_params: {} });
     if (result.conflict) return res.status(409).json({ success: false, error: `Approval is already ${result.conflict}`, error_code: 'approval_not_cancellable', error_params: { status: result.conflict } });
     await logActivity({
       userId, userName, userRole: role,

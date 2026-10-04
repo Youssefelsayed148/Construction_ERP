@@ -115,6 +115,41 @@ describePg('approvals: non-destructive cancel (real PostgreSQL, real app)', () =
     users.__extra.push(row.id);
   });
 
+  // Decision 4 (closeout A2.1): only owner/admin and the original requester may cancel an approval.
+  test('cancel is limited to owner, admin and the original requester, on the internal and v1 surfaces', async () => {
+    const admin = await makeUser('adm', 'admin');
+    const other = await makeUser('oth', 'engineer');
+    const pm = await makeUser('pmx', 'project_manager');
+    const surfaces = [(id) => `/api/approvals/${id}/cancel`, (id) => `/api/v1/approvals/${id}/cancel`];
+    for (const path of surfaces) {
+      // Not the requester, not owner/admin: refused with a stable code, nothing changes.
+      for (const stranger of [other, pm]) {
+        const { id } = await makeStaleApproval({});
+        const r = await call('PUT', path(id), { reason: 'not mine' }, stranger.token);
+        expect(r.status).toBe(403);
+        expect(r.body.error_code || (r.body.error && r.body.error.error_code)).toBe('approval_cancel_forbidden');
+        expect((await one('SELECT status FROM approval_requests WHERE id = $1', [id])).status).toBe('pending');
+      }
+      // The original requester may cancel their own request.
+      const mine = await makeStaleApproval({});
+      expect((await call('PUT', path(mine.id), { reason: 'withdrawn by requester' }, mine.requester.token)).status).toBe(200);
+      expect((await one('SELECT status, cancelled_by FROM approval_requests WHERE id = $1', [mine.id]))).toEqual({ status: 'cancelled', cancelled_by: mine.requester.id });
+      // owner and admin may cancel anyone's.
+      for (const actor of [users.owner, admin]) {
+        const { id } = await makeStaleApproval({});
+        expect((await call('PUT', path(id), { reason: 'stale sweep' }, actor.token)).status).toBe(200);
+        expect((await one('SELECT status, cancelled_by FROM approval_requests WHERE id = $1', [id])).cancelled_by).toBe(actor.id);
+      }
+    }
+  });
+
+  test('MCP exposes no tool that cancels an approval, so the restriction cannot be bypassed there', async () => {
+    const { TOOLS: TOOL_CATALOG } = require('../../services/agentPolicy');
+    const names = Object.keys(TOOL_CATALOG || {});
+    expect(names.length).toBeGreaterThan(0);
+    expect(names.filter((n) => /cancel/i.test(n) && /approv/i.test(n))).toEqual([]);
+  });
+
   test('the linked workflow instance is cancelled with the approval', async () => {
     const { id } = await makeStaleApproval({ module_name: 'purchase_orders' });
     const instance = (await one(

@@ -766,6 +766,8 @@ async function createSupplierReturn(q, { grn_id, reason = null, lines = [], crea
       }
     }
   }
+  // Decision 2: the return reverses its share of the GRN's accrued cost, in this same transaction.
+  await costAccrual.reverseGrnCostForReturn(q, supplierReturn, allocations, { userId: created_by });
   return supplierReturn;
 }
 
