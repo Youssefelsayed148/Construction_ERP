@@ -84,3 +84,13 @@ Three jobs, all required green on every PR:
 | 12 | Performance / load | load baselines pending (B11, docs file to be linked here) |
 
 (Last updated in the Part B slice of the closeout; keep this table in sync when a layer lands.)
+
+## Reconciliation scripts (B8, for the Phase 11 restore check)
+
+`npm run reconcile` (in `backend/`) runs `src/scripts/reconcile-database.js`: read-only, one
+violations count per check, exit 1 when any is non-zero. It covers the allocation/retention/transfer
+invariants plus the closeout B8 additions: stock ledger vs `warehouse_stock` projection (exact sign
+map), project cost rows vs their ledger postings, AP/AR postings vs live documents, approvals vs
+workflow instances. Run it on a restored copy only (it guards itself behind
+`RECONCILIATION_BACKUP_CONFIRMED=true`); a suite-run throwaway DB is expected to show residue from
+suite teardown, so zero there is not required.
