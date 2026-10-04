@@ -4,6 +4,7 @@ const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { fireEvent } = require('../utils/activity');
 const commercialEngine = require('../services/commercialEngine');
+const costView = require('../services/costView');
 
 router.get('/codes', authenticate, authorize(), async (req, res) => {
   try {
@@ -14,25 +15,15 @@ router.get('/codes', authenticate, authorize(), async (req, res) => {
 
 router.get('/project/:projectId', authenticate, authorize(), async (req, res) => {
   try {
-    const costs = await query(
-      `SELECT pc.*, cc.name as cost_code_name, cc.type as cost_code_type
-       FROM project_costs pc LEFT JOIN cost_codes cc ON pc.cost_code_id = cc.id
-       WHERE pc.project_id = $1 ORDER BY pc.transaction_date DESC`,
-      [req.params.projectId]
-    );
-
-    const byType = await query(
-      `SELECT cc.type, COALESCE(SUM(pc.amount), 0) as total
-       FROM project_costs pc LEFT JOIN cost_codes cc ON pc.cost_code_id = cc.id
-       WHERE pc.project_id = $1 GROUP BY cc.type`,
-      [req.params.projectId]
-    );
-
-    const grandTotal = costs.rows.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+    // The rows, the by-type split and the grand total all come from the shared cost view (services/costView.js).
+    const projectId = parseInt(req.params.projectId, 10);
+    const [costs, byType, grandTotal] = await Promise.all([
+      costView.rows(query, projectId), costView.byType(query, projectId), costView.projectTotal(query, projectId),
+    ]);
 
     res.json({
       success: true,
-      data: { costs: costs.rows, summary_by_type: byType.rows, grand_total: grandTotal }
+      data: { costs, summary_by_type: byType, grand_total: grandTotal }
     });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -41,8 +32,9 @@ router.get('/project/:projectId/summary', authenticate, authorize(), async (req,
   try {
     const data = await query(
       `SELECT cc.code, cc.name, cc.type, COALESCE(pb.budget_amount, 0) as budget, COALESCE(pb.revised_amount, 0) as revised,
-              COALESCE((SELECT SUM(amount) FROM project_costs WHERE project_id = $1 AND cost_code_id = cc.id), 0) as actual
+              COALESCE(vcc.amount, 0) as actual
        FROM cost_codes cc LEFT JOIN project_budgets pb ON pb.cost_code_id = cc.id AND pb.project_id = $1
+       LEFT JOIN v_project_cost_by_code vcc ON vcc.cost_code_id = cc.id AND vcc.project_id = $1
        ORDER BY cc.code`,
       [req.params.projectId]
     );

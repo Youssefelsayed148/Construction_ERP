@@ -17,6 +17,8 @@
 //   - unit sales regression: buildings→project_locations (Phase 8) did not
 //     break units.js's unit-sale flow
 
+// The cost view needs PostgreSQL views: unit tests use a shim over project_costs (the view is tested in cost-view.pg.test.js).
+jest.mock('../../services/costView', () => require('../test-helpers/cost-view-mock'));
 const { MockDb } = require('../test-helpers/mock-db');
 const commercialMigration = require('../commercial-migration');
 const workflowMigration = require('../workflow-engine-migration');

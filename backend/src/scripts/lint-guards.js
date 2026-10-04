@@ -8,6 +8,10 @@
 //   count-numbering  COUNT(*)+1 / MAX(..)+1 document numbering (use the numbering service, Phase 2.4)
 //   counter-rmw  read-then-write sequence counters: `row.seq + 1` computed in JS, or
 //                `UPDATE ... SET seq = $1` with a value the caller read earlier (use bumpCounter/nextNumber)
+//   catch-to-zero  `.catch(() => ({ rows: [...] }))` / `.catch(() => zero(...))`: a failed query turned into an
+//                  empty or zero result (closeout A2.4; failures surface as errors with context)
+//   cost-view  project_costs read outside the cost accrual code and services/costView.js: totals come from the
+//              shared cost view so dashboards, costing and the commercial engine never disagree (closeout A2.4)
 //
 // The baseline is per file. A file may not exceed its recorded count, and a file
 // with no entry may not have any. A site is a COUNT(/MAX( line with "+ 1" in the same
@@ -31,6 +35,12 @@ const SQL_SET_BOUND = /\bSET\s+(?:seq|next_value|last_value|next_number|last_num
 const countCounterIncrements = (text) =>
   text.split(/\r?\n/).filter((l) => JS_COUNTER_PLUS_ONE.test(l) || SQL_SET_BOUND.test(l)).length;
 
+const CATCH_TO_ZERO = /\.catch\(\s*\(\s*\w*\s*\)\s*=>\s*(?:\(\s*\{\s*rows\s*:|zero\()/g;
+// Files that may name project_costs: the accrual writers and the cost view itself (expenses reads one row to
+// know whether an expense is already posted).
+const COST_VIEW_ALLOWED = new Set(['services/costView.js', 'services/costAccrual.js', 'services/costEventListener.js', 'routes/expenses.js']);
+const isRuntimeCode = (rel) => /^(routes|services)\//.test(rel);
+
 const isMigration = (rel) =>
   /^scripts\/(migrate-[^/]+|[^/]+-migration|setupDb)\.js$/.test(rel);
 const isExcluded = (rel) =>
@@ -48,7 +58,7 @@ function walk(dir, out = []) {
 }
 
 function scan() {
-  const result = { 'silent-catch': {}, 'count-numbering': {}, 'counter-rmw': {} };
+  const result = { 'silent-catch': {}, 'count-numbering': {}, 'counter-rmw': {}, 'catch-to-zero': {}, 'cost-view': {} };
   for (const file of walk(srcDir)) {
     const rel = path.relative(srcDir, file).split(path.sep).join('/');
     if (isExcluded(rel)) continue;
@@ -65,6 +75,15 @@ function scan() {
     }
     if (silent) result['silent-catch'][rel] = silent;
     if (numbering) result['count-numbering'][rel] = numbering;
+    if (isRuntimeCode(rel)) {
+      const zeros = (text.match(CATCH_TO_ZERO) || []).length;
+      if (zeros) result['catch-to-zero'][rel] = zeros;
+      if (!COST_VIEW_ALLOWED.has(rel)) {
+        // Comments do not count.
+        const reads = lines.filter((l) => /\bproject_costs\b/.test(l.replace(/\/\/.*/, ''))).length;
+        if (reads) result['cost-view'][rel] = reads;
+      }
+    }
     const rmw = countCounterIncrements(text);
     if (rmw) result['counter-rmw'][rel] = rmw;
   }

@@ -165,3 +165,13 @@ The backend stack (#17, #18) and the frontend stack (#19 on #6-#9) are merged in
 - Expenses: a posted expense (every one since 2.7a) can no longer change amount or project or be deleted (409 `expense_posted`); status and notes stay editable. A void flow for expenses is the next step.
 - Migration `0025_payroll_cost_allocations.sql`: one new empty table. Existing rows untouched; payrolls posted earlier are not allocated retroactively (count query in the migration header).
 - Open: existing `work_completion` rows (pre-A2.3) hold labour plus equipment for the whole order and may double count against `labor_payment` rows; a data-cleaning report on a restored copy would size it (not run here). Payroll allocation uses attendance.project_id as the basis: confirm that is the intended rule.
+
+## 2026-10-04: Closeout A2.4, no catch-to-zero, one cost view (migration 0026)
+
+- Reproduced first (`cost-guards.pg.test.js`, 29 of 30 failed on the old code): every dashboard section, the commercial engine's commitment sync, the role-dashboard widgets and the location dashboard turned a failing query into a 200 with zeros, an empty list or a missing figure.
+- Removed (30): dashboard.js 24 (6 counts, 5 alerts, 12 overview sections, project dashboard's commercial try/catch), dashboardWidgets.js `safeAll` (the one helper behind every widget), commercialEngine.js 2 try/catch-to-[] in commitment sync, quantities.js location dashboard `safe()` (now logs with context and rethrows). A failed section answers 500 with error_code `dashboard_section_failed` and error_params.section; one test per guard forces the query to fail and asserts the error.
+- Found by removing the guard: the location dashboard queried tables that do not exist (`documents`, `qhse_records`), so its documents and QHSE sections were permanently empty and nobody could tell. They now read `project_documents`, `ncrs` and `observations`.
+- One cost view: migration `0026_project_cost_views.sql` (`v_project_cost_totals`, `v_project_cost_by_code`) and `services/costView.js`. Dashboards (portfolio, project, alerts, overview), costing (rows, by type, grand total, summary), the commercial engine's actual cost, the location dashboard and the PR budget check all read through it; one test asserts they report the same number. Lint guards `catch-to-zero` and `cost-view` keep it that way (baseline stays empty).
+- Mock-db tests cannot create views: `commercial.test.js` uses a shim (`test-helpers/cost-view-mock.js`); the real views are tested on PostgreSQL.
+- Not touched here (A2.5/other): the `.catch(() => {})` on fireEvent and closeBySource calls, and siteEngine `safeAll` (A2.6).
+- Migration 0026: two views, no row touched.
