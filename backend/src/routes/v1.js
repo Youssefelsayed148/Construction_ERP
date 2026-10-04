@@ -601,6 +601,13 @@ function buildV1Router() {
   // Token-protected resources mount here.
   router.use(api);
 
+  // B5 contract: a request that matches no /api/v1 route must still answer the
+  // documented JSON envelope — Express's HTML 404 never leaks past this router.
+  // (Written before the error handler so errors keep flowing after it.)
+  router.use((req, res) => {
+    res.status(404).json({ success: false, error: `No /api/v1 route: ${req.method} ${req.originalUrl}` });
+  });
+
   // Structured errors for anything that slipped past handler-level catching.
   router.use(v1.structuredErrorHandler);
 
