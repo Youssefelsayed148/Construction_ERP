@@ -76,14 +76,19 @@ router.get('/portfolio', authenticate, authorize(), async (req, res) => {
 
 // Single project dashboard
 router.get('/project/:id', authenticate, authorize(), async (req, res) => {
+  // A non-integer id is a client error, not a dashboard-section failure (B11 load run caught the 500).
+  const projectId = parseInt(req.params.id, 10);
+  if (!Number.isInteger(projectId) || projectId <= 0) {
+    return res.status(400).json({ success: false, error: 'Project id must be a positive integer' });
+  }
   try {
-    const project = await q('project', 'SELECT * FROM projects WHERE id = $1', [req.params.id]);
+    const project = await q('project', 'SELECT * FROM projects WHERE id = $1', [projectId]);
     if (project.rows.length === 0) return res.status(404).json({ success: false, error: 'Project not found' });
 
     const [phases, totalSpentView, milestones] = await Promise.all([
-      q('phases', 'SELECT * FROM project_phases WHERE project_id = $1 ORDER BY sort_order', [req.params.id]),
-      section('costs', costView.projectTotal(query, parseInt(req.params.id, 10))),
-      q('milestones', "SELECT * FROM project_milestones WHERE project_id = $1 AND target_date <= CURRENT_DATE + INTERVAL '30 days' ORDER BY target_date", [req.params.id]),
+      q('phases', 'SELECT * FROM project_phases WHERE project_id = $1 ORDER BY sort_order', [projectId]),
+      section('costs', costView.projectTotal(query, projectId)),
+      q('milestones', "SELECT * FROM project_milestones WHERE project_id = $1 AND target_date <= CURRENT_DATE + INTERVAL '30 days' ORDER BY target_date", [projectId]),
     ]);
 
     const p = project.rows[0];
@@ -91,7 +96,7 @@ router.get('/project/:id', authenticate, authorize(), async (req, res) => {
     // Phase 13 — burn is measured against Current Budget (original + approved
     // changes) from the canonical commercial engine, not the static
     // projects.budget; the dashboard also carries the forecast margin.
-    const commercial = await section('commercial', commercialEngine.projectCommercial(query, parseInt(req.params.id, 10)));
+    const commercial = await section('commercial', commercialEngine.projectCommercial(query, projectId));
     const currentBudget = commercial ? commercial.current_budget : parseFloat(p.budget);
     const totalSpent = commercial ? commercial.actual_cost : totalSpentView;
     const budget_burn = totalSpent > 0 && currentBudget > 0 ? (totalSpent / currentBudget * 100) : 0;
