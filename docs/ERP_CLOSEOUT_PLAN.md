@@ -204,7 +204,7 @@ Goal: one truthful chain, from requirement to cost.
 3.5 Background jobs
 - [x] Leader lock (Postgres advisory lock) for the five setInterval sweeps (escalation, finance, HSE, replenishment, webhooks), or move to a job table; safe under multiple replicas. (services/sweepLeader.js: session-level pg_try_advisory_lock on a dedicated connection per sweep; runs and failures recorded in background_sweep_runs, counted by `npm run outbox:stats`. Six sweeps total — the plan's five plus the scheduled-reports sweep in routes/reports.js, added by owner decision.)
 
-Exit gate: golden-chain skeleton test (Phase 4) shows requirement -> PR -> PO -> GRN -> invoice -> payment -> cost, with totals reconciled.
+Exit gate: golden-chain skeleton test (Phase 4) shows requirement -> PR -> PO -> GRN -> invoice -> payment -> cost, with totals reconciled. (Met in A2.7, #42: `golden-chain.pg.test.js`, two variants, reconciled at every step; it found two bugs, see docs/CLOSEOUT_LOG.md.)
 
 ---
 

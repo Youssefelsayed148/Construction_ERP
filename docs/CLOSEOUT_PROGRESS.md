@@ -12,10 +12,11 @@ Stack so far: #1-#35 (Phases 0-3 and earlier slices, see docs/CLOSEOUT_LOG.md). 
 - (A2.3) cost posting from material issue, expenses, payroll allocation; labour/equipment double count fixed; delivery receipts valued at the PO rate. Migration 0025. PR #38 (GitHub Actions did not start: see below).
 - (A2.4) 30 catch-to-zero guards removed, one shared cost view, lint rules. Migration 0026. PR #39.
 - (A2.5) event name fixes, routes for the eleven unrouted families, events in the change's transaction, no swallowed enqueue, lint rule. No migration. Also fixes the subcontractor certificate update that never worked. PR #40.
-- (A2.6) daily-report measurements, one measurement-change hook (work-completion verify was missing it), weighted dashboard progress. No migration.
+- (A2.6) daily-report measurements, one measurement-change hook (work-completion verify was missing it), weighted dashboard progress. No migration. PR #41.
+- (A2.7) golden-chain test (two variants) reconciled at every step; found and fixed: PO status column too short (no PO could be issued on PostgreSQL), three-way match flagging partial invoices. Migration 0027. PR #42.
 
 ## Current checkpoint
 
-Working on Part A (A2.6 in review). Next: A2.7 golden-chain test, then CP2.
+CP2 reached (Part A complete, 2026-10-04): PRs #36-#42 are stacked on #35 and verified locally; waiting for "go" (also needs the GitHub Actions billing fix to get the remote gate green).
 
 CI NOTE (2026-10-04): GitHub Actions jobs for PR #38 and later did not start: "recent account payments have failed or your spending limit needs to be increased". #36 and #37 were green. Everything is verified locally with the same commands (mock, real-PG, fresh-DB migration, lint:guards); the remote gate needs the billing fix and a re-run. CP1 was skipped because every audited gap is inside the A2 list; CP2 follows A2.7.
