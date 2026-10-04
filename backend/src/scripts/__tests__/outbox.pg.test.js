@@ -139,9 +139,9 @@ describePg('3.3 transactional outbox and dispatcher (real PostgreSQL, real app)'
     const wo = (await one('INSERT INTO work_orders (project_id, title) VALUES ($1, $2) RETURNING id', [projectId, `ob-wo-${tag}`])).id;
     const location = (await one('INSERT INTO project_locations (project_id, name) VALUES ($1, $2) RETURNING id', [projectId, `loc-${tag}`])).id;
     const comp = (await one('INSERT INTO work_completions (work_order_id, status, project_location_id) VALUES ($1, $2, $3) RETURNING id', [wo, 'verified', location])).id;
-    // The cost consumer books the WO's equipment + labor total; give it something to sum.
-    await db.query('INSERT INTO work_order_equipment (work_order_id, hours, hourly_cost, total_cost) VALUES ($1, 2, 50, 100)', [wo]);
-    const before = (await one('SELECT count(*)::int n FROM project_costs WHERE source_type = $1 AND source_id = $2', ['work_completion', comp])).n;
+    // Closeout A2.3: the cost consumer books the work order's EQUIPMENT lines, once each (labour is booked by its own payments).
+    const equipmentId = (await one('INSERT INTO work_order_equipment (work_order_id, hours, hourly_cost, total_cost) VALUES ($1, 2, 50, 100) RETURNING id', [wo])).id;
+    const before = (await one('SELECT count(*)::int n FROM project_costs WHERE source_type = $1 AND source_id = $2', ['wo_equipment', equipmentId])).n;
     await fireEvent2({ eventType: 'work_completion.verified', entityType: 'work_completion', entityId: comp, payload: {} });
     await outbox.dispatchOnce(null, { types: ['work_completion.verified'] });
     await outbox.dispatchOnce(null, { types: ['work_completion.verified'] }); // replay: at-least-once delivery, one cost row
@@ -149,7 +149,7 @@ describePg('3.3 transactional outbox and dispatcher (real PostgreSQL, real app)'
       `SELECT (SELECT count(*)::int FROM project_costs WHERE source_type = $1 AND source_id = $2) n,
               COALESCE((SELECT sum(amount) FROM project_costs WHERE source_type = $1 AND source_id = $2), 0)::float a
          FROM (SELECT 1) x`,
-      ['work_completion', comp]
+      ['wo_equipment', equipmentId]
     );
     expect(after.n).toBe(before + 1);
     expect(after.a).toBeGreaterThan(0);

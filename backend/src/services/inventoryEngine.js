@@ -24,6 +24,7 @@
 'use strict';
 
 const database = require('../config/database');
+const costAccrual = require('./costAccrual');
 
 // Every ledger write runs in ONE transaction that holds a per-(warehouse, material) advisory lock from the
 // balance check to the projection update, so concurrent movements queue instead of racing. Callers inside a
@@ -281,6 +282,8 @@ async function createMovementLocked(q, {
   );
   const movement = r.rows[0];
   await applyMovementToProjection(q, movement);
+  // Closeout A2.3: an issue to a project accrues its cost in the same transaction (rules in costAccrual).
+  if (movement_type === 'issue') await costAccrual.accrueMaterialIssue(q, movement);
   return movement;
 }
 

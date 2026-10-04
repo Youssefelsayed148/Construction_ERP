@@ -47,6 +47,13 @@ const COST_ACCRUAL_RULES = {
   service: { accrual_event: 'supplier_invoice_approved', project_costs_source: 'supplier_invoice', cost_account: 'service_cost', ledger_kind: 'supplier_invoice_cost' },
   // Reversal of a GRN's stocked cost when goods go back to the supplier.
   stocked_material_return: { accrual_event: 'supplier_return', project_costs_source: 'supplier_return', cost_account: 'material_cost', ledger_kind: 'supplier_return_cost' },
+  // Closeout A2.3. These write project_costs only: the ledger already holds the amount (see the notes further down).
+  material_issue: { accrual_event: 'stock_issue', project_costs_source: 'material_issue', offset_source: 'material_issue_offset', cost_code: null },
+  expense: { accrual_event: 'expense_recorded', project_costs_source: 'expense', ledger_kind: 'expense', cost_code_by_category: { labor: '11', equipment: '10' } },
+  payroll: { accrual_event: 'payroll_posted', project_costs_source: 'payroll_allocation', ledger_kind: 'payroll', cost_code: '11' },
+  labor_payment: { accrual_event: 'labor_payment_created', project_costs_source: 'labor_payment', cost_code: '11' },
+  work_order_equipment: { accrual_event: 'work_completion_verified', project_costs_source: 'wo_equipment', legacy_source: 'work_completion', cost_code: '10' },
+  subcontractor_payment: { accrual_event: 'sub_payment_paid', project_costs_source: 'sub_payment', cost_code: '12' },
 };
 
 const todayIso = () => new Date().toISOString().split('T')[0];
@@ -284,7 +291,131 @@ async function reverseGrnCostForReturn(q, supplierReturn, allocations, { userId 
   return { cost: inserted, entry };
 }
 
+// ---------------------------------------------------------------------------
+// Closeout A2.3: the other cost sources. Each is a row of COST_ACCRUAL_RULES above, written once on
+// UNIQUE (source_type, source_id), in the caller's transaction. None posts a second ledger entry: the
+// ledger already carries these amounts (expenses and payroll since 2.7a, stock cost at the GRN).
+// ---------------------------------------------------------------------------
+
+// One signed project_costs row, idempotent. Returns the row, or null when the source was already posted.
+async function insertCostRow(q, { projectId, costCodeId = null, sourceType, sourceId, amountMinor, description }) {
+  return (await q(
+    `INSERT INTO project_costs (project_id, cost_code_id, source_type, source_id, amount, description)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT (source_type, source_id) DO NOTHING RETURNING *`,
+    [projectId, costCodeId, sourceType, sourceId, money.format(amountMinor), description || null]
+  )).rows[0] || null;
+}
+
+async function costCodeIdFor(q, code) {
+  if (!code) return null;
+  const row = (await q('SELECT id FROM cost_codes WHERE code = $1 LIMIT 1', [code])).rows[0];
+  return row ? row.id : null;
+}
+
+// The project a stock issue goes to: work order materials name a work order, which names the project.
+async function issueTargetProject(q, movement) {
+  if (movement.reference_type !== 'work_order_material' || movement.reference_id == null) return null;
+  const r = (await q(
+    `SELECT wo.project_id FROM work_order_materials wom JOIN work_orders wo ON wo.id = wom.work_order_id WHERE wom.id = $1`,
+    [movement.reference_id]
+  )).rows[0];
+  return r ? r.project_id : null;
+}
+
+// Material issue (pair: GRN). The GRN is the accrual point, to the PO's project. An issue accrues only when
+// the stock was NOT already charged to the project it goes to: stock from a company-level warehouse (its GRN
+// had no project) or from another project's warehouse. The cost then MOVES: +target project, and an offsetting
+// row against the warehouse's own project (NULL = unassigned), valued at the movement's weighted-average cost.
+// The company total never changes and the ledger is untouched. No resolvable target project: nothing is guessed.
+async function accrueMaterialIssue(q, movement) {
+  if (movement.movement_type !== 'issue') return null;
+  const rule = COST_ACCRUAL_RULES.material_issue;
+  const target = await issueTargetProject(q, movement);
+  if (target == null) return null;
+  const wh = (await q('SELECT project_id FROM warehouses WHERE id = $1', [movement.warehouse_id])).rows[0];
+  const warehouseProject = wh ? wh.project_id : null;
+  if (warehouseProject === target) return null; // the GRN already charged this project
+  const amountMinor = money.toMinor(movement.total_cost == null ? 0 : movement.total_cost);
+  if (amountMinor <= 0n) return null;
+  const charge = await insertCostRow(q, {
+    projectId: target, costCodeId: await costCodeIdFor(q, rule.cost_code), sourceType: rule.project_costs_source, sourceId: movement.id,
+    amountMinor, description: `Material issued from stock (movement #${movement.id})`,
+  });
+  if (!charge) return null; // replay
+  const offset = await insertCostRow(q, {
+    projectId: warehouseProject, sourceType: rule.offset_source, sourceId: movement.id,
+    amountMinor: -amountMinor, description: `Material issued to project #${target} (movement #${movement.id}): cost moved`,
+  });
+  return { charge, offset };
+}
+
+// Expense (pair: the PO chain). An expense with a project is a project cost when it is recorded, the moment
+// the ledger entry is posted. One that names a purchase order is owned by that order's GRN/invoice.
+async function accrueExpenseCost(q, expense) {
+  const rule = COST_ACCRUAL_RULES.expense;
+  if (expense.project_id == null || expense.po_id != null) return null;
+  const amountMinor = money.toMinor(expense.amount);
+  if (amountMinor <= 0n) return null;
+  const row = await insertCostRow(q, {
+    projectId: expense.project_id,
+    costCodeId: await costCodeIdFor(q, rule.cost_code_by_category[String(expense.category || '').toLowerCase()]),
+    sourceType: rule.project_costs_source, sourceId: expense.id,
+    amountMinor, description: `Expense: ${expense.category}${expense.description ? ` - ${expense.description}` : ''}`,
+  });
+  return row ? { cost: row } : null;
+}
+
+// Payroll (pairs: labour payments and expenses are separate populations). On the first post to finance, each
+// employee's net salary is split across projects by attendance days in the payroll month (present or late);
+// days with no project count in the denominator and stay overhead. One allocation row and one cost row per
+// (payroll, project). The ledger entry for the payroll is the route's and is unchanged.
+async function allocatePayrollCost(q, payroll) {
+  const rule = COST_ACCRUAL_RULES.payroll;
+  const details = (await q('SELECT employee_id, net_salary FROM payroll_details WHERE payroll_id = $1', [payroll.id])).rows;
+  if (details.length === 0 || !payroll.month || !payroll.year) return [];
+  const start = `${payroll.year}-${String(payroll.month).padStart(2, '0')}-01`;
+  const days = (await q(
+    `SELECT employee_id, project_id, COUNT(*)::int AS days FROM attendance
+      WHERE employee_id = ANY($1::int[]) AND status IN ('present', 'late')
+        AND date >= $2::date AND date < ($2::date + INTERVAL '1 month')
+      GROUP BY employee_id, project_id`,
+    [details.map((d) => d.employee_id), start]
+  )).rows;
+  const byProject = new Map();
+  for (const d of details) {
+    const rows = days.filter((r) => r.employee_id === d.employee_id);
+    const totalDays = rows.reduce((s, r) => s + r.days, 0);
+    if (totalDays === 0) continue;
+    const netMinor = money.toMinor(d.net_salary == null ? 0 : d.net_salary);
+    for (const r of rows) {
+      if (r.project_id == null) continue;
+      const share = (netMinor * BigInt(r.days) * 2n + BigInt(totalDays)) / (BigInt(totalDays) * 2n); // half-up
+      const entry = byProject.get(r.project_id) || { minor: 0n, employees: 0, days: 0 };
+      entry.minor += share; entry.employees += 1; entry.days += r.days;
+      byProject.set(r.project_id, entry);
+    }
+  }
+  const posted = [];
+  for (const [projectId, e] of [...byProject.entries()].sort((x, y) => x[0] - y[0])) {
+    if (e.minor <= 0n) continue;
+    const alloc = (await q(
+      `INSERT INTO payroll_cost_allocations (payroll_id, project_id, amount, basis)
+       VALUES ($1, $2, $3, $4) ON CONFLICT (payroll_id, project_id) DO NOTHING RETURNING *`,
+      [payroll.id, projectId, money.format(e.minor), JSON.stringify({ basis: 'attendance_days', employees: e.employees, days: e.days })]
+    )).rows[0];
+    if (!alloc) continue; // replay
+    const cost = await insertCostRow(q, {
+      projectId, costCodeId: await costCodeIdFor(q, rule.cost_code), sourceType: rule.project_costs_source, sourceId: alloc.id,
+      amountMinor: e.minor, description: `Payroll ${payroll.period_name || payroll.id}: attendance allocation`,
+    });
+    posted.push({ allocation: alloc, cost });
+  }
+  return posted;
+}
+
 module.exports = {
   COST_ACCRUAL_RULES, multiplyQtyRate, accrueCost, accrueGrnCost, claimLine,
   classifySupplierInvoiceLines, accrueSupplierInvoiceCost, reverseGrnCostForReturn,
+  insertCostRow, costCodeIdFor, accrueMaterialIssue, accrueExpenseCost, allocatePayrollCost,
 };
