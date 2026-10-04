@@ -120,7 +120,8 @@ function resolveAssignedRole(step, context) {
 }
 
 function resolveAssignedUser(step, context) {
-  if (step.resolver_type === 'requester') return num(context && context.requester_id);
+  // A system-raised request (the replenishment sweep) has no requester: the step is not assigned to anyone.
+  if (step.resolver_type === 'requester') return context && context.requester_id != null ? num(context.requester_id) : null;
   if (step.resolver_type === 'user') return num(step.resolver_value);
   return null;
 }
@@ -305,6 +306,8 @@ async function recordDecision(instanceId, stepId, userId, decision, comment, opt
   const client = opts.client || { query: opts.query || defaultQuery };
   const role = opts.role || null;
   const userName = opts.userName || null;
+  // A system actor (the replenishment sweep) may complete the requester's own steps and nothing else.
+  const system = opts.system === true;
 
   const instance = await loadInstance(client, instanceId);
   if (!instance) return { ok: false, ...err(404, 'Workflow instance not found') };
@@ -315,7 +318,7 @@ async function recordDecision(instanceId, stepId, userId, decision, comment, opt
 
   // Self-approval guard — ported verbatim from the legacy control
   // (approvals.js: requester_id === userId && role not owner/admin → 403).
-  if (instance.requester_id != null && num(instance.requester_id) === num(userId)
+  if (!system && instance.requester_id != null && num(instance.requester_id) === num(userId)
       && role !== 'owner' && role !== 'admin') {
     return { ok: false, statusCode: 403, error: 'You cannot approve or reject your own request' };
   }
@@ -336,6 +339,7 @@ async function recordDecision(instanceId, stepId, userId, decision, comment, opt
   // Authorization — mirrors the legacy stage checks (module manager map at the
   // manager stage; owner/admin only at the owner stage; privileged bypass).
   const allowed = role === 'owner' || role === 'admin' ||
+    (system && templateStep && templateStep.resolver_type === 'requester') ||
     allowedRolesFor(templateStep, context).includes(role);
 
   if (!allowed) {

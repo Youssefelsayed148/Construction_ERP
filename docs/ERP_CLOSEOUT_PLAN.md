@@ -192,8 +192,8 @@ Goal: one truthful chain, from requirement to cost.
 - [x] fireEvent never emits before commit and never swallows errors silently. (fireEvent writes event_log + event_outbox in the caller's transaction and throws on failure; routed consumers and the bus are fed by the dispatcher post-commit.)
 
 3.3 Replenishment to procurement
-- [ ] Replenishment creates a PR (not a PO) through the PR workflow; carries project_id and material; respects project stock; uses the shared numbering service.
-- [ ] Add PR location, cost code and work package; implement the budget-check step in the PR workflow.
+- [x] Replenishment creates a PR (not a PO) through the PR workflow; carries project_id and material; respects project stock; uses the shared numbering service. (A2.2, #37: per (material, project), judged on that project's warehouses and open orders/requisitions; submitted by a system actor; all modes raise a PR, the sweep never writes a PO.)
+- [x] Add PR location, cost code and work package; implement the budget-check step in the PR workflow. (A2.2, migration 0024: columns, item_master.default_cost_code_id, budget_check result; the budget step refuses an over-budget PR with error_code pr_over_budget.)
 
 3.4 Progress single source of truth
 - [x] Derive `projects.completion_percentage` from weighted schedule/quantity progress (quantityEngine policies); manual override only with permission and audit. (Rule in docs/PROGRESS_DERIVATION.md: quantity-weighted by BOQ value where quantities exist, otherwise duration-weighted from schedule tasks; no source → stored value untouched. `('projects','override_progress')` gates manual overrides, migration 0021 seeds the permission; overrides audited.)

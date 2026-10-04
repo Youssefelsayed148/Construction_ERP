@@ -19,15 +19,20 @@
 //   Shortage               = max(Net Requirement − Available − Confirmed Incoming, 0)
 //
 // Modes: alert_only | auto_draft_pr | auto_draft_po | auto_issue_po.
-// auto_issue_po issues ONLY when the order total is STRICTLY below the
-// configured authority ceiling AND the supplier is pre-approved (framework
-// price present); otherwise it degrades to a draft PO awaiting approval —
-// never a silent escalation.
+// Closeout A2.2 (plan 3.3): every mode except alert_only raises a PURCHASE REQUISITION and submits it
+// through the PR workflow (Draft and Submit are completed by the system actor; the budget check and the
+// approvals wait for people). The sweep never writes a purchase order: the order is raised from the
+// approved requisition. auto_draft_po and auto_issue_po stay valid policy values (existing business_rules
+// rows keep working) and are recorded on the requisition as policy_mode; the supplier and framework price
+// they resolved are carried as the line's estimated price and a note, and authority_ceiling is advisory.
+// Requisitions are raised per (material, project): a project's need is judged against that project's own
+// warehouses plus company-level (project-less) ones, and against the open orders and requisitions of that
+// project, never against another project's stock. The reorder-point top-up (no project) is raised
+// with project_id NULL only for what the project needs do not already cover.
 
 'use strict';
 
-const { query: defaultQuery } = require('../config/database');
-const numbering = require('./numbering');
+const { query: defaultQuery, transaction } = require('../config/database');
 const notificationService = require('./notificationService');
 const procurementService = require('./procurementService');
 const sweepLeader = require('./sweepLeader');
@@ -38,7 +43,11 @@ const OPEN_PO_STATUSES = ['approved', 'issued', 'confirmed'];
 // Orders whose undelivered quantity still counts as incoming stock.
 const OPEN_INCOMING_PO_STATUSES = ['approved', 'issued', 'confirmed', 'partially_delivered'];
 // Orders a sweep must not stack another order on top of.
-const OPEN_DRAFT_PO_STATUSES = ['draft', 'issued', 'approved'];
+// Requisitions that still count as the open requirement for a source key. 'procurement' (approved, waiting
+// for its order) counts only while no order was raised from it (see openRequestFor).
+const OPEN_PR_STATUSES = ['draft', 'submitted', 'budget_check', 'authority_approval'];
+// The replenishment sweep acts as the requester of the requisitions it raises (no user row).
+const SYSTEM_ACTOR = { id: null, name: 'Replenishment sweep', role: 'system' };
 // Fixed status constants rendered as an SQL list (never user input).
 const inList = (values) => values.map((v) => `'${v}'`).join(', ');
 const ALERT_ROLES = ['purchasing_mgr', 'owner'];
@@ -182,13 +191,14 @@ async function forecastDailyUsage(q, materialId, { now = new Date(), days = USAG
 }
 
 // Open confirmed POs = committed, not-yet-received incoming quantity.
-async function openConfirmedQuantity(q, materialId) {
-  // Lines only (2.6c): header-only orders got a line from migration 0014.
+async function openConfirmedQuantity(q, materialId, { projectId } = {}) {
+  // Lines only (2.6c): header-only orders got a line from migration 0014. With a project, only that project's orders.
+  const scoped = projectId != null;
   const lines = (await q(
     `SELECT l.quantity, l.delivered_quantity FROM purchase_order_lines l
        JOIN purchase_orders po ON po.id = l.purchase_order_id
-      WHERE l.material_id = $1 AND po.status IN (${inList(OPEN_INCOMING_PO_STATUSES)})`,
-    [materialId]
+      WHERE l.material_id = $1 AND po.status IN (${inList(OPEN_INCOMING_PO_STATUSES)})${scoped ? ' AND po.project_id = $2' : ''}`,
+    scoped ? [materialId, projectId] : [materialId]
   )).rows;
   return round3(lines.reduce((s, line) => s + Math.max(toNum(line.quantity) - toNum(line.delivered_quantity), 0), 0));
 }
@@ -217,8 +227,15 @@ async function scheduledDemand(q, materialId, { now = new Date() } = {}) {
 }
 
 // Available now across all warehouses (from the Phase 10 projection).
-async function availableNow(q, materialId) {
-  const rows = (await q('SELECT * FROM warehouse_stock WHERE item_id = $1', [materialId])).rows;
+async function availableNow(q, materialId, { projectId } = {}) {
+  // With a project: that project's warehouses and the company-level (project-less) ones, never another project's.
+  const rows = projectId != null
+    ? (await q(
+      `SELECT ws.* FROM warehouse_stock ws JOIN warehouses w ON w.id = ws.warehouse_id
+        WHERE ws.item_id = $1 AND (w.project_id = $2 OR w.project_id IS NULL)`,
+      [materialId, projectId]
+    )).rows
+    : (await q('SELECT * FROM warehouse_stock WHERE item_id = $1', [materialId])).rows;
   let available = 0;
   let physical = 0;
   let storedReorderLevel = 0;
@@ -274,62 +291,99 @@ async function resolveSupplier(q, item, policy) {
 // Document creation (idempotent — one open draft per material per source key)
 // ---------------------------------------------------------------------------
 
-async function ensureDraftPurchaseRequest(q, { item, quantity, neededBy, mode, createdBy = null }) {
-  const sourceKey = `replenishment:${item.id}`;
-  // source_key is per material, so it is the idempotency key; the material itself lives on the line.
-  const existing = (await q(
-    "SELECT * FROM purchase_requests WHERE status = 'draft' AND source_key = $1",
-    [sourceKey]
-  )).rows[0];
-  if (existing) return { created: false, request: existing };
-
-  const requestNumber = await numbering.nextNumber(q, { table: 'purchase_requests', column: 'request_number', prefix: 'PR', pad: 5 });
-  const r = await q(
-    `INSERT INTO purchase_requests
-       (request_number, quantity, unit, needed_by, status, source_type, source_id, source_key, policy_mode, created_by)
-     VALUES ($1, $2, $3, $4, 'draft', 'replenishment', $5, $6, $7, $8) RETURNING *`,
-    [requestNumber, quantity, item.unit || null, neededBy || null, item.id, sourceKey, mode, createdBy]
-  );
-  await q(
-    `INSERT INTO purchase_request_lines
-       (purchase_request_id, material_id, description, quantity, unit, needed_by)
-     VALUES ($1,$2,$3,$4,$5,$6)`,
-    [r.rows[0].id, item.id, item.name_en || item.name_ar || item.code, quantity, item.unit || null, neededBy || null]
-  );
-  return { created: true, request: r.rows[0] };
+// Planned demand per project within the horizon (same window as scheduledDemand), with the location and work
+// package of the earliest requirement that names them: what a requisition for that project carries.
+async function demandByProject(q, materialId, { now = new Date() } = {}) {
+  const rows = (await q(
+    "SELECT * FROM material_requirements WHERE material_id = $1 AND status = 'planned'",
+    [materialId]
+  )).rows;
+  const nowMs = new Date(now).getTime();
+  const byProject = new Map();
+  for (const r of rows) {
+    if (r.source_activity_date == null || r.project_id == null) continue;
+    const d = new Date(r.source_activity_date).getTime();
+    if (Number.isNaN(d) || d < nowMs - DAY_MS || d > nowMs + SCHEDULED_HORIZON_DAYS * DAY_MS) continue;
+    const entry = byProject.get(r.project_id) || { project_id: r.project_id, total: 0, earliest: null, location_id: null, work_package_id: null, anchor: null };
+    entry.total += toNum(r.net_requirement);
+    if (entry.earliest == null || d < entry.earliest) entry.earliest = d;
+    if ((r.project_location_id != null || r.work_package_id != null) && (entry.anchor == null || d < entry.anchor)) {
+      entry.anchor = d;
+      entry.location_id = r.project_location_id != null ? r.project_location_id : null;
+      entry.work_package_id = r.work_package_id != null ? r.work_package_id : null;
+    }
+    byProject.set(r.project_id, entry);
+  }
+  return [...byProject.values()]
+    .map((e) => ({
+      project_id: e.project_id, total: round3(e.total), location_id: e.location_id, work_package_id: e.work_package_id,
+      earliest_date: e.earliest != null ? new Date(e.earliest).toISOString().slice(0, 10) : null,
+    }))
+    .sort((x, y) => x.project_id - y.project_id);
 }
 
-async function ensurePurchaseOrder(q, { item, supplier, quantity, unitPrice, status, basis, ceiling = null, neededBy = null, createdBy = null }) {
-  const sourceKey = `replenishment:${item.id}`;
-  // One open PO per material — a second sweep must never stack orders.
-  const open = (await q(
-    `SELECT po.id FROM purchase_order_lines l
-       JOIN purchase_orders po ON po.id = l.purchase_order_id
-      WHERE l.material_id = $1 AND po.status IN (${inList(OPEN_DRAFT_PO_STATUSES)})
-      ORDER BY po.id LIMIT 1`,
-    [item.id]
+// The requisition already on its way for a source key: open in the workflow, or approved and still waiting for
+// its order. Returns the row or undefined.
+async function openRequestFor(q, sourceKey) {
+  return (await q(
+    `SELECT pr.* FROM purchase_requests pr
+      WHERE pr.source_key = $1
+        AND (pr.status IN (${inList(OPEN_PR_STATUSES)})
+             OR (pr.status = 'procurement' AND NOT EXISTS (SELECT 1 FROM purchase_orders po WHERE po.purchase_request_id = pr.id)))
+      ORDER BY pr.id LIMIT 1`,
+    [sourceKey]
   )).rows[0];
-  const existing = open ? (await q('SELECT * FROM purchase_orders WHERE id = $1', [open.id])).rows[0] : null;
-  if (existing) return { created: false, order: existing };
+}
 
-  const orderNumber = await numbering.nextNumber(q, { table: 'purchase_orders', column: 'order_number', prefix: 'PO', pad: 5 });
-  const r = await q(
-    `INSERT INTO purchase_orders
-       (order_number, supplier_id, unit, status, issuance_basis, authority_ceiling, needed_by, source_type, source_id, source_key, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
-    [orderNumber, supplier ? supplier.supplier_id : null, item.unit || null, status, basis, ceiling, neededBy,
-     'replenishment', item.id, sourceKey, createdBy]
-  );
-  await q(
-    `INSERT INTO purchase_order_lines
-       (purchase_order_id, material_id, description, quantity, unit, unit_rate, needed_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-    [r.rows[0].id, item.id, item.name_en || item.name_ar || item.code, quantity,
-     item.unit || null, unitPrice || 0, neededBy]
-  );
-  // Header quantity and total are derived from the lines in one place.
-  const order = await procurementService.recomputePoTotals(q, r.rows[0].id);
-  return { created: true, order };
+// Open requisition quantity for a material and project: counts as incoming, so a need that a requisition
+// already covers is not raised again.
+async function openRequestQuantity(q, materialId, projectId) {
+  const rows = (await q(
+    `SELECT l.quantity FROM purchase_request_lines l JOIN purchase_requests pr ON pr.id = l.purchase_request_id
+      WHERE l.material_id = $1 AND pr.project_id = $2
+        AND (pr.status IN (${inList(OPEN_PR_STATUSES)})
+             OR (pr.status = 'procurement' AND NOT EXISTS (SELECT 1 FROM purchase_orders po WHERE po.purchase_request_id = pr.id)))`,
+    [materialId, projectId]
+  )).rows;
+  return round3(rows.reduce((sum, r) => sum + toNum(r.quantity), 0));
+}
+
+// Raise ONE requisition for (material, project) and start it in the PR workflow, atomically: the requisition,
+// its line and the workflow instance commit together or not at all. Idempotent: an open requisition for the
+// same source key is returned instead (an advisory lock per key serialises concurrent runners, and the unique
+// index of migration 0024 is the backstop).
+async function ensureReplenishmentRequest(q, { item, quantity, scope = null, mode, supplier = null, neededBy = null }) {
+  const sourceKey = `replenishment:${item.id}${scope ? `:p${scope.project_id}` : ''}`;
+  const body = async (tq, locked) => {
+    if (locked) await tq('SELECT pg_advisory_xact_lock(hashtext($1))', [sourceKey]);
+    const existing = await openRequestFor(tq, sourceKey);
+    if (existing) return { created: false, request: existing };
+    const name = item.name_en || item.name_ar || item.code;
+    const note = supplier
+      ? `Raised by the replenishment sweep (${mode}). Suggested supplier #${supplier.supplier_id} at ${supplier.unit_price}.`
+      : `Raised by the replenishment sweep (${mode}).`;
+    const pr = await procurementService.createPurchaseRequest(tq, {
+      title: `Replenishment: ${name}`,
+      project_id: scope ? scope.project_id : null,
+      location_id: scope ? scope.location_id : null,
+      work_package_id: scope ? scope.work_package_id : null,
+      cost_code_id: item.default_cost_code_id || null,
+      needed_by: neededBy || null,
+      created_by: null,
+      source_type: 'replenishment', source_id: item.id, source_key: sourceKey, policy_mode: mode, notes: note,
+      lines: [{
+        material_id: item.id, description: name, quantity, unit: item.unit || null, needed_by: neededBy || null,
+        estimated_unit_price: supplier ? supplier.unit_price : 0,
+      }],
+    });
+    await procurementService.submitPurchaseRequest(tq, pr.id, SYSTEM_ACTOR);
+    const request = (await tq('SELECT * FROM purchase_requests WHERE id = $1', [pr.id])).rows[0];
+    return { created: true, request };
+  };
+  // The real database runs it in a transaction with the lock; a caller-supplied query function (a test double or
+  // an enclosing transaction) is used as given.
+  if (q === defaultQuery) return transaction((client) => body(client.query.bind(client), true));
+  return body(q, false);
 }
 
 // ---------------------------------------------------------------------------
@@ -418,7 +472,7 @@ async function evaluateMaterial(q, item, opts = {}) {
   const belowMinimum = toNum(item.min_stock) > 0 && stock.available + incoming <= toNum(item.min_stock);
 
   const policy = await getPolicy(q, item);
-  const actions = { alerts: [], purchase_request: null, purchase_order: null };
+  const actions = { alerts: [], purchase_request: null, purchase_requests: [], purchase_order: null };
 
   // Alerts — always on, whatever the purchasing mode.
   if (shortfall > 0) {
@@ -449,62 +503,54 @@ async function evaluateMaterial(q, item, opts = {}) {
     await resolveAlerts(q, { materialId: item.id, alertTypes: ['below_minimum'] });
   }
 
-  // Replenishment need + gated action per mode.
-  let need = shortfall;
-  if (belowReorder) {
+  // Replenishment need: a requisition per project with a shortfall (judged on that project's stock and open
+  // orders/requisitions), plus a company-level top-up when the reorder point calls for more than the projects do.
+  const requests = [];
+  let need = 0;
+  if (policy.mode !== 'alert_only') {
+    const supplier = await resolveSupplier(q, item, policy);
     const headroom = await storageHeadroomFor(q, stock.stock_by_warehouse);
-    const suggested = suggestedOrderQuantity({
-      available: stock.available,
-      confirmedIncoming: incoming,
-      scheduledDemand: demand.total,
-      targetMaxStock: policy.target_max_stock != null ? policy.target_max_stock : toNum(item.max_stock),
-      moq: toNum(item.moq),
-      orderMultiple: toNum(item.order_multiple),
-      shelfLifeDays: toNum(item.shelf_life_days),
-      forecastDailyUsage: usage,
-      storageHeadroom: headroom,
+    const rounded = (target) => suggestedOrderQuantity({
+      targetMaxStock: target, moq: item.moq, orderMultiple: item.order_multiple,
+      shelfLifeDays: item.shelf_life_days, forecastDailyUsage: usage, storageHeadroom: headroom,
     });
-    need = Math.max(need, suggested);
-  }
-  // The shortage path needs the same hard shelf/storage bounds as the target
-  // stock path. A larger MOQ is unsafe to auto-order; the shortage alert above
-  // stays open for manual resolution.
-  if (need > 0) {
-    const headroom = await storageHeadroomFor(q, stock.stock_by_warehouse);
-    need = suggestedOrderQuantity({
-      targetMaxStock: need, moq: item.moq, orderMultiple: item.order_multiple,
-      shelfLifeDays: item.shelf_life_days, forecastDailyUsage: usage,
-      storageHeadroom: headroom,
-    });
-  }
-
-  if (need > 0 && policy.mode !== 'alert_only') {
-    if (policy.mode === 'auto_draft_pr') {
-      actions.purchase_request = await ensureDraftPurchaseRequest(q, {
-        item, quantity: need, neededBy: demand.earliest_date, mode: policy.mode,
+    let projectNeeds = 0;
+    for (const scope of await demandByProject(q, item.id, { now })) {
+      const own = await availableNow(q, item.id, { projectId: scope.project_id });
+      const incomingP = round3(
+        (await openConfirmedQuantity(q, item.id, { projectId: scope.project_id })) +
+        (await openRequestQuantity(q, item.id, scope.project_id))
+      );
+      const projectShortfall = shortage(scope.total, own.available, incomingP);
+      if (projectShortfall <= 0) continue;
+      const quantity = rounded(projectShortfall);
+      if (quantity <= 0) continue;
+      projectNeeds += quantity;
+      requests.push(await ensureReplenishmentRequest(q, { item, quantity, scope, mode: policy.mode, supplier, neededBy: scope.earliest_date }));
+    }
+    if (belowReorder) {
+      const suggested = suggestedOrderQuantity({
+        available: stock.available,
+        confirmedIncoming: incoming,
+        scheduledDemand: demand.total,
+        targetMaxStock: policy.target_max_stock != null ? policy.target_max_stock : toNum(item.max_stock),
+        moq: toNum(item.moq),
+        orderMultiple: toNum(item.order_multiple),
+        shelfLifeDays: toNum(item.shelf_life_days),
+        forecastDailyUsage: usage,
+        storageHeadroom: headroom,
       });
-    } else {
-      const supplier = await resolveSupplier(q, item, policy);
-      if (!supplier) {
-        // No pre-approved supplier → never issue blind; the draft PO (no
-        // supplier, no price) awaits the purchasing manager.
-        actions.purchase_order = await ensurePurchaseOrder(q, {
-          item, supplier: null, quantity: need, unitPrice: null, status: 'draft',
-          basis: 'no_preapproved_supplier', neededBy: demand.earliest_date,
-        });
-      } else {
-        const total = round3(need * supplier.unit_price);
-        const ceiling = toNum(policy.authority_ceiling);
-        const canIssue = policy.mode === 'auto_issue_po' && ceiling > 0 && total < ceiling;
-        actions.purchase_order = await ensurePurchaseOrder(q, {
-          item, supplier, quantity: need, unitPrice: supplier.unit_price,
-          status: canIssue ? 'issued' : 'draft',
-          basis: canIssue ? 'authority_ceiling' : 'awaiting_approval',
-          ceiling, neededBy: demand.earliest_date,
-        });
+      const top = Math.max(suggested - projectNeeds, 0);
+      const quantity = top > 0 ? rounded(top) : 0;
+      if (quantity > 0) {
+        requests.push(await ensureReplenishmentRequest(q, { item, quantity, scope: null, mode: policy.mode, supplier, neededBy: demand.earliest_date }));
       }
     }
+    need = round3(requests.reduce((sum, r) => sum + (r.created ? toNum(r.request.quantity) : 0), 0));
+    need = need || round3(projectNeeds);
   }
+  actions.purchase_requests = requests;
+  actions.purchase_request = requests[0] || null; // first one, for callers that expect a single result
 
   return {
     material_id: item.id,
@@ -680,8 +726,10 @@ module.exports = {
   scheduledDemand,
   availableNow,
   resolveSupplier,
-  ensureDraftPurchaseRequest,
-  ensurePurchaseOrder,
+  demandByProject,
+  openRequestFor,
+  openRequestQuantity,
+  ensureReplenishmentRequest,
   evaluateMaterial,
   evaluateOtherAlerts,
   runReplenishmentSweep,
