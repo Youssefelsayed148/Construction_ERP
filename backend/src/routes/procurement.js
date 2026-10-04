@@ -85,13 +85,24 @@ router.post('/pr/:id/submit', authenticate, authorize(), async (req, res) => {
 
 router.post('/pr/:id/decide', authenticate, authorize(), async (req, res) => {
   try {
-    const schema = Joi.object({ decision: Joi.string().valid('approve', 'reject').required(), comment: Joi.string().allow('', null) });
+    const schema = Joi.object({
+      decision: Joi.string().valid('approve', 'reject').required(), comment: Joi.string().allow('', null),
+      override_over_budget: Joi.boolean().default(false), override_reason: Joi.string().allow('', null),
+    });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const result = await atomic((q) => svc.decideOnDocument(q, 'purchase_request', parseInt(req.params.id, 10), req.user, value.decision, value.comment));
+    const result = await atomic((q) => svc.decideOnDocument(q, 'purchase_request', parseInt(req.params.id, 10), req.user, value.decision, value.comment,
+      { overrideOverBudget: value.override_over_budget, overrideReason: value.override_reason }));
+    if (result.budget_override) {
+      await logActivity({
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'budget_override', module: 'procurement',
+        description: `Over-budget override on requisition #${req.params.id}: ${result.budget_override.reason}`,
+        entityId: parseInt(req.params.id, 10), entityType: 'purchase_request',
+      });
+    }
     res.json({ success: true, data: result });
   } catch (e) {
-    res.status(400).json({ success: false, error: e.message, ...(e.error_code ? { error_code: e.error_code, error_params: e.error_params || {} } : {}) });
+    res.status(e.status || 400).json({ success: false, error: e.message, ...(e.error_code ? { error_code: e.error_code, error_params: e.error_params || {} } : {}) });
   }
 });
 
@@ -379,6 +390,7 @@ router.post('/invoices', authenticate, authorize(), async (req, res) => {
       invoice_date: Joi.date().iso().optional().allow(null),
       total_amount: Joi.number().min(0).required(),
       tax_amount: Joi.number().min(0).default(0),
+      vat_recoverable: Joi.boolean().default(true),
       lines: Joi.array().items(Joi.object({
         purchase_order_line_id: Joi.number().integer().optional().allow(null),
         material_id: Joi.number().integer().optional().allow(null),

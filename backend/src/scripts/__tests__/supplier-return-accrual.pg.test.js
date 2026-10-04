@@ -67,9 +67,10 @@ describePg('A2.1 supplier-return reversal and accrual pairing (real PostgreSQL, 
     await tx((q) => svc.decideMir(q, mir.id, { id: owner.id }, 'accept'));
     return tx((q) => svc.createGrn(q, { mir_id: mir.id, created_by: owner.id, received_by: owner.id }));
   };
-  const invoiceFor = async (po, { lines, total, tax = 0, number }) => {
+  const invoiceFor = async (po, { lines, total, tax = 0, number, vat_recoverable }) => {
     const created = await call('POST', '/api/procurement/invoices', {
       supplier_id: ids.supplier, purchase_order_id: po.id, invoice_number: `${number}-${tag}`, total_amount: total, tax_amount: tax, lines,
+      ...(vat_recoverable === undefined ? {} : { vat_recoverable }),
     });
     expect(created.status).toBe(201);
     const invoice = created.body.data.invoice || created.body.data;
@@ -296,5 +297,49 @@ describePg('A2.1 supplier-return reversal and accrual pairing (real PostgreSQL, 
       [await mapped('vat_input'), 98, 0],
       [await mapped('payable'), 0, 798],
     ]));
+  });
+
+  // ---- closeout answer 5: input VAT on stocked-only invoices (extends decision 6) ----
+
+  test('a stocked-only invoice whose goods the GRN already accrued still posts its input VAT to vat_input (and AP equals the invoice total)', async () => {
+    const po = await newPo([{ material_id: ids.material, quantity: 10, unit_rate: 100 }]);
+    const grn = await receive(po, 10);
+    const invoice = await invoiceFor(po, {
+      number: 'vat1', total: 1140, tax: 140,
+      lines: [{ purchase_order_line_id: po.lines[0].id, material_id: ids.material, quantity: 10, unit_price: 100 }],
+    });
+    expect(await costRows('supplier_invoice', invoice.id)).toHaveLength(0);      // the GRN owns the cost
+    const [entry] = await entries('supplier_invoice_cost', invoice.id);
+    expect(bySide(await shape(entry))).toEqual(bySide([[await mapped('vat_input'), 140, 0], [await mapped('payable'), 0, 140]]));
+    expect(await payableCredits([['grn_cost', grn.id], ['supplier_invoice_cost', invoice.id]])).toBe(1140);
+    const again = await call('POST', `/api/procurement/invoices/${invoice.id}/approve`);
+    expect(again.status).toBe(409);
+    expect(await entries('supplier_invoice_cost', invoice.id)).toHaveLength(1);
+  });
+
+  test('a GRN-less stocked invoice with tax books materials, input VAT and the full payable', async () => {
+    const po = await newPo([{ material_id: ids.material, quantity: 10, unit_rate: 100 }]);
+    const invoice = await invoiceFor(po, {
+      number: 'vat2', total: 1140, tax: 140,
+      lines: [{ purchase_order_line_id: po.lines[0].id, material_id: ids.material, quantity: 10, unit_price: 100 }],
+    });
+    const [entry] = await entries('supplier_invoice_cost', invoice.id);
+    expect(bySide(await shape(entry))).toEqual(bySide([
+      [await mapped('material_cost'), 1000, 0], [await mapped('vat_input'), 140, 0], [await mapped('payable'), 0, 1140]]));
+  });
+
+  test('non-recoverable VAT is cost, not input VAT: it joins the project cost and never touches vat_input', async () => {
+    const po = await newPo([{ material_id: ids.material, quantity: 10, unit_rate: 100 }]);
+    const grn = await receive(po, 10);
+    const invoice = await invoiceFor(po, {
+      number: 'vat3', total: 1140, tax: 140, vat_recoverable: false,
+      lines: [{ purchase_order_line_id: po.lines[0].id, material_id: ids.material, quantity: 10, unit_price: 100 }],
+    });
+    const rows = await costRows('supplier_invoice', invoice.id);
+    expect(rows).toHaveLength(1);
+    expect(Number(rows[0].amount)).toBe(140);
+    const [entry] = await entries('supplier_invoice_cost', invoice.id);
+    expect(bySide(await shape(entry))).toEqual(bySide([[await mapped('material_cost'), 140, 0], [await mapped('payable'), 0, 140]]));
+    expect(await payableCredits([['grn_cost', grn.id], ['supplier_invoice_cost', invoice.id]])).toBe(1140);
   });
 });

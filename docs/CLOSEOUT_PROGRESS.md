@@ -20,3 +20,11 @@ Stack so far: #1-#35 (Phases 0-3 and earlier slices, see docs/CLOSEOUT_LOG.md). 
 CP2 reached (Part A complete, 2026-10-04): PRs #36-#42 are stacked on #35 and verified locally; waiting for "go" (also needs the GitHub Actions billing fix to get the remote gate green).
 
 CI NOTE (2026-10-04): GitHub Actions jobs for PR #38 and later did not start: "recent account payments have failed or your spending limit needs to be increased". #36 and #37 were green. Everything is verified locally with the same commands (mock, real-PG, fresh-DB migration, lint:guards); the remote gate needs the billing fix and a re-run. CP1 was skipped because every audited gap is inside the A2 list; CP2 follows A2.7.
+
+## Open / tracked items (2026-10-04, from the CP2 answers)
+
+- Post-commit fireEvent callers still not atomic with their change: RFI/submittal routes, locations, recipes, allocations, schedule activity, site instructions. Proposed fix: one outbox pattern, event written in the same transaction as the change.
+- siteEngine `safeAll` and the schedule progress-recompute catch still swallow failures.
+- Webhook fan-out (plan 1.5) untouched.
+- Before any deploy: run the 0024 preflight first (stops if two open requisitions share a source_key); test 0023 and 0025 on a restored copy with the check queries in their PRs; run `scripts/legacy-labour-double-count-sizing.sql` (read-only) on a restored copy before 0025/0026.
+- Decisions applied from the CP2 answers: PO modes raise a PR (gate stays removed); owner/admin over-budget override with reason (audited, migration 0028); daily-report quantities stay pending and are shown separately on the PM dashboard; payroll allocation by attendance with an hours split and an explicit unallocated bucket; input VAT to 1400 for stocked-only and mixed invoices unless non-recoverable (`vat_recoverable`, migration 0028).

@@ -241,4 +241,58 @@ describePg('A2.2 replenishment through the PR workflow (real PostgreSQL, real ap
       "INSERT INTO purchase_requests (request_number, status, source_key) VALUES ($1, 'submitted', $2)", [`PR-dup-${tag}`, pr.source_key]
     )).rejects.toMatchObject({ code: '23505' });
   });
+
+  // ---- closeout answer 2: owner/admin override of an over-budget requisition ----
+
+  const userWith = async (role) => {
+    const row = await one("INSERT INTO users (name, email, password, role) VALUES ($1, $2, 'x', $3) RETURNING id, token_version", [`rp-${role}`, `rp-${role}-${tag}-${seq += 1}@test.io`, role]);
+    await db.query('INSERT INTO user_project_roles (user_id, project_id, role_id) SELECT $1, NULL, id FROM roles WHERE key = $2', [row.id, role]);
+    return tokens.signSession({ userId: row.id, tokenVersion: row.token_version });
+  };
+  const decideAs = async (token, id, body) => {
+    const res = await fetch(`${base}/api/procurement/pr/${id}/decide`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+    return { status: res.status, body: await res.json() };
+  };
+
+  test('an owner can approve an over-budget requisition with a written reason, and it is audited and recorded', async () => {
+    const s = await scenario({ budget: 100 });
+    await evaluate(s);
+    const [pr] = await prsFor(s);
+    const noReason = await call('POST', `/api/procurement/pr/${pr.id}/decide`, { decision: 'approve', override_over_budget: true });
+    expect(noReason.status).toBe(400);
+    expect(noReason.body.error_code).toBe('pr_override_reason_required');
+    const ok = await call('POST', `/api/procurement/pr/${pr.id}/decide`, { decision: 'approve', override_over_budget: true, override_reason: 'Client-requested scope, budget revision pending' });
+    expect(ok.status).toBe(200);
+    const row = await one('SELECT status, budget_override FROM purchase_requests WHERE id = $1', [pr.id]);
+    expect(row.status).toBe('authority_approval');
+    expect(row.budget_override).toMatchObject({ by: owner.id, role: 'owner', reason: 'Client-requested scope, budget revision pending' });
+    expect(row.budget_override.check.status).toBe('over_budget');
+    const audit = await one("SELECT description FROM activity_log WHERE entity_id = $1 AND entity_type = 'purchase_request' AND action = 'budget_override' ORDER BY id DESC LIMIT 1", [pr.id]);
+    expect(audit.description).toMatch(/Client-requested scope/);
+  });
+
+  test('only owner or admin may override; a project manager gets 403 pr_override_forbidden and nothing changes', async () => {
+    const s = await scenario({ budget: 100 });
+    await evaluate(s);
+    const [pr] = await prsFor(s);
+    const pm = await userWith('project_manager');
+    const denied = await decideAs(pm, pr.id, { decision: 'approve', override_over_budget: true, override_reason: 'because I said so' });
+    expect(denied.status).toBe(403);
+    expect(denied.body.error_code).toBe('pr_override_forbidden');
+    expect((await one('SELECT status, budget_override FROM purchase_requests WHERE id = $1', [pr.id]))).toMatchObject({ status: 'budget_check', budget_override: null });
+    const admin = await userWith('admin');
+    expect((await decideAs(admin, pr.id, { decision: 'approve', override_over_budget: true, override_reason: 'admin override with reason' })).status).toBe(200);
+  });
+
+  test('without the override flag an over-budget requisition is still refused, and an override on an in-budget one records nothing', async () => {
+    const s = await scenario({ budget: 100 });
+    await evaluate(s);
+    const [pr] = await prsFor(s);
+    expect((await call('POST', `/api/procurement/pr/${pr.id}/decide`, { decision: 'approve' })).body.error_code).toBe('pr_over_budget');
+    const fine = await scenario({ budget: 100000 });
+    await evaluate(fine);
+    const [ok] = await prsFor(fine);
+    expect((await call('POST', `/api/procurement/pr/${ok.id}/decide`, { decision: 'approve', override_over_budget: true, override_reason: 'not needed here' })).status).toBe(200);
+    expect((await one('SELECT budget_override FROM purchase_requests WHERE id = $1', [ok.id])).budget_override).toBeNull();
+  });
 });
