@@ -5,6 +5,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const commercialEngine = require('../services/commercialEngine');
 const dashboardWidgets = require('../services/dashboardWidgets');
 const costView = require('../services/costView');
+const progressEngine = require('../services/progressEngine');
 
 // Closeout A2.4: no query on this page turns a failure into a zero. A failed section is logged with its name and
 // fails the request with error_code 'dashboard_section_failed' and error_params.section; the owner sees an error,
@@ -154,16 +155,19 @@ router.get('/alerts', authenticate, authorize(), async (req, res) => {
 router.get('/overview', authenticate, authorize(), async (req, res) => {
   try {
     const [
-      projAgg, projRisk, portfolio, finance, invoiceAgg, expenseAgg,
+      projAgg, projProgress, projRisk, portfolio, finance, invoiceAgg, expenseAgg,
       inventory, hrAgg, assetAgg, maintDue, approvalAgg, miscAgg,
     ] = await Promise.all([
       q('projects', `SELECT
              COUNT(*)::int AS total,
              COUNT(*) FILTER (WHERE status = 'active')::int   AS active,
              COUNT(*) FILTER (WHERE status = 'planning')::int AS planning,
-             COUNT(*) FILTER (WHERE status = 'completed')::int AS completed,
-             COALESCE(ROUND(AVG(completion_percentage) FILTER (WHERE status = 'active'), 0), 0)::int AS avg_completion
+             COUNT(*) FILTER (WHERE status = 'completed')::int AS completed
            FROM projects`),
+
+      // Weighted by contract value (closeout A2.6), computed with the shared helper: the plain AVG treated a small
+      // project like the main contract.
+      q('projects_progress', "SELECT completion_percentage, contract_value, budget FROM projects WHERE status = 'active'"),
 
       q('projects_at_risk', `SELECT COUNT(*)::int AS at_risk
            FROM projects p LEFT JOIN v_project_cost_totals vct ON vct.project_id = p.id
@@ -240,7 +244,8 @@ router.get('/overview', authenticate, authorize(), async (req, res) => {
     ]);
 
     const num = (v) => parseFloat(v) || 0;
-    const p = projAgg.rows[0], f = finance.rows[0], pf = portfolio.rows[0], ap = approvalAgg.rows[0];
+    const p = { ...projAgg.rows[0], avg_completion: Math.round(progressEngine.weightedPortfolioProgress(projProgress.rows)) };
+    const f = finance.rows[0], pf = portfolio.rows[0], ap = approvalAgg.rows[0];
     const collected = num(f.collected), invoiced = num(f.invoiced), expenses = num(f.expenses);
     const budgetTotal = num(pf.budget_total), actualTotal = num(pf.actual_total);
     const oldestDays = ap.oldest_pending_at

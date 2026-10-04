@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
-const { query } = require('../config/database');
+const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const engine = require('../services/quantityEngine');
@@ -23,20 +23,7 @@ function parseJson(v) {
   try { return JSON.parse(v); } catch (e) { return []; }
 }
 
-async function getOrCreateAllocation(q, boqItemId, locationId) {
-  const existing = (await q(
-    'SELECT * FROM boq_location_allocations WHERE boq_item_id = $1 AND project_location_id = $2',
-    [boqItemId, locationId]
-  )).rows;
-  if (existing[0]) return existing[0];
-  const item = (await q('SELECT quantity, unit_rate FROM boq_items WHERE id = $1', [boqItemId])).rows[0] || {};
-  const r = await q(
-    `INSERT INTO boq_location_allocations (boq_item_id, project_location_id, planned_quantity, unit_cost)
-     VALUES ($1, $2, $3, $4) RETURNING *`,
-    [boqItemId, locationId, item.quantity ?? 0, item.unit_rate ?? 0]
-  );
-  return r.rows[0];
-}
+const getOrCreateAllocation = engine.getOrCreateAllocation;
 
 // ---------------------------------------------------------------------------
 // Allocations — planned/approved_design quantities are PLANNED data (editable);
@@ -198,25 +185,18 @@ router.post('/measurements', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const alloc = await getOrCreateAllocation(query, value.boq_item_id, value.project_location_id);
-    const r = await query(
-      `INSERT INTO quantity_measurements
-         (project_id, project_location_id, boq_item_id, boq_location_allocation_id, work_package_id,
-          measured_date, quantity, unit, source_type, source_id, measured_by, approval_state, photos)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending',$12) RETURNING *`,
-      [value.project_id, value.project_location_id, value.boq_item_id, alloc.id, value.work_package_id,
-       value.measured_date, value.quantity, value.unit || null, value.source_type, value.source_id,
-       req.user.id, JSON.stringify(value.photos || [])]
-    );
-
-    // Derive — never store a hand-edited executed quantity.
-    await engine.syncAllocations(query, { boqItemId: value.boq_item_id });
-    await engine.syncBoqItemCompletedQuantity(query, value.boq_item_id);
-
-    // Phase 3.5 — measurement changes push to quantity-driven schedule activities and to the project's
-    // derived progress (stored completion_percentage); no explicit PUT needed.
-    await progressEngine.syncActivityProgressForBoqItem(query, value.boq_item_id);
-    await progressEngine.syncProjectProgress(query, value.project_id);
+    // The measurement and everything derived from it (allocations, completed quantity, quantity-driven activities,
+    // project progress) commit together. Inserts only: executed roll-ups are derived, never hand-edited.
+    const r = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const inserted = await engine.recordMeasurement(q, {
+        project_id: value.project_id, project_location_id: value.project_location_id, boq_item_id: value.boq_item_id,
+        work_package_id: value.work_package_id, measured_date: value.measured_date, quantity: value.quantity, unit: value.unit,
+        source_type: value.source_type, source_id: value.source_id, measured_by: req.user.id, photos: value.photos,
+      });
+      await progressEngine.onMeasurementsChanged(q, { boqItemId: value.boq_item_id, projectId: value.project_id });
+      return { rows: [inserted] };
+    });
 
     await logActivity({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
@@ -225,7 +205,10 @@ router.post('/measurements', authenticate, authorize(), async (req, res) => {
       entityId: r.rows[0].id, entityType: 'quantity_measurement',
     });
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) {
+    if (e.error_code) return res.status(e.status || 400).json({ success: false, error: e.message, error_code: e.error_code, error_params: e.error_params || {} });
+    res.status(500).json({ success: false, error: e.message });
+  }
 });
 
 // POST /api/quantities/measurements/:id/review — approve/reject/certify.
@@ -242,11 +225,8 @@ router.post('/measurements/:id/review', authenticate, authorize(), async (req, r
       `UPDATE quantity_measurements SET approval_state = $1, reviewed_by = $2, updated_at = NOW() WHERE id = $3 RETURNING *`,
       [value.state, req.user.id, req.params.id]
     );
-    await engine.syncAllocations(query, { boqItemId: existing.boq_item_id });
-    await engine.syncBoqItemCompletedQuantity(query, existing.boq_item_id);
-    // Phase 3.5 — the review is a measurement change: schedule activities and derived progress follow.
-    await progressEngine.syncActivityProgressForBoqItem(query, existing.boq_item_id);
-    await progressEngine.syncProjectProgress(query, existing.project_id);
+    // The review is a measurement change: allocations, activities and derived progress follow.
+    await progressEngine.onMeasurementsChanged(query, { boqItemId: existing.boq_item_id, projectId: existing.project_id });
     res.json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

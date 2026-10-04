@@ -176,6 +176,61 @@ function reconcile(measurements, locations, { floorIds = [], buildingIds = [] })
 
 // Recompute executed/consultant_approved/certified on boq_location_allocations
 // rows from quantity_measurements. Returns the number of allocations synced.
+// An allocation row for (BOQ item, location), created on first use at the item's planned quantity and rate.
+async function getOrCreateAllocation(q, boqItemId, locationId) {
+  const existing = (await q(
+    'SELECT * FROM boq_location_allocations WHERE boq_item_id = $1 AND project_location_id = $2',
+    [boqItemId, locationId]
+  )).rows;
+  if (existing[0]) return existing[0];
+  const item = (await q('SELECT quantity, unit_rate FROM boq_items WHERE id = $1', [boqItemId])).rows[0] || {};
+  const r = await q(
+    `INSERT INTO boq_location_allocations (boq_item_id, project_location_id, planned_quantity, unit_cost)
+     VALUES ($1, $2, $3, $4) RETURNING *`,
+    [boqItemId, locationId, item.quantity ?? 0, item.unit_rate ?? 0]
+  );
+  return r.rows[0];
+}
+
+// A measurement that names records of another project is refused (the routes only authorise the project in
+// the request, so the ids it carries must be checked here).
+class MeasurementError extends Error {
+  constructor(message, code = 'measurement_wrong_project', params = {}) {
+    super(message); this.status = 400; this.error_code = code; this.error_params = params;
+  }
+}
+
+// The one writer of quantity_measurements rows (measurement route, daily reports). INSERT only: executed
+// roll-ups are derived from the measurements, never edited. Inserts as 'pending'; the caller recomputes the
+// derived figures with syncMeasuredItem (and progressEngine.onMeasurementsChanged for activities and progress).
+async function recordMeasurement(q, {
+  project_id: projectId, project_location_id: locationId, boq_item_id: boqItemId, work_package_id: workPackageId = null,
+  measured_date: measuredDate, quantity, unit = null, source_type: sourceType = 'manual', source_id: sourceId = null,
+  measured_by: measuredBy = null, photos = [],
+}) {
+  const location = (await q('SELECT project_id FROM project_locations WHERE id = $1', [locationId])).rows[0];
+  const item = (await q('SELECT project_id FROM boq_items WHERE id = $1', [boqItemId])).rows[0];
+  if (!location || !item || Number(location.project_id) !== Number(projectId) || Number(item.project_id) !== Number(projectId)) {
+    throw new MeasurementError(`BOQ item #${boqItemId} and location #${locationId} must both belong to project #${projectId}`, 'measurement_wrong_project',
+      { project_id: projectId, boq_item_id: boqItemId, project_location_id: locationId });
+  }
+  if (workPackageId != null) {
+    const wp = (await q('SELECT project_id FROM work_packages WHERE id = $1', [workPackageId])).rows[0];
+    if (!wp || Number(wp.project_id) !== Number(projectId)) {
+      throw new MeasurementError(`Work package #${workPackageId} does not belong to project #${projectId}`, 'measurement_wrong_project', { project_id: projectId, work_package_id: workPackageId });
+    }
+  }
+  const alloc = await getOrCreateAllocation(q, boqItemId, locationId);
+  const r = await q(
+    `INSERT INTO quantity_measurements
+       (project_id, project_location_id, boq_item_id, boq_location_allocation_id, work_package_id,
+        measured_date, quantity, unit, source_type, source_id, measured_by, approval_state, photos)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending',$12) RETURNING *`,
+    [projectId, locationId, boqItemId, alloc.id, workPackageId, measuredDate, quantity, unit, sourceType, sourceId, measuredBy, JSON.stringify(photos || [])]
+  );
+  return r.rows[0];
+}
+
 async function syncAllocations(q, opts = {}) {
   const boqItemId = opts.boqItemId == null ? null : opts.boqItemId;
   let rows;
@@ -333,6 +388,9 @@ async function locationProgress(q, locationId) {
 }
 
 module.exports = {
+  getOrCreateAllocation,
+  MeasurementError,
+  recordMeasurement,
   EXECUTED_STATES,
   CERTIFIED_STATES,
   toNum,

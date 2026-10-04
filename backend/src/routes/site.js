@@ -5,6 +5,8 @@ const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
+const quantityEngine = require('../services/quantityEngine');
+const progressEngine = require('../services/progressEngine');
 const actionService = require('../services/actionService');
 
 // Mounted at /api/projects — provides /:projectId/site-reports, /:projectId/instructions, /:projectId/site-visits
@@ -40,6 +42,33 @@ router.get('/:projectId/site-reports/:date', authenticate, authorize(), async (r
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
+// Quantities reported on site (closeout A2.6). Each line becomes a pending quantity_measurements row with source
+// 'daily_report' and the report as source_id: it feeds the reviewers' queue, and once reviewed it moves the
+// allocation, the quantity-driven schedule activities and the project's derived progress (services/progressEngine
+// onMeasurementsChanged). Pending quantities do not count as executed, like every other measurement source.
+const measurementLine = Joi.object({
+  project_location_id: Joi.number().integer().required(),
+  boq_item_id: Joi.number().integer().required(),
+  work_package_id: Joi.number().integer().optional().allow(null),
+  quantity: Joi.number().min(0).required(),
+  unit: Joi.string().optional().allow('', null),
+});
+const measurementsSchema = Joi.array().items(measurementLine).default([]);
+
+async function recordReportMeasurements(q, report, lines, userId) {
+  const touched = new Set();
+  for (const line of lines) {
+    await quantityEngine.recordMeasurement(q, {
+      project_id: report.project_id, project_location_id: line.project_location_id, boq_item_id: line.boq_item_id,
+      work_package_id: line.work_package_id || null, measured_date: report.report_date, quantity: line.quantity, unit: line.unit || null,
+      source_type: 'daily_report', source_id: report.id, measured_by: userId,
+    });
+    touched.add(line.boq_item_id);
+  }
+  for (const boqItemId of touched) await progressEngine.onMeasurementsChanged(q, { boqItemId, projectId: report.project_id });
+  return touched.size;
+}
+
 router.post('/:projectId/site-reports', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
@@ -52,11 +81,12 @@ router.post('/:projectId/site-reports', authenticate, authorize(), async (req, r
       equipment_on_site: Joi.string().allow('').optional(),
       issues_notes: Joi.string().allow('').optional(),
       photos: Joi.array().items(Joi.object().unknown(true)).default([]),
+      measurements: measurementsSchema,
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    // The report and its created event commit together; the event goes through the outbox (it used to be emitted
+    // The report, its measurements, everything derived from them and its created event commit together; the event goes through the outbox (it used to be emitted
     // straight on the in-process bus, outside any transaction).
     const result = await transaction(async (client) => {
       const q = client.query.bind(client);
@@ -67,10 +97,11 @@ router.post('/:projectId/site-reports', authenticate, authorize(), async (req, r
          value.work_summary, value.material_received, value.equipment_on_site, value.issues_notes,
          JSON.stringify(value.photos), req.user.id]
       );
+      await recordReportMeasurements(q, inserted.rows[0], value.measurements, req.user.id);
       await fireEvent({
         eventType: 'site_report.created', entityType: 'site_daily_report', entityId: inserted.rows[0].id,
         userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-        payload: { project_id: parseInt(req.params.projectId, 10), report_date: value.report_date },
+        payload: { project_id: parseInt(req.params.projectId, 10), report_date: value.report_date, measurements: value.measurements.length },
       }, { query: q });
       return inserted;
     });
@@ -79,6 +110,7 @@ router.post('/:projectId/site-reports', authenticate, authorize(), async (req, r
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) {
     if (error.code === '23505') return res.status(409).json({ success: false, error: 'A report already exists for this project and date' });
+    if (error.error_code) return res.status(error.status || 400).json({ success: false, error: error.message, error_code: error.error_code, error_params: error.error_params || {} });
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -90,24 +122,46 @@ router.put('/:projectId/site-reports/:id', authenticate, authorize(), async (req
       workers_count: Joi.number().integer().min(0), work_summary: Joi.string().allow(''),
       material_received: Joi.string().allow(''), equipment_on_site: Joi.string().allow(''),
       issues_notes: Joi.string().allow(''), photos: Joi.array().items(Joi.object().unknown(true)),
+      measurements: Joi.array().items(measurementLine),
     }).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
+    const { measurements, ...fields } = value;
     const sets = []; const params = []; let idx = 1;
-    for (const [k, v] of Object.entries(value)) {
+    for (const [k, v] of Object.entries(fields)) {
       if (v === undefined) continue;
       if (k === 'photos') { sets.push(`photos = $${idx++}::jsonb`); params.push(JSON.stringify(v)); }
       else { sets.push(`${k} = $${idx++}`); params.push(v); }
     }
+    sets.push('updated_at = NOW()');
     params.push(req.params.id, req.params.projectId);
-    const result = await query(
-      `UPDATE site_daily_reports SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx++} AND project_id = $${idx} RETURNING *`,
-      params
-    );
+    // Fields and measurements change together. Resending measurements REPLACES the report's pending ones; once a
+    // reviewer has acted on any of them the report's quantities are fixed (409).
+    const result = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const updated = await q(`UPDATE site_daily_reports SET ${sets.join(', ')} WHERE id = $${idx++} AND project_id = $${idx} RETURNING *`, params);
+      if (updated.rows.length === 0 || measurements === undefined) return updated;
+      const existing = (await q("SELECT id, boq_item_id, approval_state FROM quantity_measurements WHERE source_type = 'daily_report' AND source_id = $1 FOR UPDATE", [updated.rows[0].id])).rows;
+      if (existing.some((m) => m.approval_state !== 'pending')) {
+        const err = new Error('A reviewer has already acted on this report\'s measurements: they can no longer be replaced');
+        err.status = 409; err.error_code = 'measurements_already_reviewed'; err.error_params = {};
+        throw err;
+      }
+      await q("DELETE FROM quantity_measurements WHERE source_type = 'daily_report' AND source_id = $1", [updated.rows[0].id]);
+      await recordReportMeasurements(q, updated.rows[0], measurements, req.user.id);
+      // Items whose pending lines were removed recompute too.
+      for (const boqItemId of new Set(existing.map((m) => m.boq_item_id))) {
+        await progressEngine.onMeasurementsChanged(q, { boqItemId, projectId: updated.rows[0].project_id });
+      }
+      return updated;
+    });
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Report not found' });
     res.json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) {
+    if (error.error_code) return res.status(error.status || 400).json({ success: false, error: error.message, error_code: error.error_code, error_params: error.error_params || {} });
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // ============ ENGINEER INSTRUCTIONS ============

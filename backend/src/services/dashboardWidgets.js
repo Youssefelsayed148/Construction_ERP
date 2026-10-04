@@ -17,6 +17,8 @@
 
 'use strict';
 
+const progressEngine = require('./progressEngine');
+
 function parseJson(v) {
   if (v == null) return {};
   if (typeof v === 'object') return v;
@@ -61,9 +63,8 @@ async function ceoWidgets(q, { userId, projectId = null }) {
     w('portfolio', 'Portfolio', {
       projects: projects.length,
       active: projects.filter((p) => p.status === 'active').length,
-      avg_completion: projects.length
-        ? Math.round(projects.reduce((s, p) => s + num(p.completion_percentage), 0) / projects.length)
-        : 0,
+      // Weighted by contract value (closeout A2.6): each project's own figure is already the weighted derived progress.
+      avg_completion: projects.length ? Math.round(progressEngine.weightedPortfolioProgress(projects)) : 0,
     }),
     w('procurement_exposure', 'Procurement exposure', {
       issued_pos: pos.filter((r) => r.status === 'issued').length,
@@ -151,12 +152,23 @@ async function projectManagerWidgets(q, { userId, projectId = null }) {
     agg(q, 'invoices', wp, pp),
     agg(q, 'payments', wp, pp),
   ]);
-  const avg = progress.rows.length ? activities_progress(progress.rows) : 0;
+  // The weighted figure (closeout A2.6): for a project, the derived progress (measured quantities weighted by BOQ
+  // value, else schedule tasks weighted by duration); across projects, tasks weighted by duration. Never the plain
+  // mean of activity percents (a one-day task counted like a one-year task).
+  let avg = 0;
+  let progressSource = 'none';
+  if (projectId != null) {
+    const derived = await progressEngine.deriveProjectProgress(q, projectId);
+    if (derived.progress != null) { avg = derived.progress; progressSource = derived.source; }
+  } else {
+    const weighted = progressEngine.durationWeighted(progress.rows);
+    if (weighted != null) { avg = weighted; progressSource = 'schedule'; }
+  }
   const obsCount = obs.rows.filter((o) => !['accepted', 'closed'].includes(o.status)).length;
   const subOpen = subs.rows.filter((s) => ['submitted', 'under_review'].includes(s.status)).length;
   return [
     w('my_actions', 'My open actions', { open: actions.rows.filter((a) => a.status === 'open' || a.status === 'in_progress').length }),
-    w('progress', 'Progress', { avg_percent: Math.round(avg * 10) / 10 }),
+    w('progress', 'Progress', { avg_percent: Math.round(avg * 10) / 10, source: progressSource }),
     w('wir_mir', 'WIR / MIR', {
       wirs_open: wirs.rows.filter((w) => !['approved', 'approved_with_comments', 'rejected'].includes(w.status)).length,
       mirs_pending: mirs.rows.filter((m) => m.status === 'pending').length,
