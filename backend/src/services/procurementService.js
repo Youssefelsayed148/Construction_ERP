@@ -28,6 +28,7 @@ const workflowEngine = require('./workflowEngine');
 const numbering = require('./numbering');
 const inventoryEngine = require('./inventoryEngine');
 const costAccrual = require('./costAccrual');
+const costView = require('./costView');
 
 const PRICE_VARIANCE_TOLERANCE = 0.02;   // 2% line-price tolerance
 const TAX_MATCH_TOLERANCE = 1.0;         // absolute currency tolerance
@@ -100,7 +101,7 @@ async function computeBudgetCheck(q, pr) {
   const project = (await q('SELECT budget FROM projects WHERE id = $1', [pr.project_id])).rows[0];
   const budget = round2(toNum(project && project.budget));
   if (budget <= 0) return { status: 'no_budget', requested, budget, checked_at };
-  const spent = round2(toNum((await q('SELECT COALESCE(SUM(amount), 0) AS s FROM project_costs WHERE project_id = $1', [pr.project_id])).rows[0].s));
+  const spent = round2(await costView.projectTotal(q, pr.project_id));
   const committed = round2(toNum((await q(
     `SELECT COALESCE(SUM(GREATEST(l.quantity - COALESCE(l.delivered_quantity, 0), 0) * COALESCE(l.unit_rate, 0)), 0) AS c
        FROM purchase_order_lines l JOIN purchase_orders po ON po.id = l.purchase_order_id

@@ -7,6 +7,7 @@ const { logActivity, fireEvent } = require('../utils/activity');
 const engine = require('../services/quantityEngine');
 const materialDemand = require('../services/materialDemand');
 const progressEngine = require('../services/progressEngine');
+const costView = require('../services/costView');
 
 // Phase 8 — quantity surface. Executed quantity is NEVER edited on a summary
 // row: it only enters the system as a quantity_measurements row. Allocation
@@ -295,7 +296,8 @@ router.get('/locations/:locationId/dashboard', authenticate, authorize(), async 
     const projectId = progress.location.project_id;
     const user = req.user;
 
-    const safe = (promise) => promise.catch(() => ({ rows: [] }));
+    // A failed query fails the dashboard (logged with its context); it never shows as an empty section (closeout A2.4).
+    const safe = (promise) => promise.catch((e) => { console.error(`[QUANTITIES] location dashboard ${locationId} query failed:`, e.message); throw e; });
 
     // Active activities: work orders + completions touching this subtree is
     // future work (work orders are not location-scoped yet); surface the
@@ -333,33 +335,30 @@ router.get('/locations/:locationId/dashboard', authenticate, authorize(), async 
     // that later phases build simply appear when their tables exist.
     if (canSee(user, 'documents')) {
       const docs = await safe(query(
-        "SELECT COUNT(*) AS c FROM documents WHERE project_id = $1",
+        "SELECT COUNT(*) AS c FROM project_documents WHERE project_id = $1",
         [projectId]
       ));
       sections.documents = { count: Number(docs.rows[0]?.c || 0) };
     }
     if (canSee(user, 'qhse')) {
       const ncr = await safe(query(
-        "SELECT COUNT(*) AS c FROM qhse_records WHERE project_id = $1 AND record_type = 'ncr'",
+        "SELECT COUNT(*) AS c FROM ncrs WHERE project_id = $1",
         [projectId]
       ));
       const obs = await safe(query(
-        "SELECT COUNT(*) AS c FROM qhse_records WHERE project_id = $1 AND record_type = 'observation'",
+        "SELECT COUNT(*) AS c FROM observations WHERE project_id = $1",
         [projectId]
       ));
       sections.qhse = { ncr: Number(ncr.rows[0]?.c || 0), observations: Number(obs.rows[0]?.c || 0) };
     }
     if (canSee(user, 'costing')) {
-      const costs = await safe(query(
-        "SELECT COALESCE(SUM(amount), 0) AS spent FROM project_costs WHERE project_id = $1",
-        [projectId]
-      ));
+      const spent = await safe(costView.projectTotal(query, projectId));
       const proj = await safe(query(
         'SELECT budget, contract_value FROM projects WHERE id = $1',
         [projectId]
       ));
       sections.cost = {
-        spent: Number(costs.rows[0]?.spent || 0),
+        spent,
         budget: Number(proj.rows[0]?.budget || 0),
         contract_value: Number(proj.rows[0]?.contract_value || 0),
       };

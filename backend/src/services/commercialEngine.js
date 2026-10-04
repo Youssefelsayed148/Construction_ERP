@@ -24,6 +24,7 @@
 
 const workflowEngineRef = () => require('./workflowEngine');
 const { nextNumber } = require('./numbering');
+const costView = require('./costView');
 
 function toNum(v) {
   if (v == null) return 0;
@@ -111,12 +112,9 @@ async function budgetChangeTotal(q, projectId) {
   return round2(rows.reduce((s, c) => s + toNum(c.new_amount) - toNum(c.previous_amount), 0));
 }
 
+// Actual cost comes from the shared cost view (services/costView.js), like the dashboards and costing.
 async function actualCost(q, projectId) {
-  const rows = (await q(
-    'SELECT id, amount FROM project_costs WHERE project_id = $1',
-    [projectId]
-  )).rows;
-  return round2(rows.reduce((s, c) => s + toNum(c.amount), 0));
+  return round2(await costView.projectTotal(q, projectId));
 }
 
 // Commitments ledger, self-healing from purchase_orders + sub_contracts.
@@ -129,11 +127,9 @@ async function syncCommitments(q, projectId) {
   const activeKeys = new Set();
 
   // Issued/approved POs (Phase 12 statuses).
-  let pos = [];
-  try {
-    pos = (await q('SELECT id, supplier_id, total_amount, status FROM purchase_orders WHERE project_id = $1', [projectId])).rows
-      .filter((po) => !['draft', 'rejected', 'cancelled', 'void'].includes(po.status));
-  } catch (e) { pos = []; }
+  // A failed read is an error, never "no purchase orders" (closeout A2.4): commitments are cost exposure.
+  const pos = (await q('SELECT id, supplier_id, total_amount, status FROM purchase_orders WHERE project_id = $1', [projectId])).rows
+    .filter((po) => !['draft', 'rejected', 'cancelled', 'void'].includes(po.status));
   for (const po of pos) {
     const key = `purchase_order:${po.id}`;
     activeKeys.add(key);
@@ -149,11 +145,8 @@ async function syncCommitments(q, projectId) {
   }
 
   // Active subcontracts.
-  let subs = [];
-  try {
-    subs = (await q('SELECT id, contract_value, revised_amount, status FROM sub_contracts WHERE project_id = $1', [projectId])).rows
-      .filter((sc) => ['active', 'approved', 'completed', 'closed'].includes(sc.status));
-  } catch (e) { subs = []; }
+  const subs = (await q('SELECT id, contract_value, revised_amount, status FROM sub_contracts WHERE project_id = $1', [projectId])).rows
+    .filter((sc) => ['active', 'approved', 'completed', 'closed'].includes(sc.status));
   for (const sc of subs) {
     const key = `sub_contract:${sc.id}`;
     activeKeys.add(key);

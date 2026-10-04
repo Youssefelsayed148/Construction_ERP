@@ -23,8 +23,9 @@ function parseJson(v) {
   try { return JSON.parse(v); } catch (e) { return {}; }
 }
 
-async function safeAll(q, sql, params) {
-  try { return (await q(sql, params)).rows; } catch (e) { return []; }
+// Rows of a query. A failure propagates (closeout A2.4): a widget never shows an empty list for a broken query.
+async function rowsOf(q, sql, params) {
+  return (await q(sql, params)).rows;
 }
 
 function w(key, title, data) { return { key, title, data }; }
@@ -37,7 +38,7 @@ function num(v) {
 
 // Row-level aggregation helper: fetch rows then aggregate in JS.
 async function agg(q, table, where = '', params = []) {
-  const rows = await safeAll(q, `SELECT * FROM ${table}${where ? ` WHERE ${where}` : ''}`, params);
+  const rows = await rowsOf(q, `SELECT * FROM ${table}${where ? ` WHERE ${where}` : ''}`, params);
   return { rows, count: rows.length };
 }
 
@@ -417,7 +418,7 @@ async function financeWidgets(q, { userId, projectId = null }) {
 // ---------------------------------------------------------------------------
 
 async function clientWidgets(q, { userId, projectId = null }) {
-  const rows = await safeAll(q,
+  const rows = await rowsOf(q,
     `SELECT pp.project_id AS pid FROM project_participants pp
      JOIN project_participant_users ppu ON ppu.project_participant_id = pp.id
      WHERE ppu.user_id = $1 AND pp.participant_type = 'client'
@@ -431,9 +432,9 @@ async function clientWidgets(q, { userId, projectId = null }) {
       w('handover_readiness', 'Handover readiness', { percent: 0, items_total: 0, items_complete: 0 }),
     ];
   }
-  const milestoneRows = await safeAll(q,
+  const milestoneRows = await rowsOf(q,
     'SELECT status FROM project_milestones WHERE project_id = ANY($1::int[])', [ids]);
-  const handoverRows = await safeAll(q,
+  const handoverRows = await rowsOf(q,
     'SELECT status FROM handover_package_items WHERE project_id = ANY($1::int[])', [ids]);
   const itemsTotal = handoverRows.length;
   const itemsComplete = handoverRows.filter((h) => h.status === 'complete').length;
@@ -453,7 +454,7 @@ async function clientWidgets(q, { userId, projectId = null }) {
 }
 
 async function consultantWidgets(q, { userId, projectId = null }) {
-  const rows = await safeAll(q,
+  const rows = await rowsOf(q,
     `SELECT pp.project_id AS pid FROM project_participants pp
      JOIN project_participant_users ppu ON ppu.project_participant_id = pp.id
      WHERE ppu.user_id = $1 AND pp.participant_type = 'consultant'`, [userId]);
@@ -462,9 +463,9 @@ async function consultantWidgets(q, { userId, projectId = null }) {
     return [w('reviews', 'My reviews', { awaiting_rectification: 0, wirs_to_decide: 0, rfis_to_answer: 0 })];
   }
   const [obsRows, wirRows, rfiRows] = await Promise.all([
-    safeAll(q, 'SELECT status FROM observations WHERE consultant_user_id = $1', [userId]),
-    safeAll(q, 'SELECT status FROM wirs WHERE project_id = ANY($1::int[])', [ids]),
-    safeAll(q, 'SELECT status FROM project_rfis WHERE project_id = ANY($1::int[])', [ids]),
+    rowsOf(q, 'SELECT status FROM observations WHERE consultant_user_id = $1', [userId]),
+    rowsOf(q, 'SELECT status FROM wirs WHERE project_id = ANY($1::int[])', [ids]),
+    rowsOf(q, 'SELECT status FROM project_rfis WHERE project_id = ANY($1::int[])', [ids]),
   ]);
   return [
     w('reviews', 'My reviews', {
@@ -476,12 +477,12 @@ async function consultantWidgets(q, { userId, projectId = null }) {
 }
 
 async function subcontractorWidgets(q, { userId, projectId = null }) {
-  const orgs = await safeAll(q, 'SELECT organization_id FROM organization_users WHERE user_id = $1', [userId]);
+  const orgs = await rowsOf(q, 'SELECT organization_id FROM organization_users WHERE user_id = $1', [userId]);
   const orgIds = [...new Set(orgs.map((r) => Number(r.organization_id)))];
   if (orgIds.length === 0) {
     return [w('scope', 'My scope', { work_orders: 0 })];
   }
-  const wo = await safeAll(q, 'SELECT id FROM work_orders WHERE subcontractor_id = ANY($1::int[])', [orgIds]);
+  const wo = await rowsOf(q, 'SELECT id FROM work_orders WHERE subcontractor_id = ANY($1::int[])', [orgIds]);
   return [w('scope', 'My work orders', { work_orders: wo.length })];
 }
 
@@ -526,7 +527,7 @@ const ROLE_ALIASES = {
 // project-scope notes are filtered to the selected project, others follow).
 async function stickyNotesWidget(q, user, projectId = null) {
   if (!user) return [];
-  const rows = await safeAll(q,
+  const rows = await rowsOf(q,
     'SELECT * FROM sticky_notes WHERE owner_user_id = $1 ORDER BY updated_at DESC', [user.id]);
   return rows
     .filter((r) => projectId == null || r.scope !== 'project' || Number(r.project_id) === Number(projectId))
@@ -545,9 +546,9 @@ async function locationWidget(q, user, projectId) {
     const visible = await visibleProjectIds(q, user);
     if (!visible.includes(Number(projectId))) return null;
   }
-  const locRows = await safeAll(q,
+  const locRows = await rowsOf(q,
     'SELECT id, name FROM project_locations WHERE project_id = $1 ORDER BY id', [projectId]);
-  const allocRows = await safeAll(q,
+  const allocRows = await rowsOf(q,
     'SELECT project_location_id, planned_quantity, executed_quantity, certified_quantity FROM boq_location_allocations', []);
   const byLoc = new Map(locRows.map((r) => [r.id, { id: r.id, name: r.name, planned: 0, executed: 0, certified: 0 }]));
   for (const r of allocRows) {
@@ -570,7 +571,7 @@ async function locationWidget(q, user, projectId) {
 async function visibleProjectIds(q, user) {
   if (!user) return [];
   if (['owner', 'admin'].includes(user.role)) return null; // no filter
-  const rows = await safeAll(q,
+  const rows = await rowsOf(q,
     `SELECT pp.project_id AS pid FROM project_participants pp
      JOIN project_participant_users ppu ON ppu.project_participant_id = pp.id
      WHERE ppu.user_id = $1`, [user.id]);
