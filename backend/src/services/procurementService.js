@@ -903,6 +903,8 @@ async function threeWayMatch(q, invoiceId) {
 
   const exceptions = [];
   const lineResults = [];
+  let linesAtPoRate = 0;   // what the invoice's PO-linked lines are worth at the PO's own rates
+  let hasPoLines = false;
   for (const line of invLines) {
     let poLine = null;
     if (line.purchase_order_line_id != null) {
@@ -918,6 +920,7 @@ async function threeWayMatch(q, invoiceId) {
     if (poLine && toNum(line.quantity) > toNum(poLine.delivered_quantity) + 1e-6 && !ex.some((e) => e.type === 'quantity_variance')) {
       ex.push({ type: 'quantity_variance', detail: `invoiced ${toNum(line.quantity)} exceeds delivered ${toNum(poLine.delivered_quantity)}` });
     }
+    if (poLine) { hasPoLines = true; linesAtPoRate += toNum(line.quantity) * toNum(poLine.unit_rate); }
     lineResults.push({ line_id: line.id, exceptions: ex });
     exceptions.push(...ex);
   }
@@ -932,12 +935,22 @@ async function threeWayMatch(q, invoiceId) {
       detail: `invoice tax ${toNum(invoice.tax_amount)} vs PO taxes ${toNum(po.taxes)}`,
     });
   }
-  // Invoice total vs PO total (2% tolerance).
-  if (po && Math.abs(toNum(invoice.total_amount) - toNum(po.total_amount)) > Math.max(round2(toNum(po.total_amount) * 0.02), 0.01)) {
-    exceptions.push({
-      type: 'price_variance',
-      detail: `invoice total ${toNum(invoice.total_amount)} vs PO total ${toNum(po.total_amount)}`,
-    });
+  // Invoice net vs what its lines are worth at the PO's rates (2% tolerance). Closeout A2.7: this used to compare the
+  // invoice total with the WHOLE PO total, so every partial invoice (a partial delivery, goods returned, the second of
+  // two invoices) was flagged as a price variance and sent to the AP review queue. Quantity over-billing is the line
+  // check's job (invoiced > received and kept); this check is about money. An invoice with no PO-linked line falls
+  // back to the PO total, as before.
+  if (po) {
+    const invoiceNet = hasPoLines ? toNum(invoice.total_amount) - toNum(invoice.tax_amount) : toNum(invoice.total_amount);
+    const expected = hasPoLines ? round2(linesAtPoRate) : toNum(po.total_amount);
+    if (Math.abs(invoiceNet - expected) > Math.max(round2(expected * 0.02), 0.01)) {
+      exceptions.push({
+        type: 'price_variance',
+        detail: hasPoLines
+          ? `invoice net ${round2(invoiceNet)} vs its lines at PO rates ${expected}`
+          : `invoice total ${toNum(invoice.total_amount)} vs PO total ${toNum(po.total_amount)}`,
+      });
+    }
   }
 
   const matchStatus = exceptions.length === 0 ? 'matched' : 'exception';
