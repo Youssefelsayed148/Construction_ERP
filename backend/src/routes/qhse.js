@@ -1,4 +1,5 @@
 const express = require('express');
+const projectSetup = require('../services/projectSetupService');
 const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
@@ -389,6 +390,7 @@ router.post('/itps', authenticate, authorize(), async (req, res) => {
       title: Joi.string().required(),
       discipline: Joi.string().allow('', null).optional(),
       work_package: Joi.string().allow('', null).optional(),
+      work_package_id: Joi.number().integer().allow(null).optional(),
       project_location_id: Joi.number().integer().allow(null).optional(),
       points: Joi.array().items(Joi.object({
         seq: Joi.number().integer().default(1),
@@ -405,11 +407,13 @@ router.post('/itps', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
+    const wp = await projectSetup.resolveOrRespond(query, res, value.project_id, value);
+    if (!wp) return;
     const itpNumber = await qaqcEngine.nextNumber(query, 'itps', 'itp_number', 'ITP');
     const r = await query(
-      `INSERT INTO itps (itp_number, project_id, title, discipline, work_package, project_location_id, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [itpNumber, value.project_id, value.title, value.discipline || null, value.work_package || null,
+      `INSERT INTO itps (itp_number, project_id, title, discipline, work_package, work_package_id, project_location_id, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      [itpNumber, value.project_id, value.title, value.discipline || null, wp.text, wp.id,
        value.project_location_id || null, req.user.id]
     );
     const itp = r.rows[0];
@@ -459,11 +463,20 @@ router.put('/itps/:id', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
       title: Joi.string(), discipline: Joi.string().allow('', null), work_package: Joi.string().allow('', null),
+      work_package_id: Joi.number().integer().allow(null),
       project_location_id: Joi.number().integer().allow(null),
       status: Joi.string().valid('draft', 'active', 'archived'),
     }).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if ('work_package' in value || 'work_package_id' in value) {
+      const owner = await query('SELECT project_id FROM itps WHERE id = $1', [req.params.id]);
+      if (owner.rows.length === 0) return res.status(404).json({ success: false, error: 'ITP not found' });
+      const wp = await projectSetup.resolveOrRespond(query, res, owner.rows[0].project_id, value);
+      if (!wp) return;
+      value.work_package = wp.text;
+      value.work_package_id = wp.id;
+    }
     const sets = []; const params = []; let idx = 1;
     for (const [k, v] of Object.entries(value)) {
       if (v === undefined) continue;
@@ -545,6 +558,7 @@ router.post('/wirs', authenticate, authorize(), async (req, res) => {
       boq_item_id: Joi.number().integer().allow(null).optional(),
       project_location_id: Joi.number().integer().allow(null).optional(),
       work_package: Joi.string().allow('', null).optional(),
+      work_package_id: Joi.number().integer().allow(null).optional(),
       subcontractor_organization_id: Joi.number().integer().allow(null).optional(),
       inspection_date: Joi.date().iso().allow(null).optional(),
       latest_drawing_ref: Joi.string().allow('', null).optional(),
@@ -558,7 +572,10 @@ router.post('/wirs', authenticate, authorize(), async (req, res) => {
     const wir = await qaqcEngine.createWir(query, value, req.user);
     await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Created ${wir.wir_number}`, entityId: wir.id, entityType: 'wir' });
     res.status(201).json({ success: true, data: wir });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) {
+    if (projectSetup.respondIfSetupError(res, error)) return;
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // Requester submits the draft into the QA/QC stage.

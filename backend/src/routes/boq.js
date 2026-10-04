@@ -1,4 +1,5 @@
 const express = require('express');
+const projectSetup = require('../services/projectSetupService');
 const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
@@ -104,16 +105,19 @@ router.post('/items', authenticate, authorize(), async (req, res) => {
       unit_rate: Joi.number().min(0).default(0),
       item_master_id: Joi.number().integer().optional().allow(null),
       type: Joi.string().valid(...BOQ_ITEM_TYPES).default('material'),
+      work_package_id: Joi.number().integer().allow(null).optional(),
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
+    const wp = await projectSetup.resolveOrRespond(query, res, value.project_id, { work_package_id: value.work_package_id });
+    if (!wp) return;
     if (!value.code) value.code = await nextNumber(query, { table: 'boq_items', column: 'code', prefix: 'BOQ', pad: 4, where: { project_id: value.project_id } });
 
     const r = await query(
-      `INSERT INTO boq_items (project_id, section_id, code, description, description_ar, description_en, unit, quantity, unit_rate, item_master_id, type)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
-      [value.project_id, value.section_id, value.code, value.description_ar, value.description_ar, value.description_en || value.description_ar, value.unit, value.quantity, value.unit_rate, value.item_master_id, value.type]
+      `INSERT INTO boq_items (project_id, section_id, code, description, description_ar, description_en, unit, quantity, unit_rate, item_master_id, type, work_package_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+      [value.project_id, value.section_id, value.code, value.description_ar, value.description_ar, value.description_en || value.description_ar, value.unit, value.quantity, value.unit_rate, value.item_master_id, value.type, wp.id]
     );
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
@@ -121,10 +125,16 @@ router.post('/items', authenticate, authorize(), async (req, res) => {
 
 router.put('/items/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const schema = Joi.object({ description_ar: Joi.string(), description_en: Joi.string().allow(''), unit: Joi.string(), quantity: Joi.number().min(0), unit_rate: Joi.number().min(0), item_master_id: Joi.number().integer().optional().allow(null), type: Joi.string().valid(...BOQ_ITEM_TYPES) }).min(1);
+    const schema = Joi.object({ description_ar: Joi.string(), description_en: Joi.string().allow(''), unit: Joi.string(), quantity: Joi.number().min(0), unit_rate: Joi.number().min(0), item_master_id: Joi.number().integer().optional().allow(null), type: Joi.string().valid(...BOQ_ITEM_TYPES), work_package_id: Joi.number().integer().allow(null) }).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
+    if ('work_package_id' in value) {
+      const owner = await query('SELECT project_id FROM boq_items WHERE id = $1', [req.params.id]);
+      if (owner.rows.length === 0) return res.status(404).json({ success: false, error: 'BOQ item not found' });
+      const wp = await projectSetup.resolveOrRespond(query, res, owner.rows[0].project_id, { work_package_id: value.work_package_id });
+      if (!wp) return;
+    }
     const sets = []; const p = []; let i = 1;
     for (const [k, v] of Object.entries(value)) { if (v !== undefined) { sets.push(`${k} = $${i++}`); p.push(v); } }
     p.push(req.params.id);

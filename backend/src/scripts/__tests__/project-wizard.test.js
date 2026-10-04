@@ -108,6 +108,10 @@ async function buildFixture() {
   await q(`CREATE TABLE IF NOT EXISTS user_project_roles (
     id SERIAL PRIMARY KEY, user_id INTEGER, project_id INTEGER, role_id INTEGER,
     organization_id INTEGER, granted_by INTEGER, granted_at TIMESTAMPTZ)`);
+  // 5.2: provisioned workflows come from the engine's templates, default reports from the reports engine
+  await q(`CREATE TABLE IF NOT EXISTS workflow_templates (id SERIAL PRIMARY KEY, key VARCHAR(100), name VARCHAR(255), description TEXT, is_active BOOLEAN)`);
+  await q(`CREATE TABLE IF NOT EXISTS workflow_steps (id SERIAL PRIMARY KEY, template_id INTEGER, step_key VARCHAR(100), name VARCHAR(255), sort_order INTEGER, resolver_type VARCHAR(50), resolver_value VARCHAR(100))`);
+  await q(`CREATE TABLE IF NOT EXISTS scheduled_reports (id SERIAL PRIMARY KEY, project_id INTEGER, report_key VARCHAR(60), name VARCHAR(150), frequency VARCHAR(20), recipients JSONB, format VARCHAR(10), created_by INTEGER)`);
   await q(`CREATE TABLE IF NOT EXISTS _migration_client_org_map (
     id SERIAL PRIMARY KEY, old_client_id INTEGER, organization_id INTEGER)`);
 
@@ -118,6 +122,10 @@ async function buildFixture() {
   // Phase 31-style location types exist from Phase 3; wizard adds unit/chainage.
   await q(`INSERT INTO location_types (code, name) VALUES ('site', 'Site')`);
   await q(`INSERT INTO roles (key, name) VALUES ('project_manager', 'PM')`);
+  for (const key of ['po', 'wir', 'rfi']) {
+    const t = await q('INSERT INTO workflow_templates (key, name, is_active) VALUES ($1, $2, $3) RETURNING id', [key, key.toUpperCase(), true]);
+    await q('INSERT INTO workflow_steps (template_id, step_key, name, sort_order, resolver_type, resolver_value) VALUES ($1, $2, $3, 1, $4, $5)', [t.rows[0].id, 'review', 'Review', 'role', 'project_manager']);
+  }
 
   return { db, q };
 }
@@ -208,7 +216,9 @@ describe('scenario: blank project with no client/consultant', () => {
     expect(count(db, 'project_folders')).toBe(provisioning.DEFAULT_FOLDERS.length);
     expect(count(db, 'project_registers')).toBe(provisioning.DEFAULT_REGISTERS.length);
     expect(count(db, 'numbering_sequences')).toBe(provisioning.NUMBERED_ENTITIES.length);
-    expect(count(db, 'project_workflows')).toBe(provisioning.DEFAULT_WORKFLOWS.length);
+    expect(count(db, 'project_workflows')).toBe(3); // one per active engine template (po, wir, rfi)
+    expect(db.table('project_workflows').rows.map((w) => w.workflow_code).sort()).toEqual(['po', 'rfi', 'wir']);
+    expect(count(db, 'scheduled_reports')).toBe(provisioning.DEFAULT_REPORTS.length);
     expect(count(db, 'project_dashboard_preferences')).toBe(provisioning.DEFAULT_DASHBOARD_PREFERENCES.length);
 
     // Participants: internal only — no client participant row, no error.

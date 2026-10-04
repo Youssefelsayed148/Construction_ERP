@@ -186,7 +186,7 @@ const wizardCreate = async (req, res) => {
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
     const result = await transaction(async (client) => {
-      const out = await provisioning.provisionProject(value, { client, templateKey: value.template_key });
+      const out = await provisioning.provisionProject(value, { client, templateKey: value.template_key, createdBy: req.user.id });
       await fireEvent({ eventType: 'project.created', entityType: 'project', entityId: out.project.id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: out.project.id, code: out.project.code, name: out.project.name, via: 'wizard' } }, { query: client.query.bind(client) });
       return out;
     });

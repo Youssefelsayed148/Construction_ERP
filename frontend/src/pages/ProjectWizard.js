@@ -1,3 +1,4 @@
+import { buildWizardPayload } from '../utils/wizardPayload';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
@@ -131,20 +132,7 @@ function ProjectWizard() {
     setSaving(true);
     setError('');
     try {
-      const payload = {
-        ...form,
-        client_id: form.client_id ? Number(form.client_id) : null,
-        project_manager_id: form.project_manager_id ? Number(form.project_manager_id) : null,
-        contract_value: Number(form.contract_value) || 0,
-        budget: Number(form.budget) || 0,
-        retention_cap_amount: form.retention_cap_amount ? Number(form.retention_cap_amount) : null,
-        advance_payment_amount: form.advance_payment_percentage ? Number(form.advance_payment_percentage) : null,
-        liquidated_damages_rate: form.liquidated_damages_rate ? Number(form.liquidated_damages_rate) : null,
-        gps_latitude: form.gps_latitude ? Number(form.gps_latitude) : null,
-        gps_longitude: form.gps_longitude ? Number(form.gps_longitude) : null,
-        sla_hours: Number(form.sla_hours) || 48,
-        template_key: form.template_key || null,
-      };
+      const payload = buildWizardPayload(form);
       const res = await fetchApi(`${API_URL}/projects/wizard`, { method: 'POST', body: JSON.stringify(payload) });
       if (res.success) navigate(`/projects/${res.data.id}`);
       else setError(res.error || 'Provisioning failed');
