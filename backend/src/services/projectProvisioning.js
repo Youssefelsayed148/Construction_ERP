@@ -15,6 +15,7 @@
 'use strict';
 
 const numbering = require('./numbering');
+const teamService = require('./teamService');
 
 // Standard content every project gets even without a template.
 const DEFAULT_FOLDERS = [
@@ -38,35 +39,25 @@ const NUMBERED_ENTITIES = [
   'invoices', 'payments', 'expenses', 'work_orders', 'purchase_orders', 'grn',
 ];
 
-const DEFAULT_WORKFLOWS = [
-  {
-    workflow_code: 'material_approval',
-    name: 'Material approval',
-    description: 'Site request to PM approval',
-    steps: [
-      { stage: 'site_review', role: 'site_engineer' },
-      { stage: 'manager_review', role: 'project_manager' },
-    ],
-  },
-  {
-    workflow_code: 'payment_certificate',
-    name: 'Payment certificate',
-    description: 'QS certification chain',
-    steps: [
-      { stage: 'qs_review', role: 'qs' },
-      { stage: 'manager_review', role: 'project_manager' },
-      { stage: 'finance_review', role: 'finance_manager' },
-    ],
-  },
-  {
-    workflow_code: 'submittal_review',
-    name: 'Submittal review',
-    description: 'Consultant review cycle',
-    steps: [
-      { stage: 'consultant_review', role: 'consultant' },
-      { stage: 'manager_review', role: 'project_manager' },
-    ],
-  },
+// Team role (project_team.role) -> the canonical role template whose grants the seat inherits.
+// supervisor and foreman have no canonical role: they stay a project_team row only, with no access
+// grant of their own (set the key here to give them one).
+const TEAM_ROLE_TEMPLATES = {
+  project_manager: 'project_manager',
+  site_engineer: 'site_engineer',
+  qs: 'quantity_surveyor',
+  safety_officer: 'hse_manager',
+  supervisor: null,
+  foreman: null,
+};
+
+// Reports every project starts with, scheduled through the reports engine (scheduled_reports) and
+// addressed to the user who created the project.
+const DEFAULT_REPORTS = [
+  { report_key: 'schedule_activities', name: 'Weekly schedule status', frequency: 'weekly', format: 'pdf' },
+  { report_key: 'ncrs', name: 'Weekly NCR register', frequency: 'weekly', format: 'pdf' },
+  { report_key: 'incidents', name: 'Monthly incident register', frequency: 'monthly', format: 'pdf' },
+  { report_key: 'variations', name: 'Monthly variations register', frequency: 'monthly', format: 'pdf' },
 ];
 
 const DEFAULT_DASHBOARD_PREFERENCES = [
@@ -238,9 +229,10 @@ async function provisionTemplateWbs(client, project, templateId, rootWbsId) {
   return count;
 }
 
+// project_team rows for the wizard's team list (who works on the project).
 async function provisionTeam(client, project, teamMembers) {
   const teamRows = Array.isArray(teamMembers) ? teamMembers : [];
-  let assigned = 0;
+  let rows = 0;
   for (const member of teamRows) {
     const employeeId = num(member.employee_id);
     if (employeeId == null) continue;
@@ -248,37 +240,47 @@ async function provisionTeam(client, project, teamMembers) {
       'INSERT INTO project_team (project_id, employee_id, role) VALUES ($1, $2, $3)',
       [project.id, employeeId, str(member.role) || 'site_engineer']
     );
-    // user_project_roles for the assigned team member (best-effort: the
-    // employee must map to a login account via email).
-    if (member.user_id != null || member.email != null) {
-      let userId = member.user_id != null ? num(member.user_id) : null;
-      if (userId == null && member.email) {
-        const u = await client.query('SELECT id, role FROM users WHERE email = $1', [member.email]);
-        if (u.rows[0]) userId = u.rows[0].id;
-      }
-      if (userId != null) {
-        const roleRes = await client.query(
-          'SELECT r.id AS role_id FROM roles r LEFT JOIN users u ON u.role = r.key WHERE u.id = $1',
-          [userId]
-        );
-        const roleId = roleRes.rows[0] ? roleRes.rows[0].role_id : null;
-        if (roleId != null) {
-          const exists = await client.query(
-            'SELECT 1 FROM user_project_roles WHERE user_id = $1 AND project_id = $2 AND role_id = $3',
-            [userId, project.id, roleId]
-          );
-          if (exists.rows.length === 0) {
-            await client.query(
-              'INSERT INTO user_project_roles (user_id, project_id, role_id) VALUES ($1, $2, $3)',
-              [userId, project.id, roleId]
-            );
-          }
-        }
-        assigned++;
-      }
-    }
+    rows++;
   }
-  return assigned;
+  return rows;
+}
+
+// Role assignments: a team member that maps to a login account gets a seat on THIS project for the role
+// template of their team role (TEAM_ROLE_TEMPLATES), through the same service as POST /api/team, so the
+// seat inherits the role's grants and notification subscriptions. The seat is the access grant; it is
+// never copied from the user's legacy global role. A refused seat (inactive user, unknown role) fails the
+// whole wizard transaction: the project is not created half-staffed.
+async function provisionRoleAssignments(client, project, teamMembers, grantedBy) {
+  const q = (text, params) => client.query(text, params);
+  const rows = Array.isArray(teamMembers) ? teamMembers : [];
+  let seated = 0;
+  for (const member of rows) {
+    const roleKey = TEAM_ROLE_TEMPLATES[str(member.role) || 'site_engineer'];
+    if (!roleKey) continue;
+    let userId = member.user_id != null ? num(member.user_id) : null;
+    if (userId == null && member.email) {
+      const u = await q('SELECT id FROM users WHERE email = $1', [member.email]);
+      if (u.rows[0]) userId = u.rows[0].id;
+    }
+    if (userId == null) continue;
+    await teamService.assignTeamMember(q, { project_id: project.id, user_id: userId, role_key: roleKey, granted_by: grantedBy });
+    seated++;
+  }
+  return seated;
+}
+
+// Default reports: scheduled through the reports engine, addressed to the creating user.
+async function provisionDefaultReports(client, project, createdBy) {
+  let count = 0;
+  for (const rpt of DEFAULT_REPORTS) {
+    await client.query(
+      `INSERT INTO scheduled_reports (project_id, report_key, name, frequency, recipients, format, created_by)
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7)`,
+      [project.id, rpt.report_key, rpt.name, rpt.frequency, JSON.stringify(createdBy != null ? [createdBy] : []), rpt.format, createdBy || null]
+    );
+    count++;
+  }
+  return count;
 }
 
 // Default project_participants: one internal-team sentinel row, plus the
@@ -329,23 +331,23 @@ async function provisionParticipants(client, project, payload) {
   return count;
 }
 
-// Workflow instances — stubbed until Phase 6 builds the real engine; rows
-// land in project_workflows so Phase 6 can activate them in place.
-async function provisionWorkflows(client, project, templateId) {
-  let source;
-  if (templateId != null) {
-    source = await client.query(
-      'SELECT code, name, description, steps FROM template_workflows WHERE template_id = $1 ORDER BY sort_order, id',
-      [templateId]
-    );
-  }
-  const rows = source && source.rows.length ? source.rows : DEFAULT_WORKFLOWS;
+// The project's workflow register: one row per ACTIVE engine template (workflow_templates), with the
+// steps and resolvers the engine will actually run for this project's documents. Rows are linked to the
+// real engine by workflow_code = workflow_templates.key, so a provisioned workflow is never a name the
+// engine cannot start. (The descriptive template_workflows rows of a project template used codes the
+// engine never had, e.g. material_approval, and are no longer copied.)
+async function provisionWorkflows(client, project) {
+  const templates = await client.query('SELECT id, key, name, description FROM workflow_templates WHERE is_active = $1 ORDER BY key', [true]);
   let count = 0;
-  for (const wf of rows) {
+  for (const t of templates.rows) {
+    const steps = await client.query(
+      'SELECT step_key, resolver_type, resolver_value FROM workflow_steps WHERE template_id = $1 ORDER BY sort_order, id', [t.id]);
+    if (steps.rows.length === 0) continue; // a template with no steps cannot run, so it is not a project workflow
     await client.query(
       `INSERT INTO project_workflows (project_id, workflow_code, name, description, steps, status)
        VALUES ($1, $2, $3, $4, $5, 'active')`,
-      [project.id, wf.code, wf.name, wf.description || null, JSON.stringify(wf.steps || [])]
+      [project.id, t.key, t.name, t.description || null,
+        JSON.stringify(steps.rows.map((s) => ({ stage: s.step_key, resolver: s.resolver_type, role: s.resolver_value })))]
     );
     count++;
   }
@@ -434,8 +436,10 @@ const PROVISION_STEPS = [
   },
   { name: 'custom_structure', run: async (ctx) => provisionCustomLocations(ctx.client, ctx.project, ctx.payload.structure, ctx.rootLocation && ctx.rootLocation.id) },
   { name: 'team', run: async (ctx) => provisionTeam(ctx.client, ctx.project, ctx.payload.team) },
+  { name: 'role_assignments', run: async (ctx) => provisionRoleAssignments(ctx.client, ctx.project, ctx.payload.team, ctx.createdBy) },
   { name: 'participants', run: async (ctx) => provisionParticipants(ctx.client, ctx.project, ctx.payload) },
-  { name: 'workflows', run: async (ctx) => provisionWorkflows(ctx.client, ctx.project, ctx.templateId) },
+  { name: 'workflows', run: async (ctx) => provisionWorkflows(ctx.client, ctx.project) },
+  { name: 'default_reports', run: async (ctx) => provisionDefaultReports(ctx.client, ctx.project, ctx.createdBy) },
   { name: 'folders_registers', run: async (ctx) => provisionFoldersAndRegisters(ctx.client, ctx.project, ctx.templateId) },
   { name: 'numbering', run: async (ctx) => provisionNumbering(ctx.client, ctx.project) },
   { name: 'dashboard_preferences', run: async (ctx) => provisionDashboardPreferences(ctx.client, ctx.project) },
@@ -443,7 +447,7 @@ const PROVISION_STEPS = [
 
 // Main entry point. `client` is the transaction-scoped query handle (pg
 // Client or mock). Returns { project, counts: {stepName: n}, steps }.
-async function provisionProject(payload, { client, templateKey } = {}) {
+async function provisionProject(payload, { client, templateKey, createdBy = null } = {}) {
   if (!client || typeof client.query !== 'function') {
     throw new Error('provisionProject requires a transaction client');
   }
@@ -462,7 +466,7 @@ async function provisionProject(payload, { client, templateKey } = {}) {
   const code = str(merged.code) || (await nextProjectNumber(client));
   const project = await insertProject(client, merged, code);
 
-  const ctx = { client, payload: merged, project, templateId, counts: {} };
+  const ctx = { client, payload: merged, project, templateId, createdBy, counts: {} };
   const applied = [];
   for (const step of PROVISION_STEPS) {
     ctx.counts[step.name] = await step.run(ctx);
@@ -474,7 +478,8 @@ async function provisionProject(payload, { client, templateKey } = {}) {
 module.exports = {
   DEFAULT_FOLDERS,
   DEFAULT_REGISTERS,
-  DEFAULT_WORKFLOWS,
+  TEAM_ROLE_TEMPLATES,
+  DEFAULT_REPORTS,
   NUMBERED_ENTITIES,
   DEFAULT_DASHBOARD_PREFERENCES,
   PROVISION_STEPS,
@@ -490,6 +495,8 @@ module.exports = {
   provisionTeam,
   provisionParticipants,
   provisionWorkflows,
+  provisionRoleAssignments,
+  provisionDefaultReports,
   provisionFoldersAndRegisters,
   provisionNumbering,
   provisionDashboardPreferences,

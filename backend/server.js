@@ -70,6 +70,7 @@ app.use('/api/subcontractors', require('./src/routes/subcontractors'));
 app.use('/api/costing', require('./src/routes/costing'));
 app.use('/api/documents', require('./src/routes/documents'));
 app.use('/api/projects', require('./src/routes/site'));
+app.use('/api/projects', require('./src/routes/project-setup'));
 app.use('/api/qhse', require('./src/routes/qhse'));
 app.use('/api/hse', require('./src/routes/hse'));
 app.use('/api/schedule', require('./src/routes/schedule'));

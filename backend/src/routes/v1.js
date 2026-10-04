@@ -42,6 +42,7 @@ const buildOpenApi = require('../utils/openapi');
 const ROUTERS = {
   projects: { router: require('./projects'), mount: '/api/projects' },
   site: { router: require('./site'), mount: '/api/projects' },
+  projectSetup: { router: require('./project-setup'), mount: '/api/projects' },
   locations: { router: require('./locations'), mount: '/api/locations' },
   boq: { router: require('./boq'), mount: '/api/boq' },
   quantities: { router: require('./quantities'), mount: '/api/quantities' },
@@ -150,6 +151,21 @@ const FAMILY_MAP = {
     // locations under projects (wbs/location hierarchy)
     ['locations', 'GET', '/project/:projectId', '/:projectId/locations'],
     ['locations', 'POST', '/', '/:projectId/locations'],
+    // 5.2 project setup: settings, calendars, WBS and the real work-package registry
+    ['projectSetup', 'GET', '/:id/settings', '/:id/settings'],
+    ['projectSetup', 'PUT', '/:id/settings', '/:id/settings'],
+    ['projectSetup', 'GET', '/:id/calendars', '/:id/calendars'],
+    ['projectSetup', 'POST', '/:id/calendars', '/:id/calendars'],
+    ['projectSetup', 'PUT', '/:id/calendars/:calendarId', '/:id/calendars/:calendarId'],
+    ['projectSetup', 'DELETE', '/:id/calendars/:calendarId', '/:id/calendars/:calendarId'],
+    ['projectSetup', 'GET', '/:id/wbs', '/:id/wbs'],
+    ['projectSetup', 'POST', '/:id/wbs', '/:id/wbs'],
+    ['projectSetup', 'PUT', '/:id/wbs/:nodeId', '/:id/wbs/:nodeId'],
+    ['projectSetup', 'DELETE', '/:id/wbs/:nodeId', '/:id/wbs/:nodeId'],
+    ['projectSetup', 'GET', '/:id/work-packages', '/:id/work-packages'],
+    ['projectSetup', 'POST', '/:id/work-packages', '/:id/work-packages'],
+    ['projectSetup', 'PUT', '/:id/work-packages/:workPackageId', '/:id/work-packages/:workPackageId'],
+    ['projectSetup', 'DELETE', '/:id/work-packages/:workPackageId', '/:id/work-packages/:workPackageId'],
   ],
   'work-packages': [
     ['boq', 'GET', '/items/:projectId', '/:projectId/work-packages'],

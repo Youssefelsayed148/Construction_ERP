@@ -63,10 +63,15 @@ async function buildFixture() {
   await workflowMigration.run(q);
   await qaqcMigration.ensureTables(q);
   await qaqcMigration.ensureTables(q); // idempotent
+  // 5.2: registers point at work_packages by FK (migration 0033 adds the column on real databases)
+  await q(`CREATE TABLE IF NOT EXISTS work_packages (id SERIAL PRIMARY KEY, project_id INTEGER, code VARCHAR(50), name VARCHAR(255))`);
+  await q('ALTER TABLE wirs ADD COLUMN IF NOT EXISTS work_package_id INTEGER');
 
   await q(`INSERT INTO projects (id, name, status, progress_percent) VALUES ($1,$2,$3,$4)`, [1, 'Tower A', 'active', 40]);
   await q(`INSERT INTO project_locations (id, project_id, name) VALUES ($1,$2,$3)`, [11, 1, 'Level 3 — Core']);
   await q(`INSERT INTO organizations (id, name, org_type) VALUES ($1,$2,$3)`, [31, 'Sub Org', 'subcontractor']);
+  await q(`INSERT INTO work_packages (project_id, code, name) VALUES ($1,$2,$3)`, [1, 'WP-BW3', 'Blockwork L3']);
+  await q(`INSERT INTO work_packages (project_id, code, name) VALUES ($1,$2,$3)`, [1, 'WP-PL4', 'Plaster L4']);
 }
 
 beforeAll(buildFixture);

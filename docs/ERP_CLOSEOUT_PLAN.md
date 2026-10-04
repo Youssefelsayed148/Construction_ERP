@@ -252,9 +252,9 @@ About 35 of ~190 spec entities have no table. Deliver in vertical slices; each s
 
 5.2 Project setup (spec 05, 06)
 - Tables: ProjectSetting, ProjectCalendar, WorkPackage links (location, BOQ, activity, participant).
-- [ ] Fix wizard advance payment bug (ProjectWizard.js:141: percentage sent as amount); remove "stubbed" workflow comment and verify workflows are real.
-- [ ] Wizard atomic list: add role assignments and default reports.
-- [ ] WBS and work-package routes; link ITP, WIR, schedule and BOQ to work_packages by FK instead of free text.
+- [x] Fix wizard advance payment bug (ProjectWizard.js:141: percentage sent as amount); remove "stubbed" workflow comment and verify workflows are real.
+- [x] Wizard atomic list: add role assignments and default reports.
+- [x] WBS and work-package routes; link ITP, WIR, schedule and BOQ to work_packages by FK instead of free text.
 
 5.3 Materials and inventory (spec 07)
 - Tables: StockLot, unit-conversion table; material issue/return/adjustment as first-class documents referencing stock_movements.
