@@ -5,6 +5,21 @@ const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { journalExpenseCreated } = require('../utils/journal');
+const costAccrual = require('../services/costAccrual');
+
+// An expense is posted once it has a ledger entry or a cost row (every expense since 2.7a). Its amount and
+// project then cannot change and it cannot be deleted: the ledger and the project cost would describe
+// something that no longer exists. (A void flow for expenses is the next step; until then: 409.)
+async function isPosted(id) {
+  const r = await query(
+    `SELECT (EXISTS (SELECT 1 FROM journal_entries WHERE reference_type = 'expense' AND reference_id = $1)
+           OR EXISTS (SELECT 1 FROM project_costs WHERE source_type = 'expense' AND source_id = $1)) AS posted`, [id]);
+  return r.rows[0].posted === true;
+}
+const postedResponse = (res) => res.status(409).json({
+  success: false, error: 'This expense is posted to the ledger and project cost: its amount and project cannot change and it cannot be deleted',
+  error_code: 'expense_posted', error_params: {},
+});
 
 const EXPENSE_CATEGORIES = ['materials', 'labor', 'equipment', 'fuel', 'maintenance', 'transport', 'utilities', 'rent', 'office', 'legal', 'insurance', 'other'];
 
@@ -53,6 +68,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
         [value.category, value.description, value.amount, value.date, value.project_id || null, value.paid_by, value.notes, req.user.id]
       );
       await journalExpenseCreated(q, inserted.rows[0], req.user.id);
+      await costAccrual.accrueExpenseCost(q, inserted.rows[0]);
       return inserted;
     });
 
@@ -76,6 +92,11 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
+    const row = existing.rows[0];
+    const changesMoney = (value.amount !== undefined && Number(value.amount) !== Number(row.amount))
+      || (value.project_id !== undefined && (value.project_id || null) !== (row.project_id || null));
+    if (changesMoney && await isPosted(row.id)) return postedResponse(res);
+
     const sets = []; const params = []; let idx = 1;
     for (const [k, v] of Object.entries(value)) {
       if (v !== undefined) { sets.push(`${k} = $${idx++}`); params.push(v); }
@@ -90,6 +111,7 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
 
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
   try {
+    if (await isPosted(parseInt(req.params.id, 10))) return postedResponse(res);
     const result = await query('DELETE FROM expenses WHERE id = $1 RETURNING id', [req.params.id]);
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Expense not found' });
     await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'expenses', description: `Deleted expense #${req.params.id}`, entityId: req.params.id, entityType: 'expense' });

@@ -6,6 +6,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { isReferenceViolation, recordInUse } = require('../utils/references');
 const { logActivity } = require('../utils/activity');
 const { journalPayrollPosted } = require('../utils/journal');
+const costAccrual = require('../services/costAccrual');
 
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
@@ -100,7 +101,10 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
       const locked = await q('SELECT posted_to_finance FROM payroll_periods WHERE id = $1 FOR UPDATE', [req.params.id]);
       const alreadyPosted = locked.rows[0] && locked.rows[0].posted_to_finance === true;
       const updated = await q(`UPDATE payroll_periods SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`, p);
-      if (value.posted_to_finance && !alreadyPosted) await journalPayrollPosted(q, updated.rows[0], req.user.id);
+      if (value.posted_to_finance && !alreadyPosted) {
+        await journalPayrollPosted(q, updated.rows[0], req.user.id);
+        await costAccrual.allocatePayrollCost(q, updated.rows[0]);
+      }
       return updated;
     });
 

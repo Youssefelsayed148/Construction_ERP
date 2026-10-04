@@ -559,6 +559,9 @@ async function createDelivery(q, {
     await inventoryEngine.createMovement(q, {
       warehouse_id, material_id: line.material_id || (poLine ? poLine.material_id : null),
       movement_type: 'quarantine', quantity: line.quantity,
+      // The receipt is valued at the PO line's committed rate, so the weighted average (and every later issue)
+      // carries a cost. Without it the stock entered at 0 and issued at 0.
+      unit_cost: poLine ? poLine.unit_rate : null,
       reference_type: 'delivery', reference_id: delivery.id, created_by: received_by,
     });
     deliveredNow.set(poLine.id, round3(deliveredNow.get(poLine.id) + toNum(line.quantity)));

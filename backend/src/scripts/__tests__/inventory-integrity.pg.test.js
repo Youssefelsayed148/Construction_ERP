@@ -154,6 +154,9 @@ describePg('inventory integrity (real PostgreSQL, real app)', () => {
       const row = await one('SELECT unit_cost, total_cost FROM work_order_materials WHERE work_order_id = $1', [wo.id]);
       expect(row.unit_cost).toBe('12.5000');
       expect(row.total_cost).toBe('25.00');
+      // Closeout A2.3: the issue from a company warehouse moved its cost to the project (2 x 12.50).
+      expect(Number((await one('SELECT COALESCE(SUM(amount), 0) s FROM project_costs WHERE project_id = $1', [project])).s)).toBe(25);
+      await db.query('DELETE FROM project_costs WHERE project_id = $1', [project]);
       await db.query('DELETE FROM work_order_materials WHERE work_order_id = $1', [wo.id]);
       await db.query('DELETE FROM work_orders WHERE id = $1', [wo.id]);
       await db.query('DELETE FROM projects WHERE id = $1', [project]);
