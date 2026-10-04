@@ -88,6 +88,13 @@ app.use('/api/finance-ledger', require('./src/routes/financeLedger'));
 app.use('/api/consultant', require('./src/routes/consultant'));
 app.use('/api/client-portal', require('./src/routes/client'));
 app.use('/api/portal', require('./src/routes/portal'));
+// Phase 5.1 (spec 03, 04): organization & RBAC surface (departments, job positions, delegations,
+// qualifications, bank accounts, performance scores, organizations CRUD and team assignments).
+// The write paths run through services/orgService.js / delegationService.js / teamService.js and are
+// judged by the policy as modules organizations/delegations/team (see services/policy.js).
+app.use('/api/organizations', require('./src/routes/organizations'));
+app.use('/api/delegations', require('./src/routes/delegations'));
+app.use('/api/team', require('./src/routes/team-assignments'));
 
 // Phase 26 — versioned external API: /api/v1
 app.use('/api/v1', require('./src/routes/v1').buildV1Router());

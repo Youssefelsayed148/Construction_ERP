@@ -18,6 +18,11 @@ const COMPANY_LEVEL = [
   /^\/api\/assets\//, /^\/api\/hr\//, /^\/api\/payroll\//, /^\/api\/notifications\//, /^\/api\/reports\//,
   /^\/api\/subcontractors\/:id/, /^\/api\/projects\/templates\//, /^\/api\/portal\//,
   /^\/api\/finance-ledger\/audit\//, /^\/api\/procurement\/documents\/:kind/,
+  // Phase 5.1 (spec 03, 04): the organization surface is company-level BY DESIGN — departments, job
+  // positions, delegations, qualifications, bank accounts and organization records are not project
+  // data; policy.ORGANIZATION_MODULES pins the same decision. Team JOINs stay project-scoped through
+  // the ?project_id= explicit check (the assignment itself is a project record and IS scoped there).
+  /^\/api\/organizations\//, /^\/api\/delegations\//, /^\/api\/team\//,
 ];
 // Project-owned records still without a rule. Reviewed, tracked for a later pass; do not add to this list.
 const KNOWN_GAPS = new Set([

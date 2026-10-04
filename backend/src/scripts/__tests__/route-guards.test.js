@@ -59,7 +59,8 @@ describe('every guarded route carries authorize() (static check)', () => {
   test('route files exist', () => {
     // 44 internal route files + Phase 26's v1.js assembly + Phase 27's mcp.js
     // (authenticates via oauthService, not middleware/auth) and agents.js.
-    expect(files.length).toBe(47);
+    // Phase 5.1 adds organizations.js, delegations.js and team-assignments.js.
+    expect(files.length).toBe(50);
   });
 
   test.each(files)('%s has no bare authenticate-only route lines', (file) => {
