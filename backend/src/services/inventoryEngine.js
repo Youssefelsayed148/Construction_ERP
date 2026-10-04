@@ -25,6 +25,7 @@
 
 const database = require('../config/database');
 const costAccrual = require('./costAccrual');
+const lots = require('./inventoryLots');
 
 // Every ledger write runs in ONE transaction that holds a per-(warehouse, material) advisory lock from the
 // balance check to the projection update, so concurrent movements queue instead of racing. Callers inside a
@@ -244,9 +245,15 @@ async function createMovement(q, args) {
   return inTransaction(q, (tq) => createMovementLocked(tq, args));
 }
 
+// Phase 5.3 lots: `lot_id` ties the row to a lot of this warehouse and material. For a lot-tracked material
+// (item_master.batch_lot_tracking) a receipt that names no lot gets an automatic one, and an outbound
+// movement that names no lot is split across the usable lots, first-expired-first-out (the returned row is the
+// first part, with `parts` listing all of them). Untracked materials behave exactly as before.
+const RECEIPT_TYPES = ['opening', 'grn', 'quarantine', 'return', 'transfer_in', 'adjustment'];
+
 async function createMovementLocked(q, {
   warehouse_id, material_id, movement_type, quantity,
-  reference_type = null, reference_id = null, notes = null, created_by = null, unit_cost = null,
+  reference_type = null, reference_id = null, notes = null, created_by = null, unit_cost = null, lot_id = null,
 }) {
   if (!MOVEMENT_TYPES.includes(movement_type)) {
     throw new Error(`Invalid movement_type: ${movement_type}`);
@@ -260,6 +267,45 @@ async function createMovementLocked(q, {
   }
 
   await lockPairs(q, [[warehouse_id, material_id]]);
+
+  // Lots (under the pair lock, so the lot balance read here is the one the insert below acts on).
+  const tracked = await lots.isLotTracked(q, material_id);
+  if (lot_id == null && tracked && RECEIPT_TYPES.includes(movement_type) && qty > 0) {
+    const auto = await lots.getOrCreateLot(q, {
+      warehouse_id, material_id,
+      lot_number: `AUTO-${reference_type || 'manual'}-${reference_id != null ? reference_id : movement_type}`,
+      created_by,
+    });
+    lot_id = auto.id;
+  }
+  if (lot_id == null && tracked && OUTBOUND_TYPES.includes(movement_type)) {
+    const plan = await lots.fefoAllocation(q, { warehouse_id, material_id, quantity: qty, purpose: movement_type });
+    if (plan.shortfall > 0) {
+      // Stock at the pair that no usable lot can supply (expired or blocked lots): say so. When the pair itself
+      // is short, the standard gate below reports the real shortage.
+      const pair = await getBalances(q, warehouse_id, material_id);
+      if (pair.available >= qty) {
+        const usable = round3(qty - plan.shortfall);
+        throw new lots.LotError(409, 'lot_stock_unusable',
+          `Insufficient usable stock: ${usable} in lots that can be issued (expired and blocked lots excluded), ${qty} requested`,
+          { usable, requested: qty });
+      }
+    }
+    const onlyLoose = plan.parts.length === 1 && plan.parts[0].lot_id == null;
+    if (plan.shortfall <= 0 && plan.parts.length > 0 && !onlyLoose) {
+      const made = [];
+      for (const part of plan.parts) {
+        made.push(await createMovementLocked(q, {
+          warehouse_id, material_id, movement_type, quantity: part.quantity, reference_type, reference_id, notes, created_by,
+          unit_cost, lot_id: part.lot_id,
+        }));
+      }
+      return Object.assign({}, made[0], { parts: made });
+    }
+  }
+  if (lot_id != null) {
+    await lots.assertLotUsable(q, lot_id, { warehouse_id, material_id, movement_type, quantity: qty });
+  }
 
   // Balance gate: outbound movements draw down available stock; the MIR
   // bucket movements (release/reject) draw down the quarantined bucket.
@@ -276,9 +322,9 @@ async function createMovementLocked(q, {
   // unit_cost is only meaningful on receipts; the database derives it for everything else (see migration 0007).
   const r = await q(
     `INSERT INTO stock_movements
-       (warehouse_id, material_id, movement_type, quantity, reference_type, reference_id, notes, created_by, unit_cost)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-    [warehouse_id, material_id, movement_type, qty, reference_type, reference_id, notes || null, created_by, unit_cost]
+       (warehouse_id, material_id, movement_type, quantity, reference_type, reference_id, notes, created_by, unit_cost, lot_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+    [warehouse_id, material_id, movement_type, qty, reference_type, reference_id, notes || null, created_by, unit_cost, lot_id]
   );
   const movement = r.rows[0];
   await applyMovementToProjection(q, movement);
@@ -347,6 +393,7 @@ async function reverseMovementLocked(q, movementId, { reason = null, created_by 
       reference_id: original.id,
       notes: reason || `Reversal of movement #${original.id}`,
       created_by,
+      lot_id: original.lot_id,
     });
   }
   if (original.movement_type === 'quarantine_release') {
@@ -360,6 +407,7 @@ async function reverseMovementLocked(q, movementId, { reason = null, created_by 
       reference_id: original.id,
       notes: reason || `Reversal of movement #${original.id}`,
       created_by,
+      lot_id: original.lot_id,
     });
   }
   if (original.movement_type === 'quarantine_reject') {
@@ -372,6 +420,7 @@ async function reverseMovementLocked(q, movementId, { reason = null, created_by 
       reference_id: original.id,
       notes: reason || `Reversal of movement #${original.id}`,
       created_by,
+      lot_id: original.lot_id,
     });
   }
   return createMovement(q, {
@@ -384,6 +433,7 @@ async function reverseMovementLocked(q, movementId, { reason = null, created_by 
     notes: reason || `Reversal of movement #${original.id}`,
     created_by,
     unit_cost: original.unit_cost,
+    lot_id: original.lot_id,
   });
 }
 

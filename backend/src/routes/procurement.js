@@ -295,6 +295,11 @@ router.post('/deliveries', authenticate, authorize(), async (req, res) => {
         purchase_order_line_id: Joi.number().integer().required(),
         quantity: Joi.number().positive().required(),
         notes: Joi.string().optional().allow('', null),
+        // Lot data (5.3): a lot-tracked material always gets a lot (an automatic one when none is named).
+        lot_number: Joi.string().max(100).optional().allow('', null),
+        batch_number: Joi.string().max(100).optional().allow('', null),
+        manufactured_date: Joi.date().iso().optional().allow(null),
+        expiry_date: Joi.date().iso().optional().allow(null),
       })).min(1).required(),
     });
     const { error, value } = schema.validate(req.body);

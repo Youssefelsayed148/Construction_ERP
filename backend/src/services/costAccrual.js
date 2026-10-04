@@ -49,6 +49,10 @@ const COST_ACCRUAL_RULES = {
   stocked_material_return: { accrual_event: 'supplier_return', project_costs_source: 'supplier_return', cost_account: 'material_cost', ledger_kind: 'supplier_return_cost' },
   // Closeout A2.3. These write project_costs only: the ledger already holds the amount (see the notes further down).
   material_issue: { accrual_event: 'stock_issue', project_costs_source: 'material_issue', offset_source: 'material_issue_offset', cost_code: null },
+  // Phase 5.3: stock that comes back (a return document, or the void of an issue) gives its share of an
+  // issue's project cost back, at the ORIGINAL issue cost, and moves the offset back to the warehouse's project.
+  material_return: { accrual_event: 'stock_return', project_costs_source: 'material_return', offset_source: 'material_return_offset' },
+  material_issue_void: { accrual_event: 'stock_issue_void', project_costs_source: 'material_issue_void', offset_source: 'material_issue_void_offset' },
   expense: { accrual_event: 'expense_recorded', project_costs_source: 'expense', ledger_kind: 'expense', cost_code_by_category: { labor: '11', equipment: '10' } },
   payroll: { accrual_event: 'payroll_posted', project_costs_source: 'payroll_allocation', ledger_kind: 'payroll', cost_code: '11' },
   labor_payment: { accrual_event: 'labor_payment_created', project_costs_source: 'labor_payment', cost_code: '11' },
@@ -332,6 +336,11 @@ async function costCodeIdFor(q, code) {
 
 // The project a stock issue goes to: work order materials name a work order, which names the project.
 async function issueTargetProject(q, movement) {
+  // An issue document (5.3) names the project the stock is issued to.
+  if (movement.reference_type === 'inventory_document' && movement.reference_id != null) {
+    const d = (await q('SELECT project_id FROM inventory_documents WHERE id = $1', [movement.reference_id])).rows[0];
+    return d ? d.project_id : null;
+  }
   if (movement.reference_type !== 'work_order_material' || movement.reference_id == null) return null;
   const r = (await q(
     `SELECT wo.project_id FROM work_order_materials wom JOIN work_orders wo ON wo.id = wom.work_order_id WHERE wom.id = $1`,
@@ -365,6 +374,39 @@ async function accrueMaterialIssue(q, movement) {
     amountMinor: -amountMinor, description: `Material issued to project #${target} (movement #${movement.id}): cost moved`,
   });
   return { charge, offset };
+}
+
+// Material return / void of an issue (5.3). If the issue accrued project cost (charge row + offset row), the
+// returned quantity gives back its proportional share, valued at the issue's own cost: -share on the project
+// that was charged, +share on the project the offset came out of. Idempotent on UNIQUE (source_type, source_id)
+// of the returning movement. An issue that accrued nothing (the GRN had already charged the project) has
+// nothing to give back.
+async function reverseMaterialIssueCost(q, { returnMovement, issueMovement, quantity, voided = false }) {
+  const rule = voided ? COST_ACCRUAL_RULES.material_issue_void : COST_ACCRUAL_RULES.material_return;
+  const issueRule = COST_ACCRUAL_RULES.material_issue;
+  const charge = (await q('SELECT * FROM project_costs WHERE source_type = $1 AND source_id = $2', [issueRule.project_costs_source, issueMovement.id])).rows[0];
+  if (!charge) return null;
+  const offset = (await q('SELECT * FROM project_costs WHERE source_type = $1 AND source_id = $2', [issueRule.offset_source, issueMovement.id])).rows[0];
+  // share = charge x quantity / issued quantity, exactly, half-up in minor units
+  const issued = BigInt(Math.round(toNum(issueMovement.quantity) * 1000));
+  const back = BigInt(Math.round(toNum(quantity) * 1000));
+  if (issued <= 0n || back <= 0n) return null;
+  const chargeMinor = money.toMinor(charge.amount);
+  const shareMinor = (chargeMinor * back * 2n + issued) / (issued * 2n);
+  if (shareMinor <= 0n) return null;
+  const row = await insertCostRow(q, {
+    projectId: charge.project_id, costCodeId: charge.cost_code_id, sourceType: rule.project_costs_source, sourceId: returnMovement.id,
+    amountMinor: -shareMinor, description: `Material ${voided ? 'issue voided' : 'returned'} to stock (movement #${returnMovement.id}): cost given back`,
+  });
+  if (!row) return null; // replay
+  let offsetRow = null;
+  if (offset) {
+    offsetRow = await insertCostRow(q, {
+      projectId: offset.project_id, sourceType: rule.offset_source, sourceId: returnMovement.id,
+      amountMinor: shareMinor, description: `Material ${voided ? 'issue voided' : 'returned'} (movement #${returnMovement.id}): cost moved back`,
+    });
+  }
+  return { charge: row, offset: offsetRow };
 }
 
 // Expense (pair: the PO chain). An expense with a project is a project cost when it is recorded, the moment
@@ -468,5 +510,5 @@ async function allocatePayrollCost(q, payroll) {
 module.exports = {
   COST_ACCRUAL_RULES, multiplyQtyRate, accrueCost, accrueGrnCost, claimLine,
   classifySupplierInvoiceLines, accrueSupplierInvoiceCost, reverseGrnCostForReturn,
-  insertCostRow, costCodeIdFor, accrueMaterialIssue, accrueExpenseCost, allocatePayrollCost,
+  insertCostRow, costCodeIdFor, accrueMaterialIssue, reverseMaterialIssueCost, accrueExpenseCost, allocatePayrollCost,
 };

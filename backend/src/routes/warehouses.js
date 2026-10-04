@@ -5,6 +5,7 @@ const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const engine = require('../services/inventoryEngine');
+const lots = require('../services/inventoryLots');
 
 // Phase 10 — inventory surface. Stock is ledgered: every change enters as a
 // stock_movements row through the movement API; warehouse_stock is a derived
@@ -34,6 +35,12 @@ const movementBodySchema = {
   mir_accepted: Joi.boolean().optional(),
   // Receipt cost only. Outbound movements are valued by the database at the weighted average (migration 0007).
   unit_cost: Joi.number().min(0).optional(),
+  // Lots (5.3): name an existing lot, or give lot data (a lot of that number is created or reused).
+  lot_id: Joi.number().integer().optional().allow(null),
+  lot: Joi.object({
+    lot_number: Joi.string().max(100).required(), batch_number: Joi.string().max(100).allow('', null),
+    manufactured_date: Joi.date().iso().allow(null), expiry_date: Joi.date().iso().allow(null),
+  }).optional(),
 };
 const COST_BEARING_TYPES = ['grn', 'quarantine', 'return', 'adjustment'];
 
@@ -116,7 +123,14 @@ router.post('/:id/movements', authenticate, authorize(), async (req, res) => {
 
     const { movement, balances } = await transaction(async (client) => {
       const tq = client.query.bind(client);
+      let lotId = value.lot_id || null;
+      if (value.lot) {
+        lotId = (await lots.getOrCreateLot(tq, {
+          warehouse_id: parseInt(req.params.id, 10), material_id: value.material_id, ...value.lot, created_by: req.user.id,
+        })).id;
+      }
       const created = await engine.createMovement(tq, {
+        lot_id: lotId,
         warehouse_id: parseInt(req.params.id, 10),
         material_id: value.material_id,
         movement_type: value.movement_type,
@@ -137,7 +151,11 @@ router.post('/:id/movements', authenticate, authorize(), async (req, res) => {
       entityId: movement.id, entityType: 'stock_movement',
     });
     res.status(201).json({ success: true, data: { movement, balances } });
-  } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+  } catch (e) {
+    res.status(e.error_code && e.status ? e.status : 400).json({
+      success: false, error: e.message, ...(e.error_code ? { error_code: e.error_code, error_params: e.error_params || {} } : {}),
+    });
+  }
 });
 
 // POST /api/warehouses/movements/:id/reverse — append-only correction: posts a
@@ -301,17 +319,30 @@ router.put('/transfers/:id/complete', authenticate, authorize(), async (req, res
           reference_id: transfer.rows[0].id,
           created_by: req.user.id,
         });
-        // The receiving warehouse takes the stock in at the cost it left the source.
-        await engine.createMovement(txQuery, {
-          warehouse_id: transfer.rows[0].to_warehouse_id,
-          material_id: item.item_id,
-          movement_type: 'transfer_in',
-          quantity: item.quantity,
-          reference_type: 'inventory_transfer',
-          reference_id: transfer.rows[0].id,
-          created_by: req.user.id,
-          unit_cost: out.unit_cost == null ? null : out.unit_cost,
-        });
+        // The receiving warehouse takes the stock in at the cost it left the source. Lots travel with the stock:
+        // each lot part that left arrives as the same lot (number, batch, expiry) in the destination warehouse.
+        for (const part of (out.parts || [out])) {
+          let lotId = null;
+          if (part.lot_id != null) {
+            const src = await lots.getLot(txQuery, part.lot_id);
+            lotId = (await lots.getOrCreateLot(txQuery, {
+              warehouse_id: transfer.rows[0].to_warehouse_id, material_id: item.item_id, lot_number: src.lot_number,
+              batch_number: src.batch_number, supplier_id: src.supplier_id, manufactured_date: src.manufactured_date,
+              received_date: src.received_date, expiry_date: src.expiry_date ? lots.isoDate(src.expiry_date) : null, created_by: req.user.id,
+            })).id;
+          }
+          await engine.createMovement(txQuery, {
+            warehouse_id: transfer.rows[0].to_warehouse_id,
+            material_id: item.item_id,
+            movement_type: 'transfer_in',
+            quantity: part.quantity,
+            reference_type: 'inventory_transfer',
+            reference_id: transfer.rows[0].id,
+            created_by: req.user.id,
+            unit_cost: part.unit_cost == null ? null : part.unit_cost,
+            lot_id: lotId,
+          });
+        }
       }
     });
 

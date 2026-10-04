@@ -23,6 +23,8 @@ const COMPANY_LEVEL = [
   // data; policy.ORGANIZATION_MODULES pins the same decision. Team JOINs stay project-scoped through
   // the ?project_id= explicit check (the assignment itself is a project record and IS scoped there).
   /^\/api\/organizations\//, /^\/api\/delegations\//, /^\/api\/team\//,
+  // Phase 5.3: unit conversions are item-master data (company-wide), not project records.
+  /^\/api\/inventory\/conversions\/:id/,
 ];
 // Project-owned records still without a rule. Reviewed, tracked for a later pass; do not add to this list.
 const KNOWN_GAPS = new Set([

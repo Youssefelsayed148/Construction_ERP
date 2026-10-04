@@ -27,6 +27,7 @@
 const workflowEngine = require('./workflowEngine');
 const numbering = require('./numbering');
 const inventoryEngine = require('./inventoryEngine');
+const inventoryLots = require('./inventoryLots');
 const costAccrual = require('./costAccrual');
 const costView = require('./costView');
 
@@ -563,14 +564,26 @@ async function createDelivery(q, {
   const deliveredNow = new Map(poLines.map((pl) => [pl.id, toNum(pl.delivered_quantity)]));
   for (const line of lines) {
     const poLine = poLines.find((pl) => pl.id === toNum(line.purchase_order_line_id));
+    const lineMaterial = line.material_id || (poLine ? poLine.material_id : null);
+    // Lots (5.3): lot data on the line, or any lot-tracked material, opens a lot for this receipt.
+    let lotId = null;
+    if (lineMaterial != null && (line.lot_number || line.expiry_date || (await inventoryLots.isLotTracked(q, lineMaterial)))) {
+      const lot = await inventoryLots.getOrCreateLot(q, {
+        warehouse_id, material_id: lineMaterial, lot_number: line.lot_number || `DLV-${deliveryNumber}`,
+        batch_number: line.batch_number || null, supplier_id: po.supplier_id, manufactured_date: line.manufactured_date || null,
+        received_date: delivery.delivery_date, expiry_date: line.expiry_date || null, created_by: received_by,
+      });
+      lotId = lot.id;
+    }
     await q(
-      `INSERT INTO delivery_lines (delivery_id, purchase_order_line_id, material_id, quantity, notes)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [delivery.id, line.purchase_order_line_id, line.material_id || (poLine ? poLine.material_id : null), line.quantity, line.notes || null]
+      `INSERT INTO delivery_lines (delivery_id, purchase_order_line_id, material_id, quantity, notes, lot_id)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [delivery.id, line.purchase_order_line_id, lineMaterial, line.quantity, line.notes || null, lotId]
     );
     // Ledger: received-but-uninspected → quarantine bucket (Phase 10 gate).
     await inventoryEngine.createMovement(q, {
-      warehouse_id, material_id: line.material_id || (poLine ? poLine.material_id : null),
+      lot_id: lotId,
+      warehouse_id, material_id: lineMaterial,
       movement_type: 'quarantine', quantity: line.quantity,
       // The receipt is valued at the PO line's committed rate, so the weighted average (and every later issue)
       // carries a cost. Without it the stock entered at 0 and issued at 0.
@@ -661,17 +674,21 @@ async function decideMir(q, mirId, user, decision, { accepted = null, notes = nu
 
   // 3. Post the movements and bookkeeping.
   for (const { line, lineAccepted, rejected } of plan) {
+    // The decision acts on the lot the delivery line opened (5.3), so the lot's own quarantine clears.
+    const lotRow = line.delivery_line_id == null ? null
+      : (await q('SELECT lot_id FROM delivery_lines WHERE id = $1', [line.delivery_line_id])).rows[0];
+    const lotId = lotRow ? lotRow.lot_id : null;
     if (lineAccepted > 0) {
       await inventoryEngine.createMovement(q, {
         warehouse_id: mir.warehouse_id, material_id: line.material_id,
-        movement_type: 'quarantine_release', quantity: lineAccepted,
+        movement_type: 'quarantine_release', quantity: lineAccepted, lot_id: lotId,
         reference_type: 'mir', reference_id: mirId, created_by: user ? user.id : null,
       });
     }
     if (rejected > 0) {
       await inventoryEngine.createMovement(q, {
         warehouse_id: mir.warehouse_id, material_id: line.material_id,
-        movement_type: 'quarantine_reject', quantity: rejected,
+        movement_type: 'quarantine_reject', quantity: rejected, lot_id: lotId,
         reference_type: 'mir', reference_id: mirId, created_by: user ? user.id : null,
       });
     }

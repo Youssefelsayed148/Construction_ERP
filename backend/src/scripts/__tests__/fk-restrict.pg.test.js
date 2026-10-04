@@ -90,7 +90,7 @@ describePg('foreign keys protect financial, procurement and contractual rows (re
       'project_submittals', 'project_team', 'project_workflows', 'punch_items', 'quality_tests', 'recipe_lines', 'replenishment_alerts', 'rfi_responses',
       'risk_assessments', 'role_permissions', 'saved_views', 'schedule_activities', 'scheduled_report_runs', 'scheduled_reports', 'site_daily_reports',
       'site_visits', 'sticky_notes', 'submittal_revisions', 'supplier_materials', 'template_approval_rules', 'template_folders', 'template_locations',
-      'template_wbs', 'template_workflows', 'toolbox_talks', 'transmittal_items', 'transmittals', 'units', 'user_project_roles', 
+      'template_wbs', 'template_workflows', 'toolbox_talks', 'unit_conversions', 'transmittal_items', 'transmittals', 'units', 'user_project_roles', 
       'wbs_nodes', 'webhook_deliveries', 'wirs', 'work_packages', 'workflow_actions', 'workflow_step_instances', 'workflow_steps',
     ]);
     const unclassified = remaining.filter((t) => !ALLOWED.has(t));
