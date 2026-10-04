@@ -210,19 +210,36 @@ async function accrueSupplierInvoiceCost(q, invoice, { userId = null } = {}) {
   // Others accrue their lines (service net + uncovered stocked), with the full invoice tax on its own line.
   const serviceNetMinor = wholeService ? money.toMinor(invoice.total_amount) - taxMinor : serviceTotalMinor;
   const netMinor = serviceNetMinor + stockedMinor;
-  if (netMinor <= 0n) return null; // the GRN owns all of this cost; never count it again
+  // Input VAT (closeout answer 5): the full invoice tax goes to vat_input in every case, including a stocked-only
+  // invoice whose goods the GRN already accrued (nothing else is left to accrue there, but the VAT still is owed).
+  // Non-recoverable VAT (supplier_invoices.vat_recoverable = false) is cost, not input VAT: it joins the cost.
+  const recoverable = invoice.vat_recoverable !== false;
+  const taxToCostMinor = recoverable ? 0n : taxMinor;
+  const costMinor = netMinor + taxToCostMinor;
+  const vatMinor = recoverable ? taxMinor : 0n;
+  if (costMinor <= 0n && vatMinor <= 0n) return null; // the GRN owns all of this cost and there is no tax
 
+  const costAccount = (stockedMinor > 0n || service.length === 0) ? stockedRule.cost_account : rule.cost_account;
   const lines = [];
   if (stockedMinor > 0n) lines.push({ account: stockedRule.cost_account, debit: money.format(stockedMinor), description: `Materials invoiced ${invoice.invoice_number}` });
   if (serviceNetMinor > 0n) lines.push({ account: rule.cost_account, debit: money.format(serviceNetMinor), description: `Services ${invoice.invoice_number}` });
-  if (taxMinor > 0n) lines.push({ account: 'vat_input', debit: money.format(taxMinor), description: `Input tax ${invoice.invoice_number}` });
-  lines.push({ account: 'payable', credit: money.format(netMinor + taxMinor), description: `Payable ${invoice.invoice_number}` });
-  // The cost row holds the net cost (what dashboards sum); the entry books the tax on its own line.
+  if (taxToCostMinor > 0n) lines.push({ account: costAccount, debit: money.format(taxToCostMinor), description: `Non-recoverable tax ${invoice.invoice_number}` });
+  if (vatMinor > 0n) lines.push({ account: 'vat_input', debit: money.format(vatMinor), description: `Input tax ${invoice.invoice_number}` });
+  lines.push({ account: 'payable', credit: money.format(costMinor + vatMinor), description: `Payable ${invoice.invoice_number}` });
+  const date = invoice.approved_at ? new Date(invoice.approved_at).toISOString().split('T')[0] : null;
+  if (costMinor <= 0n) {
+    // VAT only: no cost row; the one-posting-per-kind journal index makes a replay fail instead of double posting.
+    const entry = await journal.postJournalEntry(q, {
+      date: date || todayIso(), description: `Input tax on supplier invoice ${invoice.invoice_number}`,
+      reference_type: rule.ledger_kind, reference_id: invoice.id, created_by: userId, lines,
+    });
+    return { cost: null, entry };
+  }
+  // The cost row holds the cost (what dashboards sum); the entry books recoverable tax on its own line.
   return accrueCost(q, {
     rule, projectId, sourceType: rule.project_costs_source, sourceId: invoice.id,
-    amountMinor: netMinor, description: `Invoiced on supplier invoice ${invoice.invoice_number}`,
-    ledgerLines: lines, userId,
-    date: invoice.approved_at ? new Date(invoice.approved_at).toISOString().split('T')[0] : null,
+    amountMinor: costMinor, description: `Invoiced on supplier invoice ${invoice.invoice_number}`,
+    ledgerLines: lines, userId, date,
   });
 }
 
@@ -375,34 +392,68 @@ async function allocatePayrollCost(q, payroll) {
   const details = (await q('SELECT employee_id, net_salary FROM payroll_details WHERE payroll_id = $1', [payroll.id])).rows;
   if (details.length === 0 || !payroll.month || !payroll.year) return [];
   const start = `${payroll.year}-${String(payroll.month).padStart(2, '0')}-01`;
-  const days = (await q(
-    `SELECT employee_id, project_id, COUNT(*)::int AS days FROM attendance
+  const rows = (await q(
+    `SELECT employee_id, date, project_id, check_in, check_out FROM attendance
       WHERE employee_id = ANY($1::int[]) AND status IN ('present', 'late')
         AND date >= $2::date AND date < ($2::date + INTERVAL '1 month')
-      GROUP BY employee_id, project_id`,
+      ORDER BY employee_id, date, id`,
     [details.map((d) => d.employee_id), start]
   )).rows;
+  // Each attended day is one unit. A day with several attendance rows (a worker on two projects) is split between
+  // them by hours when every row has check-in/out times, else equally. Rows with no project are the unallocated
+  // bucket (key null); an employee with no attendance at all is entirely unallocated. Nothing is dropped: the
+  // allocations of a payroll always add up to its net salaries.
+  const hoursOf = (r) => {
+    if (!r.check_in || !r.check_out) return null;
+    const [h1, m1] = String(r.check_in).split(':').map(Number);
+    const [h2, m2] = String(r.check_out).split(':').map(Number);
+    const h = (h2 * 60 + m2 - (h1 * 60 + m1)) / 60;
+    return h > 0 ? h : null;
+  };
+  const key = (v) => (v == null ? 'none' : String(v));
   const byProject = new Map();
+  const add = (projectId, minor, employee, days) => {
+    const k = key(projectId);
+    const entry = byProject.get(k) || { projectId, minor: 0n, employees: new Set(), days: 0 };
+    entry.minor += minor; entry.employees.add(employee); entry.days += days;
+    byProject.set(k, entry);
+  };
   for (const d of details) {
-    const rows = days.filter((r) => r.employee_id === d.employee_id);
-    const totalDays = rows.reduce((s, r) => s + r.days, 0);
-    if (totalDays === 0) continue;
     const netMinor = money.toMinor(d.net_salary == null ? 0 : d.net_salary);
-    for (const r of rows) {
-      if (r.project_id == null) continue;
-      const share = (netMinor * BigInt(r.days) * 2n + BigInt(totalDays)) / (BigInt(totalDays) * 2n); // half-up
-      const entry = byProject.get(r.project_id) || { minor: 0n, employees: 0, days: 0 };
-      entry.minor += share; entry.employees += 1; entry.days += r.days;
-      byProject.set(r.project_id, entry);
+    const mine = rows.filter((r) => r.employee_id === d.employee_id);
+    const perDay = new Map();
+    for (const r of mine) { const k = String(r.date); perDay.set(k, [...(perDay.get(k) || []), r]); }
+    if (perDay.size === 0) { add(null, netMinor, d.employee_id, 0); continue; }
+    // weights in millionths of a day, so the arithmetic stays exact
+    const weights = new Map();
+    for (const dayRows of perDay.values()) {
+      const hours = dayRows.map(hoursOf);
+      const useHours = hours.every((h) => h != null) && dayRows.length > 1;
+      const total = useHours ? hours.reduce((s, h) => s + h, 0) : dayRows.length;
+      dayRows.forEach((r, i) => {
+        const w = Math.round(((useHours ? hours[i] : 1) / total) * 1000000);
+        weights.set(key(r.project_id), { projectId: r.project_id, w: ((weights.get(key(r.project_id)) || { w: 0 }).w) + w });
+      });
     }
+    const totalWeight = [...weights.values()].reduce((s, x) => s + x.w, 0);
+    let assigned = 0n;
+    const parts = [...weights.values()];
+    parts.forEach((p, i) => {
+      const share = i === parts.length - 1 ? netMinor - assigned
+        : (netMinor * BigInt(p.w) * 2n + BigInt(totalWeight)) / (BigInt(totalWeight) * 2n); // half-up; the last part takes the remainder
+      assigned += share;
+      add(p.projectId, share, d.employee_id, p.w / 1000000);
+    });
   }
   const posted = [];
-  for (const [projectId, e] of [...byProject.entries()].sort((x, y) => x[0] - y[0])) {
+  const ordered = [...byProject.values()].sort((x, y) => (x.projectId == null ? 1 : y.projectId == null ? -1 : x.projectId - y.projectId));
+  for (const e of ordered) {
     if (e.minor <= 0n) continue;
+    const projectId = e.projectId;
     const alloc = (await q(
       `INSERT INTO payroll_cost_allocations (payroll_id, project_id, amount, basis)
-       VALUES ($1, $2, $3, $4) ON CONFLICT (payroll_id, project_id) DO NOTHING RETURNING *`,
-      [payroll.id, projectId, money.format(e.minor), JSON.stringify({ basis: 'attendance_days', employees: e.employees, days: e.days })]
+       VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING RETURNING *`,
+      [payroll.id, projectId, money.format(e.minor), JSON.stringify({ basis: 'attendance_days_hours_split', employees: e.employees.size, days: e.days })]
     )).rows[0];
     if (!alloc) continue; // replay
     const cost = await insertCostRow(q, {

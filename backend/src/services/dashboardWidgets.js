@@ -166,9 +166,18 @@ async function projectManagerWidgets(q, { userId, projectId = null }) {
   }
   const obsCount = obs.rows.filter((o) => !['accepted', 'closed'].includes(o.status)).length;
   const subOpen = subs.rows.filter((s) => ['submitted', 'under_review'].includes(s.status)).length;
+  // Quantities reported but not yet reviewed (daily reports, measurements): shown next to the progress figure, never in it.
+  const pendingRows = (await q(
+    projectId != null
+      ? "SELECT quantity FROM quantity_measurements WHERE approval_state = 'pending' AND project_id = $1"
+      : "SELECT quantity FROM quantity_measurements WHERE approval_state = 'pending'",
+    projectId != null ? [projectId] : []
+  )).rows;
+  const pending = { measurements: pendingRows.length, quantity: Math.round(pendingRows.reduce((s, r) => s + num(r.quantity), 0) * 1000) / 1000 };
   return [
     w('my_actions', 'My open actions', { open: actions.rows.filter((a) => a.status === 'open' || a.status === 'in_progress').length }),
-    w('progress', 'Progress', { avg_percent: Math.round(avg * 10) / 10, source: progressSource }),
+    w('progress', 'Progress', { avg_percent: Math.round(avg * 10) / 10, source: progressSource, pending }),
+    w('pending_quantities', 'Quantities pending review', pending),
     w('wir_mir', 'WIR / MIR', {
       wirs_open: wirs.rows.filter((w) => !['approved', 'approved_with_comments', 'rejected'].includes(w.status)).length,
       mirs_pending: mirs.rows.filter((m) => m.status === 'pending').length,

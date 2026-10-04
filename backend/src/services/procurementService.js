@@ -83,6 +83,9 @@ class ConflictError extends Error {
   constructor(message) { super(message); this.status = 409; }
 }
 // A requisition cannot pass the budget check: carries the stable code and the figures for the caller.
+class OverrideError extends Error {
+  constructor(message, status, code) { super(message); this.status = status; this.error_code = code; this.error_params = {}; }
+}
 class BudgetExceededError extends Error {
   constructor(message, params) { super(message); this.status = 400; this.error_code = 'pr_over_budget'; this.error_params = params; }
 }
@@ -140,19 +143,28 @@ async function syncStatusFromWorkflow(q, entityType, entityId, { extra = {} } = 
   return status;
 }
 
-async function decideOnDocument(q, entityType, entityId, user, decision, comment) {
+async function decideOnDocument(q, entityType, entityId, user, decision, comment, opts = {}) {
   const table = entityType === 'purchase_request' ? 'purchase_requests' : 'purchase_orders';
   const doc = (await q(`SELECT * FROM ${table} WHERE id = $1`, [entityId])).rows[0];
   if (!doc) throw new Error(`${entityType} #${entityId} not found`);
   if (doc.workflow_instance_id == null) throw new Error(`${entityType} #${entityId} has no active workflow — submit it first`);
 
-  // The budget step approves only a requisition that fits the project budget (rejecting stays possible).
+  // The budget step approves only a requisition that fits the project budget (rejecting stays possible), unless an
+  // owner/admin overrides it with a reason.
+  let budgetOverride = null;
   if (entityType === 'purchase_request' && decision === 'approve') {
     const wf = (await q('SELECT current_step_key FROM workflow_instances WHERE id = $1', [doc.workflow_instance_id])).rows[0];
     if (wf && wf.current_step_key === 'budget_check') {
       const check = await computeBudgetCheck(q, doc);
       await q('UPDATE purchase_requests SET budget_check = $1 WHERE id = $2', [JSON.stringify(check), entityId]);
-      if (check.status === 'over_budget') {
+      if (check.status === 'over_budget' && opts.overrideOverBudget) {
+        // Owner/admin override with a written reason (closeout answer 2): recorded on the requisition, audited by the route.
+        if (!['owner', 'admin'].includes(user.role)) throw new OverrideError('Only an owner or admin can override an over-budget requisition', 403, 'pr_override_forbidden');
+        const reason = String(opts.overrideReason || '').trim();
+        if (reason.length < 10) throw new OverrideError('A written reason (at least 10 characters) is required to override the budget', 400, 'pr_override_reason_required');
+        budgetOverride = { by: user.id, role: user.role, reason, at: new Date().toISOString(), check };
+        await q('UPDATE purchase_requests SET budget_override = $1 WHERE id = $2', [JSON.stringify(budgetOverride), entityId]);
+      } else if (check.status === 'over_budget') {
         throw new BudgetExceededError(
           `Requisition ${doc.request_number} (${check.requested}) exceeds the remaining project budget (${check.remaining})`,
           { requested: check.requested, remaining: check.remaining, budget: check.budget, spent: check.spent, committed: check.committed });
@@ -174,7 +186,7 @@ async function decideOnDocument(q, entityType, entityId, user, decision, comment
       : 'partially_fully_delivered';
     await q('UPDATE purchase_orders SET status = $1, updated_at = $2 WHERE id = $3', [status, new Date(), entityId]);
   }
-  return { ...result, status };
+  return { ...result, status, budget_override: budgetOverride };
 }
 
 // ---------------------------------------------------------------------------
@@ -858,7 +870,7 @@ function matchInvoiceLine({ poLine = null, grnQuantity = 0, invoiceQuantity, inv
 
 async function recordSupplierInvoice(q, {
   supplier_id, purchase_order_id, invoice_number, invoice_date = null,
-  total_amount = 0, tax_amount = 0, lines = [], created_by = null,
+  total_amount = 0, tax_amount = 0, vat_recoverable = true, lines = [], created_by = null,
 }) {
   const duplicate = (await q(
     'SELECT * FROM supplier_invoices WHERE supplier_id = $1 AND invoice_number = $2',
@@ -868,10 +880,10 @@ async function recordSupplierInvoice(q, {
 
   const r = await q(
     `INSERT INTO supplier_invoices
-       (invoice_number, supplier_id, purchase_order_id, invoice_date, total_amount, tax_amount, status, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, 'received', $7) RETURNING *`,
+       (invoice_number, supplier_id, purchase_order_id, invoice_date, total_amount, tax_amount, status, created_by, vat_recoverable)
+     VALUES ($1, $2, $3, $4, $5, $6, 'received', $7, $8) RETURNING *`,
     [invoice_number, supplier_id, purchase_order_id, invoice_date || new Date().toISOString().slice(0, 10),
-     total_amount, tax_amount, created_by]
+     total_amount, tax_amount, created_by, vat_recoverable]
   );
   const invoice = r.rows[0];
   for (const line of lines) {

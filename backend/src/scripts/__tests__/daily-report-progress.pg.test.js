@@ -203,4 +203,19 @@ describePg('A2.6 daily-report measurements and weighted progress (real PostgreSQ
     const portfolio = dash.widgets.find((x) => x.key === 'portfolio');
     expect(portfolio.data.avg_completion).toBe(Math.round(progressEngine.weightedPortfolioProgress(everyone)));
   });
+
+  // Closeout answer 3: pending quantities are shown separately, never mixed into the progress figure.
+  test('the PM dashboard shows pending (unreviewed) quantities separately from the weighted progress', async () => {
+    const w = await world();
+    await report(w, { measurements: [
+      { project_location_id: w.location.id, boq_item_id: w.itemA.id, quantity: 40 },
+      { project_location_id: w.location.id, boq_item_id: w.itemB.id, quantity: 90 },
+    ] });
+    const dash = await widgets.roleDashboard(db.query, { id: owner.id, role: 'project_manager' }, { projectId: w.project.id });
+    const progress = dash.widgets.find((x) => x.key === 'progress').data;
+    expect(progress.avg_percent).toBe(0);                      // nothing approved yet
+    expect(progress.pending).toEqual({ measurements: 2, quantity: 130 });
+    const pendingWidget = dash.widgets.find((x) => x.key === 'pending_quantities');
+    expect(pendingWidget.data).toEqual({ measurements: 2, quantity: 130 });
+  });
 });

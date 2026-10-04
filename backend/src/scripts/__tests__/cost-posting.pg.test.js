@@ -273,19 +273,40 @@ describePg('A2.3 cost posting: material issue, expenses, payroll (real PostgreSQ
     const posted = await call('PUT', `/api/payroll/${w.period.id}`, { posted_to_finance: true });
     expect(posted.status).toBe(200);
     const alloc = await all('SELECT * FROM payroll_cost_allocations WHERE payroll_id = $1 ORDER BY project_id', [w.period.id]);
-    expect(alloc.map((a) => [a.project_id, Number(a.amount)])).toEqual([[w.P.id, 2000], [w.Q.id, 1000]].sort((x, y) => x[0] - y[0]));
+    // Employee B has no attendance: the 1500 goes to the explicit unallocated bucket (project NULL), never dropped.
+    expect(alloc.map((a) => [a.project_id, Number(a.amount)])).toEqual([...[[w.P.id, 2000], [w.Q.id, 1000]].sort((x, y) => x[0] - y[0]), [null, 1500]]);
+    expect(alloc.reduce((s, a) => s + Number(a.amount), 0)).toBe(4500);          // allocations always add up to the payroll
     for (const a of alloc) {
       const rows = await costs('payroll_allocation', a.id);
       expect(rows).toHaveLength(1);
       expect(Number(rows[0].amount)).toBe(Number(a.amount));
       expect(rows[0].project_id).toBe(a.project_id);
     }
-    // The ledger entry still carries the whole payroll (4500): the 1500 with no attendance stays overhead.
+    // The ledger entry still carries the whole payroll (4500).
     const [entry] = await entriesOf('payroll', w.period.id);
     expect(Number(entry.total_amount)).toBe(4500);
     // Posting again (the flag is already true) allocates nothing more.
     await call('PUT', `/api/payroll/${w.period.id}`, { posted_to_finance: true, status: 'paid' });
-    expect(await all('SELECT id FROM payroll_cost_allocations WHERE payroll_id = $1', [w.period.id])).toHaveLength(2);
+    expect(await all('SELECT id FROM payroll_cost_allocations WHERE payroll_id = $1', [w.period.id])).toHaveLength(3);
+  });
+
+  test('a worker on two projects in one day is split by hours; days without a project are unallocated, nothing is dropped', async () => {
+    const w = await payrollWorld();
+    const year = (await one('SELECT year FROM payroll_periods WHERE id = $1', [w.period.id])).year;
+    const month = (await one('SELECT month FROM payroll_periods WHERE id = $1', [w.period.id])).month;
+    const day = (n) => `${year}-${String(month).padStart(2, '0')}-${String(n).padStart(2, '0')}`;
+    await db.query('DELETE FROM attendance WHERE employee_id = $1', [w.a.id]);
+    // Day 1: 4h on P and 2h on Q (a 2:1 split of one day). Day 2: a full day with no project.
+    await db.query("INSERT INTO attendance (employee_id, date, status, project_id, check_in, check_out) VALUES ($1, $2, 'present', $3, '08:00', '12:00'), ($1, $2, 'present', $4, '12:00', '14:00')", [w.a.id, day(1), w.P.id, w.Q.id]);
+    await db.query("INSERT INTO attendance (employee_id, date, status, project_id) VALUES ($1, $2, 'present', NULL)", [w.a.id, day(2)]);
+    await call('PUT', `/api/payroll/${w.period.id}`, { posted_to_finance: true });
+    const alloc = await all('SELECT project_id, amount FROM payroll_cost_allocations WHERE payroll_id = $1', [w.period.id]);
+    const by = Object.fromEntries(alloc.map((a) => [a.project_id === null ? 'none' : a.project_id, Number(a.amount)]));
+    // A (3000): day 1 is half the days -> 1500 split 1000 / 500; day 2 -> 1500 unallocated. B (1500): unallocated.
+    expect(by[w.P.id]).toBe(1000);
+    expect(by[w.Q.id]).toBe(500);
+    expect(by.none).toBe(1500 + 1500);
+    expect(Object.values(by).reduce((s, v) => s + v, 0)).toBe(4500);
   });
 
   test('payroll allocation is atomic with the post and refuses a second run at the database', async () => {
