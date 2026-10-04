@@ -13,7 +13,7 @@ const enabled = process.env.TEST_PG === '1';
 const describePg = enabled ? describe : describe.skip;
 
 describePg('2.6c legacy header material (real PostgreSQL)', () => {
-  let pool; let q; let supplier; let item; let po2; let item2;
+  let pool; let q; let supplier; let item; let item2;
   const tag = String(Date.now()).slice(-7);
   const one = async (sql, params) => (await pool.query(sql, params)).rows[0];
 
@@ -53,20 +53,24 @@ describePg('2.6c legacy header material (real PostgreSQL)', () => {
     expect((await one("SELECT count(*)::int n FROM purchase_requests WHERE source_key = $1", [`replenishment:${item.id}`])).n).toBe(1);
   });
 
-  test('a replenishment purchase order is one header without a material plus one line, and is never stacked', async () => {
+  // Closeout A2.2: the sweep raises a purchase REQUISITION (through the PR workflow), never a purchase order,
+  // whatever the policy mode. The 2.6c rule still holds for it: the header carries no material, the line does.
+  test('a replenishment requisition is one header without a material plus one line, and is never stacked', async () => {
     const first = await replenishment.evaluateMaterial(q, item2, { notify: false });
-    expect(first.actions.purchase_order.created).toBe(true);
-    po2 = first.actions.purchase_order.order;
-    const header = await one('SELECT material_id, quantity, unit_price FROM purchase_orders WHERE id = $1', [po2.id]);
+    expect(first.actions.purchase_order).toBeNull();
+    expect(first.actions.purchase_request.created).toBe(true);
+    const pr = first.actions.purchase_request.request;
+    const header = await one('SELECT material_id FROM purchase_requests WHERE id = $1', [pr.id]);
     expect(header.material_id).toBeNull();
-    const lines = (await pool.query('SELECT material_id, quantity, unit_rate FROM purchase_order_lines WHERE purchase_order_id = $1', [po2.id])).rows;
+    const lines = (await pool.query('SELECT material_id, quantity, estimated_unit_price FROM purchase_request_lines WHERE purchase_request_id = $1', [pr.id])).rows;
     expect(lines).toHaveLength(1);
     expect(lines[0].material_id).toBe(item2.id);
-    expect(Number(lines[0].unit_rate)).toBe(100);
+    expect(Number(lines[0].estimated_unit_price)).toBe(100);
     const second = await replenishment.evaluateMaterial(q, item2, { notify: false });
-    // the order is now incoming stock, so the second sweep needs nothing; if it did act it must reuse the open order
-    expect(second.actions.purchase_order === null || second.actions.purchase_order.created === false).toBe(true);
-    expect((await one("SELECT count(*)::int n FROM purchase_orders po WHERE EXISTS (SELECT 1 FROM purchase_order_lines l WHERE l.purchase_order_id = po.id AND l.material_id = $1)", [item2.id])).n).toBe(1);
+    // the open requisition is not raised again
+    expect(second.actions.purchase_request === null || second.actions.purchase_request.created === false).toBe(true);
+    expect((await one("SELECT count(*)::int n FROM purchase_requests WHERE source_key = $1", [`replenishment:${item2.id}`])).n).toBe(1);
+    expect((await one('SELECT count(*)::int n FROM purchase_order_lines WHERE material_id = $1', [item2.id])).n).toBe(0);
   });
 
   test('incoming quantity counts the undelivered part of the lines of open orders only', async () => {

@@ -138,6 +138,8 @@ async function createActionItem(input, opts = {}) {
 async function createForWorkflowStep(instance, stepInstance, templateStep, opts = {}) {
   const client = opts.client || { query: opts.query || defaultQuery };
   if (!stepInstance || stepInstance.status !== 'pending') return null;
+  // A requester step of a system-raised request (the replenishment sweep) has no person to act: the system completes it, so no action item.
+  if (templateStep && templateStep.resolver_type === 'requester' && stepInstance.assigned_user_id == null) return null;
 
   let escalationPolicy = {};
   try {

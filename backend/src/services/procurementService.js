@@ -81,6 +81,36 @@ class NotFoundError extends Error {
 class ConflictError extends Error {
   constructor(message) { super(message); this.status = 409; }
 }
+// A requisition cannot pass the budget check: carries the stable code and the figures for the caller.
+class BudgetExceededError extends Error {
+  constructor(message, params) { super(message); this.status = 400; this.error_code = 'pr_over_budget'; this.error_params = params; }
+}
+
+// Undelivered value of open orders counts as committed against the project budget; drafts do not.
+const COMMITTED_PO_STATUSES = ['approved', 'confirmed', 'issued', 'acknowledged', 'partially_delivered', 'partially_fully_delivered'];
+
+// The automated budget check of the PR workflow (plan 3.3). A requisition is within budget when its estimated
+// amount fits what is left of the project budget after what was spent (project_costs) and what is committed
+// (undelivered open orders). No project, no budget, or no price (amount 0) cannot be judged: they are
+// flagged, not blocked. Run on submission (stored on the PR) and again when the budget step is approved.
+async function computeBudgetCheck(q, pr) {
+  const requested = round2(toNum(pr.amount));
+  const checked_at = new Date().toISOString();
+  if (pr.project_id == null) return { status: 'no_project', requested, checked_at };
+  const project = (await q('SELECT budget FROM projects WHERE id = $1', [pr.project_id])).rows[0];
+  const budget = round2(toNum(project && project.budget));
+  if (budget <= 0) return { status: 'no_budget', requested, budget, checked_at };
+  const spent = round2(toNum((await q('SELECT COALESCE(SUM(amount), 0) AS s FROM project_costs WHERE project_id = $1', [pr.project_id])).rows[0].s));
+  const committed = round2(toNum((await q(
+    `SELECT COALESCE(SUM(GREATEST(l.quantity - COALESCE(l.delivered_quantity, 0), 0) * COALESCE(l.unit_rate, 0)), 0) AS c
+       FROM purchase_order_lines l JOIN purchase_orders po ON po.id = l.purchase_order_id
+      WHERE po.project_id = $1 AND po.status = ANY($2::text[])`,
+    [pr.project_id, COMMITTED_PO_STATUSES]
+  )).rows[0].c));
+  const remaining = round2(budget - spent - committed);
+  const status = requested <= 0 ? 'unpriced' : (requested <= remaining ? 'ok' : 'over_budget');
+  return { status, budget, spent, committed, requested, remaining, checked_at };
+}
 
 // ---------------------------------------------------------------------------
 // Workflow glue — source status mirrors the workflow's current step
@@ -115,6 +145,20 @@ async function decideOnDocument(q, entityType, entityId, user, decision, comment
   if (!doc) throw new Error(`${entityType} #${entityId} not found`);
   if (doc.workflow_instance_id == null) throw new Error(`${entityType} #${entityId} has no active workflow — submit it first`);
 
+  // The budget step approves only a requisition that fits the project budget (rejecting stays possible).
+  if (entityType === 'purchase_request' && decision === 'approve') {
+    const wf = (await q('SELECT current_step_key FROM workflow_instances WHERE id = $1', [doc.workflow_instance_id])).rows[0];
+    if (wf && wf.current_step_key === 'budget_check') {
+      const check = await computeBudgetCheck(q, doc);
+      await q('UPDATE purchase_requests SET budget_check = $1 WHERE id = $2', [JSON.stringify(check), entityId]);
+      if (check.status === 'over_budget') {
+        throw new BudgetExceededError(
+          `Requisition ${doc.request_number} (${check.requested}) exceeds the remaining project budget (${check.remaining})`,
+          { requested: check.requested, remaining: check.remaining, budget: check.budget, spent: check.spent, committed: check.committed });
+      }
+    }
+  }
+
   const result = await workflowEngine.recordDecision(doc.workflow_instance_id, null, user.id, decision, comment || null, {
     query: q, role: user.role, userName: user.name,
   });
@@ -139,17 +183,19 @@ async function decideOnDocument(q, entityType, entityId, user, decision, comment
 async function createPurchaseRequest(q, {
   title, project_id = null, priority = 'normal', needed_by = null,
   lines = [], created_by = null, source_type = 'manual', source_id = null, source_key = null,
+  policy_mode = null, location_id = null, cost_code_id = null, work_package_id = null, notes = null,
 }) {
   if (!Array.isArray(lines) || lines.length === 0) throw new Error('A requisition needs at least one line');
   const requestNumber = await nextNumber(q, 'purchase_requests', 'request_number', 'PR');
   const amount = round2(lines.reduce((s, l) => s + toNum(l.quantity) * toNum(l.estimated_unit_price), 0));
   const r = await q(
     `INSERT INTO purchase_requests
-       (request_number, project_id, material_id, quantity, unit, needed_by, status, source_type, source_id, source_key, policy_mode, title, amount, priority, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, 'draft', $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
+       (request_number, project_id, material_id, quantity, unit, needed_by, status, source_type, source_id, source_key, policy_mode, title, amount, priority, created_by,
+        location_id, cost_code_id, work_package_id, notes)
+     VALUES ($1, $2, $3, $4, $5, $6, 'draft', $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING *`,
     [requestNumber, project_id, null, lines.reduce((s, l) => s + toNum(l.quantity), 0), null,
-     needed_by || (lines[0] && lines[0].needed_by) || null, source_type, null, source_key, null,
-     title, amount, priority, created_by]
+     needed_by || (lines[0] && lines[0].needed_by) || null, source_type, source_id, source_key, policy_mode,
+     title, amount, priority, created_by, location_id, cost_code_id, work_package_id, notes]
   );
   const pr = r.rows[0];
   for (const line of lines) {
@@ -169,6 +215,9 @@ async function submitPurchaseRequest(q, prId, user) {
   if (!pr) throw new Error(`Purchase requisition #${prId} not found`);
   if (pr.status !== 'draft') throw new Error(`Requisition is in state ${pr.status} — only Draft can be submitted`);
 
+  // The replenishment sweep submits as the 'system' actor: no user row, only the requester steps (Draft,
+  // Submit) are completed on its behalf; the budget check and approvals still wait for people.
+  const system = user.role === 'system';
   const instance = await workflowEngine.startWorkflow('purchase_requisition', 'purchase_request', pr.id, {
     module_name: 'purchase_request',
     requester_id: user.id,
@@ -191,12 +240,14 @@ async function submitPurchaseRequest(q, prId, user) {
     )).rows[0];
     if (!stepInstance) break;
     const r = await workflowEngine.recordDecision(instance.instance.id, stepInstance.id, user.id, 'approve', 'Submitted', {
-      query: q, role: user.role, userName: user.name,
+      query: q, role: user.role, userName: user.name, system,
     });
     if (!r.ok) throw new Error(r.error);
   }
   const status = await syncStatusFromWorkflow(q, 'purchase_request', prId);
-  return { workflow: instance, status };
+  const budgetCheck = await computeBudgetCheck(q, pr);
+  await q('UPDATE purchase_requests SET budget_check = $1 WHERE id = $2', [JSON.stringify(budgetCheck), prId]);
+  return { workflow: instance, status, budget_check: budgetCheck };
 }
 
 // ---------------------------------------------------------------------------
@@ -927,6 +978,8 @@ module.exports = {
   poTotal,
   grnConstraintOk,
   createPurchaseRequest,
+  computeBudgetCheck,
+  BudgetExceededError,
   submitPurchaseRequest,
   decideOnDocument,
   createRfq,

@@ -7,8 +7,9 @@ Stack so far: #1-#35 (Phases 0-3 and earlier slices, see docs/CLOSEOUT_LOG.md). 
 ## PRs in this run (stacked on #35)
 
 - (A1) docs/PHASE3_GAP_AUDIT.md: audit table for plan 3.1-3.5, mapped to the plan numbering (no code).
-- (A2.1) supplier-return reversal of the GRN cost (decision 2), GRN/invoice accrual pairing (decisions 5, 6), cancel-approval restriction (decision 4). Migration 0023.
+- (A2.1) supplier-return reversal of the GRN cost (decision 2), GRN/invoice accrual pairing (decisions 5, 6), cancel-approval restriction (decision 4). Migration 0023. PR #36, CI green.
+- (A2.2) replenishment raises a PR through the PR workflow with project scoping, budget check, location/cost code/work package. Migration 0024.
 
 ## Current checkpoint
 
-Working on Part A (A2.1 in review). Next: A2.2 replenishment through the PR workflow. CP1 was skipped because every audited gap is inside the A2 list; CP2 follows A2.7.
+Working on Part A (A2.2 in review). Next: A2.3 cost posting from material issue, expenses and payroll. CP1 was skipped because every audited gap is inside the A2 list; CP2 follows A2.7.

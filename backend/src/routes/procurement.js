@@ -55,6 +55,9 @@ router.post('/pr', authenticate, authorize(), async (req, res) => {
     const schema = Joi.object({
       title: Joi.string().required(),
       project_id: Joi.number().integer().optional().allow(null),
+      location_id: Joi.number().integer().optional().allow(null),
+      cost_code_id: Joi.number().integer().optional().allow(null),
+      work_package_id: Joi.number().integer().optional().allow(null),
       priority: Joi.string().valid('low', 'normal', 'high', 'urgent').default('normal'),
       needed_by: Joi.date().iso().optional().allow(null),
       lines: Joi.array().items(prLineSchema).min(1).required(),
@@ -87,7 +90,9 @@ router.post('/pr/:id/decide', authenticate, authorize(), async (req, res) => {
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     const result = await atomic((q) => svc.decideOnDocument(q, 'purchase_request', parseInt(req.params.id, 10), req.user, value.decision, value.comment));
     res.json({ success: true, data: result });
-  } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+  } catch (e) {
+    res.status(400).json({ success: false, error: e.message, ...(e.error_code ? { error_code: e.error_code, error_params: e.error_params || {} } : {}) });
+  }
 });
 
 // ---------------------------------------------------------------------------

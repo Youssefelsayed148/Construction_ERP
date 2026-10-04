@@ -280,29 +280,9 @@ describe('policy resolution (business_rules)', () => {
 // ---------------------------------------------------------------------------
 
 describe('sweep idempotency (acceptance)', () => {
-  test('a future activity with insufficient current+incoming stock creates exactly ONE draft PR across two consecutive runs', async () => {
-    const first = await replenishment.runReplenishmentSweep(q, { now: NOW, notify: false });
-    const second = await replenishment.runReplenishmentSweep(q, { now: NOW, notify: false });
-
-    const drafts = (await q("SELECT * FROM purchase_requests WHERE source_key = $1 AND status = 'draft'", [`replenishment:${MAT}`])).rows;
-    expect(drafts.length).toBe(1);
-    expect(drafts[0].source_key).toBe('replenishment:50');
-    expect(drafts[0].status).toBe('draft');
-    // Need 30 (demand 50 − available 20), rounded up to the order multiple 5.
-    expect(parseFloat(drafts[0].quantity)).toBe(30);
-
-    const firstRun = first.results.find((r) => r.material_id === MAT);
-    const secondRun = second.results.find((r) => r.material_id === MAT);
-    expect(firstRun.actions.purchase_request.created).toBe(true);
-    expect(secondRun.actions.purchase_request.created).toBe(false); // idempotent
-    expect(secondRun.shortage).toBe(30);
-
-    // The shortage alert exists exactly once.
-    const alerts = (await q(
-      "SELECT * FROM replenishment_alerts WHERE material_id = $1 AND alert_type = 'projected_shortage'", [MAT]
-    )).rows;
-    expect(alerts.length).toBe(1);
-  });
+  // Closeout A2.2: the sweep now raises the PR through the PR workflow, with project scoping and a budget
+  // check. The one-PR-per-need idempotency test lives in replenishment-pr.pg.test.js (real PostgreSQL:
+  // transaction, advisory lock, unique index). The mock-db version tested a draft-only insert that no longer exists.
 
   test('an unconfigured material is alert-only — never silently escalated', async () => {
     const r = await replenishment.runReplenishmentSweep(q, { now: NOW, notify: false });
@@ -315,31 +295,9 @@ describe('sweep idempotency (acceptance)', () => {
   });
 });
 
-describe('authority-ceiling gate (acceptance)', () => {
-  test('a material priced above the authority ceiling produces a draft PO awaiting approval, not an issued one', async () => {
-    await replenishment.runReplenishmentSweep(q, { now: NOW, notify: false });
-    const po = await orderFor(MAT_CEIL);
-    expect(po).toBeTruthy();
-    expect(po.status).toBe('draft');
-    expect(po.issuance_basis).toBe('awaiting_approval');
-    // 190 bags × 100 = 19,000 ≥ the 2,000 ceiling → must not issue.
-    expect(parseFloat(po.total_amount)).toBeGreaterThanOrEqual(parseFloat(po.authority_ceiling));
-  });
-
-  test('strictly below the ceiling with a pre-approved supplier → the PO issues', async () => {
-    await replenishment.runReplenishmentSweep(q, { now: NOW, notify: false });
-    const po = await orderFor(MAT_OK);
-    expect(po.status).toBe('issued');
-    expect(po.issuance_basis).toBe('authority_ceiling');
-    expect(parseFloat(po.total_amount)).toBeLessThan(parseFloat(po.authority_ceiling));
-  });
-
-  test('the sweep never stacks a second PO on the same material', async () => {
-    await replenishment.runReplenishmentSweep(q, { now: NOW, notify: false });
-    expect(await count('purchase_order_lines', ' WHERE material_id = 52')).toBe(1);
-    expect(await count('purchase_order_lines', ' WHERE material_id = 51')).toBe(1);
-  });
-});
+// The authority-ceiling PO gate was removed in closeout A2.2 (plan 3.3: replenishment creates a PR through the
+// PR workflow, never a PO). auto_draft_po and auto_issue_po now raise a requisition too; see
+// replenishment-pr.pg.test.js ("the PO-mode policies raise a PR too, never a purchase order").
 
 // ---------------------------------------------------------------------------
 // Alerts routed through the Phase 7 notification engine
