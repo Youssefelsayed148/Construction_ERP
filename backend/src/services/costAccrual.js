@@ -58,6 +58,10 @@ const COST_ACCRUAL_RULES = {
   labor_payment: { accrual_event: 'labor_payment_created', project_costs_source: 'labor_payment', cost_code: '11' },
   work_order_equipment: { accrual_event: 'work_completion_verified', project_costs_source: 'wo_equipment', legacy_source: 'work_completion', cost_code: '10' },
   subcontractor_payment: { accrual_event: 'sub_payment_paid', project_costs_source: 'sub_payment', cost_code: '12' },
+  // Phase 5.5: a supplier credit note reverses its share of the INVOICE's own cost row (never a GRN's: goods go back
+  // by supplier return). Voiding the credit note puts the cost back under the _void source.
+  supplier_credit_note: { accrual_event: 'supplier_credit_note_issued', project_costs_source: 'supplier_credit_note', ledger_kind: 'supplier_credit_note_cost' },
+  supplier_credit_note_void: { accrual_event: 'supplier_credit_note_voided', project_costs_source: 'supplier_credit_note_void', ledger_kind: 'supplier_credit_note_cost_void' },
 };
 
 const todayIso = () => new Date().toISOString().split('T')[0];
@@ -507,7 +511,79 @@ async function allocatePayrollCost(q, payroll) {
   return posted;
 }
 
+// ---------------------------------------------------------------------------
+// Phase 5.5: supplier credit notes. The credit note's NET (amount - tax) reverses the supplier invoice's own cost row
+// (a negative project_costs row, UNIQUE (source_type 'supplier_credit_note', source_id), so a replay does nothing) and the
+// entry is Dr payable (amount) | Cr cost (net) | Cr vat_input (tax). Recoverable tax goes back to vat_input; tax the
+// invoice booked as cost (vat_recoverable = false) goes back to cost. Never more than the invoice accrued, less what
+// earlier credit notes already took. An invoice whose goods accrued at the GRN has no cost row of its own: that
+// credit is a supplier return, and this refuses it rather than guess.
+// ---------------------------------------------------------------------------
+async function reverseSupplierInvoiceCostForCreditNote(q, creditNote, invoice, { userId = null } = {}) {
+  const rule = COST_ACCRUAL_RULES.supplier_credit_note;
+  const own = (await q("SELECT * FROM project_costs WHERE source_type = 'supplier_invoice' AND source_id = $1", [invoice.id])).rows[0];
+  if (!own) {
+    const err = new Error(`Supplier invoice ${invoice.invoice_number} has no cost of its own to credit (its goods accrued at the GRN): return the goods to the supplier instead`);
+    err.status = 409; err.error_code = 'credit_note_cost_not_on_invoice'; err.error_params = { supplier_invoice_id: invoice.id };
+    throw err;
+  }
+  const amountMinor = money.toMinor(creditNote.amount);
+  const taxMinor = money.toMinor(creditNote.tax_amount == null ? 0 : creditNote.tax_amount);
+  const recoverable = invoice.vat_recoverable !== false;
+  const vatMinor = recoverable ? taxMinor : 0n;
+  const costMinor = amountMinor - vatMinor;
+  const earlier = (await q(
+    `SELECT COALESCE(SUM(pc.amount), 0) AS s FROM project_costs pc
+       JOIN credit_notes cn ON cn.id = pc.source_id
+      WHERE pc.source_type = ANY($1::text[]) AND cn.supplier_invoice_id = $2 AND cn.id <> $3`,
+    [[rule.project_costs_source, COST_ACCRUAL_RULES.supplier_credit_note_void.project_costs_source], invoice.id, creditNote.id])).rows[0];
+  const remainingMinor = money.toMinor(own.amount) + money.toMinor(earlier.s); // earlier credits are negative
+  if (costMinor > remainingMinor) {
+    const err = new Error(`Credit note ${creditNote.credit_note_number} reverses ${money.format(costMinor)} of cost but supplier invoice ${invoice.invoice_number} has only ${money.format(remainingMinor)} left`);
+    err.status = 409; err.error_code = 'credit_note_exceeds_accrued_cost'; err.error_params = { supplier_invoice_id: invoice.id, remaining: money.format(remainingMinor) };
+    throw err;
+  }
+  const inserted = (await q(
+    `INSERT INTO project_costs (project_id, cost_code_id, source_type, source_id, amount, description)
+     VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (source_type, source_id) DO NOTHING RETURNING *`,
+    [own.project_id, own.cost_code_id, rule.project_costs_source, creditNote.id, money.format(-costMinor), `Credit note ${creditNote.credit_note_number} reverses invoice cost`])).rows[0];
+  if (!inserted) return null; // replay
+  const { stocked, service } = await classifySupplierInvoiceLines(q, invoice);
+  const costAccount = service.length === 0 && stocked.length > 0 ? COST_ACCRUAL_RULES.stocked_material.cost_account : COST_ACCRUAL_RULES.service.cost_account;
+  const lines = [{ account: 'payable', debit: money.format(amountMinor), description: `Payable reduced by credit note ${creditNote.credit_note_number}` }];
+  if (costMinor > 0n) lines.push({ account: costAccount, credit: money.format(costMinor), description: `Cost credited ${creditNote.credit_note_number}` });
+  if (vatMinor > 0n) lines.push({ account: 'vat_input', credit: money.format(vatMinor), description: `Input tax credited ${creditNote.credit_note_number}` });
+  const entry = await journal.postJournalEntry(q, {
+    date: todayIso(), description: `Supplier credit note ${creditNote.credit_note_number} (invoice ${invoice.invoice_number})`,
+    reference_type: rule.ledger_kind, reference_id: creditNote.id, created_by: userId, lines,
+  });
+  return { cost: inserted, entry };
+}
+
+// Void of an issued supplier credit note: the cost comes back as a positive row under its own source and the ledger
+// entry is reversed exactly once.
+async function restoreSupplierInvoiceCostForVoidedCreditNote(q, creditNote, { userId = null } = {}) {
+  const rule = COST_ACCRUAL_RULES.supplier_credit_note;
+  const voidRule = COST_ACCRUAL_RULES.supplier_credit_note_void;
+  const original = (await q('SELECT * FROM project_costs WHERE source_type = $1 AND source_id = $2', [rule.project_costs_source, creditNote.id])).rows[0];
+  if (!original) return null;
+  const inserted = (await q(
+    `INSERT INTO project_costs (project_id, cost_code_id, source_type, source_id, amount, description)
+     VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (source_type, source_id) DO NOTHING RETURNING *`,
+    [original.project_id, original.cost_code_id, voidRule.project_costs_source, creditNote.id, money.format(-money.toMinor(original.amount)), `Credit note ${creditNote.credit_note_number} voided`])).rows[0];
+  if (!inserted) return null;
+  const originals = (await journal.findEntries(q, rule.ledger_kind, creditNote.id))[0];
+  if (!originals) return { cost: inserted, entry: null };
+  const lines = (await q('SELECT account_id, debit, credit, description FROM journal_entry_lines WHERE journal_entry_id = $1 ORDER BY line_order', [originals.id])).rows;
+  const entry = await journal.postJournalEntry(q, {
+    date: todayIso(), description: `Credit note ${creditNote.credit_note_number} voided`, reference_type: voidRule.ledger_kind, reference_id: creditNote.id, created_by: userId,
+    lines: lines.map((l) => ({ accountId: l.account_id, debit: l.credit, credit: l.debit, description: `Reversal: ${l.description || ''}`.trim() })),
+  });
+  return { cost: inserted, entry };
+}
+
 module.exports = {
+  reverseSupplierInvoiceCostForCreditNote, restoreSupplierInvoiceCostForVoidedCreditNote,
   COST_ACCRUAL_RULES, multiplyQtyRate, accrueCost, accrueGrnCost, claimLine,
   classifySupplierInvoiceLines, accrueSupplierInvoiceCost, reverseGrnCostForReturn,
   insertCostRow, costCodeIdFor, accrueMaterialIssue, reverseMaterialIssueCost, accrueExpenseCost, allocatePayrollCost,

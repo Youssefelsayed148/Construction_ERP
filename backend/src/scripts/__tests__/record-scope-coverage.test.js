@@ -25,6 +25,9 @@ const COMPANY_LEVEL = [
   /^\/api\/organizations\//, /^\/api\/delegations\//, /^\/api\/team\//,
   // Phase 5.3: unit conversions are item-master data (company-wide), not project records.
   /^\/api\/inventory\/conversions\/:id/,
+  // Phase 5.5: a payment batch groups payments of several projects; its routes require a company-wide finance
+  // grant (companyOnly in routes/financeLedger.js, covered by commercial-5-5.pg.test.js).
+  /^\/api\/finance-ledger\/payment-batches\/:id/,
 ];
 // Project-owned records still without a rule. Reviewed, tracked for a later pass; do not add to this list.
 const KNOWN_GAPS = new Set([

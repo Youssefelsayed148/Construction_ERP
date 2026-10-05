@@ -100,7 +100,7 @@ const CHECKS = Object.freeze([
     // labour/equipment/sub payments) intentionally have no entry of their own.
     sql: `SELECT COUNT(*)::int AS violations FROM (
         SELECT pc.id FROM project_costs pc
-        WHERE pc.source_type IN ('grn', 'supplier_invoice', 'supplier_return', 'expense', 'payroll_allocation')
+        WHERE pc.source_type IN ('grn', 'supplier_invoice', 'supplier_return', 'supplier_credit_note', 'supplier_credit_note_void', 'expense', 'payroll_allocation')
           AND NOT EXISTS (
             SELECT 1 FROM journal_entries je
             WHERE je.reference_id = pc.source_id
@@ -108,6 +108,8 @@ const CHECKS = Object.freeze([
                     WHEN 'grn' THEN 'grn_cost'
                     WHEN 'supplier_invoice' THEN 'supplier_invoice_cost'
                     WHEN 'supplier_return' THEN 'supplier_return_cost'
+                    WHEN 'supplier_credit_note' THEN 'supplier_credit_note_cost'
+                    WHEN 'supplier_credit_note_void' THEN 'supplier_credit_note_cost_void'
                     WHEN 'expense' THEN 'expense'
                     WHEN 'payroll_allocation' THEN 'payroll' END
           )
@@ -116,10 +118,11 @@ const CHECKS = Object.freeze([
   {
     name: 'AP and AR money moves stay tied to live documents',
     sql: `SELECT COUNT(*)::int AS violations FROM journal_entries je
-      WHERE je.reference_type IN ('client_invoice', 'client_payment', 'supplier_payment', 'client_invoice_void')
+      WHERE je.reference_type IN ('client_invoice', 'client_payment', 'supplier_payment', 'client_invoice_void', 'client_credit_note', 'client_credit_note_void')
         AND (
           (je.reference_type = 'client_invoice' AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.id = je.reference_id))
-          OR (je.reference_type LIKE '%void' AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.id = je.reference_id))
+          OR (je.reference_type = 'client_invoice_void' AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.id = je.reference_id))
+          OR (je.reference_type IN ('client_credit_note', 'client_credit_note_void') AND NOT EXISTS (SELECT 1 FROM credit_notes c WHERE c.id = je.reference_id))
           OR (je.reference_type IN ('client_payment', 'supplier_payment') AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.id = je.reference_id))
         )`,
   },

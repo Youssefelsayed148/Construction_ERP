@@ -216,7 +216,8 @@ async function transitionInvoice(q, invoiceId, newStatus, user, extra = {}) {
 
 // Overdue detection (used by the reminder sweep and reads).
 function computeLifecycleStatus(invoice, totalPaid, now = new Date()) {
-  const net = invoice.net_amount != null ? toNum(invoice.net_amount) : toNum(invoice.amount);
+  // Phase 5.5: issued credit notes reduce what the client owes (invoices.credited_amount).
+  const net = (invoice.net_amount != null ? toNum(invoice.net_amount) : toNum(invoice.amount)) - toNum(invoice.credited_amount);
   const paid = toNum(totalPaid);
   if (invoice.status === 'credited' || invoice.status === 'void' || invoice.status === 'cancelled') return invoice.status;
   if (paid >= net && net > 0) return 'paid';
@@ -239,7 +240,8 @@ async function invoiceOutstanding(q, invoiceId) {
     [invoiceId]
   )).rows;
   const allocatedSum = round2(allocs.reduce((s, a) => s + toNum(a.amount), 0));
-  return { net, allocated: allocatedSum, outstanding: round2(net - allocatedSum) };
+  const credited = round2(toNum(inv.credited_amount)); // issued credit notes (Phase 5.5)
+  return { net, credited, allocated: allocatedSum, outstanding: round2(net - credited - allocatedSum) };
 }
 
 async function supplierInvoiceOutstanding(q, supplierInvoiceId) {
@@ -250,7 +252,8 @@ async function supplierInvoiceOutstanding(q, supplierInvoiceId) {
     [supplierInvoiceId]
   )).rows;
   const allocated = round2(allocs.reduce((s, a) => s + toNum(a.amount), 0));
-  return { net: toNum(inv.total_amount), allocated, outstanding: round2(toNum(inv.total_amount) - allocated) };
+  const credited = round2(toNum(inv.credited_amount)); // issued supplier credit notes (Phase 5.5)
+  return { net: toNum(inv.total_amount), credited, allocated, outstanding: round2(toNum(inv.total_amount) - credited - allocated) };
 }
 
 // Allocate one payment across one or more documents. Enforced in one pass:
@@ -438,7 +441,7 @@ async function arAging(q, { now = new Date() } = {}) {
       "SELECT * FROM payment_allocations WHERE invoice_id = $1 AND target_type = 'client_invoice' AND voided_at IS NULL",
       [inv.id]
     )).rows;
-    const outstanding = round2(net - allocatedSum(allocs));
+    const outstanding = round2(net - toNum(inv.credited_amount) - allocatedSum(allocs));
     if (outstanding <= 0) continue;
     const overdueDays = inv.due_date ? Math.floor((nowMs - new Date(inv.due_date).getTime()) / 86400000) : 0;
     buckets[agingBucket(overdueDays)] = round2(buckets[agingBucket(overdueDays)] + outstanding);
@@ -455,7 +458,7 @@ async function apAging(q, { now = new Date() } = {}) {
       "SELECT * FROM payment_allocations WHERE supplier_invoice_id = $1 AND target_type = 'supplier_invoice' AND voided_at IS NULL",
       [inv.id]
     )).rows;
-    const outstanding = round2(toNum(inv.total_amount) - allocatedSum(allocs));
+    const outstanding = round2(toNum(inv.total_amount) - toNum(inv.credited_amount) - allocatedSum(allocs));
     if (outstanding <= 0) continue;
     const due = inv.invoice_date || inv.created_at;
     const days = due ? Math.floor((nowMs - new Date(due).getTime()) / 86400000) : 0;

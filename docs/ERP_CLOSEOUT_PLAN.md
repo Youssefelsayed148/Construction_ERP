@@ -268,9 +268,9 @@ About 35 of ~190 spec entities have no table. Deliver in vertical slices; each s
 
 5.5 Commercial and finance (spec 09, 10)
 - Tables: ContractParty, Guarantee, Insurance, PaymentApplication, InvoiceLine, CurrencyRate, BudgetVersion/Line, ForecastVersion/Line, credit note, payment batch, maker/checker, bank accounts.
-- [ ] Variation fields: cause, responsibility, linked RFI/instruction, days impact, submitted/recommended/approved split.
-- [ ] Budget, forecast and commitment-adjust endpoints.
-- [ ] Start the seeded `payment_certificate` and `supplier_subcontract_invoice` workflows.
+- [x] Variation fields: cause, responsibility, linked RFI/instruction, days impact, submitted/recommended/approved split.
+- [x] Budget, forecast and commitment-adjust endpoints.
+- [x] Start the seeded `payment_certificate` and `supplier_subcontract_invoice` workflows.
 
 5.6 Site, consultant, client, portals (spec 11-14)
 - Tables: DailyReport child tables (manpower, equipment, work, issues), ObservationAttachment, SubmittalReview, ActivityProgressUpdate, ActionComment.

@@ -204,4 +204,106 @@ router.get('/audit/:entityType/:entityId', authenticate, authorize(), async (req
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// ---------------------------------------------------------------------------
+// Phase 5.5 (spec 10): credit notes and payment batches (maker/checker). Money moves through the ledger mapping
+// table in the request's transaction; typed errors carry error_code and error_params.
+// ---------------------------------------------------------------------------
+const docs = require('../services/financeDocuments');
+const { atomic, typedFail, typedBody } = require('../utils/typedRoute');
+
+const auditFin = (req, action, description, entityType, entityId) => logActivity({
+  userId: req.user.id, userName: req.user.name, userRole: req.user.role, action, module: 'finance-ledger', description, entityId, entityType,
+});
+const failFin = (res, e) => typedFail(res, e, 'FINANCE');
+const fid = (req) => parseInt(req.params.id, 10);
+const amountSchema = Joi.number().positive().precision(2);
+// A payment batch groups payments of several projects: it is a company-level finance object, so a seat bound to some
+// projects (project-scoped grants only) cannot see, approve or release one.
+const companyOnly = (req, res, next) => (req.accessScope && req.accessScope.companyWide ? next()
+  : res.status(403).json({ success: false, error: 'Payment batches need a company-wide finance grant', error_code: 'company_scope_required', error_params: {} }));
+
+router.get('/credit-notes', authenticate, authorize(), async (req, res) => {
+  try { res.json({ success: true, data: await docs.listCreditNotes(query, req.query) }); } catch (e) { return failFin(res, e); }
+});
+router.post('/credit-notes', authenticate, authorize(), async (req, res) => {
+  try {
+    const value = typedBody(Joi.object({
+      party_type: Joi.string().valid('client', 'supplier').required(), invoice_id: Joi.number().integer(), supplier_invoice_id: Joi.number().integer(),
+      amount: amountSchema.required(), tax_amount: Joi.number().min(0).precision(2), reason: Joi.string().required(),
+    }), req, res);
+    if (!value) return;
+    const row = await atomic((q) => docs.createCreditNote(q, value, req.user.id));
+    await auditFin(req, 'create', `Credit note ${row.credit_note_number}`, 'credit_note', row.id);
+    res.status(201).json({ success: true, data: row });
+  } catch (e) { return failFin(res, e); }
+});
+router.get('/credit-notes/:id', authenticate, authorize(), async (req, res) => {
+  try { res.json({ success: true, data: await docs.getCreditNote(query, fid(req)) }); } catch (e) { return failFin(res, e); }
+});
+router.post('/credit-notes/:id/issue', authenticate, authorize(), async (req, res) => {
+  try {
+    const row = await atomic((q) => docs.issueCreditNote(q, fid(req), req.user));
+    await auditFin(req, 'approve', `Credit note ${row.credit_note_number} issued`, 'credit_note', row.id);
+    res.json({ success: true, data: row });
+  } catch (e) { return failFin(res, e); }
+});
+router.post('/credit-notes/:id/void', authenticate, authorize(), async (req, res) => {
+  try {
+    const value = typedBody(Joi.object({ reason: Joi.string().required() }), req, res);
+    if (!value) return;
+    const row = await atomic((q) => docs.voidCreditNote(q, fid(req), req.user, value.reason));
+    await auditFin(req, 'void', `Credit note ${row.credit_note_number} voided`, 'credit_note', row.id);
+    res.json({ success: true, data: row });
+  } catch (e) { return failFin(res, e); }
+});
+
+router.get('/payment-batches', authenticate, authorize(), companyOnly, async (req, res) => {
+  try { res.json({ success: true, data: await docs.listBatches(query, req.query) }); } catch (e) { return failFin(res, e); }
+});
+router.post('/payment-batches', authenticate, authorize(), companyOnly, async (req, res) => {
+  try {
+    const value = typedBody(Joi.object({
+      bank_account_id: Joi.number().integer().allow(null), currency: Joi.string().length(3).uppercase(), payment_date: Joi.date().iso().allow(null), notes: Joi.string().allow('', null),
+      items: Joi.array().items(Joi.object({ supplier_invoice_id: Joi.number().integer().required(), amount: amountSchema, project_id: Joi.number().integer() })).min(1).required(),
+    }), req, res);
+    if (!value) return;
+    const row = await atomic((q) => docs.createBatch(q, { ...value, payment_date: value.payment_date ? new Date(value.payment_date).toISOString().slice(0, 10) : null }, req.user.id));
+    await auditFin(req, 'create', `Payment batch ${row.batch_number}`, 'payment_batch', row.id);
+    res.status(201).json({ success: true, data: row });
+  } catch (e) { return failFin(res, e); }
+});
+router.get('/payment-batches/:id', authenticate, authorize(), companyOnly, async (req, res) => {
+  try { res.json({ success: true, data: await docs.getBatch(query, fid(req)) }); } catch (e) { return failFin(res, e); }
+});
+router.post('/payment-batches/:id/submit', authenticate, authorize(), companyOnly, async (req, res) => {
+  try {
+    const row = await atomic((q) => docs.submitBatch(q, fid(req), req.user));
+    await auditFin(req, 'submit', `Payment batch ${row.batch_number} submitted`, 'payment_batch', row.id);
+    res.json({ success: true, data: row });
+  } catch (e) { return failFin(res, e); }
+});
+router.post('/payment-batches/:id/approve', authenticate, authorize(), companyOnly, async (req, res) => {
+  try {
+    const row = await atomic((q) => docs.approveBatch(q, fid(req), req.user));
+    await auditFin(req, 'approve', `Payment batch ${row.batch_number} approved`, 'payment_batch', row.id);
+    res.json({ success: true, data: row });
+  } catch (e) { return failFin(res, e); }
+});
+router.post('/payment-batches/:id/release', authenticate, authorize(), companyOnly, async (req, res) => {
+  try {
+    const out = await atomic((q) => docs.releaseBatch(q, fid(req), req.user));
+    await auditFin(req, 'create', `Payment batch ${out.batch.batch_number} released (${out.payments.length} payments)`, 'payment_batch', out.batch.id);
+    res.json({ success: true, data: out });
+  } catch (e) { return failFin(res, e); }
+});
+router.post('/payment-batches/:id/cancel', authenticate, authorize(), companyOnly, async (req, res) => {
+  try {
+    const value = typedBody(Joi.object({ reason: Joi.string().required() }), req, res);
+    if (!value) return;
+    const row = await atomic((q) => docs.cancelBatch(q, fid(req), req.user, value.reason));
+    await auditFin(req, 'void', `Payment batch ${row.batch_number} cancelled`, 'payment_batch', row.id);
+    res.json({ success: true, data: row });
+  } catch (e) { return failFin(res, e); }
+});
+
 module.exports = router;

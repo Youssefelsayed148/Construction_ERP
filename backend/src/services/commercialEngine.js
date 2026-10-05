@@ -245,14 +245,18 @@ async function projectCommercial(q, projectId) {
 async function createVariation(q, {
   project_id, client_contract_id = null, sub_contract_id = null, title,
   description = null, variation_type = 'client', lines = [], cost_buildup = [],
+  cause = null, responsibility = null, linked_rfi_id = null, linked_instruction_id = null, time_impact_days = null,
   created_by = null,
 }) {
+  await assertVariationLinks(q, project_id, { linked_rfi_id, linked_instruction_id });
   const variationNumber = await nextNumber(q, { table: 'variations', column: 'variation_number', prefix: 'VAR', pad: 4 });
   const amount = round2(lines.reduce((s, l) => s + toNum(l.quantity) * toNum(l.unit_rate), 0));
   const r = await q(
-    `INSERT INTO variations (variation_number, project_id, client_contract_id, sub_contract_id, title, description, variation_type, amount, status, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'change_event', $9) RETURNING *`,
-    [variationNumber, project_id, client_contract_id, sub_contract_id, title, description, variation_type, amount, created_by]
+    `INSERT INTO variations (variation_number, project_id, client_contract_id, sub_contract_id, title, description, variation_type, amount, status, created_by,
+        cause, responsibility, linked_rfi_id, linked_instruction_id, time_impact_days, submitted_amount)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'change_event', $9, $10, $11, $12, $13, $14, $8) RETURNING *`,
+    [variationNumber, project_id, client_contract_id, sub_contract_id, title, description, variation_type, amount, created_by,
+      cause, responsibility, linked_rfi_id, linked_instruction_id, time_impact_days]
   );
   const variation = r.rows[0];
   for (const line of lines) {
@@ -270,6 +274,34 @@ async function createVariation(q, {
     );
   }
   return variation;
+}
+
+// The links must name records of the SAME project: a variation cannot point at another project's RFI.
+async function assertVariationLinks(q, projectId, { linked_rfi_id = null, linked_instruction_id = null }) {
+  const fail = (code, message, params) => { const e = new Error(message); e.status = 400; e.error_code = code; e.error_params = params; return e; };
+  if (linked_rfi_id != null) {
+    const rfi = (await q('SELECT project_id FROM project_rfis WHERE id = $1', [linked_rfi_id])).rows[0];
+    if (!rfi || Number(rfi.project_id) !== Number(projectId)) throw fail('variation_link_invalid', `RFI #${linked_rfi_id} is not on this project`, { linked_rfi_id });
+  }
+  if (linked_instruction_id != null) {
+    const ins = (await q('SELECT project_id FROM engineer_instructions WHERE id = $1', [linked_instruction_id])).rows[0];
+    if (!ins || Number(ins.project_id) !== Number(projectId)) throw fail('variation_link_invalid', `Instruction #${linked_instruction_id} is not on this project`, { linked_instruction_id });
+  }
+}
+
+const VARIATION_EDITABLE = ['title', 'description', 'cause', 'responsibility', 'linked_rfi_id', 'linked_instruction_id', 'time_impact_days', 'recommended_amount'];
+
+// Edit the commercial fields of a variation that is still in the lifecycle. The approved amount is not editable
+// here: it is set by the approving decision (decideVariation) and becomes the variation's amount when incorporated.
+async function updateVariation(q, variationId, fields) {
+  const variation = (await q('SELECT * FROM variations WHERE id = $1 FOR UPDATE', [variationId])).rows[0];
+  const fail = (status, code, message, params) => { const e = new Error(message); e.status = status; e.error_code = code; e.error_params = params; return e; };
+  if (!variation) throw fail(404, 'variation_not_found', `Variation #${variationId} not found`, { id: variationId });
+  if (['incorporated', 'rejected'].includes(variation.status)) throw fail(409, 'variation_closed', `Variation ${variation.variation_number} is ${variation.status} and can no longer be edited`, { id: variation.id, status: variation.status });
+  const cols = VARIATION_EDITABLE.filter((c) => fields[c] !== undefined);
+  if (!cols.length) throw fail(400, 'nothing_to_update', 'No editable field supplied', {});
+  await assertVariationLinks(q, variation.project_id, { linked_rfi_id: fields.linked_rfi_id, linked_instruction_id: fields.linked_instruction_id });
+  return (await q(`UPDATE variations SET ${cols.map((c, i) => `${c} = $${i + 2}`).join(', ')}, updated_at = NOW() WHERE id = $1 RETURNING *`, [variation.id, ...cols.map((c) => fields[c])])).rows[0];
 }
 
 async function startVariationWorkflow(q, variationId, user) {
@@ -293,10 +325,14 @@ async function startVariationWorkflow(q, variationId, user) {
 
 // Advance the lifecycle; incorporation updates the contract's revised value
 // and the project forecast in one transaction.
-async function decideVariation(q, variationId, user, decision, comment) {
+async function decideVariation(q, variationId, user, decision, comment, { approved_amount = null } = {}) {
   const variation = (await q('SELECT * FROM variations WHERE id = $1', [variationId])).rows[0];
   if (!variation) throw new Error(`Variation #${variationId} not found`);
   if (variation.workflow_instance_id == null) throw new Error('Variation workflow not started');
+  if (approved_amount != null && decision === 'approve') {
+    // The approving authority states the approved amount (it may be less than submitted or recommended).
+    await q('UPDATE variations SET approved_amount = $2, updated_at = NOW() WHERE id = $1', [variationId, round2(approved_amount)]);
+  }
   const result = await workflowEngineRef().recordDecision(variation.workflow_instance_id, null, user.id, decision, comment || null, {
     query: q, role: user.role, userName: user.name,
   });
@@ -325,6 +361,12 @@ async function decideVariation(q, variationId, user, decision, comment) {
 async function incorporateVariation(q, variationId) {
   const variation = (await q('SELECT * FROM variations WHERE id = $1', [variationId])).rows[0];
   if (!variation) throw new Error(`Variation #${variationId} not found`);
+
+  // Phase 5.5: the amount that counts is the APPROVED amount (default: what was submitted). Every figure the
+  // engine reads (revised contract value, approved variations) reads variations.amount, so it follows here once.
+  const approved = variation.approved_amount != null ? round2(variation.approved_amount) : round2(variation.amount);
+  await q('UPDATE variations SET approved_amount = $2, amount = $2 WHERE id = $1', [variationId, approved]);
+  variation.amount = approved;
 
   if (variation.client_contract_id != null) {
     const contract = (await q('SELECT * FROM client_contracts WHERE id = $1', [variation.client_contract_id])).rows[0];
@@ -425,6 +467,8 @@ module.exports = {
   projectCommercial,
   createVariation,
   startVariationWorkflow,
+  updateVariation,
+  assertVariationLinks,
   decideVariation,
   incorporateVariation,
   applyBudgetChange,
