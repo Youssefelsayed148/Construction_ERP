@@ -13,7 +13,7 @@ const PAYMENT_METHODS = ['cash', 'bank_transfer', 'check', 'other'];
 function computeInvoiceStatus(invoice, totalPaid) {
   if (['void', 'cancelled', 'credited'].includes(invoice.status)) return invoice.status;
   const paid = parseFloat(totalPaid) || 0;
-  const amount = parseFloat(invoice.net_amount) > 0 ? parseFloat(invoice.net_amount) : (parseFloat(invoice.amount) || 0);
+  const amount = (parseFloat(invoice.net_amount) > 0 ? parseFloat(invoice.net_amount) : (parseFloat(invoice.amount) || 0)) - (parseFloat(invoice.credited_amount) || 0);
   if (paid >= amount) return 'paid';
   if (invoice.due_date && new Date(invoice.due_date) < new Date() && paid < amount) return 'overdue';
   if (paid > 0) return 'partially_paid';

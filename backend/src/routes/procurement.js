@@ -303,6 +303,32 @@ router.post('/award-recommendations/:id/withdraw', authenticate, authorize(), as
   } catch (e) { return typedFail(res, e); }
 });
 
+// ---------------------------------------------------------------------------
+// Phase 5.5: the seeded supplier_subcontract_invoice workflow for a supplier invoice. The 'approval' step runs the
+// invoice approval (the cost accrual point) in the same transaction; POST /invoices/:id/approve stays as the shortcut.
+// ---------------------------------------------------------------------------
+const invoiceFlow = require('../services/financeDocuments');
+
+router.get('/invoices/:id/workflow', authenticate, authorize(), async (req, res) => {
+  try { res.json({ success: true, data: await invoiceFlow.workflowState(query, req.params.id) }); } catch (e) { return typedFail(res, e); }
+});
+router.post('/invoices/:id/workflow/start', authenticate, authorize(), async (req, res) => {
+  try {
+    const out = await atomic((q) => invoiceFlow.startSupplierInvoiceWorkflow(q, parseInt(req.params.id, 10), req.user));
+    await auditProc(req, 'submit', `Supplier invoice ${out.invoice.invoice_number} workflow started`, 'supplier_invoice', out.invoice.id);
+    res.json({ success: true, data: out });
+  } catch (e) { return typedFail(res, e); }
+});
+router.post('/invoices/:id/workflow/decide', authenticate, authorize(), async (req, res) => {
+  try {
+    const value = typedBody(Joi.object({ decision: Joi.string().valid('approve', 'reject').required(), comment: Joi.string().allow('', null) }), req, res);
+    if (!value) return;
+    const out = await atomic((q) => invoiceFlow.decideSupplierInvoice(q, parseInt(req.params.id, 10), req.user, value.decision, value.comment));
+    await auditProc(req, value.decision === 'approve' ? 'approve' : 'reject', `Supplier invoice ${out.invoice.invoice_number} workflow decision: ${value.decision}`, 'supplier_invoice', out.invoice.id);
+    res.json({ success: true, data: out });
+  } catch (e) { return typedFail(res, e); }
+});
+
 const prEditSchema = Joi.object({
   title: Joi.string(), project_id: Joi.number().integer().allow(null), location_id: Joi.number().integer().allow(null),
   cost_code_id: Joi.number().integer().allow(null), work_package_id: Joi.number().integer().allow(null),

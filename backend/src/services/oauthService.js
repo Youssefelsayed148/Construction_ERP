@@ -50,6 +50,8 @@ const FAMILIES = [
   'daily-reports', 'site-visits', 'observations', 'rfis', 'submittals',
   'inspections', 'ncrs', 'documents', 'transmittals', 'schedule', 'actions',
   'notifications', 'reports', 'assistants',
+  'guarantees', 'insurances', 'currency-rates', 'payment-applications', 'budgets', 'forecasts', 'commitments',
+  'credit-notes', 'payment-batches',
 ];
 
 const SCOPE_RE = /^(api|([a-z-]+)):(read|write)$/;

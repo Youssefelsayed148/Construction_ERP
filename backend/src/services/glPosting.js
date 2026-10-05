@@ -8,6 +8,7 @@
 //   client_invoice  Dr receivable (amount owed)  |  Cr revenue (amount - tax)  |  Cr tax account (tax, only if tax > 0)
 //   client_payment  Dr cash (amount)             |  Cr receivable (amount)
 //   supplier_payment Dr payable (amount)         |  Cr cash (amount)          (Phase 3.1; direction 'ap' payments)
+//   client_credit_note Dr revenue (amount - tax) | Dr tax account (tax, only if tax > 0) | Cr receivable (amount)   (Phase 5.5)
 //   reversal        the original entry's lines with debit and credit swapped, posted once, kind '<kind>_void'
 //
 // Retention held, advance recovery and other deductions are already inside the invoice amount (it is the net the
@@ -21,6 +22,8 @@ const POSTING_RULES = {
   client_invoice: { receivable: 'receivable', revenue: 'revenue', tax: 'vat_output' },
   client_payment: { cash: 'cash', receivable: 'receivable' },
   supplier_payment: { payable: 'payable', cash: 'cash' },
+  // Phase 5.5: a client credit note is the mirror image of the invoice: Dr revenue (net) | Dr output tax | Cr receivable.
+  client_credit_note: { receivable: 'receivable', revenue: 'revenue', tax: 'vat_output' },
 };
 
 // Statuses in which an invoice has been issued to the client (legacy 'sent' counts as issued).
@@ -58,6 +61,27 @@ async function reverseEntry(q, kind, referenceId, { userId = null, description }
     lines: lines.map((l) => ({ accountId: l.account_id, debit: l.credit, credit: l.debit, description: `Reversal: ${l.description || ''}`.trim() })),
   });
 }
+
+// Client credit note issued: posted once per credit note. A supplier credit note is posted by services/costAccrual.js
+// because it also reverses cost.
+async function postClientCreditNote(q, creditNote, invoice, { userId = null } = {}) {
+  if ((await journal.findEntries(q, 'client_credit_note', creditNote.id)).length) return null;
+  const rule = POSTING_RULES.client_credit_note;
+  const total = money.toMinor(creditNote.amount);
+  const tax = money.toMinor(creditNote.tax_amount == null ? 0 : creditNote.tax_amount);
+  if (tax < 0n || tax > total) throw new journal.JournalError(`Credit note ${creditNote.credit_note_number}: tax ${money.format(tax)} is outside the amount ${money.format(total)}`);
+  const lines = [];
+  if (total - tax > 0n) lines.push({ account: rule.revenue, debit: money.format(total - tax), description: `Revenue credited ${creditNote.credit_note_number}` });
+  if (tax > 0n) lines.push({ account: rule.tax, debit: money.format(tax), description: `Output tax credited ${creditNote.credit_note_number}` });
+  lines.push({ account: rule.receivable, credit: money.format(total), description: `Receivable credited ${creditNote.credit_note_number} (invoice ${invoice.invoice_number})` });
+  return journal.postJournalEntry(q, {
+    date: todayIso(), description: `Credit note ${creditNote.credit_note_number} against invoice ${invoice.invoice_number}`,
+    reference_type: 'client_credit_note', reference_id: creditNote.id, created_by: userId, lines,
+  });
+}
+
+const reverseClientCreditNote = (q, creditNote, { userId = null } = {}) =>
+  reverseEntry(q, 'client_credit_note', creditNote.id, { userId, description: `Credit note ${creditNote.credit_note_number} voided` });
 
 const reverseClientInvoice = (q, invoice, { userId = null } = {}) =>
   reverseEntry(q, 'client_invoice', invoice.id, { userId, description: `Invoice ${invoice.invoice_number} voided` });
@@ -112,4 +136,5 @@ const reverseSupplierPayment = (q, payment, { userId = null } = {}) =>
 module.exports = {
   POSTING_RULES, ISSUED_STATUSES, postClientInvoice, reverseClientInvoice, syncInvoicePosting,
   postClientPayment, reverseClientPayment, postSupplierPayment, reverseSupplierPayment,
+  postClientCreditNote, reverseClientCreditNote,
 };
