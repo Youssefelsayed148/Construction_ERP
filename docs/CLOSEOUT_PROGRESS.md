@@ -4,6 +4,19 @@ Resume point for a new session. Authority: docs/ERP_CLOSEOUT_PLAN.md and docs/sy
 
 Stack so far: #1-#35 (Phases 0-3 and earlier slices, see docs/CLOSEOUT_LOG.md). Baseline confirmed 2026-10-04: mock 970, real-PG 261 (31 suites), 85 migrations fresh and repeatable, lint:guards empty baseline, frontend i18n:check + 72 unit tests + build green.
 
+## Current autonomous closeout (2026-10-13)
+
+- Branch: `closeout/batch-a-to-6` (created; no closeout slice committed yet).
+- Preserved the pre-existing untracked `docs/CODEX_AUDIT_REPORT.md`.
+- A1 is in progress: expired matching active delegation rows are deactivated during renewal; PG regression assertions cover expired renewal and live-overlap refusal.
+- A2 is in progress: webhook URL validation, DNS pinning, non-public address rejection, redirect refusal, and response cap are implemented with mocked regressions; A2 is not yet committed.
+- A3 is in progress: webhook secrets are encrypted at rest using an HKDF-derived AES-256-GCM key; read helpers omit them, create and rotate return secrets once, and legacy plaintext rows are encrypted on first delivery. Rotation is audited in its transaction.
+- Current local output: mock backend 42/42 suites and 928/928 tests; lint guards `ok`.
+- Focused webhook output: 1 suite / 41 tests passed. This is mocked coverage only.
+- Updated focused webhook output after A3: 1 suite / 42 tests passed. This is mocked coverage only.
+- Real-PG verification is blocked pending Docker Desktop availability. `docker info` reports the Docker Desktop Linux engine pipe is missing. Do not point tests at any other database.
+- See root `STATE.md` for the exact resume command and outstanding gates.
+
 ## PRs in this run (stacked on #35)
 
 - (A1) docs/PHASE3_GAP_AUDIT.md: audit table for plan 3.1-3.5, mapped to the plan numbering (no code).

@@ -266,3 +266,57 @@ The backend stack (#17, #18) and the frontend stack (#19 on #6-#9) are merged in
 - Routes (internal API + /api/v1, typed errors with error_code/error_params); budget, forecast and commitment reads need `see_internal_cost` (decision 8: the Quantity Surveyor does not hold it); lifecycle verbs are their own actions (submit, approve, void, issue_financial_document, record_payment); record scope rules for every new `:id` route; payment batches are company-level and refuse a project-bound seat (`company_scope_required`). Reconcile script covers the new ledger kinds.
 - Tests: `commercial-5-5.pg.test.js` (14, real PostgreSQL). Shown failing against the previous code (12 of 14 fail without the implementation), then green.
 - Not done in 5.5, honestly: retention, advance recovery and other deductions are stored on the certificate but post nowhere: chart accounts and mapping keys are PROPOSED in the PR description and wait for the owner; `invoice_lines` and `payment_applications` have tables but invoice creation does not write lines yet; no MCP tools (the plan does not ask); no UI (Phase 6); bank accounts are the 5.1 `org_bank_accounts`.
+# 2026-10-13: autonomous closeout start — A1 in progress
+
+Branch: `closeout/batch-a-to-6`. Existing untracked `docs/CODEX_AUDIT_REPORT.md` was preserved.
+
+Implemented but not yet committed: `orgService.createDelegation` now sets `is_active=false` for expired rows matching the same grantee, grantor, and module scope before checking for a live duplicate. The 5.1 PG suite now asserts that a matching live overlap returns `delegation_duplicate`, and that an expired grant is deactivated when renewed.
+
+Commands and actual output:
+
+```text
+backend> npm run lint:guards
+lint-guards: ok
+
+backend> npm test -- --runInBand
+Test Suites: 42 passed, 42 total
+Tests:       928 passed, 928 total
+Snapshots:   0 total
+Time:        22.877 s
+Ran all test suites.
+
+repo> docker info --format '{{.ServerVersion}}'
+error during connect: Get "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.51/info": open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.
+exit=1
+```
+
+Real PostgreSQL verification is unverified because the Docker Desktop engine is unavailable. The audit report's previous PG result (565 passed, one delegation-fixture failure) is historical and is not evidence for this change. No other DB was used. A1 remains in progress pending the isolated PG rerun; see `STATE.md`.
+
+## 2026-10-13: A2 webhook SSRF controls in progress
+
+Changed `webhookService` to require HTTPS (HTTP only when `WEBHOOK_ALLOW_HTTP_LOCAL=true`), resolve and reject prohibited IPv4/IPv6 answers during registration and each delivery, pin the socket lookup to the checked address, never follow redirects, enforce a 10-second timeout, and cap response bodies at 64 KiB. Added mocked coverage for loopback/private/link-local/metadata/IPv6/mapped IPv4 targets, DNS rebinding, registration and delivery checks, redirect handling, and response size. No real external destination was contacted. A2 remains in progress pending full-batch gates and code review.
+
+Actual command output:
+
+```text
+backend> npm test -- --runInBand src/scripts/__tests__/external-api.test.js
+Test Suites: 1 passed, 1 total
+Tests:       41 passed, 41 total
+Snapshots:   0 total
+Time:        1.614 s
+```
+
+## 2026-10-13: A3 webhook secret handling in progress
+
+Webhook secrets are now AES-256-GCM encrypted at rest with an HKDF-derived key from `WEBHOOK_ENCRYPTION_KEY` (preferred) or the server `JWT_SECRET`. New webhook responses return the generated value once; GET/list service projections omit it. A `POST /webhooks/:id/rotate-secret` route rotates it once, with audit inside the same transaction. Existing plaintext rows remain deliverable and are encrypted on first delivery. Tests assert encrypted storage, decryption for delivery, no secret in create-service/read results, and rotation result redaction.
+
+Actual focused output after A3:
+
+```text
+backend> npm test -- --runInBand src/scripts/__tests__/external-api.test.js
+Test Suites: 1 passed, 1 total
+Tests:       42 passed, 42 total
+Snapshots:   0 total
+Time:        1.295 s
+```
+

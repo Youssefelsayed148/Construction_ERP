@@ -344,6 +344,15 @@ async function createDelegation(q, actor, {
   if (max_amount != null && !(toNum(max_amount) >= 0)) {
     throw new OrgValidationError('max_amount must be a positive amount or omitted', 'delegation_amount_invalid', { max_amount });
   }
+  // A grant whose window has ended is no longer active authority. Retire it before
+  // checking for a duplicate so the partial unique index permits a deliberate renewal.
+  // Keep future and currently live rows active; a live overlap remains a conflict.
+  await q(
+    `UPDATE delegations
+        SET is_active = false
+      WHERE delegate_user_id = $1 AND delegate_from_user_id = $2 AND module_scope = $3
+        AND is_active = true AND valid_to < CURRENT_DATE`,
+    [delegate, delegator, scope]);
   const dup = (await q(
     `SELECT id FROM delegations
       WHERE delegate_user_id = $1 AND delegate_from_user_id = $2 AND module_scope = $3 AND is_active`, [delegate, delegator, scope])).rows[0];

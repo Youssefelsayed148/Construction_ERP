@@ -488,6 +488,11 @@ describePg('5.1 Organization and RBAC (real PostgreSQL, real app)', () => {
       delegate_user_id: users.delegate.id, module_scope: 'approvals', max_amount: 50000,
       valid_from: days(0), valid_to: days(30),
     });
+    // A second currently live grant for the same pair and scope must still be refused.
+    await expect(org.createDelegation(db.query, users.owner, {
+      delegate_user_id: users.delegate.id, module_scope: 'approvals', max_amount: 50000,
+      valid_from: days(0), valid_to: days(30),
+    })).rejects.toMatchObject({ error_code: 'delegation_duplicate' });
     expect(await delegationService.lookupDelegation(db.query, users.delegate.id, users.owner.id, { module: 'approvals', amount: 4000 })).toBeTruthy();
     // amount over the cap → null
     expect(await delegationService.lookupDelegation(db.query, users.delegate.id, users.owner.id, { module: 'approvals', amount: 60000 })).toBeNull();
@@ -504,6 +509,18 @@ describePg('5.1 Organization and RBAC (real PostgreSQL, real app)', () => {
     // is_active=false → null (deactivate the live row created in this test)
     await org.deactivateDelegation(db.query, users.owner, live.id);
     expect(await delegationService.lookupDelegation(db.query, users.delegate.id, users.owner.id, { module: 'approvals', amount: 4000 })).toBeNull();
+
+    // An expired active row is retired automatically when the same grant is renewed.
+    const expired = await org.createDelegation(db.query, users.owner, {
+      delegate_user_id: users.delegate.id, module_scope: 'approvals', max_amount: 50000,
+      valid_from: days(-10), valid_to: days(-1),
+    });
+    const renewed = await org.createDelegation(db.query, users.owner, {
+      delegate_user_id: users.delegate.id, module_scope: 'approvals', max_amount: 50000,
+      valid_from: days(0), valid_to: days(30),
+    });
+    expect((await one('SELECT is_active FROM delegations WHERE id = $1', [expired.id])).is_active).toBe(false);
+    expect((await one('SELECT is_active FROM delegations WHERE id = $1', [renewed.id])).is_active).toBe(true);
   });
 
   test('10. v1 read family: blanket roles read organizations; storekeeper stays 403; hr_manager view passes', async () => {
