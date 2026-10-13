@@ -18,6 +18,11 @@ async function seedPilotData(q) {
   const project = await one(q, 'SELECT id FROM projects WHERE code = $1', [PROJECT_CODE]);
   const supplier = await one(q, "SELECT id FROM suppliers WHERE code = 'PILOT-SUPPLIER-001'");
   if (!project || !supplier) throw new Error('Run the guarded role seed first; pilot project or supplier is missing');
+  const alternativeSupplier = await one(q,
+    `INSERT INTO suppliers (code, name_en, name_ar, specialty, is_active)
+     VALUES ('PILOT-SUPPLIER-002', 'Delta Pilot Materials', 'دلتا لمواد البناء التجريبية', 'construction materials', true)
+     ON CONFLICT (code) DO UPDATE SET name_en = EXCLUDED.name_en, name_ar = EXCLUDED.name_ar, is_active = true
+     RETURNING id`);
 
   const costCodes = {};
   for (const [code, type, en, ar] of [
@@ -56,6 +61,12 @@ async function seedPilotData(q) {
          lead_time_days = EXCLUDED.lead_time_days, notes = EXCLUDED.notes`,
       [supplier.id, item.id, material.supplierPrice, material.leadDays]);
     await q(
+      `INSERT INTO supplier_materials (supplier_id, material_id, unit_price, lead_time_days, notes)
+       VALUES ($1, $2, $3, $4, 'Alternative fictional pilot rate')
+       ON CONFLICT (supplier_id, material_id) DO UPDATE SET unit_price = EXCLUDED.unit_price,
+         lead_time_days = EXCLUDED.lead_time_days, notes = EXCLUDED.notes`,
+      [alternativeSupplier.id, item.id, Math.round(material.supplierPrice * 1.08 * 100) / 100, material.leadDays + 2]);
+    await q(
       `INSERT INTO warehouse_stock (warehouse_id, item_id, quantity, available_quantity, reorder_level, avg_unit_cost)
        VALUES ($1, $2, 0, 0, 0, $3)
        ON CONFLICT (warehouse_id, item_id) DO UPDATE SET avg_unit_cost = EXCLUDED.avg_unit_cost`,
@@ -82,7 +93,7 @@ async function seedPilotData(q) {
           item.nameAr, item.unit, quantity, item.supplierPrice, item.id]);
     }
   }
-  return { projectId: project.id, supplierId: supplier.id, warehouseId: warehouse.id, materials: itemRows };
+  return { projectId: project.id, supplierId: supplier.id, alternativeSupplierId: alternativeSupplier.id, warehouseId: warehouse.id, materials: itemRows };
 }
 
 async function main() {
@@ -102,7 +113,7 @@ async function main() {
     const result = await seedPilotData(q);
     await client.query('COMMIT');
     console.log(`Seeded ${result.materials.length} demo materials, rates, stock rows, and BOQ items for ${PROJECT_CODE}.`);
-    console.log(`Project ${result.projectId}; supplier ${result.supplierId}; warehouse ${result.warehouseId}.`);
+    console.log(`Project ${result.projectId}; suppliers ${result.supplierId}, ${result.alternativeSupplierId}; warehouse ${result.warehouseId}.`);
   } catch (error) {
     try { await client.query('ROLLBACK'); } catch (_) { /* keep the source error */ }
     throw error;

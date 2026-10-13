@@ -961,3 +961,14 @@ lint-guards: ok
 ```
 
 The pilot seed ran against `construction_erp_staging` only, through loopback port 55440. Next B4 verifies the procurement lifecycle through local HTTP APIs and scopes; B5 backup/restore remains separate.
+### B3.1 comparison supplier addition (2026-10-13)
+
+Extended the idempotent demo-data seed with a second fictional supplier and a distinct, higher rate for each material so the B4 RFQ comparison can exercise more than one bid. The re-run completed against the same local staging DB:
+
+```text
+npm run seed:pilot-data
+Seeded 3 demo materials, rates, stock rows, and BOQ items for PILOT-PTP-001.
+Project 2; suppliers 2, 4; warehouse 5.
+suppliers=2
+supplier_rates=6
+```
