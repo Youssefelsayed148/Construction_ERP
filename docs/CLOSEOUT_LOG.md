@@ -638,4 +638,25 @@ npm run lint:guards
 lint-guards: ok
 ```
 
-A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This commercial slice is not committed yet.
+A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This commercial slice is committed as `4762081`.
+
+## 2026-10-13: A4 unit sales audit continuation (local, pending commit)
+
+Unit-sale invoice activity now shares the transaction creating and posting the invoice. Bulk unit creation activity now shares the transaction inserting the generated units.
+
+Verification command output:
+
+```text
+node --check src/routes/units.js; git diff --check
+exit code: 0
+
+npm test -- --runInBand
+Test Suites: 48 passed, 48 total
+Tests:       968 passed, 968 total
+Ran all test suites.
+
+npm run lint:guards
+lint-guards: ok
+```
+
+A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This unit-sales slice is not committed yet.

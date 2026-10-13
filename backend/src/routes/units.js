@@ -31,23 +31,23 @@ async function createUnitSaleInvoice({ unit, building, clientId, userId, userNam
 
   const today = new Date().toISOString().split('T')[0];
 
-  const invoice = await transaction((client) => createInvoiceRecord(client.query.bind(client), {
-    project_id: building.project_id, client_id: clientId, amount, issue_date: today, status: 'sent',
-    description: `Auto-generated: Sale of unit ${unit.code} (${building.name})`, created_by: userId,
-  }, { actor_id: userId, actor_name: userName }));
-  const invoiceNumber = invoice.invoice_number;
-  const result = { rows: [invoice] };
-
-  const { logActivity } = require('../utils/activity');
-  await logActivity({
-    userId, userName, userRole,
-    action: 'create', module: 'invoices',
-    description: `Auto-created invoice ${invoiceNumber} for unit ${unit.code} sale — ${amount} EGP`,
-    entityId: result.rows[0].id, entityType: 'invoice', amount
+  const invoice = await transaction(async (client) => {
+    const q = client.query.bind(client);
+    const created = await createInvoiceRecord(q, {
+      project_id: building.project_id, client_id: clientId, amount, issue_date: today, status: 'sent',
+      description: `Auto-generated: Sale of unit ${unit.code} (${building.name})`, created_by: userId,
+    }, { actor_id: userId, actor_name: userName });
+    await logActivity({
+      userId, userName, userRole,
+      action: 'create', module: 'invoices',
+      description: `Auto-created invoice ${created.invoice_number} for unit ${unit.code} sale — ${amount} EGP`,
+      entityId: created.id, entityType: 'invoice', amount
+    }, { query: q });
+    return created;
   });
 
-  console.log(`[SALES] Auto-created invoice ${invoiceNumber} for unit ${unit.code}, amount=${amount}`);
-  return result.rows[0];
+  console.log(`[SALES] Auto-created invoice ${invoice.invoice_number} for unit ${unit.code}, amount=${amount}`);
+  return invoice;
 }
 
 // ============ BUILDINGS ============
@@ -267,12 +267,13 @@ router.post('/buildings/:buildingId/bulk-units', authenticate, authorize(), asyn
 
     const pricePerM2 = value.price && value.area ? (value.price / value.area) : null;
     const created = await transaction(async (client) => {
+      const q = (text, params) => client.query(text, params);
       const units = [];
       for (let f = 0; f < value.floors; f++) {
         const floorNo = value.start_floor + f;
         for (let u = 1; u <= value.units_per_floor; u++) {
           const code = `${value.prefix}${floorNo}${String(u).padStart(2, '0')}`;
-          const result = await client.query(
+          const result = await q(
             `INSERT INTO units (building_id, code, type, area, bedrooms, bathrooms, floor_no, finishing_type, price, price_per_m2)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
             [req.params.buildingId, code, value.type, value.area, value.bedrooms, value.bathrooms,
@@ -281,10 +282,10 @@ router.post('/buildings/:buildingId/bulk-units', authenticate, authorize(), asyn
           units.push(result.rows[0]);
         }
       }
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'sales', description: `Bulk-created ${units.length} units in building ${building.rows[0].code}`, entityId: req.params.buildingId, entityType: 'building' }, { query: q });
       return units;
     });
 
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'sales', description: `Bulk-created ${created.length} units in building ${building.rows[0].code}`, entityId: req.params.buildingId, entityType: 'building' });
     res.status(201).json({ success: true, data: created });
   } catch (error) {
     if (error.code === '23505') return res.status(409).json({ success: false, error: 'Generated unit codes collide with existing units — adjust prefix or start floor' });

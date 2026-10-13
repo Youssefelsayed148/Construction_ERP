@@ -193,3 +193,7 @@ User creation, password change, and logout-all now write activity rows inside th
 ## 2026-10-13: A4 commercial and finance audit transaction continuation (local, pending commit)
 
 Added `atomicAudited` and moved audit rows into mutation transactions for commercial contracts/variations/parties/guarantees/insurance/rates, payment applications/certificates, budget and forecast versions, and commitment adjustments. `node --check` and `git diff --check` exit 0; backend mock suite passes 48 suites / 968 tests; `npm run lint:guards` prints `lint-guards: ok`. PostgreSQL rollback verification remains unverified because Docker Desktop is unavailable. Current expected commit: per-slice commit to follow.
+
+## 2026-10-13: A4 unit sales audit continuation (local, pending commit)
+
+Unit-sale invoice activity now shares the invoice creation/posting transaction. Bulk unit creation activity now shares the generated-unit insert transaction. Syntax/whitespace checks exit 0; backend mock suite passes 48 suites / 968 tests; guards print `lint-guards: ok`. PostgreSQL rollback verification remains unverified because Docker Desktop is unavailable. Current expected commit: per-slice commit to follow.
