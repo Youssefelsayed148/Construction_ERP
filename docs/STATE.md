@@ -10,12 +10,12 @@
 - Batch E3/E4 source-lot supplier returns and forecast approval/ETC/EAC behavior are committed in `164c9e9`.
 - Batch E5 finance workbench and journal-backed retention release are committed in `7370bca`; focused checks passed.
 - Phase 5.6.1, the delivered 5.6.2 workflow slices, and 5.6.3 are implemented. Phase 5.6.2 SLA administration remains open.
-- Phase 5.6.4 client actions are committed in `940d2f3`. Phase 5.6.5.a structured subcontractor submission intake/history is committed in `d6070bc`; 5.6.5.b formal WIR/MIR registers are committed in `f7e291d`; 5.6.5.c RFI/submittal forms are committed in `04c8ff0`; 5.6.5.d RFI acknowledgement/resubmittal forms are committed in `ba2a00c`; 5.6.5.e remaining subcontractor action forms are implemented and ready to commit.
+- Phase 5.6.4 client actions are committed in `940d2f3`. Phase 5.6.5.a structured subcontractor submission intake/history is committed in `d6070bc`; 5.6.5.b formal WIR/MIR registers are committed in `f7e291d`; 5.6.5.c RFI/submittal forms are committed in `04c8ff0`; 5.6.5.d RFI acknowledgement/resubmittal forms are committed in `ba2a00c`; 5.6.5.e remaining subcontractor action forms are committed in `1f3a345`. Supplier portal MIRs currently show their number, current status, and decision date through own deliveries. Line-level accepted/rejected quantities and full internal inspection history remain on the procurement register.
 
 ## Next
 
-1. Commit the Phase 5.6.5.e remaining subcontractor action form slice after final diff review.
-2. Verify whether supplier MIR lifecycle history needs more detail, then close Phase 5.6.5.
+1. Continue Phase 5.7.1: audit incident readers and use the canonical `incidents` table internally; retain `safety_incidents` only as a legacy compatibility view.
+2. Add or update the focused migration, QHSE/HSE, and site checks for incident parity and scope. Do not run full suites for this slice.
 3. Continue Phases 5.7, 5.8 and 6 in the audited order in `docs/PLAN_5_6_TO_6.md`.
 
 ## Decisions and limits
