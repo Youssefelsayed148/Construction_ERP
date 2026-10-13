@@ -335,8 +335,11 @@ async function createDelegation(q, actor, {
       `module_scope "${scope}" is not enforced yet — use one of ${DELEGATION_SCOPES.join(', ')}`,
       'delegation_scope_unknown', { module_scope: scope, known: DELEGATION_SCOPES });
   }
-  const from = valid_from || new Date().toISOString().slice(0, 10);
-  const to = valid_to;
+  const dateOnly = (value) => value instanceof Date
+    ? value.toISOString().slice(0, 10)
+    : String(value).slice(0, 10);
+  const from = valid_from ? dateOnly(valid_from) : new Date().toISOString().slice(0, 10);
+  const to = valid_to ? dateOnly(valid_to) : null;
   if (!to) throw new OrgValidationError('valid_to is required', 'delegation_valid_to_required');
   if (String(from) > String(to)) {
     throw new OrgValidationError('valid_from must be on or before valid_to', 'delegation_window_inverted', { valid_from: from, valid_to: to });

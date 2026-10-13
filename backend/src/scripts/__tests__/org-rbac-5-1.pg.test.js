@@ -299,9 +299,9 @@ describePg('5.1 Organization and RBAC (real PostgreSQL, real app)', () => {
       delegate_user_id: users.delegate.id, module_scope: 'approvals',
       max_amount: 50000, valid_from: days(0), valid_to: days(30),
     });
-    expect(delegation.status).toBe(201);
+    expect(delegation).toMatchObject({ status: 201, body: { success: true } });
     made.delegations.push(delegation.body.data.id);
-    expect(delegation.body.data.max_amount).toBe('50000.00');
+    expect(Number(delegation.body.data.max_amount)).toBe(50000);
     expect((await one("SELECT count(*)::int n FROM audit_events WHERE entity = 'delegation' AND entity_id = $1 AND action = 'create'",
       [delegation.body.data.id])).n).toBe(1);
 
