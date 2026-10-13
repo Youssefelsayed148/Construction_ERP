@@ -10,6 +10,15 @@ const { auditedTransaction } = require('../utils/auditedTransaction');
 // Mounted at /api/docs — document library with versioning, RFIs, submittals.
 // File uploads go through /api/documents/upload first; this router stores the returned URLs.
 
+function rejectLegacyResponse(res, replacement) {
+  return res.status(410).json({
+    success: false,
+    error: 'Single-answer responses are retired; use the revisioned response register.',
+    error_code: 'staged_response_required',
+    error_params: { replacement },
+  });
+}
+
 // ============ CATEGORIES ============
 
 router.get('/categories', authenticate, authorize(), async (req, res) => {
@@ -282,20 +291,7 @@ router.post('/rfis', authenticate, authorize(), async (req, res) => {
 });
 
 router.post('/rfis/:id/respond', authenticate, authorize(), async (req, res) => {
-  try {
-    const schema = Joi.object({ answer: Joi.string().required() });
-    const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-
-    const result = await query(
-      `UPDATE project_rfis SET status = 'answered', answer = $1, answered_by = $2, answered_at = NOW(), updated_at = NOW()
-       WHERE id = $3 AND status = 'open' RETURNING *`,
-      [value.answer, req.user.id, req.params.id]
-    );
-    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'RFI not found or not open' });
-    await fireEvent({ eventType: 'rfi.answered', entityType: 'project_rfi', entityId: parseInt(req.params.id, 10), userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: result.rows[0].project_id, rfi_number: result.rows[0].rfi_number, status: 'answered' } });
-    res.json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  return rejectLegacyResponse(res, '/api/v1/rfis/:id/responses');
 });
 
 router.post('/rfis/:id/close', authenticate, authorize(), async (req, res) => {
@@ -355,24 +351,7 @@ router.post('/submittals', authenticate, authorize(), async (req, res) => {
 });
 
 router.post('/submittals/:id/respond', authenticate, authorize(), async (req, res) => {
-  try {
-    const schema = Joi.object({
-      status: Joi.string().valid('under_review', 'approved', 'rejected', 'revised').required(),
-      response: Joi.string().allow('').optional(),
-    });
-    const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-
-    const result = await query(
-      `UPDATE project_submittals SET status = $1, response = COALESCE($2, response),
-         responded_by = $3, responded_at = NOW(), updated_at = NOW()
-       WHERE id = $4 RETURNING *`,
-      [value.status, value.response, req.user.id, req.params.id]
-    );
-    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Submittal not found' });
-    await fireEvent({ eventType: `submittal.${value.status}`, entityType: 'project_submittal', entityId: parseInt(req.params.id, 10), userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: result.rows[0].project_id, submittal_number: result.rows[0].submittal_number, status: value.status } });
-    res.json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  return rejectLegacyResponse(res, '/api/v1/submittals/:id/revisions');
 });
 
 // ============================================================================

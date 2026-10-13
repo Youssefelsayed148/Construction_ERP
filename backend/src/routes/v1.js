@@ -433,11 +433,15 @@ const FAMILY_MAP = {
     ['doccontrol', 'POST', '/rfis', '/'],
     ['doccontrol', 'POST', '/rfis/:id/respond', '/:id/respond'],
     ['doccontrol', 'POST', '/rfis/:id/close', '/:id/close'],
+    ['consultant', 'GET', '/rfis/:id/responses', '/:id/responses'],
+    ['consultant', 'POST', '/rfis/:id/response', '/:id/responses'],
   ],
   submittals: [
     ['doccontrol', 'GET', '/submittals', '/'],
     ['doccontrol', 'POST', '/submittals', '/'],
     ['doccontrol', 'POST', '/submittals/:id/respond', '/:id/respond'],
+    ['consultant', 'GET', '/submittals/:id/revisions', '/:id/revisions'],
+    ['consultant', 'POST', '/submittals/:id/response', '/:id/revisions'],
   ],
   inspections: [
     ['qhse', 'GET', '/inspections', '/'],

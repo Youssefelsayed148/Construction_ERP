@@ -171,11 +171,37 @@ router.post('/observations/:id/advance', authenticate, authorize(), async (req, 
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 
+router.get('/rfis/:id/responses', authenticate, authorize(), async (req, res) => {
+  const id = Joi.number().integer().positive().validate(Number(req.params.id));
+  if (id.error) return typedFail(res, Object.assign(new Error('Invalid RFI id'), { status: 400, error_code: 'invalid_id' }), 'CONSULTANT_RFI_HISTORY', req);
+  try {
+    const rfi = (await query('SELECT * FROM project_rfis WHERE id = $1', [id.value])).rows[0];
+    if (!rfi) return typedFail(res, Object.assign(new Error('RFI not found'), { status: 404, error_code: 'record_not_found' }), 'CONSULTANT_RFI_HISTORY', req);
+    const history = (await query(
+      'SELECT * FROM rfi_responses WHERE rfi_id = $1 ORDER BY revision, created_at, id', [id.value]
+    )).rows;
+    res.json({ success: true, data: { record: rfi, latest_response: history.at(-1) || null, history } });
+  } catch (error) { return typedFail(res, error, 'CONSULTANT_RFI_HISTORY', req); }
+});
+
+router.get('/submittals/:id/revisions', authenticate, authorize(), async (req, res) => {
+  const id = Joi.number().integer().positive().validate(Number(req.params.id));
+  if (id.error) return typedFail(res, Object.assign(new Error('Invalid submittal id'), { status: 400, error_code: 'invalid_id' }), 'CONSULTANT_SUBMITTAL_HISTORY', req);
+  try {
+    const submittal = (await query('SELECT * FROM project_submittals WHERE id = $1', [id.value])).rows[0];
+    if (!submittal) return typedFail(res, Object.assign(new Error('Submittal not found'), { status: 404, error_code: 'record_not_found' }), 'CONSULTANT_SUBMITTAL_HISTORY', req);
+    const history = (await query(
+      'SELECT * FROM submittal_revisions WHERE submittal_id = $1 ORDER BY revision_number, created_at, id', [id.value]
+    )).rows;
+    res.json({ success: true, data: { record: submittal, latest_revision: history.at(-1) || null, history } });
+  } catch (error) { return typedFail(res, error, 'CONSULTANT_SUBMITTAL_HISTORY', req); }
+});
+
 // Official consultant RFI response — the audited record.
 router.post('/rfis/:id/response', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
-      stage: Joi.string().valid('coordinator', 'discipline_review', 'official_response').default('coordinator'),
+      stage: Joi.string().valid('coordinator', 'discipline_review', 'official_response', 'acknowledgement').default('coordinator'),
       body: Joi.string().required(),
       attachments: Joi.array().default([]),
       revision: Joi.number().integer().min(1).default(1),

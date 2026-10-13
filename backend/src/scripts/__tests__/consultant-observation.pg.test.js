@@ -320,4 +320,105 @@ describePg('consultant observation completeness (real PostgreSQL)', () => {
       await db.query('DELETE FROM engineer_instructions WHERE id = ANY($1::int[])', [[instruction.id, otherInstruction.id]]);
     }
   });
+
+  test('legacy RFI/submittal response URLs refuse writes while revision history retains legacy answers', async () => {
+    const uniqueSuffix = require('crypto').randomBytes(4).toString('hex');
+    const rfi = (await db.query(
+      `INSERT INTO project_rfis (rfi_number, project_id, subject, status, answer, answered_by, answered_at, raised_by)
+       VALUES ($1,$2,'Legacy RFI','answered','Original RFI answer',$3,NOW(),$4) RETURNING id`,
+      [`RFI-${tag}-${uniqueSuffix}-history`, project.id, consultant.id, teammate.id]
+    )).rows[0];
+    const submittal = (await db.query(
+      `INSERT INTO project_submittals (submittal_number, project_id, title, status, response, response_code, responded_by, responded_at)
+       VALUES ($1,$2,'Legacy submittal','closed','Original submittal response','A',$3,NOW()) RETURNING id`,
+      [`SUB-${tag}-${uniqueSuffix}-history`, project.id, consultant.id]
+    )).rows[0];
+    const owner = (await db.query(
+      "INSERT INTO users (name, email, password, role, is_active) VALUES ('Closeout owner', $1, 'x', 'owner', true) RETURNING *",
+      [`obs-${tag}-${uniqueSuffix}-owner@test.invalid`]
+    )).rows[0];
+    created.users.push(owner.id);
+    await db.query(
+      'INSERT INTO user_project_roles (user_id, project_id, role_id) SELECT $1,$2,id FROM roles WHERE key = $3 ON CONFLICT DO NOTHING',
+      [teammate.id, project.id, 'consultant']
+    );
+    await db.query(
+      'INSERT INTO user_project_roles (user_id, project_id, role_id) SELECT $1,$2,id FROM roles WHERE key = $3 ON CONFLICT DO NOTHING',
+      [owner.id, project.id, 'owner']
+    );
+    await db.query(
+      "INSERT INTO user_project_roles (user_id, project_id, role_id) SELECT $1,NULL,id FROM roles WHERE key = 'owner' ON CONFLICT DO NOTHING",
+      [owner.id]
+    );
+    await db.query(require('fs').readFileSync(require('path').join(__dirname, '../../migrations/0049_backfill_rfi_submittal_response_history.sql'), 'utf8'));
+    await db.query(require('fs').readFileSync(require('path').join(__dirname, '../../migrations/0049_backfill_rfi_submittal_response_history.sql'), 'utf8'));
+
+    const { app } = require('../../../server');
+    const server = await new Promise((resolve) => { const started = app.listen(0, () => resolve(started)); });
+    try {
+      const consultantToken = tokens.signSession({ userId: teammate.id, tokenVersion: teammate.token_version || 0 });
+      const ownerToken = tokens.signSession({ userId: owner.id, tokenVersion: owner.token_version || 0 });
+      const stagedAcknowledgement = await fetch(`http://127.0.0.1:${server.address().port}/api/consultant/rfis/${rfi.id}/response`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${consultantToken}` },
+        body: JSON.stringify({ stage: 'acknowledgement', body: 'Acknowledged revised answer', revision: 1 }),
+      });
+      expect(stagedAcknowledgement.status).toBe(201);
+      const internalRfiHistoryResponse = await fetch(`http://127.0.0.1:${server.address().port}/api/consultant/rfis/${rfi.id}/responses`, {
+        headers: { Authorization: `Bearer ${consultantToken}` },
+      });
+      expect(internalRfiHistoryResponse.status).toBe(200);
+      const rfiHistoryResponse = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/rfis/${rfi.id}/responses`, {
+        headers: { Authorization: `Bearer ${ownerToken}` },
+      });
+      const rfiHistory = await rfiHistoryResponse.json();
+      expect(rfiHistoryResponse.status).toBe(200);
+      expect(rfiHistory.data).toMatchObject({
+        record: { id: rfi.id, answer: 'Original RFI answer' },
+        latest_response: { stage: 'acknowledgement', body: 'Acknowledged revised answer', responder_user_id: teammate.id },
+      });
+      expect(rfiHistory.data.history).toHaveLength(2);
+      const submittalHistoryResponse = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/submittals/${submittal.id}/revisions`, {
+        headers: { Authorization: `Bearer ${ownerToken}` },
+      });
+      const submittalHistory = await submittalHistoryResponse.json();
+      expect(submittalHistoryResponse.status).toBe(200);
+      expect(submittalHistory.data).toMatchObject({
+        record: { id: submittal.id, response: 'Original submittal response' },
+        latest_revision: { stage: 'response', comments: 'Original submittal response', response_code: 'A', actor_user_id: consultant.id },
+      });
+      expect(submittalHistory.data.history).toHaveLength(1);
+      const otherRfi = (await db.query(
+        `INSERT INTO project_rfis (rfi_number, project_id, subject) VALUES ($1,$2,'Out of project') RETURNING id`,
+        [`RFI-${tag}-${uniqueSuffix}-outside`, otherProject.id]
+      )).rows[0];
+      const outOfProjectHistory = await fetch(`http://127.0.0.1:${server.address().port}/api/consultant/rfis/${otherRfi.id}/responses`, {
+        headers: { Authorization: `Bearer ${consultantToken}` },
+      });
+      expect(outOfProjectHistory.status).toBe(403);
+      await db.query('DELETE FROM project_rfis WHERE id = $1', [otherRfi.id]);
+
+      const legacyRfiResponse = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/rfis/${rfi.id}/respond`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${ownerToken}` },
+        body: JSON.stringify({ answer: 'Must not overwrite legacy answer' }),
+      });
+      const legacyRfiPayload = await legacyRfiResponse.json();
+      expect(legacyRfiResponse.status).toBe(410);
+      expect(legacyRfiPayload.error.error_code).toBe('staged_response_required');
+      const legacySubmittalResponse = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/submittals/${submittal.id}/respond`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${ownerToken}` },
+        body: JSON.stringify({ status: 'approved', response: 'Must not overwrite legacy response' }),
+      });
+      const legacySubmittalPayload = await legacySubmittalResponse.json();
+      expect(legacySubmittalResponse.status).toBe(410);
+      expect(legacySubmittalPayload.error.error_code).toBe('staged_response_required');
+      expect((await db.query('SELECT answer FROM project_rfis WHERE id = $1', [rfi.id])).rows[0].answer).toBe('Original RFI answer');
+      expect((await db.query('SELECT response FROM project_submittals WHERE id = $1', [submittal.id])).rows[0].response).toBe('Original submittal response');
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+      await db.query('DELETE FROM user_project_roles WHERE user_id = $1 AND project_id = $2', [teammate.id, project.id]);
+      await db.query('DELETE FROM user_project_roles WHERE user_id = $1 AND project_id = $2', [owner.id, project.id]);
+      await db.query('DELETE FROM project_rfis WHERE id = $1', [rfi.id]);
+      await db.query('DELETE FROM project_submittals WHERE id = $1', [submittal.id]);
+    }
+  });
 });

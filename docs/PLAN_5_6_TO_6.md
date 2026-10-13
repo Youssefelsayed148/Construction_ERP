@@ -44,11 +44,11 @@ The incident-table merge requested in 5.7 is not a fresh schema project: `hse-mi
 
 ### 5.6.3 Retire single-answer RFI and submittal responses
 
-**Status: Open.** `routes/doccontrol.js` still exposes `POST /rfis/:id/respond` and `POST /submittals/:id/respond`, while staged response/revision APIs exist in `routes/consultant.js` and `consultantEngine.js`. Move remaining consumers to staged records. Keep a compatibility adapter only if repository call-site and API-contract searches show a live consumer; do not silently discard prior response history.
+**Status: Complete.** There are no frontend callers of the single-answer handlers, but both are part of the v1 API contract. They now return typed `410 staged_response_required` responses that point to the replacement versioned paths. `0049_backfill_rfi_submittal_response_history.sql` preserves existing RFI answers and submittal responses in their revision tables. The consultant API returns each record with its ordered response/revision history and latest entry; v1 exposes the same reads and staged RFI response write. The RFI staged endpoint now accepts the acknowledgement stage already supported by the service.
 
-**Acceptance:** all new responses are revisioned, attributed, timestamped and auditable; latest response and history are returned consistently; old clients receive a documented compatible response or a typed deprecation refusal.
+**Acceptance:** met for the covered routes. Existing answers remain in place and are backfilled; staged writes append attributed, timestamped rows; latest response and history are returned together; old v1 write paths return a typed deprecation response with replacement path parameters.
 
-**Focused checks:** doc-control and consultant real-Postgres tests for revisions, history, API v1 parity and legacy-path behavior.
+**Focused checks:** `consultant-observation.pg.test.js` passed 7/7, including idempotent legacy backfill, staged acknowledgement, ordered history through v1, cross-project read denial, and both legacy v1 410 responses without overwriting existing fields. The external API router remount check passed 1/1. Policy module/action and record-scope checks passed 9/9.
 
 ### 5.6.4 Client project actions and assignment expiry
 

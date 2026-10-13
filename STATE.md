@@ -39,7 +39,7 @@ Updated: 2026-10-13 (Africa/Cairo)
 
 ## Where work stopped
 
-C1–C4, D preparation and Batch E implementation are complete and committed; human UAT and finance account confirmation remain outstanding. Continue SLA administration/configuration coverage and remaining Phase 5.6 tickets, then follow `docs/PLAN_5_6_TO_6.md` through Phases 5.6–6.
+C1–C4, D preparation and Batch E implementation are complete and committed; human UAT and finance account confirmation remain outstanding. SLA administration/configuration is part of the Phase 6 workflow admin surface; next continue Phase 5.6.4 client project actions and assignment expiry, then follow `docs/PLAN_5_6_TO_6.md` through Phases 5.6–6.
 
 Batch A and Batch B1–B6 are green. C1–C4 and Batch E implementation are committed. Continue the remaining Phase 5.6–6 tickets with focused tests tied to each ticket; run broader gates at integration checkpoints. Keep targets local and never use production-looking databases or external services. Do not read or print generated secrets.
 
@@ -66,11 +66,11 @@ Batch A and Batch B1–B6 are green. C1–C4 and Batch E implementation are comm
 | Batch E implementation | PASS — E1–E5 slices committed; owner account confirmation and human UAT outstanding |
 | Phase 5.6.1 observation completeness | PASS — focused PG 1/1, consultant/media 18/18, portal 1/1, i18n/build/syntax |
 | Phase 5.6.2 consultant review workflows | IN PROGRESS — engineer-instruction recommendations implemented; PG 6/6 plus certificate 1/1; consultant/QHSE/scope mock 35/35; policy/module/scope 9/9; portal 2/2; i18n passed; SLA administration and other 5.6 work remain |
-| Phases 5.6–6 | IN PROGRESS — 5.6.1 and formal WIR/SLA inbox read complete; remaining tickets open |
+| Phase 5.6.3 RFI/submittal history and compatibility | PASS — PG 7/7; v1 remount 1/1; scope/policy 9/9. Phases 5.6.4–6 remain in progress |
 
 ## Risks and decisions
 
 - Production remains **NO-GO**; human UAT and owner finance account confirmation are not complete.
 - Docker test execution needed elevated local-engine access because the sandbox could not access the Docker Desktop pipe. The test DB was isolated and named explicitly; no production-looking or external database was used.
 - Approval limit defaults and finance mappings are provisional where noted in code/docs; finance signoff remains pending.
-- `0030` remains a documented, unreused migration-number gap. Highest migration is `0048`; next is `0049`.
+- `0030` remains a documented, unreused migration-number gap. Highest migration is `0049`; next is `0050`.
