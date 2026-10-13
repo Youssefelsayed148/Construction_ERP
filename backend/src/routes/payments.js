@@ -118,13 +118,8 @@ router.post('/', authenticate, authorize(), async (req, res) => {
         userId: req.user.id, userName: req.user.name, userRole: req.user.role,
         payload: { payment_id: row.id, amount: value.amount, invoice_id: value.invoice_id || null, project_id: value.project_id, client_id: value.client_id },
       }, { query: q });
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'payments', description: `Recorded payment of ${value.amount} EGP`, entityId: row.id, entityType: 'payment', amount: value.amount }, { query: q });
       return row;
-    });
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'create', module: 'payments',
-      description: `Recorded payment of ${value.amount} EGP`,
-      entityId: payment.id, entityType: 'payment', amount: value.amount
     });
     res.status(201).json({ success: true, data: payment });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
@@ -159,17 +154,12 @@ router.delete('/:id', authenticate, authorize(), async (req, res) => {
         entity_type: 'payment', entity_id: existing.id, event_type: 'void', actor_id: req.user.id, actor_name: req.user.name,
         before_state: { amount: existing.amount, invoice_id: existing.invoice_id }, after_state: { voided: true, reason },
       });
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'void', module: 'payments', description: `Voided payment #${req.params.id}: ${reason}`, entityId: req.params.id, entityType: 'payment' }, { query: q });
       return { payment: existing };
     });
     if (outcome.notFound) return res.status(404).json({ success: false, error: 'Payment not found' });
     if (outcome.conflict) return res.status(409).json({ success: false, error: 'Payment is already void' });
 
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'void', module: 'payments',
-      description: `Voided payment #${req.params.id}: ${reason}`,
-      entityId: req.params.id, entityType: 'payment'
-    });
     res.json({ success: true, message: 'Payment voided' });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

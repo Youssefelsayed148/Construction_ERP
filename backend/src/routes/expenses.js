@@ -69,10 +69,9 @@ router.post('/', authenticate, authorize(), async (req, res) => {
       );
       await journalExpenseCreated(q, inserted.rows[0], req.user.id);
       await costAccrual.accrueExpenseCost(q, inserted.rows[0]);
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'expenses', description: `Created expense: ${value.category} - ${value.amount} EGP`, entityId: inserted.rows[0].id, entityType: 'expense', amount: value.amount }, { query: q });
       return inserted;
     });
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'expenses', description: `Created expense: ${value.category} - ${value.amount} EGP`, entityId: result.rows[0].id, entityType: 'expense', amount: value.amount });
 
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
@@ -102,9 +101,12 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
       if (v !== undefined) { sets.push(`${k} = $${idx++}`); params.push(v); }
     }
     params.push(req.params.id);
-    const result = await query(`UPDATE expenses SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'expenses', description: `Updated expense #${req.params.id}`, entityId: req.params.id, entityType: 'expense' });
+    const result = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const updated = await q(`UPDATE expenses SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
+      if (updated.rows[0]) await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'expenses', description: `Updated expense #${req.params.id}`, entityId: req.params.id, entityType: 'expense' }, { query: q });
+      return updated;
+    });
     res.json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -112,9 +114,13 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
   try {
     if (await isPosted(parseInt(req.params.id, 10))) return postedResponse(res);
-    const result = await query('DELETE FROM expenses WHERE id = $1 RETURNING id', [req.params.id]);
+    const result = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const deleted = await q('DELETE FROM expenses WHERE id = $1 RETURNING id', [req.params.id]);
+      if (deleted.rows[0]) await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'expenses', description: `Deleted expense #${req.params.id}`, entityId: req.params.id, entityType: 'expense' }, { query: q });
+      return deleted;
+    });
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Expense not found' });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'expenses', description: `Deleted expense #${req.params.id}`, entityId: req.params.id, entityType: 'expense' });
     res.json({ success: true, message: 'Expense deleted' });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

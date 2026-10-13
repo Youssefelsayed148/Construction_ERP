@@ -112,17 +112,12 @@ router.post('/', authenticate, authorize(), async (req, res) => {
         userId: req.user.id, userName: req.user.name, userRole: req.user.role,
         payload: { invoice_id: created.id, invoice_number: created.invoice_number, amount: value.amount, project_id: value.project_id, status: 'sent' },
       }, { query: q });
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'invoices', description: `Created invoice ${created.invoice_number} — ${value.amount} EGP`, entityId: created.id, entityType: 'invoice', amount: value.amount }, { query: q });
       return created;
     });
     value.invoice_number = invoice.invoice_number;
     const result = { rows: [invoice] };
 
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'create', module: 'invoices',
-      description: `Created invoice ${value.invoice_number} — ${value.amount} EGP`,
-      entityId: result.rows[0].id, entityType: 'invoice', amount: value.amount
-    });
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -155,17 +150,12 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
         params
       )).rows[0];
       await glPosting.syncInvoicePosting(q, existing, updated, { userId: req.user.id });
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'invoices', description: `Updated invoice ${existing.invoice_number}`, entityId: req.params.id, entityType: 'invoice' }, { query: q });
       return { invoice: updated, number: existing.invoice_number };
     });
     if (outcome.notFound) return res.status(404).json({ success: false, error: 'Invoice not found' });
     if (outcome.posted) return res.status(409).json({ success: false, error: 'This invoice is already posted to the ledger; void it and issue a new one instead of changing its amount' });
 
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'update', module: 'invoices',
-      description: `Updated invoice ${outcome.number}`,
-      entityId: req.params.id, entityType: 'invoice'
-    });
     res.json({ success: true, data: outcome.invoice });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -190,6 +180,7 @@ router.delete('/:id', authenticate, authorize(), async (req, res) => {
         before_state: { status: existing.status }, after_state: { status: 'void', reason },
       });
       await glPosting.syncInvoicePosting(q, existing, updated, { userId: req.user.id });
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'void', module: 'invoices', description: `Voided invoice ${updated.invoice_number}: ${reason}`, entityId: req.params.id, entityType: 'invoice' }, { query: q });
       return { invoice: updated };
     });
     if (outcome.notFound) return res.status(404).json({ success: false, error: 'Invoice not found' });
@@ -202,12 +193,6 @@ router.delete('/:id', authenticate, authorize(), async (req, res) => {
       });
     }
 
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'void', module: 'invoices',
-      description: `Voided invoice ${outcome.invoice.invoice_number}: ${reason}`,
-      entityId: req.params.id, entityType: 'invoice'
-    });
     res.json({ success: true, message: 'Invoice voided' });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
