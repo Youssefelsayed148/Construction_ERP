@@ -121,12 +121,16 @@ describePg('agent approval gate (real PostgreSQL)', () => {
       await db.query('DELETE FROM action_items WHERE id = $1', [orphan.id]);
     });
 
-    test('anything that moves money needs an owner to approve it', async () => {
+    test('money approvals enforce the configured role/action limit', async () => {
       const id = await propose(users.fin, projectA);
-      expect((await one('SELECT required_approver_role FROM agent_action_requests WHERE id = $1', [id])).required_approver_role).toBe('owner');
-      await expect(mcp.decideRequest(id, { ...users.owner1, role: 'admin' }, 'approve')).rejects.toMatchObject({ status: 403 });
-      await expect(mcp.decideRequest(id, { id: users.fin.id + 0, role: 'finance_manager' }, 'approve')).rejects.toMatchObject({ status: 403 });
-      await expect(mcp.decideRequest(id, users.owner1, 'approve')).resolves.toBeTruthy();
+      expect((await one('SELECT required_approver_role FROM agent_action_requests WHERE id = $1', [id])).required_approver_role).toBe('finance_manager');
+      const approvalLimits = require('../../services/approvalLimits');
+      await approvalLimits.setLimit({ role: 'finance_manager', action: 'record_payment', maxAmount: 200, userId: users.owner1.id });
+      await expect(mcp.decideRequest(id, { ...users.owner1, role: 'finance_manager' }, 'approve'))
+        .rejects.toMatchObject({ status: 403, code: 'approval_limit_exceeded' });
+      expect((await one('SELECT decision FROM agent_action_requests WHERE id = $1', [id])).decision).toBeNull();
+      await approvalLimits.setLimit({ role: 'finance_manager', action: 'record_payment', maxAmount: 300, userId: users.owner1.id });
+      await expect(mcp.decideRequest(id, { ...users.owner1, role: 'finance_manager' }, 'approve')).resolves.toBeTruthy();
     });
   });
 });
