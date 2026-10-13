@@ -6,6 +6,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { journalExpenseCreated } = require('../utils/journal');
 const costAccrual = require('../services/costAccrual');
+const { typedFail } = require('../utils/typedRoute');
 
 // An expense is posted once it has a ledger entry or a cost row (every expense since 2.7a). Its amount and
 // project then cannot change and it cannot be deleted: the ledger and the project cost would describe
@@ -37,7 +38,7 @@ router.get('/', authenticate, authorize(), async (req, res) => {
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const dataResult = await query(`SELECT e.*, u.name as created_by_name, p.name_ar as project_name_ar, p.name_en as project_name_en, p.code as project_code FROM expenses e LEFT JOIN users u ON e.created_by = u.id LEFT JOIN projects p ON e.project_id = p.id ${where} ORDER BY e.date DESC, e.created_at DESC LIMIT $${idx++} OFFSET $${idx}`, [...params, parseInt(limit), parseInt(offset)]);
     res.json({ success: true, data: dataResult.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { return typedFail(res, error, 'EXPENSES', req); }
 });
 
 router.get('/:id', authenticate, authorize(), async (req, res) => {
@@ -74,7 +75,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     });
 
     res.status(201).json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { return typedFail(res, error, 'EXPENSES', req); }
 });
 
 router.put('/:id', authenticate, authorize(), async (req, res) => {

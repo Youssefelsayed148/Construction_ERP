@@ -8,6 +8,7 @@ const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
+const { typedFail } = require('../utils/typedRoute');
 
 const INVOICE_STATUSES = ['draft', 'sent', 'partially_paid', 'paid', 'overdue', 'void'];
 
@@ -53,7 +54,7 @@ router.get('/', authenticate, authorize(), async (req, res) => {
     }
 
     res.json({ success: true, data: invoices });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { return typedFail(res, error, 'INVOICES', req); }
 });
 
 router.get('/:id', authenticate, authorize(), async (req, res) => {
@@ -119,7 +120,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     const result = { rows: [invoice] };
 
     res.status(201).json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { return typedFail(res, error, 'INVOICES', req); }
 });
 
 router.put('/:id', authenticate, authorize(), async (req, res) => {

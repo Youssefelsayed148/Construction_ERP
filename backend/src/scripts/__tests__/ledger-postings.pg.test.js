@@ -150,7 +150,7 @@ describePg('2.7b client invoice and payment postings (real PostgreSQL, real app)
     try {
       const inv = await newInvoice(55);
       expect(inv.status).toBe(500);
-      expect(String(inv.body.error)).toMatch(/receivable/);
+      expect(inv.body).toMatchObject({ success: false, error_code: 'ledger_account_not_mapped', error_params: { key: 'receivable' } });
       expect((await one('SELECT count(*)::int n FROM invoices WHERE project_id = $1', [ids.project])).n).toBe(invoicesBefore + 1);
       const paymentsBefore = (await one('SELECT count(*)::int n FROM payments WHERE project_id = $1', [ids.project])).n;
       const p = await pay(keep.id, 10);

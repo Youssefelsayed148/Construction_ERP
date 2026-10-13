@@ -83,7 +83,7 @@ describePg('2.7a journal (real PostgreSQL, real app)', () => {
     try {
       const r = await newExpense('20');
       expect(r.status).toBe(500);
-      expect(String(r.body.error)).toMatch(/other_expense/);
+      expect(r.body).toMatchObject({ success: false, error_code: 'ledger_account_not_mapped', error_params: { key: 'other_expense' } });
       expect((await one("SELECT count(*)::int n FROM expenses WHERE description = $1", [`j ${tag}`])).n).toBe(before);
     } finally {
       await db.query("INSERT INTO gl_account_map (key, account_id) VALUES ('other_expense', $1)", [original]);
