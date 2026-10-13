@@ -397,3 +397,9 @@ Supplier-return lines now retain their source GRN line and stock lot. A lot-trac
 Forecast approval now enforces the existing finance maker/checker rule. When a project has an approved forecast, its approved line total supplies the forecast target for ETC; EAC remains actual plus accrued plus ETC and cannot fall below current cost to date. The prior budget/commitment ETC formula remains active when no forecast is approved.
 
 Focused real-Postgres evidence on the disposable `construction_erp_closeout_test_20261013` database: supplier-return tests passed 3/3 (accepted-quantity bounds, concurrency, and the exact source-lot return); commercial/finance tests selected for forecast, credit-note regression, role matrix, and certificate tie-out passed 4/4; the earlier procurement-locking test file passed after the typed-error correction. Migration runner applied 0044 (1 applied, 105 already applied). No full test suites were run.
+
+## 2026-10-13: Batch E5 finance workbench and retention release
+
+Added a project Finance workbench for applications/certificates, budget and forecast versions, client and supplier credit notes, payment batches, and retention releases. Retention releases are project-scoped, idempotent, capped by journal-backed retention holds, posted to the ledger, and voidable with a reason and reversing journal entry. The legacy retention endpoint no longer accepts direct releases.
+
+Migration `0045_retention_release_postings.sql` applied to the local staging and disposable test databases. Focused real-Postgres tests passed 2/2 for certificate/ledger tie-out and client/subcontractor release posting, balance caps, idempotency and void reversal. The Finance workbench test passed 1/1; `i18n:check`, production build, backend syntax checks and `git diff --check` passed. No full suite was run, following the user's test cadence. Finance account mappings remain provisional pending owner confirmation, and human UAT remains outstanding.

@@ -5,6 +5,7 @@ const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { fireEvent } = require('../utils/activity');
 const finance = require('../services/financeEngine');
+const releases = require('../services/financeReleases');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 
 // Phase 14 — AR/AP surface: valuations, allocations, AP review queue,
@@ -109,9 +110,46 @@ router.post('/retention', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const row = await finance.recordRetention(query, value);
+    if (value.direction === 'released') {
+      return res.status(409).json({ success: false, error: 'Use the balanced retention release endpoint', error_code: 'retention_release_route_required', error_params: {} });
+    }
+    const row = await auditedFin(req, (q) => finance.recordRetention(q, value), 'create',
+      (created) => ({ description: `Retention held for ${created.party_type}: ${created.amount}`, entityType: 'retention_ledger', entityId: created.id }));
     res.status(201).json({ success: true, data: row });
-  } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+  } catch (e) { return failFin(res, e); }
+});
+
+router.get('/retention/releases', authenticate, authorize(), async (req, res) => {
+  try {
+    const projectId = parseInt(req.query.project_id, 10);
+    if (!Number.isInteger(projectId) || projectId <= 0) return res.status(400).json({ success: false, error: 'project_id is required', error_code: 'validation_error', error_params: { field: 'project_id' } });
+    res.json({ success: true, data: await releases.listRetentionReleases(query, projectId) });
+  } catch (e) { return failFin(res, e); }
+});
+
+router.post('/retention/releases', authenticate, authorize(), async (req, res) => {
+  try {
+    const value = typedBody(Joi.object({
+      project_id: Joi.number().integer().positive().required(),
+      party_type: Joi.string().valid('client', 'subcontractor').required(),
+      amount: amountSchema.required(),
+      idempotency_key: Joi.string().guid({ version: 'uuidv4' }).required(),
+    }), req, res);
+    if (!value) return;
+    const row = await auditedFin(req, (q) => releases.createRetentionRelease(q, value, req.user), 'release',
+      (created) => ({ description: `Retention ${created.direction} for ${created.party_type}: ${created.amount}`, entityType: 'retention_release', entityId: created.id }));
+    res.status(row.reused ? 200 : 201).json({ success: true, data: row });
+  } catch (e) { return failFin(res, e); }
+});
+
+router.post('/retention/releases/:id/void', authenticate, authorize(), async (req, res) => {
+  try {
+    const value = typedBody(Joi.object({ reason: Joi.string().trim().min(3).max(500).required() }), req, res);
+    if (!value) return;
+    const row = await auditedFin(req, (q) => releases.voidRetentionRelease(q, fid(req), req.user, value.reason), 'void',
+      (voided) => ({ description: `Retention release #${voided.id} voided`, entityType: 'retention_release', entityId: voided.id }));
+    res.json({ success: true, data: row });
+  } catch (e) { return failFin(res, e); }
 });
 
 router.get('/retention', authenticate, authorize(), async (req, res) => {

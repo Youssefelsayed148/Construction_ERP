@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Boxes, ClipboardList, DollarSign, Percent, RefreshCw, ShoppingCart } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import ProcurementWorkspace from '../components/project/ProcurementWorkspace';
+import ProjectFinanceWorkbench from '../components/project/ProjectFinanceWorkbench';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 const tokenHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
@@ -95,7 +96,7 @@ function ProjectOperations() {
           {active === 'commercial' && <Commercial data={data.commercial} />}
           {active === 'valuations' && <Valuations rows={data.valuations || []} />}
           {active === 'retention' && <Retention data={data.retention} />}
-          {active === 'finance' && <Finance data={data.finance} />}
+          {active === 'finance' && <Finance data={data.finance} projectId={id} invoices={data.valuations || []} />}
         </>
       )}
     </div>
@@ -138,14 +139,17 @@ function Retention({ data }) {
   return <div className="stats-grid">{metrics.map(([label, value]) => <div className="stat-card" key={label}><div className="stat-label">{label}</div><div className="stat-value">{formatCurrency(value || 0)}</div></div>)}</div>;
 }
 
-function Finance({ data }) {
+function Finance({ data, projectId, invoices }) {
   if (!data) return <Empty />;
   const metrics = [
     ['Contract value', data.contract_value], ['Invoiced', data.total_invoiced], ['Cash collected', data.total_paid],
     ['Outstanding', data.outstanding_balance], ['Cash expenses', data.total_expenses], ['Forecast revenue', data.forecast_revenue],
     ['EAC', data.eac], ['Forecast profit', data.profit],
   ];
-  return <div className="stats-grid">{metrics.map(([label, value]) => <div className="stat-card" key={label}><div className="stat-label">{label}</div><div className="stat-value">{formatCurrency(value || 0)}</div></div>)}</div>;
+  return <>
+    <div className="stats-grid">{metrics.map(([label, value]) => <div className="stat-card" key={label}><div className="stat-label">{label}</div><div className="stat-value">{formatCurrency(value || 0)}</div></div>)}</div>
+    <ProjectFinanceWorkbench projectId={projectId} invoices={invoices} />
+  </>;
 }
 
 export default ProjectOperations;

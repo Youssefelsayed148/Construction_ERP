@@ -1,29 +1,24 @@
-# Closeout session state
+﻿# Closeout session state
 
 ## Completed
 
-- Batch A security and green-gate slices: see commits on `closeout/batch-a-to-6` and `docs/CLOSEOUT_LOG.md`.
-- Batch B local Docker staging, seed, smoke and backup rehearsal: see `docs/STAGING.md` and closeout logs.
-- Batch C procurement UI and live journeys: commits `7c24499` and preceding C slices; 4/4 language/viewport journeys and 1/1 denied-access journey passed.
-- Batch D UAT preparation: commit `0243d3e`; human UAT remains with pilot users.
-- Batch E1 mapping foundation: commit `9be0cfb`; account purpose confirmation is still pending from the finance owner.
-- Batch E1/E2 certificate postings and invoice lines: commit `f88c15b`; focused unit tests passed 5/5.
-- Batch E3/E4 are implemented in the current uncommitted slice: source-lot supplier returns, finance maker/checker on forecasts, and approved forecast input to ETC/EAC. Focused isolated-Postgres cases passed.
+- Batches A and B are complete; see `docs/CLOSEOUT_LOG.md` and `docs/STAGING.md`.
+- Batch C procurement UI and live journeys are complete; commits include `7c24499` and preceding C slices.
+- Batch D UAT preparation is complete in commit `0243d3e`; human UAT remains outstanding.
+- Batch E1 account mapping foundation is committed in `9be0cfb`; finance-owner confirmation is still pending.
+- Batch E1/E2 certificate postings and invoice lines are committed in `f88c15b`.
+- Batch E3/E4 source-lot supplier returns and forecast approval/ETC/EAC behavior are committed in `164c9e9`.
+- Batch E5 finance workbench and journal-backed retention release are implemented in the current slice; focused checks passed and commit is next.
 
-## In progress
+## Next
 
-- Batch E5: finance screens for applications/certificates, credit notes, payment batches, budget versions and forecast versions.
-- After Batch E, write and commit `docs/PLAN_5_6_TO_6.md` before starting Phases 5.6, 5.7, 5.8 or 6.
+1. Commit Batch E5 after reviewing the final diff.
+2. Audit the Phase 5.6–6 plan against current code and write/commit `docs/PLAN_5_6_TO_6.md` before implementation.
+3. Implement Phases 5.6, 5.7, 5.8, and 6 slice by slice, running only ticket-related checks during phase work and broader suites at phase integration checkpoints.
 
 ## Decisions and limits
 
-- Chart mappings are provisional. Finance-owner confirmation is outstanding; the implementation must not mark these mappings confirmed on the owner's behalf.
+- GL account mappings stay provisional until the finance owner confirms account purposes.
 - Human UAT has not been executed.
-- User requested related-ticket tests during phases instead of rerunning whole suites each time. Verification so far followed that cadence.
-- `docs/CODEX_AUDIT_REPORT.md` was present as an untracked user artifact and has been left untouched.
-
-## Next actions
-
-1. Review and commit the E3/E4 slice after focused checks and docs updates.
-2. Implement the E5 screens and focused screen/API checks; update this file and closeout logs.
-3. Verify Phases 5.6–6 against code, commit the plan, then execute phase slices with focused tests.
+- The user asked for ticket-related tests during phase work instead of whole suites on every slice.
+- `docs/CODEX_AUDIT_REPORT.md` is a pre-existing untracked user artifact and has not been edited.

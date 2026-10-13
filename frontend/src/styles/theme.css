@@ -763,6 +763,34 @@ html[dir='rtl'] .table td {
   gap: 16px;
 }
 
+.finance-record-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 16px;
+  margin-block: 16px;
+  align-items: start;
+}
+
+.finance-workbench {
+  margin-block-start: 24px;
+}
+
+.finance-workbench form.card {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.finance-workbench label {
+  display: grid;
+  gap: 5px;
+}
+
+.finance-workbench .table-container h3,
+.finance-workbench form.card h3 {
+  margin-block-start: 0;
+}
+
 @media (max-width: 900px) {
   .main-content {
     margin-inline: 0;

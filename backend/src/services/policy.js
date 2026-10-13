@@ -215,6 +215,8 @@ const ACTION_OVERRIDES = Object.freeze([
   ['finance-ledger', 'POST', /^\/payment-batches\/:id\/approve$/, 'approve'],
   ['finance-ledger', 'POST', /^\/payment-batches\/:id\/release$/, 'record_payment'],
   ['finance-ledger', 'POST', /^\/payment-batches\/:id\/cancel$/, 'void'],
+  ['finance-ledger', 'POST', /^\/retention\/releases$/, 'record_payment'],
+  ['finance-ledger', 'POST', /^\/retention\/releases\/:id\/void$/, 'void'],
   ['procurement', 'POST', /^\/invoices\/:id\/workflow\/start$/, 'submit'],
   ['procurement', 'POST', /^\/invoices\/:id\/workflow\/decide$/, 'approve'],
   ['docs', 'POST', /^\/documents\/:id\/submit$/, 'submit'],
@@ -357,6 +359,7 @@ const RECORD_SCOPE_RULES = Object.freeze({
   'finance-ledger': [
     [/^\/invoices\/:id(?:\/|$)/, 'invoices'],
     [/^\/payments\/:id(?:\/|$)/, 'payments'],
+    [/^\/retention\/releases\/:id(?:\/|$)/, 'SELECT project_id FROM retention_ledger WHERE id = $1'],
     [/^\/credit-notes\/:id(?:\/|$)/, 'credit_notes'],
     [/^\/ap-review\/:id(?:\/|$)/, 'SELECT po.project_id FROM ap_review_queue q JOIN supplier_invoices si ON si.id = q.supplier_invoice_id JOIN purchase_orders po ON po.id = si.purchase_order_id WHERE q.id = $1'],
   ],

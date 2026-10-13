@@ -93,6 +93,27 @@ async function reverseSubcontractorCertificate(q, certificate, { userId = null }
   return entry;
 }
 
+async function postRetentionRelease(q, release, { userId = null } = {}) {
+  if ((await journal.findEntries(q, 'retention_release', release.id)).length) return null;
+  const client = release.party_type === 'client';
+  const amount = money.format(money.toMinor(release.amount));
+  return journal.postJournalEntry(q, {
+    date: todayIso(), description: `Retention release ${release.id}`,
+    reference_type: 'retention_release', reference_id: release.id, created_by: userId,
+    lines: client ? [
+      { account: 'cash', debit: amount, description: `Client retention received for project ${release.project_id}` },
+      { account: 'client_retention_receivable', credit: amount, description: `Client retention released ${release.id}` },
+    ] : [
+      { account: 'subcontractor_retention_payable', debit: amount, description: `Subcontractor retention paid ${release.id}` },
+      { account: 'cash', credit: amount, description: `Subcontractor retention paid for project ${release.project_id}` },
+    ],
+  });
+}
+
+async function reverseRetentionRelease(q, release, { userId = null } = {}) {
+  return reverseEntry(q, 'retention_release', release.id, { userId, description: `Retention release ${release.id} voided` });
+}
+
 async function recordCertificateMemos(q, source, sourceType, retentionDirection, advanceDirection) {
   const retention = money.toMinor(source.retention_amount ?? source.retention_held ?? 0);
   const advance = money.toMinor(source.advance_recovery || 0);
@@ -198,4 +219,5 @@ module.exports = {
   POSTING_RULES, ISSUED_STATUSES, postClientInvoice, reverseClientInvoice, syncInvoicePosting,
   postClientPayment, reverseClientPayment, postSupplierPayment, reverseSupplierPayment,
   postClientCreditNote, reverseClientCreditNote, postSubcontractorCertificate, reverseSubcontractorCertificate,
+  postRetentionRelease, reverseRetentionRelease,
 };

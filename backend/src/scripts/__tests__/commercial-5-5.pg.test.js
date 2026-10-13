@@ -434,6 +434,53 @@ describePg('5.5 commercial and finance (real PostgreSQL, real app)', () => {
     expect(reversal.credit).toBe(108);
   });
 
+  test('retention release posts once, consumes held balance, and its void restores the balance', async () => {
+    const clientInvoiceId = 181000000 + Number(tag);
+    await tx((q) => glPosting.postClientInvoice(q, {
+      id: clientInvoiceId, invoice_number: `RET-${tag}`, project_id: pA, payment_certificate_id: clientInvoiceId,
+      amount: 25, certified_gross: 30, retention_amount: 5, advance_recovery: 0, other_deductions: 0, tax_amount: 0,
+    }, { userId: users.cm.id }));
+    const before = await finance.retentionTotals(db.query, { project_id: pA, party_type: 'client' });
+    const key = `d33fd7a1-4d14-4e69-8ea5-${String(tag).padStart(12, '0')}`;
+    const payload = { project_id: pA, party_type: 'client', amount: 5, idempotency_key: key };
+    const created = await call('POST', '/api/finance-ledger/retention/releases', users.owner, payload);
+    expect(created.status).toBe(201);
+    const releaseId = created.body.data.id;
+    expect((await finance.retentionTotals(db.query, { project_id: pA, party_type: 'client' })).balance).toBe(before.balance - 5);
+    const overRelease = await call('POST', '/api/finance-ledger/retention/releases', users.owner, {
+      project_id: pA, party_type: 'client', amount: 0.01,
+      idempotency_key: `71efb2d1-0b4b-4576-89d3-${String(tag).padStart(12, '0')}`,
+    });
+    expect(overRelease.status).toBe(409);
+    expect(overRelease.body.error_code).toBe('retention_release_exceeds_balance');
+    const posted = await entryFor('retention_release', releaseId);
+    expect([posted.debit, posted.credit]).toEqual([5, 5]);
+    expect(posted.lines.map((line) => line.code)).toEqual([await codeOf('cash'), await codeOf('client_retention_receivable')]);
+    expect((await call('POST', '/api/finance-ledger/retention/releases', users.owner, payload)).status).toBe(200);
+    expect(await all("SELECT id FROM journal_entries WHERE reference_type = 'retention_release' AND reference_id = $1", [releaseId])).toHaveLength(1);
+
+    const voided = await call('POST', `/api/finance-ledger/retention/releases/${releaseId}/void`, users.owner, { reason: 'retention amount settled in error' });
+    expect(voided.status).toBe(200);
+    expect((await finance.retentionTotals(db.query, { project_id: pA, party_type: 'client' })).balance).toBe(before.balance);
+    const reversal = await entryFor('retention_release_void', releaseId);
+    expect([reversal.debit, reversal.credit]).toEqual([5, 5]);
+    expect((await call('POST', `/api/finance-ledger/retention/releases/${releaseId}/void`, users.owner, { reason: 'repeat void' })).body.error_code).toBe('retention_release_already_void');
+
+    const certificateId = 182000000 + Number(tag);
+    await tx((q) => glPosting.postSubcontractorCertificate(q, {
+      id: certificateId, certificate_number: `RET-SUB-${tag}`, project_id: pA, party_type: 'subcontractor',
+      gross_certified: 20, retention_held: 12, advance_recovery: 0, other_deductions: 0, tax_amount: 0, net_certificate: 8,
+    }, { userId: users.cm.id }));
+    const subRelease = await call('POST', '/api/finance-ledger/retention/releases', users.owner, {
+      project_id: pA, party_type: 'subcontractor', amount: 12,
+      idempotency_key: `e3a67be4-a69d-4e09-9ba6-${String(tag).padStart(12, '0')}`,
+    });
+    expect(subRelease.status).toBe(201);
+    const subEntry = await entryFor('retention_release', subRelease.body.data.id);
+    expect([subEntry.debit, subEntry.credit]).toEqual([12, 12]);
+    expect(subEntry.lines.map((line) => line.code)).toEqual([await codeOf('subcontractor_retention_payable'), await codeOf('cash')]);
+  });
+
   // --------------------------------------------------------------------------------------------------
   const makeServiceInvoice = async ({ total = 1140, tax = 140, project = pA, approve = true, recoverable = true } = {}) => {
     seq += 1;
