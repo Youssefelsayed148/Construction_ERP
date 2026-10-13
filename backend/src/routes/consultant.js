@@ -4,6 +4,7 @@ const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
+const { auditedTransaction } = require('../utils/auditedTransaction');
 const engine = require('../services/consultantEngine');
 
 // Mounted at /api/consultant — the consultant portal surface.
@@ -52,10 +53,7 @@ router.post('/observations', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const observation = await transaction((client) => engine.createObservation(
-      client.query.bind(client), { ...value, user: req.user }
-    ));
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'observations', description: `Raised observation ${observation.observation_number}`, entityId: observation.id, entityType: 'observation' });
+    const observation = await auditedTransaction((q) => engine.createObservation(q, { ...value, user: req.user }), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'observations', description: `Raised observation ${result.observation_number}`, entityId: result.id, entityType: 'observation' }));
     res.status(201).json({ success: true, data: observation });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
@@ -92,10 +90,7 @@ router.post('/observations/:id/advance', authenticate, authorize(), async (req, 
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const observation = await transaction((client) => engine.advanceObservation(
-      client.query.bind(client), parseInt(req.params.id, 10), req.user, value.action, value
-    ));
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'observations', description: `Observation → ${observation.status}`, entityId: observation.id, entityType: 'observation' });
+    const observation = await auditedTransaction((q) => engine.advanceObservation(q, parseInt(req.params.id, 10), req.user, value.action, value), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'observations', description: `Observation → ${result.status}`, entityId: result.id, entityType: 'observation' }));
     res.json({ success: true, data: observation });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
@@ -111,11 +106,10 @@ router.post('/rfis/:id/response', authenticate, authorize(), async (req, res) =>
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const response = await transaction(async (client) => {
-      await client.query('SELECT id FROM project_rfis WHERE id = $1 FOR UPDATE', [parseInt(req.params.id, 10)]);
-      return engine.recordRfiResponse(client.query.bind(client), { ...value, rfi_id: parseInt(req.params.id, 10), user: req.user });
-    });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'doccontrol', description: `RFI ${value.stage} recorded (rev ${value.revision})`, entityId: response.id, entityType: 'rfi_response' });
+    const response = await auditedTransaction(async (q) => {
+      await q('SELECT id FROM project_rfis WHERE id = $1 FOR UPDATE', [parseInt(req.params.id, 10)]);
+      return engine.recordRfiResponse(q, { ...value, rfi_id: parseInt(req.params.id, 10), user: req.user });
+    }, (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'doccontrol', description: `RFI ${value.stage} recorded (rev ${value.revision})`, entityId: result.id, entityType: 'rfi_response' }));
     res.status(201).json({ success: true, data: response });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
@@ -142,11 +136,10 @@ router.post('/submittals/:id/response', authenticate, authorize(), async (req, r
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const row = await transaction(async (client) => {
-      await client.query('SELECT id FROM project_submittals WHERE id = $1 FOR UPDATE', [parseInt(req.params.id, 10)]);
-      return engine.recordSubmittalResponse(client.query.bind(client), { ...value, submittal_id: parseInt(req.params.id, 10), user: req.user });
-    });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'doccontrol', description: `Submittal ${value.stage} recorded (rev ${value.revision})`, entityId: row.id, entityType: 'submittal_revision' });
+    const row = await auditedTransaction(async (q) => {
+      await q('SELECT id FROM project_submittals WHERE id = $1 FOR UPDATE', [parseInt(req.params.id, 10)]);
+      return engine.recordSubmittalResponse(q, { ...value, submittal_id: parseInt(req.params.id, 10), user: req.user });
+    }, (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'doccontrol', description: `Submittal ${value.stage} recorded (rev ${value.revision})`, entityId: result.id, entityType: 'submittal_revision' }));
     res.status(201).json({ success: true, data: row });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });

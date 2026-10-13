@@ -4,6 +4,7 @@ const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
+const { auditedTransaction } = require('../utils/auditedTransaction');
 const inventoryEngine = require('../services/inventoryEngine');
 const { reasonFrom } = require('../utils/reason');
 
@@ -60,13 +61,11 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const r = await query(
+    const r = await auditedTransaction((q) => q(
       `INSERT INTO work_orders (project_id, phase_id, boq_section_id, title, title_ar, title_en, description, planned_start_date, planned_end_date, assigned_to, notes)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
       [value.project_id, value.phase_id, value.boq_section_id, value.title_ar, value.title_ar, value.title_en || value.title_ar, value.description, value.planned_start_date, value.planned_end_date, value.assigned_to, value.notes]
-    );
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'work_orders', description: `Created WO: ${value.title_ar}`, entityId: r.rows[0].id, entityType: 'work_order' });
+    ), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'work_orders', description: `Created WO: ${value.title_ar}`, entityId: result.rows[0].id, entityType: 'work_order' }));
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -98,17 +97,21 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const reason = reasonFrom(req) || null;
-    const r = await query(
+    const r = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const updated = await q(
       `UPDATE work_orders SET status = 'cancelled', cancelled_at = NOW(), cancelled_by = $2, cancel_reason = $3, updated_at = NOW()
         WHERE id = $1 AND status <> 'cancelled' RETURNING title, title_ar`,
       [req.params.id, req.user.id, reason]);
+      if (updated.rows[0]) await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'cancel', module: 'work_orders', description: `Cancelled WO: ${updated.rows[0].title_ar || updated.rows[0].title}${reason ? `: ${reason}` : ''}`, entityId: req.params.id, entityType: 'work_order' }, { query: q });
+      return updated;
+    });
     if (r.rows.length === 0) {
       const exists = await query('SELECT status FROM work_orders WHERE id = $1', [req.params.id]);
       if (exists.rows.length === 0) return res.status(404).json({ success: false, error: 'Work order not found' });
       return res.status(409).json({ success: false, error: 'Work order is already cancelled' });
     }
 
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'cancel', module: 'work_orders', description: `Cancelled WO: ${r.rows[0].title_ar || r.rows[0].title}${reason ? `: ${reason}` : ''}`, entityId: req.params.id, entityType: 'work_order' });
     res.json({ success: true, message: 'Work order cancelled' });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -345,9 +348,8 @@ router.put('/:woId/completions/:compId/verify', authenticate, authorize(), async
           payload: { work_order_id: comp.rows[0].work_order_id, boq_item_id: comp.rows[0].boq_item_id, quantity: comp.rows[0].quantity_completed }
         }, { query: (text, params) => client.query(text, params) });
       }
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: status, module: 'work_orders', description: `${status === 'verified' ? 'Verified' : 'Rejected'} work completion #${req.params.compId}`, entityId: req.params.compId, entityType: 'work_completion' }, { query: (text, params) => client.query(text, params) });
     });
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: status, module: 'work_orders', description: `${status === 'verified' ? 'Verified' : 'Rejected'} work completion #${req.params.compId}`, entityId: req.params.compId, entityType: 'work_completion' });
     res.json({ success: true, message: status === 'verified' ? 'Verified' : 'Rejected' });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
