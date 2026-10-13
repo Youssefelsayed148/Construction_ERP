@@ -66,6 +66,19 @@
     "expiry": "Expires {{date}}",
     "status": { "expired": "Expired", "expires_soon": "Expires within 30 days", "upcoming": "Expires within 90 days" }
   },
+  "inspections": {
+    "wirs": { "title": "Work inspection requests", "empty": "No formal WIR records for your packages." },
+    "mirs": { "title": "Material inspection requests", "empty": "No material inspections for your deliveries." },
+    "inspectionDate": "Inspection date: {{date}}",
+    "decidedDate": "Decision date: {{date}}",
+    "result": "Result: {{result}}",
+    "status": {
+      "draft": "Draft", "submitted": "Submitted", "pending": "Pending", "site_inspection": "Site inspection",
+      "qa_qc_review": "QA/QC review", "pm_review": "Project manager review", "consultant_review": "Consultant review",
+      "approved": "Approved", "approved_with_comments": "Approved with comments", "rejected": "Rejected",
+      "reinspect": "Reinspection", "accepted": "Accepted", "partially_accepted": "Partially accepted"
+    }
+  },
   "observation": {
     "raise": "Raise observation",
     "title": "New site observation",

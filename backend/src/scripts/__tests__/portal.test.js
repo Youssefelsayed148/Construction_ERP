@@ -67,6 +67,9 @@ async function buildFixture() {
     completion_percentage DECIMAL(5,2) DEFAULT 0)`);
   await q(`CREATE TABLE IF NOT EXISTS project_documents (
     id SERIAL PRIMARY KEY, project_id INTEGER, category_id INTEGER, title VARCHAR(255), status VARCHAR(30) DEFAULT 'draft')`);
+  await q(`CREATE TABLE IF NOT EXISTS wirs (
+    id SERIAL PRIMARY KEY, wir_number VARCHAR(50), project_id INTEGER, subcontractor_organization_id INTEGER,
+    inspection_date DATE, status VARCHAR(40), result VARCHAR(40))`);
   await q(`CREATE TABLE IF NOT EXISTS observations (
     id SERIAL PRIMARY KEY, observation_number VARCHAR(50), project_id INTEGER, title VARCHAR(255),
     description TEXT, status VARCHAR(50) DEFAULT 'raised', discipline VARCHAR(100))`);
@@ -93,7 +96,7 @@ async function buildFixture() {
     id SERIAL PRIMARY KEY, delivery_number VARCHAR(50), purchase_order_id INTEGER, supplier_id INTEGER,
     delivery_date DATE, status VARCHAR(30) DEFAULT 'received')`);
   await q(`CREATE TABLE IF NOT EXISTS material_inspection_requests (
-    id SERIAL PRIMARY KEY, project_id INTEGER, delivery_id INTEGER, title VARCHAR(255), status VARCHAR(30) DEFAULT 'pending')`);
+    id SERIAL PRIMARY KEY, mir_number VARCHAR(50), project_id INTEGER, delivery_id INTEGER, title VARCHAR(255), status VARCHAR(30) DEFAULT 'pending')`);
   await q(`CREATE TABLE IF NOT EXISTS supplier_invoices (
     id SERIAL PRIMARY KEY, invoice_number VARCHAR(100), supplier_id INTEGER, purchase_order_id INTEGER,
     total_amount DECIMAL(15,2) DEFAULT 0, status VARCHAR(30) DEFAULT 'received')`);
@@ -244,6 +247,15 @@ describe('subcontractor portal', () => {
     expect(dash.inspections_needed.count).toBe(1);
     expect(dash.executed_quantities.pending).toBe(250);
   });
+
+  test('formal WIR register is visible only to its assigned subcontractor organization', async () => {
+    await q(`INSERT INTO wirs (id,wir_number,project_id,subcontractor_organization_id,inspection_date,status,result)
+             VALUES ($1,$2,$3,$4,$5,$6,$7)`, [1, 'WIR-OWN', 1, 3, '2026-10-10', 'consultant_review', null]);
+    await q(`INSERT INTO wirs (id,wir_number,project_id,subcontractor_organization_id,inspection_date,status,result)
+             VALUES ($1,$2,$3,$4,$5,$6,$7)`, [2, 'WIR-OTHER', 1, 4, '2026-10-11', 'approved', 'approved']);
+    const dash = await engine.subcontractorDashboard(q, SUB_A.id);
+    expect(dash.wirs.items).toEqual([{ id: 1, project_id: 1, wir_number: 'WIR-OWN', status: 'consultant_review', result: null, inspection_date: '2026-10-10' }]);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -265,8 +277,8 @@ describe('supplier portal', () => {
              VALUES ($1,$2,$3,$4,$5,$6)`, [10, 'PO-0010', 1, 70, 80000, 'issued']);
     await q(`INSERT INTO deliveries (id, delivery_number, purchase_order_id, supplier_id, delivery_date, status)
              VALUES ($1,$2,$3,$4,$5,$6)`, [10, 'DLV-0010', 10, 70, '2026-09-20', 'in_transit']);
-    await q(`INSERT INTO material_inspection_requests (id, project_id, delivery_id, title, status)
-             VALUES ($1,$2,$3,$4,$5)`, [10, 1, 10, 'Cement MIR', 'pending']);
+    await q(`INSERT INTO material_inspection_requests (id, mir_number, project_id, delivery_id, title, status)
+             VALUES ($1,$2,$3,$4,$5,$6)`, [10, 'MIR-0010', 1, 10, 'Cement MIR', 'pending']);
     await q(`INSERT INTO supplier_invoices (id, invoice_number, supplier_id, purchase_order_id, total_amount, status)
              VALUES ($1,$2,$3,$4,$5,$6)`, [10, 'SI-0010', 70, 10, 80000, 'received']);
     // A competing supplier's PO — must NOT appear.
@@ -294,6 +306,7 @@ describe('supplier portal', () => {
     expect(dash.awarded_pos.items[0].order_number).toBe('PO-0010');
     expect(dash.deliveries.count).toBe(1);
     expect(dash.inspections.count).toBe(1);
+    expect(dash.inspections.items[0].mir_number).toBe('MIR-0010');
     expect(dash.invoices.count).toBe(1);
     expect(dash.expiring_documents.count).toBe(2);
   });

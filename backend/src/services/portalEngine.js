@@ -140,6 +140,16 @@ async function subcontractorDashboard(q, userId, { now = new Date() } = {}) {
     .filter((w) => sameDay(w.planned_start_date, today) || w.status === 'in_progress');
   dashboard.todays_work = { items: myWork.map((w) => ({ id: toNum(w.id), title: w.title, status: w.status })), count: myWork.length, empty_label: 'No work assigned today' };
 
+  // The formal WIR register belongs to the assigned subcontractor
+  // organization. Do not expose internal workflow comments or other seats.
+  const organizationIds = [...new Set(packages.map((c) => toNum(c.organization_id)))];
+  const wirs = (await safeAll(q, 'SELECT * FROM wirs', []))
+    .filter((w) => projectIds.includes(toNum(w.project_id)) && organizationIds.includes(toNum(w.subcontractor_organization_id)));
+  dashboard.wirs = {
+    items: wirs.map((w) => ({ id: toNum(w.id), project_id: toNum(w.project_id), wir_number: w.wir_number, status: w.status, result: w.result, inspection_date: dateOf(w.inspection_date) })),
+    count: wirs.length, empty_label: 'No formal WIR records for your packages',
+  };
+
   // Latest approved drawings.
   const drawings = (await safeAll(q, 'SELECT * FROM project_documents', []))
     .filter((d) => projectIds.includes(toNum(d.project_id)) && d.status === 'approved'
@@ -333,7 +343,7 @@ async function supplierDashboard(q, userId, { now = new Date() } = {}) {
   const mirs = (await safeAll(q, 'SELECT * FROM material_inspection_requests', []))
     .filter((m) => myDeliveryIds.includes(toNum(m.delivery_id)));
   dashboard.inspections = {
-    items: mirs.map((m) => ({ id: toNum(m.id), status: m.status })),
+    items: mirs.map((m) => ({ id: toNum(m.id), project_id: m.project_id == null ? null : toNum(m.project_id), mir_number: m.mir_number, status: m.status, decided_at: m.decided_at || null })),
     count: mirs.length,
     empty_label: 'No material inspections pending',
   };

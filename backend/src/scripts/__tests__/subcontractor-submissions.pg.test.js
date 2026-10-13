@@ -7,7 +7,7 @@ const describePg = enabled ? describe : describe.skip;
 
 describePg('subcontractor portal submissions (real PostgreSQL)', () => {
   const tag = String(Date.now()).slice(-8);
-  const created = { projects: [], organizations: [], users: [], participants: [], subcontractors: [], contracts: [], submissions: [] };
+  const created = { projects: [], organizations: [], users: [], participants: [], subcontractors: [], contracts: [], submissions: [], wirs: [] };
   let project; let otherProject; let organization; let otherOrganization; let user; let contract; let otherContract; let subcontractorId; let otherSubcontractorId;
 
   const makeProject = async (suffix) => (await db.query(
@@ -66,6 +66,7 @@ describePg('subcontractor portal submissions (real PostgreSQL)', () => {
     if (user) await db.query('DELETE FROM user_project_roles WHERE user_id = $1', [user.id]);
     if (created.submissions.length) await db.query('DELETE FROM portal_submissions WHERE id = ANY($1::int[])', [created.submissions]);
     if (created.contracts.length) await db.query('DELETE FROM sub_contracts WHERE id = ANY($1::int[])', [created.contracts]);
+    if (created.wirs.length) await db.query('DELETE FROM wirs WHERE id = ANY($1::int[])', [created.wirs]);
     if (created.participants.length) await db.query('DELETE FROM project_participants WHERE id = ANY($1::int[])', [created.participants]);
     if (user) await db.query('DELETE FROM organization_users WHERE user_id = $1', [user.id]);
     if (created.users.length) await db.query('UPDATE users SET is_active = false WHERE id = ANY($1::int[])', [created.users]);
@@ -91,6 +92,21 @@ describePg('subcontractor portal submissions (real PostgreSQL)', () => {
     expect(result.items.map((item) => item.id)).toEqual([own.id]);
     expect(result.items[0].payload).toEqual({ sub_contract_id: contract, report_date: '2026-10-13', worker_count: 9 });
     expect(JSON.stringify(result)).not.toMatch(/unit_cost|actual_cost|otherOrganization|otherContract/);
+  });
+
+  test('formal WIR reads are restricted to the caller organization and active package projects', async () => {
+    const ownWir = (await db.query(
+      `INSERT INTO wirs (wir_number,project_id,subcontractor_organization_id,status)
+       VALUES ($1,$2,$3,'consultant_review') RETURNING id`, [`PS-WIR-${tag}-OWN`, project, organization]
+    )).rows[0].id;
+    const otherWir = (await db.query(
+      `INSERT INTO wirs (wir_number,project_id,subcontractor_organization_id,status)
+       VALUES ($1,$2,$3,'approved') RETURNING id`, [`PS-WIR-${tag}-OTHER`, otherProject, otherOrganization]
+    )).rows[0].id;
+    created.wirs.push(ownWir, otherWir);
+    const dashboard = await portalEngine.subcontractorDashboard(db.query, user.id);
+    expect(dashboard.wirs.items.map((item) => item.id)).toEqual([ownWir]);
+    expect(JSON.stringify(dashboard.wirs)).not.toContain('PS-WIR-' + tag + '-OTHER');
   });
 
   test('HTTP intake validates category fields, rejects another package, and writes submission plus activity audit', async () => {

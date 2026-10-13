@@ -66,6 +66,19 @@
     "expiry": "ينتهي في {{date}}",
     "status": { "expired": "منتهي الصلاحية", "expires_soon": "ينتهي خلال 30 يوماً", "upcoming": "ينتهي خلال 90 يوماً" }
   },
+  "inspections": {
+    "wirs": { "title": "طلبات فحص الأعمال", "empty": "لا توجد سجلات WIR رسمية لحزم أعمالك." },
+    "mirs": { "title": "طلبات فحص المواد", "empty": "لا توجد فحوصات مواد لتوريداتك." },
+    "inspectionDate": "تاريخ الفحص: {{date}}",
+    "decidedDate": "تاريخ القرار: {{date}}",
+    "result": "النتيجة: {{result}}",
+    "status": {
+      "draft": "مسودة", "submitted": "تم الإرسال", "pending": "قيد الانتظار", "site_inspection": "فحص الموقع",
+      "qa_qc_review": "مراجعة الجودة", "pm_review": "مراجعة مدير المشروع", "consultant_review": "مراجعة الاستشاري",
+      "approved": "مقبول", "approved_with_comments": "مقبول مع ملاحظات", "rejected": "مرفوض",
+      "reinspect": "إعادة الفحص", "accepted": "مقبول", "partially_accepted": "مقبول جزئياً"
+    }
+  },
   "observation": {
     "raise": "رفع ملاحظة",
     "title": "ملاحظة موقع جديدة",

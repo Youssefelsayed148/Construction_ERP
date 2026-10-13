@@ -262,6 +262,24 @@ function SupplierComplianceAlerts({ value = {} }) {
   </section>;
 }
 
+function FormalInspectionRegister({ value = {}, kind }) {
+  const { t } = useLocale();
+  const items = value.items || [];
+  const type = kind === 'wir' ? 'wirs' : 'mirs';
+  return <section className="card portal-widget" aria-label={t(`portals.inspections.${type}.title`)}>
+    <div className="card-header">{t(`portals.inspections.${type}.title`)} <span className="badge badge-info">{value.count ?? items.length}</span></div>
+    <div className="card-body">
+      {!items.length && <em>{t(`portals.inspections.${type}.empty`)}</em>}
+      {items.map((item) => <div className="portal-review-item" key={item.id}>
+        <div className="portal-record"><span>{item.wir_number || item.mir_number || `#${item.id}`}</span>
+          <span><small className="badge badge-secondary">{t(`portals.inspections.status.${item.status}`)}</small></span></div>
+        {(item.inspection_date || item.decided_at) && <small>{t(item.inspection_date ? 'portals.inspections.inspectionDate' : 'portals.inspections.decidedDate', { date: item.inspection_date || String(item.decided_at).slice(0, 10) })}</small>}
+        {item.result && <p>{t('portals.inspections.result', { result: t(`portals.inspections.status.${item.result}`) })}</p>}
+      </div>)}
+    </div>
+  </section>;
+}
+
 function QuickActions({ kind, data, onDone }) {
   const { t } = useLocale();
   const [showObservationForm, setShowObservationForm] = useState(false);
@@ -534,7 +552,11 @@ export default function PortalDashboard({ kind }) {
         <QuickActions kind={kind} data={data} onDone={load} />
         <div className="portal-grid">{Object.entries(data).filter(([key]) => !['note', 'setup_actions', 'project_ids', 'supplier_ids', 'visibility', 'preview'].includes(key)).map(([key, value]) => kind === 'supplier' && key === 'expiring_documents'
           ? <SupplierComplianceAlerts key={key} value={value} />
-          : <Widget key={key} name={key} value={value} />)}</div>
+          : kind === 'subcontractor' && key === 'wirs'
+            ? <FormalInspectionRegister key={key} value={value} kind="wir" />
+            : kind === 'supplier' && key === 'inspections'
+              ? <FormalInspectionRegister key={key} value={value} kind="mir" />
+              : <Widget key={key} name={key} value={value} />)}</div>
         {extra?.secondary != null && <><h2 className="portal-section-title">{config.extraTitle}</h2><div className="portal-grid">{kind === 'consultant'
           ? <ConsultantReviews rows={extra.secondary} onDone={load} />
           : kind === 'client'

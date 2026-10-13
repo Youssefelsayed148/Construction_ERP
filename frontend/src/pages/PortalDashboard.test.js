@@ -143,6 +143,7 @@ describe('consultant portal observation form', () => {
       } }) };
       return { ok: true, json: async () => ({ success: true, data: {
         project_ids: [8], packages: [{ id: 31, project_id: 8, contract_number: 'SC-31' }],
+        wirs: { count: 1, items: [{ id: 44, project_id: 8, wir_number: 'WIR-0044', status: 'consultant_review', inspection_date: '2026-10-12' }] },
         variations: { items: [{ id: 55, project_id: 8, sub_contract_id: 31, title: 'Access platform change' }] },
         ncrs: { items: [] }, observations: { items: [] },
       } }) };
@@ -150,6 +151,8 @@ describe('consultant portal observation form', () => {
     await act(async () => { root.render(<PortalDashboard kind="subcontractor" />); });
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
     expect(container.textContent).toContain('portals.submissions.types.manpower');
+    expect(container.textContent).toContain('WIR-0044');
+    expect(container.textContent).toContain('portals.inspections.status.consultant_review');
     const open = [...container.querySelectorAll('button')].find((button) => button.textContent.includes('portals.submissions.new'));
     await act(async () => { open.click(); });
     const typeSelect = container.querySelector('.portal-observation-form select');
@@ -172,7 +175,8 @@ describe('consultant portal observation form', () => {
 
   test('supplier compliance panel labels expired and near-expiry documents', async () => {
     global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ success: true, data: {
-      project_ids: [8], expiring_documents: { count: 2, items: [
+      project_ids: [8], inspections: { count: 1, items: [{ id: 8, project_id: 8, mir_number: 'MIR-0008', status: 'accepted' }] },
+      expiring_documents: { count: 2, items: [
         { id: 1, document_type: 'Insurance', expiry_date: '2026-10-10', alert_state: 'expired', days_remaining: -3 },
         { id: 2, document_type: 'Quality certificate', expiry_date: '2026-10-20', alert_state: 'expires_soon', days_remaining: 7 },
       ] },
@@ -182,5 +186,7 @@ describe('consultant portal observation form', () => {
     expect(container.textContent).toContain('portals.compliance.title');
     expect(container.textContent).toContain('portals.compliance.status.expired');
     expect(container.textContent).toContain('portals.compliance.status.expires_soon');
+    expect(container.textContent).toContain('MIR-0008');
+    expect(container.textContent).toContain('portals.inspections.status.accepted');
   });
 });
