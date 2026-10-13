@@ -901,6 +901,13 @@ html[dir='rtl'] .table td {
   background: var(--color-base);
 }
 
+.form-hint { color: var(--color-text-secondary); font-size: 12px; margin-top: 4px; }
+.form-error { color: var(--color-danger, #dc2626); font-size: 12px; margin-top: 4px; }
+.toast-region { position: fixed; z-index: 1200; inset-block-start: 16px; inset-inline-end: 16px; display: grid; gap: 8px; width: min(380px, calc(100vw - 32px)); }
+.toast { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--color-border); border-inline-start: 4px solid var(--color-accent); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); box-shadow: 0 8px 28px rgb(0 0 0 / 18%); }
+.toast-error { border-inline-start-color: var(--color-danger, #dc2626); }
+.toast button { border: 0; background: transparent; color: inherit; font-size: 20px; cursor: pointer; }
+
 /* Project page tabs (components/project/ProjectShell.js): groups on top, sub-tabs of the active group below. */
 .project-tabs { padding: 0 var(--space-lg, 24px); margin-bottom: 8px; }
 .project-tabs-groups, .project-tabs-sub { display: flex; gap: 4px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }

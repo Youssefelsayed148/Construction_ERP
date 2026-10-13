@@ -105,6 +105,24 @@
     "retry": "Try again",
     "fileUnavailable": "This file is not available."
   },
+  "validation": {
+    "required": "This field is required.",
+    "maxLength": "This value is too long.",
+    "format": "Enter a valid value.",
+    "min": "The value is below the allowed minimum.",
+    "max": "The value is above the allowed maximum.",
+    "invalid": "This field is invalid."
+  },
+  "upload": {
+    "attachments": "Attachments",
+    "choose": "Choose files to upload",
+    "uploading": "Uploading...",
+    "limits": "Up to {count} files, {size} MB each.",
+    "tooMany": "You can upload at most {count} files.",
+    "tooLarge": "Each file must be {size} MB or smaller.",
+    "remove": "Remove {name}"
+  },
+  "toast": { "dismiss": "Dismiss" },
   "dialogs": {
     "confirmTitle": "Please confirm",
     "confirmDelete": "Delete this record? This cannot be undone.",

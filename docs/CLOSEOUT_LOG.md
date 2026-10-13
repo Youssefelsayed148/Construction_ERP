@@ -1086,3 +1086,16 @@ npm run test:e2e
 ```
 
 The first sandboxed Playwright invocation returned `spawn EPERM`; the same local gate passed when rerun with elevated Windows process permissions. The final Compose health check returned `status=ready`, `database=healthy`; backend, database and frontend containers were healthy. Batch B commits: B1 `6c7a1ee`, B2 `6ecf390`, B3 `237a6cf`, B3.1 `1e90f7c`, B4 `0a41103`, B5 `a918f9f`, B6 `157711b`.
+
+## 2026-10-13: Batch C1 shared UI kit
+
+```text
+npm run test:ci
+Test Suites: 20 passed, 20 total
+Tests:       103 passed, 103 total
+
+npm run i18n:check
+i18n:check ok
+```
+
+Coverage added for validation rules, structured server field errors, accessible field labels/error descriptions, and permission-aware action visibility. Existing dialog and shell suites cover reason/confirm dialogs and generic loading/empty/error states. Upload controls now localize labels/errors and enforce configurable client-side file count and size limits. The first i18n check identified one inline RTL expression; it was removed by inheriting the document direction, and the final check above passed. Production build and full Batch C exit gates will run at Batch C close.

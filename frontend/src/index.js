@@ -5,6 +5,7 @@ import store from './store';
 import App from './App';
 import { LocaleProvider } from './i18n/LocaleContext';
 import { applyDocumentLocale, readStoredLocale } from './i18n/config';
+import { ToastProvider } from './components/common/Toast';
 import './styles/index.css';
 
 // Direction before the first paint (public/locale-init.js already did this; this covers a blocked script).
@@ -14,9 +15,11 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <LocaleProvider>
-      <Provider store={store}>
-        <App />
-      </Provider>
+      <ToastProvider>
+        <Provider store={store}>
+          <App />
+        </Provider>
+      </ToastProvider>
     </LocaleProvider>
   </React.StrictMode>
 );

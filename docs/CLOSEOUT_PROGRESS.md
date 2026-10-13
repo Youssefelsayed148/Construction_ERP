@@ -273,3 +273,18 @@ B6 documents the verified local workflow in `docs/STAGING.md`, including localho
 ## Batch B exit (2026-10-13)
 
 B1–B6 are committed and all required Batch B gates passed. Backend mock: 50 suites / 960 tests; real PG: 56 suites / 566 tests on an empty, freshly migrated disposable PostgreSQL 16 container; frontend: 17 suites / 97 tests; i18n and production build passed; Playwright: 32 passed / 46 skipped; local Compose health is ready/healthy. Full B4 smoke and B5 backup/restore outputs are recorded above. Next: Batch C UI kit and procure-to-pay screens.
+
+## 2026-10-13: Batch C1 shared form and UX kit
+
+Added reusable form validation and server field-error mapping, accessible validated fields, a toast provider/hook, a permission-aware action wrapper, and localized upload controls with configurable per-file size and file-count limits. Existing reason/confirm dialogs and loading/empty/error states remain part of the kit. Added English and Arabic common labels and RTL-safe toast styling. Client upload limits improve feedback; backend validation remains authoritative.
+
+```text
+npm run test:ci
+Test Suites: 20 passed, 20 total
+Tests:       103 passed, 103 total
+
+npm run i18n:check
+i18n:check ok
+```
+
+Next: Batch C2 procurement screens, then C3 effective-permission navigation and C4 browser journeys.
