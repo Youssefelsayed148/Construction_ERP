@@ -1387,3 +1387,9 @@ Verification output: `node scripts/i18n-inventory.js --check` reported `i18n:che
 Replaced three sequential ITP inspection-point prompts with a structured form; replaced the unit sold-amount prompt with a validated numeric dialog. Prompt inventory now has 24 calls, all in `PortalDashboard.js`.
 
 Verification output: `Shell.i18n.test.js` passed 1 suite / 20 tests, including non-negative numeric validation; `node scripts/i18n-inventory.js --check` reported `i18n:check ok`; frontend production build reported `Compiled successfully`; `git diff --check` exited 0. No focused QHSEExtended or UnitsSales page test exists.
+
+## 2026-10-13: Phase 6.2 consultant and supplier portal prompt removal
+
+Replaced consultant and supplier prompt flows with localized forms and scoped record selectors. RFQ/PO details load through portal endpoints; quotation and invoice line values are validated; client preview selects from the loaded portfolio. `rg -n "prompt\\s*\\(" frontend/src --glob '*.{js,jsx,ts,tsx}'` returned no matches.
+
+Verification output: `npm run test:ci -- --runTestsByPath src/pages/PortalDashboard.test.js` passed 1 suite / 10 tests; `npm run i18n:check` reported `i18n:check ok`; `npm run build` reported `Compiled successfully`; `git diff --check` exited 0. The pilot smoke remains unverified because automatic review rejected the script due to its reads of `.env.docker` and `.staging-users.json`, prohibited by the closeout request.

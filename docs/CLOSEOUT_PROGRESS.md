@@ -577,3 +577,9 @@ Verification: `i18n:check ok`; frontend production build compiled successfully; 
 Replaced the three sequential inspection-point prompts with one bilingual form that validates the required title and offers the hold/witness/review enum plus acceptance criteria. Replaced unit sold amount entry with the shared numeric dialog and a non-negative finite-number validator. Current scan: 24 calls, all in `PortalDashboard.js`.
 
 Verification: `Shell.i18n.test.js` passed 1 suite / 20 tests; `i18n:check ok`; frontend production build compiled successfully; `git diff --check` passed. No QHSEExtended or UnitsSales page-specific test exists in the current frontend test inventory.
+
+### Phase 6.2 — consultant and supplier portal forms
+
+Replaced the remaining portal prompts with record selectors and localized forms. RFQ/PO details load from portal endpoints; quotation and invoice line values are validated; client preview selects from the loaded portfolio. Current `frontend/src` prompt scan returns no matches.
+
+Verification: `PortalDashboard.test.js` passed 1 suite / 10 tests; `i18n:check ok`; frontend production build compiled successfully; `git diff --check` passed. Phase 6 route-to-screen and permission journey checks remain open.

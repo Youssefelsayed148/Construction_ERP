@@ -1,5 +1,23 @@
 {
   "title": "Portal",
+  "previewProject": "Client preview project",
+  "selectPreviewProject": "Select project to preview",
+  "previewAsClient": "Preview as client",
+  "quickActions": {
+    "clarify": "Send clarification", "acknowledgePo": "Acknowledge PO", "advanceObservation": "Advance observation",
+    "reviewRfi": "Review RFI", "reviewSubmittal": "Review submittal", "quoteRfq": "Submit quotation",
+    "proposeDelivery": "Propose delivery", "uploadCertificate": "Upload delivery certificate", "submitInvoice": "Submit invoice",
+    "sendClarification": "Send clarification", "record": "Record", "selectRecord": "Select a record",
+    "message": "Clarification", "action": "Action", "comment": "Comment", "stage": "Review stage",
+    "body": "Response", "comments": "Comments", "responseCode": "Response code", "supplier": "Supplier",
+    "selectSupplier": "Select supplier", "proposedDate": "Proposed delivery date", "files": "Certificate files",
+    "invoiceNumber": "Invoice number", "quantity": "Invoice quantity", "unitPrice": "Unit price",
+    "validationError": "Enter valid values for all required fields.",
+    "loadError": "The selected record could not be loaded. Refresh and try again.",
+    "submitError": "The action could not be submitted. Refresh and try again.",
+    "actions": { "accept": "Accept", "reject": "Reject", "reopen": "Reopen", "acknowledge": "Acknowledge", "assign": "Assign", "start_rectification": "Start rectification", "submit_for_verification": "Submit for verification", "close": "Close" },
+    "stages": { "coordinator": "Coordinator review", "manager": "Manager review", "response": "Final response", "consultant_coordinator": "Consultant coordinator review", "consultant_manager": "Consultant manager review", "discipline_review": "Discipline review", "official_response": "Official response", "internal_technical_review": "Internal technical review", "pm": "Project manager review", "reviewer": "Reviewer review" }
+  },
   "actionCenter": "Action center",
   "myReviews": "My reviews",
   "previewBanner": "Preview mode: read-only",

@@ -307,6 +307,12 @@ function QuickActions({ kind, data, onDone }) {
   const [afterPhotos, setAfterPhotos] = useState([]);
   const [observationError, setObservationError] = useState('');
   const [savingObservation, setSavingObservation] = useState(false);
+  const [quickAction, setQuickAction] = useState('');
+  const [quickActionValues, setQuickActionValues] = useState({ record_id: '', stage: '', action: '', message: '', body: '', comment: '', comments: '', response_code: 'A', supplier_id: '', invoice_number: '', proposed_date: '', lines: {} });
+  const [quickActionRecord, setQuickActionRecord] = useState(null);
+  const [quickActionFiles, setQuickActionFiles] = useState([]);
+  const [quickActionError, setQuickActionError] = useState('');
+  const [quickActionSaving, setQuickActionSaving] = useState(false);
   const submit = async (path, body) => {
     await request(path, { method: 'POST', body: JSON.stringify(body) });
     onDone();
@@ -332,13 +338,7 @@ function QuickActions({ kind, data, onDone }) {
     finally { setSavingFormalSubmission(false); }
   };
   const today = () => new Date().toISOString().slice(0, 10);
-  const uploadFiles = async () => {
-    const files = await new Promise((resolve) => {
-      const input = document.createElement('input');
-      input.type = 'file'; input.multiple = true;
-      input.onchange = () => resolve(Array.from(input.files || []));
-      input.click();
-    });
+  const uploadFiles = async (files) => {
     if (!files.length) return [];
     const form = new FormData();
     files.forEach((file) => form.append('files', file));
@@ -367,33 +367,58 @@ function QuickActions({ kind, data, onDone }) {
     finally { setSavingObservation(false); }
   };
   const drawings = (data.latest_drawings?.items || []).filter((drawing) => Number(drawing.project_id) === Number(observation.project_id));
-  const clarify = async () => {
-    const id = Number(window.prompt('RFQ ID', data.open_rfqs?.items?.[0]?.id || ''));
-    const message = window.prompt('Clarification question');
-    if (id && message) await submit(`/api/portal/supplier/rfqs/${id}/clarifications`, { message });
+  const quickRecordRows = (action) => ({
+    clarify: data.open_rfqs?.items || [], acknowledgePo: data.awarded_pos?.items || [], quoteRfq: data.open_rfqs?.items || [], proposeDelivery: data.awarded_pos?.items || [], submitInvoice: data.awarded_pos?.items || [],
+    uploadCertificate: data.deliveries?.items || [], advanceObservation: data.observations_awaiting_verification?.items || [], reviewRfi: data.rfis_awaiting_response?.items || [], reviewSubmittal: data.submittals_awaiting_review?.items || [],
+  }[action] || []);
+  const openQuickAction = (action) => {
+    const first = quickRecordRows(action)[0];
+    setQuickAction(action);
+    setQuickActionError(''); setQuickActionRecord(null); setQuickActionFiles([]);
+    setQuickActionValues({ record_id: first?.id ? String(first.id) : '', stage: action === 'reviewRfi' ? 'coordinator' : action === 'reviewSubmittal' ? 'consultant_coordinator' : '', action: 'accept', message: '', body: '', comment: '', comments: '', response_code: 'A', supplier_id: '', invoice_number: '', proposed_date: today(), lines: {} });
+    if (first?.id && ['quoteRfq', 'submitInvoice'].includes(action)) loadQuickRecord(String(first.id), action);
   };
-  const acknowledgePo = async () => {
-    const id = Number(window.prompt('Purchase order ID', data.awarded_pos?.items?.[0]?.id || ''));
-    if (id) await submit(`/api/portal/supplier/purchase-orders/${id}/acknowledge`, {});
+  const loadQuickRecord = async (recordId, action = quickAction) => {
+    setQuickActionValues((current) => ({ ...current, record_id: recordId, supplier_id: '', lines: {} }));
+    setQuickActionRecord(null); setQuickActionError('');
+    if (!recordId || !['quoteRfq', 'submitInvoice'].includes(action)) return;
+    try {
+      const path = action === 'quoteRfq' ? `/api/portal/supplier/rfqs/${recordId}` : `/api/portal/supplier/purchase-orders/${recordId}`;
+      const record = await request(path);
+      const lines = Object.fromEntries((record.lines || []).map((line) => [line.id, action === 'quoteRfq'
+        ? { quantity: String(line.quantity), unit_price: '' }
+        : { quantity: String(line.quantity), unit_price: String(line.unit_rate) }]));
+      setQuickActionRecord(record);
+      setQuickActionValues((current) => ({ ...current, record_id: recordId, supplier_id: record.supplier_ids?.length === 1 ? String(record.supplier_ids[0]) : '', lines }));
+    } catch (error) { setQuickActionError(t('portals.quickActions.loadError')); }
   };
-  const advanceObservation = async () => {
-    const id = Number(window.prompt('Observation ID', data.observations_awaiting_verification?.items?.[0]?.id || ''));
-    const action = window.prompt('Action: acknowledge, assign, start_rectification, submit_for_verification, accept, reject, close', 'accept');
-    const comment = window.prompt('Comment', '') || '';
-    if (id && action) await submit(`/api/consultant/observations/${id}/advance`, { action, comment });
-  };
-  const reviewRfi = async () => {
-    const id = Number(window.prompt('RFI ID', data.rfis_awaiting_response?.items?.[0]?.id || ''));
-    const stage = window.prompt('Stage: coordinator, discipline_review, official_response', 'coordinator');
-    const body = window.prompt('Review or official response');
-    if (id && stage && body) await submit(`/api/consultant/rfis/${id}/response`, { stage, body });
-  };
-  const reviewSubmittal = async () => {
-    const id = Number(window.prompt('Submittal ID', data.submittals_awaiting_review?.items?.[0]?.id || ''));
-    const stage = window.prompt('Stage: internal_technical_review, pm, consultant_coordinator, reviewer, response', 'consultant_coordinator');
-    const comments = window.prompt('Review comments', '') || '';
-    const response_code = stage === 'response' ? window.prompt('Response code: A, B, C or D', 'A') : null;
-    if (id && stage && (stage !== 'response' || response_code)) await submit(`/api/consultant/submittals/${id}/response`, { stage, comments, ...(response_code ? { response_code } : {}) });
+  const updateQuickLine = (lineId, field, value) => setQuickActionValues((current) => ({ ...current, lines: { ...current.lines, [lineId]: { ...current.lines[lineId], [field]: value } } }));
+  const submitQuickAction = async (event) => {
+    event.preventDefault(); setQuickActionError(''); setQuickActionSaving(true);
+    const id = Number(quickActionValues.record_id);
+    try {
+      if (quickAction === 'clarify') await submit(`/api/portal/supplier/rfqs/${id}/clarifications`, { message: quickActionValues.message.trim() });
+      else if (quickAction === 'acknowledgePo') await submit(`/api/portal/supplier/purchase-orders/${id}/acknowledge`, {});
+      else if (quickAction === 'advanceObservation') await submit(`/api/consultant/observations/${id}/advance`, { action: quickActionValues.action, comment: quickActionValues.comment.trim() });
+      else if (quickAction === 'reviewRfi') await submit(`/api/consultant/rfis/${id}/response`, { stage: quickActionValues.stage, body: quickActionValues.body.trim() });
+      else if (quickAction === 'reviewSubmittal') await submit(`/api/consultant/submittals/${id}/response`, { stage: quickActionValues.stage, comments: quickActionValues.comments.trim(), ...(quickActionValues.stage === 'response' ? { response_code: quickActionValues.response_code } : {}) });
+      else if (quickAction === 'quoteRfq') {
+        const lines = (quickActionRecord?.lines || []).map((line) => ({ rfq_line_id: line.id, quantity: Number(line.quantity), unit_price: Number(quickActionValues.lines[line.id]?.unit_price) }));
+        if (!quickActionRecord?.supplier_ids?.map(String).includes(quickActionValues.supplier_id) || !lines.length || lines.some((line) => !Number.isFinite(line.unit_price) || line.unit_price < 0)) throw new Error('validation');
+        await submit(`/api/portal/supplier/rfqs/${id}/quotations`, { supplier_id: Number(quickActionValues.supplier_id), lines });
+      } else if (quickAction === 'proposeDelivery') await submit(`/api/portal/supplier/purchase-orders/${id}/propose-delivery`, { proposed_date: quickActionValues.proposed_date });
+      else if (quickAction === 'uploadCertificate') {
+        const files = await uploadFiles(quickActionFiles);
+        if (!files.length) throw new Error('validation');
+        await submit(`/api/portal/supplier/deliveries/${id}/certificates`, { files });
+      } else if (quickAction === 'submitInvoice') {
+        const lines = (quickActionRecord?.lines || []).map((line) => ({ purchase_order_line_id: line.id, quantity: Number(quickActionValues.lines[line.id]?.quantity), unit_price: Number(quickActionValues.lines[line.id]?.unit_price) }));
+        if (!quickActionValues.invoice_number.trim() || !lines.length || lines.some((line) => !Number.isFinite(line.quantity) || line.quantity <= 0 || !Number.isFinite(line.unit_price) || line.unit_price < 0)) throw new Error('validation');
+        await submit('/api/portal/supplier/invoices', { purchase_order_id: id, invoice_number: quickActionValues.invoice_number.trim(), invoice_date: today(), total_amount: lines.reduce((sum, line) => sum + line.quantity * line.unit_price, 0), lines });
+      }
+      setQuickAction('');
+    } catch (error) { setQuickActionError(t(error.message === 'validation' ? 'portals.quickActions.validationError' : 'portals.quickActions.submitError')); }
+    finally { setQuickActionSaving(false); }
   };
   const acknowledgeRfi = async (event) => {
     event.preventDefault(); setRecordActionError(''); setRecordActionSaving(true);
@@ -436,65 +461,37 @@ function QuickActions({ kind, data, onDone }) {
     } catch (error) { setRecordActionError(t('portals.recordActions.submitError')); }
     finally { setRecordActionSaving(false); }
   };
-  const quoteRfq = async () => {
-    const id = Number(window.prompt('RFQ ID', data.open_rfqs?.items?.[0]?.id || ''));
-    if (!id) return;
-    const rfq = await request(`/api/portal/supplier/rfqs/${id}`);
-    const supplier_id = rfq.supplier_ids.length === 1 ? rfq.supplier_ids[0]
-      : Number(window.prompt('Supplier organization ID', rfq.supplier_ids[0]));
-    if (!rfq.supplier_ids.includes(supplier_id)) return;
-    const lines = [];
-    for (const line of rfq.lines) {
-      const entered = window.prompt(`Unit price for ${line.description || line.material_id} (${line.quantity} ${line.unit || ''})`);
-      if (entered == null || entered === '' || Number(entered) < 0) return;
-      lines.push({ rfq_line_id: line.id, quantity: Number(line.quantity), unit_price: Number(entered) });
-    }
-    await submit(`/api/portal/supplier/rfqs/${id}/quotations`, { supplier_id, lines });
-  };
-  const proposeDelivery = async () => {
-    const id = Number(window.prompt('Purchase order ID', data.awarded_pos?.items?.[0]?.id || ''));
-    const proposed_date = window.prompt('Proposed delivery date (YYYY-MM-DD)', today());
-    if (id && proposed_date) await submit(`/api/portal/supplier/purchase-orders/${id}/propose-delivery`, { proposed_date });
-  };
-  const uploadCertificate = async () => {
-    const id = Number(window.prompt('Delivery ID', data.deliveries?.items?.[0]?.id || ''));
-    if (!id) return;
-    const files = await uploadFiles();
-    if (files.length) await submit(`/api/portal/supplier/deliveries/${id}/certificates`, { files });
-  };
-  const submitInvoice = async () => {
-    const id = Number(window.prompt('Purchase order ID', data.awarded_pos?.items?.[0]?.id || ''));
-    if (!id) return;
-    const po = await request(`/api/portal/supplier/purchase-orders/${id}`);
-    const invoice_number = window.prompt('Invoice number');
-    if (!invoice_number) return;
-    const lines = [];
-    for (const line of po.lines) {
-      const quantity = window.prompt(`Invoice quantity for ${line.description || line.material_id}`, line.quantity);
-      const unit_price = window.prompt('Unit price', line.unit_rate);
-      if (quantity == null || unit_price == null || Number(quantity) <= 0 || Number(unit_price) < 0) return;
-      lines.push({ purchase_order_line_id: line.id, quantity: Number(quantity), unit_price: Number(unit_price) });
-    }
-    await submit('/api/portal/supplier/invoices', {
-      purchase_order_id: id, invoice_number, invoice_date: today(),
-      total_amount: lines.reduce((sum, line) => sum + line.quantity * line.unit_price, 0), lines,
-    });
-  };
   const actions = kind === 'consultant'
-    ? [[t('portals.observation.raise'), () => setShowObservationForm((open) => !open)], ['Advance observation', advanceObservation], ['Review RFI', reviewRfi], ['Review submittal', reviewSubmittal]]
+    ? [[t('portals.observation.raise'), () => setShowObservationForm((open) => !open)], [t('portals.quickActions.advanceObservation'), () => openQuickAction('advanceObservation')], [t('portals.quickActions.reviewRfi'), () => openQuickAction('reviewRfi')], [t('portals.quickActions.reviewSubmittal'), () => openQuickAction('reviewSubmittal')]]
     : kind === 'subcontractor'
       ? [[t('portals.recordActions.acknowledgePackage'), () => { setRecordActionError(''); setSubcontractorAction('package'); }], [t('portals.recordActions.acknowledgeInstruction'), () => { setRecordActionError(''); setSubcontractorAction('instruction'); }],
         [t('portals.formalSubmission.newRfi'), () => { setFormalSubmission('rfi'); setFormalSubmissionError(''); }], [t('portals.recordActions.acknowledgeRfi'), () => { setRecordActionError(''); setShowAcknowledgeRfi((open) => !open); }], [t('portals.formalSubmission.newSubmittal'), () => { setFormalSubmission('submittal'); setFormalSubmissionError(''); }],
         [t('portals.recordActions.resubmitSubmittal'), () => { setRecordActionError(''); setShowResubmitSubmittal((open) => !open); }], [t('portals.recordActions.claimQuantity'), () => { setRecordActionError(''); setSubcontractorAction('quantity'); }], [t('portals.recordActions.paymentApplication'), () => { setRecordActionError(''); setSubcontractorAction('payment'); }],
         [t('portals.submissions.new'), () => setShowSubmissionForm(true)]]
       : kind === 'supplier'
-        ? [['Submit quotation', quoteRfq], ['Send clarification', clarify], ['Acknowledge PO', acknowledgePo],
-          ['Propose delivery', proposeDelivery], ['Upload delivery certificate', uploadCertificate], ['Submit invoice', submitInvoice]]
+        ? [[t('portals.quickActions.submitQuotation'), () => openQuickAction('quoteRfq')], [t('portals.quickActions.sendClarification'), () => openQuickAction('clarify')], [t('portals.quickActions.acknowledgePo'), () => openQuickAction('acknowledgePo')],
+          [t('portals.quickActions.proposeDelivery'), () => openQuickAction('proposeDelivery')], [t('portals.quickActions.uploadCertificate'), () => openQuickAction('uploadCertificate')], [t('portals.quickActions.submitInvoice'), () => openQuickAction('submitInvoice')]]
         : [];
   const actionPackages = (data.packages || []).filter((pkg) => subcontractorAction === 'package'
     ? !pkg.acknowledged_at : subcontractorAction === 'quantity' ? Number(pkg.boq_item_id) > 0 : true);
   if (!actions.length) return null;
   return <div className="portal-actions">{actions.map(([text, fn]) => <button className="btn btn-primary btn-sm" key={text} onClick={() => Promise.resolve(fn()).catch(e => window.alert(e.message))}><Send size={14} /> {text}</button>)}
+    {quickAction && <form className="card portal-observation-form" onSubmit={submitQuickAction}>
+      <h2>{t(`portals.quickActions.${quickAction}`)}</h2>
+      {quickActionError && <p className="alert alert-danger" role="alert">{quickActionError}</p>}
+      <label>{t('portals.quickActions.record')}<select required value={quickActionValues.record_id} onChange={(event) => loadQuickRecord(event.target.value)}>
+        <option value="">{t('portals.quickActions.selectRecord')}</option>{quickRecordRows(quickAction).map((row) => <option key={row.id} value={row.id}>{row.rfq_number || row.purchase_order_number || row.order_number || row.instruction_number || row.number || `#${row.id}`} — {row.title || row.subject || row.status || ''}</option>)}
+      </select></label>
+      {quickAction === 'clarify' && <label>{t('portals.quickActions.message')}<textarea required maxLength="4000" value={quickActionValues.message} onChange={(event) => setQuickActionValues({ ...quickActionValues, message: event.target.value })} /></label>}
+      {quickAction === 'advanceObservation' && <><label>{t('portals.quickActions.action')}<select value={quickActionValues.action} onChange={(event) => setQuickActionValues({ ...quickActionValues, action: event.target.value })}>{['acknowledge', 'assign', 'start_rectification', 'submit_for_verification', 'accept', 'reject', 'close'].map((value) => <option key={value} value={value}>{t(`portals.quickActions.actions.${value}`)}</option>)}</select></label><label>{t('portals.quickActions.comment')}<textarea maxLength="4000" value={quickActionValues.comment} onChange={(event) => setQuickActionValues({ ...quickActionValues, comment: event.target.value })} /></label></>}
+      {quickAction === 'reviewRfi' && <><label>{t('portals.quickActions.stage')}<select value={quickActionValues.stage} onChange={(event) => setQuickActionValues({ ...quickActionValues, stage: event.target.value })}>{['coordinator', 'discipline_review', 'official_response'].map((value) => <option key={value} value={value}>{t(`portals.quickActions.stages.${value}`)}</option>)}</select></label><label>{t('portals.quickActions.body')}<textarea required maxLength="5000" value={quickActionValues.body} onChange={(event) => setQuickActionValues({ ...quickActionValues, body: event.target.value })} /></label></>}
+      {quickAction === 'reviewSubmittal' && <><label>{t('portals.quickActions.stage')}<select value={quickActionValues.stage} onChange={(event) => setQuickActionValues({ ...quickActionValues, stage: event.target.value })}>{['internal_technical_review', 'pm', 'consultant_coordinator', 'reviewer', 'response'].map((value) => <option key={value} value={value}>{t(`portals.quickActions.stages.${value}`)}</option>)}</select></label>{quickActionValues.stage === 'response' && <label>{t('portals.quickActions.responseCode')}<select value={quickActionValues.response_code} onChange={(event) => setQuickActionValues({ ...quickActionValues, response_code: event.target.value })}>{['A', 'B', 'C', 'D'].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>}<label>{t('portals.quickActions.comments')}<textarea required maxLength="5000" value={quickActionValues.comments} onChange={(event) => setQuickActionValues({ ...quickActionValues, comments: event.target.value })} /></label></>}
+      {quickAction === 'quoteRfq' && quickActionRecord && <><label>{t('portals.quickActions.supplier')}<select required value={quickActionValues.supplier_id} onChange={(event) => setQuickActionValues({ ...quickActionValues, supplier_id: event.target.value })}><option value="">{t('portals.quickActions.selectSupplier')}</option>{quickActionRecord.supplier_ids?.map((id) => <option key={id} value={id}>{id}</option>)}</select></label>{quickActionRecord.lines?.map((line) => <label key={line.id}>{line.description || line.material_id} — {line.quantity} {line.unit || ''}<input type="number" min="0" step="0.01" required value={quickActionValues.lines[line.id]?.unit_price || ''} onChange={(event) => updateQuickLine(line.id, 'unit_price', event.target.value)} /></label>)}</>}
+      {quickAction === 'proposeDelivery' && <label>{t('portals.quickActions.proposedDate')}<input type="date" required value={quickActionValues.proposed_date} onChange={(event) => setQuickActionValues({ ...quickActionValues, proposed_date: event.target.value })} /></label>}
+      {quickAction === 'uploadCertificate' && <label>{t('portals.quickActions.files')}<input type="file" multiple required onChange={(event) => setQuickActionFiles(Array.from(event.target.files || []))} /></label>}
+      {quickAction === 'submitInvoice' && quickActionRecord && <><label>{t('portals.quickActions.invoiceNumber')}<input required maxLength="100" value={quickActionValues.invoice_number} onChange={(event) => setQuickActionValues({ ...quickActionValues, invoice_number: event.target.value })} /></label>{quickActionRecord.lines?.map((line) => <div key={line.id}><strong>{line.description || line.material_id}</strong><label>{t('portals.quickActions.quantity')}<input type="number" min="0.001" step="0.001" required value={quickActionValues.lines[line.id]?.quantity || ''} onChange={(event) => updateQuickLine(line.id, 'quantity', event.target.value)} /></label><label>{t('portals.quickActions.unitPrice')}<input type="number" min="0" step="0.01" required value={quickActionValues.lines[line.id]?.unit_price || ''} onChange={(event) => updateQuickLine(line.id, 'unit_price', event.target.value)} /></label></div>)}</>}
+      <div className="form-actions"><button type="button" className="btn" disabled={quickActionSaving} onClick={() => setQuickAction('')}>{t('common.cancel')}</button><button type="submit" className="btn btn-primary" disabled={quickActionSaving || !quickActionValues.record_id || (['quoteRfq', 'submitInvoice'].includes(quickAction) && !quickActionRecord)}>{quickActionSaving ? t('portals.submissions.saving') : t('portals.submissions.submit')}</button></div>
+    </form>}
     {showObservationForm && kind === 'consultant' && <form className="card portal-observation-form" onSubmit={createObservation}>
       <h2>{t('portals.observation.title')}</h2>
       {observationError && <p className="alert alert-danger" role="alert">{observationError}</p>}
@@ -585,6 +582,7 @@ function QuickActions({ kind, data, onDone }) {
 }
 
 export default function PortalDashboard({ kind }) {
+  const { t } = useLocale();
   const config = CONFIG[kind];
   const Icon = config.icon;
   const [data, setData] = useState(null);
@@ -592,11 +590,12 @@ export default function PortalDashboard({ kind }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [projectId, setProjectId] = useState('');
+  const [previewProjectId, setPreviewProjectId] = useState('');
   const [previewToken, setPreviewToken] = useState(() => sessionStorage.getItem('clientPreviewToken'));
   const canPreview = kind === 'client' && ['owner', 'admin', 'project_manager'].includes(authService.getCurrentUser()?.role);
 
   const startPreview = async () => {
-    const id = Number(window.prompt('Project ID to preview'));
+    const id = Number(previewProjectId);
     if (!Number.isInteger(id) || id <= 0) return;
     const result = await request('/api/client-portal/preview', { method: 'POST', body: JSON.stringify({ project_id: id }) });
     sessionStorage.setItem('clientPreviewToken', result.token);
@@ -634,7 +633,7 @@ export default function PortalDashboard({ kind }) {
           {projectIds.length > 1 && <select className="form-control" value={projectId} onChange={e => setProjectId(e.target.value)}><option value="">All projects</option>{projectIds.map(id => <option key={id} value={id}>Project {id}</option>)}</select>}
           {canPreview && (previewToken
             ? <button className="btn btn-secondary btn-sm" onClick={stopPreview}>Exit client preview</button>
-            : <button className="btn btn-secondary btn-sm" onClick={() => startPreview().catch(e => setError(e.message))}>Preview as client</button>)}
+            : <><select className="form-control" aria-label={t('portals.previewProject')} value={previewProjectId} onChange={(event) => setPreviewProjectId(event.target.value)}><option value="">{t('portals.selectPreviewProject')}</option>{(extra?.portfolio?.items || []).map((item) => <option key={item.id} value={item.id}>{item.name || item.project_name || t('portals.clientActions.project', { id: item.id })}</option>)}</select><button className="btn btn-secondary btn-sm" disabled={!previewProjectId} onClick={() => startPreview().catch(e => setError(e.message))}>{t('portals.previewAsClient')}</button></>)}
           <button className="btn btn-secondary btn-sm" onClick={load}><RefreshCw size={14} /> Refresh</button>
         </div>
       </header>

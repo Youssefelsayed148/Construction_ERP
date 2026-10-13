@@ -35,7 +35,7 @@
 
 - GL account mappings stay provisional until the finance owner confirms account purposes.
 - Human UAT has not been executed.
-- The current prompt scan finds 24 calls in PortalDashboard.js; Phase 6 remains open. Typed-name deletion dialogs now cover twelve prompts across five pages. `docs/CARRYOVER.md` records the audit inventory and next actions.
+- The current prompt scan finds zero calls under `frontend/src`; Phase 6 remains open for route-to-screen/API/permission inventory and journey verification. The portal prompt-removal slice passes 10 focused tests, i18n check, and production build; see the latest closeout entries.
 - `docs/CODEX_AUDIT_REPORT.md` is a pre-existing untracked user artifact and has not been edited.
 
 - Targeted revalidation of audit leads D1-D15 is recorded in `docs/CARRYOVER.md`; multiple findings from the old report are fixed/superseded in current code. Revalidation is not a full security or business-journey acceptance pass.

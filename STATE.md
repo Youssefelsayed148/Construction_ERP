@@ -88,8 +88,14 @@ The initial sandbox Docker check returned `Access is denied`; an elevated local 
 
 Current gates: backend mock 53 suites / 999 tests; real PG 67 suites / 605 tests; guards `lint-guards: ok`; frontend 28 suites / 107 tests; i18n passed; build passed; Playwright 34 passed / 50 skipped. See `docs/CLOSEOUT_LOG.md` for command evidence.
 
-Pilot smoke remains unverified. Automatic review rejected the command because the script reads `.env.docker` and `.staging-users.json`, which the request explicitly prohibits. No alternate execution path was attempted. The 5.8.2 code and gate repairs remain uncommitted; next action is explicit-path staging, cached-diff inspection, commit, then the requested carryover audit.
+Pilot smoke remains unverified. Automatic review rejected the command because the script reads `.env.docker` and `.staging-users.json`, which the request explicitly prohibits. No alternate execution path was attempted.
 
 ## Closeout continuation — after 5.8.2 commit (2026-10-13)
 
-Commit `ad8f9f6` contains the verified Phase 5.8.2 slice and gate repairs. `docs/CARRYOVER.md` now records the verified gates and remaining audit/implementation sequence. Current scan: 33 frontend `prompt()` calls across 8 page files; Phase 6 remains open. Typed-name deletion dialogs now cover twelve prompts across five pages. The pilot smoke remains unverified because automatic review rejected the script's access to prohibited `.env.docker` and `.staging-users.json`. Targeted D1-D15 revalidation is recorded in `docs/CARRYOVER.md`; next: complete the Phase 6 route-to-screen inventory and continue bounded prompt-removal slices.
+Commit `ad8f9f6` contains the verified Phase 5.8.2 slice and gate repairs. `docs/CARRYOVER.md` records verified gates and remaining audit work. Current `frontend/src` prompt scan is zero; Phase 6 remains open for route-to-screen and permission journey verification. Pilot smoke remains unverified because automatic review rejected the script's access to prohibited `.env.docker` and `.staging-users.json`. Targeted D1-D15 revalidation is recorded in `docs/CARRYOVER.md`.
+
+## 2026-10-13 closeout continuation — Phase 6.2 prompt-removal exit
+
+Replaced consultant and supplier portal prompt flows with localized forms. Record choices come from dashboard lists; RFQ and PO details load from portal endpoints; amount fields validate before submission. Client preview selects from the loaded portfolio. Current source scan returned no `prompt()` calls.
+
+Verification: `PortalDashboard.test.js` passed 1 suite / 10 tests; `i18n:check ok`; frontend production build compiled successfully; `git diff --check` passed. The pilot smoke remains unverified because automatic review rejected the script due to its reads of prohibited `.env.docker` and `.staging-users.json`.

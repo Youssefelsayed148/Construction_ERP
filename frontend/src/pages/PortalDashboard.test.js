@@ -334,4 +334,27 @@ describe('consultant portal observation form', () => {
     expect(container.textContent).toContain('MIR-0008');
     expect(container.textContent).toContain('portals.inspections.status.accepted');
   });
+
+  test('supplier quotation selects a dashboard RFQ and submits validated line pricing', async () => {
+    global.fetch = jest.fn(async (url, options = {}) => {
+      if (options.method === 'POST') return { ok: true, json: async () => ({ success: true, data: { id: 12 } }) };
+      const data = String(url).includes('/rfqs/41')
+        ? { id: 41, supplier_ids: [7], lines: [{ id: 51, description: 'C35 concrete', quantity: 3, unit: 'm3' }] }
+        : { open_rfqs: { items: [{ id: 41, rfq_number: 'RFQ-0041', title: 'Concrete package' }] }, awarded_pos: { items: [] } };
+      return { ok: true, json: async () => ({ success: true, data }) };
+    });
+    await act(async () => { root.render(<PortalDashboard kind="supplier" />); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const action = [...container.querySelectorAll('button')].find((button) => button.textContent.includes('portals.quickActions.submitQuotation'));
+    await act(async () => { action.click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(container.textContent).toContain('RFQ-0041');
+    const form = [...container.querySelectorAll('form')].find((node) => node.textContent.includes('portals.quickActions.quoteRfq'));
+    await fill('form input[type="number"]', '185.25');
+    await act(async () => { form.querySelector('button[type="submit"]').click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const post = global.fetch.mock.calls.find(([url, options]) => options.method === 'POST' && String(url).includes('/quotations'));
+    expect(String(post[0])).toContain('/rfqs/41/quotations');
+    expect(JSON.parse(post[1].body)).toEqual({ supplier_id: 7, lines: [{ rfq_line_id: 51, quantity: 3, unit_price: 185.25 }] });
+  });
 });
