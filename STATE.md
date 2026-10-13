@@ -34,7 +34,7 @@ Updated: 2026-10-13 (Africa/Cairo)
 - Batch C4 passes the real local backend procure-to-pay journey on English/Arabic desktop and mobile, plus an unassigned-user API denial. The run covers PR, RFQ and two quotes, award approval, PO workflow, delivery/MIR/GRN, supplier invoice and allocated payment. Read-only reconciliation reported zero violations across all 11 checks.
 - Batch D UAT preparation is documented in `docs/UAT_PILOT.md`: scoped role scripts, checklist, defect template, deferred items, and signoff table. Human UAT has not been executed.
 - Batch E implementation slices E1–E5 are complete and committed as recorded in `docs/CLOSEOUT_LOG.md`; finance account-purpose signoff still requires the owner. Human UAT has not been executed.
-- Phase 5.6.1 is committed. In Phase 5.6.2, formal consultant-stage WIR reads, configured workflow SLA timestamps, and a scoped transactional consultant WIR final-result action are implemented and focused-tested. Recommendations, SLA administration, and remaining portal UI coverage are still open. Phases 5.6–6 remain incomplete.
+- Phase 5.6.1 is committed. In Phase 5.6.2, formal consultant-stage WIR reads, configured workflow SLA timestamps, a scoped transactional consultant WIR final-result action, and bilingual portal decision buttons are implemented and focused-tested. Recommendations and SLA administration remain open. Phases 5.6–6 remain incomplete.
 
 ## Where work stopped
 
@@ -64,7 +64,7 @@ Batch A and Batch B1–B6 are green. C1–C4 and Batch E implementation are comm
 | Batch D documentation | PASS — `docs/UAT_PILOT.md`; human UAT NOT RUN |
 | Batch E implementation | PASS — E1–E5 slices committed; owner account confirmation and human UAT outstanding |
 | Phase 5.6.1 observation completeness | PASS — focused PG 1/1, consultant/media 18/18, portal 1/1, i18n/build/syntax |
-| Phase 5.6.2 WIR inbox/SLA and result action | PASS — focused PG 3/3; consultant + QA/QC mock 27/27; remainder of ticket open |
+| Phase 5.6.2 WIR inbox/SLA and result action | PASS — focused PG 3/3; consultant + QA/QC mock 27/27; portal 2/2; locale check; remainder of ticket open |
 | Phases 5.6–6 | IN PROGRESS — 5.6.1 and formal WIR/SLA inbox read complete; remaining tickets open |
 
 ## Risks and decisions

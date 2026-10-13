@@ -59,4 +59,24 @@ describe('consultant portal observation form', () => {
       after_photos: [{ file_name: 'owned-evidence.jpg', file_url: '/uploads/owned-evidence.jpg', caption: 'evidence.jpg' }],
     });
   });
+
+  test('shows formal WIR review actions and posts the selected result to the scoped endpoint', async () => {
+    global.fetch = jest.fn(async (url, options = {}) => {
+      if (options.method === 'POST') return { ok: true, json: async () => ({ success: true, data: { status: 'approved' } }) };
+      const data = String(url).includes('/reviews') ? [{
+        type: 'wir', id: 34, project_id: 11, number: 'WIR-0034', title: 'WIR WIR-0034',
+        status: 'consultant_review', due_date: '2026-10-14T08:00:00.000Z', drawing_reference: 'S-12 / Rev 4',
+      }] : { project_ids: [11], latest_drawings: { items: [] } };
+      return { ok: true, json: async () => ({ success: true, data }) };
+    });
+    await act(async () => { root.render(<PortalDashboard kind="consultant" />); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const action = [...container.querySelectorAll('button')].find((button) => button.textContent.includes('portals.review.approveWithComments'));
+    expect(action).toBeTruthy();
+    await act(async () => { action.click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const decision = global.fetch.mock.calls.find(([url, options]) => options.method === 'POST' && String(url).includes('/wirs/34/result'));
+    expect(decision).toBeTruthy();
+    expect(JSON.parse(decision[1].body)).toEqual({ result: 'approved_with_comments' });
+  });
 });

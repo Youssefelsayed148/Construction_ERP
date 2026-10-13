@@ -3,6 +3,15 @@
   "actionCenter": "Action center",
   "myReviews": "My reviews",
   "previewBanner": "Preview mode: read-only",
+  "review": {
+    "empty": "No reviews are waiting for you.",
+    "wirActions": "Work inspection review actions",
+    "approve": "Approve",
+    "approveWithComments": "Approve with comments",
+    "reject": "Reject",
+    "reinspect": "Request reinspection",
+    "submitError": "The review could not be submitted. Refresh and try again."
+  },
   "observation": {
     "raise": "Raise observation",
     "title": "New site observation",

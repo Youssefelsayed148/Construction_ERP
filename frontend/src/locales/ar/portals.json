@@ -3,6 +3,15 @@
   "actionCenter": "مركز الإجراءات",
   "myReviews": "مراجعاتي",
   "previewBanner": "وضع المعاينة: للقراءة فقط",
+  "review": {
+    "empty": "لا توجد مراجعات بانتظارك.",
+    "wirActions": "إجراءات مراجعة فحص الأعمال",
+    "approve": "اعتماد",
+    "approveWithComments": "اعتماد مع ملاحظات",
+    "reject": "رفض",
+    "reinspect": "طلب إعادة الفحص",
+    "submitError": "تعذر إرسال المراجعة. حدّث الصفحة وحاول مجددًا."
+  },
   "observation": {
     "raise": "رفع ملاحظة",
     "title": "ملاحظة موقع جديدة",

@@ -1191,3 +1191,9 @@ Focused verification on the disposable local PostgreSQL database: `consultant-ob
 Added `POST /api/consultant/wirs/:id/result`. It accepts the formal WIR result vocabulary, locks and checks the WIR against the consultant's assigned project inside the audited transaction, delegates state changes to the QA/QC engine, and records the activity audit and workflow action history together. Out-of-project records return a typed not-found response.
 
 Focused verification: `consultant-observation.pg.test.js` passed 1 suite / 3 tests against the disposable local PostgreSQL database, including approved-with-comments state, terminal workflow state, two formal workflow actions, and out-of-project denial. `consultant.test.js` plus `qaqc.test.js` passed 2 suites / 27 tests. Changed route/service/test files passed `node --check`. The first PG attempt found a test expectation mismatch (there are two workflow action entries, one for the decision and one for terminal close); the assertion was corrected and the same test file passed. No full suite was run. Recommendation records and inbox UI remain open.
+
+## 2026-10-13: Phase 5.6.2 consultant WIR portal actions
+
+The consultant My Reviews list now shows formal WIR review actions (approve, approve with comments, reject, reinspect) and posts the selected decision to the audited consultant endpoint. Action controls and empty/error text use paired English/Arabic portal locale keys; repeat submissions are disabled while the request is active.
+
+Focused verification: `PortalDashboard.test.js` passed 1 suite / 2 tests, including the selected result payload to `/api/consultant/wirs/34/result`; `npm run i18n:check` returned `i18n:check ok`. No full frontend suite or production build was run.

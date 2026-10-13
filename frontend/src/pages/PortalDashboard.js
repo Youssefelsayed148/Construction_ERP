@@ -82,6 +82,39 @@ function Record({ value }) {
   return <div className="portal-record"><span>{value.file_url ? <a href="#open-file" onClick={e => { e.preventDefault(); openProtectedFile(value.file_url).catch(error => window.alert(error.message)); }}>{title}</a> : title}</span><span>{detail != null ? valueText(detail) : ''} {status ? <small className="badge badge-secondary">{label(status)}</small> : null}</span></div>;
 }
 
+function ConsultantReviews({ rows = [], onDone }) {
+  const { t } = useLocale();
+  const [savingId, setSavingId] = useState(null);
+  const [error, setError] = useState('');
+  const decideWir = async (row, result) => {
+    setSavingId(row.id); setError('');
+    try {
+      await request(`/api/consultant/wirs/${row.id}/result`, {
+        method: 'POST', body: JSON.stringify({ result }),
+      });
+      onDone();
+    } catch (e) { setError(t('portals.review.submitError')); }
+    finally { setSavingId(null); }
+  };
+  return <section className="card portal-widget">
+    <div className="card-header">{t('portals.myReviews')} <span className="badge badge-info">{rows.length}</span></div>
+    <div className="card-body">
+      {error && <p className="alert alert-danger" role="alert">{error}</p>}
+      {!rows.length ? <em>{t('portals.review.empty')}</em> : rows.map((row) => (
+        <div className="portal-review-item" key={`${row.type}-${row.id}`}>
+          <Record value={row} />
+          {row.type === 'wir' && <div className="portal-review-actions" aria-label={t('portals.review.wirActions')}>
+            <button className="btn btn-secondary btn-sm" disabled={savingId === row.id} onClick={() => decideWir(row, 'approved')}>{t('portals.review.approve')}</button>
+            <button className="btn btn-secondary btn-sm" disabled={savingId === row.id} onClick={() => decideWir(row, 'approved_with_comments')}>{t('portals.review.approveWithComments')}</button>
+            <button className="btn btn-secondary btn-sm" disabled={savingId === row.id} onClick={() => decideWir(row, 'rejected')}>{t('portals.review.reject')}</button>
+            <button className="btn btn-secondary btn-sm" disabled={savingId === row.id} onClick={() => decideWir(row, 'reinspect')}>{t('portals.review.reinspect')}</button>
+          </div>}
+        </div>
+      ))}
+    </div>
+  </section>;
+}
+
 function QuickActions({ kind, data, onDone }) {
   const { t } = useLocale();
   const [showObservationForm, setShowObservationForm] = useState(false);
@@ -363,7 +396,9 @@ export default function PortalDashboard({ kind }) {
         {extra?.portfolio?.is_portfolio && <><h2 className="portal-section-title">Portfolio</h2><div className="portal-grid"><Widget name="Projects" value={extra.portfolio.items} /></div></>}
         <QuickActions kind={kind} data={data} onDone={load} />
         <div className="portal-grid">{Object.entries(data).filter(([key]) => !['note', 'setup_actions', 'project_ids', 'supplier_ids', 'visibility', 'preview'].includes(key)).map(([key, value]) => <Widget key={key} name={key} value={value} />)}</div>
-        {extra?.secondary != null && <><h2 className="portal-section-title">{config.extraTitle}</h2><div className="portal-grid"><Widget name={config.extraTitle} value={extra.secondary} /></div></>}
+        {extra?.secondary != null && <><h2 className="portal-section-title">{config.extraTitle}</h2><div className="portal-grid">{kind === 'consultant'
+          ? <ConsultantReviews rows={extra.secondary} onDone={load} />
+          : <Widget name={config.extraTitle} value={extra.secondary} />}</div></>}
       </>}
     </div>
   );
