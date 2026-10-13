@@ -1399,3 +1399,9 @@ Verification output: `npm run test:ci -- --runTestsByPath src/pages/PortalDashbo
 Corrected the Arabic quick-action and client-preview values to valid UTF-8 Arabic after detecting terminal-pipeline character loss in a staged diff. The catalog now stores Arabic text, not replacement question marks.
 
 Verification output: `npm run i18n:check` reported `i18n:check ok`; JSON parsing succeeded; `git diff --check` exited 0.
+
+## 2026-10-13: Phase 6 Settings navigation reachability
+
+The existing Settings route was not reachable from the sidebar. Added an owner/admin Settings entry filtered by the existing settings module grant.
+
+Verification output: `npm run test:ci -- --runTestsByPath src/components/layout/Layout.test.js` passed 1 suite / 2 tests; `npm run i18n:check` reported `i18n:check ok`; `git diff --check` exited 0. Remaining route-to-screen inventory and RBAC journey checks are open.

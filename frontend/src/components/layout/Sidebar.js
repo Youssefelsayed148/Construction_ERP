@@ -5,7 +5,7 @@ import { logout as reduxLogout } from '../../store/slices/authSlice';
 import { authService } from '../../services/api';
 import { useLocale } from '../../hooks/useLocale';
 import { translateRole } from '../../i18n/enums';
-import { LayoutDashboard, Briefcase, Users, Package, Truck, Wrench, Shield, DollarSign, Receipt, ClipboardList, ListChecks, LogOut, Globe, HardHat, Bot } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Users, Package, Truck, Wrench, Shield, DollarSign, Receipt, ClipboardList, ListChecks, LogOut, Globe, HardHat, Bot, Settings as SettingsIcon } from 'lucide-react';
 
 // Labels are catalog keys (navigation.items.*), never literal text.
 const mainMenuItems = [
@@ -22,6 +22,7 @@ const mainMenuItems = [
   { path: '/legal', icon: Shield, labelKey: 'legal', module: 'legal' },
   { path: '/approvals', icon: ClipboardList, labelKey: 'approvals', module: 'approvals' },
   { path: '/my-actions', icon: ListChecks, labelKey: 'myActions', module: 'actions' },
+  { path: '/settings', icon: SettingsIcon, labelKey: 'settings', module: 'settings', roles: ['owner', 'admin'] },
   // Phase 27 — owner/admin only (filtered below).
   { path: '/agent-activity', icon: Bot, labelKey: 'agentActivity', module: 'agent', action: 'view', roles: ['owner', 'admin'] },
 ];

@@ -589,3 +589,9 @@ Verification: `PortalDashboard.test.js` passed 1 suite / 10 tests; `i18n:check o
 Corrected the Arabic quick-action and client-preview catalog entries to valid UTF-8 Arabic. Rechecked JSON parsing and recursive EN/AR catalog parity.
 
 Verification: `npm run i18n:check` reported `i18n:check ok`; `git diff --check` passed.
+
+### Phase 6 — settings navigation reachability
+
+Added a permission-filtered Settings navigation entry for owner/admin roles; the existing `/settings` route and server-side account-mapping authorization remain the enforcement points.
+
+Verification: `Layout.test.js` passed 1 suite / 2 tests, including owner Settings-link visibility; `i18n:check ok`; `git diff --check` passed. Full App route-to-screen and role-matrix inventory remains open.

@@ -29,6 +29,7 @@ describe('responsive application shell', () => {
 
   test('opens and closes the mobile navigation with an accessible control', () => {
     act(() => root.render(<Provider store={store}><MemoryRouter><Routes><Route path="/" element={<Layout />}><Route index element={<p>Page</p>} /></Route></Routes></MemoryRouter></Provider>));
+    expect(container.querySelector('.sidebar-nav a[href="/settings"]')).toBeTruthy();
     const button = container.querySelector('.mobile-menu-button');
     expect(button.getAttribute('aria-expanded')).toBe('false');
     act(() => button.dispatchEvent(new MouseEvent('click', { bubbles: true })));
