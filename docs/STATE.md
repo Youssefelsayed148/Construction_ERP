@@ -22,7 +22,7 @@
 
 ## Next
 
-1. Revalidate Batch C/E and D1-D15 audit leads against current source; classify each with fresh evidence.
+1. Continue route-wide audit verification, especially transactional audit failures, safe error behavior, adjustment GL treatment, and project journeys.
 2. Complete Phase 6 route-to-screen/API/permission inventory and remove all remaining prompt flows in bounded slices.
 3. Continue remaining Phases 5.6 and 7-11 items in master-plan order; see `docs/CARRYOVER.md`.
 
@@ -37,3 +37,5 @@
 - Human UAT has not been executed.
 - The current prompt scan finds 36 calls across 11 frontend page files; Phase 6 remains open. Typed-name deletion dialogs now cover twelve prompts across five pages. `docs/CARRYOVER.md` records the audit inventory and next actions.
 - `docs/CODEX_AUDIT_REPORT.md` is a pre-existing untracked user artifact and has not been edited.
+
+- Targeted revalidation of audit leads D1-D15 is recorded in `docs/CARRYOVER.md`; multiple findings from the old report are fixed/superseded in current code. Revalidation is not a full security or business-journey acceptance pass.

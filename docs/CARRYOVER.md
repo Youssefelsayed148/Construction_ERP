@@ -15,6 +15,28 @@ This register captures evidence-backed work that remains after the 5.8.2 slice. 
 
 ## Remaining work by area
 
+### Revalidation of audit report leads
+
+The following dispositions use current-source inspection plus the fresh 5.8.2 gate output. This is targeted revalidation, not an exhaustive security or specification review.
+
+| Audit lead | Current evidence | Disposition |
+|---|---|---|
+| D1 delegation renewal/test fixture | Fresh full PostgreSQL gate passed 67 suites / 605 tests, including the org/RBAC suite. | Prior red-gate symptom is not reproduced in current gates; keep regression coverage. |
+| D2 webhook SSRF | `backend/src/services/webhookService.js` resolves host addresses, rejects prohibited ranges, pins the connection to the checked address, and does not follow redirects through its direct HTTP request implementation. | Earlier finding appears fixed in current code; retain focused adversarial DNS/IP tests and recheck at security review. |
+| D3 webhook secret disclosure | Webhook create/rotate encrypts the secret; list/get queries select explicit non-secret columns. | Earlier finding appears fixed in current code. |
+| D4 transactional activity audit | `logActivity` now throws on insert failure; finance mutation routes use `auditedTransaction`. | Improved, but route-wide transactional audit coverage was not re-proved; inspect every mutation family and test rollback on audit failure. |
+| D5 retention/advance/deduction accounting | `glPosting.js` records certificate memo/retention ledger entries; `docs/DECISIONS.md` still keeps account mappings provisional pending finance-owner confirmation. | Finance policy/signoff remains blocked. Reconcile all required debit/credit mappings and postings after owner confirmation. |
+| D6 configurable approval limits | `approvalLimits` service, admin routes, migration 0037, and MCP limit enforcement exist. | Earlier missing-foundation finding is superseded by current implementation; verify configured role/action values and business approval before finance use. |
+| D7 procurement/finance UI callers | `ProcurementWorkspace.js` exposes award recommendations; `ProjectFinanceWorkbench.js` provides forecast, credit-note, payment-batch and certificate workflows. | The audit's earlier “no UI caller” evidence is stale; full role-based golden journey remains to be verified. |
+| D8 client invoice lines | `financeEngine.js` inserts `invoice_lines`; `invoices.js` reads them. | Earlier unwired-model finding is fixed in current code; finance reconciliation still needed. |
+| D9 forecast EAC/maker-checker | `commercialEngine.js` reads approved forecast versions; `budgeting.js` applies `assertNotMaker` on forecast approval. | Earlier static gap is fixed in current code; retain tested concurrency and financial reconciliation coverage. |
+| D10 inventory traceability/accounting | `procurementService.js` links supplier returns to GRN lots; `inventoryDocuments.js` posts stock adjustments but no GL posting was found in that service. | Lot-specific supplier return gap appears fixed. Adjustment GL/accounting treatment remains open. |
+| D11 raw errors/localization | `typedRoute.js` still returns `e.message` for untyped errors; not all screen text has been exhaustively checked. | Open; return safe correlated errors and finish EN/AR coverage. |
+| D12 bilingual laborer name columns | `migrate-1.4.js` defines `full_name_en`; paired `full_name_ar` was not found in the inspected migration. | Open schema/UX decision: determine whether this is intentional language-neutral data or add a paired column through a versioned migration. |
+| D13 project tab visibility | `projectNav.js` filters by policy grants and project scope, with no legacy role fallback. | Earlier navigation finding appears fixed; still run canonical-role rendering and backend 403 coverage. |
+| D14 hard-coded test-user seeder | `backend/create_test_users.js` now prints a retirement notice and exits instead of mutating users. | Earlier unsafe-seeder finding is fixed; use the guarded staging seed only in its approved isolated workflow. |
+| D15 audit/CI truth | Local gates are current and listed above; remote GitHub Actions/billing state is not freshly verified. | Local status reporting is current; remote CI remains unverified.
+
 | Area | Evidence and current status | Next action / dependency |
 |---|---|---|
 | Phase 6.2 prompt replacement | Current `rg -n "prompt\\s*\\(" frontend/src --glob '*.{js,jsx,ts,tsx}'` initially found 48 calls in 16 page files. The Assets, Clients, Expenses, Legal, and HR slices have removed twelve typed-name deletion prompts; the latest scan finds 36 calls in 11 files. | Replace in bounded, localized form/confirmation slices; validate input and select scoped records. Exit criterion is zero prompt calls. |

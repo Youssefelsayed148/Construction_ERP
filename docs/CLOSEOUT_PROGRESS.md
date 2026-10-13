@@ -537,3 +537,7 @@ Verification: `Shell.i18n.test.js` passed 18/18; `i18n:check ok`; frontend produ
 Converted employee and daily-laborer deletion prompts to the shared typed-confirmation dialog. Current scan: 36 calls across 11 page files (from 40 across 12 after the previous slice).
 
 Verification: `Shell.i18n.test.js` passed 18/18; `i18n:check ok`; frontend production build compiled successfully without ESLint warnings; `git diff --check` passed. No HR-specific page test exists in the current frontend test inventory.
+
+### Current-source audit reconciliation
+
+Revalidated D1-D15 leads against current code after the 5.8.2 changes. Several old findings are fixed or superseded (webhook SSRF/secret handling, approval limits, procurement/finance UI callers, invoice lines, forecast controls, supplier-return lot links, project permission navigation, test-user seeder). Remaining confirmed leads and evidence are listed in `docs/CARRYOVER.md`; the original user audit report is left untouched.

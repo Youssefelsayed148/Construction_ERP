@@ -1345,3 +1345,9 @@ Verification output: `Shell.i18n.test.js` passed 1 suite / 18 tests; `node front
 Converted employee and daily-laborer deletion prompts to the shared typed-confirmation dialog. The prompt scan now finds 36 calls across 11 page files.
 
 Verification output: `Shell.i18n.test.js` passed 1 suite / 18 tests; `node scripts/i18n-inventory.js --check` reported `i18n:check ok`; frontend production build reported `Compiled successfully` with no ESLint warning; `git diff --check` exited 0. No HR-specific page test exists in the current frontend test inventory.
+
+## 2026-10-13: Revalidated legacy audit findings against current source
+
+Targeted current-source inspection superseded several older claims in `docs/CODEX_AUDIT_REPORT.md`: webhook SSRF protections and secret encryption/allowlisted reads exist; configurable role/action limits are implemented; procurement and finance workbenches expose the cited flows; client invoice-line writers/readers exist; approved forecasts feed EAC with maker/checker enforcement; supplier returns retain GRN lot links; project tab visibility follows policy grants; and the legacy hard-coded test-user seeder is retired. The fresh PostgreSQL gate also passed the org/RBAC suite. These checks do not replace full golden-journey, security, or finance reconciliation verification.
+
+Still open from targeted revalidation: end-to-end transactional audit coverage across all mutation routes; finance-owner mapping confirmation and complete deduction/retention posting reconciliation; inventory adjustment GL treatment; raw untyped error fallback; the `full_name_en`/`full_name_ar` schema decision; remote CI state; and remaining Phase 6 prompt/navigation/dashboard work. Details are in `docs/CARRYOVER.md`.
