@@ -12,6 +12,7 @@ frontend/.playwright-browsers/
 .DS_Store
 db_dump/
 .env.docker
+/.staging-users.json
 
 # Local agent worktrees (never part of the repository)
 .claude/worktrees/

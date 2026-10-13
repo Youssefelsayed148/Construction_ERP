@@ -897,3 +897,33 @@ migrate log: [migrate] all migrations completed (0 applied, 103 already applied)
 ```
 
 The first build exposed and fixed a stale bootstrap test, then local HTTP CORS validation required an explicit localhost-only setting for this HTTP pilot. The existing `construction_erp_db_data` volume was inspected and left untouched; the pilot uses the unique project name above. The compose healthy-empty-seed check passed; role seeding/smoke and backup/restore remain for B2–B5.
+## 2026-10-13: Batch B2 guarded staging users
+
+Added `backend/src/scripts/seed-staging.js`, the `seed:staging` command, and guard tests. It requires `APP_ENV=staging`, a staging/stage/test DB-name segment, and a local/Compose database host. It creates one account for each of the canonical 24 internal + 9 external roles, separate procurement officer (requester) and procurement manager (checker) accounts, a no-assignment account, an expired-assignment account, one pilot project, and supplier/client organization seats. Re-runs rotate passwords, increment token versions, and clear/rebuild all seeder-owned seats. Passwords are stored in ignored root `.staging-users.json`, never printed. The old root and backend `create_test_users.js` entrypoints now fail with the replacement command.
+
+Verification:
+
+```text
+npm test -- --runInBand --runTestsByPath src/scripts/__tests__/seed-staging.test.js
+Test Suites: 1 passed, 1 total
+Tests:       3 passed, 3 total
+
+APP_ENV=production npm run seed:staging
+Staging seed failed: Refusing to seed: APP_ENV must be exactly staging
+(exit 1, checked before DB connection)
+
+npm run seed:staging
+Seeded 35 staging users across 33 canonical roles for PILOT-PTP-001.
+Generated credentials are stored in ...\\.staging-users.json; passwords are not printed.
+
+Re-run database verification (plaintext credentials and hashes excluded):
+before_version=0
+after_version=1
+users=35
+project_assignments=34
+unassigned_rows=0
+expired_rows=1
+organization_seats=2
+```
+
+The pilot DB is reachable from the host only through `127.0.0.1:55440`; Compose still uses the private service DNS name and port 5432 internally. `git check-ignore .staging-users.json` is expected to match. The role seed passed; demo materials/BOQ and full procurement smoke remain B3/B4.

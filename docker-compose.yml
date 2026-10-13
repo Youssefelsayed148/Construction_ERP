@@ -6,6 +6,8 @@ services:
       POSTGRES_DB: ${DB_NAME:?Generate .env.docker first}
       POSTGRES_USER: ${DB_USER:?Generate .env.docker first}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?Generate .env.docker first}
+    ports:
+      - "127.0.0.1:${DB_PORT:-55440}:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:

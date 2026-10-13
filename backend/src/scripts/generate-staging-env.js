@@ -9,6 +9,8 @@ const values = {
   APP_ENV: 'staging',
   DB_NAME: 'construction_erp_staging',
   DB_USER: 'construction_erp_user',
+  DB_HOST: '127.0.0.1',
+  DB_PORT: '55440',
   DB_PASSWORD: crypto.randomBytes(48).toString('base64url'),
   JWT_SECRET: crypto.randomBytes(64).toString('base64url'),
   FRONTEND_URL: 'http://localhost:8090',
