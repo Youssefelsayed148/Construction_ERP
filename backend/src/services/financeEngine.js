@@ -143,7 +143,20 @@ async function createClientValuation(q, {
     tax_pct, tax_amount: tax, net_amount: netAmount,
     previous_cumulative: previousCumulative, cumulative_certified: cumulative,
     company_id, cost_code_id, department, created_by,
-  }, { actor_id: created_by, actor_name });
+  }, { actor_id: created_by, actor_name, line_items: valuationLineItems({
+    gross_current_work, approved_variations_period, retention, advance_recovery, other_deductions, tax_amount: tax,
+  }) });
+}
+
+function valuationLineItems({ gross_current_work, approved_variations_period, retention, advance_recovery, other_deductions, tax_amount }) {
+  return [
+    { line_type: 'work', description_en: 'Certified work', description_ar: 'أعمال معتمدة', amount: round2(toNum(gross_current_work)) },
+    { line_type: 'variation', description_en: 'Approved variations', description_ar: 'تغييرات معتمدة', amount: round2(toNum(approved_variations_period)) },
+    { line_type: 'retention', description_en: 'Retention withheld', description_ar: 'استقطاع ضمان', amount: -round2(toNum(retention)) },
+    { line_type: 'advance_recovery', description_en: 'Advance recovery', description_ar: 'استرداد دفعة مقدمة', amount: -round2(toNum(advance_recovery)) },
+    { line_type: 'deduction', description_en: 'Other deductions', description_ar: 'استقطاعات أخرى', amount: -round2(toNum(other_deductions)) },
+    { line_type: 'other', description_en: 'Output tax', description_ar: 'ضريبة المخرجات', amount: round2(toNum(tax_amount)) },
+  ].filter((line) => line.amount !== 0);
 }
 
 // The ONE place an invoice row is created (manual invoices, unit-sale invoices and client
@@ -153,10 +166,35 @@ const INVOICE_COLUMNS = new Set([
   'project_id', 'client_id', 'amount', 'issue_date', 'due_date', 'status', 'description',
   'client_contract_id', 'gross_current_work', 'approved_variations_period', 'certified_gross',
   'retention_amount', 'advance_recovery', 'other_deductions', 'tax_pct', 'tax_amount', 'net_amount',
-  'previous_cumulative', 'cumulative_certified', 'company_id', 'cost_code_id', 'department', 'created_by',
+  'previous_cumulative', 'cumulative_certified', 'company_id', 'cost_code_id', 'department', 'created_by', 'payment_certificate_id',
 ]);
 
-async function createInvoiceRecord(q, fields, { actor_id = null, actor_name = null } = {}) {
+async function writeInvoiceLines(q, invoiceId, lineItems, invoiceAmount) {
+  const normalized = (lineItems && lineItems.length ? lineItems : [{
+    line_type: 'other', description: 'Invoice amount', amount: round2(toNum(invoiceAmount)),
+  }]).map((line) => ({
+    line_type: line.line_type || 'other',
+    description_en: String(line.description_en || line.description || 'Invoice line').slice(0, 500),
+    description_ar: String(line.description_ar || line.description || line.description_en || 'بند فاتورة').slice(0, 500),
+    boq_item_id: line.boq_item_id ?? null, cost_code_id: line.cost_code_id ?? null,
+    quantity: toNum(line.quantity) || 1, unit: line.unit ?? null,
+    unit_rate: round2(toNum(line.unit_rate ?? line.amount)), amount: round2(toNum(line.amount)),
+  })).filter((line) => line.amount !== 0);
+  const total = round2(normalized.reduce((sum, line) => sum + line.amount, 0));
+  if (Math.abs(total - round2(toNum(invoiceAmount))) > 0.01) {
+    const error = new Error('Invoice line total does not equal the invoice amount');
+    error.status = 400; error.error_code = 'invoice_lines_total_mismatch'; throw error;
+  }
+  for (let i = 0; i < normalized.length; i += 1) {
+    const line = normalized[i];
+    await q(`INSERT INTO invoice_lines (invoice_id, line_no, line_type, description, description_en, description_ar, boq_item_id, cost_code_id, quantity, unit, unit_rate, amount)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`, [invoiceId, i + 1, line.line_type, line.description_en, line.description_en, line.description_ar, line.boq_item_id, line.cost_code_id,
+      line.quantity, line.unit, line.unit_rate, line.amount]);
+  }
+  return normalized;
+}
+
+async function createInvoiceRecord(q, fields, { actor_id = null, actor_name = null, line_items = null } = {}) {
   const unknown = Object.keys(fields).filter((k) => !INVOICE_COLUMNS.has(k));
   if (unknown.length) throw new Error(`createInvoiceRecord: unknown column(s) ${unknown.join(', ')}`);
   const invoiceNumber = await nextNumber(q, { table: 'invoices', column: 'invoice_number', prefix: 'INV', pad: 4 });
@@ -167,6 +205,7 @@ async function createInvoiceRecord(q, fields, { actor_id = null, actor_name = nu
     [invoiceNumber, ...cols.map((c) => fields[c])]
   );
   const invoice = r.rows[0];
+  invoice.lines = await writeInvoiceLines(q, invoice.id, line_items, invoice.amount);
   await writeAuditEvent(q, {
     entity_type: 'invoice', entity_id: invoice.id, event_type: 'create',
     actor_id, actor_name, after_state: invoice,
@@ -174,6 +213,32 @@ async function createInvoiceRecord(q, fields, { actor_id = null, actor_name = nu
   // An invoice created already issued (manual, unit sale) is posted with its creation; a failure fails the caller.
   await glPosting.syncInvoicePosting(q, null, invoice, { userId: actor_id });
   return invoice;
+}
+
+async function createInvoiceFromCertificate(q, certificate, clientId, user) {
+  if (certificate.party_type !== 'client' || certificate.status !== 'certified') {
+    const error = new Error('Only a certified client certificate can create a client invoice');
+    error.status = 409; error.error_code = 'certificate_not_invoice_eligible'; throw error;
+  }
+  const existing = (await q('SELECT * FROM invoices WHERE payment_certificate_id = $1 FOR UPDATE', [certificate.id])).rows[0];
+  if (existing) return existing;
+  return createInvoiceRecord(q, {
+    payment_certificate_id: certificate.id, project_id: certificate.project_id, client_id: clientId,
+    client_contract_id: certificate.client_contract_id, amount: certificate.net_certificate,
+    issue_date: new Date().toISOString().slice(0, 10), status: 'draft',
+    description: `From payment certificate ${certificate.certificate_number}`,
+    gross_current_work: certificate.gross_current_work,
+    approved_variations_period: certificate.approved_variations_period,
+    certified_gross: certificate.gross_certified, retention_amount: certificate.retention_held,
+    advance_recovery: certificate.advance_recovery, other_deductions: certificate.other_deductions,
+    tax_pct: certificate.tax_pct, tax_amount: certificate.tax_amount, net_amount: certificate.net_certificate,
+    previous_cumulative: certificate.previous_cumulative, cumulative_certified: certificate.cumulative_certified,
+    created_by: user.id,
+  }, { actor_id: user.id, actor_name: user.name, line_items: valuationLineItems({
+    gross_current_work: certificate.gross_current_work, approved_variations_period: certificate.approved_variations_period,
+    retention: certificate.retention_held, advance_recovery: certificate.advance_recovery,
+    other_deductions: certificate.other_deductions, tax_amount: certificate.tax_amount,
+  }) });
 }
 
 // Lifecycle transitions with audit.
@@ -622,6 +687,9 @@ function initReceivableReminderScheduler(opts = {}) {
 
 module.exports = {
   createInvoiceRecord,
+  createInvoiceFromCertificate,
+  writeInvoiceLines,
+  valuationLineItems,
   INVOICE_LIFECYCLE,
   REMINDER_STAGES,
   DEFAULT_REMINDER_ROLES,

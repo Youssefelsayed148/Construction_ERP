@@ -429,6 +429,15 @@ router.post('/payment-certificates/:id/decide', authenticate, authorize(), async
     res.json({ success: true, data: row });
   } catch (e) { return fail(res, e); }
 });
+router.post('/payment-certificates/:id/void', authenticate, authorize('owner', 'admin', 'finance_manager'), async (req, res) => {
+  try {
+    const value = typedBody(Joi.object({ reason: Joi.string().trim().min(3).max(500).required() }), req, res);
+    if (!value) return;
+    const row = await atomicAudited(req, (q) => records.voidCertificate(q, intId(req), req.user, value.reason),
+      (voided) => ['void', `Certificate ${voided.certificate_number} voided`, 'payment_certificate', voided.id]);
+    res.json({ success: true, data: row });
+  } catch (e) { return fail(res, e); }
+});
 
 // --- budget versions (internal cost: see_internal_cost) ---
 const lineSchema = (field) => Joi.array().items(Joi.object({ cost_code_id: Joi.number().integer().allow(null), [field]: money.required(), notes: Joi.string().allow('', null) }));

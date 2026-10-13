@@ -1150,4 +1150,10 @@ npm run i18n:check
 i18n:check ok
 ```
 
-The additive migration marks existing mappings provisional, inserts new configurable keys against existing chart codes, and links a certificate to at most one client invoice. Mapping changes and owner confirmations use transactional activity audit. Settings is bilingual and displays status; an edit clears confirmation. The finance owner has not confirmed the default account purposes. Certificate-level balanced posting and invoice line creation remain to be completed in E1/E2. No broad suites were run.
+The additive migration marks existing mappings provisional, inserts new configurable keys against existing chart codes, and links a certificate to at most one client invoice. Mapping changes and owner confirmations use transactional activity audit. Settings is bilingual and displays status; an edit clears confirmation. The finance owner has not confirmed the default account purposes. No broad suites were run.
+
+## 2026-10-13: Batch E1/E2 certificate postings and invoice lines
+
+Client certificate final approval creates a linked draft invoice with bilingual typed invoice lines; invoice detail returns those lines. Issuing that invoice posts balanced receivable, revenue, output-tax, retention, advance-recovery, and deduction entries. Subcontractor certificate final approval posts balanced cost, input-tax, payable, retention, advance-recovery, and deduction entries. Voids require a reason and reverse the original entries and retention/advance ledger movements; paid certificates cannot be voided, and a client certificate cannot be voided until its linked invoice is void or cancelled.
+
+The focused `certificate-gl-posting.test.js` passed 1 suite / 5 tests. `node --check` passed on changed services and routes. Migration `0043_subcontractor_certificate_postings.sql` applied locally (1 applied, 104 already applied). No broad suites or full live certificate workflow were run. Finance account purposes remain provisional pending finance-owner confirmation.

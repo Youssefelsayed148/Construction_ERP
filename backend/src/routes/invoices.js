@@ -82,8 +82,9 @@ router.get('/:id', authenticate, authorize(), async (req, res) => {
       'SELECT * FROM payments WHERE invoice_id = $1 ORDER BY payment_date DESC, created_at DESC',
       [req.params.id]
     );
+    const lines = await query('SELECT * FROM invoice_lines WHERE invoice_id = $1 ORDER BY line_no', [req.params.id]);
 
-    res.json({ success: true, data: { ...invoice, payments: payments.rows } });
+    res.json({ success: true, data: { ...invoice, payments: payments.rows, lines: lines.rows } });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 

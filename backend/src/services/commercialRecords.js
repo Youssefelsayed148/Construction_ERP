@@ -8,6 +8,7 @@
 const numbering = require('./numbering');
 const workflowEngine = require('./workflowEngine');
 const engine = require('./commercialEngine');
+const glPosting = require('./glPosting');
 const { bad, conflict, missing } = require('./commercialErrors');
 
 const toInt = (v) => (v == null || v === '' ? null : Number(v));
@@ -249,6 +250,7 @@ async function certifyApplication(q, id, user, { certified_work, certified_varia
   const grossWork = engine.round2(work + materials);
   const retention = engine.round2((grossWork + variations) * toNum(contract && contract.retention_percent) / 100);
   const net = engine.computeCertificateNet({ grossCurrentWork: grossWork, approvedVariationsPeriod: variations, retention, advanceRecovery: advance_recovery, otherDeductions: other_deductions, taxPct: tax_pct });
+  if (!(net.net_certificate > 0)) throw bad('certificate_net_non_positive', 'The net certificate must be greater than zero', {});
   const prior = (await q(
     `SELECT COALESCE(MAX(cumulative_certified), 0) AS m FROM payment_certificates
       WHERE project_id = $1 AND party_type = $2 AND status NOT IN ('cancelled', 'void', 'rejected')
@@ -319,9 +321,38 @@ async function decideCertificate(q, certificateId, user, decision, comment = nul
   let status = wf.current_step_key;
   if (wf.status === 'approved') status = 'certified';
   else if (wf.status === 'rejected') status = 'rejected';
-  return (await q(
+  const saved = (await q(
     `UPDATE payment_certificates SET status = $2::varchar, certified_by = CASE WHEN $2::varchar = 'certified' THEN $3::int ELSE certified_by END, updated_at = NOW() WHERE id = $1 RETURNING *`,
     [cert.id, status, user.id])).rows[0];
+  if (status === 'certified' && cert.party_type === 'client') {
+    const contract = (await q('SELECT client_id FROM client_contracts WHERE id = $1', [cert.client_contract_id])).rows[0];
+    if (!contract) throw missing('client_contract_not_found', `Client contract #${cert.client_contract_id} not found`, { id: cert.client_contract_id });
+    saved.invoice = await require('./financeEngine').createInvoiceFromCertificate(q, saved, contract.client_id, user);
+  } else if (status === 'certified' && cert.party_type === 'subcontractor') {
+    await glPosting.postSubcontractorCertificate(q, saved, { userId: user.id });
+    saved.ledger_posted = true;
+  }
+  return saved;
+}
+
+async function voidCertificate(q, certificateId, user, reason) {
+  if (String(reason || '').trim().length < 3) throw bad('reason_required', 'A reason is required to void a certificate', {});
+  const cert = (await q('SELECT * FROM payment_certificates WHERE id = $1 FOR UPDATE', [toInt(certificateId)])).rows[0];
+  if (!cert) throw missing('payment_certificate_not_found', `Payment certificate #${certificateId} not found`, { id: certificateId });
+  if (cert.status !== 'certified') throw conflict('payment_certificate_not_voidable', `Certificate ${cert.certificate_number} is ${cert.status}: only a certified certificate can be voided`, { id: cert.id, status: cert.status });
+  if (cert.paid_at) throw conflict('payment_certificate_already_paid', 'A paid certificate cannot be voided', { id: cert.id });
+  if (cert.party_type === 'client') {
+    const invoice = (await q('SELECT id, status FROM invoices WHERE payment_certificate_id = $1 FOR UPDATE', [cert.id])).rows[0];
+    if (invoice && !['void', 'cancelled'].includes(invoice.status)) {
+      throw conflict('certificate_invoice_must_be_void', 'Void or cancel the linked client invoice before voiding its certificate', { invoice_id: invoice.id, status: invoice.status });
+    }
+  } else {
+    await glPosting.reverseSubcontractorCertificate(q, cert, { userId: user.id });
+  }
+  return (await q(
+    `UPDATE payment_certificates SET status = 'void', voided_by = $2, voided_at = NOW(), void_reason = $3, updated_at = NOW()
+      WHERE id = $1 RETURNING *`, [cert.id, user.id, String(reason).trim()]
+  )).rows[0];
 }
 
 module.exports = {
@@ -330,5 +361,5 @@ module.exports = {
   createInsurance, listInsurances, getInsurance, updateInsurance, cancelInsurance,
   setRate, listRates, convert,
   getApplication, listApplications, createApplication, submitApplication, certifyApplication, rejectApplication, withdrawApplication,
-  startCertificateWorkflow, decideCertificate,
+  startCertificateWorkflow, decideCertificate, voidCertificate,
 };
