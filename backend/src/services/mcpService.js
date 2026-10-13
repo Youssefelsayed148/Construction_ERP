@@ -8,8 +8,9 @@
 //
 // Transport: MCP Streamable HTTP (JSON-RPC 2.0 over POST /api/mcp).
 //   initialize · tools/list · tools/call · ping
-// Sessions: stateless per-request; Mcp-Session-Id is echoed for clients that
-// require it but no server-side session state is kept.
+// MCP session IDs are persisted and bound to the bearer user by routes/mcp.js.
+// Tool context itself remains request-scoped; the ID groups audit activity and
+// lets clients resume only their own active session.
 //
 // Risk classes (agentPolicy.TOOLS):
 //   read  — immediate execution

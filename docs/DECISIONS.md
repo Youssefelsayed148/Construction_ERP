@@ -15,3 +15,9 @@ No external identity or paid MFA provider is configured. Before production MFA i
 ## 2026-10-13 — Upload scanning
 
 The local upload boundary enforces a 25 MiB cap, extension allowlist, and magic-byte/text validation. ZIP, legacy Office, and spreadsheet formats are blocked. No antivirus service was added because it requires an external service; production deployment needs an isolated scanning adapter before enabling broader document formats.
+
+## 2026-10-13 — API token, agent session, and action comment defaults
+
+The repository had no owner-selected details for the platform records in Phase 5.8.1, so implementation uses restrictive defaults: personal API tokens are issued by owner/admin for their own identity, have audience `construction-erp:api-v1`, accept only explicit v1 family scopes (no `api:*` wildcard), default to 30 days, and cannot exceed 90 days. The opaque secret is shown once and stored as a SHA-256 hash; account token-version changes, expiry, and revocation disable it.
+
+MCP session UUIDs are server-created, bound to the authenticating user, and expire after 90 days. Foreign, malformed, closed, and expired IDs are rejected. Internal action comments inherit the parent action's project policy and are not exposed to external portal roles. Comments are append-only. The existing 90-day expiry is the session lifecycle boundary; archival deletion policy can be added if a retention owner requires one.

@@ -2,7 +2,7 @@
 // Reproduced first (each of these failed on the old code):
 //   * v1 token scopes were never checked by MCP, on the v1-only lists or on /api/v1/assistants;
 //   * tool arguments were not validated (additionalProperties: true, nothing required);
-//   * /api/mcp had no rate limit and no batch cap, and the client chose the session id;
+//   * /api/mcp had no rate limit and no batch cap, and session ownership was not durable;
 //   * tool output did not say that record text is untrusted;
 //   * assign_action / complete_action_with_evidence executed immediately and needed no evidence;
 //   * the tool-call log stored the UNREDACTED response;
@@ -68,6 +68,7 @@ describePg('MCP / v1 agent safety (real PostgreSQL, real app)', () => {
   });
   afterAll(async () => {
     const ids = Object.values(users).map((u) => u.id);
+    await db.query('DELETE FROM agent_sessions WHERE user_id = ANY($1::int[])', [ids]);
     await db.query('DELETE FROM agent_tool_calls WHERE user_id = ANY($1)', [ids]);
     await db.query('DELETE FROM agent_action_requests WHERE requesting_user_id = ANY($1)', [ids]);
     await db.query('DELETE FROM action_items WHERE title LIKE $1', [`ms-${tag}%`]);
@@ -153,11 +154,15 @@ describePg('MCP / v1 agent safety (real PostgreSQL, real app)', () => {
     });
 
     test('the session id is server-assigned, not taken from the client', async () => {
-      const r = await tool(users.owner.session, 'get_project', { id: projectId }, { 'Mcp-Session-Id': 'attacker-chosen-session' });
-      expect(r.headers.get('mcp-session-id')).not.toBe('attacker-chosen-session');
+      const forged = await tool(users.owner.session, 'get_project', { id: projectId }, { 'Mcp-Session-Id': 'attacker-chosen-session' });
+      expect(forged.status).toBe(404);
+      const created = await tool(users.owner.session, 'get_project', { id: projectId });
+      const sessionId = created.headers.get('mcp-session-id');
+      expect(sessionId).toMatch(/^[0-9a-f-]{36}$/i);
+      const resumed = await tool(users.owner.session, 'get_project', { id: projectId }, { 'Mcp-Session-Id': sessionId });
+      expect(resumed.status).toBe(200);
       const logged = await one("SELECT agent_session FROM agent_tool_calls WHERE user_id = $1 AND tool = 'get_project' ORDER BY id DESC LIMIT 1", [users.owner.id]);
-      expect(logged.agent_session).not.toBe('attacker-chosen-session');
-      expect(logged.agent_session).toBeTruthy();
+      expect(logged.agent_session).toBe(sessionId);
     });
   });
 

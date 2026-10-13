@@ -110,11 +110,11 @@ The incident-table merge requested in 5.7 is not a fresh schema project: `hse-mi
 
 ### 5.8.1 API tokens, agent sessions and action comments
 
-**Status: Open after static inventory.** The agent tool and approval request audit tables are present, but `agent_session` is only a string field; no dedicated API-token or durable agent-session lifecycle tables/routes, nor a generic action-comment thread, were located in the audited source. Confirm required token audience/scopes, session retention and comment visibility from the relevant specs before schema design. Store token hashes only, support revocation/expiry, scope every token to an identity and least privilege, and audit session/comment reads and writes.
+**Status: Complete.** Migration 0058 adds opaque personal API-token records, durable user-owned MCP sessions, and internal comments on action items. API token secrets are returned only at creation and stored as SHA-256 hashes; tokens are limited to explicit v1 resource-family scopes, audience `construction-erp:api-v1`, and a 30-day default / 90-day maximum lifetime. Revocation, expiry, inactive users, and token-version changes fail closed. MCP assigns UUID sessions to the authenticated user, persists use, rejects foreign or expired session IDs, and records a 90-day expiry. Owner/admin routes list their own API tokens and oversee session state. Action comments are immutable, internal-only, audited on reads and writes, and inherit action-item project authorization. v1 exposes the same comment route behind its family scope.
 
 **Acceptance:** token secrets are shown once and stored hashed; expired/revoked tokens fail closed; agent sessions have ownership, state and retention rules; comments are tied to an action and respect project/role access.
 
-**Focused checks:** real-Postgres token/session lifecycle and policy tests, plus action-comment project-scope tests. Never use real credentials in tests.
+**Focused checks:** Migration 0058 applied to the disposable PostgreSQL DB (1 applied, 119 already applied); idempotent rerun applied 0 (120 already applied). `agent-platform-records.pg.test.js` passed 3/3 for token one-time display/hash/scope/expiry/revocation, MCP session ownership/expiry, and comment audit/project scope. The existing `mcp-safety.pg.test.js` session case passed 1/1. `lint:guards`, changed-file `node --check`, and `git diff --check` passed. No full suite was run.
 
 ## Phase 6 — administration and missing module screens
 

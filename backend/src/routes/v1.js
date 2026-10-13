@@ -508,6 +508,8 @@ const FAMILY_MAP = {
   actions: [
     ['actions', 'GET', '/my', '/my'],
     ['actions', 'POST', '/', '/'],
+    ['actions', 'GET', '/:id/comments', '/:id/comments'],
+    ['actions', 'POST', '/:id/comments', '/:id/comments'],
     ['actions', 'POST', '/:id/acknowledge', '/:id/acknowledge'],
     ['actions', 'POST', '/:id/complete', '/:id/complete'],
     ['actions', 'POST', '/:id/delegate', '/:id/delegate'],

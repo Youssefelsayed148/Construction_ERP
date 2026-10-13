@@ -263,6 +263,9 @@ const USER_SQL = 'SELECT id, email, name, role, department, is_active, token_ver
 const publicUser = (u) => ({ id: u.id, email: u.email, name: u.name, role: u.role, department: u.department, token_version: u.token_version });
 
 async function verifyToken(rawToken) {
+  if (String(rawToken).startsWith('erp_pat_')) {
+    return require('./apiTokenService').verifyApiToken(rawToken);
+  }
   let decoded;
   try {
     decoded = tokens.verify(rawToken, ['session', 'preview', 'v1']);

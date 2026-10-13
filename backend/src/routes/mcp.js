@@ -14,7 +14,7 @@ const express = require('express');
 const router = express.Router();
 const oauthService = require('../services/oauthService');
 const mcpService = require('../services/mcpService');
-const crypto = require('crypto');
+const agentSessionService = require('../services/agentSessionService');
 const { correlationId } = require('../middleware/v1');
 
 router.use(correlationId);
@@ -55,12 +55,16 @@ router.use(async (req, res, next) => {
     req.v1Scopes = auth.scopes;
     req.readOnly = auth.type === 'preview';
     req.actorUserId = auth.actorId || null;
-    // Stable per credential, assigned by the server: the audit trail groups one agent's calls under it and a
-    // client cannot pick (or impersonate) another session by sending a header.
-    req.mcpSession = `sess-${crypto.createHash('sha256').update(header.slice(7)).digest('hex').slice(0, 12)}`;
+    req.mcpSession = await agentSessionService.getOrCreateMcpSession({
+      user: req.user,
+      sessionId: req.headers['mcp-session-id'] || null,
+    });
     next();
   } catch (e) {
-    res.status(401).json({ jsonrpc: '2.0', id: null, error: { code: -32001, message: e.message || 'Invalid token' } });
+    if (!e.status) console.error('[MCP] session resolution failed:', e);
+    const status = e.status || 500;
+    const code = e.code === 'agent_session_not_found' ? -32004 : (e.status ? -32001 : -32603);
+    res.status(status).json({ jsonrpc: '2.0', id: null, error: { code, message: e.code || 'internal_error' } });
   }
 });
 
@@ -84,7 +88,7 @@ router.post('/', rateLimit, async (req, res) => {
 });
 
 // MCP Streamable HTTP may negotiate an SSE stream; this server responds with
-// single JSON messages (fully valid per the spec for stateless servers).
+// single JSON messages; it does not keep an SSE streaming connection.
 router.get('/', (req, res) => {
   res.status(405).json({ error: 'MCP over this endpoint is stateless JSON (POST only); no SSE stream' });
 });
