@@ -596,4 +596,25 @@ npm run lint:guards
 lint-guards: ok
 ```
 
-A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This reports/client slice is not committed yet.
+A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This reports/client slice is committed as `429c879`.
+
+## 2026-10-13: A4 authentication transactional audit continuation (local, pending commit)
+
+User creation, password change, and logout-all now write their activity rows inside the transactions that create the user or update credentials/session version.
+
+Verification command output:
+
+```text
+node --check src/routes/auth.js; git diff --check
+exit code: 0
+
+npm test -- --runInBand
+Test Suites: 48 passed, 48 total
+Tests:       968 passed, 968 total
+Ran all test suites.
+
+npm run lint:guards
+lint-guards: ok
+```
+
+A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This auth slice is not committed yet.

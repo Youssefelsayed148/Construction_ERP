@@ -185,3 +185,7 @@ Subcontractor instruction acknowledgements and payment application submissions n
 ## 2026-10-13: A4 reports and client preview transactional audit continuation (local, pending commit)
 
 Saved-view and scheduled-report creation now include activity rows in the same transactions as their inserts. Client portal preview policy/activity audit rows now share a transaction. Syntax checks and `git diff --check` exit 0; backend mock suite passes 48 suites / 968 tests; `npm run lint:guards` prints `lint-guards: ok`. PostgreSQL rollback verification remains unverified because Docker Desktop is unavailable. Current expected commit: per-slice commit to follow.
+
+## 2026-10-13: A4 authentication transactional audit continuation (local, pending commit)
+
+User creation, password change, and logout-all now write activity rows inside the transactions that create the user or update credentials/session version. Syntax and whitespace checks exit 0; backend mock suite passes 48 suites / 968 tests; guards pass (`lint-guards: ok`). PostgreSQL rollback verification remains unverified because Docker Desktop is unavailable. Current expected commit: per-slice commit to follow.

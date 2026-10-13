@@ -56,14 +56,13 @@ router.post('/register', authenticate, authorize('owner', 'admin'), async (req, 
           [created.rows[0].id, value.role, req.user.id]
         );
       }
+      await logActivity({
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        action: 'create', module: 'users',
+        description: `Created user ${value.name} (${value.email}) with role ${value.role}`,
+        entityId: created.rows[0].id, entityType: 'user'
+      }, { query: client.query.bind(client) });
       return created;
-    });
-
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'create', module: 'users',
-      description: `Created user ${value.name} (${value.email}) with role ${value.role}`,
-      entityId: result.rows[0].id, entityType: 'user'
     });
 
     res.status(201).json({ success: true, data: result.rows[0] });
@@ -165,13 +164,17 @@ router.post('/change-password', authenticate, authorize(), async (req, res) => {
 
     const hashed = await bcrypt.hash(newPassword, BCRYPT_COST);
     // Bumping token_version signs the user out everywhere; the response carries a fresh session token.
-    const updated = await query(
-      'UPDATE users SET password = $1, token_version = token_version + 1, updated_at = NOW() WHERE id = $2 RETURNING token_version',
-      [hashed, req.user.id]
-    );
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'password_change', module: 'auth', description: `User ${req.user.name} changed their password`,
+    const updated = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const changed = await q(
+        'UPDATE users SET password = $1, token_version = token_version + 1, updated_at = NOW() WHERE id = $2 RETURNING token_version',
+        [hashed, req.user.id]
+      );
+      await logActivity({
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        action: 'password_change', module: 'auth', description: `User ${req.user.name} changed their password`,
+      }, { query: q });
+      return changed;
     });
 
     res.json({
@@ -186,10 +189,13 @@ router.post('/change-password', authenticate, authorize(), async (req, res) => {
 // POST /api/auth/logout-all — revoke every session and delegated token issued to this user.
 router.post('/logout-all', authenticate, authorize(), async (req, res) => {
   try {
-    await query('UPDATE users SET token_version = token_version + 1, updated_at = NOW() WHERE id = $1', [req.user.id]);
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'logout_all', module: 'auth', description: `User ${req.user.name} revoked all sessions`,
+    await transaction(async (client) => {
+      const q = client.query.bind(client);
+      await q('UPDATE users SET token_version = token_version + 1, updated_at = NOW() WHERE id = $1', [req.user.id]);
+      await logActivity({
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        action: 'logout_all', module: 'auth', description: `User ${req.user.name} revoked all sessions`,
+      }, { query: q });
     });
     res.json({ success: true });
   } catch (error) {
