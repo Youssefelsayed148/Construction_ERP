@@ -5,6 +5,7 @@ const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
+const { auditedTransaction } = require('../utils/auditedTransaction');
 
 // Mounted at /api/docs — document library with versioning, RFIs, submittals.
 // File uploads go through /api/documents/upload first; this router stores the returned URLs.
@@ -99,7 +100,8 @@ router.post('/documents', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const result = await query(
+    const result = await auditedTransaction(async (q) => {
+      const inserted = await q(
       `INSERT INTO project_documents (project_id, category_id, title, description, document_type, file_url, file_type, file_size_bytes, tags, uploaded_by, portal_visibility,
          doc_type, doc_status, discipline, project_location_id, package, originator_organization_id, recipient_organization_id, review_due_date)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *`,
@@ -107,16 +109,16 @@ router.post('/documents', authenticate, authorize(), async (req, res) => {
        value.file_url, value.file_type, value.file_size_bytes, JSON.stringify(value.tags), req.user.id, value.portal_visibility,
        value.doc_type, value.doc_status, value.discipline || null, value.project_location_id || null,
        value.package || null, value.originator_organization_id || null, value.recipient_organization_id || null, value.review_due_date || null]
-    );
+      );
 
     // Record v1 in version history
-    await query(
+      await q(
       `INSERT INTO document_versions (document_id, version_no, file_url, file_type, file_size_bytes, change_description, uploaded_by)
        VALUES ($1,1,$2,$3,$4,'Initial version',$5)`,
-      [result.rows[0].id, value.file_url, value.file_type, value.file_size_bytes, req.user.id]
-    );
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Uploaded document "${value.title}"`, entityId: result.rows[0].id, entityType: 'project_document' });
+      [inserted.rows[0].id, value.file_url, value.file_type, value.file_size_bytes, req.user.id]
+      );
+      return inserted;
+    }, (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Uploaded document "${value.title}"`, entityId: result.rows[0].id, entityType: 'project_document' }));
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -158,12 +160,12 @@ router.post('/documents/:id/versions', authenticate, authorize(), async (req, re
         [doc.id, newVersion, value.file_url, value.file_type, value.file_size_bytes, value.change_description, req.user.id, revisionCode]
       );
       const updated = await q('SELECT * FROM project_documents WHERE id = $1', [doc.id]);
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `Uploaded v${newVersion} (${revisionCode}) of "${doc.title}" — previous revision superseded`, entityId: req.params.id, entityType: 'project_document' }, { query: q });
       return { doc, newVersion, revisionCode, revision: inserted.rows[0], updated: updated.rows[0] };
     });
     if (!uploaded) return res.status(404).json({ success: false, error: 'Document not found' });
     const { doc, newVersion, revisionCode } = uploaded;
 
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `Uploaded v${newVersion} (${revisionCode}) of "${doc.title}" — previous revision superseded`, entityId: req.params.id, entityType: 'project_document' });
     res.status(201).json({ success: true, data: uploaded.updated, revision: uploaded.revision });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -197,17 +199,16 @@ router.put('/documents/:id', authenticate, authorize(), async (req, res) => {
 // Submit for approval (document controllers submit; approving needs the separate `approve` action).
 router.post('/documents/:id/submit', authenticate, authorize(), async (req, res) => {
   try {
-    const result = await query(
+    const result = await auditedTransaction((q) => q(
       `UPDATE project_documents SET status = 'submitted', updated_at = NOW()
         WHERE id = $1 AND status IN ('draft', 'rejected') RETURNING *`,
       [req.params.id]
-    );
+    ), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'submit', module: 'documents', description: `Document "${r.rows[0].title}" submitted for approval`, entityId: req.params.id, entityType: 'project_document' }));
     if (result.rows.length === 0) {
       const exists = await query('SELECT status FROM project_documents WHERE id = $1', [req.params.id]);
       if (exists.rows.length === 0) return res.status(404).json({ success: false, error: 'Document not found' });
       return res.status(409).json({ success: false, error: `A ${exists.rows[0].status} document cannot be submitted` });
     }
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'submit', module: 'documents', description: `Document "${result.rows[0].title}" submitted for approval`, entityId: req.params.id, entityType: 'project_document' });
     res.json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -215,21 +216,19 @@ router.post('/documents/:id/submit', authenticate, authorize(), async (req, res)
 router.post('/documents/:id/:action(approve|reject)', authenticate, authorize(), async (req, res) => {
   try {
     const newStatus = req.params.action === 'approve' ? 'approved' : 'rejected';
-    const result = await query(
+    const result = await auditedTransaction((q) => q(
       `UPDATE project_documents SET status = $1, approved_by = $2, approved_at = NOW(), updated_at = NOW() WHERE id = $3 RETURNING *`,
       [newStatus, req.user.id, req.params.id]
-    );
+    ), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `Document "${r.rows[0].title}" ${newStatus}`, entityId: req.params.id, entityType: 'project_document' }));
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Document not found' });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `Document "${result.rows[0].title}" ${newStatus}`, entityId: req.params.id, entityType: 'project_document' });
     res.json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
 router.delete('/documents/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const result = await query('DELETE FROM project_documents WHERE id = $1 RETURNING title', [req.params.id]);
+    const result = await auditedTransaction((q) => q('DELETE FROM project_documents WHERE id = $1 RETURNING title', [req.params.id]), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'documents', description: `Deleted document "${r.rows[0].title}"`, entityId: req.params.id, entityType: 'project_document' }));
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Document not found' });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'documents', description: `Deleted document "${result.rows[0].title}"`, entityId: req.params.id, entityType: 'project_document' });
     res.json({ success: true, message: 'Document deleted' });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -268,15 +267,16 @@ router.post('/rfis', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const rfiNumber = await nextNumber(query, { table: 'project_rfis', column: 'rfi_number', prefix: `RFI-${value.project_id}`, pad: 3 });
-
-    const result = await query(
+    const result = await auditedTransaction(async (q) => {
+      const rfiNumber = await nextNumber(q, { table: 'project_rfis', column: 'rfi_number', prefix: `RFI-${value.project_id}`, pad: 3 });
+      const inserted = await q(
       `INSERT INTO project_rfis (rfi_number, project_id, subject, question, category, priority, due_date, raised_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
       [rfiNumber, value.project_id, value.subject, value.question, value.category, value.priority, value.due_date, req.user.id]
-    );
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Raised ${rfiNumber}: ${value.subject}`, entityId: result.rows[0].id, entityType: 'project_rfi' });
-    await fireEvent({ eventType: 'rfi.submitted', entityType: 'project_rfi', entityId: result.rows[0].id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: value.project_id, rfi_number: rfiNumber, subject: value.subject, status: 'open' } });
+      );
+      await fireEvent({ eventType: 'rfi.submitted', entityType: 'project_rfi', entityId: inserted.rows[0].id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: value.project_id, rfi_number: rfiNumber, subject: value.subject, status: 'open' } }, { query: q });
+      return { ...inserted, rfiNumber };
+    }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Raised ${r.rfiNumber}: ${value.subject}`, entityId: r.rows[0].id, entityType: 'project_rfi' }));
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -340,15 +340,16 @@ router.post('/submittals', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const subNumber = await nextNumber(query, { table: 'project_submittals', column: 'submittal_number', prefix: `SUB-${value.project_id}`, pad: 3 });
-
-    const result = await query(
+    const result = await auditedTransaction(async (q) => {
+      const subNumber = await nextNumber(q, { table: 'project_submittals', column: 'submittal_number', prefix: `SUB-${value.project_id}`, pad: 3 });
+      const inserted = await q(
       `INSERT INTO project_submittals (submittal_number, project_id, title, submittal_type, submitted_to, submitted_by)
        VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
       [subNumber, value.project_id, value.title, value.submittal_type, value.submitted_to, req.user.id]
-    );
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Submitted ${subNumber}: ${value.title}`, entityId: result.rows[0].id, entityType: 'project_submittal' });
-    await fireEvent({ eventType: 'submittal.created', entityType: 'project_submittal', entityId: result.rows[0].id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: value.project_id, submittal_number: subNumber, title: value.title, status: 'submitted' } });
+      );
+      await fireEvent({ eventType: 'submittal.created', entityType: 'project_submittal', entityId: inserted.rows[0].id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: value.project_id, submittal_number: subNumber, title: value.title, status: 'submitted' } }, { query: q });
+      return { ...inserted, subNumber };
+    }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Submitted ${r.subNumber}: ${value.title}`, entityId: r.rows[0].id, entityType: 'project_submittal' }));
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -435,10 +436,9 @@ router.post('/documents/:id/register', authenticate, authorize(), async (req, re
     const schema = Joi.object({ revision_code: Joi.string().allow('', null).optional() });
     const { error, value } = schema.validate(req.body || {});
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const doc = await doccontrolEngine.registerDocument(query, {
+    const doc = await auditedTransaction((q) => doccontrolEngine.registerDocument(q, {
       documentId: req.params.id, revisionCode: value.revision_code || 'R0',
-    });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `Registered document ${doc.doc_number}`, entityId: doc.id, entityType: 'project_document' });
+    }), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `Registered document ${result.doc_number}`, entityId: result.id, entityType: 'project_document' }));
     res.json({ success: true, data: doc });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
@@ -449,8 +449,7 @@ router.post('/documents/:id/supersede', authenticate, authorize(), async (req, r
     const schema = Joi.object({ replacement_document_id: Joi.number().integer().required() });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const doc = await doccontrolEngine.supersedeDocument(query, req.params.id, value.replacement_document_id, req.user);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `Superseded ${doc.doc_number || `#${doc.id}`}`, entityId: doc.id, entityType: 'project_document' });
+    const doc = await auditedTransaction((q) => doccontrolEngine.supersedeDocument(q, req.params.id, value.replacement_document_id, req.user), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `Superseded ${result.doc_number || `#${result.id}`}`, entityId: result.id, entityType: 'project_document' }));
     res.json({ success: true, data: doc });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
@@ -517,16 +516,18 @@ router.post('/transmittals', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const t = await doccontrolEngine.createTransmittal(query, value, req.user);
-    for (const item of value.items) {
-      await query(
+    const t = await auditedTransaction(async (q) => {
+      const transmittal = await doccontrolEngine.createTransmittal(q, value, req.user);
+      for (const item of value.items) {
+        await q(
         `INSERT INTO transmittal_items (transmittal_id, document_id, item_description, ref_number, rev_code, copies_note)
          VALUES ($1,$2,$3,$4,$5,$6)`,
-        [t.id, item.document_id == null ? null : doccontrolEngine.num(item.document_id),
+        [transmittal.id, item.document_id == null ? null : doccontrolEngine.num(item.document_id),
          item.item_description || null, item.ref_number || null, item.rev_code || null, item.copies_note || null]
-      );
-    }
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Created transmittal ${t.transmittal_number}`, entityId: t.id, entityType: 'transmittal' });
+        );
+      }
+      return transmittal;
+    }, (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Created transmittal ${result.transmittal_number}`, entityId: result.id, entityType: 'transmittal' }));
     res.status(201).json({ success: true, data: t });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -572,8 +573,7 @@ router.post('/transmittals/:id/status', authenticate, authorize(), async (req, r
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const t = await doccontrolEngine.transitionTransmittal(query, req.params.id, value.status, req.user, { ackNote: value.ack_note });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `Transmittal ${t.transmittal_number} → ${value.status}`, entityId: t.id, entityType: 'transmittal' });
+    const t = await auditedTransaction((q) => doccontrolEngine.transitionTransmittal(q, req.params.id, value.status, req.user, { ackNote: value.ack_note }), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `Transmittal ${result.transmittal_number} → ${value.status}`, entityId: result.id, entityType: 'transmittal' }));
     res.json({ success: true, data: t });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
@@ -656,8 +656,7 @@ router.post('/correspondence', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const c = await doccontrolEngine.createCorrespondence(query, value, req.user);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Created ${value.corr_type} ${c.corr_number}: ${value.subject.slice(0, 60)}`, entityId: c.id, entityType: 'correspondence' });
+    const c = await auditedTransaction((q) => doccontrolEngine.createCorrespondence(q, value, req.user), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Created ${value.corr_type} ${result.corr_number}: ${value.subject.slice(0, 60)}`, entityId: result.id, entityType: 'correspondence' }));
     res.status(201).json({ success: true, data: c });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -683,8 +682,7 @@ router.post('/correspondence/:id/status', authenticate, authorize(), async (req,
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const c = await doccontrolEngine.transitionCorrespondence(query, req.params.id, value.status, req.user, { note: value.note });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `${c.corr_number} → ${value.status}`, entityId: c.id, entityType: 'correspondence' });
+    const c = await auditedTransaction((q) => doccontrolEngine.transitionCorrespondence(q, req.params.id, value.status, req.user, { note: value.note }), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `${result.corr_number} → ${value.status}`, entityId: result.id, entityType: 'correspondence' }));
     res.json({ success: true, data: c });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
@@ -699,8 +697,7 @@ router.post('/correspondence/:id/amend', authenticate, authorize(), async (req, 
     }).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const c = await doccontrolEngine.amendCorrespondence(query, req.params.id, req.user, value);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `${c.corr_number} amended to revision ${c.revision}`, entityId: c.id, entityType: 'correspondence' });
+    const c = await auditedTransaction((q) => doccontrolEngine.amendCorrespondence(q, req.params.id, req.user, value), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `${result.corr_number} amended to revision ${result.revision}`, entityId: result.id, entityType: 'correspondence' }));
     res.json({ success: true, data: c });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
