@@ -803,4 +803,25 @@ npm run lint:guards
 lint-guards: ok
 ```
 
-Real PostgreSQL rollback remains unverified because Docker Desktop is inaccessible. This auth-login slice is not committed yet.
+Real PostgreSQL rollback remains unverified because Docker Desktop is inaccessible. This auth-login slice is committed as `01533ce`.
+
+## 2026-10-13: A4 route-wide transactional audit guard (local, pending commit)
+
+Expanded `lint:guards` to flag route `logActivity` calls that do not receive a transaction query, with a narrow documented exception for the leader-locked replenishment sweep completion entry. Added unit assertions for bound/unbound audit calls and made the route-wide scan fail if any violations exist.
+
+Verification command output:
+
+```text
+node --check src/scripts/lint-guards.js; node --check src/scripts/__tests__/lint-guards.test.js; git diff --check
+exit code: 0
+
+npm test -- --runInBand
+Test Suites: 48 passed, 48 total
+Tests:       969 passed, 969 total
+Ran all test suites.
+
+npm run lint:guards
+lint-guards: ok
+```
+
+Real PostgreSQL rollback remains unverified because Docker Desktop is inaccessible. This route-wide guard slice is not committed yet.

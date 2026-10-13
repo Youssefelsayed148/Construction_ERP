@@ -39,6 +39,20 @@ const countCounterIncrements = (text) =>
 
 const CATCH_TO_ZERO = /\.catch\(\s*\(\s*\w*\s*\)\s*=>\s*(?:\(\s*\{\s*rows\s*:|zero\()/g;
 const POST_COMMIT_AUDIT = /\bawait\s+(?:logActivity|auditProc|auditFin)\s*\(/g;
+// The replenishment sweep is a leader-locked, multi-step operation rather than
+// one business-row transaction; its completion audit is intentionally separate.
+function countUnboundActivityAudits(text, rel = '') {
+  const call = /\bawait\s+logActivity\s*\(/g;
+  let count = 0;
+  let match;
+  while ((match = call.exec(text))) {
+    const end = text.indexOf(');', match.index);
+    const statement = text.slice(match.index, end < 0 ? match.index + 2000 : end + 2);
+    const sweepAuditException = rel === 'routes/materials.js' && /Manual replenishment sweep/.test(statement);
+    if (!/\{\s*query\s*:/.test(statement) && !sweepAuditException) count += 1;
+  }
+  return count;
+}
 // Files that may name project_costs: the accrual writers and the cost view itself (expenses reads one row to
 // know whether an expense is already posted).
 const COST_VIEW_ALLOWED = new Set(['services/costView.js', 'services/costAccrual.js', 'services/costEventListener.js', 'routes/expenses.js']);
@@ -88,6 +102,10 @@ function scan() {
     if (['routes/procurement.js', 'routes/financeLedger.js'].includes(rel)) {
       const auditCalls = (text.match(POST_COMMIT_AUDIT) || []).length;
       if (auditCalls) result['post-commit-audit'][rel] = auditCalls;
+    }
+    if (rel.startsWith('routes/')) {
+      const unboundAuditCalls = countUnboundActivityAudits(text, rel);
+      if (unboundAuditCalls) result['post-commit-audit'][rel] = (result['post-commit-audit'][rel] || 0) + unboundAuditCalls;
     }
     const lines = text.split('\n');
     let silent = 0;
@@ -154,4 +172,4 @@ function main() {
 }
 
 if (require.main === module) process.exit(main());
-module.exports = { scan, compare, countCounterIncrements, countEventSwallows };
+module.exports = { scan, compare, countCounterIncrements, countEventSwallows, countUnboundActivityAudits };

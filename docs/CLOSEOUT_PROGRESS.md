@@ -221,3 +221,7 @@ Agent approval decisions now insert activity audit in the same transaction as th
 ## 2026-10-13: A4 authentication login audit continuation (local, pending commit)
 
 Successful login now clears the lockout counter, upgrades a legacy password hash if needed, and writes login activity inside one transaction. Backend mock suite passes 48 suites / 969 tests; `lint-guards: ok`. Real PostgreSQL rollback remains unverified because Docker Desktop is inaccessible. Current expected commit: per-slice commit to follow.
+
+## 2026-10-13: A4 route-wide transactional audit guard (local, pending commit)
+
+`lint:guards` now scans route `logActivity` calls for transaction query binding, with a narrow exception for the leader-locked replenishment completion audit. Added unit assertions and a clean route-wide scan. Backend suite passes 48 suites / 969 tests; `lint-guards: ok`; syntax and whitespace checks exit 0. Real PostgreSQL rollback remains unverified because Docker Desktop is inaccessible. Current expected commit: per-slice commit to follow.

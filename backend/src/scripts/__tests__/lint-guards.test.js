@@ -1,4 +1,4 @@
-const { countCounterIncrements, scan } = require('../lint-guards');
+const { countCounterIncrements, countUnboundActivityAudits, scan } = require('../lint-guards');
 
 describe('lint-guards counter-rmw', () => {
   test('flags the read, JS +1, write pattern the document control engine used', () => {
@@ -24,9 +24,13 @@ describe('lint-guards counter-rmw', () => {
 });
 
 describe('lint-guards transactional audit', () => {
-  test('procurement and finance do not write route audit entries after returning from the transaction', () => {
+  test('flags activity writes that do not receive the caller transaction query', () => {
+    expect(countUnboundActivityAudits("await logActivity({ action: 'create' });")).toBe(1);
+    expect(countUnboundActivityAudits("await logActivity({ action: 'create' }, { query: q });")).toBe(0);
+  });
+
+  test('every route-family audit is transaction-bound or the explicit completion sweep exception', () => {
     const violations = scan()['post-commit-audit'];
-    expect(violations['routes/procurement.js'] || 0).toBe(0);
-    expect(violations['routes/financeLedger.js'] || 0).toBe(0);
+    expect(violations).toEqual({});
   });
 });

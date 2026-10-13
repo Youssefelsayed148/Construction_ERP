@@ -17,7 +17,7 @@ Updated: 2026-10-13 (Africa/Cairo)
 - Batch A remains incomplete. A2/A3 are grouped in one commit because the service and tests share files. A4 has selected transactional conversions only; the route-family sweep is incomplete. A5/A6 are committed.
 - A4 remains partial: multiple route families have transactional activity and policy audit writes; a textual occurrence count is not a reliable remaining-work metric, and global rollback proof is not real-PG verified.
 - A9 security scan fixes are committed as `67ba313`; the MFA item is design-only in `docs/DECISIONS.md`.
-- A4 continuations through `4f208c5` convert master data, QHSE, HSE, document-control, site, warehouse, HR, materials, handover, finance, consultant, work-order, maintenance, payroll, team-assignment, portal, reports, client-preview, auth, commercial/finance, sales, schedule, quantity, organization, and agent approval writes. Current successful-login lockout clearing, optional password-hash upgrade, and activity audit now share one transaction. Batch A remains incomplete; raw grep counts include transaction-bound calls and are not counts of remaining debt.
+- A4 continuations through `01533ce` convert master data, QHSE, HSE, document-control, site, warehouse, HR, materials, handover, finance, consultant, work-order, maintenance, payroll, team-assignment, portal, reports, client-preview, auth, commercial/finance, sales, schedule, quantity, organization, and agent approval writes. Current route-wide lint guard checks that `logActivity` calls receive the caller transaction query, allowing only the documented completion sweep exception. Batch A remains incomplete; raw grep counts include transaction-bound calls and are not counts of remaining debt.
 - Frontend gates pass: 17 suites / 97 tests, `i18n:check ok`, production build compiled successfully. Playwright ran 32 passed / 46 skipped out of 78; real-backend journeys and screenshot baselines remain skipped.
 - The most recent backend rerun passes 48/48 suites and 969/969 tests; guards pass. A8 frontend/browser outputs remain green as recorded below.
 
@@ -29,7 +29,7 @@ Updated: 2026-10-13 (Africa/Cairo)
 
 ## Next step
 
-- Commit the current auth-login slice, add the route-wide audit guard and continue A4 route conversion, then complete the Batch A closeout only after the route sweep is covered. Keep A1, A7, A9 migrations and all PG checks unverified until the full real-PG suite passes against a new explicitly test-named throwaway container/database.
+- Commit the current route-wide audit guard slice, continue the A4 service/migration audit review, then complete the Batch A closeout only after the sweep is covered. Keep A1, A7, A9 migrations and all PG checks unverified until the full real-PG suite passes against a new explicitly test-named throwaway container/database.
 - Then complete the frontend, Docker, UAT preparation, finance, and Phases 5.6–6 in the pasted request, recording exact command output and commits per slice.
 
 ## Gates
