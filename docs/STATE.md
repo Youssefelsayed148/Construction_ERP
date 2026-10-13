@@ -8,13 +8,12 @@
 - Batch E1 account mapping foundation is committed in `9be0cfb`; finance-owner confirmation is still pending.
 - Batch E1/E2 certificate postings and invoice lines are committed in `f88c15b`.
 - Batch E3/E4 source-lot supplier returns and forecast approval/ETC/EAC behavior are committed in `164c9e9`.
-- Batch E5 finance workbench and journal-backed retention release are implemented in the current slice; focused checks passed and commit is next.
+- Batch E5 finance workbench and journal-backed retention release are committed in `7370bca`; focused checks passed.
 
 ## Next
 
-1. Commit Batch E5 after reviewing the final diff.
-2. Audit the Phase 5.6–6 plan against current code and write/commit `docs/PLAN_5_6_TO_6.md` before implementation.
-3. Implement Phases 5.6, 5.7, 5.8, and 6 slice by slice, running only ticket-related checks during phase work and broader suites at phase integration checkpoints.
+1. Commit the audited `docs/PLAN_5_6_TO_6.md` before implementation.
+2. Implement Phases 5.6, 5.7, 5.8, and 6 slice by slice, running only ticket-related checks during phase work and broader suites at phase integration checkpoints.
 
 ## Decisions and limits
 
