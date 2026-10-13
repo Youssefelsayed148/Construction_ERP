@@ -235,3 +235,6 @@ Built and started an isolated local Compose pilot on `127.0.0.1:8090` using proj
 ## 2026-10-13: Batch B2 staging seed
 
 The guarded staging seed passed against the local pilot. It created 35 users across 33 canonical roles, a project, requester/checker identities, unassigned and expired-assignment cases, and supplier/client organization seats. A second run bumped the procurement officer token version from 0 to 1, retained 34 project assignments, one expired assignment, zero assignment rows for the unassigned user, and two organization seats. Production-mode refusal was verified. Generated credentials remain in git-ignored `.staging-users.json`. Next: B3 procurement demo data, then B4 flow smoke.
+## 2026-10-13: Batch B3 demo procure-to-pay data
+
+The idempotent demo-data seed passed twice. Verified 3 materials, cost codes, supplier rates, 1 warehouse, 3 stock rows, and 3 BOQ lines (total EGP 1,376,500). Backend mock passed 49 suites / 972 tests; lint guards passed. Next: implement and run B4’s local API smoke across requester/checker, PR→RFQ→quotes→award→approval→PO→partial receipt→MIR/GRN→supplier invoice/payment, file access checks, locale headers, journal balance, and reconcile checks.

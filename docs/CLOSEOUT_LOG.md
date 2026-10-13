@@ -927,3 +927,37 @@ organization_seats=2
 ```
 
 The pilot DB is reachable from the host only through `127.0.0.1:55440`; Compose still uses the private service DNS name and port 5432 internally. `git check-ignore .staging-users.json` is expected to match. The role seed passed; demo materials/BOQ and full procurement smoke remain B3/B4.
+## 2026-10-13: Batch B3 procure-to-pay demo data
+
+Added an idempotent guarded `seed:pilot-data` command. It uses the B2 target guard and one transaction to upsert three bilingual materials, cost codes, supplier rates, stock projections, a project warehouse, a BOQ section, and three priced BOQ lines. No real supplier messages or payments are sent; all data is explicitly fictional.
+
+Verification:
+
+```text
+npm run seed:pilot-data
+Seeded 3 demo materials, rates, stock rows, and BOQ items for PILOT-PTP-001.
+Project 2; supplier 2; warehouse 5.
+
+npm run seed:pilot-data
+Seeded 3 demo materials, rates, stock rows, and BOQ items for PILOT-PTP-001.
+Project 2; supplier 2; warehouse 5.
+
+Post-rerun SQL:
+materials=3
+cost_codes=3
+supplier_rates=3
+warehouses=1
+warehouse_stock=3
+boq_items=3
+boq_total=1376500.00
+
+npm test -- --runInBand
+Test Suites: 49 passed, 49 total
+Tests:       972 passed, 972 total
+Ran all test suites.
+
+npm run lint:guards
+lint-guards: ok
+```
+
+The pilot seed ran against `construction_erp_staging` only, through loopback port 55440. Next B4 verifies the procurement lifecycle through local HTTP APIs and scopes; B5 backup/restore remains separate.
