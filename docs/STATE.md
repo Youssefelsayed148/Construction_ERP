@@ -22,12 +22,12 @@
 
 ## Next
 
-1. Stage explicit paths and commit the verified 5.8.2 delivery slice plus related gate repairs on `closeout/batch-a-to-6`.
-2. Audit Batch C, Batch E, and Phases 5.6–6 against the code and write the remaining carryover list before Phase 7.
+1. Revalidate Batch C/E and D1-D15 audit leads against current source; classify each with fresh evidence.
+2. Complete Phase 6 route-to-screen/API/permission inventory and remove all remaining prompt flows in bounded slices.
+3. Continue remaining Phases 5.6 and 7-11 items in master-plan order; see `docs/CARRYOVER.md`.
 
 ## In progress / stopped
-
-- Phase 5.8.2 notification delivery tracking is implemented and verified locally, but the changes are still uncommitted. Migration 0059 and forward migration 0060 applied successfully to fresh throwaway Postgres 16 test databases using runtime-generated credentials; no credential values were printed or written to tracked files.
+- Phase 5.8.2 notification delivery tracking and related gate repairs are committed as `ad8f9f6` on `closeout/batch-a-to-6`. Migration 0059 and forward migration 0060 applied successfully to fresh throwaway Postgres 16 test databases using runtime-generated credentials; no credential values were printed or written to tracked files.
 - Current closeout gates: backend mock 53 suites / 999 tests; real PG 67 suites / 605 tests; `lint-guards: ok`; frontend CI 28 suites / 107 tests; `i18n:check ok`; production build passed; Playwright 34 passed / 50 skipped. Details and exact output summaries are in `docs/CLOSEOUT_LOG.md`.
 - The Docker pilot smoke remains unverified. Automatic review rejected the smoke command because its script reads the explicitly prohibited `.env.docker` and `.staging-users.json` files. No workaround was attempted.
 
@@ -35,5 +35,5 @@
 
 - GL account mappings stay provisional until the finance owner confirms account purposes.
 - Human UAT has not been executed.
-- The user asked for ticket-related tests during phase work instead of whole suites on every slice.
+- The current prompt scan finds 49 calls across 17 frontend page files; Phase 6 remains open. `docs/CARRYOVER.md` records the audit inventory and next actions.
 - `docs/CODEX_AUDIT_REPORT.md` is a pre-existing untracked user artifact and has not been edited.

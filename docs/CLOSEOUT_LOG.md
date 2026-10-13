@@ -1329,3 +1329,7 @@ Final fresh database `erp_closeout_pg_final_20261013202700` applied 122 migratio
 An initial repository-root Jest autodiscovery run was discarded as an invalid gate invocation: it mixed backend, PostgreSQL and frontend tests, and produced 44 suite failures from the wrong root/config. The official backend package Jest configuration subsequently passed 53/53 suites and the PG configuration passed 67/67 suites. A first frontend unit run found missing `common.suppliers` catalog entries; added paired EN/AR keys. The first production build found a missing `apiCall` hook dependency in Handover; stabilized the callback and the build passed. Playwright needed elevated local process launch after sandbox `spawn EPERM` and then completed 34/34 executed tests.
 
 The Phase 5.8.2 changes and gate repairs are verified locally and are awaiting explicit-path staging and commit on `closeout/batch-a-to-6`.
+
+## 2026-10-13: 5.8.2 committed and carryover audit started
+
+Commit `ad8f9f6` records the verified 5.8.2 slice and associated gate repairs. A current Phase 6 prompt scan found 49 `prompt()` calls across 17 page files, so the phase remains open. Added `docs/CARRYOVER.md` with evidence, known owner decisions, and the remaining work sequence. `docs/CODEX_AUDIT_REPORT.md` remains an untracked user artifact and was not modified or staged. The route-to-screen/API inventory and fresh revalidation of the Batch C/E audit leads remain next actions.

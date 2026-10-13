@@ -89,3 +89,7 @@ The initial sandbox Docker check returned `Access is denied`; an elevated local 
 Current gates: backend mock 53 suites / 999 tests; real PG 67 suites / 605 tests; guards `lint-guards: ok`; frontend 28 suites / 107 tests; i18n passed; build passed; Playwright 34 passed / 50 skipped. See `docs/CLOSEOUT_LOG.md` for command evidence.
 
 Pilot smoke remains unverified. Automatic review rejected the command because the script reads `.env.docker` and `.staging-users.json`, which the request explicitly prohibits. No alternate execution path was attempted. The 5.8.2 code and gate repairs remain uncommitted; next action is explicit-path staging, cached-diff inspection, commit, then the requested carryover audit.
+
+## Closeout continuation — after 5.8.2 commit (2026-10-13)
+
+Commit `ad8f9f6` contains the verified Phase 5.8.2 slice and gate repairs. `docs/CARRYOVER.md` now records the verified gates and remaining audit/implementation sequence. Current scan: 49 frontend `prompt()` calls across 17 page files; Phase 6 remains open. The pilot smoke remains unverified because automatic review rejected the script's access to prohibited `.env.docker` and `.staging-users.json`. Next: revalidate Batch C/E and D1-D15 evidence, then complete the Phase 6 inventory and bounded prompt replacement slices.
