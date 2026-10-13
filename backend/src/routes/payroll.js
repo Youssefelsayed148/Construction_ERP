@@ -73,10 +73,9 @@ router.post('/', authenticate, authorize('owner', 'admin', 'finance_manager'), a
         `UPDATE payroll_periods SET total_basic_salary = $1, total_net_salary = $2 WHERE id = $3 RETURNING *`,
         [totalBasic, totalNet, pid]
       );
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'payroll', description: `Created payroll for ${value.month}/${value.year}`, entityId: pid, entityType: 'payroll_period' }, { query: client.query.bind(client) });
       return updated.rows[0];
     });
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'payroll', description: `Created payroll for ${value.month}/${value.year}`, entityId: result.id, entityType: 'payroll_period' });
     res.status(201).json({ success: true, data: result });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -105,12 +104,9 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
         await journalPayrollPosted(q, updated.rows[0], req.user.id);
         await costAccrual.allocatePayrollCost(q, updated.rows[0]);
       }
+      if (value.posted_to_finance) await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'post_to_finance', module: 'payroll', description: `Posted payroll to finance`, entityId: req.params.id, entityType: 'payroll_period' }, { query: q });
       return updated;
     });
-
-    if (value.posted_to_finance) {
-      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'post_to_finance', module: 'payroll', description: `Posted payroll to finance`, entityId: req.params.id, entityType: 'payroll_period' });
-    }
 
     res.json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }

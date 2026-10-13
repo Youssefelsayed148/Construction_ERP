@@ -512,4 +512,25 @@ Verification: `node --check` and `git diff --check` passed for all three routes;
 
 Moved consultant observation, RFI-response, and submittal-response activity rows into their locked engine transactions. Work-order creation/cancellation and completion verification now write activity on the same client as the corresponding mutation, progress recomputation, and verification event.
 
-Verification: `node --check` and `git diff --check` passed for both routes; full backend mock suite passed (48 suites / 968 tests); `npm run lint:guards` printed `lint-guards: ok`. A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This consultant/work-order slice is not committed yet.
+Verification: `node --check` and `git diff --check` passed for both routes; full backend mock suite passed (48 suites / 968 tests); `npm run lint:guards` printed `lint-guards: ok`. A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This consultant/work-order slice is committed as `4106d86`.
+
+## 2026-10-13: A4 maintenance and payroll transactional audit continuation (local, not committed)
+
+Maintenance reminder create/update activity rows now share the corresponding SQL transaction. Payroll period creation includes all details and its activity row in one transaction; posting activity now shares the existing transaction with payroll status, journal, and cost allocation.
+
+Verification command output:
+
+```text
+node --check src/routes/maintenance.js; node --check src/routes/payroll.js; git diff --check
+exit code: 0
+
+npm test -- --runInBand
+Test Suites: 48 passed, 48 total
+Tests:       968 passed, 968 total
+Ran all test suites.
+
+npm run lint:guards
+lint-guards: ok
+```
+
+A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This maintenance/payroll slice is not committed yet.
