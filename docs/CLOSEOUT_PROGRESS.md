@@ -225,3 +225,7 @@ Successful login now clears the lockout counter, upgrades a legacy password hash
 ## 2026-10-13: A4 route-wide transactional audit guard (local, pending commit)
 
 `lint:guards` now scans route `logActivity` calls for transaction query binding, with a narrow exception for the leader-locked replenishment completion audit. Added unit assertions and a clean route-wide scan. Backend suite passes 48 suites / 969 tests; `lint-guards: ok`; syntax and whitespace checks exit 0. Real PostgreSQL rollback remains unverified because Docker Desktop is inaccessible. Current expected commit: per-slice commit to follow.
+
+## 2026-10-13: Batch A security gate closed; Batch B next
+
+Batch A completed its full local gate. The real-PG run against a named disposable local Docker Postgres 16 database passed 56 suites / 566 tests. Backend mock passed 48/48 suites / 969/969 tests; lint guards passed; frontend passed 17/17 suites / 97/97 tests, i18n check, production build, and Playwright (32 passed / 46 skipped). The final PG-discovered fixes were committed separately: `dd268d4` (A1 date normalization), `2d757b7` (A5 typed finance errors), and `80c9005` (A7 actor FK restrictions). See `docs/CLOSEOUT_LOG.md` for exact command summaries and the skipped Playwright coverage. Next: Batch B fresh local Docker compose/staging work; no staging smoke or backup/restore has run yet.

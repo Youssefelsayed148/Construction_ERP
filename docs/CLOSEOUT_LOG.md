@@ -825,3 +825,47 @@ lint-guards: ok
 ```
 
 Real PostgreSQL rollback remains unverified because Docker Desktop is inaccessible. This route-wide guard slice is not committed yet.
+
+## 2026-10-13: Batch A final real-PostgreSQL and full-gate closeout
+
+The first complete PG run exposed three stale/real issues. Fixed the delegation `Date` normalization comparison (A1; `dd268d4`), sent finance invoice/expense posting exceptions through the typed responder while asserting the existing `ledger_account_not_mapped` contract (A5; `2d757b7`), and added restrictive actor foreign keys for approval-limit rows (A7; `80c9005`). The approval-limit PG assertion now reflects the configurable finance-manager action cap. Existing A4 failure-injection tests and route-wide audit guard remain green.
+
+Commands and output:
+
+```text
+npm run test:pg -- --silent
+Test Suites: 56 passed, 56 total
+Tests:       566 passed, 566 total
+Snapshots:   0 total
+Time:        92.031 s
+```
+
+This ran with `TEST_PG=1` and DB variables pointed only to the disposable local Docker Postgres 16 container `erp-closeout-test-pg-20261013`, database `construction_erp_test`, at `127.0.0.1:55439`. No `.env` file was read. Jest printed its expected `Force exiting Jest` notice after the complete passing summary.
+
+```text
+npm test -- --runInBand
+Test Suites: 48 passed, 48 total
+Tests:       969 passed, 969 total
+Ran all test suites.
+
+npm run lint:guards
+lint-guards: ok
+
+npm run test:ci
+Test Suites: 17 passed, 17 total
+Tests:       97 passed, 97 total
+Ran all test suites.
+
+npm run i18n:check
+i18n:check ok
+
+npm run build
+Compiled successfully.
+
+npm run test:e2e
+Running 78 tests using 8 workers
+46 skipped
+32 passed (17.4s)
+```
+
+The first sandboxed Playwright launch returned `Error: spawn EPERM`; the elevated local retry above passed. Playwright skipped the real-backend seeded-user journeys and screenshot baselines, so those remain unverified. Batch A exit gates are met; Batch B local compose, full pilot smoke, and backup/restore are not covered by this result.
