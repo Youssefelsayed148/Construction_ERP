@@ -5,6 +5,7 @@ const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
+const { auditedTransaction } = require('../utils/auditedTransaction');
 
 // -- Employees --
 router.get('/employees', authenticate, authorize(), async (req, res) => {
@@ -43,17 +44,15 @@ router.post('/employees', authenticate, authorize('owner', 'admin'), async (req,
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    if (!value.code) {
-      value.code = await nextNumber(query, { table: 'employees', column: 'code', prefix: 'EMP', pad: 4 });
-    }
-
-    const r = await query(
+    const r = await auditedTransaction(async (q) => {
+      if (!value.code) value.code = await nextNumber(q, { table: 'employees', column: 'code', prefix: 'EMP', pad: 4 });
+      const inserted = await q(
       `INSERT INTO employees (code, name, name_ar, name_en, phone, email, national_id, department, designation, hire_date, salary, bank_name, bank_account, is_manager)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
       [value.code, value.name_ar, value.name_ar, value.name_en || value.name_ar, value.phone, value.email, value.national_id, value.department, value.designation, value.hire_date, value.salary, value.bank_name, value.bank_account, value.is_manager]
-    );
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hr', description: `Created employee ${value.code}`, entityId: r.rows[0].id, entityType: 'employee' });
+      );
+      return inserted;
+    }, (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hr', description: `Created employee ${value.code}`, entityId: result.rows[0].id, entityType: 'employee' }));
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -82,9 +81,7 @@ router.put('/employees/:id', authenticate, authorize('owner', 'admin'), async (r
       if (v !== undefined) { sets.push(`${k} = $${i++}`); p.push(v); }
     }
     p.push(req.params.id);
-    const r = await query(`UPDATE employees SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`, p);
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'hr', description: `Updated employee ${existing.rows[0].code}`, entityId: req.params.id, entityType: 'employee' });
+    const r = await auditedTransaction((q) => q(`UPDATE employees SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`, p), (result) => result.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'hr', description: `Updated employee ${existing.rows[0].code}`, entityId: req.params.id, entityType: 'employee' }));
     res.json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -168,13 +165,11 @@ router.put('/leaves/:id', authenticate, authorize('owner', 'admin'), async (req,
     const { status } = req.body;
     if (!['approved', 'rejected'].includes(status)) return res.status(400).json({ success: false, error: 'Invalid status' });
 
-    const r = await query(
+    const r = await auditedTransaction((q) => q(
       `UPDATE leave_requests SET status = $1, reviewed_by = $2, updated_at = NOW() WHERE id = $3 RETURNING *`,
       [status, req.user.id, req.params.id]
-    );
+    ), (result) => result.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: status === 'approved' ? 'approve' : 'reject', module: 'hr', description: `${status === 'approved' ? 'Approved' : 'Rejected'} leave request #${req.params.id}`, entityId: req.params.id, entityType: 'leave_request' }));
     if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Leave request not found' });
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: status === 'approved' ? 'approve' : 'reject', module: 'hr', description: `${status === 'approved' ? 'Approved' : 'Rejected'} leave request #${req.params.id}`, entityId: req.params.id, entityType: 'leave_request' });
     res.json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -217,17 +212,14 @@ router.post('/laborers', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    if (!value.code) {
-      value.code = await nextNumber(query, { table: 'daily_laborers', column: 'code', prefix: 'DL', pad: 4 });
-    }
-
-    const r = await query(
+    const r = await auditedTransaction(async (q) => {
+      if (!value.code) value.code = await nextNumber(q, { table: 'daily_laborers', column: 'code', prefix: 'DL', pad: 4 });
+      return q(
       `INSERT INTO daily_laborers (code, full_name, full_name_en, national_id, phone, skill_category, daily_rate, bank_account, is_active)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
       [value.code, value.full_name, value.full_name_en, value.national_id, value.phone, value.skill_category, value.daily_rate, value.bank_account, value.is_active !== undefined ? value.is_active : true]
-    );
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hr', description: `Created daily laborer ${value.code}`, entityId: r.rows[0].id, entityType: 'daily_laborer' });
+      );
+    }, (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hr', description: `Created daily laborer ${value.code}`, entityId: result.rows[0].id, entityType: 'daily_laborer' }));
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -251,9 +243,7 @@ router.put('/laborers/:id', authenticate, authorize(), async (req, res) => {
       if (v !== undefined) { sets.push(`${k} = $${i++}`); p.push(v); }
     }
     p.push(req.params.id);
-    const r = await query(`UPDATE daily_laborers SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`, p);
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'hr', description: `Updated daily laborer ${existing.rows[0].code}`, entityId: req.params.id, entityType: 'daily_laborer' });
+    const r = await auditedTransaction((q) => q(`UPDATE daily_laborers SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`, p), (result) => result.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'hr', description: `Updated daily laborer ${existing.rows[0].code}`, entityId: req.params.id, entityType: 'daily_laborer' }));
     res.json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -309,10 +299,9 @@ router.post('/labor-payments', authenticate, authorize(), async (req, res) => {
         userId: req.user.id, userName: req.user.name, userRole: req.user.role,
         payload: { project_id: value.project_id, amount: total_amount, laborer_id: value.laborer_id }
       }, { query: q });
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hr', description: `Labor payment: ${total_amount} EGP`, entityId: inserted.rows[0].id, entityType: 'labor_payment', amount: total_amount }, { query: q });
       return inserted;
     });
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hr', description: `Labor payment: ${total_amount} EGP`, entityId: r.rows[0].id, entityType: 'labor_payment', amount: total_amount });
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
