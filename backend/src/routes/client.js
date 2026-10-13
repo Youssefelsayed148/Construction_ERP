@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { query } = require('../config/database');
+const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const policy = require('../services/policy');
@@ -75,16 +75,19 @@ router.post('/preview', authenticate, authorize('owner', 'admin', 'project_manag
     const project = (await query('SELECT id FROM projects WHERE id = $1', [projectId])).rows[0];
     if (!project) return res.status(404).json({ success: false, error: 'Project not found' });
     const token = createPreviewToken({ user: req.user, role: 'client', scopedProjectIds: [projectId] });
-    await policy.recordAuditEvent({
-      entity: 'user', entityId: req.user.id, action: 'preview_as_client',
-      before: null, after: { preview_role: 'client', project_id: projectId },
-      userId: req.user.id,
-    }, { query });
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'preview_as_client', module: 'client-portal',
-      description: 'Started a read-only preview of the client portal',
-      entityId: req.user.id, entityType: 'user',
+    await transaction(async (client) => {
+      const q = client.query.bind(client);
+      await policy.recordAuditEvent({
+        entity: 'user', entityId: req.user.id, action: 'preview_as_client',
+        before: null, after: { preview_role: 'client', project_id: projectId },
+        userId: req.user.id,
+      }, { query: q });
+      await logActivity({
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        action: 'preview_as_client', module: 'client-portal',
+        description: 'Started a read-only preview of the client portal',
+        entityId: req.user.id, entityType: 'user',
+      }, { query: q });
     });
     res.json({ success: true, data: { token, read_only: true, role: 'client' } });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }

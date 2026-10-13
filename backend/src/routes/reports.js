@@ -8,7 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
-const { query } = require('../config/database');
+const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { REPORTS, REPORT_PACKS, parseListQuery, toCsv, visibleColumns, csvField } = require('../utils/reporting');
@@ -183,10 +183,14 @@ router.post('/saved-views', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const r = await query(
-      `INSERT INTO saved_views (user_id, module, name, params, is_shared) VALUES ($1,$2,$3,$4::jsonb,$5) RETURNING *`,
-      [req.user.id, value.module, value.name, JSON.stringify(value.params), value.is_shared]);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'reports', description: `Saved view "${value.name}" for ${value.module}`, entityId: r.rows[0].id, entityType: 'saved_view' });
+    const r = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const saved = await q(
+        `INSERT INTO saved_views (user_id, module, name, params, is_shared) VALUES ($1,$2,$3,$4::jsonb,$5) RETURNING *`,
+        [req.user.id, value.module, value.name, JSON.stringify(value.params), value.is_shared]);
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'reports', description: `Saved view "${value.name}" for ${value.module}`, entityId: saved.rows[0].id, entityType: 'saved_view' }, { query: q });
+      return saved;
+    });
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -230,11 +234,15 @@ router.post('/scheduled', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     if (!REPORTS[value.report_key]) return res.status(400).json({ success: false, error: 'Unknown report' });
-    const r = await query(
-      `INSERT INTO scheduled_reports (project_id, report_key, name, frequency, recipients, format, created_by)
-       VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7) RETURNING *`,
-      [value.project_id, value.report_key, value.name, value.frequency, JSON.stringify(value.recipients), value.format, req.user.id]);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'reports', description: `Scheduled report "${value.name}" (${value.frequency})`, entityId: r.rows[0].id, entityType: 'scheduled_report' });
+    const r = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const scheduled = await q(
+        `INSERT INTO scheduled_reports (project_id, report_key, name, frequency, recipients, format, created_by)
+         VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7) RETURNING *`,
+        [value.project_id, value.report_key, value.name, value.frequency, JSON.stringify(value.recipients), value.format, req.user.id]);
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'reports', description: `Scheduled report "${value.name}" (${value.frequency})`, entityId: scheduled.rows[0].id, entityType: 'scheduled_report' }, { query: q });
+      return scheduled;
+    });
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
