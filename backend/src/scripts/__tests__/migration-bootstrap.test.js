@@ -15,13 +15,21 @@ describe('database bootstrap', () => {
     }
   });
 
-  test('the production container migrates before starting the API', () => {
+  test('Compose runs one-shot migrations before a non-root API container', () => {
     const dockerfile = fs.readFileSync(path.join(backendDir, 'Dockerfile'), 'utf8');
+    const composePath = path.join(backendDir, '..', 'docker-compose.yml');
     const pkg = require(path.join(backendDir, 'package.json'));
 
     expect(pkg.scripts.migrate).toBe('node src/scripts/run-all-migrations.js');
     expect(pkg.scripts['start:migrated']).toBe('npm run migrate && node server.js');
-    expect(dockerfile).toContain('CMD ["npm", "run", "start:migrated"]');
+    expect(dockerfile).toContain('USER node');
+    expect(dockerfile).toContain('CMD ["npm", "start"]');
+    if (fs.existsSync(composePath)) {
+      const compose = fs.readFileSync(composePath, 'utf8');
+      expect(compose).toContain('migrate:');
+      expect(compose).toContain('condition: service_completed_successfully');
+      expect(compose).not.toContain('./db_dump:/docker-entrypoint-initdb.d');
+    }
   });
 
   test('fresh database setup contains no predictable owner credential', () => {

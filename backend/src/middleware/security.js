@@ -2,7 +2,7 @@
 
 const crypto = require('crypto');
 
-function validateCorsOrigins(frontendOrigin, extraOrigins = [], production = process.env.NODE_ENV === 'production') {
+function validateCorsOrigins(frontendOrigin, extraOrigins = [], production = process.env.NODE_ENV === 'production', allowHttpLocal = false) {
   const values = [frontendOrigin, ...extraOrigins].filter(Boolean);
   return [...new Set(values.map((value) => {
     let parsed;
@@ -11,7 +11,10 @@ function validateCorsOrigins(frontendOrigin, extraOrigins = [], production = pro
       || parsed.pathname !== '/' || parsed.search || parsed.hash || value.includes('*')) {
       throw new Error('CORS origins must contain only a scheme and host (wildcards are not allowed)');
     }
-    if (production && parsed.protocol !== 'https:') throw new Error('CORS origins must use HTTPS in production');
+    const localHost = ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname);
+    if (production && parsed.protocol !== 'https:' && !(allowHttpLocal && localHost)) {
+      throw new Error('CORS origins must use HTTPS in production (except explicitly allowed localhost origins)');
+    }
     return parsed.origin;
   }))];
 }

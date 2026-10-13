@@ -19,9 +19,10 @@ COPY . .
 # Forces the test stage to run; the marker proves it passed.
 COPY --from=test /app/.tests-passed /tmp/.tests-passed
 
-RUN mkdir -p uploads
+RUN mkdir -p uploads && chown -R node:node /app
 
 ENV NODE_ENV=production
 EXPOSE 5000
+USER node
 
-CMD ["npm", "run", "start:migrated"]
+CMD ["npm", "start"]

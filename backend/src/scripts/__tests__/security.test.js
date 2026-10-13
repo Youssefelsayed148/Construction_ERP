@@ -62,6 +62,8 @@ describe('production security middleware', () => {
     expect(() => validateCorsOrigins('https://app.example.com', ['https://*.example.com'], true)).toThrow('wildcards');
     expect(() => validateCorsOrigins('https://app.example.com/path', [], true)).toThrow('scheme and host');
     expect(() => validateCorsOrigins('http://app.example.com', [], true)).toThrow('HTTPS');
+    expect(validateCorsOrigins('http://localhost:8090', [], true, true)).toEqual(['http://localhost:8090']);
+    expect(() => validateCorsOrigins('http://app.example.com', [], true, true)).toThrow('HTTPS');
   });
 
   test('genericizes untyped 500 responses, logs details, and retains typed error envelopes', () => {

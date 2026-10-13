@@ -15,7 +15,8 @@ const FRONTEND_ORIGIN = process.env.FRONTEND_URL || 'http://localhost:3000';
 // Phase 26: v1 also serves non-browser API clients; extra origins (sandbox UI,
 // partner portals) come in via a comma-separated env list.
 const EXTRA_ORIGINS = (process.env.CORS_EXTRA_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
-const ALLOWED_ORIGINS = validateCorsOrigins(FRONTEND_ORIGIN, EXTRA_ORIGINS);
+const ALLOWED_ORIGINS = validateCorsOrigins(FRONTEND_ORIGIN, EXTRA_ORIGINS,
+  process.env.NODE_ENV === 'production', process.env.CORS_ALLOW_HTTP_LOCAL === 'true');
 app.use(cors({ origin: ALLOWED_ORIGINS, credentials: true }));
 app.use(securityHeaders);
 app.use(requestId);

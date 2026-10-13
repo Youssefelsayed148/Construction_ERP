@@ -21,13 +21,13 @@ Updated: 2026-10-13 (Africa/Cairo)
 
 ## In progress
 
-- Batch B local Docker staging/pilot work has not started. No staging seed credentials or user accounts have been created.
-- The isolated PostgreSQL test container was for the PG test gate only; it is not the Batch B compose pilot and does not satisfy the fresh `docker compose up --build` smoke/backup rehearsal.
-- Batches C–E and Phases 5.6–6 remain open. Finance signoff still requires the owner to confirm the provisional chart-of-accounts mappings.
+- Batch B1 Compose foundation is implemented and verified. Unique project `erp-closeout-pilot-20261013` is running locally at `http://127.0.0.1:8090`; DB/API/frontend are healthy. Root `.env.docker` contains locally generated credentials and is git-ignored. Do not read or print it.
+- B2 role/user staging seed, B3 pilot procure-to-pay seed data, B4 full smoke, B5 backup/restore rehearsal, and B6 instructions remain open. No staging accounts have been created yet.
+- Batches C–E and Phases 5.6–6 remain open. Finance signoff still requires the owner to confirm provisional chart-of-accounts mappings.
 
 ## Where work stopped
 
-Batch A is green. Next inspect `docker-compose.yml`, both Dockerfiles, `frontend/nginx.conf`, the staging seed script, health checks, and migration runner. Then implement Batch B slices in order, starting with safe fresh local compose startup; do not read any `.env` file or use non-local hosts/services.
+Batch A is green. Batch B1 is green. Next implement `scripts/seed-staging.js` with exact `APP_ENV=staging` and database-name guards; then add demo data, smoke, backup/restore, and Windows PowerShell documentation. Keep all targets local, do not read any `.env` file, and never use production-looking databases or external services.
 
 ## Current gates
 
@@ -40,7 +40,8 @@ Batch A is green. Next inspect `docker-compose.yml`, both Dockerfiles, `frontend
 | i18n | PASS — `i18n:check ok` |
 | Frontend production build | PASS — compiled successfully |
 | Playwright | PASS — 32 passed / 46 skipped |
-| Batch B compose, staging smoke, backup/restore | NOT RUN |
+| Batch B1 image build / fresh Compose health | PASS — all 3 services healthy, localhost health ready |
+| Batch B2–B5 staging seed, smoke, backup/restore | NOT RUN |
 | Batches C–E and Phases 5.6–6 | NOT RUN |
 
 ## Risks and decisions

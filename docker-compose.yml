@@ -3,55 +3,71 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_NAME:-construction_erp}
-      POSTGRES_USER: ${DB_USER:-construction_erp_user}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:?Generate .env.docker first}
+      POSTGRES_USER: ${DB_USER:?Generate .env.docker first}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Generate .env.docker first}
     volumes:
       - db_data:/var/lib/postgresql/data
-      # First-boot only: postgres runs any .sql in db_dump/ when the data directory is empty.
-      # Treat a dump as DATA/SCHEMA SEED only. The migrator (npm run migrate, run by the
-      # backend on start) is the authority: it records every migration in schema_migrations,
-      # runs the legacy scripts once on top of a dump (they are idempotent) and then moves
-      # every sequence past the loaded rows. Omit the dump for a schema-only fresh start.
-      - ./db_dump:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-construction_erp_user} -d ${DB_NAME:-construction_erp}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 12
+
+  migrate:
+    build: ./backend
+    restart: "no"
+    environment: &backend_environment
+      NODE_ENV: production
+      APP_ENV: ${APP_ENV:?Generate .env.docker first}
+      PORT: 5000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:?Generate .env.docker first}
+      DB_USER: ${DB_USER:?Generate .env.docker first}
+      DB_PASSWORD: ${DB_PASSWORD:?Generate .env.docker first}
+      JWT_SECRET: ${JWT_SECRET:?Generate .env.docker first}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8090}
+      CORS_ALLOW_HTTP_LOCAL: ${CORS_ALLOW_HTTP_LOCAL:-false}
+      TRUST_PROXY: "1"
+      AUTH_RATE_LIMIT_PER_15_MIN: "20"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["npm", "run", "migrate"]
 
   backend:
     build: ./backend
     restart: unless-stopped
+    environment: *backend_environment
     depends_on:
       db:
         condition: service_healthy
-    environment:
-      PORT: 5000
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-construction_erp}
-      DB_USER: ${DB_USER:-construction_erp_user}
-      DB_PASSWORD: ${DB_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
-      TRUST_PROXY: ${TRUST_PROXY:-1}
-      AUTH_RATE_LIMIT_PER_15_MIN: ${AUTH_RATE_LIMIT_PER_15_MIN:-20}
+      migrate:
+        condition: service_completed_successfully
     volumes:
-      - backend_uploads:/app/uploads
+      - uploads_data:/app/uploads
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   frontend:
     build: ./frontend
     restart: unless-stopped
     depends_on:
-      - backend
-    # Local testing only — in production on the VPS, remove this and instead
-    # attach this service to the shared Dokploy/Traefik network with the
-    # routing labels that box's other apps use (this repo has no visibility
-    # into that box's exact Traefik label/network convention).
+      backend:
+        condition: service_healthy
     ports:
-      - "8090:80"
+      - "127.0.0.1:8090:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
 volumes:
   db_data:
-  backend_uploads:
+  uploads_data:

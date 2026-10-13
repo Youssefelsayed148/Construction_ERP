@@ -869,3 +869,31 @@ Running 78 tests using 8 workers
 ```
 
 The first sandboxed Playwright launch returned `Error: spawn EPERM`; the elevated local retry above passed. Playwright skipped the real-backend seeded-user journeys and screenshot baselines, so those remain unverified. Batch A exit gates are met; Batch B local compose, full pilot smoke, and backup/restore are not covered by this result.
+## 2026-10-13: Batch B1 local Docker staging foundation
+
+Reworked Compose so the database starts from an empty named volume without a `db_dump` bind, migrations run in a separate one-shot service, and API startup waits for successful migration. PostgreSQL data and uploads use separate named volumes. Database, API, and frontend health checks gate service readiness; API runtime is the non-root `node` user. `backend:staging:env` generates strong random local credentials into git-ignored root `.env.docker` without printing secret values and refuses overwrite. Production-mode CORS permits plain HTTP only for localhost when the generated staging-only explicit flag is enabled; external HTTP origins remain rejected.
+
+Verification:
+
+```text
+npm run staging:env
+Generated local staging configuration at ...\\.env.docker. Keep it private; it is git-ignored.
+
+docker compose --env-file .env.docker config --quiet
+exit code: 0
+
+docker compose --project-name erp-closeout-pilot-20261013 --env-file .env.docker build backend frontend
+backend image tests: 47 suites passed / 953 tests passed (56 PG suites skipped in image build)
+frontend production image: Compiled successfully.
+exit code: 0
+
+docker compose --project-name erp-closeout-pilot-20261013 --env-file .env.docker up -d
+backend healthy; database healthy; frontend healthy
+GET http://127.0.0.1:8090/api/health => status=ready, database=healthy
+backend container user: node
+DB volume: erp-closeout-pilot-20261013_db_data:/var/lib/postgresql/data
+Uploads volume: erp-closeout-pilot-20261013_uploads_data:/app/uploads
+migrate log: [migrate] all migrations completed (0 applied, 103 already applied)
+```
+
+The first build exposed and fixed a stale bootstrap test, then local HTTP CORS validation required an explicit localhost-only setting for this HTTP pilot. The existing `construction_erp_db_data` volume was inspected and left untouched; the pilot uses the unique project name above. The compose healthy-empty-seed check passed; role seeding/smoke and backup/restore remain for B2–B5.
