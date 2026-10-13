@@ -71,8 +71,14 @@
   },
   "recordActions": {
     "acknowledgeRfi": "تأكيد الرد على طلب المعلومات", "resubmitSubmittal": "إعادة تقديم المستند المعاد",
-    "rfi": "طلب معلومات RFI", "submittal": "المستند", "response": "الرد",
+    "acknowledgePackage": "تأكيد استلام حزمة الأعمال", "acknowledgeInstruction": "تأكيد استلام تعليمات المهندس",
+    "claimQuantity": "تقديم كمية الإنجاز", "paymentApplication": "طلب دفعة",
+    "rfi": "طلب معلومات RFI", "submittal": "المستند", "instruction": "تعليمات المهندس", "response": "الرد",
     "revisionComments": "ما الذي تغير في هذه المراجعة؟",
+    "periodFrom": "بداية الفترة", "periodTo": "نهاية الفترة", "quantityClaimed": "الكمية المطالب بها",
+    "workValue": "قيمة الأعمال خلال الفترة", "retention": "الاستقطاع المحتجز", "materialsDeducted": "قيمة المواد المخصومة",
+    "otherDeductions": "استقطاعات أخرى", "notes": "ملاحظات",
+    "noBoqPackage": "لا توجد حزمة مسندة مرتبطة ببند كميات متاح للمطالبة.",
     "submitError": "تعذر تنفيذ الإجراء. حدّث الصفحة وحاول مجدداً."
   },
   "compliance": {

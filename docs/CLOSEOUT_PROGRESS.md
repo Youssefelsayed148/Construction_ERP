@@ -465,3 +465,9 @@ Focused results: `PortalDashboard.test.js` passed 7/7, including scoped RFI payl
 The subcontractor portal now selects RFIs from its package-scoped dashboard records for acknowledgement, and returned submittals from a separately scoped list for resubmission. The dashboard only offers resubmittal records with `resubmit_required` status that belong to one of the caller's packages. Both actions use bilingual forms and visible error handling.
 
 Focused results: `portal.test.js` passed 16/16, including a cross-package resubmittal-list isolation case; `PortalDashboard.test.js` passed 8/8, including both action payloads; `i18n:check` passed. No full suite was run.
+
+### 5.6.5.e Package acknowledgements, quantity claims and payment forms
+
+Replaced the remaining subcontractor package/instruction acknowledgement, quantity claim and payment application prompts. Package and instruction actions use active assigned records from the dashboard; quantity claims derive the BOQ item from the selected awarded package, and payment applications derive both project and package IDs from that same assigned package. Date, quantity and monetary fields have client validation, and failures are shown in EN/AR.
+
+Focused results: `portal.test.js` passed 17/17, including issued instruction scope; `PortalDashboard.test.js` passed 9/9, covering the four form payloads; `i18n:check` and `git diff --check` passed. No full suite was run.

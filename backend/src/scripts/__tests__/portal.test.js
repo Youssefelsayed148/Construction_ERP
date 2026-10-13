@@ -34,7 +34,7 @@ async function buildFixture() {
   await q(`CREATE TABLE IF NOT EXISTS sub_contracts (
     id SERIAL PRIMARY KEY, contract_number VARCHAR(50), project_id INTEGER, subcontractor_id INTEGER,
     boq_item_id INTEGER, scope TEXT, contract_value DECIMAL(15,2) DEFAULT 0, revised_amount DECIMAL(15,2) DEFAULT 0,
-    status VARCHAR(50) DEFAULT 'draft')`);
+    status VARCHAR(50) DEFAULT 'draft', acknowledged_at TIMESTAMPTZ)`);
   await q(`CREATE TABLE IF NOT EXISTS sub_work_verifications (
     id SERIAL PRIMARY KEY, sub_contract_id INTEGER, boq_item_id INTEGER, period_from DATE, period_to DATE,
     quantity_claimed DECIMAL(15,3) DEFAULT 0, quantity_verified DECIMAL(15,3) DEFAULT 0,
@@ -50,7 +50,8 @@ async function buildFixture() {
     status VARCHAR(50) DEFAULT 'draft', certified_by INTEGER, paid_at TIMESTAMPTZ, notes TEXT,
     created_by INTEGER, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ)`);
   await q(`CREATE TABLE IF NOT EXISTS engineer_instructions (
-    id SERIAL PRIMARY KEY, instruction_number VARCHAR(50), project_id INTEGER, title VARCHAR(255),
+    id SERIAL PRIMARY KEY, instruction_number VARCHAR(50), project_id INTEGER, sub_contract_id INTEGER,
+    assigned_to_user_id INTEGER, title VARCHAR(255),
     description TEXT, priority VARCHAR(20) DEFAULT 'normal', status VARCHAR(30) DEFAULT 'issued',
     issued_by INTEGER, issued_date DATE, response TEXT, acknowledged_at TIMESTAMPTZ,
     action_item_id INTEGER, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ)`);
@@ -217,6 +218,19 @@ describe('subcontractor portal', () => {
     expect(foreign).toBeNull();
     const item = (await q('SELECT * FROM action_items WHERE id = 900')).rows[0];
     expect(item.status).toBe('completed');
+  });
+
+  test('instruction choices contain only issued items assigned to the user or their package', async () => {
+    await q(`INSERT INTO engineer_instructions (id,instruction_number,project_id,sub_contract_id,assigned_to_user_id,title,status)
+             VALUES ($1,$2,$3,$4,$5,$6,$7)`, [4, 'EI-OWN', 1, 1, null, 'Own package instruction', 'issued']);
+    await q(`INSERT INTO engineer_instructions (id,instruction_number,project_id,sub_contract_id,assigned_to_user_id,title,status)
+             VALUES ($1,$2,$3,$4,$5,$6,$7)`, [5, 'EI-OTHER', 1, 2, null, 'Other package instruction', 'issued']);
+    await q(`INSERT INTO engineer_instructions (id,instruction_number,project_id,sub_contract_id,assigned_to_user_id,title,status)
+             VALUES ($1,$2,$3,$4,$5,$6,$7)`, [6, 'EI-ACK', 1, 1, null, 'Already acknowledged instruction', 'acknowledged']);
+    const dash = await engine.subcontractorDashboard(q, SUB_A.id);
+    expect(dash.instructions_for_acknowledgement.items).toEqual([{
+      id: 4, project_id: 1, sub_contract_id: 1, instruction_number: 'EI-OWN', title: 'Own package instruction', status: 'issued',
+    }]);
   });
 
   test('submitPaymentApplication uses the shared Phase 13 certificates, cumulative-safe', async () => {

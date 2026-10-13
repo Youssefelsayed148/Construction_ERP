@@ -123,7 +123,7 @@ async function subcontractorDashboard(q, userId, { now = new Date() } = {}) {
   const dashboard = {
     packages: packages.map((c) => ({
       id: toNum(c.id), contract_number: c.contract_number, project_id: toNum(c.project_id),
-      scope: c.scope, status: c.status,
+      scope: c.scope, status: c.status, boq_item_id: c.boq_item_id == null ? null : toNum(c.boq_item_id), acknowledged_at: c.acknowledged_at || null,
       // Commercial values are the subcontractor's OWN — always visible to them.
       contract_value: toNum(c.contract_value), revised_amount: toNum(c.revised_amount),
     })),
@@ -139,6 +139,14 @@ async function subcontractorDashboard(q, userId, { now = new Date() } = {}) {
     .filter((w) => toNum(w.assigned_to) === userId || contractIds.includes(toNum(w.sub_contract_id)))
     .filter((w) => sameDay(w.planned_start_date, today) || w.status === 'in_progress');
   dashboard.todays_work = { items: myWork.map((w) => ({ id: toNum(w.id), title: w.title, status: w.status })), count: myWork.length, empty_label: 'No work assigned today' };
+
+  const instructions = (await safeAll(q, 'SELECT * FROM engineer_instructions', []))
+    .filter((i) => projectIds.includes(toNum(i.project_id)) && i.status === 'issued'
+      && (contractIds.includes(toNum(i.sub_contract_id)) || toNum(i.assigned_to_user_id) === toNum(userId)));
+  dashboard.instructions_for_acknowledgement = {
+    items: instructions.map((i) => ({ id: toNum(i.id), project_id: toNum(i.project_id), sub_contract_id: i.sub_contract_id == null ? null : toNum(i.sub_contract_id), instruction_number: i.instruction_number, title: i.title, status: i.status })),
+    count: instructions.length, empty_label: 'No instructions need acknowledgement',
+  };
 
   // The formal WIR register belongs to the assigned subcontractor
   // organization. Do not expose internal workflow comments or other seats.

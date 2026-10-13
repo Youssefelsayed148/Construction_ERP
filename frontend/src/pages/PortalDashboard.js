@@ -294,6 +294,8 @@ function QuickActions({ kind, data, onDone }) {
   const [recordActionSaving, setRecordActionSaving] = useState(false);
   const [rfiAcknowledgement, setRfiAcknowledgement] = useState({ id: '', response: '' });
   const [submittalResubmission, setSubmittalResubmission] = useState({ id: '', comments: '' });
+  const [subcontractorAction, setSubcontractorAction] = useState('');
+  const [subcontractorActionValues, setSubcontractorActionValues] = useState({ package_id: '', instruction_id: '', response: '', period_from: '', period_to: '', quantity_claimed: '', work_value: '', retention: '0', materials_deducted: '0', other_deductions: '0', notes: '' });
   const [observation, setObservation] = useState({ project_id: data.project_ids?.[0] || '', title: '', description: '', due_date: '', drawing_reference: '', drawing_document_id: '', severity: 'normal' });
   const [beforePhotos, setBeforePhotos] = useState([]);
   const [afterPhotos, setAfterPhotos] = useState([]);
@@ -322,10 +324,6 @@ function QuickActions({ kind, data, onDone }) {
       setFormalSubmissionValues({ package_id: data.packages?.[0]?.id || '', title: '', question: '', priority: 'normal', due_date: '', submittal_type: 'material', submitted_to: '' });
     } catch (error) { setFormalSubmissionError(t('portals.formalSubmission.submitError')); }
     finally { setSavingFormalSubmission(false); }
-  };
-  const pickPackage = () => {
-    const id = Number(window.prompt('Awarded package ID', data.packages?.[0]?.id || ''));
-    return data.packages?.find((p) => Number(p.id) === id) || null;
   };
   const today = () => new Date().toISOString().slice(0, 10);
   const uploadFiles = async () => {
@@ -391,30 +389,6 @@ function QuickActions({ kind, data, onDone }) {
     const response_code = stage === 'response' ? window.prompt('Response code: A, B, C or D', 'A') : null;
     if (id && stage && (stage !== 'response' || response_code)) await submit(`/api/consultant/submittals/${id}/response`, { stage, comments, ...(response_code ? { response_code } : {}) });
   };
-  const acknowledgeContract = async () => {
-    const pkg = pickPackage();
-    if (pkg) await submit(`/api/portal/subcontractor/contracts/${pkg.id}/acknowledge`, {});
-  };
-  const acknowledgeInstruction = async () => {
-    const pkg = pickPackage();
-    const id = Number(window.prompt('Engineer instruction ID'));
-    if (pkg && id) await submit(`/api/portal/subcontractor/instructions/${id}/acknowledge`, { project_id: pkg.project_id });
-  };
-  const submitQuantity = async () => {
-    const pkg = pickPackage();
-    const boq_item_id = Number(window.prompt('BOQ item ID'));
-    const quantity_claimed = Number(window.prompt('Quantity claimed'));
-    if (pkg && boq_item_id && quantity_claimed > 0) await submit('/api/portal/subcontractor/quantities', {
-      sub_contract_id: pkg.id, boq_item_id, period_from: today(), period_to: today(), quantity_claimed,
-    });
-  };
-  const submitPaymentApplication = async () => {
-    const pkg = pickPackage();
-    const work_value = Number(window.prompt('Work value this period'));
-    if (pkg && work_value > 0) await submit('/api/portal/subcontractor/payment-applications', {
-      project_id: pkg.project_id, sub_contract_id: pkg.id, period_from: today(), period_to: today(), work_value,
-    });
-  };
   const acknowledgeRfi = async (event) => {
     event.preventDefault(); setRecordActionError(''); setRecordActionSaving(true);
     try {
@@ -428,6 +402,31 @@ function QuickActions({ kind, data, onDone }) {
     try {
       await submit(`/api/portal/subcontractor/submittals/${Number(submittalResubmission.id)}/resubmit`, { comments: submittalResubmission.comments.trim() });
       setShowResubmitSubmittal(false); setSubmittalResubmission({ id: '', comments: '' });
+    } catch (error) { setRecordActionError(t('portals.recordActions.submitError')); }
+    finally { setRecordActionSaving(false); }
+  };
+  const submitSubcontractorAction = async (event) => {
+    event.preventDefault(); setRecordActionError(''); setRecordActionSaving(true);
+    try {
+      const pkg = data.packages?.find((item) => Number(item.id) === Number(subcontractorActionValues.package_id));
+      if (subcontractorAction === 'package' && pkg) await submit(`/api/portal/subcontractor/contracts/${pkg.id}/acknowledge`, {});
+      else if (subcontractorAction === 'instruction') {
+        const instruction = data.instructions_for_acknowledgement?.items?.find((item) => Number(item.id) === Number(subcontractorActionValues.instruction_id));
+        if (!instruction) throw new Error('instruction');
+        await submit(`/api/portal/subcontractor/instructions/${instruction.id}/acknowledge`, { project_id: instruction.project_id, response: subcontractorActionValues.response.trim() || null });
+      } else if (subcontractorAction === 'quantity' && pkg?.boq_item_id) await submit('/api/portal/subcontractor/quantities', {
+        sub_contract_id: Number(pkg.id), boq_item_id: Number(pkg.boq_item_id), period_from: subcontractorActionValues.period_from,
+        period_to: subcontractorActionValues.period_to, quantity_claimed: Number(subcontractorActionValues.quantity_claimed), notes: subcontractorActionValues.notes,
+      });
+      else if (subcontractorAction === 'payment' && pkg) await submit('/api/portal/subcontractor/payment-applications', {
+        project_id: Number(pkg.project_id), sub_contract_id: Number(pkg.id), period_from: subcontractorActionValues.period_from,
+        period_to: subcontractorActionValues.period_to, work_value: Number(subcontractorActionValues.work_value),
+        retention: Number(subcontractorActionValues.retention), materials_deducted: Number(subcontractorActionValues.materials_deducted),
+        other_deductions: Number(subcontractorActionValues.other_deductions), notes: subcontractorActionValues.notes,
+      });
+      else throw new Error('selection');
+      setSubcontractorAction('');
+      setSubcontractorActionValues({ package_id: '', instruction_id: '', response: '', period_from: '', period_to: '', quantity_claimed: '', work_value: '', retention: '0', materials_deducted: '0', other_deductions: '0', notes: '' });
     } catch (error) { setRecordActionError(t('portals.recordActions.submitError')); }
     finally { setRecordActionSaving(false); }
   };
@@ -478,14 +477,16 @@ function QuickActions({ kind, data, onDone }) {
   const actions = kind === 'consultant'
     ? [[t('portals.observation.raise'), () => setShowObservationForm((open) => !open)], ['Advance observation', advanceObservation], ['Review RFI', reviewRfi], ['Review submittal', reviewSubmittal]]
     : kind === 'subcontractor'
-      ? [['Acknowledge package', acknowledgeContract], ['Acknowledge instruction', acknowledgeInstruction],
+      ? [[t('portals.recordActions.acknowledgePackage'), () => { setRecordActionError(''); setSubcontractorAction('package'); }], [t('portals.recordActions.acknowledgeInstruction'), () => { setRecordActionError(''); setSubcontractorAction('instruction'); }],
         [t('portals.formalSubmission.newRfi'), () => { setFormalSubmission('rfi'); setFormalSubmissionError(''); }], [t('portals.recordActions.acknowledgeRfi'), () => { setRecordActionError(''); setShowAcknowledgeRfi((open) => !open); }], [t('portals.formalSubmission.newSubmittal'), () => { setFormalSubmission('submittal'); setFormalSubmissionError(''); }],
-        [t('portals.recordActions.resubmitSubmittal'), () => { setRecordActionError(''); setShowResubmitSubmittal((open) => !open); }], ['Claim quantity', submitQuantity], ['Payment application', submitPaymentApplication],
+        [t('portals.recordActions.resubmitSubmittal'), () => { setRecordActionError(''); setShowResubmitSubmittal((open) => !open); }], [t('portals.recordActions.claimQuantity'), () => { setRecordActionError(''); setSubcontractorAction('quantity'); }], [t('portals.recordActions.paymentApplication'), () => { setRecordActionError(''); setSubcontractorAction('payment'); }],
         [t('portals.submissions.new'), () => setShowSubmissionForm(true)]]
       : kind === 'supplier'
         ? [['Submit quotation', quoteRfq], ['Send clarification', clarify], ['Acknowledge PO', acknowledgePo],
           ['Propose delivery', proposeDelivery], ['Upload delivery certificate', uploadCertificate], ['Submit invoice', submitInvoice]]
         : [];
+  const actionPackages = (data.packages || []).filter((pkg) => subcontractorAction === 'package'
+    ? !pkg.acknowledged_at : subcontractorAction === 'quantity' ? Number(pkg.boq_item_id) > 0 : true);
   if (!actions.length) return null;
   return <div className="portal-actions">{actions.map(([text, fn]) => <button className="btn btn-primary btn-sm" key={text} onClick={() => Promise.resolve(fn()).catch(e => window.alert(e.message))}><Send size={14} /> {text}</button>)}
     {showObservationForm && kind === 'consultant' && <form className="card portal-observation-form" onSubmit={createObservation}>
@@ -550,6 +551,29 @@ function QuickActions({ kind, data, onDone }) {
       </select></label>
       <label>{t('portals.recordActions.revisionComments')}<textarea required maxLength="5000" value={submittalResubmission.comments} onChange={(event) => setSubmittalResubmission({ ...submittalResubmission, comments: event.target.value })} /></label>
       <div className="form-actions"><button type="button" className="btn" disabled={recordActionSaving} onClick={() => setShowResubmitSubmittal(false)}>{t('common.cancel')}</button><button type="submit" className="btn btn-primary" disabled={recordActionSaving || !(data.submittals_for_resubmission?.items || []).length}>{recordActionSaving ? t('portals.submissions.saving') : t('portals.submissions.submit')}</button></div>
+    </form>}
+    {subcontractorAction && kind === 'subcontractor' && <form className="card portal-observation-form" onSubmit={submitSubcontractorAction}>
+      <h2>{t(`portals.recordActions.${{ package: 'acknowledgePackage', instruction: 'acknowledgeInstruction', quantity: 'claimQuantity', payment: 'paymentApplication' }[subcontractorAction]}`)}</h2>
+      {recordActionError && <p className="alert alert-danger" role="alert">{recordActionError}</p>}
+      {subcontractorAction === 'quantity' && !actionPackages.length && <p className="alert alert-info" role="status">{t('portals.recordActions.noBoqPackage')}</p>}
+      {subcontractorAction === 'instruction' ? <label>{t('portals.recordActions.instruction')}<select required value={subcontractorActionValues.instruction_id} onChange={(event) => setSubcontractorActionValues({ ...subcontractorActionValues, instruction_id: event.target.value })}>
+        <option value="">{t('portals.submissions.selectRecord')}</option>{(data.instructions_for_acknowledgement?.items || []).map((item) => <option key={item.id} value={item.id}>{item.instruction_number || `#${item.id}`} — {item.title}</option>)}
+      </select></label> : <label>{t('portals.submissions.package')}<select required value={subcontractorActionValues.package_id} onChange={(event) => setSubcontractorActionValues({ ...subcontractorActionValues, package_id: event.target.value })}>
+        <option value="">{t('portals.submissions.selectRecord')}</option>{actionPackages.map((pkg) => <option key={pkg.id} value={pkg.id}>{pkg.contract_number || t('portals.submissions.packageOption', { id: pkg.id })}</option>)}
+      </select></label>}
+      {subcontractorAction === 'instruction' && <label>{t('portals.recordActions.response')}<textarea maxLength="2000" value={subcontractorActionValues.response} onChange={(event) => setSubcontractorActionValues({ ...subcontractorActionValues, response: event.target.value })} /></label>}
+      {['quantity', 'payment'].includes(subcontractorAction) && <>
+        <label>{t('portals.recordActions.periodFrom')}<input type="date" required value={subcontractorActionValues.period_from} onChange={(event) => setSubcontractorActionValues({ ...subcontractorActionValues, period_from: event.target.value })} /></label>
+        <label>{t('portals.recordActions.periodTo')}<input type="date" required value={subcontractorActionValues.period_to} onChange={(event) => setSubcontractorActionValues({ ...subcontractorActionValues, period_to: event.target.value })} /></label>
+        {subcontractorAction === 'quantity' ? <label>{t('portals.recordActions.quantityClaimed')}<input name="quantity_claimed" type="number" min="0.001" step="0.001" required value={subcontractorActionValues.quantity_claimed} onChange={(event) => setSubcontractorActionValues({ ...subcontractorActionValues, quantity_claimed: event.target.value })} /></label> : <>
+          <label>{t('portals.recordActions.workValue')}<input name="work_value" type="number" min="0" step="0.01" required value={subcontractorActionValues.work_value} onChange={(event) => setSubcontractorActionValues({ ...subcontractorActionValues, work_value: event.target.value })} /></label>
+          <label>{t('portals.recordActions.retention')}<input name="retention" type="number" min="0" step="0.01" value={subcontractorActionValues.retention} onChange={(event) => setSubcontractorActionValues({ ...subcontractorActionValues, retention: event.target.value })} /></label>
+          <label>{t('portals.recordActions.materialsDeducted')}<input name="materials_deducted" type="number" min="0" step="0.01" value={subcontractorActionValues.materials_deducted} onChange={(event) => setSubcontractorActionValues({ ...subcontractorActionValues, materials_deducted: event.target.value })} /></label>
+          <label>{t('portals.recordActions.otherDeductions')}<input name="other_deductions" type="number" min="0" step="0.01" value={subcontractorActionValues.other_deductions} onChange={(event) => setSubcontractorActionValues({ ...subcontractorActionValues, other_deductions: event.target.value })} /></label>
+        </>}
+        <label>{t('portals.recordActions.notes')}<textarea maxLength="4000" value={subcontractorActionValues.notes} onChange={(event) => setSubcontractorActionValues({ ...subcontractorActionValues, notes: event.target.value })} /></label>
+      </>}
+      <div className="form-actions"><button type="button" className="btn" disabled={recordActionSaving} onClick={() => setSubcontractorAction('')}>{t('common.cancel')}</button><button type="submit" className="btn btn-primary" disabled={recordActionSaving || (subcontractorAction === 'instruction' ? !(data.instructions_for_acknowledgement?.items || []).length : !actionPackages.length)}>{recordActionSaving ? t('portals.submissions.saving') : t('portals.submissions.submit')}</button></div>
     </form>}
   </div>;
 }

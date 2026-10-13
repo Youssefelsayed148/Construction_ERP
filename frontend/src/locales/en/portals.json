@@ -71,8 +71,14 @@
   },
   "recordActions": {
     "acknowledgeRfi": "Acknowledge RFI response", "resubmitSubmittal": "Resubmit returned submittal",
-    "rfi": "RFI", "submittal": "Submittal", "response": "Response",
+    "acknowledgePackage": "Acknowledge package", "acknowledgeInstruction": "Acknowledge instruction",
+    "claimQuantity": "Submit progress quantity", "paymentApplication": "Payment application",
+    "rfi": "RFI", "submittal": "Submittal", "instruction": "Engineer instruction", "response": "Response",
     "revisionComments": "What changed in this revision?",
+    "periodFrom": "Period start", "periodTo": "Period end", "quantityClaimed": "Quantity claimed",
+    "workValue": "Work value this period", "retention": "Retention", "materialsDeducted": "Materials deducted",
+    "otherDeductions": "Other deductions", "notes": "Notes",
+    "noBoqPackage": "No assigned package has a BOQ item available for quantity claims.",
     "submitError": "The action could not be completed. Refresh and try again."
   },
   "compliance": {

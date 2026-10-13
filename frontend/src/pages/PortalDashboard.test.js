@@ -254,6 +254,59 @@ describe('consultant portal observation form', () => {
     expect(JSON.parse(post[1].body)).toEqual({ comments: 'Updated membrane thickness and method steps.' });
   });
 
+  test('package acknowledgements, instructions, quantities and payment applications use dashboard choices and validated fields', async () => {
+    global.fetch = jest.fn(async (url, options = {}) => options.method === 'POST'
+      ? { ok: true, json: async () => ({ success: true, data: { id: 74 } }) }
+      : { ok: true, json: async () => ({ success: true, data: {
+        project_ids: [8], packages: [{ id: 31, project_id: 8, contract_number: 'SC-31', boq_item_id: 901, acknowledged_at: null }],
+        instructions_for_acknowledgement: { items: [{ id: 70, project_id: 8, instruction_number: 'EI-70', title: 'Protect slab edge' }] },
+      } }) });
+    await act(async () => { root.render(<PortalDashboard kind="subcontractor" />); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+
+    const openPackage = [...container.querySelectorAll('button')].find((button) => button.textContent.includes('portals.recordActions.acknowledgePackage'));
+    await act(async () => { openPackage.click(); });
+    let form = [...container.querySelectorAll('form')].find((node) => node.textContent.includes('portals.recordActions.acknowledgePackage'));
+    await fill('form select', '31');
+    await act(async () => { form.querySelector('button[type="submit"]').click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(global.fetch.mock.calls.some(([url, options]) => options.method === 'POST' && String(url).includes('/contracts/31/acknowledge'))).toBe(true);
+
+    const openInstruction = [...container.querySelectorAll('button')].find((button) => button.textContent.includes('portals.recordActions.acknowledgeInstruction'));
+    await act(async () => { openInstruction.click(); });
+    form = [...container.querySelectorAll('form')].find((node) => node.textContent.includes('portals.recordActions.acknowledgeInstruction'));
+    await fill('form select', '70'); await fill('form textarea', 'Received and understood.');
+    await act(async () => { form.querySelector('button[type="submit"]').click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    let post = global.fetch.mock.calls.find(([url, options]) => options.method === 'POST' && String(url).includes('/instructions/70/acknowledge'));
+    expect(JSON.parse(post[1].body)).toEqual({ project_id: 8, response: 'Received and understood.' });
+
+    const openQuantity = [...container.querySelectorAll('button')].find((button) => button.textContent.includes('portals.recordActions.claimQuantity'));
+    await act(async () => { openQuantity.click(); });
+    form = [...container.querySelectorAll('form')].find((node) => node.textContent.includes('portals.recordActions.claimQuantity'));
+    await fill('form select', '31'); await fill('form input[type="date"]', '2026-10-01');
+    const dates = form.querySelectorAll('input[type="date"]');
+    await act(async () => { dates[1].value = '2026-10-15'; dates[1].dispatchEvent(new Event('input', { bubbles: true })); dates[1].dispatchEvent(new Event('change', { bubbles: true })); });
+    await fill('form input[type="number"]', '12.5'); await fill('form textarea', 'Installed on level two.');
+    await act(async () => { form.querySelector('button[type="submit"]').click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    post = global.fetch.mock.calls.find(([url, options]) => options.method === 'POST' && String(url).endsWith('/quantities'));
+    expect(JSON.parse(post[1].body)).toMatchObject({ sub_contract_id: 31, boq_item_id: 901, quantity_claimed: 12.5, notes: 'Installed on level two.' });
+
+    const openPayment = [...container.querySelectorAll('button')].find((button) => button.textContent.includes('portals.recordActions.paymentApplication'));
+    await act(async () => { openPayment.click(); });
+    form = [...container.querySelectorAll('form')].find((node) => node.textContent.includes('portals.recordActions.paymentApplication'));
+    await fill('form select', '31'); await fill('form input[type="date"]', '2026-10-01');
+    const paymentDates = form.querySelectorAll('input[type="date"]');
+    await act(async () => { paymentDates[1].value = '2026-10-15'; paymentDates[1].dispatchEvent(new Event('input', { bubbles: true })); paymentDates[1].dispatchEvent(new Event('change', { bubbles: true })); });
+    await fill('form input[type="number"]', '5000');
+    await fill('form input[name="retention"]', '250');
+    await act(async () => { form.querySelector('button[type="submit"]').click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    post = global.fetch.mock.calls.find(([url, options]) => options.method === 'POST' && String(url).endsWith('/payment-applications'));
+    expect(JSON.parse(post[1].body)).toMatchObject({ project_id: 8, sub_contract_id: 31, work_value: 5000, retention: 250 });
+  });
+
   test('supplier compliance panel labels expired and near-expiry documents', async () => {
     global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ success: true, data: {
       project_ids: [8], inspections: { count: 1, items: [{ id: 8, project_id: 8, mir_number: 'MIR-0008', status: 'accepted' }] },

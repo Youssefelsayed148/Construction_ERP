@@ -1247,3 +1247,9 @@ Focused verification: `PortalDashboard.test.js` passed 7/7, including assigned-p
 RFI acknowledgements now use a record selector populated by the user's package-scoped RFI list. Returned submittals have a separate dashboard list restricted to `resubmit_required` records on the user's packages; the portal resubmission form selects from that list and captures revision comments. Both forms provide localized labels and error handling.
 
 Focused verification: `portal.test.js` passed 16/16, including returned-submittal package isolation; `PortalDashboard.test.js` passed 8/8, including acknowledgement and resubmission payloads; `i18n:check` passed. No full suite was run.
+
+## 2026-10-13: Phase 5.6.5.e remaining subcontractor action forms
+
+Replaced subcontractor package and instruction acknowledgement, quantity claim, and payment application prompts. Instruction choices include only issued instructions assigned to the user's package or the user; quantity forms draw the BOQ item from the chosen awarded package; payment forms derive project/package scope from that same package. Empty BOQ availability is explained in the form.
+
+Focused verification: `portal.test.js` passed 17/17, including assigned instruction filtering; `PortalDashboard.test.js` passed 9/9 covering package/instruction acknowledgements and quantity/payment payloads; `i18n:check` and `git diff --check` passed. No full suite was run.
