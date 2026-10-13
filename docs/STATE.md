@@ -47,3 +47,5 @@ The required `docker info --format '{{.ServerVersion}}'` check failed: `error du
 ## 2026-10-14 continuation — Docker access restored; Phase 7 idempotency verified
 
 The normal shell remains denied access to the Docker Desktop pipe; elevated Docker CLI access returned Engine `28.3.2`. Used fresh loopback-only, volume-free PostgreSQL 16 container `erp-closeout-pg16-20261014` and only database `construction_erp_test`. All 122 migrations applied. Daily-report idempotency covers internal, v1 and MCP; full backend mock (53/1,001), real PostgreSQL (67/607), frontend (28/111), i18n, build and guard gates passed. The slice is not yet committed. Continue with the Phase 7 offline queue; Phases 8–11 remain open.
+
+Commit recorded: `2f31c01` (`Phase 7.2: require idempotent daily reports`). The user audit report remains untracked and untouched.

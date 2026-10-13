@@ -1429,3 +1429,5 @@ Daily-report POSTs require an `Idempotency-Key` across the internal API, v1 remo
 Gate output: backend mock 53 suites / 1,001 tests; real PostgreSQL 67 suites / 607 tests; frontend 28 suites / 111 tests; `i18n:check ok`; production build `Compiled successfully`; `lint-guards: ok`; focused `node --check` and `git diff --check` exited 0. The focused report suite passed 11/11, including replay/no-duplicate rows and missing-key behavior. No production/pilot database or external service was used.
 
 The Phase 7.2 code slice is ready for explicit-path commit. PWA offline browser journey, Lighthouse, IndexedDB mutation queue, responsive/table/touch work, and local Arabic font package remain unverified/open.
+
+Commit: `2f31c01` — `Phase 7.2: require idempotent daily reports` (explicit-path commit on `closeout/batch-a-to-6`). The only untracked file is the pre-existing user artifact `docs/CODEX_AUDIT_REPORT.md`, not staged or modified.
