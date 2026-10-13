@@ -336,4 +336,15 @@ git diff --check
 clean
 ```
 
-Next: finish C3 review and commit, then C4 browser journeys.
+Batch C3 commit: `df7047c` (`Batch C3: filter navigation by policy grants`).
+
+## 2026-10-13: Batch C4 procurement browser journey (implementation in progress)
+
+Added a focused Playwright journey that opens project operations, creates a project-scoped purchase request with a line, submits it, and verifies its submitted status and that the draft submit action disappears. The API is mocked in this browser test; backend scoping is covered by the C2 local API assertions.
+
+```text
+npm run test:e2e -- --project=desktop-chromium e2e/procurement-workspace.spec.js
+1 passed (4.2s)
+```
+
+The first invocation was blocked before test startup by `spawn EPERM`; the local process-permission retry ran only this one test and passed. Initial locator assertions were tightened based on the rendered table/action state.

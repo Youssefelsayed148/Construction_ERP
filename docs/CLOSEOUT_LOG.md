@@ -1107,3 +1107,7 @@ Added the project procurement workspace and the project-scoped supplier invoice 
 ## 2026-10-13: Batch C3 effective-permission navigation (implementation in progress)
 
 Login now returns unique effective module/action pairs. Sidebar visibility follows those grants, including the supplier-value requirement for quotation comparison, exact policy module keys for inventory and external portals, and fail-closed behavior for explicit empty grants. The focused shell test passed 1 suite / 16 tests; `node --check src/routes/auth.js` and `git diff --check` passed. No broad suite was run for this slice.
+
+## 2026-10-13: Batch C4 procurement browser journey (implementation in progress)
+
+Added a desktop Playwright journey for project-scoped purchase request creation and submission. The test asserts the payload sent to the API mock and the submitted state rendered in the workspace. The focused command passed 1 test. The default sandbox process launch returned `spawn EPERM`; an elevated local retry of the same single test passed. Since the test mocks the API, this verifies frontend interaction only; the C2 API smoke assertions cover the backend project scoping checks.

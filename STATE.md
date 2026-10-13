@@ -29,14 +29,15 @@ Updated: 2026-10-13 (Africa/Cairo)
 - Batch B final gates passed: backend mock 50 suites / 960 tests; real PostgreSQL 56 suites / 566 tests; frontend 17 suites / 97 tests; i18n and production build passed; Playwright 32 passed / 46 skipped; Compose services healthy.
 - Batch C1 shared UI kit: reusable validation/server-error mapping, accessible fields, localized bounded file uploads, toast provider/hook, permission-aware action wrapper, and existing dialogs/states. Focused frontend gate: 20 suites / 103 tests; `i18n:check ok`.
 - Batch C2 committed: `3893bc6` (`Batch C2: add project procurement workspace`). Its focused UI test (1/1), localization check, production build, backend syntax checks, and whitespace check passed. One local API smoke run passed the procurement journey and scoped invoice-list checks, then hit `spawnSync node.exe EPERM` at the reconcile child-process step; it is not recorded as a clean full smoke. A Docker image build incidentally ran the backend mock suite (50 suites / 960 tests passed; 56 PostgreSQL suites skipped). Per the user's test-cadence instruction, use tests tied to the active ticket and defer broad suites to batch exits.
-- Batch C3 effective-permission navigation is implemented and under final review. Its focused shell test passes 16/16 tests; auth route syntax and whitespace checks pass.
+- Batch C3 committed: `df7047c` (`Batch C3: filter navigation by policy grants`). Its focused shell test passed 16/16 tests; auth route syntax and whitespace checks passed.
+- Batch C4 focused procurement browser journey passes on desktop (1 test); it exercises request creation/submission with a mocked API.
 - Batches C–E and Phases 5.6–6 remain open. Finance signoff still requires the owner to confirm provisional chart-of-accounts mappings.
 
 ## Where work stopped
 
-C1 and C2 are complete. C3 effective-permission navigation is in final review. Next: commit C3, then C4 browser journeys, followed by D, E, and the committed plan/implementation for Phases 5.6–6.
+C1–C3 are complete. C4 procurement browser journey is implemented; continue C4 journeys, then D, E, and the committed plan/implementation for Phases 5.6–6.
 
-Batch A and Batch B1–B6 are green. C1 and C2 are committed; C3 is in final review. Continue with C4 browser journeys, then D, E, and the committed plan/implementation for Phases 5.6–6. Keep all targets local, do not read any `.env` file, and never use production-looking databases or external services. A second ignored file `backend/.env.docker` was accidentally created with only `CORS_ALLOW_HTTP_LOCAL=true`; an attempt to remove it was rejected by auto-review, so it remains unused and untouched.
+Batch A and Batch B1–B6 are green. C1–C3 are committed; C4 browser journeys are in progress. Continue with D, E, and the committed plan/implementation for Phases 5.6–6 after C4. Keep all targets local, do not read any `.env` file, and never use production-looking databases or external services. A second ignored file `backend/.env.docker` was accidentally created with only `CORS_ALLOW_HTTP_LOCAL=true`; an attempt to remove it was rejected by auto-review, so it remains unused and untouched.
 
 ## Current gates
 
