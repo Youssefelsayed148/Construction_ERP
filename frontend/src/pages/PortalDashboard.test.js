@@ -173,6 +173,56 @@ describe('consultant portal observation form', () => {
     } });
   });
 
+  test('subcontractor RFI form derives project and package from the assigned package list', async () => {
+    global.fetch = jest.fn(async (url, options = {}) => options.method === 'POST'
+      ? { ok: true, json: async () => ({ success: true, data: { id: 71 } }) }
+      : { ok: true, json: async () => ({ success: true, data: { project_ids: [8], packages: [
+        { id: 31, project_id: 8, contract_number: 'SC-31' }, { id: 32, project_id: 9, contract_number: 'SC-32' },
+      ] } }) });
+    await act(async () => { root.render(<PortalDashboard kind="subcontractor" />); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const open = [...container.querySelectorAll('button')].find((button) => button.textContent.includes('portals.formalSubmission.newRfi'));
+    await act(async () => { open.click(); });
+    const form = [...container.querySelectorAll('form')].find((node) => node.textContent.includes('portals.formalSubmission.rfiTitle'));
+    await fill('form select', '32');
+    await fill('form input[maxlength="255"]', 'Clarify beam detail');
+    await fill('form textarea', 'Confirm the reinforcement detail at grid D4.');
+    const formSelects = form.querySelectorAll('select');
+    await act(async () => { formSelects[1].value = 'high'; formSelects[1].dispatchEvent(new Event('change', { bubbles: true })); });
+    await fill('form input[type="date"]', '2026-10-22');
+    await act(async () => { form.querySelector('button[type="submit"]').click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const [, options] = global.fetch.mock.calls.find(([, request]) => request.method === 'POST');
+    expect(JSON.parse(options.body)).toEqual({
+      project_id: 9, sub_contract_id: 32, subject: 'Clarify beam detail',
+      question: 'Confirm the reinforcement detail at grid D4.', priority: 'high', due_date: '2026-10-22',
+    });
+  });
+
+  test('subcontractor submittal form supports the formal type and recipient fields', async () => {
+    global.fetch = jest.fn(async (url, options = {}) => options.method === 'POST'
+      ? { ok: true, json: async () => ({ success: true, data: { id: 72 } }) }
+      : { ok: true, json: async () => ({ success: true, data: { project_ids: [8], packages: [
+        { id: 31, project_id: 8, contract_number: 'SC-31' },
+      ] } }) });
+    await act(async () => { root.render(<PortalDashboard kind="subcontractor" />); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const open = [...container.querySelectorAll('button')].find((button) => button.textContent.includes('portals.formalSubmission.newSubmittal'));
+    await act(async () => { open.click(); });
+    const form = [...container.querySelectorAll('form')].find((node) => node.textContent.includes('portals.formalSubmission.submittalTitle'));
+    await fill('form input[name="title"]', 'Pump room shop drawing');
+    await fill('form input[name="submitted_to"]', 'Consultant');
+    const select = form.querySelectorAll('select')[1];
+    await act(async () => { select.value = 'shop_drawing'; select.dispatchEvent(new Event('change', { bubbles: true })); });
+    await act(async () => { form.querySelector('button[type="submit"]').click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const [, options] = global.fetch.mock.calls.find(([, request]) => request.method === 'POST');
+    expect(JSON.parse(options.body)).toEqual({
+      project_id: 8, sub_contract_id: 31, title: 'Pump room shop drawing',
+      submittal_type: 'shop_drawing', submitted_to: 'Consultant',
+    });
+  });
+
   test('supplier compliance panel labels expired and near-expiry documents', async () => {
     global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ success: true, data: {
       project_ids: [8], inspections: { count: 1, items: [{ id: 8, project_id: 8, mir_number: 'MIR-0008', status: 'accepted' }] },

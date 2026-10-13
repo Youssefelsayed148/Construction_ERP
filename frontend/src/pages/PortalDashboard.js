@@ -284,6 +284,10 @@ function QuickActions({ kind, data, onDone }) {
   const { t } = useLocale();
   const [showObservationForm, setShowObservationForm] = useState(false);
   const [showSubmissionForm, setShowSubmissionForm] = useState(false);
+  const [formalSubmission, setFormalSubmission] = useState('');
+  const [formalSubmissionError, setFormalSubmissionError] = useState('');
+  const [savingFormalSubmission, setSavingFormalSubmission] = useState(false);
+  const [formalSubmissionValues, setFormalSubmissionValues] = useState({ package_id: data.packages?.[0]?.id || '', title: '', question: '', priority: 'normal', due_date: '', submittal_type: 'material', submitted_to: '' });
   const [observation, setObservation] = useState({ project_id: data.project_ids?.[0] || '', title: '', description: '', due_date: '', drawing_reference: '', drawing_document_id: '', severity: 'normal' });
   const [beforePhotos, setBeforePhotos] = useState([]);
   const [afterPhotos, setAfterPhotos] = useState([]);
@@ -292,6 +296,26 @@ function QuickActions({ kind, data, onDone }) {
   const submit = async (path, body) => {
     await request(path, { method: 'POST', body: JSON.stringify(body) });
     onDone();
+  };
+  const createFormalSubmission = async (event) => {
+    event.preventDefault(); setFormalSubmissionError(''); setSavingFormalSubmission(true);
+    try {
+      const pkg = data.packages?.find((item) => Number(item.id) === Number(formalSubmissionValues.package_id));
+      if (!pkg) throw new Error('package');
+      const body = { project_id: Number(pkg.project_id), sub_contract_id: Number(pkg.id) };
+      if (formalSubmission === 'rfi') Object.assign(body, {
+        subject: formalSubmissionValues.title.trim(), question: formalSubmissionValues.question.trim(),
+        priority: formalSubmissionValues.priority, due_date: formalSubmissionValues.due_date || null,
+      });
+      else Object.assign(body, {
+        title: formalSubmissionValues.title.trim(), submittal_type: formalSubmissionValues.submittal_type,
+        submitted_to: formalSubmissionValues.submitted_to.trim() || null,
+      });
+      await submit(`/api/portal/subcontractor/${formalSubmission === 'rfi' ? 'rfis' : 'submittals'}`, body);
+      setFormalSubmission('');
+      setFormalSubmissionValues({ package_id: data.packages?.[0]?.id || '', title: '', question: '', priority: 'normal', due_date: '', submittal_type: 'material', submitted_to: '' });
+    } catch (error) { setFormalSubmissionError(t('portals.formalSubmission.submitError')); }
+    finally { setSavingFormalSubmission(false); }
   };
   const pickPackage = () => {
     const id = Number(window.prompt('Awarded package ID', data.packages?.[0]?.id || ''));
@@ -333,19 +357,6 @@ function QuickActions({ kind, data, onDone }) {
     finally { setSavingObservation(false); }
   };
   const drawings = (data.latest_drawings?.items || []).filter((drawing) => Number(drawing.project_id) === Number(observation.project_id));
-  const createRfi = async () => {
-    const sub_contract_id = Number(window.prompt('Package ID', data.packages?.[0]?.id || ''));
-    const project_id = Number(data.packages?.find(p => p.id === sub_contract_id)?.project_id);
-    const subject = window.prompt('RFI subject');
-    const question = window.prompt('Question');
-    if (project_id && sub_contract_id && subject && question != null) await submit('/api/portal/subcontractor/rfis', { project_id, sub_contract_id, subject, question });
-  };
-  const createSubmittal = async () => {
-    const sub_contract_id = Number(window.prompt('Package ID', data.packages?.[0]?.id || ''));
-    const project_id = Number(data.packages?.find(p => p.id === sub_contract_id)?.project_id);
-    const title = window.prompt('Submittal title');
-    if (project_id && sub_contract_id && title) await submit('/api/portal/subcontractor/submittals', { project_id, sub_contract_id, title });
-  };
   const clarify = async () => {
     const id = Number(window.prompt('RFQ ID', data.open_rfqs?.items?.[0]?.id || ''));
     const message = window.prompt('Clarification question');
@@ -455,7 +466,7 @@ function QuickActions({ kind, data, onDone }) {
     ? [[t('portals.observation.raise'), () => setShowObservationForm((open) => !open)], ['Advance observation', advanceObservation], ['Review RFI', reviewRfi], ['Review submittal', reviewSubmittal]]
     : kind === 'subcontractor'
       ? [['Acknowledge package', acknowledgeContract], ['Acknowledge instruction', acknowledgeInstruction],
-        ['Submit RFI', createRfi], ['Acknowledge RFI', acknowledgeRfi], ['Submit submittal', createSubmittal],
+        [t('portals.formalSubmission.newRfi'), () => { setFormalSubmission('rfi'); setFormalSubmissionError(''); }], ['Acknowledge RFI', acknowledgeRfi], [t('portals.formalSubmission.newSubmittal'), () => { setFormalSubmission('submittal'); setFormalSubmissionError(''); }],
         ['Resubmit submittal', resubmitSubmittal], ['Claim quantity', submitQuantity], ['Payment application', submitPaymentApplication],
         [t('portals.submissions.new'), () => setShowSubmissionForm(true)]]
       : kind === 'supplier'
@@ -486,6 +497,27 @@ function QuickActions({ kind, data, onDone }) {
       <div className="form-actions"><button type="button" className="btn" onClick={() => setShowObservationForm(false)} disabled={savingObservation}>{t('common.cancel')}</button><button type="submit" className="btn btn-primary" disabled={savingObservation}>{t('portals.observation.submit')}</button></div>
     </form>}
     {showSubmissionForm && kind === 'subcontractor' && <SubcontractorSubmissionForm data={data} onCancel={() => setShowSubmissionForm(false)} onDone={() => { setShowSubmissionForm(false); onDone(); }} />}
+    {formalSubmission && kind === 'subcontractor' && <form className="card portal-observation-form" onSubmit={createFormalSubmission}>
+      <h2>{t(formalSubmission === 'rfi' ? 'portals.formalSubmission.rfiTitle' : 'portals.formalSubmission.submittalTitle')}</h2>
+      {formalSubmissionError && <p className="alert alert-danger" role="alert">{formalSubmissionError}</p>}
+      <label>{t('portals.submissions.package')}<select required value={formalSubmissionValues.package_id} onChange={(event) => setFormalSubmissionValues({ ...formalSubmissionValues, package_id: event.target.value })}>
+        {(data.packages || []).map((pkg) => <option key={pkg.id} value={pkg.id}>{pkg.contract_number || t('portals.submissions.packageOption', { id: pkg.id })}</option>)}
+      </select></label>
+      <label>{t(formalSubmission === 'rfi' ? 'portals.formalSubmission.subject' : 'portals.formalSubmission.title')}<input name="title" required maxLength="255" value={formalSubmissionValues.title} onChange={(event) => setFormalSubmissionValues({ ...formalSubmissionValues, title: event.target.value })} /></label>
+      {formalSubmission === 'rfi' ? <>
+        <label>{t('portals.formalSubmission.question')}<textarea required maxLength="5000" value={formalSubmissionValues.question} onChange={(event) => setFormalSubmissionValues({ ...formalSubmissionValues, question: event.target.value })} /></label>
+        <label>{t('portals.formalSubmission.priority')}<select value={formalSubmissionValues.priority} onChange={(event) => setFormalSubmissionValues({ ...formalSubmissionValues, priority: event.target.value })}>
+          {['low', 'normal', 'high', 'urgent'].map((value) => <option key={value} value={value}>{t(`portals.formalSubmission.priorities.${value}`)}</option>)}
+        </select></label>
+        <label>{t('portals.formalSubmission.dueDate')}<input type="date" value={formalSubmissionValues.due_date} onChange={(event) => setFormalSubmissionValues({ ...formalSubmissionValues, due_date: event.target.value })} /></label>
+      </> : <>
+        <label>{t('portals.formalSubmission.submittalType')}<select value={formalSubmissionValues.submittal_type} onChange={(event) => setFormalSubmissionValues({ ...formalSubmissionValues, submittal_type: event.target.value })}>
+          {['material', 'shop_drawing', 'sample', 'method'].map((value) => <option key={value} value={value}>{t(`portals.formalSubmission.types.${value}`)}</option>)}
+        </select></label>
+        <label>{t('portals.formalSubmission.submittedTo')}<input name="submitted_to" maxLength="255" value={formalSubmissionValues.submitted_to} onChange={(event) => setFormalSubmissionValues({ ...formalSubmissionValues, submitted_to: event.target.value })} /></label>
+      </>}
+      <div className="form-actions"><button type="button" className="btn" disabled={savingFormalSubmission} onClick={() => setFormalSubmission('')}>{t('common.cancel')}</button><button type="submit" className="btn btn-primary" disabled={savingFormalSubmission || !(data.packages || []).length}>{savingFormalSubmission ? t('portals.submissions.saving') : t('portals.submissions.submit')}</button></div>
+    </form>}
   </div>;
 }
 

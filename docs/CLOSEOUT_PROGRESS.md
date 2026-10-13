@@ -453,3 +453,9 @@ Focused results: `subcontractor-submissions.pg.test.js` passed 2/2; `portal.test
 The subcontractor dashboard now returns formal WIR number, status, result, and inspection date scoped to active package projects and the assigned subcontractor organizations. The supplier dashboard exposes MIR number, status, project, and decision date only through that supplier's delivered purchase orders. Both registers render in the portal with EN/AR labels and localized lifecycle states. No migration was needed.
 
 Focused results: `portal.test.js` passed 15/15; `subcontractor-submissions.pg.test.js` passed 3/3, including the real-PostgreSQL WIR scope check; `PortalDashboard.test.js` passed 5/5; and `i18n:check` passed. No full suite was run.
+
+### 5.6.5.c Subcontractor RFI and submittal forms
+
+Replaced the RFI and submittal creation prompts with EN/AR forms. Each form selects an awarded package from the caller's dashboard and derives its project ID from that package; RFI fields include question, priority and optional response date, while submittal fields include type and recipient. Errors render in the form and duplicate record IDs are not entered by hand.
+
+Focused results: `PortalDashboard.test.js` passed 7/7, including scoped RFI payload and submittal type/recipient coverage; `i18n:check` passed. No backend or whole-suite tests were needed for this frontend-only change.

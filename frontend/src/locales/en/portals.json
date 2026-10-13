@@ -59,6 +59,16 @@
     },
     "status": { "submitted": "Submitted", "under_review": "Under review", "accepted": "Accepted", "rejected": "Returned", "closed": "Closed" }
   },
+  "formalSubmission": {
+    "newRfi": "Submit RFI", "newSubmittal": "Submit submittal",
+    "rfiTitle": "New request for information", "submittalTitle": "New submittal",
+    "subject": "Subject", "question": "Question", "title": "Submittal title",
+    "priority": "Priority", "dueDate": "Requested response date",
+    "submittalType": "Submittal type", "submittedTo": "Submitted to",
+    "priorities": { "low": "Low", "normal": "Normal", "high": "High", "urgent": "Urgent" },
+    "types": { "material": "Material", "shop_drawing": "Shop drawing", "sample": "Sample", "method": "Method statement" },
+    "submitError": "The request could not be submitted. Check the form and try again."
+  },
   "compliance": {
     "title": "Supplier compliance alerts",
     "empty": "No compliance documents need attention.",

@@ -59,6 +59,16 @@
     },
     "status": { "submitted": "تم الإرسال", "under_review": "قيد المراجعة", "accepted": "مقبول", "rejected": "مُعاد للتعديل", "closed": "مغلق" }
   },
+  "formalSubmission": {
+    "newRfi": "تقديم طلب معلومات RFI", "newSubmittal": "تقديم مستند",
+    "rfiTitle": "طلب معلومات جديد", "submittalTitle": "مستند جديد",
+    "subject": "الموضوع", "question": "السؤال", "title": "عنوان المستند",
+    "priority": "الأولوية", "dueDate": "تاريخ الرد المطلوب",
+    "submittalType": "نوع المستند", "submittedTo": "مقدم إلى",
+    "priorities": { "low": "منخفضة", "normal": "عادية", "high": "مرتفعة", "urgent": "عاجلة" },
+    "types": { "material": "مادة", "shop_drawing": "مخطط تنفيذي", "sample": "عينة", "method": "بيان طريقة التنفيذ" },
+    "submitError": "تعذر إرسال الطلب. راجع الحقول وحاول مجدداً."
+  },
   "compliance": {
     "title": "تنبيهات امتثال المورد",
     "empty": "لا توجد مستندات امتثال تحتاج إلى إجراء.",

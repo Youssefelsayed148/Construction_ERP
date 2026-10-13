@@ -1235,3 +1235,9 @@ Focused verification: migration 0052 applied to the disposable PostgreSQL DB; af
 The subcontractor dashboard now lists formal WIR records for active packages belonging to the caller's assigned organization, with WIR number, status, result, and inspection date. The supplier dashboard includes MIR number, status, project, and decision date, scoped to deliveries from that supplier's purchase orders. The portal renders both lists with paired EN/AR labels and localized statuses. No schema or permission migration was required.
 
 Focused verification: `portal.test.js` passed 15/15, including organization isolation; `subcontractor-submissions.pg.test.js` passed 3/3, including real-PostgreSQL organization and active-project WIR isolation; `PortalDashboard.test.js` passed 5/5; `i18n:check` passed. No full suite was run.
+
+## 2026-10-13: Phase 5.6.5.c subcontractor RFI and submittal forms
+
+Replaced the subcontractor RFI and submittal prompt submissions with bilingual forms. Package selection uses the assigned package list and derives the project/package IDs for the request. The RFI form captures subject, question, priority and optional due date; the submittal form captures title, type and recipient. Submission failures appear in the form.
+
+Focused verification: `PortalDashboard.test.js` passed 7/7, including assigned-package-derived RFI payload and submittal type/recipient payload; `i18n:check` passed. No backend or whole-suite tests were needed for this frontend-only change.
