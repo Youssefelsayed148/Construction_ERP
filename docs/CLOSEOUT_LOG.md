@@ -782,4 +782,25 @@ npm run lint:guards
 lint-guards: ok
 ```
 
-Real PostgreSQL rollback remains unverified because Docker Desktop is inaccessible. This agent-approval slice is not committed yet.
+Real PostgreSQL rollback remains unverified because Docker Desktop is inaccessible. This agent-approval slice is committed as `4f208c5`.
+
+## 2026-10-13: A4 authentication login audit continuation (local, pending commit)
+
+Successful login now clears the lockout counter, upgrades a legacy password hash if needed, and writes the login activity row inside one transaction.
+
+Verification command output:
+
+```text
+node --check src/routes/auth.js; git diff --check
+exit code: 0
+
+npm test -- --runInBand
+Test Suites: 48 passed, 48 total
+Tests:       969 passed, 969 total
+Ran all test suites.
+
+npm run lint:guards
+lint-guards: ok
+```
+
+Real PostgreSQL rollback remains unverified because Docker Desktop is inaccessible. This auth-login slice is not committed yet.

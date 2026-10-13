@@ -98,18 +98,19 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Invalid email or password' });
     }
 
-    await authLockout.clearAttempt(query, emailKey);
-    if (bcrypt.getRounds(user.password) < BCRYPT_COST) {
-      const upgradedHash = await bcrypt.hash(value.password, BCRYPT_COST);
-      await query('UPDATE users SET password = $1, updated_at = NOW() WHERE id = $2', [upgradedHash, user.id]);
-    }
-
+    const upgradedHash = bcrypt.getRounds(user.password) < BCRYPT_COST
+      ? await bcrypt.hash(value.password, BCRYPT_COST)
+      : null;
     const token = tokens.signSession({ userId: user.id, tokenVersion: user.token_version });
-
-    await logActivity({
-      userId: user.id, userName: user.name, userRole: user.role,
-      action: 'login', module: 'auth',
-      description: `User ${user.name} logged in`
+    await transaction(async (client) => {
+      const q = client.query.bind(client);
+      await authLockout.clearAttempt(q, emailKey);
+      if (upgradedHash) await q('UPDATE users SET password = $1, updated_at = NOW() WHERE id = $2', [upgradedHash, user.id]);
+      await logActivity({
+        userId: user.id, userName: user.name, userRole: user.role,
+        action: 'login', module: 'auth',
+        description: `User ${user.name} logged in`
+      }, { query: q });
     });
 
     const access = await policy.listGrants(user);
