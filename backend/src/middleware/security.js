@@ -2,6 +2,27 @@
 
 const crypto = require('crypto');
 
+function validateCorsOrigins(frontendOrigin, extraOrigins = [], production = process.env.NODE_ENV === 'production') {
+  const values = [frontendOrigin, ...extraOrigins].filter(Boolean);
+  return [...new Set(values.map((value) => {
+    let parsed;
+    try { parsed = new URL(value); } catch (_) { throw new Error('CORS origins must be absolute http(s) origins'); }
+    if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password
+      || parsed.pathname !== '/' || parsed.search || parsed.hash || value.includes('*')) {
+      throw new Error('CORS origins must contain only a scheme and host (wildcards are not allowed)');
+    }
+    if (production && parsed.protocol !== 'https:') throw new Error('CORS origins must use HTTPS in production');
+    return parsed.origin;
+  }))];
+}
+
+function parseTrustProxy(value) {
+  if (value == null || value === '' || value === 'false') return false;
+  if (value === 'true') return true;
+  if (/^\d+$/.test(String(value))) return Number(value);
+  throw new Error('TRUST_PROXY must be true, false, or a non-negative hop count');
+}
+
 function securityHeaders(req, res, next) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -20,6 +41,26 @@ function requestId(req, res, next) {
   req.requestId = valid ? incoming : crypto.randomUUID();
   res.setHeader('X-Request-ID', req.requestId);
   next();
+}
+
+function sanitizeServerError(log = console.error) {
+  return function sanitizeServerErrorMiddleware(req, res, next) {
+    const originalJson = res.json.bind(res);
+    res.json = (body) => {
+      if (res.statusCode >= 500 && body && typeof body === 'object' && typeof body.error === 'string' && !body.error_code) {
+        const requestIdValue = req.requestId || req.correlationId || 'unavailable';
+        log(`[API] request_id=${requestIdValue}`, body.error);
+        return originalJson({
+          success: false,
+          error: 'The request could not be completed',
+          error_code: 'internal_error',
+          request_id: requestIdValue,
+        });
+      }
+      return originalJson(body);
+    };
+    next();
+  };
 }
 
 function fixedWindowRateLimit({ windowMs, limit, applies = () => true, key = (req) => req.ip || 'unknown' }) {
@@ -56,4 +97,4 @@ function validateRuntimeConfig(env = process.env) {
   }
 }
 
-module.exports = { securityHeaders, requestId, fixedWindowRateLimit, validateRuntimeConfig };
+module.exports = { securityHeaders, requestId, sanitizeServerError, fixedWindowRateLimit, validateRuntimeConfig, validateCorsOrigins, parseTrustProxy };

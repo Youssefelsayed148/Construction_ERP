@@ -462,7 +462,7 @@ async function setupDatabase() {
       );
     }
     const bcrypt = require('bcryptjs');
-    const hashedPassword = await bcrypt.hash(ownerPassword, 10);
+    const hashedPassword = await bcrypt.hash(ownerPassword, 12);
     await query(
       `INSERT INTO users (name, email, password, role, department, module_permissions, is_active)
        VALUES ($1, $2, $3, $4, $5, $6, true)`,

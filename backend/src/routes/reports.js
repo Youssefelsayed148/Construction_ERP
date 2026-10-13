@@ -14,6 +14,7 @@ const { logActivity } = require('../utils/activity');
 const { REPORTS, REPORT_PACKS, parseListQuery, toCsv, visibleColumns, csvField } = require('../utils/reporting');
 const { renderDocument } = require('../utils/procurementPdf');
 const sweepLeader = require('../services/sweepLeader');
+const policy = require('../services/policy');
 
 const PORTAL_ROLES = ['consultant', 'client', 'subcontractor', 'supplier'];
 
@@ -33,6 +34,41 @@ function sendPdf(res, buffer, filename) {
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.send(buffer);
+}
+
+async function reportScope(req, spec) {
+  const requested = req.query.project_id == null ? null : Number(req.query.project_id);
+  if (requested != null && (!Number.isSafeInteger(requested) || requested <= 0)) return { denied: true };
+  const decision = await policy.evaluate({ user: req.user, module: spec.module, action: 'view', projectId: requested });
+  if (requested != null) return decision.allowed ? { projectIds: null, projectId: requested } : { denied: true };
+  if (decision.company_wide) return { projectIds: null, projectId: null };
+  return decision.scoped_project_ids && decision.scoped_project_ids.length
+    ? { projectIds: decision.scoped_project_ids, projectId: null }
+    : { denied: true };
+}
+
+function listQueryFor(req, spec, columns, scope) {
+  const allowed = columns.map(([key]) => key);
+  const filters = { ...req.query };
+  delete filters.project_id;
+  const parsed = parseListQuery(filters, {
+    allowedFilters: allowed,
+    allowedSorts: columns.map(([key]) => key),
+    defaultSort: 'id', defaultOrder: 'DESC',
+  });
+  if (scope.projectIds || scope.projectId != null) {
+    const scopeColumn = spec.table === 'projects' ? 'id' : 'project_id';
+    if (scopeColumn === 'project_id' && spec.table === 'employees') return null;
+    const bind = parsed.params.length + 1;
+    if (scope.projectIds) {
+      parsed.where += `${parsed.where ? ' AND' : ' WHERE'} ${scopeColumn} = ANY($${bind}::int[])`;
+      parsed.params.push(scope.projectIds);
+    } else {
+      parsed.where += `${parsed.where ? ' AND' : ' WHERE'} ${scopeColumn} = $${bind}`;
+      parsed.params.push(scope.projectId);
+    }
+  }
+  return parsed;
 }
 
 // ---------------------------------------------------------------------------
@@ -57,10 +93,15 @@ router.get('/data/:reportKey', authenticate, authorize(), async (req, res) => {
   try {
     const spec = REPORTS[req.params.reportKey];
     if (!spec) return res.status(404).json({ success: false, error: 'Unknown report' });
-    const { where, params, order, page, pageSize } = parseListQuery(req.query, { defaultSort: 'id', defaultOrder: 'DESC' });
+    const scope = await reportScope(req, spec);
+    if (scope.denied) return res.status(403).json({ success: false, error: 'Report access denied', error_code: 'report_scope_denied' });
+    const selectedColumns = visibleColumns(spec.columns, req.user);
+    const list = listQueryFor(req, spec, selectedColumns, scope);
+    if (!list) return res.status(403).json({ success: false, error: 'Report requires a project-scoped assignment', error_code: 'report_scope_denied' });
+    const { where, params, order, page, pageSize } = list;
     let rows = [];
     try {
-      rows = (await query(`SELECT * FROM ${spec.table}${where}${order}`, params)).rows;
+      rows = (await query(`SELECT ${selectedColumns.map(([key]) => key).join(', ')} FROM ${spec.table}${where}${order}`, params)).rows;
     } catch (e) {
       // a fresh system may not have a module's table yet — empty report
       rows = [];
@@ -76,7 +117,7 @@ router.get('/data/:reportKey', authenticate, authorize(), async (req, res) => {
         rows = rows.filter((r) => ids.includes(Number(r.project_id)));
       } catch (e) { /* participants absent → keep */ }
     }
-    const columns = visibleColumns(spec.columns, req.user).map(([k, label, tag]) => ({ key: k, label, internal: tag === 'internal' }));
+    const columns = selectedColumns.map(([k, label, tag]) => ({ key: k, label, internal: tag === 'internal' }));
     res.json({ success: true, data: { report: spec.label, columns, rows, page, page_size: pageSize } });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -85,10 +126,15 @@ router.get('/export/:reportKey', authenticate, authorize(), async (req, res) => 
   try {
     const spec = REPORTS[req.params.reportKey];
     if (!spec) return res.status(404).json({ success: false, error: 'Unknown report' });
-    const { where, params, order } = parseListQuery(req.query, { defaultSort: 'id', defaultOrder: 'DESC' });
+    const scope = await reportScope(req, spec);
+    if (scope.denied) return res.status(403).json({ success: false, error: 'Report access denied', error_code: 'report_scope_denied' });
+    const columns = visibleColumns(spec.columns, req.user);
+    const list = listQueryFor(req, spec, columns, scope);
+    if (!list) return res.status(403).json({ success: false, error: 'Report requires a project-scoped assignment', error_code: 'report_scope_denied' });
+    const { where, params, order } = list;
     let rows = [];
     try {
-      rows = (await query(`SELECT * FROM ${spec.table}${where}${order}`, params)).rows;
+      rows = (await query(`SELECT ${columns.map(([key]) => key).join(', ')} FROM ${spec.table}${where}${order}`, params)).rows;
     } catch (e) { rows = []; }
     if (PORTAL_ROLES.includes(req.user.role) && rows.length) {
       try {
@@ -100,7 +146,6 @@ router.get('/export/:reportKey', authenticate, authorize(), async (req, res) => 
         rows = rows.filter((r) => ids.includes(Number(r.project_id)));
       } catch (e) { /* keep */ }
     }
-    const columns = visibleColumns(spec.columns, req.user);
     const format = (req.query.format || 'csv').toLowerCase();
     if (format === 'pdf') {
       const name = req.query.project_id ? await projectNameFor(query, req.query.project_id) : null;

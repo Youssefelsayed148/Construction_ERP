@@ -8,6 +8,9 @@ const { logActivity } = require('../utils/activity');
 const policy = require('../services/policy');
 
 const tokens = require('../services/tokens');
+const authLockout = require('../services/authLockout');
+const BCRYPT_COST = 12;
+const DUMMY_PASSWORD_HASH = '$2a$12$vVbihfowu2ItcbFLrqLSd.OH5/yWImcOd9nLI55t8vfpebkc0SU6y';
 
 // POST /api/auth/register
 router.post('/register', authenticate, authorize('owner', 'admin'), async (req, res) => {
@@ -35,7 +38,7 @@ router.post('/register', authenticate, authorize('owner', 'admin'), async (req, 
       return res.status(403).json({ success: false, error: 'Only an owner can create an owner' });
     }
 
-    const hashedPassword = await bcrypt.hash(value.password, 10);
+    const hashedPassword = await bcrypt.hash(value.password, BCRYPT_COST);
 
     // The user and their company-wide role assignment are created together: a user without a
     // user_project_roles row has no access at all (Phase 1.2).
@@ -86,18 +89,20 @@ router.post('/login', async (req, res) => {
       [value.email]
     );
     const user = result.rows[0];
-
-    if (!user) {
+    const emailKey = value.email.trim().toLowerCase();
+    const attempt = await authLockout.getAttempt(query, emailKey);
+    // Always pay for one bcrypt comparison, including unknown and disabled accounts,
+    // then return one generic denial to avoid identity/account-state disclosure.
+    const validPassword = await bcrypt.compare(value.password, user && user.is_active && user.password ? user.password : DUMMY_PASSWORD_HASH);
+    if (!user || !user.is_active || !validPassword || authLockout.isLocked(attempt)) {
+      if (!authLockout.isLocked(attempt)) await authLockout.recordFailure(query, emailKey);
       return res.status(401).json({ success: false, error: 'Invalid email or password' });
     }
 
-    if (!user.is_active) {
-      return res.status(401).json({ success: false, error: 'Account is disabled' });
-    }
-
-    const validPassword = await bcrypt.compare(value.password, user.password);
-    if (!validPassword) {
-      return res.status(401).json({ success: false, error: 'Invalid email or password' });
+    await authLockout.clearAttempt(query, emailKey);
+    if (bcrypt.getRounds(user.password) < BCRYPT_COST) {
+      const upgradedHash = await bcrypt.hash(value.password, BCRYPT_COST);
+      await query('UPDATE users SET password = $1, updated_at = NOW() WHERE id = $2', [upgradedHash, user.id]);
     }
 
     const token = tokens.signSession({ userId: user.id, tokenVersion: user.token_version });
@@ -158,7 +163,7 @@ router.post('/change-password', authenticate, authorize(), async (req, res) => {
     const valid = await bcrypt.compare(currentPassword, result.rows[0].password);
     if (!valid) return res.status(400).json({ success: false, error: 'Current password is incorrect' });
 
-    const hashed = await bcrypt.hash(newPassword, 10);
+    const hashed = await bcrypt.hash(newPassword, BCRYPT_COST);
     // Bumping token_version signs the user out everywhere; the response carries a fresh session token.
     const updated = await query(
       'UPDATE users SET password = $1, token_version = token_version + 1, updated_at = NOW() WHERE id = $2 RETURNING token_version',

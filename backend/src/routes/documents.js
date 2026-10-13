@@ -5,11 +5,10 @@ const path = require('path');
 const fs = require('fs');
 const { transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
+const { MAX_UPLOAD_BYTES, ALLOWED_EXTENSIONS, validateUploadFile } = require('../utils/uploadValidation');
 
 const UPLOAD_DIR = path.join(__dirname, '../../uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-
-const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.dwg', '.dxf', '.zip', '.txt', '.csv'];
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOAD_DIR),
@@ -22,10 +21,10 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 25 * 1024 * 1024 },
+  limits: { fileSize: MAX_UPLOAD_BYTES },
   fileFilter: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    if (!ALLOWED_EXTENSIONS.includes(ext)) return cb(new Error(`File type ${ext} not allowed`));
+    if (!ALLOWED_EXTENSIONS.has(ext)) return cb(new Error(`File type ${ext} not allowed`));
     cb(null, true);
   },
 });
@@ -36,6 +35,11 @@ router.post('/upload', authenticate, authorize(), (req, res) => {
   upload.array('files', 10)(req, res, async (err) => {
     if (err) return res.status(400).json({ success: false, error: err.message });
     if (!req.files || req.files.length === 0) return res.status(400).json({ success: false, error: 'No files uploaded' });
+    const valid = await Promise.all(req.files.map((file) => validateUploadFile(file)));
+    if (valid.some((isValid) => !isValid)) {
+      await Promise.all(req.files.map((file) => fs.promises.unlink(file.path).catch(() => {})));
+      return res.status(400).json({ success: false, error: 'File content does not match an allowed file type', error_code: 'invalid_file_content' });
+    }
     const files = req.files.map(f => ({
       file_url: `/uploads/${f.filename}`,
       original_name: f.originalname,

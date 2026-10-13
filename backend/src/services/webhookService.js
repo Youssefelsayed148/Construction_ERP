@@ -195,6 +195,20 @@ function signPayload(secret, timestamp, body) {
   return crypto.createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex');
 }
 
+function eventProjectId(evt) {
+  const id = evt && evt.payload && (evt.payload.project_id ?? evt.payload.projectId);
+  if (id != null && Number.isSafeInteger(Number(id))) return Number(id);
+  if (evt && evt.entityType === 'project' && Number.isSafeInteger(Number(evt.entityId))) return Number(evt.entityId);
+  return null;
+}
+
+function matchesHookProject(hook, evt) {
+  if (hook.project_ids == null) return true;
+  const projectIds = Array.isArray(hook.project_ids) ? hook.project_ids.map(Number) : [];
+  const projectId = eventProjectId(evt);
+  return projectId != null && projectIds.includes(projectId);
+}
+
 function webhookEncryptionKey() {
   const master = process.env.WEBHOOK_ENCRYPTION_KEY || process.env.JWT_SECRET;
   if (typeof master !== 'string' || master.length < 32) {
@@ -241,23 +255,23 @@ async function loadWebhookSecret(hook, q) {
 // Registration CRUD
 // ---------------------------------------------------------------------------
 
-async function createWebhook({ url, secret, events, description = null, userId, q = defaultQuery, lookup = dns.lookup }) {
+async function createWebhook({ url, secret, events, description = null, projectIds = null, userId, q = defaultQuery, lookup = dns.lookup }) {
   await resolveWebhookTarget(url, { lookup });
   const r = await q(
-    `INSERT INTO webhooks (url, secret, events, description, created_by) VALUES ($1, $2, $3, $4, $5)
-     RETURNING id, url, events, description, is_active, created_by, created_at`,
-    [url, encryptWebhookSecret(secret), JSON.stringify(events), description, userId]
+    `INSERT INTO webhooks (url, secret, events, description, project_ids, created_by) VALUES ($1, $2, $3, $4, $5::jsonb, $6)
+     RETURNING id, url, events, description, project_ids, is_active, created_by, created_at`,
+    [url, encryptWebhookSecret(secret), JSON.stringify(events), description, projectIds == null ? null : JSON.stringify(projectIds), userId]
   );
   return r.rows[0];
 }
 
 async function listWebhooks(q = defaultQuery) {
-  const r = await q('SELECT id, url, events, description, is_active, created_by, created_at FROM webhooks ORDER BY id');
+  const r = await q('SELECT id, url, events, description, project_ids, is_active, created_by, created_at FROM webhooks ORDER BY id');
   return r.rows;
 }
 
 async function getWebhook(id, q = defaultQuery) {
-  return (await q('SELECT id, url, events, description, is_active, created_by, created_at FROM webhooks WHERE id = $1', [id])).rows[0] || null;
+  return (await q('SELECT id, url, events, description, project_ids, is_active, created_by, created_at FROM webhooks WHERE id = $1', [id])).rows[0] || null;
 }
 
 async function rotateWebhookSecret(id, secret, q = defaultQuery) {
@@ -274,9 +288,10 @@ async function updateWebhook(id, patch, q = defaultQuery, { lookup = dns.lookup 
   const sets = []; const params = []; let i = 1;
   for (const [col, val] of Object.entries(patch)) {
     sets.push(`${col} = $${i++}`);
-    params.push(col === 'events' ? JSON.stringify(val) : val);
+    params.push(col === 'events' || col === 'project_ids' ? JSON.stringify(val) : val);
+    if (col === 'events' || col === 'project_ids') sets[sets.length - 1] += '::jsonb';
   }
-  const r = await q(`UPDATE webhooks SET ${sets.join(', ')} WHERE id = $${i} RETURNING id, url, events, description, is_active, created_at`, [...params, id]);
+  const r = await q(`UPDATE webhooks SET ${sets.join(', ')} WHERE id = $${i} RETURNING id, url, events, description, project_ids, is_active, created_at`, [...params, id]);
   return r.rows[0] || null;
 }
 
@@ -304,7 +319,7 @@ async function dispatchEvent(evt, opts = {}) {
   const q = opts.query || defaultQuery;
   try {
     const hooks = (await q('SELECT * FROM webhooks WHERE is_active = true')).rows;
-    const targets = hooks.filter((h) => matches(h.events, evt.eventType));
+    const targets = hooks.filter((h) => matches(h.events, evt.eventType) && matchesHookProject(h, evt));
     if (targets.length === 0) return 0;
     // Store the RAW event data only — attemptDelivery builds the delivery
     // envelope once (event/entity fields come from the delivery row itself).
@@ -321,6 +336,7 @@ async function dispatchEvent(evt, opts = {}) {
     return targets.length;
   } catch (e) {
     console.error('[WEBHOOKS] dispatch failed:', e.message);
+    if (opts.strict) throw e;
     return 0;
   }
 }
@@ -331,6 +347,11 @@ async function attemptDelivery(deliveryId, opts = {}) {
   if (!d || ['delivered', 'dead_letter'].includes(d.status)) return { skipped: true };
   const hook = (await q('SELECT * FROM webhooks WHERE id = $1', [d.webhook_id])).rows[0];
   if (!hook) return { skipped: true };
+  const deliveryPayload = typeof d.payload === 'string' ? JSON.parse(d.payload) : d.payload;
+  if (!matchesHookProject(hook, { entityType: d.entity_type, entityId: d.entity_id, payload: deliveryPayload })) {
+    await q("UPDATE webhook_deliveries SET status = 'dead_letter', last_error = 'webhook_project_scope_changed' WHERE id = $1", [d.id]);
+    return { skipped: true, reason: 'project_scope_changed' };
+  }
 
   const body = JSON.stringify({
     id: d.id, event: d.event_type, entity_type: d.entity_type, entity_id: d.entity_id,
@@ -421,25 +442,16 @@ async function sweepDueDeliveries(opts = {}) {
 // Subscribe to the in-process event bus for every event type a webhook might
 // want. Wildcard patterns can't be subscribed directly, so subscribe to the
 // concrete types seen in the catalog plus any type seen at dispatch time.
-function initWebhookEventSubscriber(queryFn = defaultQuery) {
+function initWebhookDeliveryScheduler() {
   if (!global.eventBus || typeof global.eventBus.on !== 'function') {
-    console.error('[WEBHOOKS] global.eventBus unavailable — webhook dispatch disabled');
-    return null;
+    console.error('[WEBHOOKS] global.eventBus unavailable — other in-process observers unavailable');
   }
-  const subscriber = async (evt) => { await dispatchEvent(evt, { query: queryFn }); };
-  for (const pattern of EVENT_CATALOG) {
-    if (pattern === '*') continue;
-    // Subscribe to the concrete prefix (bus events are exact-typed).
-    const exact = pattern.endsWith('.*') ? pattern.slice(0, -2) : pattern;
-    global.eventBus.on(exact, subscriber);
-  }
-  // Safety net: subscribe to all event_log-derived emits via a catch-all on
-  // 'event' is not supported by EventEmitter; the dispatcher poll pattern is
-  // the durable path. A sweep timer also drains queued deliveries.
+  // The durable outbox dispatches every concrete event directly to
+  // dispatchEvent; this leader-locked timer only drains delivery retries.
   // Phase 3.4: one leader across backend instances (sweepLeader).
   const { timer, execute } = sweepLeader.leaderInterval('webhook_deliveries', SWEEP_INTERVAL_MS, () => sweepDueDeliveries());
   execute().catch((e) => console.error('[WEBHOOKS] initial sweep failed:', e.message));
-  console.log('[WEBHOOKS] event subscriber initialized — sweep every 60s (leader-locked)');
+  console.log('[WEBHOOKS] delivery retry sweep initialized — every 60s (leader-locked)');
   return timer;
 }
 
@@ -448,6 +460,8 @@ module.exports = {
   BACKOFF_MINUTES,
   MAX_RESPONSE_BYTES,
   matches,
+  eventProjectId,
+  matchesHookProject,
   signPayload,
   encryptWebhookSecret,
   decryptWebhookSecret,
@@ -465,5 +479,5 @@ module.exports = {
   attemptDelivery,
   redriveDelivery,
   sweepDueDeliveries,
-  initWebhookEventSubscriber,
+  initWebhookDeliveryScheduler,
 };

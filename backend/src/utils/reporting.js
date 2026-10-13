@@ -120,7 +120,7 @@ const REPORT_PACKS = {
 // The list contract — filter/sort/page, portable across PG and the MockDb
 // ---------------------------------------------------------------------------
 
-function parseListQuery(query, { searchColumns = [], allowedSorts = null, defaultSort = 'id', defaultOrder = 'DESC' } = {}) {
+function parseListQuery(query, { searchColumns = [], allowedFilters = null, allowedSorts = null, defaultSort = 'id', defaultOrder = 'DESC' } = {}) {
   const conditions = [];
   const params = [];
   let idx = 1;
@@ -128,6 +128,7 @@ function parseListQuery(query, { searchColumns = [], allowedSorts = null, defaul
     if (['sort', 'order', 'page', 'page_size', 'format', 'search', 'columns'].includes(key)) continue;
     if (value == null || value === '') continue;
     if (!/^[a-z_][a-z0-9_.]*$/i.test(key)) continue; // identifier injection guard
+    if (allowedFilters && !allowedFilters.includes(key)) continue;
     conditions.push(`${key} = $${idx++}`);
     params.push(value);
   }
@@ -153,8 +154,11 @@ function parseListQuery(query, { searchColumns = [], allowedSorts = null, defaul
 // ---------------------------------------------------------------------------
 
 function csvField(v) {
-  const s = v == null ? '' : String(v);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  let s = v == null ? '' : String(v);
+  // Spreadsheet applications interpret formula operators even after leading whitespace.
+  const numericLiteral = /^-?(?:\d+\.?\d*|\.\d+)$/.test(s);
+  if (!numericLiteral && /^[\s\u0000-\u001f\u007f\uFEFF]*[=+\-@]/.test(s)) s = `'${s}`;
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
 function toCsv(rows, columns) {

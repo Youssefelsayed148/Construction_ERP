@@ -409,3 +409,41 @@ Compiled successfully.
 ```
 
 The run includes the browser-only desktop/mobile journeys; Playwright reported skipped tests, including the gated real-backend and on-demand screenshot baseline cases. The backend-seeded journey coverage was not run because no isolated PostgreSQL is available.
+
+## 2026-10-13: A9 security scan (implementation in progress)
+
+Reviewed every Phase 1.5/1.6 item against the code. Existing protections confirmed: last active owner cannot be demoted/deactivated; `event_outbox` and webhook retry/dead-letter tables already exist; `matches()` handles exact, prefix wildcard and all-event subscriptions; uploads already had a 25 MiB size cap. Implemented the remaining local changes:
+
+- Webhook wildcard subscriptions now receive every concrete durable outbox event directly. Added per-hook `project_ids` filtering at queue time and rechecked scope before delivery (migration 0039).
+- Report routes enforce the report's catalog module and project scope, query only visible allowlisted columns, allow only catalog filters/sorts, and neutralize CSV formula prefixes.
+- Internal media now requires uploader ownership or policy access to the linked project; external media requires ownership or an approved document with the role's explicit visibility. Photos without approval metadata are not shared externally.
+- Uploads enforce file-size and magic/content checks. ZIP, legacy Office, XLS and XLSX formats are removed from the allowlist.
+- Login uses one generic denial for unknown/disabled/bad-password/locked identities, a 5-failure/15-minute lockout stored in PostgreSQL (migration 0038), bcrypt cost 12 for new/changed credentials, and successful-login upgrade of weaker stored hashes.
+- Production CORS origins must be exact HTTPS origins; `TRUST_PROXY` accepts only explicit booleans or hop counts; `X-Powered-By` is disabled.
+- Untyped 500 JSON responses are logged with request ID and replaced with a generic correlated response.
+- Authenticated v1 calls now increment a Postgres-backed subject limiter after authentication (migration 0040); the existing pre-auth IP limiter remains in place.
+- Documented the MFA design stub and antivirus boundary in `docs/DECISIONS.md`. No paid/external provider was invoked.
+
+Focused output:
+
+```text
+backend> npm test -- --runInBand src/scripts/__tests__/external-api.test.js src/scripts/__tests__/reporting.test.js src/scripts/__tests__/security.test.js src/scripts/__tests__/media-access.test.js src/scripts/__tests__/upload-validation.test.js src/scripts/__tests__/auth-lockout.test.js
+Test Suites: 6 passed, 6 total
+Tests:       76 passed, 76 total
+
+backend> npm run lint:guards
+lint-guards: ok
+```
+
+Latest full backend output:
+
+```text
+backend> npm test -- --runInBand
+Test Suites: 48 passed, 48 total
+Tests:       968 passed, 968 total
+Snapshots:   0 total
+Time:        5.012 s
+Ran all test suites.
+```
+
+A9 is not committed yet. PostgreSQL migrations/integration remain unverified because Docker Desktop is unavailable. External security review is not signed. MFA has a design stub only. A4's route-wide audit sweep remains incomplete, so Batch A's PG exit gate is not met.

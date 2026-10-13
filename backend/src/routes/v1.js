@@ -610,11 +610,13 @@ function buildV1Router() {
 
   // --- Everything below requires a token ---
   router.use(v1.authenticateV1);
+  router.use(v1.rateLimitAuthenticated);
 
   // --- Webhook management (owner/admin only) ---
   const webhookSchema = Joi.object({
     url: Joi.string().uri({ scheme: ['http', 'https'] }).required(),
     events: Joi.array().items(Joi.string().max(100)).min(1).required(),
+    project_ids: Joi.array().items(Joi.number().integer().positive()).min(1).unique().max(1000),
     description: Joi.string().allow('', null),
   });
   api.post('/webhooks', authorize('owner', 'admin'), async (req, res, next) => {
@@ -626,11 +628,11 @@ function buildV1Router() {
         const q = client.query.bind(client);
         const created = await webhookService.createWebhook({
           url: value.url, secret,
-          events: value.events, description: value.description, userId: req.user.id, q,
+          events: value.events, description: value.description, projectIds: value.project_ids || null, userId: req.user.id, q,
         });
         await policy.recordAuditEvent({
           entity: 'webhook', entityId: created.id, action: 'create',
-          after: { url: created.url, events: created.events }, userId: req.user.id,
+          after: { url: created.url, events: created.events, project_ids: created.project_ids }, userId: req.user.id,
         }, { query: q });
         return created;
       });
@@ -675,12 +677,29 @@ function buildV1Router() {
       const patchSchema = Joi.object({
         url: Joi.string().uri({ scheme: ['http', 'https'] }),
         events: Joi.array().items(Joi.string().max(100)).min(1),
+        project_ids: Joi.array().items(Joi.number().integer().positive()).min(1).unique().max(1000).allow(null),
         description: Joi.string().allow('', null),
         is_active: Joi.boolean(),
       }).min(1);
       const { error, value } = patchSchema.validate(req.body);
       if (error) { const err = new Error(error.details[0].message); err.status = 400; return next(err); }
-      const updated = await webhookService.updateWebhook(parseInt(req.params.id, 10), value);
+      const updated = await transaction(async (client) => {
+        const q = client.query.bind(client);
+        const id = parseInt(req.params.id, 10);
+        const before = await webhookService.getWebhook(id, q);
+        if (!before) return null;
+        const after = await webhookService.updateWebhook(id, {
+          ...value,
+          ...(Object.prototype.hasOwnProperty.call(value, 'project_ids') ? { project_ids: value.project_ids } : {}),
+        }, q);
+        if (after) await policy.recordAuditEvent({
+          entity: 'webhook', entityId: after.id, action: 'update',
+          before: { url: before.url, events: before.events, project_ids: before.project_ids, is_active: before.is_active },
+          after: { url: after.url, events: after.events, project_ids: after.project_ids, is_active: after.is_active },
+          userId: req.user.id,
+        }, { query: q });
+        return after;
+      });
       if (!updated) { const err = new Error('Webhook not found'); err.status = 404; return next(err); }
       res.json({ success: true, data: updated });
     } catch (e) { next(e); }

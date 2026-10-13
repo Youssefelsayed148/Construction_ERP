@@ -1,4 +1,4 @@
-const { securityHeaders, requestId, fixedWindowRateLimit, validateRuntimeConfig } = require('../../middleware/security');
+const { securityHeaders, requestId, sanitizeServerError, fixedWindowRateLimit, validateRuntimeConfig, validateCorsOrigins, parseTrustProxy } = require('../../middleware/security');
 
 function response() {
   return {
@@ -46,5 +46,37 @@ describe('production security middleware', () => {
     expect(() => validateRuntimeConfig({ NODE_ENV: 'production', JWT_SECRET: 'short', DB_PASSWORD: 'db-secret' })).toThrow('32 characters');
     expect(() => validateRuntimeConfig({ NODE_ENV: 'production', JWT_SECRET: 'x'.repeat(32), DB_PASSWORD: '' })).toThrow('DB_PASSWORD');
     expect(() => validateRuntimeConfig({ NODE_ENV: 'production', JWT_SECRET: 'x'.repeat(32), DB_PASSWORD: 'db-secret' })).not.toThrow();
+  });
+
+  test('TRUST_PROXY accepts explicit booleans or hop counts and rejects ambiguous values', () => {
+    expect(parseTrustProxy(undefined)).toBe(false);
+    expect(parseTrustProxy('true')).toBe(true);
+    expect(parseTrustProxy('2')).toBe(2);
+    expect(() => parseTrustProxy('all')).toThrow('TRUST_PROXY');
+  });
+
+  test('CORS allowlist accepts exact origins and rejects wildcard/path/cleartext production origins', () => {
+    expect(validateCorsOrigins('https://app.example.com', ['https://partner.example.com'], true)).toEqual([
+      'https://app.example.com', 'https://partner.example.com',
+    ]);
+    expect(() => validateCorsOrigins('https://app.example.com', ['https://*.example.com'], true)).toThrow('wildcards');
+    expect(() => validateCorsOrigins('https://app.example.com/path', [], true)).toThrow('scheme and host');
+    expect(() => validateCorsOrigins('http://app.example.com', [], true)).toThrow('HTTPS');
+  });
+
+  test('genericizes untyped 500 responses, logs details, and retains typed error envelopes', () => {
+    const log = jest.fn();
+    const req = { requestId: 'request-123' };
+    const res = response();
+    res.statusCode = 500;
+    const next = jest.fn();
+    sanitizeServerError(log)(req, res, next);
+    res.json({ success: false, error: 'password database connection detail' });
+    expect(res.body).toEqual({ success: false, error: 'The request could not be completed', error_code: 'internal_error', request_id: 'request-123' });
+    expect(log).toHaveBeenCalledWith('[API] request_id=request-123', 'password database connection detail');
+    const typed = response(); typed.statusCode = 500;
+    sanitizeServerError(log)(req, typed, next);
+    typed.json({ success: false, error: 'Account is not mapped', error_code: 'ledger_account_not_mapped' });
+    expect(typed.body.error).toBe('Account is not mapped');
   });
 });

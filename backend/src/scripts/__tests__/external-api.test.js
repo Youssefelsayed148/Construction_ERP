@@ -131,17 +131,17 @@ query.mockImplementation(async (sql, params = []) => {
   if (/UPDATE service_accounts SET last_used_at/i.test(s)) return { rows: [] };
   if (/INSERT INTO webhooks/i.test(s)) {
     const id = ++stub.webhookSeq;
-    const row = { id, url: params[0], secret: params[1], events: JSON.parse(params[2]), description: params[3], is_active: true, created_by: params[4], created_at: new Date() };
+    const row = { id, url: params[0], secret: params[1], events: JSON.parse(params[2]), description: params[3], project_ids: params[4] == null ? null : JSON.parse(params[4]), is_active: true, created_by: params[5], created_at: new Date() };
     stub.webhooks.set(id, row);
-    return { rows: [{ id, url: row.url, events: row.events, description: row.description, is_active: true, created_by: row.created_by, created_at: row.created_at }] };
+    return { rows: [{ id, url: row.url, events: row.events, description: row.description, project_ids: row.project_ids, is_active: true, created_by: row.created_by, created_at: row.created_at }] };
   }
   if (/SELECT .* FROM webhooks WHERE id = \$1/i.test(s)) {
     const hook = [...stub.webhooks.values()].find((h) => h.id === params[0]);
     if (!hook) return { rows: [] };
-    return { rows: /SELECT \* FROM/i.test(s) ? [hook] : [{ id: hook.id, url: hook.url, events: hook.events, description: hook.description, is_active: hook.is_active, created_by: hook.created_by, created_at: hook.created_at }] };
+    return { rows: /SELECT \* FROM/i.test(s) ? [hook] : [{ id: hook.id, url: hook.url, events: hook.events, description: hook.description, project_ids: hook.project_ids, is_active: hook.is_active, created_by: hook.created_by, created_at: hook.created_at }] };
   }
-  if (/SELECT id, url, events, description, is_active, created_by, created_at FROM webhooks/i.test(s)) {
-    return { rows: [...stub.webhooks.values()].filter((h) => h.is_active).map((h) => ({ id: h.id, url: h.url, events: h.events, description: h.description, is_active: h.is_active, created_by: h.created_by, created_at: h.created_at })) };
+  if (/SELECT id, url, events, description, project_ids, is_active, created_by, created_at FROM webhooks/i.test(s)) {
+    return { rows: [...stub.webhooks.values()].filter((h) => h.is_active).map((h) => ({ id: h.id, url: h.url, events: h.events, description: h.description, project_ids: h.project_ids, is_active: h.is_active, created_by: h.created_by, created_at: h.created_at })) };
   }
   if (/SELECT \* FROM webhooks WHERE is_active = true/i.test(s)) {
     return { rows: [...stub.webhooks.values()].filter((h) => h.is_active) };
@@ -548,6 +548,18 @@ describe('webhook delivery state machine', () => {
     expect(options.headers['X-Osiris-Signature']).toBe(expectedSig);
   });
 
+  test('a webhook project allowlist filters delivery and skips events without project context', async () => {
+    resetStub(); seedUsers();
+    await webhookService.createWebhook({ url: 'https://scoped.example/hook', secret: 's1', events: ['*'], projectIds: [7], userId: 1, lookup: safeWebhookLookup });
+    const transport = fakeWebhookRequest();
+    expect(await webhookService.dispatchEvent({ eventType: 'rfi.created', entityType: 'project_rfi', entityId: 4, payload: { project_id: 8 } }, { lookup: safeWebhookLookup, requestImpl: transport.requestImpl })).toBe(0);
+    expect(await webhookService.dispatchEvent({ eventType: 'rfi.created', entityType: 'project_rfi', entityId: 4, payload: {} }, { lookup: safeWebhookLookup, requestImpl: transport.requestImpl })).toBe(0);
+    expect(await webhookService.dispatchEvent({ eventType: 'rfi.created', entityType: 'project_rfi', entityId: 4, payload: { project_id: 7 } }, { lookup: safeWebhookLookup, requestImpl: transport.requestImpl })).toBe(1);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(stub.deliveries.size).toBe(1);
+    expect(transport.calls).toHaveLength(1);
+  });
+
   test('failed attempts back off, then dead-letter; redrive retries them', async () => {
     resetStub(); seedUsers();
     const failure = fakeWebhookRequest(500);
@@ -624,6 +636,27 @@ describe('v1 rate limiting', () => {
     expect(blocked.err.status).toBe(429);
     expect(blocked.err.code).toBe('rate_limited');
     expect(blocked.r.setHeader).toHaveBeenCalledWith('Retry-After', 60);
+  });
+
+  test('persists a rate counter keyed by the authenticated service account', async () => {
+    const q = jest.fn()
+      .mockResolvedValueOnce({ rows: [{ hit_count: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ hit_count: 2 }] });
+    const middleware = v1.createAuthenticatedRateLimit(q, 1);
+    const req = { user: { id: 3 }, v1ServiceAccountId: 88 };
+    const makeResponse = () => ({ headers: {}, setHeader(k, v) { this.headers[k] = v; } });
+    const run = async () => {
+      const res = makeResponse();
+      let received;
+      await middleware(req, res, (error) => { received = error || null; });
+      return { res, error: received };
+    };
+    expect((await run()).error).toBeNull();
+    const blocked = await run();
+    expect(blocked.error).toMatchObject({ status: 429, code: 'rate_limited' });
+    expect(blocked.res.headers['Retry-After']).toBe(60);
+    expect(q.mock.calls[0][1][0]).toBe('service:88');
+    expect(q.mock.calls[0][0]).toContain('INSERT INTO v1_rate_limits');
   });
 });
 

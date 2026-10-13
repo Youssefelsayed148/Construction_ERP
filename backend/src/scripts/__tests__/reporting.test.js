@@ -61,6 +61,15 @@ describe('list contract', () => {
     expect(q.where).toContain('ILIKE');
     expect(q.params).toEqual(['%tower%']);
   });
+
+  test('filters outside the selected catalog columns are ignored', () => {
+    const q = reporting.parseListQuery(
+      { status: 'active', password_hash: 'secret' },
+      { allowedFilters: ['status'] }
+    );
+    expect(q.where).toBe(' WHERE status = $1');
+    expect(q.params).toEqual(['active']);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -93,6 +102,10 @@ describe('exports', () => {
   test('CSV quoting survives commas and quotes', () => {
     const csv = reporting.toCsv([{ id: 1, description: 'honeycombing, "major"' }], [['id', 'ID'], ['description', 'Description']]);
     expect(csv).toContain('"honeycombing, ""major""');
+  });
+
+  test.each(['=1+1', '+SUM(A1:A2)', '-1+2', '@cmd', '  =1+1', '\t+1'])('neutralizes spreadsheet formula prefix %s', (value) => {
+    expect(reporting.csvField(value)).toBe(`'${value}`);
   });
 });
 

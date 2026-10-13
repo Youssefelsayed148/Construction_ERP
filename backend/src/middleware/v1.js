@@ -27,6 +27,7 @@
 
 const crypto = require('crypto');
 const oauthService = require('../services/oauthService');
+const { query: defaultQuery } = require('../config/database');
 
 // ---------------------------------------------------------------------------
 // 1. Correlation IDs
@@ -73,6 +74,44 @@ function rateLimit(req, res, next) {
   }
   next();
 }
+
+function createAuthenticatedRateLimit(q = defaultQuery, limit = RATE_LIMIT_PER_MIN) {
+  let cleanupTicks = 0;
+  return async function authenticatedRateLimit(req, res, next) {
+    if (!req.user || req.user.id == null) {
+      const err = new Error('Authentication required'); err.status = 401; err.code = 'unauthenticated';
+      return next(err);
+    }
+    const subject = req.v1ServiceAccountId ? `service:${req.v1ServiceAccountId}` : `user:${req.user.id}`;
+    const windowStart = new Date(Math.floor(Date.now() / 60000) * 60000);
+    try {
+      const result = await q(
+        `INSERT INTO v1_rate_limits (subject_key, window_start, hit_count)
+         VALUES ($1,$2,1)
+         ON CONFLICT (subject_key, window_start) DO UPDATE
+           SET hit_count = v1_rate_limits.hit_count + 1
+         RETURNING hit_count`, [subject, windowStart]
+      );
+      const count = Number(result.rows[0].hit_count);
+      res.setHeader('X-RateLimit-Limit', limit);
+      res.setHeader('X-RateLimit-Remaining', Math.max(0, limit - count));
+      if (++cleanupTicks % 1000 === 0) {
+        await q("DELETE FROM v1_rate_limits WHERE window_start < NOW() - INTERVAL '1 day'");
+      }
+      if (count > limit) {
+        res.setHeader('Retry-After', 60);
+        const err = new Error('Rate limit exceeded'); err.status = 429; err.code = 'rate_limited';
+        return next(err);
+      }
+      return next();
+    } catch (_) {
+      const err = new Error('Rate limit service unavailable'); err.status = 503; err.code = 'rate_limit_unavailable';
+      return next(err);
+    }
+  };
+}
+
+const rateLimitAuthenticated = createAuthenticatedRateLimit();
 
 // ---------------------------------------------------------------------------
 // 3. Authentication + scopes
@@ -324,6 +363,8 @@ function structuredErrorHandler(err, req, res, next) {
 module.exports = {
   correlationId,
   rateLimit,
+  rateLimitAuthenticated,
+  createAuthenticatedRateLimit,
   authenticateV1,
   requireScope,
   idempotency,

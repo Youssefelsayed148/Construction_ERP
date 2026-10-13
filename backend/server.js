@@ -1,25 +1,25 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { securityHeaders, requestId, fixedWindowRateLimit, validateRuntimeConfig } = require('./src/middleware/security');
+const { securityHeaders, requestId, sanitizeServerError, fixedWindowRateLimit, validateRuntimeConfig, validateCorsOrigins, parseTrustProxy } = require('./src/middleware/security');
 const logger = require('./src/utils/logger');
 const { healthCheck } = require('./src/config/database');
 
 validateRuntimeConfig();
 
 const app = express();
-const trustProxySetting = process.env.TRUST_PROXY;
-const trustProxy = trustProxySetting === 'true' ? true
-  : (/^\d+$/.test(trustProxySetting || '') ? Number(trustProxySetting) : false);
-app.set('trust proxy', trustProxy);
+app.disable('x-powered-by');
+app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY));
 
 const FRONTEND_ORIGIN = process.env.FRONTEND_URL || 'http://localhost:3000';
 // Phase 26: v1 also serves non-browser API clients; extra origins (sandbox UI,
 // partner portals) come in via a comma-separated env list.
 const EXTRA_ORIGINS = (process.env.CORS_EXTRA_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
-app.use(cors({ origin: [FRONTEND_ORIGIN, ...EXTRA_ORIGINS], credentials: true }));
+const ALLOWED_ORIGINS = validateCorsOrigins(FRONTEND_ORIGIN, EXTRA_ORIGINS);
+app.use(cors({ origin: ALLOWED_ORIGINS, credentials: true }));
 app.use(securityHeaders);
 app.use(requestId);
+app.use(sanitizeServerError((message, detail) => logger.error(message, { detail })));
 app.use(fixedWindowRateLimit({
   windowMs: 15 * 60 * 1000,
   limit: parseInt(process.env.AUTH_RATE_LIMIT_PER_15_MIN || '20', 10),
@@ -124,7 +124,7 @@ function startBackgroundServices() {
   require('./src/services/replenishment').initReplenishmentScheduler();
   require('./src/services/financeEngine').initReceivableReminderScheduler();
   require('./src/services/hseEngine').initPermitExpiryScheduler();
-  require('./src/services/webhookService').initWebhookEventSubscriber();
+  require('./src/services/webhookService').initWebhookDeliveryScheduler();
   require('./src/routes/reports').initScheduledReportScheduler();
 }
 

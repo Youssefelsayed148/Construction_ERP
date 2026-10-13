@@ -97,3 +97,9 @@ Migration application and PG approval/delegation integration remain unverified b
 Fixed package resolution from `frontend/`, added a wrapper that uses the frontend-local Playwright CLI and a project-local ignored browser cache, and documented Windows PowerShell commands. Installed 1346 locked packages in frontend/ and Chromium 153 into `frontend/.playwright-browsers`.
 
 Verified: Playwright discovered 78 tests in 7 files; suite result was 32 passed / 46 skipped in 1.4m (real-backend seeds and screenshot baselines were not run). Frontend CI unit gate: 17 suites / 97 tests passed. `npm run i18n:check` printed `i18n:check ok`. `npm run build` printed `Compiled successfully.`
+
+## 2026-10-13: A9 Phase 1.5/1.6 security scan
+
+Completed a code-level scan against each checklist item in `docs/ERP_CLOSEOUT_PLAN.md` 1.5/1.6. Existing last-owner protection, event outbox, retry/dead-letter tables, wildcard matcher, and upload size cap were confirmed. Added webhook project scopes and connected wildcard matching to every durable outbox event (0039); closed report column/filter/export and project-scope gaps; applied role/project checks to media and removed external access to unapproved photos; added upload content validation and removed archive/legacy spreadsheet types; introduced persistent login lockout and cost-12 password upgrades (0038); validated CORS and TRUST_PROXY; disabled x-powered-by; added generic 500 redaction; and added persistent per-authenticated-subject v1 rate limits after token auth (0040). The MFA/provider and AV scanning boundaries are documented in DECISIONS.md.
+
+Focused tests: 6 suites / 76 tests pass. Full backend mock: 48 suites / 968 tests pass. `npm run lint:guards` prints `lint-guards: ok`. Real-PG and external security review are unverified. A4 remains partial, so Batch A exit is not green.

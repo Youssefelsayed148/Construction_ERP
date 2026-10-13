@@ -157,6 +157,7 @@ async function deliverClaimed(q, claimed, { handlers = null, maxAttempts = MAX_A
 // Unrouted types keep their pre-3.3 delivery mechanism: the synchronous in-process bus, now fed by the
 // dispatcher (post-commit) instead of by fireEvent inside the caller's transaction.
 const defaultDeliver = async (evt) => {
+  await require('./webhookService').dispatchEvent(evt, { strict: true });
   if (global.eventBus && typeof global.eventBus.emit === 'function') {
     global.eventBus.emit(evt.eventType, evt);
   }

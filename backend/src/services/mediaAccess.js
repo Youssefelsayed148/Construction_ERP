@@ -2,16 +2,33 @@
 
 const policy = require('./policy');
 
-async function canAccessMedia(q, user, fileName, preview = null) {
+async function canAccessMedia(q, user, fileName, preview = null, policyEvaluator = policy.evaluate) {
   if (!user || !/^[a-zA-Z0-9_.-]+$/.test(fileName) || fileName === '.' || fileName === '..') return false;
-  if (policy.INTERNAL_ROLES.has(user.role) && !preview) return true;
-  if (!policy.EXTERNAL_ROLES.has(user.role)) return false;
-
   const fileUrl = `/uploads/${fileName}`;
-  try {
-    const owner = (await q('SELECT uploaded_by FROM uploaded_files WHERE file_name = $1', [fileName])).rows[0];
-    if (!preview && owner && Number(owner.uploaded_by) === Number(user.id)) return true;
-  } catch (e) { /* Files uploaded before the registry existed still need a shared-record check. */ }
+  const owner = (await q('SELECT uploaded_by FROM uploaded_files WHERE file_name = $1', [fileName])).rows[0];
+  if (!preview && owner && Number(owner.uploaded_by) === Number(user.id)) return true;
+
+  const internal = policy.INTERNAL_ROLES.has(user.role);
+  const external = policy.EXTERNAL_ROLES.has(user.role);
+  if (!internal && !external) return false;
+
+  if (internal) {
+    const documents = (await q('SELECT project_id FROM project_documents WHERE file_url = $1', [fileUrl])).rows;
+    for (const doc of documents) {
+      const access = preview
+        ? await policy.evaluateForRole(user.role, { module: 'docs', action: 'view', projectId: doc.project_id, actorScopedProjects: preview.scoped_project_ids || [] }, { query: q })
+        : await policyEvaluator({ user, module: 'docs', action: 'view', projectId: doc.project_id }, { query: q });
+      if (access.allowed) return true;
+    }
+    const photos = (await q('SELECT project_id FROM photos WHERE file_url = $1', [fileUrl])).rows;
+    for (const photo of photos) {
+      const access = preview
+        ? await policy.evaluateForRole(user.role, { module: 'site', action: 'view', projectId: photo.project_id, actorScopedProjects: preview.scoped_project_ids || [] }, { query: q })
+        : await policyEvaluator({ user, module: 'site', action: 'view', projectId: photo.project_id }, { query: q });
+      if (access.allowed) return true;
+    }
+    return false;
+  }
 
   let projectIds = [];
   let allowedVisibility = [];
@@ -35,10 +52,7 @@ async function canAccessMedia(q, user, fileName, preview = null) {
   if (!projectIds.length) return false;
   const docs = (await q('SELECT project_id, status, portal_visibility FROM project_documents WHERE file_url = $1', [fileUrl])).rows;
   if (docs.some((d) => projectIds.includes(Number(d.project_id)) && d.status === 'approved' && allowedVisibility.includes(d.portal_visibility))) return true;
-  if (['client', 'consultant'].includes(user.role)) {
-    const photos = (await q('SELECT project_id FROM photos WHERE file_url = $1', [fileUrl])).rows;
-    if (photos.some((p) => projectIds.includes(Number(p.project_id)))) return true;
-  }
+  // Photo metadata has no approval or external-visibility state, so project membership alone is not sufficient.
   return false;
 }
 

@@ -31,4 +31,29 @@ describe('authenticated media access', () => {
     const q = jest.fn().mockResolvedValue({ rows: [{ uploaded_by: 4 }] });
     expect(await canAccessMedia(q, { id: 4, role: 'supplier' }, 'quote.pdf')).toBe(true);
   });
+
+  test('does not expose an unapproved project photo to an assigned client', async () => {
+    jest.spyOn(clientEngine, 'resolveClientProjects').mockResolvedValue([7]);
+    const q = jest.fn(async (sql) => {
+      if (sql.includes('uploaded_files')) return { rows: [] };
+      if (sql.includes('project_documents')) return { rows: [] };
+      if (sql.includes('photos')) return { rows: [{ project_id: 7 }] };
+      return { rows: [] };
+    });
+    expect(await canAccessMedia(q, { id: 12, role: 'client' }, 'site-photo.jpg')).toBe(false);
+    expect(q).not.toHaveBeenCalledWith(expect.stringContaining('photos'), expect.anything());
+  });
+
+  test('requires internal users to have policy access to the project that owns the media', async () => {
+    const q = jest.fn(async (sql) => {
+      if (sql.includes('uploaded_files')) return { rows: [] };
+      if (sql.includes('project_documents')) return { rows: [{ project_id: 7 }] };
+      return { rows: [] };
+    });
+    const check = jest.fn().mockResolvedValue({ allowed: false });
+    expect(await canAccessMedia(q, { id: 3, role: 'admin' }, 'restricted.pdf', null, check)).toBe(false);
+    expect(check).toHaveBeenCalledWith({ user: { id: 3, role: 'admin' }, module: 'docs', action: 'view', projectId: 7 }, { query: q });
+    check.mockResolvedValue({ allowed: true });
+    expect(await canAccessMedia(q, { id: 3, role: 'admin' }, 'restricted.pdf', null, check)).toBe(true);
+  });
 });
