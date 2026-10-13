@@ -1185,3 +1185,9 @@ Verification: migration 0046 applied to the disposable PostgreSQL database; focu
 Consultant `My Reviews` and dashboard WIR items now come from the formal `wirs` register at `consultant_review`, rather than the legacy `sub_work_verifications` table. Inbox rows include drawing reference and inspection date. Due timestamps are calculated from the open consultant workflow step's `opened_at` and configured `workflow_steps.sla_hours`; if no SLA or opening time is configured, the row stays undated.
 
 Focused verification on the disposable local PostgreSQL database: `consultant-observation.pg.test.js` passed 1 suite / 2 tests, including formal WIR inbox sourcing, configured 24-hour SLA, and denial by project filter. `consultant.test.js` passed 1 suite / 12 tests. No full suite was run. Inspection decisions/recommendations and the focused inbox component test remain open under 5.6.2.
+
+## 2026-10-13: Phase 5.6.2 consultant WIR result action
+
+Added `POST /api/consultant/wirs/:id/result`. It accepts the formal WIR result vocabulary, locks and checks the WIR against the consultant's assigned project inside the audited transaction, delegates state changes to the QA/QC engine, and records the activity audit and workflow action history together. Out-of-project records return a typed not-found response.
+
+Focused verification: `consultant-observation.pg.test.js` passed 1 suite / 3 tests against the disposable local PostgreSQL database, including approved-with-comments state, terminal workflow state, two formal workflow actions, and out-of-project denial. `consultant.test.js` plus `qaqc.test.js` passed 2 suites / 27 tests. Changed route/service/test files passed `node --check`. The first PG attempt found a test expectation mismatch (there are two workflow action entries, one for the decision and one for terminal close); the assertion was corrected and the same test file passed. No full suite was run. Recommendation records and inbox UI remain open.

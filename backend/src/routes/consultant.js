@@ -5,6 +5,7 @@ const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
+const { typedFail, typedBody } = require('../utils/typedRoute');
 const engine = require('../services/consultantEngine');
 
 // Mounted at /api/consultant — the consultant portal surface.
@@ -38,6 +39,23 @@ router.get('/reviews', authenticate, authorize(), async (req, res) => {
     const rows = await engine.myReviews(query, req.user, filters);
     res.json({ success: true, data: rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+// Record the consultant's final WIR inspection result through the formal QA/QC
+// workflow. Project assignment is checked again inside the audited transaction.
+router.post('/wirs/:id/result', authenticate, authorize('consultant'), async (req, res) => {
+  const value = typedBody(Joi.object({
+    result: Joi.string().valid('approved', 'approved_with_comments', 'rejected', 'reinspect').required(),
+    comment: Joi.string().max(4000).allow('', null).optional(),
+  }), req, res);
+  if (!value) return;
+  try {
+    const wir = await auditedTransaction(
+      (q) => engine.decideConsultantWir(q, parseInt(req.params.id, 10), req.user, value.result, { comment: value.comment }),
+      (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'qhse', description: `${result.wir_number} consultant result: ${value.result}`, entityId: result.id, entityType: 'wir' })
+    );
+    res.json({ success: true, data: wir });
+  } catch (error) { return typedFail(res, error, 'CONSULTANT_WIR_RESULT', req); }
 });
 
 // Observations.

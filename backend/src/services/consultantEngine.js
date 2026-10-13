@@ -23,6 +23,7 @@
 const { query: defaultQuery } = require('../config/database');
 const { nextNumber } = require('./numbering');
 const workflowEngine = require('./workflowEngine');
+const qaqcEngine = require('./qaqcEngine');
 const OBSERVATION_IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
 
 const OBSERVATION_TRANSITIONS = {
@@ -503,6 +504,26 @@ async function resubmitSubmittal(q, submittalId, user, { comments = null, attach
   )).rows[0];
 }
 
+async function decideConsultantWir(q, wirId, user, result, { comment = null } = {}) {
+  const wir = (await q('SELECT * FROM wirs WHERE id = $1 FOR UPDATE', [wirId])).rows[0];
+  if (!wir) throw Object.assign(new Error('WIR not found'), { status: 404, error_code: 'record_not_found' });
+  if (user.role !== 'consultant') {
+    throw Object.assign(new Error('Consultant role required'), { status: 403, error_code: 'forbidden' });
+  }
+  const projectIds = await resolveConsultantProjects(q, user.id);
+  if (!projectIds.includes(toNum(wir.project_id))) {
+    throw Object.assign(new Error('WIR not found'), { status: 404, error_code: 'record_not_found' });
+  }
+  try {
+    return await qaqcEngine.decideWir(q, wirId, user, result, { comment });
+  } catch (error) {
+    if (error.statusCode === 403) {
+      throw Object.assign(error, { status: 403, error_code: 'forbidden' });
+    }
+    throw Object.assign(error, { status: 409, error_code: 'invalid_workflow_transition' });
+  }
+}
+
 // ---------------------------------------------------------------------------
 // My Reviews inbox — one list, sorted by due date then priority, filterable
 // by project / discipline / type / location.
@@ -692,6 +713,7 @@ module.exports = {
   closeRfi,
   recordSubmittalResponse,
   resubmitSubmittal,
+  decideConsultantWir,
   myReviews,
   consultantDashboard,
 };

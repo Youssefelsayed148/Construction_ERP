@@ -122,4 +122,46 @@ describePg('consultant observation completeness (real PostgreSQL)', () => {
       await db.query('UPDATE workflow_steps SET sla_hours = $1 WHERE id = $2', [step.sla_hours, step.id]);
     }
   });
+
+  test('consultant WIR result uses the formal workflow and hides WIRs outside the assigned project', async () => {
+    const template = (await db.query("SELECT id FROM workflow_templates WHERE key = 'wir'")).rows[0];
+    const consultantStep = (await db.query("SELECT id FROM workflow_steps WHERE template_id = $1 AND step_key = 'consultant'", [template.id])).rows[0];
+    const finalStep = (await db.query("SELECT id FROM workflow_steps WHERE template_id = $1 AND step_key = 'approved_comments_rejected_reinspect'", [template.id])).rows[0];
+    const otherWir = (await db.query(
+      "INSERT INTO wirs (wir_number, project_id, status) VALUES ($1,$2,'consultant_review') RETURNING id",
+      [`WIR-${tag}-private`, otherProject.id]
+    )).rows[0];
+    await expect(engine.decideConsultantWir(db.query, otherWir.id, teammate, 'approved'))
+      .rejects.toMatchObject({ status: 404, error_code: 'record_not_found' });
+
+    const instance = (await db.query(
+      `INSERT INTO workflow_instances (template_id, template_key, entity_type, entity_id, project_id, context, current_step_key, status, requester_id)
+       VALUES ($1,'wir','wir',$2,$3,'{}','consultant','active',$4) RETURNING id`,
+      [template.id, tag + 1, project.id, consultant.id]
+    )).rows[0];
+    const wir = (await db.query(
+      `INSERT INTO wirs (wir_number, project_id, status, workflow_instance_id)
+       VALUES ($1,$2,'consultant_review',$3) RETURNING id`,
+      [`WIR-${tag}-decision`, project.id, instance.id]
+    )).rows[0];
+    await db.query(
+      `INSERT INTO workflow_step_instances (instance_id, step_id, step_key, name, status, opened_at)
+       VALUES ($1,$2,'consultant','Consultant','pending',NOW()),
+              ($1,$3,'approved_comments_rejected_reinspect','Final result','waiting',NULL)`,
+      [instance.id, consultantStep.id, finalStep.id]
+    );
+
+    try {
+      const result = await db.transaction((client) => engine.decideConsultantWir(
+        client.query.bind(client), wir.id, teammate, 'approved_with_comments', { comment: 'Approved with drawing note' }
+      ));
+      expect(result).toMatchObject({ status: 'approved_with_comments', result: 'approved_with_comments', decided_by: teammate.id });
+      expect((await db.query('SELECT status FROM workflow_instances WHERE id = $1', [instance.id])).rows[0].status).toBe('approved');
+      expect((await db.query("SELECT count(*)::int AS count FROM workflow_actions WHERE instance_id = $1 AND user_id = $2 AND decision = 'advance'", [instance.id, teammate.id])).rows[0].count).toBe(2);
+    } finally {
+      await db.query('DELETE FROM workflow_instances WHERE id = $1', [instance.id]);
+      await db.query('DELETE FROM wirs WHERE id = $1', [wir.id]);
+      await db.query('DELETE FROM wirs WHERE id = $1', [otherWir.id]);
+    }
+  });
 });
