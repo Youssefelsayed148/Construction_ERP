@@ -327,11 +327,10 @@ const APPROVER_ROLES = {
   owner: 'owner',
 };
 
-// Until configurable approval limits exist (Phase 5.1), anything that moves money needs an owner.
 function requiredApproverRole(toolName) {
   const def = TOOLS[toolName];
   if (!def || def.risk !== 'gated') return null;
-  if (def.movesMoney) return 'owner';
+  if (def.movesMoney) return 'finance_manager';
   return APPROVER_ROLES[def.approver] || 'owner';
 }
 

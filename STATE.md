@@ -7,28 +7,30 @@ Updated: 2026-10-13 (Africa/Cairo)
 - Read the pasted closeout scope, audit report, plan, status/progress/log/testing/migration docs, and requested Docker/CI files.
 - Created and switched to `closeout/batch-a-to-6`. Preserved the existing untracked `docs/CODEX_AUDIT_REPORT.md`.
 - Added repository conventions in `AGENTS.md`.
-- Implemented the A1 service behavior: creating a grant retires an expired active row for the same grantor, grantee, and scope before checking for a live duplicate.
-- Added PG regression assertions for expired renewal and overlapping-live refusal.
-- Verification so far: backend mock 42 suites / 928 tests passed; `npm run lint:guards` passed.
+- Commits: `f364461` (A1), `4e85eb5` (A2/A3 webhook SSRF and secret handling), `9da567b` (A4 selected transactional audits), `5a7d194` (A5), `6e5c389` (A6).
+- Backend mock gate currently passes: 46 suites / 949 tests. `npm run lint:guards` passes.
+- A7 implementation is in progress: versioned migration, role/action limit service, owner/admin API, approval enforcement and unit coverage exist; not yet committed.
 
 ## In progress
 
-- Batch A, slices A1–A3. A1 code and PG regression assertions are present; PG has not run. A2 SSRF controls and A3 encrypted secrets/rotation are implemented with focused mocked coverage. These slices are not yet committed.
+- Batch A remains incomplete. A2/A3 are grouped in one commit because the service and tests share files. A4 has selected transactional conversions only; the route-family sweep is incomplete. A5/A6 are committed.
+- Current full backend mock gate passes 46/46 suites and 949/949 tests after updating expectations for configurable limits and the route inventory. The A7 focused suite is 1/1 and 4/4.
 
 ## Where work stopped
 
-- `docker info` failed because the Docker Desktop Linux engine pipe is absent (`//./pipe/dockerDesktopLinuxEngine`). The user's rule requires PG verification against an isolated throwaway PostgreSQL container; no alternate database was used.
+- `docker info` failed because the Docker Desktop Linux engine pipe is absent (`//./pipe/dockerDesktopLinuxEngine`). No alternate database was used.
+- Docker Desktop engine is unavailable, so no isolated PostgreSQL could be started. Do not run the PG suite against another DB.
+- The A7 full mock run first failed two stale assertions (owner-only monetary approval, fixed route count); both were updated and the rerun passed.
 
 ## Next step
 
-- Resume by starting Docker Desktop, creating a newly named throwaway Postgres container/database, and running `TEST_PG=1 npm run test:pg -- --runInBand` with explicit connection variables. Review A1's lifecycle assertions and all A2–A4 real-PG gates before declaring those slices verified.
-- Continue A3 onward after A2; keep A1 marked unverified until the isolated PG suite passes. No A slice is declared complete until its required evidence and commit exist.
+- Continue A4 conversion/review of remaining route families; review and commit A7 next, then A8/A9. Keep A1 and A7 migration/runtime verification unverified until the full real-PG suite passes against a new explicitly test-named throwaway container/database.
+- Then complete the frontend, Docker, UAT preparation, finance, and Phases 5.6–6 in the pasted request, recording exact command output and commits per slice.
 
 ## Gates
 
-- Mock backend: PASS — `Test Suites: 42 passed, 42 total`; `Tests: 928 passed, 928 total`.
+- Backend mock: PASS — 46/46 suites, 949/949 tests (`npm test -- --runInBand`).
 - Backend lint guards: PASS — `lint-guards: ok`.
-- Real PostgreSQL: UNVERIFIED — Docker daemon unavailable; audit baseline was 565 passed / 1 known failure before this change.
-- Focused webhook unit suite: PASS — 1 suite / 41 tests (`external-api.test.js`). This does not replace live network or PG verification.
-- Latest webhook suite after A3 changes: PASS — 1 suite / 42 tests (`external-api.test.js`).
-- Frontend, browser, Docker staging, UAT, finance, and Phases 5.6–6: NOT RUN.
+- Focused webhook suite: PASS — 1 suite, 42 tests.
+- Real PostgreSQL: UNVERIFIED — Docker daemon unavailable. Audit baseline before these changes was 565 passed / 1 known failure.
+- Frontend, browser, staging Docker, backup/restore, UAT, finance, and Phases 5.6–6: NOT RUN.

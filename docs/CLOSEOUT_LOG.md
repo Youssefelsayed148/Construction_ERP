@@ -268,7 +268,7 @@ The backend stack (#17, #18) and the frontend stack (#19 on #6-#9) are merged in
 - Not done in 5.5, honestly: retention, advance recovery and other deductions are stored on the certificate but post nowhere: chart accounts and mapping keys are PROPOSED in the PR description and wait for the owner; `invoice_lines` and `payment_applications` have tables but invoice creation does not write lines yet; no MCP tools (the plan does not ask); no UI (Phase 6); bank accounts are the 5.1 `org_bank_accounts`.
 # 2026-10-13: autonomous closeout start — A1 in progress
 
-Branch: `closeout/batch-a-to-6`. Existing untracked `docs/CODEX_AUDIT_REPORT.md` was preserved.
+Branch: `closeout/batch-a-to-6`. A1 commit: `f364461`. Existing untracked `docs/CODEX_AUDIT_REPORT.md` was preserved.
 
 Implemented but not yet committed: `orgService.createDelegation` now sets `is_active=false` for expired rows matching the same grantee, grantor, and module scope before checking for a live duplicate. The 5.1 PG suite now asserts that a matching live overlap returns `delegation_duplicate`, and that an expired grant is deactivated when renewed.
 
@@ -320,3 +320,56 @@ Snapshots:   0 total
 Time:        1.295 s
 ```
 
+## 2026-10-13: A4 transactional audit progress
+
+`logActivity` now accepts the caller's query function and propagates DB errors. Its recent/user/module read helpers now propagate query failures instead of returning empty arrays. Added `auditedTransaction` to run state changes and activity writes on one DB client. Procurement's PR/PO creation, budget override, award recommendation and supplier-invoice workflow state changes, PR/PO edits/cancellations, and GRN creation now use it. Finance ledger's AP review resolution, credit-note actions, and payment-batch actions also use it. A lint guard checks the two critical route families for direct post-transaction audit calls.
+
+Actual command output:
+
+```text
+backend> npm run lint:guards
+lint-guards: ok
+
+backend> npm test -- --runInBand src/scripts/__tests__/procurement.test.js src/scripts/__tests__/external-api.test.js src/scripts/__tests__/activity-audit.test.js src/scripts/__tests__/lint-guards.test.js
+Test Suites: 4 passed, 4 total
+Tests:       57 passed, 57 total
+Snapshots:   0 total
+Time:        1.567 s
+```
+
+Audit sweep is not complete: inspection found 168 route-level activity/audit call sites across the route tree. Other route families remain to inspect/convert. Real-PG failure-injection verification is unverified because Docker Desktop is unavailable.
+
+## 2026-10-13: A5 typed error redaction and A6 migration inventory
+
+`typedRoute.typedFail` now logs untyped details with a request correlation ID and returns a generic 500 envelope. PostgreSQL unique, reference, and check constraint violations map to stable typed codes. Procurement's local failure helper now uses the common boundary. Tests cover raw-message non-disclosure, correlation IDs, and constraint codes. The PG global setup now compares the exact set of versioned migration filenames and normalized SHA-256 checksums with `schema_migrations`, including same-count mismatches. `docs/MIGRATIONS.md` records the unreused 0030 gap; stale `docs/IMPLEMENTATION_STATUS.md` was replaced with a dated, evidence-based snapshot.
+
+Focused output:
+
+```text
+backend> npm test -- --runInBand src/scripts/__tests__/migration-global-setup.test.js src/scripts/__tests__/typed-route.test.js
+Test Suites: 2 passed, 2 total
+Tests:       5 passed, 5 total
+```
+
+Full mock and guard rerun after the first agent-fixture issue was fixed:
+
+```text
+backend> npm test -- --runInBand
+Test Suites: 45 passed, 45 total
+Tests:       944 passed, 944 total
+Snapshots:   0 total
+Time:        4.422 s
+Ran all test suites.
+
+backend> npm run lint:guards
+lint-guards: ok
+```
+
+The PG inventory precheck is unit-tested only; it has not been exercised against PostgreSQL because Docker Desktop is unavailable.
+
+
+## 2026-10-13: A7 configurable limits (not yet committed)
+
+Implemented migration 0037, an owner/admin `/api/approval-limits` endpoint, fail-closed approval limit service, persisted amount resolution for ID-based MCP money tools, and role/action enforcement during decision. The admin write and activity entry share a transaction. The role cap remains the approver's actual role even when project access comes from delegation; delegation grants project scope and does not add money authority. Defaults are provisional EGP values requiring owner/finance confirmation.
+
+Verification: focused A7 unit suite 1/1, 4/4; full backend mock suite 46/46, 949/949; `npm run lint:guards` prints `lint-guards: ok`. Migration and PG execution are unverified because Docker Desktop is unavailable.

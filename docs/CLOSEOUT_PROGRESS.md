@@ -11,9 +11,12 @@ Stack so far: #1-#35 (Phases 0-3 and earlier slices, see docs/CLOSEOUT_LOG.md). 
 - A1 is in progress: expired matching active delegation rows are deactivated during renewal; PG regression assertions cover expired renewal and live-overlap refusal.
 - A2 is in progress: webhook URL validation, DNS pinning, non-public address rejection, redirect refusal, and response cap are implemented with mocked regressions; A2 is not yet committed.
 - A3 is in progress: webhook secrets are encrypted at rest using an HKDF-derived AES-256-GCM key; read helpers omit them, create and rotate return secrets once, and legacy plaintext rows are encrypted on first delivery. Rotation is audited in its transaction.
+- A4 is in progress: `logActivity` now propagates write errors and supports transaction-bound queries; activity readers propagate DB errors. Procurement and finance-ledger writes moved inside their transaction, and a rollback-path injection test plus a route guard were added. The other route families have not yet been converted.
 - Current local output: mock backend 42/42 suites and 928/928 tests; lint guards `ok`.
 - Focused webhook output: 1 suite / 41 tests passed. This is mocked coverage only.
 - Updated focused webhook output after A3: 1 suite / 42 tests passed. This is mocked coverage only.
+- Focused A4 output: 4 suites / 57 tests passed; `npm run lint:guards` reports `lint-guards: ok`.
+- After A5/A6 changes, the full backend mock gate passed at 45/45 suites and 944/944 tests; guards passed. A first run exposed a missing transaction mock in the agent approval parity fixture; that fixture now provides a transaction-bound mock and the rerun passed.
 - Real-PG verification is blocked pending Docker Desktop availability. `docker info` reports the Docker Desktop Linux engine pipe is missing. Do not point tests at any other database.
 - See root `STATE.md` for the exact resume command and outstanding gates.
 
@@ -60,3 +63,31 @@ CP2 was reached after A2.1-A2.7 (#36-#42) and the decisions PR #43: PO modes rai
 - (5.3) materials and inventory: lots/batch/expiry (FEFO), unit-conversion table, issue/return/adjustment documents, expiry alert, replenishment endpoints, one open-requirement formula. Migration 0034.
 - (5.4) procurement: award recommendation entity + approval, RFQ list/get, PR/PO update and cancel, vendor performance and spend queries; fixes the requester-step bug (only owner/admin/system could submit a requisition). Migration 0035.
 - (5.5) commercial and finance: parties/guarantees/insurances/rates, payment applications and certificate workflow, versioned budgets/forecasts (maker/checker), commitment adjust, variation fields, credit notes, payment batches, supplier invoice workflow. Migration 0036. CHECKPOINT CP5 reached; waits for "go" and for the owner's confirmation of the retention/advance/deduction accounts.
+
+## 2026-10-13: A7 configurable agent approval limits (implementation in progress)
+
+Added versioned migration `0037_role_action_approval_limits.sql` with provisional EGP defaults for money-moving tools and finance approver roles. The admin API is mounted at `/api/approval-limits` (owner/admin only), writes are transactional with activity audit, and the MCP decision path resolves ID-only action amounts from stored ERP records before checking the approver's role/action limit. Missing, disabled, unresolved, over-limit, or currency-mismatched limits fail closed. The role check uses the approver's actual role, so project delegation does not increase a monetary cap. Defaults remain provisional and require finance/owner review.
+
+Focused output:
+
+```text
+backend> npm test -- --runInBand src/scripts/__tests__/approval-limits.test.js
+Test Suites: 1 passed, 1 total
+Tests:       4 passed, 4 total
+```
+
+The first full run exposed two stale expectations after the policy/API additions (owner-only approval and an exact route-file count); both were updated. Rerun output:
+
+```text
+backend> npm test -- --runInBand
+Test Suites: 46 passed, 46 total
+Tests:       949 passed, 949 total
+Snapshots:   0 total
+Time:        4.673 s
+Ran all test suites.
+
+backend> npm run lint:guards
+lint-guards: ok
+```
+
+Migration application and PG approval/delegation integration remain unverified because Docker Desktop is unavailable. A7 is not committed yet.

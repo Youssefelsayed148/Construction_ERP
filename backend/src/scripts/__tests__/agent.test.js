@@ -166,7 +166,7 @@ describe('agent policy', () => {
   });
 
   test('every gated tool resolves a required approver role', () => {
-    expect(agentPolicy.requiredApproverRole('issue_purchase_order')).toBe('owner');   // moves money: owner until approval limits exist
+    expect(agentPolicy.requiredApproverRole('issue_purchase_order')).toBe('finance_manager'); // configured limits add the amount gate
     expect(agentPolicy.requiredApproverRole('approve_variation')).toBe('finance_manager');
     expect(agentPolicy.requiredApproverRole('complete_action_with_evidence')).toBe('project_manager');
     expect(agentPolicy.requiredApproverRole('change_authority_rules')).toBe('owner');

@@ -30,6 +30,7 @@ const { query } = require('../config/database');
 const agentPolicy = require('./agentPolicy');
 const policy = require('./policy');
 const { logActivity } = require('../utils/activity');
+const approvalLimits = require('./approvalLimits');
 
 // routes/v1 exposes the internal router registry; require it lazily —
 // routes/v1 → assistantService → mcpService is a cycle and top-level
@@ -368,10 +369,6 @@ async function decideRequest(requestId, approver, decision, comment) {
   if (!canDecide) {
     throw Object.assign(new Error(`Requires '${request.required_approver_role}' authority`), { status: 403 });
   }
-  // Until approval limits exist (Phase 5.1), anything that moves money needs an owner, not an admin.
-  if ((agentPolicy.TOOLS[request.tool] || {}).movesMoney && approver.role !== 'owner') {
-    throw Object.assign(new Error('Only an owner can approve an action that moves money'), { status: 403 });
-  }
   // Four-eyes: the person (or agent session) that asked is never the one who approves.
   if (Number(request.requesting_user_id) === Number(approver.id)) {
     throw Object.assign(new Error('You cannot decide a request you made'), { status: 403 });
@@ -385,6 +382,10 @@ async function decideRequest(requestId, approver, decision, comment) {
 
   const def = agentPolicy.TOOLS[request.tool] || {};
   const args = typeof request.payload === 'string' ? JSON.parse(request.payload) : request.payload;
+  if (def.movesMoney && decision !== 'reject') {
+    const amount = await approvalLimits.resolveActionAmount(request.tool, args);
+    await approvalLimits.assertWithinLimit({ role: approver.role, action: request.tool, amount });
+  }
 
   let requestingUser = null;
   if (decision !== 'reject') {
