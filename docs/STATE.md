@@ -12,12 +12,13 @@
 - Phase 5.6.1, the delivered 5.6.2 workflow slices, and 5.6.3 are implemented. Phase 5.6.2 SLA administration remains open.
 - Phase 5.6.4 client actions are committed in `940d2f3`. Phase 5.6.5.a structured subcontractor submission intake/history is committed in `d6070bc`; 5.6.5.b formal WIR/MIR registers are committed in `f7e291d`; 5.6.5.c RFI/submittal forms are committed in `04c8ff0`; 5.6.5.d RFI acknowledgement/resubmittal forms are committed in `ba2a00c`; 5.6.5.e remaining subcontractor action forms are committed in `1f3a345`. Supplier portal MIRs currently show their number, current status, and decision date through own deliveries. Line-level accepted/rejected quantities and full internal inspection history remain on the procurement register.
 - Phase 5.7.1 canonical incident source changes and populated legacy-conversion checks are committed in `a090a36`. QHSE and site internal queries now use `incidents`; HSE compatibility conversion retains the legacy view.
-- Phase 5.7.2.a RFI location/work-package/cost/schedule impacts are implemented and ready to commit; migration 0053 is applied on the disposable test database.
+- Phase 5.7.2.a RFI location/work-package/cost/schedule impacts are committed in `ea2227c`; migration 0053 is applied on the disposable test database.
+- Phase 5.7.2.b QA/QC certificate register is implemented and ready to commit; migration 0054 is applied on the disposable test database. Spec 15 QA/QC certificates are distinct from finance payment certificates.
 
 ## Next
 
-1. Commit the Phase 5.7.2.a RFI impact slice after final review.
-2. Audit certificate register and transmittal/document-distribution field coverage against spec 15 and the project record specs; implement only concrete missing fields.
+1. Commit the Phase 5.7.2.b QA/QC certificate-register slice after final review.
+2. Audit transmittal/document-distribution and controlled drawing/document fields against spec 16; implement only concrete missing fields.
 3. Continue Phases 5.7, 5.8 and 6 in the audited order in `docs/PLAN_5_6_TO_6.md`.
 
 ## Decisions and limits

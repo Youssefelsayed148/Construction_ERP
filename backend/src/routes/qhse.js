@@ -1161,6 +1161,142 @@ router.get('/quality-tests/:id/pdf', authenticate, authorize(), async (req, res)
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
+// ============ QA/QC CERTIFICATE REGISTER ============
+
+function certificateFailure(res, status, code) {
+  return res.status(status).json({ success: false, error_code: code });
+}
+
+function certificateProjectAllowed(req, projectId) {
+  return req.accessScope?.companyWide || (req.accessScope?.projectIds || []).includes(Number(projectId));
+}
+
+const CERTIFICATE_TYPES = ['material', 'test', 'equipment', 'calibration', 'safety', 'other'];
+const CERTIFICATE_CREATE = Joi.object({
+  project_id: Joi.number().integer().positive().required(),
+  certificate_type: Joi.string().valid(...CERTIFICATE_TYPES).required(),
+  title: Joi.string().trim().min(1).max(255).required(),
+  issuer: Joi.string().trim().max(255).allow('', null),
+  issue_date: Joi.date().iso().allow(null),
+  expiry_date: Joi.date().iso().allow(null),
+  project_document_id: Joi.number().integer().positive().allow(null),
+  mir_id: Joi.number().integer().positive().allow(null),
+  notes: Joi.string().max(10000).allow('', null),
+});
+
+const CERTIFICATE_UPDATE = Joi.object({
+  certificate_type: Joi.string().valid(...CERTIFICATE_TYPES),
+  title: Joi.string().trim().min(1).max(255),
+  issuer: Joi.string().trim().max(255).allow('', null),
+  issue_date: Joi.date().iso().allow(null),
+  expiry_date: Joi.date().iso().allow(null),
+  status: Joi.string().valid('active', 'superseded', 'revoked'),
+  project_document_id: Joi.number().integer().positive().allow(null),
+  mir_id: Joi.number().integer().positive().allow(null),
+  notes: Joi.string().max(10000).allow('', null),
+}).min(1);
+
+function certificateDatesValid(issueDate, expiryDate) {
+  return issueDate == null || expiryDate == null || new Date(expiryDate) >= new Date(issueDate);
+}
+
+async function certificateLinksBelongToProject(q, projectId, links) {
+  if (links.project_document_id != null) {
+    const document = await q('SELECT 1 FROM project_documents WHERE id = $1 AND project_id = $2', [links.project_document_id, projectId]);
+    if (!document.rows.length) return 'certificate_document_project_mismatch';
+  }
+  if (links.mir_id != null) {
+    const mir = await q('SELECT 1 FROM material_inspection_requests WHERE id = $1 AND project_id = $2', [links.mir_id, projectId]);
+    if (!mir.rows.length) return 'certificate_mir_project_mismatch';
+  }
+  return null;
+}
+
+router.get('/certificates', authenticate, authorize(), async (req, res) => {
+  try {
+    const projectId = req.query.project_id == null ? null : Number(req.query.project_id);
+    if (req.query.project_id != null && (!Number.isInteger(projectId) || projectId < 1)) {
+      return certificateFailure(res, 400, 'invalid_project_id');
+    }
+    if (projectId != null && !certificateProjectAllowed(req, projectId)) return certificateFailure(res, 403, 'project_scope_denied');
+    const params = [];
+    const conditions = [];
+    if (projectId != null) {
+      params.push(projectId); conditions.push(`c.project_id = $${params.length}`);
+    } else if (!req.accessScope?.companyWide) {
+      params.push(req.accessScope?.projectIds || []); conditions.push(`c.project_id = ANY($${params.length}::int[])`);
+    }
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const result = await query(
+      `SELECT c.*, d.title AS document_title, m.mir_number
+       FROM qaqc_certificates c
+       LEFT JOIN project_documents d ON d.id = c.project_document_id
+       LEFT JOIN material_inspection_requests m ON m.id = c.mir_id
+       ${where} ORDER BY c.created_at DESC, c.id DESC`, params);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('qhse.certificate.list failed', error);
+    certificateFailure(res, 500, 'certificate_list_failed');
+  }
+});
+
+router.post('/certificates', authenticate, authorize(), async (req, res) => {
+  const { error, value } = CERTIFICATE_CREATE.validate(req.body);
+  if (error) return certificateFailure(res, 400, 'invalid_certificate');
+  if (!certificateProjectAllowed(req, value.project_id)) return certificateFailure(res, 403, 'project_scope_denied');
+  if (!certificateDatesValid(value.issue_date, value.expiry_date)) return certificateFailure(res, 400, 'invalid_certificate_dates');
+  try {
+    const result = await auditedTransaction(async (q) => {
+      const mismatch = await certificateLinksBelongToProject(q, value.project_id, value);
+      if (mismatch) { const e = new Error(mismatch); e.status = 400; e.error_code = mismatch; throw e; }
+      const number = await nextNumber(q, { table: 'qaqc_certificates', column: 'certificate_number', prefix: 'QC-CERT', pad: 5, where: { project_id: value.project_id } });
+      return q(
+        `INSERT INTO qaqc_certificates (project_id, certificate_number, certificate_type, title, issuer, issue_date,
+           expiry_date, project_document_id, mir_id, notes, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+        [value.project_id, number, value.certificate_type, value.title, value.issuer || null,
+          value.issue_date || null, value.expiry_date || null, value.project_document_id ?? null,
+          value.mir_id ?? null, value.notes || null, req.user.id]);
+    }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Registered QA/QC certificate ${r.rows[0].certificate_number}`, entityId: r.rows[0].id, entityType: 'qaqc_certificate' }));
+    res.status(201).json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    if (error.error_code) return certificateFailure(res, error.status || 400, error.error_code);
+    console.error('qhse.certificate.create failed', error);
+    certificateFailure(res, error.code === '23505' ? 409 : 500, error.code === '23505' ? 'certificate_number_conflict' : 'certificate_create_failed');
+  }
+});
+
+router.put('/certificates/:id', authenticate, authorize(), async (req, res) => {
+  const { error, value } = CERTIFICATE_UPDATE.validate(req.body);
+  if (error) return certificateFailure(res, 400, 'invalid_certificate_update');
+  try {
+    const result = await auditedTransaction(async (q) => {
+      const current = (await q('SELECT * FROM qaqc_certificates WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!current) { const e = new Error('certificate_not_found'); e.status = 404; e.error_code = 'certificate_not_found'; throw e; }
+      if (!certificateProjectAllowed(req, current.project_id)) { const e = new Error('project_scope_denied'); e.status = 403; e.error_code = 'project_scope_denied'; throw e; }
+      const issueDate = value.issue_date === undefined ? current.issue_date : value.issue_date;
+      const expiryDate = value.expiry_date === undefined ? current.expiry_date : value.expiry_date;
+      if (!certificateDatesValid(issueDate, expiryDate)) { const e = new Error('invalid_certificate_dates'); e.status = 400; e.error_code = 'invalid_certificate_dates'; throw e; }
+      const links = {
+        project_document_id: value.project_document_id === undefined ? current.project_document_id : value.project_document_id,
+        mir_id: value.mir_id === undefined ? current.mir_id : value.mir_id,
+      };
+      const mismatch = await certificateLinksBelongToProject(q, current.project_id, links);
+      if (mismatch) { const e = new Error(mismatch); e.status = 400; e.error_code = mismatch; throw e; }
+      const fields = Object.entries(value);
+      const sets = fields.map(([key], index) => `${key} = $${index + 1}`);
+      const params = fields.map(([, fieldValue]) => fieldValue);
+      params.push(current.id);
+      return q(`UPDATE qaqc_certificates SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${params.length} RETURNING *`, params);
+    }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'qhse', description: `Updated QA/QC certificate ${r.rows[0].certificate_number}`, entityId: r.rows[0].id, entityType: 'qaqc_certificate' }));
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    if (error.error_code) return certificateFailure(res, error.status || 400, error.error_code);
+    console.error('qhse.certificate.update failed', error);
+    certificateFailure(res, 500, 'certificate_update_failed');
+  }
+});
+
 // ---------------------------------------------------------------------------
 // MIRs — the Phase 12 gate, surfaced here with its remaining links
 // (material submittal, certificates, GRN) and the Phase 6 'mir' workflow sync.

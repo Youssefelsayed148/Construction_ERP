@@ -1,5 +1,42 @@
 {
   "title": "Quality & HSE",
   "ncr": "Non-conformance reports",
-  "itp": "Inspection and test plans"
+  "itp": "Inspection and test plans",
+  "certificates": {
+    "title": "Certificate register",
+    "new": "Register a certificate",
+    "type": "Certificate type",
+    "name": "Title",
+    "issuer": "Issuer",
+    "issueDate": "Issue date",
+    "expiryDate": "Expiry date",
+    "documentId": "Linked project document ID",
+    "mirId": "Linked MIR ID",
+    "notes": "Notes",
+    "create": "Register certificate",
+    "number": "Certificate number",
+    "status": "Status",
+    "supersede": "Supersede",
+    "revoke": "Revoke",
+    "loading": "Loading certificates…",
+    "empty": "No certificates registered.",
+    "created": "Certificate registered.",
+    "updated": "Certificate updated.",
+    "error": "Could not load or save certificates.",
+    "documentLink": "Document: {{title}}",
+    "mirLink": "MIR: {{number}}",
+    "types": {
+      "material": "Material",
+      "test": "Test",
+      "equipment": "Equipment",
+      "calibration": "Calibration",
+      "safety": "Safety",
+      "other": "Other"
+    },
+    "statuses": {
+      "active": "Active",
+      "superseded": "Superseded",
+      "revoked": "Revoked"
+    }
+  }
 }

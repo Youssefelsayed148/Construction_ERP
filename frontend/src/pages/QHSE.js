@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import { ArrowLeft, Plus, FlaskConical, AlertOctagon, ShieldCheck, Siren, X, CheckCircle, ClipboardCheck, ListChecks, Wrench, PackageCheck, Gauge } from 'lucide-react';
 import { ItpTab, WirTab, PunchTab, CapaTab, MockUpsTab, CalibrationTab } from './QHSEExtended';
+import QHSECertificatesTab from './QHSECertificatesTab';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
@@ -93,6 +94,7 @@ function QHSE() {
     { key: 'capa', icon: Wrench, label: locale === 'ar' ? 'إجراءات CAPA' : 'CAPA' },
     { key: 'mockups', icon: PackageCheck, label: locale === 'ar' ? 'نماذج تجريبية' : 'Mock-ups' },
     { key: 'calibration', icon: Gauge, label: locale === 'ar' ? 'المعايرة' : 'Calibration' },
+    { key: 'certificates', icon: ClipboardCheck, label: t('qhse.certificates.title') },
     { key: 'inspections', icon: ShieldCheck, label: locale === 'ar' ? 'تفتيش السلامة' : 'Safety Inspections' },
     { key: 'incidents', icon: Siren, label: locale === 'ar' ? 'الحوادث' : 'Incidents' },
   ];
@@ -147,6 +149,7 @@ function QHSE() {
       {tab === 'capa' && <CapaTab projectId={id} locale={locale} t={t} />}
       {tab === 'mockups' && <MockUpsTab projectId={id} locale={locale} t={t} />}
       {tab === 'calibration' && <CalibrationTab projectId={id} locale={locale} t={t} />}
+      {tab === 'certificates' && <QHSECertificatesTab projectId={id} t={t} />}
       {tab === 'inspections' && <InspectionsTab projectId={id} locale={locale} t={t} onChanged={loadSummary} />}
       {tab === 'incidents' && <IncidentsTab projectId={id} locale={locale} t={t} onChanged={loadSummary} />}
     </div>

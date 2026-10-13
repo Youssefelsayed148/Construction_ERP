@@ -1265,3 +1265,9 @@ Focused verification: the named `legacy HSE conversion leaves usable sequences` 
 Added versioned migration `0053_rfi_project_impacts.sql` for nullable project location, work package, cost impact and schedule impact. RFI creation verifies optional location/package references belong to its project; the document-control read adds display names/codes; consultant reviews include those fields; the bilingual RFI form chooses project references from the location and work-package APIs. The subcontractor RFI view remains allowlisted and omits cost/schedule impact data. Existing workbench certificates, observations and transmittal/document registers were confirmed and not duplicated.
 
 Focused verification: migration runner applied 0053 (1 applied, 114 already applied) to the disposable PostgreSQL database. `rfi-impacts.pg.test.js` passed 2/2, including cross-project refusal; `consultant.test.js` + `portal.test.js` passed 30/30; `ProjectDocuments.test.js` + `PortalDashboard.test.js` passed 10/10; `WorkPackageSelect.test.js` passed 4/4; `i18n:check` passed. No full suite was run.
+
+## 2026-10-13: Phase 5.7.2.b QA/QC certificate register
+
+Spec 15's QA/QC certificate register is distinct from finance payment certificates. Added versioned migration 0054 and project-scoped certificate CRUD for type, title, issuer, issue/expiry dates, status, and optional same-project controlled-document/MIR links. The QHSE screen now supports register create/read and active-to-superseded/revoked transitions in EN/AR.
+
+Focused verification output: `[migrate] 0054_qaqc_certificate_register.sql ...`; `[migrate] all migrations completed (1 applied, 115 already applied)` on `construction_erp_closeout_test_20261013`; `qaqc-certificates.pg.test.js` passed 1 suite / 3 tests; `QHSECertificatesTab.test.js` passed 1 suite / 2 tests; `i18n:check ok`; `node --check src/routes/qhse.js` exited 0. No full suite was run.
