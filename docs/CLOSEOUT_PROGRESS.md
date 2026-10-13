@@ -541,3 +541,9 @@ Verification: `Shell.i18n.test.js` passed 18/18; `i18n:check ok`; frontend produ
 ### Current-source audit reconciliation
 
 Revalidated D1-D15 leads against current code after the 5.8.2 changes. Several old findings are fixed or superseded (webhook SSRF/secret handling, approval limits, procurement/finance UI callers, invoice lines, forecast controls, supplier-return lot links, project permission navigation, test-user seeder). Remaining confirmed leads and evidence are listed in `docs/CARRYOVER.md`; the original user audit report is left untouched.
+
+### Phase 6.2 — shared single-field text entry
+
+Added a reusable accessible text-entry dialog with required-field validation, submit/error state, focus behavior, and EN/AR catalog labels. Replaced prompts for new handover claim titles, saved report-view names, and site-photo captions. The live prompt scan now finds 33 calls across 8 files.
+
+Verification: `Shell.i18n.test.js` and `Handover.test.js` passed 2 suites / 20 tests; `i18n:check ok`; frontend production build compiled successfully; `git diff --check` passed. The Handover test now uses a stable translation mock to avoid a test-only effect loop.

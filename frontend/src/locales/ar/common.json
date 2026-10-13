@@ -126,6 +126,12 @@
   "toast": { "dismiss": "إغلاق" },
   "dialogs": {
     "typeToConfirm": "اكتب \"{value}\" للتأكيد.",
+    "handoverClaimTitle": "مطالبة ضمان جديدة",
+    "handoverClaimLabel": "عنوان المطالبة",
+    "saveViewTitle": "حفظ العرض",
+    "saveViewLabel": "اسم العرض",
+    "sitePhotoTitle": "إضافة صورة للموقع",
+    "sitePhotoCaption": "وصف الصورة",
     "confirmTitle": "يرجى التأكيد",
     "confirmDelete": "هل تريد حذف هذا السجل؟ لا يمكن التراجع عن هذا الإجراء.",
     "unsavedChanges": "لديك تغييرات غير محفوظة. هل تريد المغادرة دون حفظ؟",

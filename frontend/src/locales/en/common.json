@@ -126,6 +126,12 @@
   "toast": { "dismiss": "Dismiss" },
   "dialogs": {
     "typeToConfirm": "Type \"{value}\" to confirm.",
+    "handoverClaimTitle": "New warranty claim",
+    "handoverClaimLabel": "Claim title",
+    "saveViewTitle": "Save view",
+    "saveViewLabel": "View name",
+    "sitePhotoTitle": "Add site photo",
+    "sitePhotoCaption": "Photo caption",
     "confirmTitle": "Please confirm",
     "confirmDelete": "Delete this record? This cannot be undone.",
     "unsavedChanges": "You have unsaved changes. Leave without saving?",

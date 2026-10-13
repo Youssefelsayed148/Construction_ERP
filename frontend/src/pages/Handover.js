@@ -8,6 +8,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import { openProtectedFile } from '../components/ProtectedMedia';
 import DocumentUpload from '../components/DocumentUpload';
+import TextEntryDialog from '../components/common/TextEntryDialog';
 import { ArrowLeft, Plus, KeyRound, PackageCheck, CheckCircle, FileText } from 'lucide-react';
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
@@ -62,6 +63,7 @@ export default function Handover() {
   const [showAssetForm, setShowAssetForm] = useState(false);
   const [assetForm, setAssetForm] = useState({ asset_code: '', name: '', model: '', serial_no: '', commissioning_date: '', warranty_start: '', warranty_end: '' });
   const [showWarrantyForm, setShowWarrantyForm] = useState(false);
+  const [showClaimForm, setShowClaimForm] = useState(false);
   const [warrantyForm, setWarrantyForm] = useState({ title: '', issuer: '', asset_id: '', coverage_description: '', start_date: '', end_date: '', notes: '' });
   const [warrantyDocumentId, setWarrantyDocumentId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -178,13 +180,14 @@ export default function Handover() {
 
   const raiseAsset = () => { setShowAssetForm(true); };
 
-    const raiseClaim = async () => {
-    const title = prompt(locale === 'ar' ? 'عنوان المطالبة' : 'Claim title');
-    if (!title) return;
+  const raiseClaim = () => setShowClaimForm(true);
+
+  const createClaim = async (title) => {
     try {
       await apiCall(`${API_URL}/handover/claims`, { method: 'POST', body: JSON.stringify({ project_id: Number(id), title, description: title, sla_days: 30 }) });
-      load();
-    } catch (e) { alert(e.message); }
+      setShowClaimForm(false);
+      await load();
+    } catch (e) { throw e; }
   };
 
   const TABS = [
@@ -391,6 +394,7 @@ export default function Handover() {
         {assetDocuments.map((doc) => <div key={doc.id}><button className="btn" onClick={() => openProtectedFile(doc.file_url).catch((error) => alert(error.message))}>{doc.title}</button></div>)}
         <button className="btn" onClick={() => setAssetDocumentAsset(null)}>{t('common.cancel')}</button>
       </div>}
+      <TextEntryDialog open={showClaimForm} title={t('common.dialogs.handoverClaimTitle')} label={t('common.dialogs.handoverClaimLabel')} onSubmit={createClaim} onCancel={() => setShowClaimForm(false)} />
       <div className="card" style={{ padding: 12, marginTop: 20 }}>
         <h4 style={{ fontSize: 13, marginBottom: 8 }}>{locale === 'ar' ? 'المستندات' : 'Documents'}</h4>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

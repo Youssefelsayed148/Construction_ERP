@@ -5,6 +5,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
+import TextEntryDialog from '../components/common/TextEntryDialog';
 import { ArrowLeft, Save, Package } from 'lucide-react';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
@@ -35,7 +36,7 @@ function download(url, filename) {
 export default function Reports() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
   const [catalog, setCatalog] = useState(null);
   const [savedViews, setSavedViews] = useState([]);
   const [scheduled, setScheduled] = useState([]);
@@ -44,6 +45,7 @@ export default function Reports() {
   const [columns, setColumns] = useState([]);
   const [projectReport, setProjectReport] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showViewDialog, setShowViewDialog] = useState(false);
 
   const loadCatalog = useCallback(async () => {
     try {
@@ -88,15 +90,14 @@ export default function Reports() {
     })();
   }, [loadCatalog, loadSaved, loadScheduled, loadData, id]);
 
-  const saveView = async () => {
-    const name = prompt(locale === 'ar' ? 'اسم العرض' : 'View name');
-    if (!name) return;
-    try {
-      await fetchApi(`${API_URL}/reports/saved-views`, { method: 'POST', body: JSON.stringify({
-        module: reportKey, name, params: id ? { project_id: id } : {},
-      }) });
-      loadSaved();
-    } catch (e) { alert(e.message); }
+  const saveView = () => setShowViewDialog(true);
+
+  const createSavedView = async (name) => {
+    await fetchApi(`${API_URL}/reports/saved-views`, { method: 'POST', body: JSON.stringify({
+      module: reportKey, name, params: id ? { project_id: id } : {},
+    }) });
+    setShowViewDialog(false);
+    await loadSaved();
   };
 
   const scheduleReport = async () => {
@@ -199,6 +200,7 @@ export default function Reports() {
           )}
         </div>
       )}
+      <TextEntryDialog open={showViewDialog} title={t('common.dialogs.saveViewTitle')} label={t('common.dialogs.saveViewLabel')} onSubmit={createSavedView} onCancel={() => setShowViewDialog(false)} />
     </div>
   );
 }

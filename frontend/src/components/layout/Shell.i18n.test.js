@@ -11,6 +11,7 @@ import Settings from '../../pages/Settings';
 import { accountMappingsApi } from '../../services/api';
 import { LoadingState, EmptyState, ErrorState, BackIcon, NextIcon } from '../common/States';
 import ConfirmDialog from '../common/ConfirmDialog';
+import TextEntryDialog from '../common/TextEntryDialog';
 
 let mockUser = { name: 'Tester', role: 'owner', policy_modules: ['*'] };
 jest.mock('../../services/api', () => ({
@@ -185,6 +186,22 @@ describe('shared states, dialog and directional icons', () => {
     expect(confirm.disabled).toBe(false);
     act(() => confirm.click());
     expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  test('TextEntryDialog validates required text and submits a trimmed value', async () => {
+    const onSubmit = jest.fn();
+    await mount(<TextEntryDialog open title="Save view" label="View name" onSubmit={onSubmit} onCancel={() => {}} />, 'en');
+    const form = container.querySelector('form');
+    await act(async () => { form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
+    expect(container.textContent).toContain('This field is required.');
+    const input = container.querySelector('#text-entry-dialog-value');
+    const setInputValue = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    await act(async () => {
+      setInputValue.call(input, '  My view  ');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    });
+    expect(onSubmit).toHaveBeenCalledWith('My view');
   });
 
   test('back and next arrows mirror in RTL and are not mirrored in LTR', async () => {

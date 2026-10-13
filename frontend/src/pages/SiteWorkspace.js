@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
+import TextEntryDialog from '../components/common/TextEntryDialog';
 import { ArrowLeft, Camera, Sun, Users, Truck, HardHat, ClipboardList, AlertTriangle, StickyNote, Play } from 'lucide-react';
 
 // Phase 15 — the site-engineer home screen. Everything on it comes from ONE
@@ -55,7 +56,7 @@ function Section({ icon: Icon, label, count, children }) {
 function SiteWorkspace() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { locale } = useLocale();
+  const { locale, t: translate } = useLocale();
   const [data, setData] = useState(null);
   const [notes, setNotes] = useState([]);
   const [newNote, setNewNote] = useState('');
@@ -64,6 +65,7 @@ function SiteWorkspace() {
   const [plan, setPlan] = useState('');
   const [error, setError] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoFile, setPhotoFile] = useState(null);
   const photoInput = useRef(null);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -80,11 +82,16 @@ function SiteWorkspace() {
 
   useEffect(() => { load(); }, [load]);
 
-  const addPhoto = async (event) => {
+  const selectPhoto = (event) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
-    const caption = window.prompt(locale === 'ar' ? 'وصف الصورة:' : 'Photo caption:') || '';
+    setPhotoFile(file);
+  };
+
+  const addPhoto = async (caption) => {
+    const file = photoFile;
+    if (!file) return;
     setUploadingPhoto(true);
     try {
       const form = new FormData();
@@ -102,9 +109,11 @@ function SiteWorkspace() {
         method: 'POST',
         body: JSON.stringify({ caption, file_name: saved.original_name || file.name, file_url: saved.file_url }),
       });
+      setPhotoFile(null);
       load();
     } catch (e) {
       setError(e.message);
+      throw e;
     } finally {
       setUploadingPhoto(false);
     }
@@ -142,7 +151,7 @@ function SiteWorkspace() {
           <button className="btn btn-secondary btn-sm" onClick={() => navigate(-1)}><ArrowLeft size={14} /></button>
           <h1 style={{ fontSize: 20, margin: 0 }}>{locale === 'ar' ? 'مساحة عمل مهندس الموقع' : 'Site Engineer Workspace'}</h1>
         </div>
-        <input ref={photoInput} type="file" accept="image/*" capture="environment" onChange={addPhoto} style={{ display: 'none' }} />
+        <input ref={photoInput} type="file" accept="image/*" capture="environment" onChange={selectPhoto} style={{ display: 'none' }} />
         <button className="btn btn-primary btn-sm" disabled={uploadingPhoto} onClick={() => photoInput.current?.click()}>
           <Camera size={14} style={{ marginRight: 4 }} /> {uploadingPhoto ? 'Uploading…' : (locale === 'ar' ? 'التقاط صورة' : 'Quick Photo')}
         </button>
@@ -249,6 +258,7 @@ function SiteWorkspace() {
           </small>
         </div>
       </div>
+      <TextEntryDialog open={Boolean(photoFile)} title={translate('common.dialogs.sitePhotoTitle')} label={translate('common.dialogs.sitePhotoCaption')} required={false} onSubmit={addPhoto} onCancel={() => setPhotoFile(null)} />
     </div>
   );
 }

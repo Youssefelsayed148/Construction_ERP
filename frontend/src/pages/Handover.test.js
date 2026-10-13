@@ -3,7 +3,10 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import Handover from './Handover';
 
-jest.mock('../hooks/useLocale', () => ({ useLocale: () => ({ locale: 'en', t: (key) => key }) }));
+jest.mock('../hooks/useLocale', () => {
+  const t = (key) => key;
+  return { useLocale: () => ({ locale: 'en', t }) };
+});
 jest.mock('../components/DocumentUpload', () => function MockDocumentUpload({ onUploaded }) {
   return <button type="button" data-testid="mock-upload" onClick={() => onUploaded({ original_name: 'evidence.pdf', file_url: '/uploads/evidence.pdf', file_type: 'pdf', file_size_bytes: 12 })}>Mock uploaded file</button>;
 });
