@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocale } from '../hooks/useLocale';
+import TextEntryDialog from '../components/common/TextEntryDialog';
 import { authService } from '../services/api';
 import { ClipboardList, CheckCircle, XCircle, History, Inbox, Clock, Circle } from 'lucide-react';
 
@@ -231,6 +232,7 @@ function Approvals() {
   const [audit, setAudit] = useState([]);
   const [auditFilters, setAuditFilters] = useState({ module_name: 'all', status: 'all' });
   const [detail, setDetail] = useState(null); // { id, row }
+  const [inlineDecision, setInlineDecision] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -265,12 +267,11 @@ function Approvals() {
     await load();
   };
 
-  const handleInlineDecision = async (id, action) => {
-    const notes = window.prompt(locale === 'ar' ? 'ملاحظات (اختياري):' : 'Notes (optional):');
-    if (notes === null) return;
-    try {
-      await submitDecision(id, action, notes);
-    } catch (e) { alert(e.message); }
+  const handleInlineDecision = (id, action) => setInlineDecision({ id, action });
+
+  const confirmInlineDecision = async (notes) => {
+    await submitDecision(inlineDecision.id, inlineDecision.action, notes);
+    setInlineDecision(null);
   };
 
   const moduleLabel = (m) => MODULE_LABELS[locale]?.[m] || m;
@@ -468,6 +469,7 @@ function Approvals() {
           onDecision={submitDecision}
         />
       )}
+      <TextEntryDialog open={Boolean(inlineDecision)} title={t('common.dialogs.approvalNotesTitle')} label={t('common.dialogs.approvalNotesLabel')} required={false} onSubmit={confirmInlineDecision} onCancel={() => setInlineDecision(null)} />
     </div>
   );
 }

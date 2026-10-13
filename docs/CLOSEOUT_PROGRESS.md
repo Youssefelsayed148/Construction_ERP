@@ -547,3 +547,9 @@ Revalidated D1-D15 leads against current code after the 5.8.2 changes. Several o
 Added a reusable accessible text-entry dialog with required-field validation, submit/error state, focus behavior, and EN/AR catalog labels. Replaced prompts for new handover claim titles, saved report-view names, and site-photo captions. The live prompt scan now finds 33 calls across 8 files.
 
 Verification: `Shell.i18n.test.js` and `Handover.test.js` passed 2 suites / 20 tests; `i18n:check ok`; frontend production build compiled successfully; `git diff --check` passed. The Handover test now uses a stable translation mock to avoid a test-only effect loop.
+
+### Phase 6.2 — approval and NCR notes
+
+Converted inline approval decision notes and NCR resolution notes to `TextEntryDialog`, retaining optional approval notes and required resolution notes. Current scan: 31 prompt calls across 6 files.
+
+Verification: `Shell.i18n.test.js` passed 19/19; `i18n:check ok`; frontend production build compiled successfully; `git diff --check` passed. No Approvals or QHSE page-specific test exists in the current frontend test inventory.

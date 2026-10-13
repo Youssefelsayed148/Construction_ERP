@@ -1357,3 +1357,9 @@ Still open from targeted revalidation: end-to-end transactional audit coverage a
 Added `TextEntryDialog` and used it for Handover claim titles, saved report-view names, and site-photo captions. The dialog validates required input, keeps API errors in the dialog, and uses paired EN/AR catalog labels. Current prompt scan: 33 calls across 8 page files.
 
 Verification output: `Shell.i18n.test.js` + `Handover.test.js` passed 2 suites / 20 tests; `node scripts/i18n-inventory.js --check` reported `i18n:check ok`; frontend production build reported `Compiled successfully`; `git diff --check` exited 0. A Handover test mock was stabilized because it returned a new translation callback every render, causing an effect loop under the mounted page test.
+
+## 2026-10-13: Phase 6.2 approval and NCR notes
+
+Converted approval decision notes and NCR resolution notes to the shared text-entry dialog. Required behavior is retained for NCR resolution; approval notes remain optional. Current prompt scan: 31 calls across 6 files.
+
+Verification output: `Shell.i18n.test.js` passed 1 suite / 19 tests; `node scripts/i18n-inventory.js --check` reported `i18n:check ok`; frontend production build reported `Compiled successfully`; `git diff --check` exited 0. No focused Approvals or QHSE page test exists.

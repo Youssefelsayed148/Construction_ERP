@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
+import TextEntryDialog from '../components/common/TextEntryDialog';
 import { ArrowLeft, Plus, FlaskConical, AlertOctagon, ShieldCheck, Siren, X, CheckCircle, ClipboardCheck, ListChecks, Wrench, PackageCheck, Gauge } from 'lucide-react';
 import { ItpTab, WirTab, PunchTab, CapaTab, MockUpsTab, CalibrationTab } from './QHSEExtended';
 import QHSECertificatesTab from './QHSECertificatesTab';
@@ -313,6 +314,7 @@ function NcrsTab({ projectId, locale, t, onChanged }) {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
+  const [resolutionTarget, setResolutionTarget] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -330,18 +332,26 @@ function NcrsTab({ projectId, locale, t, onChanged }) {
   const advance = async (ncr) => {
     const next = NCR_NEXT[ncr.status];
     if (!next) return;
-    let resolution_notes;
     if (next === 'resolved') {
-      resolution_notes = prompt(locale === 'ar' ? 'ملاحظات الحل:' : 'Resolution notes:');
-      if (resolution_notes === null) return;
+      setResolutionTarget(ncr);
+      return;
     }
     try {
       await fetchApi(`${API_URL}/qhse/ncrs/${ncr.id}/status`, {
         method: 'POST',
-        body: JSON.stringify({ status: next, ...(resolution_notes ? { resolution_notes } : {}) }),
+        body: JSON.stringify({ status: next }),
       });
       load(); onChanged();
     } catch (e) { alert(e.message); }
+  };
+
+  const resolveNcr = async (resolution_notes) => {
+    const next = NCR_NEXT[resolutionTarget.status];
+    await fetchApi(`${API_URL}/qhse/ncrs/${resolutionTarget.id}/status`, {
+      method: 'POST', body: JSON.stringify({ status: next, resolution_notes }),
+    });
+    setResolutionTarget(null);
+    load(); onChanged();
   };
 
   return (
@@ -407,6 +417,7 @@ function NcrsTab({ projectId, locale, t, onChanged }) {
       )}
 
       {showModal && <NcrModal projectId={projectId} locale={locale} t={t} onClose={() => setShowModal(false)} onSave={() => { load(); onChanged(); }} />}
+      <TextEntryDialog open={Boolean(resolutionTarget)} title={t('common.dialogs.resolveNcrTitle')} label={t('common.dialogs.resolveNcrLabel')} onSubmit={resolveNcr} onCancel={() => setResolutionTarget(null)} />
     </div>
   );
 }
