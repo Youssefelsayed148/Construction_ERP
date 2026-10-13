@@ -1127,3 +1127,7 @@ Focused evidence: live Playwright 4/4; denial Playwright 1/1; `ProcurementWorksp
 The first attempts found a local API origin mismatch, form selectors that assumed an explicit `type="submit"`, and role assumptions that did not match configured workflow resolvers. The harness and actor handoffs were corrected. The four final live runs each completed the full chain.
 
 Batch C is complete. D UAT execution requires human pilot users; E finance account mappings stay provisional until the finance owner confirms them. Continue with the UAT guide, provisional enablement, and Phase 5.6–6 work.
+
+## 2026-10-13: Batch D UAT preparation
+
+Added `docs/UAT_PILOT.md`: pilot-only P2P scope, finance-posting exclusion, account keys without credentials, role-by-role scripts, seeded checklist, deferred items, defect template, and human signoff table. It points to the local-only startup and smoke procedure in `docs/STAGING.md`. The guide does not claim business UAT is complete. It notes that the seeded storekeeper lacks procurement-workspace view access, so the receiving maker script uses the enabled workflow owner pilot actor. `git diff --check` passed; this documentation-only slice did not require automated tests.

@@ -32,11 +32,12 @@ Updated: 2026-10-13 (Africa/Cairo)
 - Batch C3 committed: `df7047c` (`Batch C3: filter navigation by policy grants`). Its focused shell test passed 16/16 tests; auth route syntax and whitespace checks passed.
 - C3 follow-up removes the remaining project role map/FULL fallback. Project tabs and financial cards now use effective module/action grants and project IDs. Targeted frontend checks pass: 3 suites / 26 tests; project-page Playwright passes 6/6 across desktop/mobile, including Arabic and site-engineer visibility.
 - Batch C4 passes the real local backend procure-to-pay journey on English/Arabic desktop and mobile, plus an unassigned-user API denial. The run covers PR, RFQ and two quotes, award approval, PO workflow, delivery/MIR/GRN, supplier invoice and allocated payment. Read-only reconciliation reported zero violations across all 11 checks.
-- Batches D–E and Phases 5.6–6 remain open. Finance signoff still requires the owner to confirm provisional chart-of-accounts mappings.
+- Batch D UAT preparation is documented in `docs/UAT_PILOT.md`: scoped role scripts, checklist, defect template, deferred items, and signoff table. Human UAT has not been executed.
+- Batch E and Phases 5.6–6 remain open. Finance signoff still requires the owner to confirm provisional chart-of-accounts mappings.
 
 ## Where work stopped
 
-C1–C4 are complete and committed. Continue with D UAT documentation, E provisional finance enablement, then the Phase 5.6–6 plan and implementation. Finance signoff remains a human decision.
+C1–C4 are complete and committed. D UAT preparation is committed; human execution remains outstanding. Continue with E provisional finance enablement, then the Phase 5.6–6 plan and implementation. Finance signoff remains a human decision.
 
 Batch A and Batch B1–B6 are green. C1–C4 are committed. Continue with D, E, and the Phase 5.6–6 plan/implementation. Keep targets local and never use production-looking databases or external services. The ignored `backend/.env.docker` file is unrelated and remains untouched.
 
@@ -59,7 +60,8 @@ Batch A and Batch B1–B6 are green. C1–C4 are committed. Continue with D, E, 
 | Batch B6 Windows instructions | PASS — `docs/STAGING.md`; `git diff --check` clean |
 | Batch B full end-of-batch gate | PASS — backend 50/960, PG 56/566, frontend 17/97, i18n/build, Playwright 32/46, Compose healthy |
 | Batch C4 live browser journeys | PASS — EN/AR desktop/mobile 4/4; unassigned procurement API 403; reconciliation 11/11 checks at zero |
-| Batches D–E and Phases 5.6–6 | NOT RUN |
+| Batch D documentation | PASS — `docs/UAT_PILOT.md`; human UAT NOT RUN |
+| Batch E and Phases 5.6–6 | NOT RUN |
 
 ## Risks and decisions
 

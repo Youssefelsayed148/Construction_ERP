@@ -373,3 +373,7 @@ git diff --check: passed
 The first live-browser attempts exposed local API CORS setup, form buttons without explicit submit types, and workflow actors that needed to match each configured resolver. Those issues were corrected before the four final runs. The journey uses separate accountant, purchasing manager, finance manager, inventory checker, and requester/owner roles as the workflow requires. No full suite was run for this slice, following the user's test cadence.
 
 Batch C is complete. Next: D UAT pilot instructions, E provisional finance mapping/UI/docs with finance owner confirmation still pending, then the Phase 5.6–6 plan and implementation.
+
+## 2026-10-13: Batch D UAT preparation
+
+Added `docs/UAT_PILOT.md` with the pilot scope and finance-posting exclusion, seeded account keys (no passwords), role scripts and expected results, access/localization/negative-access checklist, known deferred work, defect template, and signoff table. The pilot project and startup/smoke instructions link to `docs/STAGING.md`. The receiving script names `workflow_owner` because the seeded `storekeeper` lacks procurement-workspace view access. Human UAT has not been run; the checklist is ready for the business testers. `git diff --check` passed. No automated tests were needed for this documentation-only slice.
