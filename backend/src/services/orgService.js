@@ -347,11 +347,12 @@ async function createDelegation(q, actor, {
   // A grant whose window has ended is no longer active authority. Retire it before
   // checking for a duplicate so the partial unique index permits a deliberate renewal.
   // Keep future and currently live rows active; a live overlap remains a conflict.
-  await q(
+  const expiredRows = await q(
     `UPDATE delegations
         SET is_active = false
       WHERE delegate_user_id = $1 AND delegate_from_user_id = $2 AND module_scope = $3
-        AND is_active = true AND valid_to < CURRENT_DATE`,
+        AND is_active = true AND valid_to < CURRENT_DATE
+      RETURNING id`,
     [delegate, delegator, scope]);
   const dup = (await q(
     `SELECT id FROM delegations
@@ -366,7 +367,7 @@ async function createDelegation(q, actor, {
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
     [delegate, delegator, scope, max_amount == null ? null : toNum(max_amount), from, to, notes, delegator]
   );
-  return r.rows[0];
+  return { ...r.rows[0], deactivated_expired_ids: expiredRows.rows.map((row) => row.id) };
 }
 
 async function deactivateDelegation(q, actor, id) {

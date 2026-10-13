@@ -135,16 +135,14 @@ router.put('/:id', authenticate, authorize('owner', 'admin'), async (req, res) =
           before: { role: current.role }, after: { role: value.role }, userId: req.user.id,
         }, { query: q });
       }
+      await logActivity({
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        action: 'update', module: 'users', description: `Updated user ${updated.rows[0].name}`,
+        entityId: id, entityType: 'user',
+      }, { query: q });
       return { row: updated.rows[0] };
     });
     if (outcome.error) return res.status(outcome.status).json({ success: false, error: outcome.error });
-
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'update', module: 'users',
-      description: `Updated user ${outcome.row.name}`,
-      entityId: id, entityType: 'user'
-    });
 
     res.json({ success: true, data: outcome.row });
   } catch (error) {
@@ -162,16 +160,14 @@ router.delete('/:id', authenticate, authorize('owner', 'admin'), async (req, res
       const refused = await accessChangeGuard(q, req, current, { deactivating: current.is_active });
       if (refused) return refused;
       await q('UPDATE users SET is_active = false, updated_at = NOW() WHERE id = $1', [current.id]);
+      await logActivity({
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        action: 'deactivate', module: 'users', description: `Deactivated user ${current.name}`,
+        entityId: req.params.id, entityType: 'user',
+      }, { query: q });
       return { name: current.name };
     });
     if (outcome.error) return res.status(outcome.status).json({ success: false, error: outcome.error });
-
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'deactivate', module: 'users',
-      description: `Deactivated user ${outcome.name}`,
-      entityId: req.params.id, entityType: 'user'
-    });
 
     res.json({ success: true, message: 'User deactivated' });
   } catch (error) {

@@ -38,6 +38,7 @@ const countCounterIncrements = (text) =>
   text.split(/\r?\n/).filter((l) => JS_COUNTER_PLUS_ONE.test(l) || SQL_SET_BOUND.test(l)).length;
 
 const CATCH_TO_ZERO = /\.catch\(\s*\(\s*\w*\s*\)\s*=>\s*(?:\(\s*\{\s*rows\s*:|zero\()/g;
+const POST_COMMIT_AUDIT = /\bawait\s+(?:logActivity|auditProc|auditFin)\s*\(/g;
 // Files that may name project_costs: the accrual writers and the cost view itself (expenses reads one row to
 // know whether an expense is already posted).
 const COST_VIEW_ALLOWED = new Set(['services/costView.js', 'services/costAccrual.js', 'services/costEventListener.js', 'routes/expenses.js']);
@@ -79,11 +80,15 @@ function walk(dir, out = []) {
 }
 
 function scan() {
-  const result = { 'silent-catch': {}, 'count-numbering': {}, 'counter-rmw': {}, 'catch-to-zero': {}, 'cost-view': {}, 'event-swallow': {} };
+  const result = { 'silent-catch': {}, 'count-numbering': {}, 'counter-rmw': {}, 'catch-to-zero': {}, 'cost-view': {}, 'event-swallow': {}, 'post-commit-audit': {} };
   for (const file of walk(srcDir)) {
     const rel = path.relative(srcDir, file).split(path.sep).join('/');
     if (isExcluded(rel)) continue;
     const text = fs.readFileSync(file, 'utf8');
+    if (['routes/procurement.js', 'routes/financeLedger.js'].includes(rel)) {
+      const auditCalls = (text.match(POST_COMMIT_AUDIT) || []).length;
+      if (auditCalls) result['post-commit-audit'][rel] = auditCalls;
+    }
     const lines = text.split('\n');
     let silent = 0;
     let numbering = 0;

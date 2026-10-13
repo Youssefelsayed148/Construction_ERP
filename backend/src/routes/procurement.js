@@ -6,6 +6,8 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const svc = require('../services/procurementService');
 const pdf = require('../utils/procurementPdf');
+const { auditedTransaction } = require('../utils/auditedTransaction');
+const { typedFail: commonTypedFail } = require('../utils/typedRoute');
 const atomic = (fn) => transaction((client) => fn(client.query.bind(client)));
 
 // Phase 12 — the PR → RFQ → PO → GRN procurement surface. All state lives in
@@ -65,13 +67,11 @@ router.post('/pr', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const pr = await atomic((q) => svc.createPurchaseRequest(q, { ...value, created_by: req.user.id }));
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'create', module: 'procurement',
-      description: `Created purchase requisition ${pr.request_number}`,
-      entityId: pr.id, entityType: 'purchase_request',
-    });
+    const pr = await auditedTransaction(
+      (q) => svc.createPurchaseRequest(q, { ...value, created_by: req.user.id }),
+      (row) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'procurement',
+        description: `Created purchase requisition ${row.request_number}`, entityId: row.id, entityType: 'purchase_request' })
+    );
     res.status(201).json({ success: true, data: pr });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -91,15 +91,13 @@ router.post('/pr/:id/decide', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const result = await atomic((q) => svc.decideOnDocument(q, 'purchase_request', parseInt(req.params.id, 10), req.user, value.decision, value.comment,
-      { overrideOverBudget: value.override_over_budget, overrideReason: value.override_reason }));
-    if (result.budget_override) {
-      await logActivity({
-        userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'budget_override', module: 'procurement',
-        description: `Over-budget override on requisition #${req.params.id}: ${result.budget_override.reason}`,
-        entityId: parseInt(req.params.id, 10), entityType: 'purchase_request',
-      });
-    }
+    const result = await auditedTransaction(
+      (q) => svc.decideOnDocument(q, 'purchase_request', parseInt(req.params.id, 10), req.user, value.decision, value.comment,
+        { overrideOverBudget: value.override_over_budget, overrideReason: value.override_reason }),
+      (row) => row.budget_override ? ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        action: 'budget_override', module: 'procurement', description: `Over-budget override on requisition #${req.params.id}: ${row.budget_override.reason}`,
+        entityId: parseInt(req.params.id, 10), entityType: 'purchase_request' }) : null
+    );
     res.json({ success: true, data: result });
   } catch (e) {
     res.status(e.status || 400).json({ success: false, error: e.message, ...(e.error_code ? { error_code: e.error_code, error_params: e.error_params || {} } : {}) });
@@ -229,11 +227,7 @@ const docsSvc = require('../services/procurementDocuments');
 const analytics = require('../services/procurementAnalytics');
 
 function typedFail(res, e) {
-  if (e && e.error_code && e.status) {
-    return res.status(e.status).json({ success: false, error: e.message, error_code: e.error_code, error_params: e.error_params || {} });
-  }
-  console.error('[PROCUREMENT]', e);
-  return res.status(e.status || 400).json({ success: false, error: e.message });
+  return commonTypedFail(res, e, 'PROCUREMENT');
 }
 const typedBody = (schema, req, res) => {
   const { error, value } = schema.validate(req.body || {});
@@ -243,9 +237,10 @@ const typedBody = (schema, req, res) => {
   }
   return value;
 };
-const auditProc = (req, action, description, entityType, entityId) => logActivity({
-  userId: req.user.id, userName: req.user.name, userRole: req.user.role, action, module: 'procurement', description, entityId, entityType,
-});
+const auditedProc = (req, work, describe) => auditedTransaction(work, (row) => ({
+  userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+  module: 'procurement', ...describe(row),
+}));
 
 router.get('/rfq', authenticate, authorize(), async (req, res) => {
   try { res.json({ success: true, data: await docsSvc.listRfqs(query, req.query) }); } catch (e) { return typedFail(res, e); }
@@ -269,16 +264,16 @@ router.post('/rfq/:id/award-recommendations', authenticate, authorize(), async (
       quotation_id: Joi.number().integer().required(), basis: Joi.string().required(), justification: Joi.string().required(),
     }), req, res);
     if (!value) return;
-    const rec = await atomic((q) => awards.create(q, { ...value, rfq_id: parseInt(req.params.id, 10), created_by: req.user.id }));
-    await auditProc(req, 'create', `Award recommendation ${rec.recommendation_number}`, 'rfq_award_recommendation', rec.id);
+    const rec = await auditedProc(req, (q) => awards.create(q, { ...value, rfq_id: parseInt(req.params.id, 10), created_by: req.user.id }),
+      (row) => ({ action: 'create', description: `Award recommendation ${row.recommendation_number}`, entityType: 'rfq_award_recommendation', entityId: row.id }));
     res.status(201).json({ success: true, data: rec });
   } catch (e) { return typedFail(res, e); }
 });
 
 router.post('/award-recommendations/:id/submit', authenticate, authorize(), async (req, res) => {
   try {
-    const rec = await atomic((q) => awards.submit(q, parseInt(req.params.id, 10), req.user));
-    await auditProc(req, 'submit', `Award recommendation ${rec.recommendation_number} submitted`, 'rfq_award_recommendation', rec.id);
+    const rec = await auditedProc(req, (q) => awards.submit(q, parseInt(req.params.id, 10), req.user),
+      (row) => ({ action: 'submit', description: `Award recommendation ${row.recommendation_number} submitted`, entityType: 'rfq_award_recommendation', entityId: row.id }));
     res.json({ success: true, data: rec });
   } catch (e) { return typedFail(res, e); }
 });
@@ -287,8 +282,8 @@ router.post('/award-recommendations/:id/decide', authenticate, authorize(), asyn
   try {
     const value = typedBody(Joi.object({ decision: Joi.string().valid('approve', 'reject').required(), comment: Joi.string().allow('', null) }), req, res);
     if (!value) return;
-    const rec = await atomic((q) => awards.decide(q, parseInt(req.params.id, 10), req.user, value.decision, value.comment));
-    await auditProc(req, value.decision === 'approve' ? 'approve' : 'reject', `Award recommendation ${rec.recommendation_number}: ${rec.status}`, 'rfq_award_recommendation', rec.id);
+    const rec = await auditedProc(req, (q) => awards.decide(q, parseInt(req.params.id, 10), req.user, value.decision, value.comment),
+      (row) => ({ action: value.decision === 'approve' ? 'approve' : 'reject', description: `Award recommendation ${row.recommendation_number}: ${row.status}`, entityType: 'rfq_award_recommendation', entityId: row.id }));
     res.json({ success: true, data: rec });
   } catch (e) { return typedFail(res, e); }
 });
@@ -297,8 +292,8 @@ router.post('/award-recommendations/:id/withdraw', authenticate, authorize(), as
   try {
     const value = typedBody(Joi.object({ reason: Joi.string().required() }), req, res);
     if (!value) return;
-    const rec = await atomic((q) => awards.withdraw(q, parseInt(req.params.id, 10), req.user, value.reason));
-    await auditProc(req, 'update', `Award recommendation ${rec.recommendation_number} withdrawn`, 'rfq_award_recommendation', rec.id);
+    const rec = await auditedProc(req, (q) => awards.withdraw(q, parseInt(req.params.id, 10), req.user, value.reason),
+      (row) => ({ action: 'update', description: `Award recommendation ${row.recommendation_number} withdrawn`, entityType: 'rfq_award_recommendation', entityId: row.id }));
     res.json({ success: true, data: rec });
   } catch (e) { return typedFail(res, e); }
 });
@@ -314,8 +309,8 @@ router.get('/invoices/:id/workflow', authenticate, authorize(), async (req, res)
 });
 router.post('/invoices/:id/workflow/start', authenticate, authorize(), async (req, res) => {
   try {
-    const out = await atomic((q) => invoiceFlow.startSupplierInvoiceWorkflow(q, parseInt(req.params.id, 10), req.user));
-    await auditProc(req, 'submit', `Supplier invoice ${out.invoice.invoice_number} workflow started`, 'supplier_invoice', out.invoice.id);
+    const out = await auditedProc(req, (q) => invoiceFlow.startSupplierInvoiceWorkflow(q, parseInt(req.params.id, 10), req.user),
+      (row) => ({ action: 'submit', description: `Supplier invoice ${row.invoice.invoice_number} workflow started`, entityType: 'supplier_invoice', entityId: row.invoice.id }));
     res.json({ success: true, data: out });
   } catch (e) { return typedFail(res, e); }
 });
@@ -323,8 +318,8 @@ router.post('/invoices/:id/workflow/decide', authenticate, authorize(), async (r
   try {
     const value = typedBody(Joi.object({ decision: Joi.string().valid('approve', 'reject').required(), comment: Joi.string().allow('', null) }), req, res);
     if (!value) return;
-    const out = await atomic((q) => invoiceFlow.decideSupplierInvoice(q, parseInt(req.params.id, 10), req.user, value.decision, value.comment));
-    await auditProc(req, value.decision === 'approve' ? 'approve' : 'reject', `Supplier invoice ${out.invoice.invoice_number} workflow decision: ${value.decision}`, 'supplier_invoice', out.invoice.id);
+    const out = await auditedProc(req, (q) => invoiceFlow.decideSupplierInvoice(q, parseInt(req.params.id, 10), req.user, value.decision, value.comment),
+      (row) => ({ action: value.decision === 'approve' ? 'approve' : 'reject', description: `Supplier invoice ${row.invoice.invoice_number} workflow decision: ${value.decision}`, entityType: 'supplier_invoice', entityId: row.invoice.id }));
     res.json({ success: true, data: out });
   } catch (e) { return typedFail(res, e); }
 });
@@ -344,8 +339,8 @@ router.put('/pr/:id', authenticate, authorize(), async (req, res) => {
   try {
     const value = typedBody(prEditSchema, req, res);
     if (!value) return;
-    const pr = await atomic((q) => docsSvc.updatePurchaseRequest(q, req.params.id, value));
-    await auditProc(req, 'update', `Edited purchase requisition ${pr.request_number}`, 'purchase_request', pr.id);
+    const pr = await auditedProc(req, (q) => docsSvc.updatePurchaseRequest(q, req.params.id, value),
+      (row) => ({ action: 'update', description: `Edited purchase requisition ${row.request_number}`, entityType: 'purchase_request', entityId: row.id }));
     res.json({ success: true, data: pr });
   } catch (e) { return typedFail(res, e); }
 });
@@ -354,8 +349,8 @@ router.post('/pr/:id/cancel', authenticate, authorize(), async (req, res) => {
   try {
     const value = typedBody(Joi.object({ reason: Joi.string().required() }), req, res);
     if (!value) return;
-    const pr = await atomic((q) => docsSvc.cancelPurchaseRequest(q, req.params.id, req.user, value.reason));
-    await auditProc(req, 'cancel', `Cancelled purchase requisition ${pr.request_number}: ${value.reason}`, 'purchase_request', pr.id);
+    const pr = await auditedProc(req, (q) => docsSvc.cancelPurchaseRequest(q, req.params.id, req.user, value.reason),
+      (row) => ({ action: 'cancel', description: `Cancelled purchase requisition ${row.request_number}: ${value.reason}`, entityType: 'purchase_request', entityId: row.id }));
     res.json({ success: true, data: pr });
   } catch (e) { return typedFail(res, e); }
 });
@@ -380,8 +375,8 @@ router.put('/po/:id', authenticate, authorize(), async (req, res) => {
   try {
     const value = typedBody(poEditSchema, req, res);
     if (!value) return;
-    const po = await atomic((q) => docsSvc.updatePurchaseOrder(q, req.params.id, value));
-    await auditProc(req, 'update', `Edited purchase order ${po.order_number}`, 'purchase_order', po.id);
+    const po = await auditedProc(req, (q) => docsSvc.updatePurchaseOrder(q, req.params.id, value),
+      (row) => ({ action: 'update', description: `Edited purchase order ${row.order_number}`, entityType: 'purchase_order', entityId: row.id }));
     res.json({ success: true, data: po });
   } catch (e) { return typedFail(res, e); }
 });
@@ -390,8 +385,8 @@ router.post('/po/:id/cancel', authenticate, authorize(), async (req, res) => {
   try {
     const value = typedBody(Joi.object({ reason: Joi.string().required() }), req, res);
     if (!value) return;
-    const po = await atomic((q) => docsSvc.cancelPurchaseOrder(q, req.params.id, req.user, value.reason));
-    await auditProc(req, 'cancel', `Cancelled purchase order ${po.order_number}: ${value.reason}`, 'purchase_order', po.id);
+    const po = await auditedProc(req, (q) => docsSvc.cancelPurchaseOrder(q, req.params.id, req.user, value.reason),
+      (row) => ({ action: 'cancel', description: `Cancelled purchase order ${row.order_number}: ${value.reason}`, entityType: 'purchase_order', entityId: row.id }));
     res.json({ success: true, data: po });
   } catch (e) { return typedFail(res, e); }
 });
@@ -440,13 +435,11 @@ router.post('/po', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const po = await atomic((q) => svc.createPurchaseOrder(q, { ...value, created_by: req.user.id }));
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'create', module: 'procurement',
-      description: `Created purchase order ${po.order_number}`,
-      entityId: po.id, entityType: 'purchase_order',
-    });
+    const po = await auditedTransaction(
+      (q) => svc.createPurchaseOrder(q, { ...value, created_by: req.user.id }),
+      (row) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'procurement',
+        description: `Created purchase order ${row.order_number}`, entityId: row.id, entityType: 'purchase_order' })
+    );
     res.status(201).json({ success: true, data: po });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -541,7 +534,7 @@ router.post('/mir/:id/decide', authenticate, authorize(), async (req, res) => {
 
 router.post('/mir/:id/grn', authenticate, authorize(), async (req, res) => {
   try {
-    const grn = await atomic(async (q) => {
+    const grn = await auditedTransaction(async (q) => {
       const created = await svc.createGrn(q, { mir_id: parseInt(req.params.id, 10), created_by: req.user.id, received_by: req.user.id });
       await fireEvent({
         eventType: 'delivery.received', entityType: 'goods_receipt_note', entityId: created.id,
@@ -549,13 +542,8 @@ router.post('/mir/:id/grn', authenticate, authorize(), async (req, res) => {
         payload: { grn_id: created.id, grn_number: created.grn_number, mir_id: created.mir_id, purchase_order_id: created.purchase_order_id, warehouse_id: created.warehouse_id },
       }, { query: q });
       return created;
-    });
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'create', module: 'procurement',
-      description: `Created GRN ${grn.grn_number} from MIR #${req.params.id}`,
-      entityId: grn.id, entityType: 'goods_receipt_note',
-    });
+    }, (row) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'procurement',
+      description: `Created GRN ${row.grn_number} from MIR #${req.params.id}`, entityId: row.id, entityType: 'goods_receipt_note' }));
     res.status(201).json({ success: true, data: grn });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });

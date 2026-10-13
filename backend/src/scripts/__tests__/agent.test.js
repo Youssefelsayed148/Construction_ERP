@@ -27,7 +27,7 @@ jest.mock('../../config/database', () => ({
   healthCheck: jest.fn().mockResolvedValue({ status: 'healthy' }),
 }));
 
-const { query } = require('../../config/database');
+const { query, transaction } = require('../../config/database');
 const jwt = require('jsonwebtoken');
 const express = require('express');
 
@@ -119,6 +119,7 @@ beforeAll(async () => {
     if (/INSERT INTO audit_events/i.test(s)) return { rows: [] };
     return q(sql, params);
   });
+  transaction.mockImplementation(async (callback) => callback({ query: (sql, params) => query(sql, params) }));
 });
 
 beforeEach(() => {

@@ -7,7 +7,7 @@
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
-const { query } = require('../config/database');
+const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const policy = require('../services/policy');
 const org = require('../services/orgService');
@@ -43,28 +43,42 @@ router.post('/', authenticate, authorize('owner', 'admin', 'owner_ceo', 'coo'), 
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error' });
-    const created = await org.createDelegation(query, req.user, value);
-    await policy.recordAuditEvent({
-      entity: 'delegation', entityId: created.id, action: 'create',
-      after: {
-        delegate_user_id: created.delegate_user_id,
-        delegate_from_user_id: created.delegate_from_user_id,
-        module_scope: created.module_scope,
-        max_amount: created.max_amount,
-        valid_from: created.valid_from, valid_to: created.valid_to,
-      },
-      userId: req.user.id,
+    const created = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const row = await org.createDelegation(q, req.user, value);
+      for (const expiredId of row.deactivated_expired_ids) {
+        await policy.recordAuditEvent({ entity: 'delegation', entityId: expiredId, action: 'deactivate',
+          before: { is_active: true }, after: { is_active: false, reason: 'expired_renewal' }, userId: req.user.id }, { query: q });
+      }
+      await policy.recordAuditEvent({
+        entity: 'delegation', entityId: row.id, action: 'create',
+        after: {
+          delegate_user_id: row.delegate_user_id,
+          delegate_from_user_id: row.delegate_from_user_id,
+          module_scope: row.module_scope,
+          max_amount: row.max_amount,
+          valid_from: row.valid_from, valid_to: row.valid_to,
+        },
+        userId: req.user.id,
+      }, { query: q });
+      return row;
     });
-    res.status(201).json({ success: true, data: created });
+    const publicDelegation = { ...created };
+    delete publicDelegation.deactivated_expired_ids;
+    res.status(201).json({ success: true, data: publicDelegation });
   } catch (e) { return fail(res, e); }
 });
 
 router.post('/:id/deactivate', authenticate, authorize(), async (req, res) => {
   try {
-    const updated = await org.deactivateDelegation(query, req.user, req.params.id);
-    await policy.recordAuditEvent({
-      entity: 'delegation', entityId: updated.id, action: 'deactivate',
-      before: { is_active: true }, after: { is_active: false }, userId: req.user.id,
+    const updated = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const row = await org.deactivateDelegation(q, req.user, req.params.id);
+      await policy.recordAuditEvent({
+        entity: 'delegation', entityId: row.id, action: 'deactivate',
+        before: { is_active: true }, after: { is_active: false }, userId: req.user.id,
+      }, { query: q });
+      return row;
     });
     res.json({ success: true, data: updated });
   } catch (e) { return fail(res, e); }

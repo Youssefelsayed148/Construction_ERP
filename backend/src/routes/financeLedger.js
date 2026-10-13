@@ -3,8 +3,9 @@ const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
-const { logActivity, fireEvent } = require('../utils/activity');
+const { fireEvent } = require('../utils/activity');
 const finance = require('../services/financeEngine');
+const { auditedTransaction } = require('../utils/auditedTransaction');
 
 // Phase 14 — AR/AP surface: valuations, allocations, AP review queue,
 // retention ledger, tax, and the company finance dashboard.
@@ -140,18 +141,19 @@ router.get('/ap-review', authenticate, authorize(), async (req, res) => {
 
 router.post('/ap-review/:id/resolve', authenticate, authorize(), async (req, res) => {
   try {
-    const r = await query(
-      "UPDATE ap_review_queue SET status = 'cleared', resolved_by = $1, resolved_at = NOW() WHERE id = $2 RETURNING *",
-      [req.user.id, req.params.id]
-    );
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Queue item not found' });
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'update', module: 'finance',
-      description: `Cleared AP review item #${req.params.id}`,
-      entityId: r.rows[0].id, entityType: 'ap_review_queue',
-    });
-    res.json({ success: true, data: r.rows[0] });
+    const row = await auditedTransaction(async (q) => {
+      const result = await q(
+        "UPDATE ap_review_queue SET status = 'cleared', resolved_by = $1, resolved_at = NOW() WHERE id = $2 RETURNING *",
+        [req.user.id, req.params.id]
+      );
+      if (result.rows.length === 0) {
+        const error = new Error('Queue item not found'); error.status = 404; error.error_code = 'ap_review_not_found'; throw error;
+      }
+      return result.rows[0];
+    }, (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+      action: 'update', module: 'finance', description: `Cleared AP review item #${req.params.id}`,
+      entityId: result.id, entityType: 'ap_review_queue' }));
+    res.json({ success: true, data: row });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
 
@@ -209,10 +211,11 @@ router.get('/audit/:entityType/:entityId', authenticate, authorize(), async (req
 // table in the request's transaction; typed errors carry error_code and error_params.
 // ---------------------------------------------------------------------------
 const docs = require('../services/financeDocuments');
-const { atomic, typedFail, typedBody } = require('../utils/typedRoute');
+const { typedFail, typedBody } = require('../utils/typedRoute');
 
-const auditFin = (req, action, description, entityType, entityId) => logActivity({
-  userId: req.user.id, userName: req.user.name, userRole: req.user.role, action, module: 'finance-ledger', description, entityId, entityType,
+const auditedFin = (req, work, action, describe) => auditedTransaction(work, (row) => {
+  const details = describe(row);
+  return { userId: req.user.id, userName: req.user.name, userRole: req.user.role, action, module: 'finance-ledger', ...details };
 });
 const failFin = (res, e) => typedFail(res, e, 'FINANCE');
 const fid = (req) => parseInt(req.params.id, 10);
@@ -232,8 +235,8 @@ router.post('/credit-notes', authenticate, authorize(), async (req, res) => {
       amount: amountSchema.required(), tax_amount: Joi.number().min(0).precision(2), reason: Joi.string().required(),
     }), req, res);
     if (!value) return;
-    const row = await atomic((q) => docs.createCreditNote(q, value, req.user.id));
-    await auditFin(req, 'create', `Credit note ${row.credit_note_number}`, 'credit_note', row.id);
+    const row = await auditedFin(req, (q) => docs.createCreditNote(q, value, req.user.id), 'create',
+      (result) => ({ description: `Credit note ${result.credit_note_number}`, entityType: 'credit_note', entityId: result.id }));
     res.status(201).json({ success: true, data: row });
   } catch (e) { return failFin(res, e); }
 });
@@ -242,8 +245,8 @@ router.get('/credit-notes/:id', authenticate, authorize(), async (req, res) => {
 });
 router.post('/credit-notes/:id/issue', authenticate, authorize(), async (req, res) => {
   try {
-    const row = await atomic((q) => docs.issueCreditNote(q, fid(req), req.user));
-    await auditFin(req, 'approve', `Credit note ${row.credit_note_number} issued`, 'credit_note', row.id);
+    const row = await auditedFin(req, (q) => docs.issueCreditNote(q, fid(req), req.user), 'approve',
+      (result) => ({ description: `Credit note ${result.credit_note_number} issued`, entityType: 'credit_note', entityId: result.id }));
     res.json({ success: true, data: row });
   } catch (e) { return failFin(res, e); }
 });
@@ -251,8 +254,8 @@ router.post('/credit-notes/:id/void', authenticate, authorize(), async (req, res
   try {
     const value = typedBody(Joi.object({ reason: Joi.string().required() }), req, res);
     if (!value) return;
-    const row = await atomic((q) => docs.voidCreditNote(q, fid(req), req.user, value.reason));
-    await auditFin(req, 'void', `Credit note ${row.credit_note_number} voided`, 'credit_note', row.id);
+    const row = await auditedFin(req, (q) => docs.voidCreditNote(q, fid(req), req.user, value.reason), 'void',
+      (result) => ({ description: `Credit note ${result.credit_note_number} voided`, entityType: 'credit_note', entityId: result.id }));
     res.json({ success: true, data: row });
   } catch (e) { return failFin(res, e); }
 });
@@ -267,8 +270,8 @@ router.post('/payment-batches', authenticate, authorize(), companyOnly, async (r
       items: Joi.array().items(Joi.object({ supplier_invoice_id: Joi.number().integer().required(), amount: amountSchema, project_id: Joi.number().integer() })).min(1).required(),
     }), req, res);
     if (!value) return;
-    const row = await atomic((q) => docs.createBatch(q, { ...value, payment_date: value.payment_date ? new Date(value.payment_date).toISOString().slice(0, 10) : null }, req.user.id));
-    await auditFin(req, 'create', `Payment batch ${row.batch_number}`, 'payment_batch', row.id);
+    const row = await auditedFin(req, (q) => docs.createBatch(q, { ...value, payment_date: value.payment_date ? new Date(value.payment_date).toISOString().slice(0, 10) : null }, req.user.id), 'create',
+      (result) => ({ description: `Payment batch ${result.batch_number}`, entityType: 'payment_batch', entityId: result.id }));
     res.status(201).json({ success: true, data: row });
   } catch (e) { return failFin(res, e); }
 });
@@ -277,22 +280,22 @@ router.get('/payment-batches/:id', authenticate, authorize(), companyOnly, async
 });
 router.post('/payment-batches/:id/submit', authenticate, authorize(), companyOnly, async (req, res) => {
   try {
-    const row = await atomic((q) => docs.submitBatch(q, fid(req), req.user));
-    await auditFin(req, 'submit', `Payment batch ${row.batch_number} submitted`, 'payment_batch', row.id);
+    const row = await auditedFin(req, (q) => docs.submitBatch(q, fid(req), req.user), 'submit',
+      (result) => ({ description: `Payment batch ${result.batch_number} submitted`, entityType: 'payment_batch', entityId: result.id }));
     res.json({ success: true, data: row });
   } catch (e) { return failFin(res, e); }
 });
 router.post('/payment-batches/:id/approve', authenticate, authorize(), companyOnly, async (req, res) => {
   try {
-    const row = await atomic((q) => docs.approveBatch(q, fid(req), req.user));
-    await auditFin(req, 'approve', `Payment batch ${row.batch_number} approved`, 'payment_batch', row.id);
+    const row = await auditedFin(req, (q) => docs.approveBatch(q, fid(req), req.user), 'approve',
+      (result) => ({ description: `Payment batch ${result.batch_number} approved`, entityType: 'payment_batch', entityId: result.id }));
     res.json({ success: true, data: row });
   } catch (e) { return failFin(res, e); }
 });
 router.post('/payment-batches/:id/release', authenticate, authorize(), companyOnly, async (req, res) => {
   try {
-    const out = await atomic((q) => docs.releaseBatch(q, fid(req), req.user));
-    await auditFin(req, 'create', `Payment batch ${out.batch.batch_number} released (${out.payments.length} payments)`, 'payment_batch', out.batch.id);
+    const out = await auditedFin(req, (q) => docs.releaseBatch(q, fid(req), req.user), 'create',
+      (result) => ({ description: `Payment batch ${result.batch.batch_number} released (${result.payments.length} payments)`, entityType: 'payment_batch', entityId: result.batch.id }));
     res.json({ success: true, data: out });
   } catch (e) { return failFin(res, e); }
 });
@@ -300,8 +303,8 @@ router.post('/payment-batches/:id/cancel', authenticate, authorize(), companyOnl
   try {
     const value = typedBody(Joi.object({ reason: Joi.string().required() }), req, res);
     if (!value) return;
-    const row = await atomic((q) => docs.cancelBatch(q, fid(req), req.user, value.reason));
-    await auditFin(req, 'void', `Payment batch ${row.batch_number} cancelled`, 'payment_batch', row.id);
+    const row = await auditedFin(req, (q) => docs.cancelBatch(q, fid(req), req.user, value.reason), 'void',
+      (result) => ({ description: `Payment batch ${result.batch_number} cancelled`, entityType: 'payment_batch', entityId: result.id }));
     res.json({ success: true, data: row });
   } catch (e) { return failFin(res, e); }
 });

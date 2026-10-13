@@ -160,19 +160,18 @@ router.post('/request', authenticate, authorize(), async (req, res) => {
           title: `Approval requested: ${request_type} #${request_id}`,
         },
       }, { query: q });
+      await logActivity({
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        action: 'request_approval', module: module_name,
+        description: `Approval requested for ${request_type} #${request_id}`,
+        entityId: inserted.rows[0].id, entityType: 'approval_request'
+      }, { query: q });
       return { result: inserted };
     });
     if (created.existing) {
       return res.json({ success: true, requires_approval: true, request: created.existing, message: 'Approval request already exists' });
     }
     const result = created.result;
-
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'request_approval', module: module_name,
-      description: `Approval requested for ${request_type} #${request_id}`,
-      entityId: result.rows[0].id, entityType: 'approval_request'
-    });
 
     res.json({ success: true, requires_approval: true, request: result.rows[0] });
   } catch (error) {
@@ -274,17 +273,17 @@ router.put('/:id/cancel', authenticate, authorize(), async (req, res) => {
       for (const inst of instances) {
         if (await workflowEngine.cancelWorkflowInstance(q, inst.id, { userId, reason })) workflowCancelled += 1;
       }
+      await logActivity({
+        userId, userName, userRole: role,
+        action: 'cancel', module: 'approvals',
+        description: `Cancelled approval #${id} (${cancelled.module_name}): ${reason}${workflowCancelled ? ` — ${workflowCancelled} workflow instance(s) cancelled` : ''}`,
+        entityId: parseInt(id, 10), entityType: 'approval_request',
+      }, { query: q });
       return { cancelled, workflowCancelled };
     });
     if (result.notFound) return res.status(404).json({ success: false, error: 'Approval not found' });
     if (result.forbidden) return res.status(403).json({ success: false, error: 'Only an owner, an admin or the original requester can cancel this approval', error_code: 'approval_cancel_forbidden', error_params: {} });
     if (result.conflict) return res.status(409).json({ success: false, error: `Approval is already ${result.conflict}`, error_code: 'approval_not_cancellable', error_params: { status: result.conflict } });
-    await logActivity({
-      userId, userName, userRole: role,
-      action: 'cancel', module: 'approvals',
-      description: `Cancelled approval #${id} (${result.cancelled.module_name}): ${reason}${result.workflowCancelled ? ` — ${result.workflowCancelled} workflow instance(s) cancelled` : ''}`,
-      entityId: parseInt(id, 10), entityType: 'approval_request',
-    });
     return res.json({ success: true, data: result.cancelled, workflows_cancelled: result.workflowCancelled });
   } catch (error) {
     console.error('Error cancelling approval:', error);

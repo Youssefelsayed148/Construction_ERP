@@ -188,14 +188,13 @@ const wizardCreate = async (req, res) => {
     const result = await transaction(async (client) => {
       const out = await provisioning.provisionProject(value, { client, templateKey: value.template_key, createdBy: req.user.id });
       await fireEvent({ eventType: 'project.created', entityType: 'project', entityId: out.project.id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: out.project.id, code: out.project.code, name: out.project.name, via: 'wizard' } }, { query: client.query.bind(client) });
+      await logActivity({
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        action: 'create', module: 'projects',
+        description: `Provisioned project ${out.project.code} via wizard (${out.steps.length} steps)`,
+        entityId: out.project.id, entityType: 'project',
+      }, { query: client.query.bind(client) });
       return out;
-    });
-
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'create', module: 'projects',
-      description: `Provisioned project ${result.project.code} via wizard (${result.steps.length} steps)`,
-      entityId: result.project.id, entityType: 'project'
     });
     res.status(201).json({ success: true, data: result.project, counts: result.counts, steps: result.steps });
   } catch (e) {
@@ -233,19 +232,15 @@ const legacyCreate = async (req, res) => {
       );
       const createdProject = project.rows[0];
       await fireEvent({ eventType: 'project.created', entityType: 'project', entityId: createdProject.id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: createdProject.id, code: createdProject.code, name: createdProject.name } }, { query: client.query.bind(client) });
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'projects', description: `Created project ${value.code}`, entityId: createdProject.id, entityType: 'project' }, { query: client.query.bind(client) });
       return createdProject;
     });
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'projects', description: `Created project ${value.code}`, entityId: result.id, entityType: 'project' });
     res.status(201).json({ success: true, data: result });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 };
 
 router.put('/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const existing = await query('SELECT * FROM projects WHERE id = $1', [req.params.id]);
-    if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Project not found' });
-
     const schema = Joi.object({
       name_ar: Joi.string(), name_en: Joi.string().allow(''),
       address: Joi.string().allow(''), city: Joi.string().allow(''),
@@ -264,18 +259,21 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
       if (v !== undefined) { sets.push(`${k} = $${i++}`); p.push(v); }
     }
     p.push(req.params.id);
-    const r = await query(`UPDATE projects SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`, p);
+    const outcome = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const existing = await q('SELECT * FROM projects WHERE id = $1 FOR UPDATE', [req.params.id]);
+      if (existing.rows.length === 0) return { notFound: true };
+      const updated = await q(`UPDATE projects SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`, p);
 
-    // Phase 3.5: a manual progress override is a distinct, audited act — the policy engine only reaches
-    // this handler for users holding the explicit ('projects','override_progress') permission
-    // (policy.js ACTION_OVERRIDES maps the field's presence to that action). The derived value rewrites
-    // this column at the next recompute point; this is the escape hatch for out-of-band corrections.
-    if (value.completion_percentage !== undefined) {
-      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'override_progress', module: 'projects', description: `Manual progress override on project ${existing.rows[0].code}: ${existing.rows[0].completion_percentage}% -> ${value.completion_percentage}%`, entityId: req.params.id, entityType: 'project' });
-    }
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'projects', description: `Updated project ${existing.rows[0].code}`, entityId: req.params.id, entityType: 'project' });
-    res.json({ success: true, data: r.rows[0] });
+      // Progress overrides require a separate policy action and a separate audit entry.
+      if (value.completion_percentage !== undefined) {
+        await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'override_progress', module: 'projects', description: `Manual progress override on project ${existing.rows[0].code}: ${existing.rows[0].completion_percentage}% -> ${value.completion_percentage}%`, entityId: req.params.id, entityType: 'project' }, { query: q });
+      }
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'projects', description: `Updated project ${existing.rows[0].code}`, entityId: req.params.id, entityType: 'project' }, { query: q });
+      return { row: updated.rows[0] };
+    });
+    if (outcome.notFound) return res.status(404).json({ success: false, error: 'Project not found' });
+    res.json({ success: true, data: outcome.row });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -315,13 +313,17 @@ router.put('/:projectId/phases/:phaseId', authenticate, authorize(), async (req,
       if (v !== undefined) { sets.push(`${k} = $${i++}`); p.push(v); }
     }
     p.push(req.params.phaseId, req.params.projectId);
-    const r = await query(`UPDATE project_phases SET ${sets.join(', ')} WHERE id = $${i} AND project_id = $${i + 1} RETURNING *`, p);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Phase not found' });
-    // Phase 3.5: a manual phase-progress override is gated on ('projects','override_progress') and audited.
-    if (value.completion_percentage !== undefined) {
-      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'override_progress', module: 'projects', description: `Manual progress override on phase ${r.rows[0].code || r.rows[0].id} of project #${req.params.projectId}`, entityId: req.params.phaseId, entityType: 'project_phase' });
-    }
-    res.json({ success: true, data: r.rows[0] });
+    const outcome = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const updated = await q(`UPDATE project_phases SET ${sets.join(', ')} WHERE id = $${i} AND project_id = $${i + 1} RETURNING *`, p);
+      if (updated.rows.length === 0) return { notFound: true };
+      if (value.completion_percentage !== undefined) {
+        await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'override_progress', module: 'projects', description: `Manual progress override on phase ${updated.rows[0].code || updated.rows[0].id} of project #${req.params.projectId}`, entityId: req.params.phaseId, entityType: 'project_phase' }, { query: q });
+      }
+      return { row: updated.rows[0] };
+    });
+    if (outcome.notFound) return res.status(404).json({ success: false, error: 'Phase not found' });
+    res.json({ success: true, data: outcome.row });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 

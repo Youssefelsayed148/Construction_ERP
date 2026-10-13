@@ -1,4 +1,4 @@
-const { countCounterIncrements } = require('../lint-guards');
+const { countCounterIncrements, scan } = require('../lint-guards');
 
 describe('lint-guards counter-rmw', () => {
   test('flags the read, JS +1, write pattern the document control engine used', () => {
@@ -20,5 +20,13 @@ describe('lint-guards counter-rmw', () => {
     expect(countCounterIncrements('UPDATE document_counters SET last_value = last_value + 1 WHERE scope_key = $1 RETURNING last_value')).toBe(0);
     expect(countCounterIncrements('const total = items.length + 1;')).toBe(0);
     expect(countCounterIncrements('UPDATE tasks SET status = $1 WHERE id = $2')).toBe(0);
+  });
+});
+
+describe('lint-guards transactional audit', () => {
+  test('procurement and finance do not write route audit entries after returning from the transaction', () => {
+    const violations = scan()['post-commit-audit'];
+    expect(violations['routes/procurement.js'] || 0).toBe(0);
+    expect(violations['routes/financeLedger.js'] || 0).toBe(0);
   });
 });
