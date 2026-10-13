@@ -16,7 +16,7 @@
 - Phase 5.7.2.b QA/QC certificate register is committed in `8ca1850`; migration 0054 is applied on the disposable test database. Spec 15 QA/QC certificates are distinct from finance payment certificates.
 - Phase 5.7.2.c controlled-document issue dates/confidentiality and external confidentiality enforcement are committed in `f9d8c52`; migration 0055 is applied on the disposable test database.
 - Phase 5.7.2.d transmittal recipient/document form and project-scope checks are committed in `4c89759`; no migration was required. Focused UI, route, PostgreSQL scope and i18n checks passed.
-- Phase 5.7.3 schedule progress history and employee/asset assignments are implemented and ready to commit; migration 0056 is applied on the disposable PostgreSQL database and its focused route/component checks passed.
+- Phase 5.7.3 schedule progress history and employee/asset assignments are committed; migration 0056 is applied on the disposable PostgreSQL database and its focused route/component checks passed.
 
 ## Next
 
