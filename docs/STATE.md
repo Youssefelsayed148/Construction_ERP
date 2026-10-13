@@ -18,12 +18,12 @@
 - Phase 5.7.2.d transmittal recipient/document form and project-scope checks are committed in `4c89759`; no migration was required. Focused UI, route, PostgreSQL scope and i18n checks passed.
 - Phase 5.7.3 schedule progress history and employee/asset assignments are committed in `8978b35`; its state-record correction is `697ccee`. Migration 0056 is applied on the disposable PostgreSQL database and focused route/component checks passed.
 - Phase 5.7.4 handover evidence and the standalone warranty register are committed in `4e5da68`; focused checks passed. Migration 0057 is applied and reruns cleanly on the disposable PostgreSQL database.
-- Phase 5.8.1 API tokens, durable MCP sessions, and action comments are implemented; focused PostgreSQL tests, the affected MCP safety case, lint guards, migration rerun, and syntax checks passed. Local commit is next. Migration 0058 is applied and reruns cleanly on the disposable database.
+- Phase 5.8.1 API tokens, durable MCP sessions, and action comments are committed in `42f255e`; focused PostgreSQL tests, the affected MCP safety case, lint guards, migration rerun, and syntax checks passed. Migration 0058 is applied and reruns cleanly on the disposable database.
 
 ## Next
 
-1. Commit the verified Phase 5.8.1 slice.
-2. Implement Phase 5.8 notification delivery results/retry behavior behind safe local providers, then continue Phase 6.
+1. Implement Phase 5.8 notification delivery results/retry behavior behind safe local providers.
+2. Continue Phase 6 after the notification slice.
 
 ## Decisions and limits
 
