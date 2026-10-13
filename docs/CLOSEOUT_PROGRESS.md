@@ -565,3 +565,9 @@ Verification: `ProjectDocuments.test.js` + `Shell.i18n.test.js` passed 2 suites 
 Replaced the optional closeout-response prompt with a bilingual text-entry dialog while preserving the existing close action and response payload. Current prompt scan: 29 calls across 4 files.
 
 Verification: `i18n:check ok`; frontend production build compiled successfully; `git diff --check` passed. No SiteManagement page-specific test exists in the current frontend test inventory.
+
+### Phase 6.2 — correspondence amendments
+
+Replaced the amended-body prompt with a multiline text-entry dialog prefilled from the selected correspondence record. Current prompt scan: 28 calls across 3 files.
+
+Verification: `i18n:check ok`; frontend production build compiled successfully; `git diff --check` passed. No DocControlExtended page-specific test exists in the current frontend test inventory.

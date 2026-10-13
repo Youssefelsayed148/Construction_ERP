@@ -4,6 +4,7 @@
 // explicit empty state (the zero-records requirement), never a blank screen.
 
 import React, { useState, useEffect, useCallback } from 'react';
+import TextEntryDialog from '../components/common/TextEntryDialog';
 import { Plus, Send, FileText, Search, Download, AlertTriangle } from 'lucide-react';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
@@ -299,6 +300,7 @@ export function CorrespondenceTab({ projectId, locale, t }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [amendTarget, setAmendTarget] = useState(null);
   const [form, setForm] = useState({ corr_type: 'letter', subject: '', body: '', response_due: '' });
 
   const load = useCallback(async () => {
@@ -331,13 +333,14 @@ export function CorrespondenceTab({ projectId, locale, t }) {
     } catch (err) { alert(err.message); }
   };
 
-  const amend = async (row) => {
-    const body = prompt(locale === 'ar' ? 'المحتوى المعدل' : 'Amended body', row.body || '');
-    if (body == null) return;
+  const amend = (row) => setAmendTarget(row);
+
+  const submitAmendment = async (body) => {
     try {
-      await fetchApi(`${API_URL}/docs/correspondence/${row.id}/amend`, { method: 'POST', body: JSON.stringify({ body, note: 'Amended' }) });
-      load();
-    } catch (err) { alert(err.message); }
+      await fetchApi(`${API_URL}/docs/correspondence/${amendTarget.id}/amend`, { method: 'POST', body: JSON.stringify({ body, note: 'Amended' }) });
+      setAmendTarget(null);
+      await load();
+    } catch (err) { throw err; }
   };
 
   return (
@@ -397,6 +400,7 @@ export function CorrespondenceTab({ projectId, locale, t }) {
           </table>
         </div>
       )}
+      <TextEntryDialog open={Boolean(amendTarget)} title={t('common.dialogs.amendCorrespondenceTitle')} label={t('common.dialogs.amendedBodyLabel')} initialValue={amendTarget?.body || ''} multiline onSubmit={submitAmendment} onCancel={() => setAmendTarget(null)} />
     </div>
   );
 }

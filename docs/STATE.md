@@ -35,7 +35,7 @@
 
 - GL account mappings stay provisional until the finance owner confirms account purposes.
 - Human UAT has not been executed.
-- The current prompt scan finds 29 calls across 4 frontend page files; Phase 6 remains open. Typed-name deletion dialogs now cover twelve prompts across five pages. `docs/CARRYOVER.md` records the audit inventory and next actions.
+- The current prompt scan finds 28 calls across 3 frontend page files; Phase 6 remains open. Typed-name deletion dialogs now cover twelve prompts across five pages. `docs/CARRYOVER.md` records the audit inventory and next actions.
 - `docs/CODEX_AUDIT_REPORT.md` is a pre-existing untracked user artifact and has not been edited.
 
 - Targeted revalidation of audit leads D1-D15 is recorded in `docs/CARRYOVER.md`; multiple findings from the old report are fixed/superseded in current code. Revalidation is not a full security or business-journey acceptance pass.
