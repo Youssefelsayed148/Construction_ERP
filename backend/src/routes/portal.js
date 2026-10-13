@@ -62,11 +62,15 @@ router.post('/subcontractor/instructions/:id/acknowledge', authenticate, authori
     });
     const { error, value } = schema.validate(req.body || {});
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const instruction = await engine.acknowledgeInstruction(query, req.user.id, {
-      project_id: value.project_id, instruction_id: parseInt(req.params.id, 10), response: value.response,
+    const instruction = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const result = await engine.acknowledgeInstruction(q, req.user.id, {
+        project_id: value.project_id, instruction_id: parseInt(req.params.id, 10), response: value.response,
+      });
+      if (result) await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'portal', description: `Acknowledged instruction #${req.params.id} (portal)`, entityId: result.id, entityType: 'engineer_instruction' }, { query: q });
+      return result;
     });
     if (!instruction) return res.status(404).json({ success: false, error: 'Instruction not found' });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'portal', description: `Acknowledged instruction #${req.params.id} (portal)`, entityId: instruction.id, entityType: 'engineer_instruction' });
     res.json({ success: true, data: instruction });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
@@ -118,10 +122,12 @@ router.post('/subcontractor/payment-applications', authenticate, authorize(), as
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     const certificate = await transaction(async (client) => {
       await client.query('SELECT id FROM sub_contracts WHERE id = $1 FOR UPDATE', [value.sub_contract_id]);
-      return engine.submitPaymentApplication(client.query.bind(client), req.user.id, value);
+      const q = client.query.bind(client);
+      const created = await engine.submitPaymentApplication(q, req.user.id, value);
+      if (created) await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'portal', description: `Payment application ${created.certificate_number} submitted`, entityId: created.id, entityType: 'payment_certificate' }, { query: q });
+      return created;
     });
     if (!certificate) return res.status(404).json({ success: false, error: 'Package not found' });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'portal', description: `Payment application ${certificate.certificate_number} submitted`, entityId: certificate.id, entityType: 'payment_certificate' });
     res.status(201).json({ success: true, data: certificate });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });

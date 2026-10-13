@@ -177,3 +177,7 @@ Maintenance reminder create/update activity rows now share the corresponding SQL
 ## 2026-10-13: A4 team assignment transactional audit continuation (local, pending commit)
 
 Both `/api/team` and `/api/organizations/team` create/revoke paths now include the team-service mutation, policy audit event, and activity row in one transaction. `node --check` for both routers and `git diff --check` exit 0; `npm test -- --runInBand` passed 48 suites / 968 tests; `npm run lint:guards` printed `lint-guards: ok`. PostgreSQL rollback verification remains unverified because Docker Desktop is unavailable. Current expected commit: per-slice commit to follow.
+
+## 2026-10-13: A4 portal transactional audit continuation (local, pending commit)
+
+Subcontractor instruction acknowledgements and payment application submissions now include their activity rows in the same transaction as the portal-engine mutation. `node --check` and `git diff --check` exit 0; `npm test -- --runInBand` passed 48 suites / 968 tests; `npm run lint:guards` printed `lint-guards: ok`. PostgreSQL rollback verification remains unverified because Docker Desktop is unavailable. Current expected commit: per-slice commit to follow.

@@ -554,4 +554,25 @@ npm run lint:guards
 lint-guards: ok
 ```
 
-A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This team-assignment slice is not committed yet.
+A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This team-assignment slice is committed as `b4a18ae`.
+
+## 2026-10-13: A4 portal transactional audit continuation (local, pending commit)
+
+Subcontractor instruction acknowledgements and payment application submissions now include their activity rows in the same transaction as the portal-engine mutation.
+
+Verification command output:
+
+```text
+node --check src/routes/portal.js; git diff --check
+exit code: 0
+
+npm test -- --runInBand
+Test Suites: 48 passed, 48 total
+Tests:       968 passed, 968 total
+Ran all test suites.
+
+npm run lint:guards
+lint-guards: ok
+```
+
+A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This portal slice is not committed yet.
