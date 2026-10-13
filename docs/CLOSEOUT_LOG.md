@@ -373,3 +373,39 @@ The PG inventory precheck is unit-tested only; it has not been exercised against
 Implemented migration 0037, an owner/admin `/api/approval-limits` endpoint, fail-closed approval limit service, persisted amount resolution for ID-based MCP money tools, and role/action enforcement during decision. The admin write and activity entry share a transaction. The role cap remains the approver's actual role even when project access comes from delegation; delegation grants project scope and does not add money authority. Defaults are provisional EGP values requiring owner/finance confirmation.
 
 Verification: focused A7 unit suite 1/1, 4/4; full backend mock suite 46/46, 949/949; `npm run lint:guards` prints `lint-guards: ok`. Migration and PG execution are unverified because Docker Desktop is unavailable.
+
+## 2026-10-13: A8 Playwright runner repair
+
+The frontend lockfile declared `@playwright/test` but it was absent from `frontend/node_modules`, and the original npm script could not resolve the command. Added a project-local wrapper that launches the local Playwright CLI and pins browser downloads to ignored `frontend/.playwright-browsers/`, plus a `test:e2e:install` command. Documented the Windows PowerShell setup.
+
+Evidence:
+
+```text
+frontend> npm ci --no-audit --no-fund
+added 1346 packages in 13s
+
+frontend> npm run test:e2e -- --list
+Total: 78 tests in 7 files
+
+frontend> npm run test:e2e:install
+Chrome for Testing 153.0.8010.12 downloaded to frontend/.playwright-browsers/chromium-1243
+Chrome Headless Shell 153.0.8010.12 downloaded to frontend/.playwright-browsers/chromium_headless_shell-1243
+exit 0
+
+frontend> npm run test:e2e
+46 skipped
+32 passed (1.4m)
+exit 0
+
+frontend> npm run test:ci
+Test Suites: 17 passed, 17 total
+Tests:       97 passed, 97 total
+
+frontend> npm run i18n:check
+i18n:check ok
+
+frontend> npm run build
+Compiled successfully.
+```
+
+The run includes the browser-only desktop/mobile journeys; Playwright reported skipped tests, including the gated real-backend and on-demand screenshot baseline cases. The backend-seeded journey coverage was not run because no isolated PostgreSQL is available.

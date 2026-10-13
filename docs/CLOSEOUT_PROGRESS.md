@@ -91,3 +91,9 @@ lint-guards: ok
 ```
 
 Migration application and PG approval/delegation integration remain unverified because Docker Desktop is unavailable. A7 is not committed yet.
+
+## 2026-10-13: A8 Playwright runner and frontend gates
+
+Fixed package resolution from `frontend/`, added a wrapper that uses the frontend-local Playwright CLI and a project-local ignored browser cache, and documented Windows PowerShell commands. Installed 1346 locked packages in frontend/ and Chromium 153 into `frontend/.playwright-browsers`.
+
+Verified: Playwright discovered 78 tests in 7 files; suite result was 32 passed / 46 skipped in 1.4m (real-backend seeds and screenshot baselines were not run). Frontend CI unit gate: 17 suites / 97 tests passed. `npm run i18n:check` printed `i18n:check ok`. `npm run build` printed `Compiled successfully.`

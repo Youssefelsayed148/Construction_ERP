@@ -108,3 +108,16 @@ map), project cost rows vs their ledger postings, AP/AR postings vs live documen
 workflow instances. Run it on a restored copy only (it guards itself behind
 `RECONCILIATION_BACKUP_CONFIRMED=true`); a suite-run throwaway DB is expected to show residue from
 suite teardown, so zero there is not required.
+
+## Local Playwright setup (A8)
+
+From PowerShell in `frontend/`, install the locked project dependencies and the Chromium browser into the ignored project cache, then run the configured E2E suite:
+
+```powershell
+cd frontend
+npm ci
+npm run test:e2e:install
+npm run test:e2e
+```
+
+`test:e2e` invokes the frontend-local Playwright CLI. The browser cache is `frontend/.playwright-browsers/`; do not commit it. `npm run test:e2e -- --list` lists discovered cases without launching a browser. Real-backend tests still require the isolated seeded test DB and `E2E_BACKEND=1` setup documented above; screenshot baseline cases remain on-demand.

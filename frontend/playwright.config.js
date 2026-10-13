@@ -1,3 +1,5 @@
+const path = require('path');
+process.env.PLAYWRIGHT_BROWSERS_PATH ||= path.join(__dirname, '.playwright-browsers');
 const { defineConfig, devices } = require('@playwright/test');
 
 module.exports = defineConfig({
