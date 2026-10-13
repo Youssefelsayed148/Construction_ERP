@@ -5,6 +5,7 @@ const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
+const { auditedTransaction } = require('../utils/auditedTransaction');
 const quantityEngine = require('../services/quantityEngine');
 const progressEngine = require('../services/progressEngine');
 const actionService = require('../services/actionService');
@@ -103,10 +104,10 @@ router.post('/:projectId/site-reports', authenticate, authorize(), async (req, r
         userId: req.user.id, userName: req.user.name, userRole: req.user.role,
         payload: { project_id: parseInt(req.params.projectId, 10), report_date: value.report_date, measurements: value.measurements.length },
       }, { query: q });
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'site', description: `Filed daily site report for project #${req.params.projectId}`, entityId: inserted.rows[0].id, entityType: 'site_daily_report' }, { query: q });
       return inserted;
     });
 
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'site', description: `Filed daily site report for project #${req.params.projectId}`, entityId: result.rows[0].id, entityType: 'site_daily_report' });
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) {
     if (error.code === '23505') return res.status(409).json({ success: false, error: 'A report already exists for this project and date' });
@@ -200,14 +201,17 @@ router.post('/:projectId/instructions', authenticate, authorize(), async (req, r
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const instructionNumber = await nextNumber(query, { table: 'engineer_instructions', column: 'instruction_number', prefix: `EI-${req.params.projectId}`, pad: 3 });
-
-    const result = await query(
+    const result = await auditedTransaction(async (q) => {
+      const instructionNumber = await nextNumber(q, { table: 'engineer_instructions', column: 'instruction_number', prefix: `EI-${req.params.projectId}`, pad: 3 });
+      const inserted = await q(
       `INSERT INTO engineer_instructions (instruction_number, project_id, title, description, priority, issued_by, issued_date, assigned_to_user_id)
        VALUES ($1,$2,$3,$4,$5,$6,COALESCE($7, CURRENT_DATE),$8) RETURNING *`,
       [instructionNumber, req.params.projectId, value.title, value.description, value.priority, req.user.id, value.issued_date, value.assigned_to_user_id || null]
-    );
-    const instruction = result.rows[0];
+      );
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'site', description: `Issued instruction ${instructionNumber}: ${value.title}`, entityId: inserted.rows[0].id, entityType: 'engineer_instruction' }, { query: q });
+      return { instruction: inserted.rows[0], instructionNumber };
+    });
+    const { instruction, instructionNumber } = result;
 
     // Phase 7 wiring: the issued instruction becomes an action item in the
     // assignee's "My Actions" queue (not only visible inside site.js).
@@ -237,7 +241,6 @@ router.post('/:projectId/instructions', authenticate, authorize(), async (req, r
       payload: { project_id: parseInt(req.params.projectId, 10), instruction_number: instructionNumber },
     });
 
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'site', description: `Issued instruction ${instructionNumber}: ${value.title}`, entityId: instruction.id, entityType: 'engineer_instruction' });
     res.status(201).json({ success: true, data: (await query('SELECT * FROM engineer_instructions WHERE id = $1', [instruction.id])).rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -282,25 +285,29 @@ router.post('/:projectId/instructions/:id/:action(acknowledge|implement|close)',
 
     const response = req.body?.response;
     const stampColumn = { acknowledge: 'acknowledged_at', implement: 'implemented_at', close: null }[req.params.action];
-    const result = newStatus === 'closed'
-      ? await query(
+    const result = await auditedTransaction(async (q) => {
+      const updated = newStatus === 'closed'
+      ? await q(
           `UPDATE engineer_instructions SET status = $1, response = COALESCE($2, response),
              closed_by = $3, closed_at = NOW(), updated_at = NOW()
            WHERE id = $4 RETURNING *`,
           [newStatus, response, req.user.id, req.params.id]
         )
       : stampColumn
-        ? await query(
+        ? await q(
             `UPDATE engineer_instructions SET status = $1, response = COALESCE($2, response),
                ${stampColumn} = NOW(), updated_at = NOW()
              WHERE id = $3 RETURNING *`,
             [newStatus, response, req.params.id]
           )
-        : await query(
+        : await q(
             `UPDATE engineer_instructions SET status = $1, response = COALESCE($2, response), updated_at = NOW()
              WHERE id = $3 RETURNING *`,
-            [newStatus, response, req.params.id]
-          );
+          [newStatus, response, req.params.id]
+        );
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'site', description: `Instruction ${existing.rows[0].instruction_number} → ${newStatus}`, entityId: req.params.id, entityType: 'engineer_instruction' }, { query: q });
+      return updated;
+    });
 
     // Phase 7 wiring: a lifecycle event per transition; the spawned action
     // item is completed when the instruction is acknowledged/implemented so
@@ -326,7 +333,6 @@ router.post('/:projectId/instructions/:id/:action(acknowledge|implement|close)',
       console.error('[SITE] instruction action-item sync failed:', e.message);
     }
 
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'site', description: `Instruction ${existing.rows[0].instruction_number} → ${newStatus}`, entityId: req.params.id, entityType: 'engineer_instruction' });
     res.json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -365,15 +371,13 @@ router.post('/:projectId/site-visits', authenticate, authorize(), async (req, re
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const result = await query(
+    const result = await auditedTransaction((q) => q(
       `INSERT INTO site_visits (project_id, visit_date, visitor_name, visitor_role, visitor_organization_id, visitor_user_id, visit_type, attendees, purpose, inspected_activities, referenced_document_ids, notes, photos, action_items, logged_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10::jsonb,$11::jsonb,$12,$13::jsonb,$14::jsonb,$15) RETURNING *`,
       [req.params.projectId, value.visit_date, value.visitor_name, value.visitor_role, value.visitor_organization_id || null, value.visitor_user_id || null,
        value.visit_type, JSON.stringify(value.attendees), value.purpose || null, JSON.stringify(value.inspected_activities),
        JSON.stringify(value.referenced_document_ids), value.notes, JSON.stringify(value.photos), JSON.stringify(value.action_items), req.user.id]
-    );
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'site', description: `Logged site visit by ${value.visitor_name}`, entityId: result.rows[0].id, entityType: 'site_visit' });
+    ), (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'site', description: `Logged site visit by ${value.visitor_name}`, entityId: r.rows[0].id, entityType: 'site_visit' }));
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -437,11 +441,10 @@ router.post('/:projectId/site-reports/assemble', authenticate, authorize(), asyn
     });
     const { error, value } = schema.validate(req.body || {});
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const { report } = await siteEngine.assembleDailyReport(
-      query, parseInt(req.params.projectId, 10),
+    const { report } = await auditedTransaction((q) => siteEngine.assembleDailyReport(
+      q, parseInt(req.params.projectId, 10),
       value.report_date || new Date().toISOString().slice(0, 10), req.user, value
-    );
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'site', description: `Assembled daily site report from source records`, entityId: report.id, entityType: 'site_daily_report' });
+    ), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'site', description: `Assembled daily site report from source records`, entityId: result.report.id, entityType: 'site_daily_report' }));
     res.status(201).json({ success: true, data: report });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -465,10 +468,9 @@ router.post('/:projectId/photos', authenticate, authorize(), async (req, res) =>
     });
     const { error, value } = schema.validate(req.body || {});
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const photo = await siteEngine.addPhoto(query, {
+    const photo = await auditedTransaction((q) => siteEngine.addPhoto(q, {
       ...value, project_id: parseInt(req.params.projectId, 10), uploader_user_id: req.user.id,
-    });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'site', description: 'Captured site photo', entityId: photo.id, entityType: 'photo' });
+    }), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'site', description: 'Captured site photo', entityId: result.id, entityType: 'photo' }));
     res.status(201).json({ success: true, data: photo });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -509,10 +511,9 @@ router.post('/:projectId/sticky-notes', authenticate, authorize(), async (req, r
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const note = await siteEngine.createStickyNote(query, {
+    const note = await auditedTransaction((q) => siteEngine.createStickyNote(q, {
       ...value, project_id: parseInt(req.params.projectId, 10), owner_user_id: req.user.id,
-    });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'site', description: 'Added sticky note', entityId: note.id, entityType: 'sticky_note' });
+    }), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'site', description: 'Added sticky note', entityId: result.id, entityType: 'sticky_note' }));
     res.status(201).json({ success: true, data: note });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
@@ -529,8 +530,7 @@ router.post('/:projectId/sticky-notes/:id/convert-to-action', authenticate, auth
     });
     const { error, value } = schema.validate(req.body || {});
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const result = await siteEngine.convertStickyToAction(query, parseInt(req.params.id, 10), req.user, value);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'site', description: `Converted sticky note #${req.params.id} to action item`, entityId: req.params.id, entityType: 'sticky_note' });
+    const result = await auditedTransaction((q) => siteEngine.convertStickyToAction(q, parseInt(req.params.id, 10), req.user, value), () => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'site', description: `Converted sticky note #${req.params.id} to action item`, entityId: req.params.id, entityType: 'sticky_note' }));
     res.status(201).json({ success: true, data: result });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
