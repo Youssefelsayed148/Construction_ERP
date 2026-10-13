@@ -17,7 +17,7 @@ Updated: 2026-10-13 (Africa/Cairo)
 - Batch A remains incomplete. A2/A3 are grouped in one commit because the service and tests share files. A4 has selected transactional conversions only; the route-family sweep is incomplete. A5/A6 are committed.
 - A4 remains partial: selected critical families plus assets, clients, items, legal documents, and suppliers now use transactional audits; 129 direct route audit references remain and global rollback proof is not real-PG verified.
 - A9 security scan fixes are committed as `67ba313`; the MFA item is design-only in `docs/DECISIONS.md`.
-- A4 continuations through `0d9854b` convert master data, QHSE, HSE, document-control, site, warehouse, and HR audit call sites. The current local materials slice converts recipe/policy writes and durable recipe events; whole-route sweep remains incomplete (71 direct route audit references remain).
+- A4 continuations through `3231bb5` convert master data, QHSE, HSE, document-control, site, warehouse, HR, and materials recipe/policy writes. The current local handover slice converts process, package setup, asset, and warranty claim audit sites; whole-route sweep remains incomplete (66 direct route audit references remain).
 - Frontend gates pass: 17 suites / 97 tests, `i18n:check ok`, production build succeeds. Playwright lists 78 tests and ran 32 passed / 46 skipped; seeded-backend and screenshot-baseline cases remain gated/on-demand.
 - The most recent backend rerun passes 48/48 suites and 968/968 tests; guards pass. A8 frontend/browser outputs remain green as recorded below.
 

@@ -15,6 +15,7 @@ const Joi = require('joi');
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
+const { auditedTransaction } = require('../utils/auditedTransaction');
 const engine = require('../services/handoverEngine');
 const { renderDocument } = require('../utils/procurementPdf');
 
@@ -44,9 +45,11 @@ router.get('/process/:projectId', authenticate, authorize(), async (req, res) =>
 
 router.post('/process/:projectId/start', authenticate, authorize(), async (req, res) => {
   try {
-    const process = await engine.startHandover(query, req.params.projectId, req.user);
-    await engine.ensureDefaultPackageItems(query, req.params.projectId);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'handover', description: `Started handover process ${process.process_number}`, entityId: process.id, entityType: 'handover_process' });
+    const process = await auditedTransaction(async (q) => {
+      const started = await engine.startHandover(q, req.params.projectId, req.user);
+      await engine.ensureDefaultPackageItems(q, req.params.projectId);
+      return started;
+    }, (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'handover', description: `Started handover process ${result.process_number}`, entityId: result.id, entityType: 'handover_process' }));
     res.status(201).json({ success: true, data: { process, readiness: await engine.handoverReadiness(query, req.params.projectId) } });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
@@ -56,8 +59,7 @@ router.post('/process/:id/transition', authenticate, authorize('owner', 'admin',
     const schema = Joi.object({ status: Joi.string().valid(...engine.HANDOVER_STATES).required() });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const process = await engine.transitionHandover(query, req.params.id, value.status, req.user);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'handover', description: `Handover advanced to ${value.status}`, entityId: process.id, entityType: 'handover_process' });
+    const process = await auditedTransaction((q) => engine.transitionHandover(q, req.params.id, value.status, req.user), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'handover', description: `Handover advanced to ${value.status}`, entityId: result.id, entityType: 'handover_process' }));
     res.json({ success: true, data: process });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
@@ -176,14 +178,13 @@ router.post('/assets', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const r = await query(
+    const r = await auditedTransaction((q) => q(
       `INSERT INTO asset_register (project_id, asset_code, name, project_location_id, model, serial_no,
          supplier_organization_id, subcontractor_organization_id, commissioning_date, warranty_start, warranty_end, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
       [value.project_id, value.asset_code, value.name, value.project_location_id || null, value.model || null,
        value.serial_no || null, value.supplier_organization_id || null, value.subcontractor_organization_id || null,
-       value.commissioning_date || null, value.warranty_start || null, value.warranty_end || null, req.user.id]);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'handover', description: `Registered asset ${value.asset_code}`, entityId: r.rows[0].id, entityType: 'asset_register' });
+       value.commissioning_date || null, value.warranty_start || null, value.warranty_end || null, req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'handover', description: `Registered asset ${value.asset_code}`, entityId: result.rows[0].id, entityType: 'asset_register' }));
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -228,8 +229,7 @@ router.post('/claims', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const claim = await engine.createWarrantyClaim(query, value, req.user);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'handover', description: `Raised warranty claim ${claim.claim_number}`, entityId: claim.id, entityType: 'warranty_claim' });
+    const claim = await auditedTransaction((q) => engine.createWarrantyClaim(q, value, req.user), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'handover', description: `Raised warranty claim ${result.claim_number}`, entityId: result.id, entityType: 'warranty_claim' }));
     res.status(201).json({ success: true, data: claim });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
@@ -244,8 +244,7 @@ router.post('/claims/:id/status', authenticate, authorize('owner', 'admin', 'pro
     }).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const claim = await engine.transitionWarrantyClaim(query, req.params.id, value.status, req.user, value);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'handover', description: `${claim.claim_number} → ${value.status}`, entityId: claim.id, entityType: 'warranty_claim' });
+    const claim = await auditedTransaction((q) => engine.transitionWarrantyClaim(q, req.params.id, value.status, req.user, value), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'handover', description: `${result.claim_number} → ${value.status}`, entityId: result.id, entityType: 'warranty_claim' }));
     res.json({ success: true, data: claim });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
