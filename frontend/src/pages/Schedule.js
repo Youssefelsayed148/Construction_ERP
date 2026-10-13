@@ -7,7 +7,7 @@ import WorkPackageSelect from '../components/project/WorkPackageSelect';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
-import { ArrowLeft, Plus, CalendarRange, AlertTriangle, TrendingDown, Download, Flag, Zap } from 'lucide-react';
+import { ArrowLeft, Plus, CalendarRange, AlertTriangle, TrendingDown, Download, Flag, Zap, History, Users } from 'lucide-react';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
@@ -17,7 +17,7 @@ const headers = () => {
 };
 
 const fetchApi = (url, options) => fetch(url, { headers: headers(), ...options }).then(r => {
-  if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
+  if (!r.ok) return r.json().then(e => { throw new Error(e.error || e.error_code || 'Request failed'); });
   return r.json();
 });
 
@@ -26,6 +26,10 @@ const fmtDate = (d) => {
   const dt = new Date(d);
   if (isNaN(dt.getTime())) return d;
   return `${dt.getDate().toString().padStart(2, '0')}/${(dt.getMonth() + 1).toString().padStart(2, '0')}/${dt.getFullYear()}`;
+};
+const localDateInputValue = () => {
+  const now = new Date(); const pad = (value) => String(value).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 };
 
 function EmptyState({ icon: Icon, text }) {
@@ -81,11 +85,21 @@ function leftPct(a, min, span) {
   return Math.min(100, Math.max(0, ((new Date(a.planned_start).getTime() - min) / span) * 100));
 }
 
-function ActivitiesTab({ projectId, locale, t }) {
+export function ActivitiesTab({ projectId, locale, t }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ name: '', work_package_id: null, planned_start: '', planned_finish: '', original_duration: 0, is_milestone: false });
+  const [progressActivity, setProgressActivity] = useState(null);
+  const [progressValue, setProgressValue] = useState('');
+  const [progressDate, setProgressDate] = useState('');
+  const [progressNotes, setProgressNotes] = useState('');
+  const [progressHistory, setProgressHistory] = useState([]);
+  const [assignmentActivity, setAssignmentActivity] = useState(null);
+  const [resources, setResources] = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [assignmentForm, setAssignmentForm] = useState({ resource: '', assigned_from: '', assigned_to: '', allocation_percent: 100, notes: '' });
+  const [assignmentError, setAssignmentError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -112,14 +126,62 @@ function ActivitiesTab({ projectId, locale, t }) {
     } catch (err) { alert(err.message); }
   };
 
-  const setProgress = async (a) => {
-    const v = prompt(locale === 'ar' ? 'نسبة الإنجاز %' : 'Percent complete %', a.percent_complete || 0);
-    if (v == null) return;
+  const openProgress = async (activity) => {
+    setProgressActivity(activity); setProgressValue(String(activity.percent_complete || 0)); setProgressNotes('');
+    setProgressDate(localDateInputValue());
     try {
-      await fetchApi(`${API_URL}/schedule/activities/${a.id}/progress`, { method: 'POST', body: JSON.stringify({ percent_complete: Number(v) }) });
-      load();
+      const result = await fetchApi(API_URL + '/schedule/activities/' + activity.id + '/progress-history');
+      setProgressHistory(result.data || []);
+    } catch (err) { setProgressHistory([]); alert(err.message); }
+  };
+  const submitProgress = async (event) => {
+    event.preventDefault();
+    try {
+      await fetchApi(API_URL + '/schedule/activities/' + progressActivity.id + '/progress', { method: 'POST', body: JSON.stringify({ percent_complete: Number(progressValue), data_date: progressDate, notes: progressNotes || null }) });
+      setProgressActivity(null); load();
     } catch (err) { alert(err.message); }
   };
+  const openAssignments = async (activity) => {
+    setAssignmentActivity(activity); setAssignmentError('');
+    try {
+      const results = await Promise.all([
+        fetchApi(API_URL + '/schedule/resources?project_id=' + projectId),
+        fetchApi(API_URL + '/schedule/activities/' + activity.id + '/assignments'),
+      ]);
+      setResources(results[0].data || []); setAssignments(results[1].data || []);
+      setAssignmentForm({ resource: '', assigned_from: '', assigned_to: '', allocation_percent: 100, notes: '' });
+    } catch (err) { setAssignmentError(err.message); }
+  };
+  const submitAssignment = async (event) => {
+    event.preventDefault(); setAssignmentError('');
+    const resource = resources.find((item) => item.resource_type + ':' + item.resource_id === assignmentForm.resource);
+    if (!resource) return;
+    const payload = {
+      [resource.resource_type === 'employee' ? 'employee_id' : 'asset_register_id']: resource.resource_id,
+      assigned_from: assignmentForm.assigned_from, assigned_to: assignmentForm.assigned_to,
+      allocation_percent: Number(assignmentForm.allocation_percent), notes: assignmentForm.notes || null,
+    };
+    try {
+      await fetchApi(API_URL + '/schedule/activities/' + assignmentActivity.id + '/assignments', { method: 'POST', body: JSON.stringify(payload) });
+      const result = await fetchApi(API_URL + '/schedule/activities/' + assignmentActivity.id + '/assignments');
+      setAssignments(result.data || []);
+      setAssignmentForm({ resource: '', assigned_from: '', assigned_to: '', allocation_percent: 100, notes: '' });
+    } catch (err) {
+      const key = err.message === 'schedule_assignment_date_overlap' ? 'schedule.resourceOverlap' : err.message === 'schedule_assignment_resource_project_mismatch' ? 'schedule.resourceProjectMismatch' : err.message === 'invalid_schedule_assignment' ? 'schedule.invalidAssignment' : '';
+      setAssignmentError(key ? t(key) : err.message);
+    }
+  };
+  const updateAssignmentStatus = async (assignment, status) => {
+    try {
+      await fetchApi(API_URL + '/schedule/assignments/' + assignment.id + '/status', { method: 'PUT', body: JSON.stringify({ status }) });
+      const result = await fetchApi(API_URL + '/schedule/activities/' + assignmentActivity.id + '/assignments');
+      setAssignments(result.data || []);
+    } catch (err) { setAssignmentError(err.message); }
+  };
+  const assignmentStatusLabel = (status) => ({
+    planned: t('schedule.assignmentStatuses.planned'), active: t('schedule.assignmentStatuses.active'),
+    completed: t('schedule.assignmentStatuses.completed'), cancelled: t('schedule.assignmentStatuses.cancelled'),
+  }[status] || status);
 
   return (
     <div>
@@ -153,6 +215,39 @@ function ActivitiesTab({ projectId, locale, t }) {
           </div>
         </form>
       )}
+      {progressActivity && (
+        <div className="card" role="dialog" aria-label={t('schedule.progressHistory')} style={{ marginTop: 16, display: 'grid', gap: 10 }}>
+          <h3>{progressActivity.activity_code} ? {t('schedule.progressHistory')}</h3>
+          <form onSubmit={submitProgress} style={{ display: 'grid', gap: 8, maxWidth: 560 }}>
+            <label>{t('schedule.percentComplete')}<input className="input" type="number" min="0" max="100" step="0.01" required value={progressValue} onChange={(event) => setProgressValue(event.target.value)} /></label>
+            <label>{t('schedule.dataDate')}<input className="input" type="date" required value={progressDate} onChange={(event) => setProgressDate(event.target.value)} /></label>
+            <label>{t('schedule.progressNotes')}<textarea className="input" value={progressNotes} onChange={(event) => setProgressNotes(event.target.value)} /></label>
+            <div><button className="btn btn-primary" type="submit">{t('schedule.recordProgress')}</button> <button className="btn" type="button" onClick={() => setProgressActivity(null)}>{t('common.cancel')}</button></div>
+          </form>
+          <h4>{t('schedule.history')}</h4>
+          {progressHistory.length ? <ul>{progressHistory.map((item) => <li key={item.id}>{item.data_date} ? {item.previous_percent_complete}% ? {item.percent_complete}% ? {item.created_by_name || '-'}{item.notes ? ' ? ' + item.notes : ''}</li>)}</ul> : <p>{t('schedule.noProgressHistory')}</p>}
+        </div>
+      )}
+      {assignmentActivity && (
+        <div className="card" role="dialog" aria-label={t('schedule.resourceAssignments')} style={{ marginTop: 16, display: 'grid', gap: 10 }}>
+          <h3>{assignmentActivity.activity_code} ? {t('schedule.resourceAssignments')}</h3>
+          {assignmentError && <p role="alert" className="alert alert-danger">{assignmentError}</p>}
+          <form onSubmit={submitAssignment} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 8 }}>
+            <label>{t('schedule.resource')}<select className="input" required value={assignmentForm.resource} onChange={(event) => setAssignmentForm({ ...assignmentForm, resource: event.target.value })}>
+              <option value="">{t('schedule.selectResource')}</option>{resources.map((resource) => <option key={resource.resource_type + ':' + resource.resource_id} value={resource.resource_type + ':' + resource.resource_id}>{resource.name} ({t(resource.resource_type === 'employee' ? 'schedule.employee' : 'schedule.equipment')})</option>)}
+            </select></label>
+            <label>{t('schedule.assignedFrom')}<input className="input" type="date" required value={assignmentForm.assigned_from} onChange={(event) => setAssignmentForm({ ...assignmentForm, assigned_from: event.target.value })} /></label>
+            <label>{t('schedule.assignedTo')}<input className="input" type="date" min={assignmentForm.assigned_from || undefined} required value={assignmentForm.assigned_to} onChange={(event) => setAssignmentForm({ ...assignmentForm, assigned_to: event.target.value })} /></label>
+            <label>{t('schedule.allocationPercent')}<input className="input" type="number" min="0.01" max="100" step="0.01" required value={assignmentForm.allocation_percent} onChange={(event) => setAssignmentForm({ ...assignmentForm, allocation_percent: event.target.value })} /></label>
+            <label>{t('schedule.assignmentNotes')}<input className="input" value={assignmentForm.notes} onChange={(event) => setAssignmentForm({ ...assignmentForm, notes: event.target.value })} /></label>
+            <div style={{ alignSelf: 'end' }}><button className="btn btn-primary" disabled={!resources.length} type="submit">{t('schedule.addAssignment')}</button></div>
+          </form>
+          {assignments.length ? <div className="table-container"><table className="table"><thead><tr><th>{t('schedule.resource')}</th><th>{t('schedule.assignedFrom')}</th><th>{t('schedule.assignedTo')}</th><th>{t('schedule.allocationPercent')}</th><th>{t('schedule.assignmentStatus')}</th><th>{t('common.actions')}</th></tr></thead><tbody>
+            {assignments.map((item) => <tr key={item.id}><td>{item.employee_name || item.asset_name}</td><td>{fmtDate(item.assigned_from)}</td><td>{fmtDate(item.assigned_to)}</td><td>{item.allocation_percent}%</td><td>{assignmentStatusLabel(item.status)}</td><td>{['planned', 'active'].includes(item.status) && <><button className="btn" onClick={() => updateAssignmentStatus(item, item.status === 'planned' ? 'active' : 'completed')}>{t(item.status === 'planned' ? 'schedule.startAssignment' : 'schedule.completeAssignment')}</button> <button className="btn" onClick={() => updateAssignmentStatus(item, 'cancelled')}>{t('schedule.cancelAssignment')}</button></>}</td></tr>)}
+          </tbody></table></div> : <p>{resources.length ? t('schedule.noAssignments') : t('schedule.noResources')}</p>}
+          <button className="btn" style={{ justifySelf: 'start' }} onClick={() => setAssignmentActivity(null)}>{t('common.cancel')}</button>
+        </div>
+      )}
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><span className="spinner" /></div>
       ) : rows.length === 0 ? (
@@ -176,7 +271,7 @@ function ActivitiesTab({ projectId, locale, t }) {
                   <td>{a.original_duration}</td>
                   <td>{a.percent_complete || 0}%</td>
                   <td>{a.cpm?.critical ? <span className="badge badge-danger">Critical</span> : '-'}</td>
-                  <td><button className="btn" style={{ padding: '4px 10px' }} onClick={() => setProgress(a)}>{locale === 'ar' ? 'تحديث' : 'Update progress'}</button></td>
+                  <td style={{ display: 'flex', gap: 6 }}><button className="btn" style={{ padding: '4px 10px' }} onClick={() => openProgress(a)}><History size={14} />{t('schedule.updateProgress')}</button> <button className="btn" style={{ padding: '4px 10px' }} onClick={() => openAssignments(a)}><Users size={14} />{t('schedule.assignResources')}</button></td>
                 </tr>
               ))}
             </tbody>

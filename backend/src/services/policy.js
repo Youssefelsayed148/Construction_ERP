@@ -392,6 +392,7 @@ const RECORD_SCOPE_RULES = Object.freeze({
   schedule: [
     [/^\/activities\/:id(?:\/|$)/, 'schedule_activities'],
     [/^\/relationships\/:id(?:\/|$)/, 'activity_relationships'],
+    [/^\/assignments\/:id(?:\/|$)/, 'schedule_activity_assignments'],
     [/^\/schedule\/milestones\/:id(?:\/|$)/, 'project_milestones'],
   ],
   // /api/projects also serves the site router, so its record routes live here. The :projectId in these

@@ -86,11 +86,11 @@ The incident-table merge requested in 5.7 is not a fresh schema project: `hse-mi
 
 ### 5.7.3 Schedule progress and resource assignment
 
-**Status: Partial.** `schedule_activities` and `activity_relationships` already implement schedule entities and relationships, and progress entry exists in `routes/schedule.js`. Audit whether a separate progress-update history and resource assignment entity exists in deployed migrations before adding either. Preserve progress history and link assignments to project team/assets/labor using existing foreign keys where appropriate.
+**Status: Partial.** `schedule_activities` and `activity_relationships` implement the schedule core. Migration 0056 adds attributed, date-stamped progress history and project-scoped employee/asset assignments. Schedule endpoints validate project membership, preserve date-only values, prevent overlapping active/planned assignments, enforce assignment lifecycle transitions and expose audit history. The project schedule now has progress-history and resource-assignment forms in EN/AR. Existing employee team membership and project asset-register keys back the assignments.
 
 **Acceptance:** updates are attributed and historical; assignments validate resource/project scope and date overlap; schedule and project views agree on progress and resource allocation.
 
-**Focused checks:** schedule PostgreSQL tests for progress history, overlap, scope and calculations; focused schedule component test.
+**Focused checks:** `schedule-progress-assignments.pg.test.js` passed 3/3 for progress attribution/history, employee and asset assignments, overlap/lifecycle handling and project scope. Existing `planning.test.js` passed 12/12; `Schedule.test.js` passed 2/2; migration 0056 applied to the disposable PostgreSQL database (1 applied, 117 already applied; idempotent rerun 0 applied, 118 already applied); `i18n:check` passed. `i18n:parity` still reports seven existing missing `common.suppliers` keys in ProcurementWorkspace, with no schedule-key issues. No full suite was run.
 
 ### 5.7.4 Handover evidence and warranty register
 

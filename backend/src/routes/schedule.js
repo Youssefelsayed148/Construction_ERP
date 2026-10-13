@@ -16,6 +16,21 @@ const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const engine = require('../services/schedulingEngine');
+const { dateOnly } = require('../utils/validation');
+const { normalizeDateFields } = require('../utils/dateOnly');
+
+function scheduleProjectAllowed(req, projectId) {
+  return req.accessScope?.companyWide || (req.accessScope?.projectIds || []).includes(Number(projectId));
+}
+
+function scheduleFailure(res, status, code) {
+  return res.status(status).json({ success: false, error_code: code });
+}
+
+function currentLocalDate() {
+  const now = new Date(); const pad = (value) => String(value).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
 
 // ---------------------------------------------------------------------------
 // Calendars
@@ -258,21 +273,168 @@ router.post('/activities/:id/progress', authenticate, authorize('owner', 'admin'
     const schema = Joi.object({
       percent_complete: Joi.number().min(0).max(100).optional(),
       progress_source: Joi.string().valid('manual', 'quantity').optional(),
-      data_date: Joi.date().iso().optional(),
+      data_date: dateOnly().optional(),
+      notes: Joi.string().allow('', null).max(2000).optional(),
     }).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     const updated = await transaction(async (client) => {
       const q = client.query.bind(client);
-      const row = await engine.updateProgress(q, req.params.id, value, req.user);
+      const before = (await q('SELECT * FROM schedule_activities WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) throw Object.assign(new Error('Activity not found'), { statusCode: 404 });
+      const dataDate = value.data_date ? new Date(`${value.data_date}T12:00:00`) : undefined;
+      const row = await engine.updateProgress(q, req.params.id, { ...value, dataDate }, req.user);
+      await q(
+        `INSERT INTO schedule_progress_updates
+           (project_id, schedule_activity_id, previous_percent_complete, percent_complete, progress_source, data_date, notes, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [row.project_id, row.id, before.percent_complete || 0, row.percent_complete, row.progress_source,
+          value.data_date || currentLocalDate(), value.notes || null, req.user.id]
+      );
       await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'schedule', description: `Activity ${row.activity_code} progress → ${row.percent_complete}%`, entityId: row.id, entityType: 'schedule_activity' }, { query: q });
       const progressEngine = require('../services/progressEngine');
       await progressEngine.syncProjectProgress(q, row.project_id);
       return row;
     });
-    res.json({ success: true, data: updated });
+    res.json({ success: true, data: normalizeDateFields(updated, ['actual_start', 'actual_finish']) });
   } catch (error) {
     res.status(error.statusCode || 500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/activities/:id/progress-history', authenticate, authorize(), async (req, res) => {
+  try {
+    const activity = (await query('SELECT id, project_id FROM schedule_activities WHERE id = $1', [req.params.id])).rows[0];
+    if (!activity || !scheduleProjectAllowed(req, activity.project_id)) return scheduleFailure(res, 404, 'schedule_activity_not_found');
+    const result = await query(
+      `SELECT h.*, u.name AS created_by_name FROM schedule_progress_updates h
+       LEFT JOIN users u ON u.id = h.created_by
+       WHERE h.schedule_activity_id = $1 ORDER BY h.created_at DESC, h.id DESC`, [req.params.id]);
+    res.json({ success: true, data: result.rows.map((row) => normalizeDateFields(row, ['data_date'])) });
+  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+// Project-owned resources available for dated schedule assignments.
+router.get('/resources', authenticate, authorize(), async (req, res) => {
+  const projectId = Number(req.query.project_id);
+  if (!Number.isInteger(projectId) || projectId < 1) return scheduleFailure(res, 400, 'invalid_project_id');
+  if (!scheduleProjectAllowed(req, projectId)) return scheduleFailure(res, 403, 'project_scope_denied');
+  try {
+    const result = await query(
+      `SELECT 'employee'::text AS resource_type, e.id AS resource_id, COALESCE(e.name_en, e.name) AS name
+       FROM project_participants pp JOIN project_participant_users pu ON pu.project_participant_id = pp.id
+       JOIN employees e ON e.id = pu.employee_id
+       WHERE pp.project_id = $1 AND pp.participant_type = 'internal_team_member'
+         AND (pp.active_from IS NULL OR pp.active_from <= NOW()) AND (pp.active_to IS NULL OR pp.active_to >= CURRENT_DATE)
+         AND e.status = 'active'
+       UNION ALL
+       SELECT 'asset'::text AS resource_type, a.id AS resource_id, a.name
+       FROM asset_register a WHERE a.project_id = $1 ORDER BY resource_type, name, resource_id`, [projectId]);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('schedule.resources.failed', error);
+    return scheduleFailure(res, 500, 'schedule_resources_failed');
+  }
+});
+
+router.get('/activities/:id/assignments', authenticate, authorize(), async (req, res) => {
+  try {
+    const activity = (await query('SELECT id, project_id FROM schedule_activities WHERE id = $1', [req.params.id])).rows[0];
+    if (!activity || !scheduleProjectAllowed(req, activity.project_id)) return scheduleFailure(res, 404, 'schedule_activity_not_found');
+    const result = await query(
+      `SELECT a.*, COALESCE(e.name_en, e.name) AS employee_name, ar.name AS asset_name
+       FROM schedule_activity_assignments a
+       LEFT JOIN employees e ON e.id = a.employee_id
+       LEFT JOIN asset_register ar ON ar.id = a.asset_register_id
+       WHERE a.schedule_activity_id = $1 ORDER BY a.assigned_from, a.id`, [req.params.id]);
+    res.json({ success: true, data: result.rows.map((row) => normalizeDateFields(row, ['assigned_from', 'assigned_to'])) });
+  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+router.post('/activities/:id/assignments', authenticate, authorize('owner', 'admin', 'project_manager', 'planning'), async (req, res) => {
+  const schema = Joi.object({
+    employee_id: Joi.number().integer().positive().allow(null),
+    asset_register_id: Joi.number().integer().positive().allow(null),
+    assigned_from: dateOnly().required(),
+    assigned_to: dateOnly().required(),
+    allocation_percent: Joi.number().positive().max(100).default(100),
+    notes: Joi.string().allow('', null).max(2000),
+  }).xor('employee_id', 'asset_register_id').custom((value, helpers) => (
+    value.assigned_to < value.assigned_from ? helpers.error('date.range') : value
+  ));
+  const { error, value } = schema.validate(req.body);
+  if (error) return scheduleFailure(res, 400, 'invalid_schedule_assignment');
+  try {
+    const inserted = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const activity = (await q('SELECT id, project_id FROM schedule_activities WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!activity || !scheduleProjectAllowed(req, activity.project_id)) {
+        throw Object.assign(new Error('schedule_activity_not_found'), { statusCode: activity ? 403 : 404, error_code: 'schedule_activity_not_found' });
+      }
+      const resourceType = value.employee_id != null ? 'employee' : 'asset';
+      const resourceId = value.employee_id ?? value.asset_register_id;
+      const lockKey = `schedule-resource-${resourceType}-${resourceId}`;
+      await q('SELECT pg_advisory_xact_lock(hashtext($1))', [lockKey]);
+      if (resourceType === 'employee') {
+        const member = await q(
+          `SELECT 1 FROM project_participants pp JOIN project_participant_users pu ON pu.project_participant_id = pp.id
+           JOIN employees e ON e.id = pu.employee_id AND e.status = 'active'
+           WHERE pp.project_id = $1 AND pu.employee_id = $2 AND pp.participant_type = 'internal_team_member'
+             AND (pp.active_from IS NULL OR pp.active_from::date <= $3::date)
+             AND (pp.active_to IS NULL OR pp.active_to::date >= $4::date) LIMIT 1`,
+          [activity.project_id, resourceId, value.assigned_from, value.assigned_to]);
+        if (!member.rows.length) throw Object.assign(new Error('schedule_assignment_resource_project_mismatch'), { statusCode: 400, error_code: 'schedule_assignment_resource_project_mismatch' });
+      } else {
+        const asset = await q('SELECT 1 FROM asset_register WHERE id = $1 AND project_id = $2', [resourceId, activity.project_id]);
+        if (!asset.rows.length) throw Object.assign(new Error('schedule_assignment_resource_project_mismatch'), { statusCode: 400, error_code: 'schedule_assignment_resource_project_mismatch' });
+      }
+      const overlap = await q(
+        `SELECT 1 FROM schedule_activity_assignments
+         WHERE status IN ('planned', 'active') AND ${resourceType === 'employee' ? 'employee_id' : 'asset_register_id'} = $1
+           AND daterange(assigned_from, assigned_to, '[]') && daterange($2::date, $3::date, '[]') LIMIT 1`,
+        [resourceId, value.assigned_from, value.assigned_to]);
+      if (overlap.rows.length) throw Object.assign(new Error('schedule_assignment_date_overlap'), { statusCode: 409, error_code: 'schedule_assignment_date_overlap' });
+      const result = await q(
+        `INSERT INTO schedule_activity_assignments
+           (project_id, schedule_activity_id, employee_id, asset_register_id, assigned_from, assigned_to, allocation_percent, notes, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+        [activity.project_id, activity.id, value.employee_id ?? null, value.asset_register_id ?? null,
+          value.assigned_from, value.assigned_to, value.allocation_percent, value.notes || null, req.user.id]);
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'schedule', description: `Assigned a ${resourceType} to schedule activity #${activity.id}`, entityId: result.rows[0].id, entityType: 'schedule_activity_assignment' }, { query: q });
+      return result.rows[0];
+    });
+    res.status(201).json({ success: true, data: normalizeDateFields(inserted, ['assigned_from', 'assigned_to']) });
+  } catch (error) {
+    if (error.error_code) return scheduleFailure(res, error.statusCode || 400, error.error_code);
+    console.error('schedule.assignment.create.failed', error);
+    scheduleFailure(res, 500, 'schedule_assignment_create_failed');
+  }
+});
+
+router.put('/assignments/:id/status', authenticate, authorize('owner', 'admin', 'project_manager', 'planning'), async (req, res) => {
+  const schema = Joi.object({ status: Joi.string().valid('active', 'completed', 'cancelled').required() });
+  const { error, value } = schema.validate(req.body);
+  if (error) return scheduleFailure(res, 400, 'invalid_schedule_assignment_status');
+  try {
+    const result = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const assignment = (await q('SELECT * FROM schedule_activity_assignments WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!assignment || !scheduleProjectAllowed(req, assignment.project_id)) {
+        throw Object.assign(new Error('schedule_assignment_not_found'), { statusCode: assignment ? 403 : 404, error_code: 'schedule_assignment_not_found' });
+      }
+      const allowed = { planned: ['active', 'cancelled'], active: ['completed', 'cancelled'], completed: [], cancelled: [] };
+      if (!allowed[assignment.status]?.includes(value.status)) {
+        throw Object.assign(new Error('schedule_assignment_transition_invalid'), { statusCode: 409, error_code: 'schedule_assignment_transition_invalid' });
+      }
+      const updated = await q('UPDATE schedule_activity_assignments SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *', [value.status, req.params.id]);
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'schedule', description: `Schedule assignment #${req.params.id} → ${value.status}`, entityId: req.params.id, entityType: 'schedule_activity_assignment' }, { query: q });
+      return updated.rows[0];
+    });
+    res.json({ success: true, data: normalizeDateFields(result, ['assigned_from', 'assigned_to']) });
+  } catch (error) {
+    if (error.error_code) return scheduleFailure(res, error.statusCode || 400, error.error_code);
+    console.error('schedule.assignment.status.failed', error);
+    scheduleFailure(res, 500, 'schedule_assignment_status_failed');
   }
 });
 
