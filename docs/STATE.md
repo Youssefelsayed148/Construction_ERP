@@ -17,12 +17,12 @@
 - Phase 5.7.2.c controlled-document issue dates/confidentiality and external confidentiality enforcement are committed in `f9d8c52`; migration 0055 is applied on the disposable test database.
 - Phase 5.7.2.d transmittal recipient/document form and project-scope checks are committed in `4c89759`; no migration was required. Focused UI, route, PostgreSQL scope and i18n checks passed.
 - Phase 5.7.3 schedule progress history and employee/asset assignments are committed in `8978b35`; its state-record correction is `697ccee`. Migration 0056 is applied on the disposable PostgreSQL database and focused route/component checks passed.
-- Phase 5.7.4 handover evidence and the standalone warranty register are implemented and focused checks passed; local commit is the next action. Migration 0057 is applied and reruns cleanly on the disposable PostgreSQL database.
+- Phase 5.7.4 handover evidence and the standalone warranty register are committed in `4e5da68`; focused checks passed. Migration 0057 is applied and reruns cleanly on the disposable PostgreSQL database.
 
 ## Next
 
-1. Commit the verified Phase 5.7.4 handover evidence and warranty register slice.
-2. Continue Phase 5.8, then Phase 6 in the audited order in `docs/PLAN_5_6_TO_6.md`.
+1. Continue with Phase 5.8 in `docs/PLAN_5_6_TO_6.md`.
+2. Then execute Phase 6 in the audited order.
 
 ## Decisions and limits
 
