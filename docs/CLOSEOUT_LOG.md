@@ -1131,3 +1131,23 @@ Batch C is complete. D UAT execution requires human pilot users; E finance accou
 ## 2026-10-13: Batch D UAT preparation
 
 Added `docs/UAT_PILOT.md`: pilot-only P2P scope, finance-posting exclusion, account keys without credentials, role-by-role scripts, seeded checklist, deferred items, defect template, and human signoff table. It points to the local-only startup and smoke procedure in `docs/STAGING.md`. The guide does not claim business UAT is complete. It notes that the seeded storekeeper lacks procurement-workspace view access, so the receiving maker script uses the enabled workflow owner pilot actor. `git diff --check` passed; this documentation-only slice did not require automated tests.
+
+## 2026-10-13: Batch E1 provisional GL account mapping foundation
+
+```text
+Migration runner: [migrate] 0042_provisional_gl_account_mappings.sql ...
+[migrate] all migrations completed (1 applied, 103 already applied)
+
+backend npm test -- --runInBand src/scripts/__tests__/gl-account-mappings.test.js
+Test Suites: 1 passed, 1 total
+Tests:       4 passed, 4 total
+
+frontend npm test -- --watchAll=false --runInBand src/components/layout/Shell.i18n.test.js
+Test Suites: 1 passed, 1 total
+Tests:       17 passed, 17 total
+
+npm run i18n:check
+i18n:check ok
+```
+
+The additive migration marks existing mappings provisional, inserts new configurable keys against existing chart codes, and links a certificate to at most one client invoice. Mapping changes and owner confirmations use transactional activity audit. Settings is bilingual and displays status; an edit clears confirmation. The finance owner has not confirmed the default account purposes. Certificate-level balanced posting and invoice line creation remain to be completed in E1/E2. No broad suites were run.

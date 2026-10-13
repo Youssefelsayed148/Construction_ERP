@@ -69,6 +69,16 @@ export const dashboardApi = {
   getStats: () => fetch(`${API_URL}/dashboard`, { headers: headers() }).then(handleResponse),
 };
 
+export const accountMappingsApi = {
+  getAll: (locale = 'en') => fetch(`${API_URL}/finance-ledger/account-mappings?locale=${encodeURIComponent(locale)}`, { headers: headers() }).then(handleResponse),
+  update: (key, account_id) => fetch(`${API_URL}/finance-ledger/account-mappings/${encodeURIComponent(key)}`, {
+    method: 'PUT', headers: headers(), body: JSON.stringify({ account_id }),
+  }).then(handleResponse),
+  confirmMapping: (key) => fetch(`${API_URL}/finance-ledger/account-mappings/${encodeURIComponent(key)}/confirm`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({}),
+  }).then(handleResponse),
+};
+
 // Client-side auth service (mirrors feed factory pattern)
 export const authService = {
   isAuthenticated: () => {
@@ -108,5 +118,5 @@ export const authService = {
   },
 };
 
-const apiServices = { authApi, usersApi, dashboardApi, authService };
+const apiServices = { authApi, usersApi, dashboardApi, accountMappingsApi, authService };
 export default apiServices;

@@ -377,3 +377,9 @@ Batch C is complete. Next: D UAT pilot instructions, E provisional finance mappi
 ## 2026-10-13: Batch D UAT preparation
 
 Added `docs/UAT_PILOT.md` with the pilot scope and finance-posting exclusion, seeded account keys (no passwords), role scripts and expected results, access/localization/negative-access checklist, known deferred work, defect template, and signoff table. The pilot project and startup/smoke instructions link to `docs/STAGING.md`. The receiving script names `workflow_owner` because the seeded `storekeeper` lacks procurement-workspace view access. Human UAT has not been run; the checklist is ready for the business testers. `git diff --check` passed. No automated tests were needed for this documentation-only slice.
+
+## 2026-10-13: Batch E1 provisional GL mapping foundation
+
+Migration `0042_provisional_gl_account_mappings.sql` adds confirmation metadata to existing `gl_account_map` rows, adds provisional account keys for retention/advance/deductions/subcontractor cost, and adds a one-certificate-to-one-client-invoice link. It does not rewrite journal history or backfill postings. The owner/admin Settings page can inspect and edit mapped active accounts; owner confirmation is a separate owner-only audited operation, and every edit resets the row to provisional. EN/AR labels are present. Existing chart codes supply initial local mappings, all expressly unconfirmed in code, the UI, and `docs/DECISIONS.md`.
+
+Focused evidence: migration runner applied exactly one migration and skipped 103 already-applied migrations on the loopback staging DB; backend mapping service tests passed 1 suite / 4 tests; Settings/shell i18n tests passed 1 suite / 17 tests; `npm run i18n:check` passed. No full suite was run. Remaining E1 work: connect certificate retention/advance/deduction fields to balanced, idempotent and reversible journal entries. E2–E5 remain open.

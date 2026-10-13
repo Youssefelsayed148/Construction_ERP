@@ -33,11 +33,12 @@ Updated: 2026-10-13 (Africa/Cairo)
 - C3 follow-up removes the remaining project role map/FULL fallback. Project tabs and financial cards now use effective module/action grants and project IDs. Targeted frontend checks pass: 3 suites / 26 tests; project-page Playwright passes 6/6 across desktop/mobile, including Arabic and site-engineer visibility.
 - Batch C4 passes the real local backend procure-to-pay journey on English/Arabic desktop and mobile, plus an unassigned-user API denial. The run covers PR, RFQ and two quotes, award approval, PO workflow, delivery/MIR/GRN, supplier invoice and allocated payment. Read-only reconciliation reported zero violations across all 11 checks.
 - Batch D UAT preparation is documented in `docs/UAT_PILOT.md`: scoped role scripts, checklist, defect template, deferred items, and signoff table. Human UAT has not been executed.
-- Batch E and Phases 5.6–6 remain open. Finance signoff still requires the owner to confirm provisional chart-of-accounts mappings.
+- Batch E is in progress. E1 mapping foundation is additive and migrated locally: configurable GL map with provisional/owner-confirmation fields, owner-only confirmation API, and bilingual Settings UI. Certificate ledger postings, invoice line writer/from-certificate, E3–E5, and broader E exit checks remain.
+- Phases 5.6–6 remain open. Finance signoff still requires the owner to confirm provisional chart-of-accounts mappings.
 
 ## Where work stopped
 
-C1–C4 are complete and committed. D UAT preparation is committed; human execution remains outstanding. Continue with E provisional finance enablement, then the Phase 5.6–6 plan and implementation. Finance signoff remains a human decision.
+C1–C4 and D preparation are complete and committed; human UAT remains outstanding. Continue Batch E, then plan and implement Phases 5.6–6. Finance signoff remains a human decision.
 
 Batch A and Batch B1–B6 are green. C1–C4 are committed. Continue with D, E, and the Phase 5.6–6 plan/implementation. Keep targets local and never use production-looking databases or external services. The ignored `backend/.env.docker` file is unrelated and remains untouched.
 
@@ -61,7 +62,8 @@ Batch A and Batch B1–B6 are green. C1–C4 are committed. Continue with D, E, 
 | Batch B full end-of-batch gate | PASS — backend 50/960, PG 56/566, frontend 17/97, i18n/build, Playwright 32/46, Compose healthy |
 | Batch C4 live browser journeys | PASS — EN/AR desktop/mobile 4/4; unassigned procurement API 403; reconciliation 11/11 checks at zero |
 | Batch D documentation | PASS — `docs/UAT_PILOT.md`; human UAT NOT RUN |
-| Batch E and Phases 5.6–6 | NOT RUN |
+| Batch E | IN PROGRESS — E1 mapping foundation; certificate posting and E2–E5 open |
+| Phases 5.6–6 | NOT RUN |
 
 ## Risks and decisions
 

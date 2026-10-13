@@ -309,4 +309,6 @@ router.post('/payment-batches/:id/cancel', authenticate, authorize(), companyOnl
   } catch (e) { return failFin(res, e); }
 });
 
+router.use('/account-mappings', require('./glAccountMappings'));
+
 module.exports = router;

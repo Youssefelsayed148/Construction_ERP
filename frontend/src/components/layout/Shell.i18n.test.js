@@ -8,12 +8,14 @@ import { _resetCatalogCache } from '../../i18n/catalog';
 import { toEnumKey, translateEnum, translateRole } from '../../i18n/enums';
 import Layout from './Layout';
 import Settings from '../../pages/Settings';
+import { accountMappingsApi } from '../../services/api';
 import { LoadingState, EmptyState, ErrorState, BackIcon, NextIcon } from '../common/States';
 import ConfirmDialog from '../common/ConfirmDialog';
 
 let mockUser = { name: 'Tester', role: 'owner', policy_modules: ['*'] };
 jest.mock('../../services/api', () => ({
   authService: { getCurrentUser: () => mockUser, clearSession: jest.fn() },
+  accountMappingsApi: { getAll: jest.fn().mockResolvedValue({ data: { mappings: [], accounts: [] } }), update: jest.fn(), confirmMapping: jest.fn() },
 }));
 
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -49,6 +51,7 @@ describe('application shell in Arabic', () => {
 
   beforeEach(() => {
     _resetCatalogCache(); window.localStorage.clear();
+    accountMappingsApi.getAll.mockResolvedValue({ data: { mappings: [], accounts: [] } });
     container = document.createElement('div'); document.body.appendChild(container);
     root = createRoot(container);
   });
@@ -94,14 +97,33 @@ describe('application shell in Arabic', () => {
     expect(container.querySelector('.user-role-sidebar').textContent).toBe('مدير مشروع');
   });
 
-  test('the offline banner and the Settings placeholder are translated', async () => {
+  test('the offline banner and account-mapping Settings page are translated', async () => {
     mockUser = { name: 'محمد', role: 'owner', policy_modules: ['*'] };
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
     await mount(shell('/settings'));
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
     expect(container.querySelector('.offline-banner').textContent).toContain('غير متصل');
-    expect(container.querySelector('h1').textContent).toBe('الإعدادات');
+    expect(container.querySelector('h1').textContent).toBe('ربط الحسابات بدليل الحسابات');
     expect(readable()).not.toMatch(/[A-Za-z]/);
+  });
+
+  test('owners see provisional account state and may save or confirm a mapping', async () => {
+    mockUser = { name: 'Finance owner', role: 'owner', policy_modules: ['*'] };
+    accountMappingsApi.getAll.mockResolvedValue({ data: {
+      mappings: [{ key: 'client_retention_receivable', account_id: 1, purpose_en: 'Client retention receivable', purpose_ar: 'مستحقات ضمان العميل', is_provisional: true }],
+      accounts: [{ id: 1, code: '1100', name_en: 'Receivable', name_ar: 'الذمم المدينة' }, { id: 2, code: '1190', name_en: 'Retention', name_ar: 'ضمان العميل' }],
+    } });
+    accountMappingsApi.update.mockResolvedValue({ success: true });
+    accountMappingsApi.confirmMapping.mockResolvedValue({ success: true });
+    await mount(shell('/settings'));
+    expect(container.querySelector('.badge-warning').textContent).toBe('مؤقت / غير مؤكد');
+    const select = container.querySelector('select');
+    await act(async () => { select.value = '2'; select.dispatchEvent(new Event('change', { bubbles: true })); });
+    const buttons = [...container.querySelectorAll('button')];
+    await act(async () => { buttons.find((button) => button.textContent === 'حفظ').click(); });
+    expect(accountMappingsApi.update).toHaveBeenCalledWith('client_retention_receivable', 2);
+    await act(async () => { buttons.find((button) => button.textContent === 'تأكيد الربط').click(); });
+    expect(accountMappingsApi.confirmMapping).toHaveBeenCalledWith('client_retention_receivable');
   });
 
   test('tooltips and aria-labels of the footer controls follow the locale', async () => {
