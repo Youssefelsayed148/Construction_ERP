@@ -1014,3 +1014,34 @@ Ran all test suites.
 ```
 
 The PG gate includes the new golden-chain assertion that MIR retains the purchase-order project scope. Backend mock gate also passed on the host with a test-only JWT value: 56 skipped, 49 passed suites; 566 skipped, 958 passed tests. The temporary local Postgres container and volume were removed after the gate.
+
+## 2026-10-13: Batch B5 local backup/restore rehearsal
+
+Added `npm run backup:rehearse`, guarded to `APP_ENV=staging`, a staging/test DB-name segment, and loopback host. It creates a custom-format database dump and uploads snapshot, verifies the dump file, restores into a differently named temporary DB, compares exact row counts and all sequence maxima, runs migration dry-run, reconciliation with the backup-confirmed flag set only after verification, and the read-only data-cleaning report. It removes only the temporary restore DB and container-side scratch dump; the verified backup bundle and exact before/after JSON report remain under the OS temp directory.
+
+```text
+npm --prefix backend run backup:rehearse
+BACKUP_VERIFIED database=construction_erp_staging dump_bytes=1127764 uploads_files=4 uploads_bytes=292
+RESTORE_VERIFIED database=construction_erp_staging_restore_1791898190875 tables=237 rows=3323 sequences=226
+SNAPSHOT_COUNTS before={tables:237,rows:3323,users:77,projects:2,PR:13,RFQ:13,PO:12,deliveries:10,MIR:10,GRN:4,supplier_invoices:4,payments:4,journal_entries:8}
+SNAPSHOT_COUNTS after={tables:237,rows:3323,users:77,projects:2,PR:13,RFQ:13,PO:12,deliveries:10,MIR:10,GRN:4,supplier_invoices:4,payments:4,journal_entries:8}
+SEQUENCE_MAXIMA before/after matched exactly across 226 sequences
+SNAPSHOT_REPORT C:\Users\joe-y\AppData\Local\Temp\erp-closeout-backup-1791898190847\snapshot-before-after.json
+MIGRATION_DRY_RUN_OK entries=103
+[OK] payment allocations do not exceed payment amounts: 0
+[OK] client invoice allocations do not exceed invoice amounts: 0
+[OK] retention releases do not exceed held balances: 0
+[OK] client payment allocations stay within one project: 0
+[OK] supplier payment allocations stay within one project: 0
+[OK] project warehouse transfers do not cross projects: 0
+[OK] active workflows have a current pending step: 0
+[OK] stock ledger reconciles with the warehouse_stock projection: 0
+[OK] project cost rows reconcile with their ledger entries: 0
+[OK] AP and AR money moves stay tied to live documents: 0
+[OK] approvals mirror their workflow instances: 0
+RECONCILE_OK
+[]
+BACKUP_RESTORE_REHEARSAL_OK backup_dir=C:\Users\joe-y\AppData\Local\Temp\erp-closeout-backup-1791898190847
+```
+
+Focused B5 checks passed 1 suite / 2 tests, syntax check passed, and `npm run lint:guards` printed `lint-guards: ok`. The rehearsal is local only; it did not read or print `.env` contents. B6 PowerShell instructions and full Batch B gates remain.

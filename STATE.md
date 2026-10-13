@@ -25,11 +25,12 @@ Updated: 2026-10-13 (Africa/Cairo)
 - B2 role/user staging seed is implemented and verified: 38 users across 33 canonical roles plus no-assignment/expired-assignment cases, requester/checker identities, three legacy workflow compatibility actors, and supplier/client seats. Passwords are in ignored root `.staging-users.json`; do not read or print them.
 - B3 pilot procure-to-pay data is implemented and verified: 3 materials, two suppliers/six rates, cost codes, 1 warehouse, stock rows, and 3 BOQ lines totaling EGP 1,376,500. Re-run is idempotent.
 - B4 smoke passed against `http://127.0.0.1:8090`: full API chain, RBAC, locale, upload scoping, journal/reconciliation, and logout revocation passed; 0 unbalanced chain entries and unchanged out-of-scope project data.
+- B5 rehearsal passed: DB dump and uploads copied; restored to temporary staging-named DB; exact row counts and 226 sequence maxima matched; all reconcile counts were 0; data-cleaning report was empty; temporary restore DB removed.
 - Batches C–E and Phases 5.6–6 remain open. Finance signoff still requires the owner to confirm provisional chart-of-accounts mappings.
 
 ## Where work stopped
 
-Batch A and B1–B4 are green. A local pg_dump restored into a temporary database with 305 tables, and that temporary database/dump were removed. B5 still needs its reproducible rehearsal script, migration dry-run, data-cleaning report, and before/after counts. Next implement B5/B6, then Batch C. Keep all targets local, do not read any `.env` file, and never use production-looking databases or external services. A second ignored file `backend/.env.docker` was accidentally created with only `CORS_ALLOW_HTTP_LOCAL=true`; an attempt to remove it was rejected by auto-review, so it remains unused and untouched.
+Batch A and B1–B5 are green. Next write the exact Windows PowerShell pilot and rehearsal instructions in `docs/STAGING.md`, then rerun the complete Batch B gates. After B6, Batch C is next. Keep all targets local, do not read any `.env` file, and never use production-looking databases or external services. A second ignored file `backend/.env.docker` was accidentally created with only `CORS_ALLOW_HTTP_LOCAL=true`; an attempt to remove it was rejected by auto-review, so it remains unused and untouched.
 
 ## Current gates
 
@@ -46,7 +47,8 @@ Batch A and B1–B4 are green. A local pg_dump restored into a temporary databas
 | Batch B2 staging seed + guard/re-run assertions | PASS — 38 users including compatibility actors; guards verified |
 | Batch B3 demo data | PASS — repeat seed stable; 3 BOQ items / EGP 1,376,500 |
 | Batch B4 full smoke | PASS — all journey checkpoints; 0 unbalanced entries; token revoked |
-| Batch B5 full rehearsal | PARTIAL — local dump restored successfully (305 tables); script/dry-run/data-cleaning/count checks remain |
+| Batch B5 full rehearsal | PASS — 237 tables / 3,323 rows matched; 226 sequence maxima matched; reconcile 0; cleaning report empty |
+| Batch B6 Windows instructions | NOT RUN |
 | Batches C–E and Phases 5.6–6 | NOT RUN |
 
 ## Risks and decisions
