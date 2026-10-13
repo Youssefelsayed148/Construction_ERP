@@ -25,6 +25,47 @@
     "acknowledge": "تأكيد الاطلاع على المستند",
     "submitError": "تعذر إرسال الإجراء. حدّث الصفحة وحاول مجدداً."
   },
+  "submissions": {
+    "title": "إرسالياتي",
+    "new": "إرسال جديد للمشروع",
+    "type": "نوع الإرسال",
+    "package": "حزمة الأعمال المسندة",
+    "packageOption": "الحزمة رقم {{id}}",
+    "date": "تاريخ العمل",
+    "workerCount": "عدد العمال",
+    "workerType": "نوع العمالة",
+    "equipmentName": "اسم المعدة",
+    "hours": "ساعات العمل بالموقع",
+    "relatedRecord": "السجل المرتبط",
+    "selectRecord": "اختر سجلاً",
+    "record": "السجل",
+    "amount": "قيمة العرض",
+    "scheduleDays": "أثر الجدول (أيام)",
+    "note": "التفاصيل",
+    "response": "الرد",
+    "submit": "إرسال للمراجعة",
+    "saving": "جارٍ الإرسال…",
+    "submitError": "تعذر إرسال الطلب. حدّث الصفحة وحاول مجدداً.",
+    "empty": "لا توجد إرساليات بعد.",
+    "project": "المشروع {{id}}",
+    "types": {
+      "wir_request": "طلب فحص WIR",
+      "mir_request": "طلب فحص MIR",
+      "manpower": "تقرير العمالة",
+      "equipment": "تقرير المعدات",
+      "ncr_response": "رد على تقرير عدم المطابقة",
+      "observation_response": "رد على الملاحظة",
+      "variation_quote": "عرض سعر للتغيير"
+    },
+    "status": { "submitted": "تم الإرسال", "under_review": "قيد المراجعة", "accepted": "مقبول", "rejected": "مُعاد للتعديل", "closed": "مغلق" }
+  },
+  "compliance": {
+    "title": "تنبيهات امتثال المورد",
+    "empty": "لا توجد مستندات امتثال تحتاج إلى إجراء.",
+    "document": "مستند امتثال",
+    "expiry": "ينتهي في {{date}}",
+    "status": { "expired": "منتهي الصلاحية", "expires_soon": "ينتهي خلال 30 يوماً", "upcoming": "ينتهي خلال 90 يوماً" }
+  },
   "observation": {
     "raise": "رفع ملاحظة",
     "title": "ملاحظة موقع جديدة",

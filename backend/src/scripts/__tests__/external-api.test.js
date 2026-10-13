@@ -828,13 +828,15 @@ describe('OpenAPI spec generation', () => {
   });
 
   test('the REAL v1 router builds without a single broken remount entry', () => {
-    const { buildV1Router } = require('../../routes/v1');
+    const { buildV1Router, FAMILY_MAP } = require('../../routes/v1');
     const router = buildV1Router();
     const apiLayer = router.stack.find((l) => l.name === 'router' && !l.route);
     expect(apiLayer).toBeTruthy();
     const routeCount = router.stack.filter((l) => l.route).length
       + apiLayer.handle.stack.filter((l) => l.route).length;
     expect(routeCount).toBeGreaterThan(150);
+    expect(FAMILY_MAP.subcontracts).toContainEqual(['portal', 'GET', '/subcontractor/submissions', '/subcontractor/submissions']);
+    expect(FAMILY_MAP.subcontracts).toContainEqual(['portal', 'POST', '/subcontractor/submissions/:kind', '/subcontractor/submissions/:kind']);
   });
 
   test('the real v1 OpenAPI spec covers oauth, webhooks and the families', () => {

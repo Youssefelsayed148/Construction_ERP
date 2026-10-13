@@ -163,10 +163,10 @@ async function subcontractorDashboard(q, userId, { now = new Date() } = {}) {
   const observations = (await safeAll(q, 'SELECT * FROM observations', []))
     .filter((o) => projectIds.includes(toNum(o.project_id)) && contractIds.includes(toNum(o.sub_contract_id))
       && ['raised', 'assigned', 'rectification_in_progress', 'submitted_for_verification'].includes(o.status));
-  dashboard.observations = { items: observations.map((o) => ({ id: toNum(o.id), title: o.title, status: o.status })), count: observations.length, empty_label: 'No consultant observations open' };
+  dashboard.observations = { items: observations.map((o) => ({ id: toNum(o.id), project_id: toNum(o.project_id), sub_contract_id: toNum(o.sub_contract_id), title: o.title, status: o.status })), count: observations.length, empty_label: 'No consultant observations open' };
   const ncrs = (await safeAll(q, 'SELECT * FROM ncrs', []))
     .filter((n) => projectIds.includes(toNum(n.project_id)) && contractIds.includes(toNum(n.sub_contract_id)) && n.status !== 'closed');
-  dashboard.ncrs = { items: ncrs.map((n) => ({ id: toNum(n.id) })), count: ncrs.length, empty_label: 'No open NCRs' };
+  dashboard.ncrs = { items: ncrs.map((n) => ({ id: toNum(n.id), project_id: toNum(n.project_id), sub_contract_id: toNum(n.sub_contract_id), title: n.title || n.ncr_number, status: n.status })), count: ncrs.length, empty_label: 'No open NCRs' };
 
   // RFIs / submittals.
   const rfis = (await safeAll(q, 'SELECT * FROM project_rfis', []))
@@ -188,7 +188,7 @@ async function subcontractorDashboard(q, userId, { now = new Date() } = {}) {
   // Variations on my subcontracts.
   const variations = (await safeAll(q, 'SELECT * FROM variations', []))
     .filter((v) => v.sub_contract_id != null && contractIds.includes(toNum(v.sub_contract_id)));
-  dashboard.variations = { items: variations.map((v) => ({ id: toNum(v.id), title: v.title, amount: toNum(v.amount), status: v.status })), count: variations.length, empty_label: 'No variations yet' };
+  dashboard.variations = { items: variations.map((v) => ({ id: toNum(v.id), project_id: toNum(v.project_id), sub_contract_id: toNum(v.sub_contract_id), title: v.title, status: v.status })), count: variations.length, empty_label: 'No variations yet' };
 
   return dashboard;
 }
@@ -354,7 +354,14 @@ async function supplierDashboard(q, userId, { now = new Date() } = {}) {
     .filter((d) => scope.orgs.some((o) => toNum(o.id) === toNum(d.organization_id))
       && d.expiry_date != null && new Date(d.expiry_date) < horizon);
   dashboard.expiring_documents = {
-    items: expiring.map((d) => ({ id: toNum(d.id), document_type: d.document_type, expiry_date: d.expiry_date })),
+    items: expiring.map((d) => {
+      const expiryDate = dateOf(d.expiry_date);
+      const daysRemaining = expiryDate == null ? null : Math.ceil((Date.parse(`${expiryDate}T00:00:00Z`) - Date.parse(`${dateOf(now)}T00:00:00Z`)) / 86400000);
+      return {
+        id: toNum(d.id), document_type: d.document_type, expiry_date: expiryDate, days_remaining: daysRemaining,
+        alert_state: daysRemaining < 0 ? 'expired' : daysRemaining <= 30 ? 'expires_soon' : 'upcoming',
+      };
+    }),
     count: expiring.length,
     empty_label: 'No compliance documents expiring within 90 days',
   };
@@ -408,6 +415,49 @@ async function createPortalSubmission(q, userId, {
   return r.rows[0];
 }
 
+const SUBMISSION_PAYLOAD_FIELDS = Object.freeze({
+  wir_request: ['sub_contract_id', 'requested_date', 'note'],
+  mir_request: ['sub_contract_id', 'requested_date', 'note'],
+  manpower: ['sub_contract_id', 'report_date', 'worker_count', 'worker_type', 'note'],
+  equipment: ['sub_contract_id', 'report_date', 'equipment_name', 'hours', 'note'],
+  ncr_response: ['sub_contract_id', 'response'],
+  observation_response: ['sub_contract_id', 'response'],
+  variation_quote: ['sub_contract_id', 'quoted_amount', 'schedule_impact_days', 'note'],
+});
+
+function safePortalSubmissionPayload(type, payload = {}) {
+  const safe = {};
+  for (const field of SUBMISSION_PAYLOAD_FIELDS[type] || []) {
+    const value = payload[field];
+    if (value == null) continue;
+    safe[field] = typeof value === 'string' ? value.slice(0, 4000) : value;
+  }
+  return safe;
+}
+
+async function subcontractorSubmissions(q, userId, { projectId = null } = {}) {
+  const scope = await subcontractorScopeFor(q, userId, { projectId });
+  if (!scope.packages.length) return { items: [], count: 0, empty_label: 'No submissions yet' };
+  const assignedPairs = new Set(scope.packages.map((p) => `${toNum(p.organization_id)}:${toNum(p.project_id)}`));
+  const orgIds = [...new Set(scope.packages.map((p) => toNum(p.organization_id)))];
+  const projectIds = [...new Set(scope.packages.map((p) => toNum(p.project_id)))];
+  const submissions = (await safeAll(q,
+    `SELECT id, organization_id, project_id, submission_type, related_entity_type, related_entity_id,
+            payload, status, submitted_at, updated_at
+       FROM portal_submissions
+      WHERE organization_id = ANY($1::int[]) AND project_id = ANY($2::int[])
+      ORDER BY submitted_at DESC, id DESC LIMIT 100`,
+    [orgIds, projectIds]
+  )).filter((row) => assignedPairs.has(`${toNum(row.organization_id)}:${toNum(row.project_id)}`));
+  const items = submissions.map((row) => ({
+    id: toNum(row.id), project_id: toNum(row.project_id), submission_type: row.submission_type,
+    related_entity_type: row.related_entity_type, related_entity_id: row.related_entity_id == null ? null : toNum(row.related_entity_id),
+    payload: safePortalSubmissionPayload(row.submission_type, row.payload), status: row.status,
+    submitted_at: row.submitted_at, updated_at: row.updated_at,
+  }));
+  return { items, count: items.length, empty_label: 'No submissions yet' };
+}
+
 module.exports = {
   resolveOrgForUser,
   subContractForOrg,
@@ -422,4 +472,6 @@ module.exports = {
   supplierPurchaseOrder,
   supplierRfq,
   createPortalSubmission,
+  subcontractorSubmissions,
+  safePortalSubmissionPayload,
 };

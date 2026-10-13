@@ -134,4 +134,53 @@ describe('consultant portal observation form', () => {
     expect(documentAcknowledgement).toBeTruthy();
     expect(JSON.parse(documentAcknowledgement[1].body)).toEqual({});
   });
+
+  test('subcontractor can submit a scoped variation quote and see submission history', async () => {
+    global.fetch = jest.fn(async (url, options = {}) => {
+      if (options.method === 'POST') return { ok: true, json: async () => ({ success: true, data: { id: 61 } }) };
+      if (String(url).includes('/submissions')) return { ok: true, json: async () => ({ success: true, data: {
+        items: [{ id: 60, project_id: 8, submission_type: 'manpower', status: 'submitted', payload: { worker_count: 9 } }], count: 1,
+      } }) };
+      return { ok: true, json: async () => ({ success: true, data: {
+        project_ids: [8], packages: [{ id: 31, project_id: 8, contract_number: 'SC-31' }],
+        variations: { items: [{ id: 55, project_id: 8, sub_contract_id: 31, title: 'Access platform change' }] },
+        ncrs: { items: [] }, observations: { items: [] },
+      } }) };
+    });
+    await act(async () => { root.render(<PortalDashboard kind="subcontractor" />); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(container.textContent).toContain('portals.submissions.types.manpower');
+    const open = [...container.querySelectorAll('button')].find((button) => button.textContent.includes('portals.submissions.new'));
+    await act(async () => { open.click(); });
+    const typeSelect = container.querySelector('.portal-observation-form select');
+    await act(async () => {
+      typeSelect.value = 'variation_quote';
+      typeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    const relatedSelect = [...container.querySelectorAll('.portal-observation-form select')].find((select) => [...select.options].some((option) => option.value === '55'));
+    await act(async () => { relatedSelect.value = '55'; relatedSelect.dispatchEvent(new Event('change', { bubbles: true })); });
+    await fill('.portal-observation-form input[type="number"]', '1550.45');
+    await fill('.portal-observation-form textarea', 'Additional scaffold required');
+    await act(async () => { container.querySelector('.portal-observation-form button[type="submit"]').click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const decision = global.fetch.mock.calls.find(([url, options]) => options.method === 'POST' && String(url).includes('/submissions/variation_quote'));
+    expect(decision).toBeTruthy();
+    expect(JSON.parse(decision[1].body)).toEqual({ project_id: 8, payload: {
+      sub_contract_id: 31, related_entity_id: 55, quoted_amount: 1550.45, schedule_impact_days: 0, note: 'Additional scaffold required',
+    } });
+  });
+
+  test('supplier compliance panel labels expired and near-expiry documents', async () => {
+    global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ success: true, data: {
+      project_ids: [8], expiring_documents: { count: 2, items: [
+        { id: 1, document_type: 'Insurance', expiry_date: '2026-10-10', alert_state: 'expired', days_remaining: -3 },
+        { id: 2, document_type: 'Quality certificate', expiry_date: '2026-10-20', alert_state: 'expires_soon', days_remaining: 7 },
+      ] },
+    } }) }));
+    await act(async () => { root.render(<PortalDashboard kind="supplier" />); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(container.textContent).toContain('portals.compliance.title');
+    expect(container.textContent).toContain('portals.compliance.status.expired');
+    expect(container.textContent).toContain('portals.compliance.status.expires_soon');
+  });
 });

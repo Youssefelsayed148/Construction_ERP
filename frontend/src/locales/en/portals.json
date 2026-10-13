@@ -25,6 +25,47 @@
     "acknowledge": "Acknowledge document",
     "submitError": "The action could not be submitted. Refresh and try again."
   },
+  "submissions": {
+    "title": "My submissions",
+    "new": "New project submission",
+    "type": "Submission type",
+    "package": "Awarded package",
+    "packageOption": "Package #{{id}}",
+    "date": "Work date",
+    "workerCount": "Worker count",
+    "workerType": "Worker type",
+    "equipmentName": "Equipment name",
+    "hours": "Hours on site",
+    "relatedRecord": "Related record",
+    "selectRecord": "Select a record",
+    "record": "Record",
+    "amount": "Quoted amount",
+    "scheduleDays": "Schedule impact (days)",
+    "note": "Details",
+    "response": "Response",
+    "submit": "Submit for review",
+    "saving": "Submitting…",
+    "submitError": "The submission could not be sent. Refresh and try again.",
+    "empty": "No submissions yet.",
+    "project": "Project {{id}}",
+    "types": {
+      "wir_request": "WIR inspection request",
+      "mir_request": "MIR inspection request",
+      "manpower": "Manpower report",
+      "equipment": "Equipment report",
+      "ncr_response": "NCR response",
+      "observation_response": "Observation response",
+      "variation_quote": "Variation quote"
+    },
+    "status": { "submitted": "Submitted", "under_review": "Under review", "accepted": "Accepted", "rejected": "Returned", "closed": "Closed" }
+  },
+  "compliance": {
+    "title": "Supplier compliance alerts",
+    "empty": "No compliance documents need attention.",
+    "document": "Compliance document",
+    "expiry": "Expires {{date}}",
+    "status": { "expired": "Expired", "expires_soon": "Expires within 30 days", "upcoming": "Expires within 90 days" }
+  },
   "observation": {
     "raise": "Raise observation",
     "title": "New site observation",

@@ -60,11 +60,11 @@ The incident-table merge requested in 5.7 is not a fresh schema project: `hse-mi
 
 ### 5.6.5 Formal external registers and portal forms
 
-**Status: Partial.** Formal WIR/MIR, observation, variation, RFI and submittal records exist internally, but portal work remains concentrated in the dashboard and prompt-driven mutations. Add formal portal registers and forms for WIR/MIR, manpower, equipment, NCR/observation responses and variation quotes; add supplier compliance expiry list and alerts. Keep the formal records authoritative and submissions as an intake mechanism only.
+**Status: Partial.** Formal WIR/MIR, observation, variation, RFI and submittal records exist internally. The supplier dashboard lists scoped compliance documents expiring within 90 days, with explicit expired, 30-day, and 90-day alert states. The first subcontractor portal slice adds typed, audited intake for WIR/MIR requests, manpower/equipment reports, NCR/observation responses, and variation quotes, plus a scoped submission history. The request remains an intake record until staff updates the formal register. Remaining: add portal-facing formal WIR/MIR status/history and replace the remaining subcontractor prompt actions with scoped forms.
 
 **Acceptance:** portal screens list the user's assigned projects and scoped records, show status/history, validate each submission, and provide accessible EN/AR forms with empty/loading/error states; server payloads contain no internal cost fields.
 
-**Focused checks:** one portal API test per changed register for scope and field redaction; focused portal component tests for the touched form/register; locale check.
+**Focused checks:** `subcontractor-submissions.pg.test.js` passed 2/2, covering organization/project pair scope, cost-field redaction, category validation, foreign package refusal, transactional activity audit, and authenticated history reads. `portal.test.js` and `policy-migration.test.js` passed 35/35; `PortalDashboard.test.js` passed 5/5 including submission history and supplier expiry alerts; the v1 router remount check passed 1/1; `i18n:check` passed. Migration 0052 applied to the disposable PostgreSQL database. No full suite was run.
 
 ## Phase 5.7 — QA/QC, HSE, document control, planning and handover
 

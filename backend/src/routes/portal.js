@@ -5,8 +5,20 @@ const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
+const { auditedTransaction } = require('../utils/auditedTransaction');
+const { typedFail, typedBody } = require('../utils/typedRoute');
 const engine = require('../services/portalEngine');
 const procurement = require('../services/procurementService');
+
+const SUBMISSION_KINDS = Object.freeze({
+  wir_request: { entityType: null, schema: Joi.object({ sub_contract_id: Joi.number().integer().positive().required(), requested_date: Joi.date().iso().allow(null), note: Joi.string().max(4000).required() }).required() },
+  mir_request: { entityType: null, schema: Joi.object({ sub_contract_id: Joi.number().integer().positive().required(), requested_date: Joi.date().iso().allow(null), note: Joi.string().max(4000).required() }).required() },
+  manpower: { entityType: null, schema: Joi.object({ sub_contract_id: Joi.number().integer().positive().required(), report_date: Joi.date().iso().required(), worker_count: Joi.number().integer().min(0).required(), worker_type: Joi.string().max(120).allow('', null), note: Joi.string().max(4000).allow('', null) }).required() },
+  equipment: { entityType: null, schema: Joi.object({ sub_contract_id: Joi.number().integer().positive().required(), report_date: Joi.date().iso().required(), equipment_name: Joi.string().max(255).required(), hours: Joi.number().min(0).max(24).required(), note: Joi.string().max(4000).allow('', null) }).required() },
+  ncr_response: { entityType: 'ncr', schema: Joi.object({ sub_contract_id: Joi.number().integer().positive().required(), related_entity_id: Joi.number().integer().positive().required(), response: Joi.string().max(4000).required() }).required() },
+  observation_response: { entityType: 'observation', schema: Joi.object({ sub_contract_id: Joi.number().integer().positive().required(), related_entity_id: Joi.number().integer().positive().required(), response: Joi.string().max(4000).required() }).required() },
+  variation_quote: { entityType: 'variation', schema: Joi.object({ sub_contract_id: Joi.number().integer().positive().required(), related_entity_id: Joi.number().integer().positive().required(), quoted_amount: Joi.number().min(0).precision(2).required(), schedule_impact_days: Joi.number().integer().min(0).max(3650).default(0), note: Joi.string().max(4000).required() }).required() },
+});
 
 function supplierAssignment(scope, supplierId, projectId) {
   return scope.assignments?.find((a) => Number(a.supplier_id) === Number(supplierId)
@@ -216,25 +228,42 @@ router.post('/subcontractor/submittals/:id/resubmit', authenticate, authorize(),
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 
-// Scoped submissions that require internal review before they affect the formal
-// WIR/MIR, QHSE, labour, equipment or commercial registers.
-router.post('/subcontractor/submissions/:kind', authenticate, authorize(), async (req, res) => {
+// The intake stays separate from the formal WIR/MIR, QHSE, labour, equipment,
+// and commercial records until an internal reviewer accepts it.
+router.get('/subcontractor/submissions', authenticate, authorize(), async (req, res) => {
+  const filters = typedBody(Joi.object({ project_id: Joi.number().integer().positive().optional() }), { body: req.query }, res);
+  if (!filters) return;
   try {
-    const kinds = ['wir_request', 'mir_request', 'manpower', 'equipment', 'ncr_response', 'observation_response', 'variation_quote'];
-    if (!kinds.includes(req.params.kind)) return res.status(400).json({ success: false, error: 'Unsupported submission type' });
-    const schema = Joi.object({
-      project_id: Joi.number().integer().required(), related_entity_type: Joi.string().allow(null, ''),
-      related_entity_id: Joi.number().integer().allow(null), payload: Joi.object().required(),
-    });
-    const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const scope = await engine.assertSubcontractorProject(query, req.user.id, value.project_id);
-    const row = await engine.createPortalSubmission(query, req.user.id, {
-      ...value, submission_type: req.params.kind,
-      organization_id: scope.packages.find((p) => Number(p.project_id) === value.project_id).organization_id,
-    });
-    res.status(201).json({ success: true, data: row });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+    res.json({ success: true, data: await engine.subcontractorSubmissions(query, req.user.id, { projectId: filters.project_id }) });
+  } catch (error) { return typedFail(res, error, 'SUBCONTRACTOR_SUBMISSIONS_LIST', req); }
+});
+
+router.post('/subcontractor/submissions/:kind', authenticate, authorize(), async (req, res) => {
+  const kind = SUBMISSION_KINDS[req.params.kind];
+  if (!kind) return typedFail(res, Object.assign(new Error('Unsupported submission type'), { status: 400, error_code: 'unsupported_submission_type' }), 'SUBCONTRACTOR_SUBMISSION', req);
+  const value = typedBody(Joi.object({ project_id: Joi.number().integer().positive().required(), payload: kind.schema }).required(), req, res);
+  if (!value) return;
+  try {
+    const created = await auditedTransaction(async (q) => {
+      const scope = await engine.assertSubcontractorProject(q, req.user.id, value.project_id);
+      const contract = scope.packages.find((p) => Number(p.id) === value.payload.sub_contract_id && Number(p.project_id) === value.project_id);
+      if (!contract) throw Object.assign(new Error('Package not found'), { status: 404, error_code: 'record_not_found' });
+      let relatedId = value.payload.related_entity_id || null;
+      if (kind.entityType) {
+        const tables = { ncr: 'ncrs', observation: 'observations', variation: 'variations' };
+        const target = (await q(`SELECT id FROM ${tables[kind.entityType]} WHERE id = $1 AND project_id = $2 AND sub_contract_id = $3 FOR SHARE`, [relatedId, value.project_id, contract.id])).rows[0];
+        if (!target) throw Object.assign(new Error('Related record not found'), { status: 404, error_code: 'record_not_found' });
+      }
+      const payload = { ...value.payload };
+      delete payload.related_entity_id;
+      const row = await engine.createPortalSubmission(q, req.user.id, {
+        organization_id: contract.organization_id, project_id: value.project_id, submission_type: req.params.kind,
+        related_entity_type: kind.entityType, related_entity_id: relatedId, payload,
+      });
+      return { ...row, payload: engine.safePortalSubmissionPayload(req.params.kind, row.payload) };
+    }, (row) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'submit', module: 'portal', description: `Submitted ${req.params.kind} for project ${value.project_id}`, entityId: row.id, entityType: 'portal_submission' }));
+    res.status(201).json({ success: true, data: created });
+  } catch (error) { return typedFail(res, error, 'SUBCONTRACTOR_SUBMISSION', req); }
 });
 
 // ============ SUPPLIER ============

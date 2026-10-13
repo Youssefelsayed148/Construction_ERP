@@ -10,7 +10,7 @@ const API_BASE_URL = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
 const CONFIG = {
   consultant: { title: 'Consultant Portal', endpoint: '/api/consultant/dashboard', extra: '/api/consultant/reviews', extraTitle: 'My Reviews', icon: ClipboardCheck },
   client: { title: 'Client Portal', endpoint: '/api/client-portal/dashboard', extra: '/api/client-portal/action-center', extraTitle: 'Action Center', icon: Building2 },
-  subcontractor: { title: 'Subcontractor Portal', endpoint: '/api/portal/subcontractor/dashboard', icon: FolderKanban },
+  subcontractor: { title: 'Subcontractor Portal', endpoint: '/api/portal/subcontractor/dashboard', extra: '/api/portal/subcontractor/submissions', extraTitle: 'My submissions', icon: FolderKanban },
   supplier: { title: 'Supplier Portal', endpoint: '/api/portal/supplier/dashboard', icon: Truck },
 };
 
@@ -169,9 +169,103 @@ function ClientActions({ data = {}, onDone, readOnly = false }) {
   </>;
 }
 
+function SubcontractorSubmissionRegister({ value = {} }) {
+  const { t } = useLocale();
+  const items = value.items || [];
+  return <section className="card portal-widget" aria-label={t('portals.submissions.title')}>
+    <div className="card-header">{t('portals.submissions.title')} <span className="badge badge-info">{value.count ?? items.length}</span></div>
+    <div className="card-body">
+      {!items.length && <em>{t('portals.submissions.empty')}</em>}
+      {items.map((item) => <div className="portal-review-item" key={item.id}>
+        <div className="portal-record">
+          <span>{t(`portals.submissions.types.${item.submission_type}`)}</span>
+          <span><small className="badge badge-secondary">{t(`portals.submissions.status.${item.status}`)}</small></span>
+        </div>
+        <small>{t('portals.submissions.project', { id: item.project_id })}</small>
+        <p>{item.payload?.note || item.payload?.response || item.payload?.equipment_name || item.payload?.worker_type || ''}</p>
+      </div>)}
+    </div>
+  </section>;
+}
+
+function SubcontractorSubmissionForm({ data = {}, onCancel, onDone }) {
+  const { t } = useLocale();
+  const [kind, setKind] = useState('wir_request');
+  const [packageId, setPackageId] = useState(String(data.packages?.[0]?.id || ''));
+  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), workerCount: '', workerType: '', equipmentName: '', hours: '', recordId: '', amount: '', scheduleDays: '', note: '' });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const pkg = data.packages?.find((item) => String(item.id) === packageId);
+  const records = kind === 'ncr_response' ? data.ncrs?.items || []
+    : kind === 'observation_response' ? data.observations?.items || []
+      : kind === 'variation_quote' ? data.variations?.items || [] : [];
+  const setField = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const submit = async (event) => {
+    event.preventDefault(); setSaving(true); setError('');
+    const payload = { sub_contract_id: Number(packageId) };
+    if (kind === 'wir_request' || kind === 'mir_request') Object.assign(payload, { requested_date: form.date, note: form.note });
+    if (kind === 'manpower') Object.assign(payload, { report_date: form.date, worker_count: Number(form.workerCount), worker_type: form.workerType, note: form.note });
+    if (kind === 'equipment') Object.assign(payload, { report_date: form.date, equipment_name: form.equipmentName, hours: Number(form.hours), note: form.note });
+    if (kind === 'ncr_response' || kind === 'observation_response') Object.assign(payload, { related_entity_id: Number(form.recordId), response: form.note });
+    if (kind === 'variation_quote') Object.assign(payload, { related_entity_id: Number(form.recordId), quoted_amount: Number(form.amount), schedule_impact_days: Number(form.scheduleDays || 0), note: form.note });
+    try {
+      await request(`/api/portal/subcontractor/submissions/${kind}`, { method: 'POST', body: JSON.stringify({ project_id: Number(pkg.project_id), payload }) });
+      onDone();
+    } catch (e) { setError(t('portals.submissions.submitError')); }
+    finally { setSaving(false); }
+  };
+  const needsRecord = ['ncr_response', 'observation_response', 'variation_quote'].includes(kind);
+  return <form className="card portal-observation-form" onSubmit={submit}>
+    <h2>{t('portals.submissions.new')}</h2>
+    {error && <p className="alert alert-danger" role="alert">{error}</p>}
+    <label>{t('portals.submissions.type')}<select required value={kind} onChange={(event) => { setKind(event.target.value); setField('recordId', ''); }}>
+      {['wir_request', 'mir_request', 'manpower', 'equipment', 'ncr_response', 'observation_response', 'variation_quote'].map((option) => <option value={option} key={option}>{t(`portals.submissions.types.${option}`)}</option>)}
+    </select></label>
+    <label>{t('portals.submissions.package')}<select required value={packageId} onChange={(event) => setPackageId(event.target.value)}>
+      {(data.packages || []).map((item) => <option value={item.id} key={item.id}>{item.contract_number || t('portals.submissions.packageOption', { id: item.id })}</option>)}
+    </select></label>
+    {['wir_request', 'mir_request', 'manpower', 'equipment'].includes(kind) && <label>{t('portals.submissions.date')}<input type="date" required value={form.date} onChange={(event) => setField('date', event.target.value)} /></label>}
+    {kind === 'manpower' && <>
+      <label>{t('portals.submissions.workerCount')}<input type="number" min="0" step="1" required value={form.workerCount} onChange={(event) => setField('workerCount', event.target.value)} /></label>
+      <label>{t('portals.submissions.workerType')}<input maxLength="120" value={form.workerType} onChange={(event) => setField('workerType', event.target.value)} /></label>
+    </>}
+    {kind === 'equipment' && <>
+      <label>{t('portals.submissions.equipmentName')}<input maxLength="255" required value={form.equipmentName} onChange={(event) => setField('equipmentName', event.target.value)} /></label>
+      <label>{t('portals.submissions.hours')}<input type="number" min="0" max="24" step="0.25" required value={form.hours} onChange={(event) => setField('hours', event.target.value)} /></label>
+    </>}
+    {needsRecord && <label>{t('portals.submissions.relatedRecord')}<select required value={form.recordId} onChange={(event) => setField('recordId', event.target.value)}>
+      <option value="">{t('portals.submissions.selectRecord')}</option>
+      {records.filter((item) => Number(item.sub_contract_id) === Number(packageId)).map((item) => <option value={item.id} key={item.id}>{item.title || item.ncr_number || `${t('portals.submissions.record')} #${item.id}`}</option>)}
+    </select></label>}
+    {kind === 'variation_quote' && <>
+      <label>{t('portals.submissions.amount')}<input type="number" min="0" step="0.01" required value={form.amount} onChange={(event) => setField('amount', event.target.value)} /></label>
+      <label>{t('portals.submissions.scheduleDays')}<input type="number" min="0" max="3650" step="1" value={form.scheduleDays} onChange={(event) => setField('scheduleDays', event.target.value)} /></label>
+    </>}
+    <label>{t(kind === 'ncr_response' || kind === 'observation_response' ? 'portals.submissions.response' : 'portals.submissions.note')}<textarea required maxLength="4000" value={form.note} onChange={(event) => setField('note', event.target.value)} /></label>
+    <div className="form-actions"><button type="button" className="btn" onClick={onCancel} disabled={saving}>{t('common.cancel')}</button><button type="submit" className="btn btn-primary" disabled={saving || !pkg || (needsRecord && records.filter((item) => Number(item.sub_contract_id) === Number(packageId)).length === 0)}>{saving ? t('portals.submissions.saving') : t('portals.submissions.submit')}</button></div>
+  </form>;
+}
+
+function SupplierComplianceAlerts({ value = {} }) {
+  const { t } = useLocale();
+  const items = value.items || [];
+  return <section className="card portal-widget" aria-label={t('portals.compliance.title')}>
+    <div className="card-header">{t('portals.compliance.title')} <span className="badge badge-info">{value.count ?? items.length}</span></div>
+    <div className="card-body">
+      {!items.length && <em>{t('portals.compliance.empty')}</em>}
+      {items.map((item) => <div className="portal-review-item" key={item.id}>
+        <div className="portal-record"><span>{item.document_type || t('portals.compliance.document')}</span>
+          <span className={`badge ${item.alert_state === 'expired' ? 'badge-danger' : item.alert_state === 'expires_soon' ? 'badge-warning' : 'badge-info'}`}>{t(`portals.compliance.status.${item.alert_state}`)}</span></div>
+        <small>{t('portals.compliance.expiry', { date: item.expiry_date })}</small>
+      </div>)}
+    </div>
+  </section>;
+}
+
 function QuickActions({ kind, data, onDone }) {
   const { t } = useLocale();
   const [showObservationForm, setShowObservationForm] = useState(false);
+  const [showSubmissionForm, setShowSubmissionForm] = useState(false);
   const [observation, setObservation] = useState({ project_id: data.project_ids?.[0] || '', title: '', description: '', due_date: '', drawing_reference: '', drawing_document_id: '', severity: 'normal' });
   const [beforePhotos, setBeforePhotos] = useState([]);
   const [afterPhotos, setAfterPhotos] = useState([]);
@@ -286,15 +380,6 @@ function QuickActions({ kind, data, onDone }) {
       project_id: pkg.project_id, sub_contract_id: pkg.id, period_from: today(), period_to: today(), work_value,
     });
   };
-  const sendSubSubmission = (submissionKind) => async () => {
-    const pkg = pickPackage();
-    const related_entity_id = Number(window.prompt('Related record ID (optional)', '')) || null;
-    const note = window.prompt('Submission details');
-    if (pkg && note) await submit(`/api/portal/subcontractor/submissions/${submissionKind}`, {
-      project_id: pkg.project_id, related_entity_type: submissionKind, related_entity_id,
-      payload: { sub_contract_id: pkg.id, note },
-    });
-  };
   const acknowledgeRfi = async () => {
     const id = Number(window.prompt('Answered RFI ID', data.rfis?.items?.[0]?.id || ''));
     if (id) await submit(`/api/portal/subcontractor/rfis/${id}/acknowledge`, { body: 'Acknowledged' });
@@ -354,10 +439,7 @@ function QuickActions({ kind, data, onDone }) {
       ? [['Acknowledge package', acknowledgeContract], ['Acknowledge instruction', acknowledgeInstruction],
         ['Submit RFI', createRfi], ['Acknowledge RFI', acknowledgeRfi], ['Submit submittal', createSubmittal],
         ['Resubmit submittal', resubmitSubmittal], ['Claim quantity', submitQuantity], ['Payment application', submitPaymentApplication],
-        ['Request WIR', sendSubSubmission('wir_request')], ['Request MIR', sendSubSubmission('mir_request')],
-        ['Report manpower', sendSubSubmission('manpower')], ['Report equipment', sendSubSubmission('equipment')],
-        ['Respond to NCR', sendSubSubmission('ncr_response')], ['Respond to observation', sendSubSubmission('observation_response')],
-        ['Quote variation', sendSubSubmission('variation_quote')]]
+        [t('portals.submissions.new'), () => setShowSubmissionForm(true)]]
       : kind === 'supplier'
         ? [['Submit quotation', quoteRfq], ['Send clarification', clarify], ['Acknowledge PO', acknowledgePo],
           ['Propose delivery', proposeDelivery], ['Upload delivery certificate', uploadCertificate], ['Submit invoice', submitInvoice]]
@@ -385,6 +467,7 @@ function QuickActions({ kind, data, onDone }) {
       <DocumentUpload label={t('portals.observation.afterPhotos')} onUploaded={setAfterPhotos} maxFiles={5} accept="image/*" />
       <div className="form-actions"><button type="button" className="btn" onClick={() => setShowObservationForm(false)} disabled={savingObservation}>{t('common.cancel')}</button><button type="submit" className="btn btn-primary" disabled={savingObservation}>{t('portals.observation.submit')}</button></div>
     </form>}
+    {showSubmissionForm && kind === 'subcontractor' && <SubcontractorSubmissionForm data={data} onCancel={() => setShowSubmissionForm(false)} onDone={() => { setShowSubmissionForm(false); onDone(); }} />}
   </div>;
 }
 
@@ -449,11 +532,15 @@ export default function PortalDashboard({ kind }) {
         {data.setup_actions?.map(action => <div className="alert alert-info" key={action}>{action}</div>)}
         {extra?.portfolio?.is_portfolio && <><h2 className="portal-section-title">Portfolio</h2><div className="portal-grid"><Widget name="Projects" value={extra.portfolio.items} /></div></>}
         <QuickActions kind={kind} data={data} onDone={load} />
-        <div className="portal-grid">{Object.entries(data).filter(([key]) => !['note', 'setup_actions', 'project_ids', 'supplier_ids', 'visibility', 'preview'].includes(key)).map(([key, value]) => <Widget key={key} name={key} value={value} />)}</div>
+        <div className="portal-grid">{Object.entries(data).filter(([key]) => !['note', 'setup_actions', 'project_ids', 'supplier_ids', 'visibility', 'preview'].includes(key)).map(([key, value]) => kind === 'supplier' && key === 'expiring_documents'
+          ? <SupplierComplianceAlerts key={key} value={value} />
+          : <Widget key={key} name={key} value={value} />)}</div>
         {extra?.secondary != null && <><h2 className="portal-section-title">{config.extraTitle}</h2><div className="portal-grid">{kind === 'consultant'
           ? <ConsultantReviews rows={extra.secondary} onDone={load} />
           : kind === 'client'
             ? <ClientActions data={extra.secondary} onDone={load} readOnly={Boolean(data.preview?.read_only)} />
+            : kind === 'subcontractor'
+              ? <SubcontractorSubmissionRegister value={extra.secondary} />
             : <Widget name={config.extraTitle} value={extra.secondary} />}</div></>}
       </>}
     </div>

@@ -61,6 +61,7 @@ const ROUTERS = {
   approvals: { router: require('./approvals'), mount: '/api/approvals' },
   consultant: { router: require('./consultant'), mount: '/api/consultant' },
   clientPortal: { router: require('./client'), mount: '/api/client-portal' },
+  portal: { router: require('./portal'), mount: '/api/portal' },
   doccontrol: { router: require('./doccontrol'), mount: '/api/docs' },
   qhse: { router: require('./qhse'), mount: '/api/qhse' },
   hse: { router: require('./hse'), mount: '/api/hse' },
@@ -372,6 +373,8 @@ const FAMILY_MAP = {
     ['financeLedger', 'POST', '/payment-batches/:id/cancel', '/:id/cancel'],
   ],
   subcontracts: [
+    ['portal', 'GET', '/subcontractor/submissions', '/subcontractor/submissions'],
+    ['portal', 'POST', '/subcontractor/submissions/:kind', '/subcontractor/submissions/:kind'],
     ['subcontractors', 'GET', '/contracts/:projectId', '/:projectId'],
     ['subcontractors', 'POST', '/contracts', '/'],
     ['commercial', 'GET', '/subcontracts/:contractId/parties', '/:contractId/parties'],

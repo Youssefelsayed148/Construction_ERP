@@ -277,6 +277,8 @@ describe('supplier portal', () => {
     // Compliance doc expiring within 90 days.
     await q(`INSERT INTO organization_documents (id, organization_id, document_type, expiry_date)
              VALUES ($1,$2,$3,$4)`, [1, 8, 'ISO certificate', '2026-10-15']);
+    await q(`INSERT INTO organization_documents (id, organization_id, document_type, expiry_date)
+             VALUES ($1,$2,$3,$4)`, [2, 8, 'Expired insurance', '2026-10-01']);
   });
 
   test('no assigned supplier org → setup actions, not an error', async () => {
@@ -293,7 +295,17 @@ describe('supplier portal', () => {
     expect(dash.deliveries.count).toBe(1);
     expect(dash.inspections.count).toBe(1);
     expect(dash.invoices.count).toBe(1);
-    expect(dash.expiring_documents.count).toBe(1);
+    expect(dash.expiring_documents.count).toBe(2);
+  });
+
+  test('compliance expiry list flags expired and near-expiry documents', async () => {
+    const dash = await engine.supplierDashboard(q, SUPPLIER_A.id, { now: new Date('2026-10-13T12:00:00Z') });
+    const expired = dash.expiring_documents.items.find((item) => item.id === 2);
+    const soon = dash.expiring_documents.items.find((item) => item.id === 1);
+    expect(expired.alert_state).toBe('expired');
+    expect(expired.days_remaining).toBeLessThan(0);
+    expect(soon.alert_state).toBe('expires_soon');
+    expect(soon.days_remaining).toBe(2);
   });
 
   test('ISOLATION: a supplier never sees a competing vendor\u2019s pricing', async () => {

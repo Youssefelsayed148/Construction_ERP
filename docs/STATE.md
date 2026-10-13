@@ -9,12 +9,13 @@
 - Batch E1/E2 certificate postings and invoice lines are committed in `f88c15b`.
 - Batch E3/E4 source-lot supplier returns and forecast approval/ETC/EAC behavior are committed in `164c9e9`.
 - Batch E5 finance workbench and journal-backed retention release are committed in `7370bca`; focused checks passed.
-- Phase 5.6.1, the delivered 5.6.2 workflow slices, and 5.6.3 are implemented. Phase 5.6.2 SLA administration remains open; 5.6.4 client actions are ready for their per-slice commit after review.
+- Phase 5.6.1, the delivered 5.6.2 workflow slices, and 5.6.3 are implemented. Phase 5.6.2 SLA administration remains open.
+- Phase 5.6.4 client actions are committed in `940d2f3`. Phase 5.6.5 subcontractor submissions are in progress; the structured intake slice is ready for review and commit.
 
 ## Next
 
-1. Commit the Phase 5.6.4 client actions slice after final diff review.
-2. Continue with Phase 5.6.5 formal external registers and portal forms, using ticket-related tests.
+1. Commit the Phase 5.6.5 subcontractor structured submission slice after final diff review.
+2. Continue with the remaining 5.6.5 formal external registers and portal forms, using ticket-related tests.
 3. Continue Phases 5.7, 5.8 and 6 in the audited order in `docs/PLAN_5_6_TO_6.md`.
 
 ## Decisions and limits
