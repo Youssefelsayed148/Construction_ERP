@@ -1,8 +1,55 @@
 {
   "title": "المشتريات",
-  "comparison": {
-    "title": "مقارنة المشتريات",
-    "noQuotations": "لم يتم استلام عروض أسعار بعد."
+  "comparison": { "title": "مقارنة المشتريات", "noQuotations": "لم يتم استلام عروض أسعار بعد." },
+  "rfq": "طلب عرض سعر",
+  "fields": {
+    "title": "العنوان", "description": "الوصف", "estimatedPrice": "سعر الوحدة التقديري", "priority": "الأولوية",
+    "purchaseRequest": "طلب الشراء", "dueDate": "تاريخ الاستحقاق", "quotations": "العروض", "rfq": "طلب عرض سعر",
+    "rfqLine": "بند الطلب", "unitPrice": "سعر الوحدة", "leadTime": "مدة التوريد (أيام)", "paymentTerms": "شروط الدفع",
+    "deliveryTerms": "شروط التسليم", "reference": "المرجع", "compliant": "مطابق", "selectedQuote": "العرض المحدد",
+    "basis": "أساس التوصية", "justification": "المبررات", "purchaseOrder": "أمر الشراء", "line": "معرف البند",
+    "orderLine": "بند أمر الشراء", "warehouse": "المخزن", "deliveryDate": "تاريخ التسليم", "lotNumber": "رقم التشغيلة",
+    "expiryDate": "تاريخ الصلاحية", "goodsReceipt": "إذن الاستلام", "materialId": "معرف المادة", "reason": "السبب",
+    "invoiceNumber": "رقم فاتورة المورد", "invoiceDate": "تاريخ الفاتورة", "taxAmount": "قيمة الضريبة", "invoiceId": "معرف فاتورة المورد",
+    "paymentDate": "تاريخ الدفع", "paymentMethod": "طريقة الدفع", "purchaseOrders": "أوامر الشراء", "committedSpend": "الالتزامات",
+    "actualSpend": "قيمة المستلم", "onTime": "التسليم في الموعد (%)", "quality": "الجودة (%)", "matchStatus": "المطابقة الثلاثية",
+    "supplier_name": "المورد", "lead_time_days": "مدة التوريد (أيام)", "unit_price": "سعر الوحدة", "total_price": "السعر الإجمالي",
+    "payment_terms": "شروط الدفع", "delivery_terms": "شروط التسليم", "tax_amount": "الضريبة", "warranty_months": "الضمان (أشهر)",
+    "deviations": "الاستثناءات", "technical_score": "التقييم الفني", "commercial_score": "التقييم التجاري"
   },
-  "rfq": "طلب عروض أسعار"
+  "actions": {
+    "createPr": "إنشاء طلب شراء", "submit": "إرسال", "cancel": "إلغاء", "createRfq": "إنشاء طلب عرض سعر",
+    "invite": "دعوة الموردين المحددين", "submitQuote": "إرسال عرض السعر", "submitRecommendation": "إرسال للموافقة",
+    "approve": "موافقة", "reject": "رفض", "createPo": "إنشاء أمر شراء", "approveIssue": "اعتماد أمر الشراء",
+    "save": "حفظ التغييرات", "recordDelivery": "تسجيل التسليم", "createMir": "إنشاء طلب فحص", "accept": "قبول الفحص",
+    "createGrn": "إنشاء إذن استلام", "createReturn": "تسجيل مرتجع للمورد", "recordInvoice": "تسجيل فاتورة المورد",
+    "approveInvoice": "اعتماد فاتورة المورد", "recordPayment": "تسجيل دفعة المورد"
+  },
+  "workspace": {
+    "title": "مشتريات المشروع", "subtitle": "إدارة الطلبات وعروض الموردين والموافقات والاستلام والفواتير والمدفوعات لهذا المشروع.",
+    "navigation": "مراحل المشتريات", "createPr": "طلب شراء جديد", "purchaseRequests": "طلبات الشراء",
+    "createRfq": "طلب عرض سعر جديد", "inviteSuppliers": "دعوة الموردين", "rfqList": "طلبات عروض الأسعار",
+    "submitQuote": "تسجيل عرض المورد", "quotes": "عروض الأسعار المقدمة", "comparison": "مقارنة عروض الأسعار",
+    "awardRecommendation": "توصية الترسية والموافقة", "createPo": "إنشاء أمر من عرض طلب الأسعار",
+    "purchaseOrders": "أوامر الشراء", "orderActions": "مراجعة الأوامر وإجراءاتها", "orderLines": "بنود أمر الشراء",
+    "recordDelivery": "تسجيل استلام التسليم", "deliveries": "التسليمات", "inspectAndReceive": "الفحص واستلام البضائع",
+    "goodsReceipts": "أذون استلام البضائع", "supplierReturn": "مرتجع المورد", "supplierInvoice": "فاتورة المورد والمطابقة الثلاثية",
+    "apReview": "مراجعة الحسابات الدائنة", "recordPayment": "دفعة المورد", "spendAnalytics": "تحليلات الإنفاق",
+    "vendorPerformance": "أداء الموردين",
+    "sections": { "requests": "الطلبات", "rfqs": "طلبات الأسعار والعروض", "awards": "المقارنة والترسية", "orders": "أوامر الشراء", "receipts": "التسليم والاستلام", "invoices": "الفواتير والمدفوعات", "analytics": "التحليلات" }
+  },
+  "messages": {
+    "saved": "تم حفظ التغييرات.", "created": "تم إنشاء السجل.", "submitted": "تم الإرسال للموافقة.", "cancelled": "تم إلغاء السجل.", "paymentRecorded": "تم تسجيل الدفعة.",
+    "noPrs": "لا توجد طلبات شراء لهذا المشروع.", "noRfqs": "لا توجد طلبات عروض أسعار لهذا المشروع.", "noQuotes": "لم يتم استلام عروض لهذا الطلب.",
+    "noAwards": "لا توجد توصيات ترسية بعد.", "noPos": "لا توجد أوامر شراء لهذا المشروع.", "noLines": "لا توجد بنود لأمر الشراء.",
+    "noDeliveries": "لا توجد تسليمات لهذا المشروع.", "noGrns": "لا توجد أذون استلام لهذا المشروع.", "noInvoices": "لا توجد مراجعات لفواتير الموردين.",
+    "noAnalytics": "لا تتوفر تحليلات مشتريات بعد.", "comparisonUnavailable": "تفاصيل المقارنة غير متاحة حسب صلاحياتك الحالية.",
+    "recommendedVendor": "المورد الموصى به: {supplier}.", "selectRfqAndSupplier": "حدد طلب عرض سعر ومورداً واحداً على الأقل.",
+    "selectRfqLine": "حدد بنداً من طلب عرض السعر.", "selectPurchaseOrder": "حدد أمر شراء.", "selectGrn": "حدد إذن استلام يحتوي على بند مستلم.",
+    "threeWayMatch": "تتم مطابقة بنود الفاتورة مع أمر الشراء والبضائع المستلمة والمقبولة. الاعتماد يسجل التزام المورد.",
+    "apReviewHelp": "استخدم معرف فاتورة المورد الذي يظهر بعد تسجيلها. يعتمد الاعتماد على ربط الحسابات المُعد.",
+    "cancelConfirm": "إلغاء {reference}؟ يلزم إدخال السبب وسيظل السجل محفوظاً في سجل التدقيق.",
+    "loadingWorkspace": "جارٍ تحميل مشتريات المشروع..."
+  },
+  "values": { "low": "منخفض", "normal": "عادي", "high": "مرتفع", "urgent": "عاجل", "comparison": "أفضل عرض وفق المقارنة", "technical": "التقييم الفني", "commercial": "التقييم التجاري", "direct_award": "ترسية مباشرة مع مبررات", "bank_transfer": "تحويل بنكي", "check": "شيك", "cash": "نقداً", "other": "أخرى", "match_matched": "مطابق", "match_exception": "استثناء", "match_pending": "قيد الانتظار" }
 }

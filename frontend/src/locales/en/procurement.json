@@ -1,8 +1,55 @@
 {
   "title": "Procurement",
-  "comparison": {
-    "title": "Procurement comparison",
-    "noQuotations": "No quotations received yet."
+  "comparison": { "title": "Procurement comparison", "noQuotations": "No quotations received yet." },
+  "rfq": "Request for quotation",
+  "fields": {
+    "title": "Title", "description": "Description", "estimatedPrice": "Estimated unit price", "priority": "Priority",
+    "purchaseRequest": "Purchase request", "dueDate": "Due date", "quotations": "Quotations", "rfq": "Request for quotation",
+    "rfqLine": "Request line", "unitPrice": "Unit price", "leadTime": "Lead time (days)", "paymentTerms": "Payment terms",
+    "deliveryTerms": "Delivery terms", "reference": "Reference", "compliant": "Compliant", "selectedQuote": "Selected quote",
+    "basis": "Recommendation basis", "justification": "Justification", "purchaseOrder": "Purchase order", "line": "Line ID",
+    "orderLine": "Purchase order line", "warehouse": "Warehouse", "deliveryDate": "Delivery date", "lotNumber": "Lot number",
+    "expiryDate": "Expiry date", "goodsReceipt": "Goods receipt", "materialId": "Material ID", "reason": "Reason",
+    "invoiceNumber": "Supplier invoice number", "invoiceDate": "Invoice date", "taxAmount": "Tax amount", "invoiceId": "Supplier invoice ID",
+    "paymentDate": "Payment date", "paymentMethod": "Payment method", "purchaseOrders": "Orders", "committedSpend": "Committed spend",
+    "actualSpend": "Received spend", "onTime": "On time (%)", "quality": "Quality (%)", "matchStatus": "Three-way match",
+    "supplier_name": "Supplier", "lead_time_days": "Lead time (days)", "unit_price": "Unit price", "total_price": "Total price",
+    "payment_terms": "Payment terms", "delivery_terms": "Delivery terms", "tax_amount": "Tax", "warranty_months": "Warranty (months)",
+    "deviations": "Deviations", "technical_score": "Technical score", "commercial_score": "Commercial score"
   },
-  "rfq": "Request for quotation"
+  "actions": {
+    "createPr": "Create request", "submit": "Submit", "cancel": "Cancel", "createRfq": "Create request for quotation",
+    "invite": "Invite selected suppliers", "submitQuote": "Submit quotation", "submitRecommendation": "Submit for approval",
+    "approve": "Approve", "reject": "Reject", "createPo": "Create purchase order", "approveIssue": "Approve purchase order",
+    "save": "Save changes", "recordDelivery": "Record delivery", "createMir": "Create inspection request", "accept": "Accept inspection",
+    "createGrn": "Create goods receipt", "createReturn": "Record supplier return", "recordInvoice": "Record supplier invoice",
+    "approveInvoice": "Approve supplier invoice", "recordPayment": "Record supplier payment"
+  },
+  "workspace": {
+    "title": "Project procurement", "subtitle": "Manage requisitions, supplier quotes, approvals, receipts, invoices, and payments for this project.",
+    "navigation": "Procurement stages", "createPr": "New purchase request", "purchaseRequests": "Purchase requests",
+    "createRfq": "New request for quotation", "inviteSuppliers": "Invite suppliers", "rfqList": "Requests for quotation",
+    "submitQuote": "Record supplier quotation", "quotes": "Submitted quotations", "comparison": "Quote comparison",
+    "awardRecommendation": "Award recommendation and approval", "createPo": "Create an order from an RFQ quotation",
+    "purchaseOrders": "Purchase orders", "orderActions": "Order review and actions", "orderLines": "Purchase order lines",
+    "recordDelivery": "Record delivery receipt", "deliveries": "Deliveries", "inspectAndReceive": "Inspection and goods receipts",
+    "goodsReceipts": "Goods receipt notes", "supplierReturn": "Supplier return", "supplierInvoice": "Supplier invoice and three-way match",
+    "apReview": "Accounts payable review", "recordPayment": "Supplier payment", "spendAnalytics": "Spend analytics",
+    "vendorPerformance": "Vendor performance",
+    "sections": { "requests": "Requests", "rfqs": "RFQs and quotes", "awards": "Comparison and award", "orders": "Purchase orders", "receipts": "Delivery and receipt", "invoices": "Invoices and payments", "analytics": "Analytics" }
+  },
+  "messages": {
+    "saved": "Changes saved.", "created": "Record created.", "submitted": "Submitted for approval.", "cancelled": "Record cancelled.", "paymentRecorded": "Payment recorded.",
+    "noPrs": "No purchase requests for this project.", "noRfqs": "No requests for quotation for this project.", "noQuotes": "No quotations have been received for this request.",
+    "noAwards": "No award recommendations yet.", "noPos": "No purchase orders for this project.", "noLines": "No purchase order lines available.",
+    "noDeliveries": "No deliveries for this project.", "noGrns": "No goods receipts for this project.", "noInvoices": "No supplier invoice reviews to show.",
+    "noAnalytics": "No procurement analytics are available yet.", "comparisonUnavailable": "The comparison details are not available for your current access.",
+    "recommendedVendor": "Recommended supplier: {supplier}.", "selectRfqAndSupplier": "Select an RFQ and at least one supplier.",
+    "selectRfqLine": "Select a line from the selected RFQ.", "selectPurchaseOrder": "Select a purchase order.", "selectGrn": "Select a goods receipt with a received line.",
+    "threeWayMatch": "Invoice lines are checked against the purchase order and accepted goods receipts. Approval records the supplier liability.",
+    "apReviewHelp": "Use the supplier invoice ID returned when an invoice is recorded. Approval follows the configured ledger mapping.",
+    "cancelConfirm": "Cancel {reference}? A reason is required and the record will remain in the audit trail.",
+    "loadingWorkspace": "Loading project procurement..."
+  },
+  "values": { "low": "Low", "normal": "Normal", "high": "High", "urgent": "Urgent", "comparison": "Best evaluated comparison", "technical": "Technical evaluation", "commercial": "Commercial evaluation", "direct_award": "Direct award with justification", "bank_transfer": "Bank transfer", "check": "Check", "cash": "Cash", "other": "Other", "match_matched": "Matched", "match_exception": "Exception", "match_pending": "Pending" }
 }

@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Boxes, ClipboardList, DollarSign, Percent, RefreshCw, ShoppingCart } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
+import ProcurementWorkspace from '../components/project/ProcurementWorkspace';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 const tokenHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
@@ -65,10 +66,6 @@ function ProjectOperations() {
 
   useEffect(() => { load(); }, [load]);
 
-  const procurementCounts = useMemo(() => Object.entries(data.procurement || {}).map(([key, rows]) => ({
-    key, label: key.replaceAll('_', ' '), count: Array.isArray(rows) ? rows.length : 0,
-  })), [data.procurement]);
-
   return (
     <div className="page-container project-operations">
       <div className="page-header operations-header">
@@ -94,7 +91,7 @@ function ProjectOperations() {
         <>
           {active === 'materials' && <Materials rows={data.materials || []} />}
           {active === 'inventory' && <Inventory rows={data.inventory || []} navigate={navigate} />}
-          {active === 'procurement' && <Procurement counts={procurementCounts} data={data.procurement || {}} navigate={navigate} />}
+          {active === 'procurement' && <ProcurementWorkspace projectId={id} />}
           {active === 'commercial' && <Commercial data={data.commercial} />}
           {active === 'valuations' && <Valuations rows={data.valuations || []} />}
           {active === 'retention' && <Retention data={data.retention} />}
@@ -115,15 +112,6 @@ function Materials({ rows }) {
 function Inventory({ rows, navigate }) {
   if (!rows.length) return <Empty />;
   return <div className="operations-grid">{rows.map((row) => <div className="card" key={row.id}><h3>{row.name}</h3><p>{row.type || row.warehouse_type || 'Warehouse'}</p><p style={{ color: 'var(--color-text-secondary)' }}>{row.project_name || 'Project warehouse'}</p><button className="btn" onClick={() => navigate('/inventory')}>Open inventory</button></div>)}</div>;
-}
-
-function Procurement({ counts, data, navigate }) {
-  const recent = Object.entries(data).flatMap(([type, rows]) => (rows || []).slice(0, 5).map((row) => ({ ...row, _type: type })));
-  return <>
-    <div className="stats-grid">{counts.map((item) => <div className="stat-card" key={item.key}><div className="stat-label">{item.label}</div><div className="stat-value">{item.count}</div></div>)}</div>
-    <div style={{ margin: '12px 0' }}><button className="btn" onClick={() => navigate('/procurement/comparison')}>Open quotation comparison</button></div>
-    {!recent.length ? <Empty /> : <div className="table-container"><table className="table"><thead><tr><th>Stage</th><th>Reference</th><th>Title / supplier</th><th>Status</th><th>Created</th></tr></thead><tbody>{recent.map((row, index) => <tr key={`${row._type}-${row.id}-${index}`}><td>{row._type.replaceAll('_', ' ')}</td><td>{row.request_number || row.rfq_number || row.po_number || row.delivery_number || row.mir_number || row.grn_number || `#${row.id}`}</td><td>{row.title || row.supplier_name || row.notes || '—'}</td><td><Status value={row.status} /></td><td>{formatDate(row.created_at)}</td></tr>)}</tbody></table></div>}
-  </>;
 }
 
 function Commercial({ data }) {

@@ -170,7 +170,7 @@ router.post('/rfq/:id/quotations', authenticate, authorize(), async (req, res) =
 });
 
 // Full commercial comparison — internal eyes only.
-router.get('/rfq/:id/comparison', authenticate, authorize('owner', 'admin', 'purchasing_mgr', 'project_manager'), async (req, res) => {
+router.get('/rfq/:id/comparison', authenticate, authorize(), async (req, res) => {
   try {
     const comparison = await svc.buildBidComparison(query, parseInt(req.params.id, 10), { persist: false });
     res.json({ success: true, data: comparison });
@@ -306,6 +306,27 @@ const invoiceFlow = require('../services/financeDocuments');
 
 router.get('/invoices/:id/workflow', authenticate, authorize(), async (req, res) => {
   try { res.json({ success: true, data: await invoiceFlow.workflowState(query, req.params.id) }); } catch (e) { return typedFail(res, e); }
+});
+// Supplier invoice register is project-scoped at query time. The AP review queue is company-wide,
+// so it must not be reused as a project invoice list.
+router.get('/invoices', authenticate, authorize(), async (req, res) => {
+  try {
+    const projectId = Number(req.query.project_id);
+    if (!Number.isInteger(projectId) || projectId < 1) {
+      return res.status(400).json({ success: false, error: 'A valid project_id is required', error_code: 'validation_error', error_params: { field: 'project_id' } });
+    }
+    if (req.accessScope && !req.accessScope.companyWide && !req.accessScope.projectIds.includes(projectId)) {
+      return res.status(403).json({ success: false, error: 'Insufficient permissions', error_code: 'forbidden', error_params: {} });
+    }
+    const rows = (await query(
+      `SELECT si.*, s.name_en AS supplier_name, po.project_id, po.order_number
+         FROM supplier_invoices si
+         JOIN purchase_orders po ON po.id = si.purchase_order_id
+         LEFT JOIN suppliers s ON s.id = si.supplier_id
+        WHERE po.project_id = $1 ORDER BY si.created_at DESC, si.id DESC LIMIT 200`, [projectId]
+    )).rows;
+    res.json({ success: true, data: rows });
+  } catch (e) { return typedFail(res, e); }
 });
 router.post('/invoices/:id/workflow/start', authenticate, authorize(), async (req, res) => {
   try {

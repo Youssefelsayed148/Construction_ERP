@@ -287,4 +287,34 @@ npm run i18n:check
 i18n:check ok
 ```
 
-Next: Batch C2 procurement screens, then C3 effective-permission navigation and C4 browser journeys.
+## 2026-10-13: Batch C2 procurement workspace (implementation in progress)
+
+Added a project procurement workspace covering requisitions, RFQs and quotations, bid comparison and award, purchase orders, deliveries/MIR/GRN, supplier invoices, AP payments, project spend, and vendor performance. Added a project-scoped supplier invoice register endpoint; the query is constrained by the selected PO project and the caller's assigned project scope. RFQ bid comparison now uses the effective policy action for supplier-value access. English and Arabic labels/errors and responsive styles are included.
+
+Focused verification:
+
+```text
+frontend: npm test -- --watchAll=false --runInBand src/components/project/ProcurementWorkspace.test.js
+1 suite passed; 1 test passed
+
+frontend: npm run i18n:check
+i18n:check ok
+
+frontend: npm run build
+Compiled successfully.
+
+backend: node --check src/routes/procurement.js
+backend: node --check src/services/policy.js
+backend: node --check src/scripts/smoke-staging.js
+all syntax checks exited 0
+
+backend: npm test -- --runInBand src/scripts/__tests__/module-override-coverage.test.js
+1 suite passed; 4 tests passed (includes the comparison supplier-value policy action)
+
+git diff --check
+clean
+```
+
+An earlier local staging API journey passed the PR-to-payment path and project invoice register checks, then stopped at the existing reconcile child-process launch (`spawnSync node.exe EPERM`). It does not count as a clean full smoke result. This phase also exposed that the backend Docker runtime image build automatically runs its full mock suite: 50 suites / 960 tests passed, 56 PostgreSQL suites skipped. That suite run was incidental to the image build; future phase work will use ticket-focused checks and reserve broad gates for batch exits, following the user's requested cadence.
+
+Next: finish C2 review and commit, then C3 effective-permission navigation and C4 browser journeys.

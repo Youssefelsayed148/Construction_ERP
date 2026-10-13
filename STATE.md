@@ -28,6 +28,7 @@ Updated: 2026-10-13 (Africa/Cairo)
 - B5 rehearsal passed: DB dump and uploads copied; restored to temporary staging-named DB; exact row counts and 226 sequence maxima matched; all reconcile counts were 0; data-cleaning report was empty; temporary restore DB removed.
 - Batch B final gates passed: backend mock 50 suites / 960 tests; real PostgreSQL 56 suites / 566 tests; frontend 17 suites / 97 tests; i18n and production build passed; Playwright 32 passed / 46 skipped; Compose services healthy.
 - Batch C1 shared UI kit: reusable validation/server-error mapping, accessible fields, localized bounded file uploads, toast provider/hook, permission-aware action wrapper, and existing dialogs/states. Focused frontend gate: 20 suites / 103 tests; `i18n:check ok`.
+- Batch C2 procurement workspace is implemented and under final review. Its focused UI test (1/1), localization check, production build, backend syntax checks, and whitespace check pass. One local API smoke run passed the procurement journey and scoped invoice-list checks, then hit `spawnSync node.exe EPERM` at the reconcile child-process step; it is not recorded as a clean full smoke. A Docker image build incidentally ran the backend mock suite (50 suites / 960 tests passed; 56 PostgreSQL suites skipped). Per the user's test-cadence instruction, use tests tied to the active ticket and defer broad suites to batch exits.
 - Batches C–E and Phases 5.6–6 remain open. Finance signoff still requires the owner to confirm provisional chart-of-accounts mappings.
 
 ## Where work stopped

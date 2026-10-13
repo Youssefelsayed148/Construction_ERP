@@ -236,6 +236,7 @@ const ACTION_OVERRIDES = Object.freeze([
   ['procurement', 'POST', /^\/award-recommendations\/:id\/withdraw$/, 'void'],
   ['procurement', 'POST', /^\/(?:pr|po)\/:id\/cancel$/, 'void'],
   ['procurement', 'GET', /^\/analytics\//, 'see_supplier_value'],
+  ['procurement', 'GET', /^\/rfq\/:id\/comparison$/, 'see_supplier_value'],
   // Phase 5.3: posting an adjustment changes stock without a movement document of the business (a count
   // correction), so it needs approve; a void of any inventory document is its own action.
   ['inventory', 'POST', /^\/adjustments\/:id\/post$/, 'approve'],

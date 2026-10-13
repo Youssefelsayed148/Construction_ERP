@@ -907,6 +907,28 @@ html[dir='rtl'] .table td {
 .toast { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--color-border); border-inline-start: 4px solid var(--color-accent); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); box-shadow: 0 8px 28px rgb(0 0 0 / 18%); }
 .toast-error { border-inline-start-color: var(--color-danger, #dc2626); }
 .toast button { border: 0; background: transparent; color: inherit; font-size: 20px; cursor: pointer; }
+.procurement-workspace { display: grid; gap: 16px; }
+.procurement-workspace-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.procurement-workspace-header h2 { margin: 0; }
+.procurement-workspace-header p { color: var(--color-text-secondary); margin: 6px 0 0; }
+.procurement-section-nav { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 8px; }
+.procurement-section-nav .btn { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-height: 42px; }
+.procurement-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; align-items: start; }
+.procurement-grid > .card { min-width: 0; }
+.procurement-grid h2 { font-size: 1.05rem; margin: 0 0 12px; }
+.procurement-grid h3 { font-size: .95rem; margin: 18px 0 10px; }
+.procurement-form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.procurement-action-row { display: grid; gap: 8px; margin-top: 12px; }
+.procurement-action { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px; border-bottom: 1px solid var(--color-border); }
+.procurement-action > b, .procurement-action > span { flex: 1 1 140px; }
+.procurement-check-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; max-height: 180px; overflow: auto; margin: 10px 0; }
+.procurement-check-list label { display: flex; align-items: center; gap: 8px; }
+@media (max-width: 560px) {
+  .procurement-workspace-header { align-items: flex-start; }
+  .procurement-grid { grid-template-columns: minmax(0, 1fr); }
+  .procurement-grid > .card { padding: 14px; }
+  .procurement-action .btn { flex: 1 1 auto; }
+}
 
 /* Project page tabs (components/project/ProjectShell.js): groups on top, sub-tabs of the active group below. */
 .project-tabs { padding: 0 var(--space-lg, 24px); margin-bottom: 8px; }

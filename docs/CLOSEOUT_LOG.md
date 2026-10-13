@@ -1099,3 +1099,7 @@ i18n:check ok
 ```
 
 Coverage added for validation rules, structured server field errors, accessible field labels/error descriptions, and permission-aware action visibility. Existing dialog and shell suites cover reason/confirm dialogs and generic loading/empty/error states. Upload controls now localize labels/errors and enforce configurable client-side file count and size limits. The first i18n check identified one inline RTL expression; it was removed by inheriting the document direction, and the final check above passed. Production build and full Batch C exit gates will run at Batch C close.
+
+## 2026-10-13: Batch C2 procurement workspace (implementation in progress)
+
+Added the project procurement workspace and the project-scoped supplier invoice register. RFQ bid comparison now follows the effective `see_supplier_value` policy action. The focused workspace test passed (1 suite / 1 test), `i18n:check` passed, the frontend production build compiled, backend syntax checks passed, and `git diff --check` was clean. A prior local procurement API smoke passed the main procurement journey and invoice register scope assertions but stopped at reconcile because Windows returned `spawnSync node.exe EPERM`; record it as incomplete. The Docker image build also invoked the backend mock suite as part of its test stage (50 suites / 960 tests passed; 56 PostgreSQL suites skipped). Per the user's instruction, subsequent phase changes will use ticket-related tests and broader suites will be reserved for batch exits.

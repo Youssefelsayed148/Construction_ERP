@@ -44,6 +44,7 @@ describe('action overrides', () => {
     expect(act('docs', 'POST', '/documents/:id/:action(approve|reject)', { action: 'reject' })).toBe('reject');
     expect(act('docs', 'POST', '/documents/:id/submit')).toBe('submit');
     expect(act('procurement', 'POST', '/po/:id/issue')).toBe('issue_financial_document');
+    expect(act('procurement', 'GET', '/rfq/:id/comparison')).toBe('see_supplier_value');
     expect(act('docs', 'POST', '/rfis')).toBe('create');
     expect(act('docs', 'GET', '/documents')).toBe('view');
     // voiding a financial record and restoring a master are not plain deletes/creates

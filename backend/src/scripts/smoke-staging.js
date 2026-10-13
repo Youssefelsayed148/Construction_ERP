@@ -181,6 +181,7 @@ async function main() {
     }
     const comparison = expectStatus(await api('GET', `/api/procurement/rfq/${rfq.id}/comparison`, { token: checker.token }), 200, 'RFQ comparison');
     ensure(comparison.body && comparison.body.data, 'comparison payload missing');
+    expectStatus(await api('GET', `/api/procurement/rfq/${rfq.id}/comparison`, { token: crossToken }), 403, 'cross-project RFQ comparison denied');
     // The configured comparison awards the lower priced compliant quote.
     const selected = quotations.slice().sort((a, b) => a.rate - b.rate)[0];
     const recommendation = expectStatus(await api('POST', `/api/procurement/rfq/${rfq.id}/award-recommendations`, {
@@ -239,6 +240,9 @@ async function main() {
         lines: [{ purchase_order_line_id: poLine.id, material_id: material.id, quantity: delivered, unit_price: selected.rate }] },
     }), 201, 'record supplier invoice').body.data;
     const invoice = invoiceResult.invoice || invoiceResult;
+    const invoiceRegister = expectStatus(await api('GET', `/api/procurement/invoices?project_id=${project.id}`, { token: requester.token }), 200, 'read project supplier invoice register').body.data;
+    ensure(invoiceRegister.some((row) => Number(row.id) === Number(invoice.id)), 'supplier invoice register did not return the new project invoice');
+    expectStatus(await api('GET', `/api/procurement/invoices?project_id=${otherProjectRow.id}`, { token: requester.token }), 403, 'deny supplier invoice register outside project scope');
     const invoiceApproval = expectStatus(await api('POST', `/api/procurement/invoices/${invoice.id}/approve`, {
       token: finance.token, body: {},
     }), 200, 'approve three-way matched invoice');
