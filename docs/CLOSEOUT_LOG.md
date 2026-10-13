@@ -1045,3 +1045,7 @@ BACKUP_RESTORE_REHEARSAL_OK backup_dir=C:\Users\joe-y\AppData\Local\Temp\erp-clo
 ```
 
 Focused B5 checks passed 1 suite / 2 tests, syntax check passed, and `npm run lint:guards` printed `lint-guards: ok`. The rehearsal is local only; it did not read or print `.env` contents. B6 PowerShell instructions and full Batch B gates remain.
+
+## 2026-10-13: Batch B6 Windows staging runbook
+
+Added `docs/STAGING.md` with copy-paste Windows PowerShell commands for generated ignored configuration, Compose start/health checks, staging and demo seeds, full smoke, backup/restore rehearsal, account-file location, Compose status/logs, and stop/restart. It warns against displaying env or password files and against removing persistent pilot volumes. `git diff --check` passed for the documentation edit.
