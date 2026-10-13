@@ -361,16 +361,20 @@ router.post('/team', authenticate, authorize('owner', 'admin', 'owner_ceo', 'coo
       });
       const { error, value } = schema.validate(req.body);
       if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error' });
-      const created = await team.assignTeamMember(query, { ...value, granted_by: req.user.id });
-      await policy.recordAuditEvent({
-        entity: 'team_assignment', entityId: created.assignment.id, action: 'create',
-        after: { user_id: value.user_id, project_id: value.project_id, role_key: value.role_key, expires_at: value.expires_at || null },
-        userId: req.user.id,
-      });
-      await logActivity({
-        userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'team',
-        description: `Assigned ${value.role_key} to user #${value.user_id} on project #${value.project_id}`,
-        entityId: created.assignment.id, entityType: 'team_assignment',
+      const created = await transaction(async (client) => {
+        const q = client.query.bind(client);
+        const result = await team.assignTeamMember(q, { ...value, granted_by: req.user.id });
+        await policy.recordAuditEvent({
+          entity: 'team_assignment', entityId: result.assignment.id, action: 'create',
+          after: { user_id: value.user_id, project_id: value.project_id, role_key: value.role_key, expires_at: value.expires_at || null },
+          userId: req.user.id,
+        }, { query: q });
+        await logActivity({
+          userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'team',
+          description: `Assigned ${value.role_key} to user #${value.user_id} on project #${value.project_id}`,
+          entityId: result.assignment.id, entityType: 'team_assignment',
+        }, { query: q });
+        return result;
       });
       res.status(201).json({ success: true, data: created });
     } catch (e) { return fail(res, e); }
@@ -378,15 +382,19 @@ router.post('/team', authenticate, authorize('owner', 'admin', 'owner_ceo', 'coo
 
 router.delete('/team/:userProjectRoleId', authenticate, authorize('owner', 'admin', 'owner_ceo', 'coo', 'projects_director', 'project_manager', 'construction_manager', 'hr_manager'), async (req, res) => {
   try {
-    const removed = await team.removeTeamMember(query, req.params.userProjectRoleId);
-    await policy.recordAuditEvent({
-      entity: 'team_assignment', entityId: req.params.userProjectRoleId, action: 'delete',
-      before: removed.summary, userId: req.user.id,
-    });
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'team',
-      description: `Removed assignment #${req.params.userProjectRoleId} (${removed.summary.role_key})`,
-      entityId: req.params.userProjectRoleId, entityType: 'team_assignment',
+    const removed = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const result = await team.removeTeamMember(q, req.params.userProjectRoleId);
+      await policy.recordAuditEvent({
+        entity: 'team_assignment', entityId: req.params.userProjectRoleId, action: 'delete',
+        before: result.summary, userId: req.user.id,
+      }, { query: q });
+      await logActivity({
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'team',
+        description: `Removed assignment #${req.params.userProjectRoleId} (${result.summary.role_key})`,
+        entityId: req.params.userProjectRoleId, entityType: 'team_assignment',
+      }, { query: q });
+      return result;
     });
     res.status(200).json({ success: true, data: removed });
   } catch (e) { return fail(res, e); }

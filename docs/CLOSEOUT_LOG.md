@@ -534,3 +534,24 @@ lint-guards: ok
 ```
 
 A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This maintenance/payroll slice is not committed yet.
+
+## 2026-10-13: A4 team assignment transactional audit continuation (local, pending commit)
+
+Both `/api/team` and `/api/organizations/team` create/revoke paths now include the team-service mutation, policy audit event, and activity row in one transaction.
+
+Verification command output:
+
+```text
+node --check src/routes/organizations.js; node --check src/routes/team-assignments.js; git diff --check
+exit code: 0
+
+npm test -- --runInBand
+Test Suites: 48 passed, 48 total
+Tests:       968 passed, 968 total
+Ran all test suites.
+
+npm run lint:guards
+lint-guards: ok
+```
+
+A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This team-assignment slice is not committed yet.

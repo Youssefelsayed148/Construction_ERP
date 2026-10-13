@@ -12,7 +12,7 @@
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
-const { query } = require('../config/database');
+const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const policy = require('../services/policy');
 const team = require('../services/teamService');
@@ -49,11 +49,15 @@ router.post('/', authenticate, authorize('owner', 'admin', 'owner_ceo', 'coo', '
       });
       const { error, value } = schema.validate(req.body);
       if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error' });
-      const created = await team.assignTeamMember(query, { ...value, granted_by: req.user.id });
-      await policy.recordAuditEvent({
-        entity: 'team_assignment', entityId: created.assignment.id, action: 'create',
-        after: { user_id: value.user_id, project_id: value.project_id, role_key: value.role_key, expires_at: value.expires_at || null },
-        userId: req.user.id,
+      const created = await transaction(async (client) => {
+        const q = client.query.bind(client);
+        const result = await team.assignTeamMember(q, { ...value, granted_by: req.user.id });
+        await policy.recordAuditEvent({
+          entity: 'team_assignment', entityId: result.assignment.id, action: 'create',
+          after: { user_id: value.user_id, project_id: value.project_id, role_key: value.role_key, expires_at: value.expires_at || null },
+          userId: req.user.id,
+        }, { query: q });
+        return result;
       });
       res.status(201).json({ success: true, data: created });
     } catch (e) { return fail(res, e); }
@@ -61,10 +65,14 @@ router.post('/', authenticate, authorize('owner', 'admin', 'owner_ceo', 'coo', '
 
 router.delete('/:userProjectRoleId', authenticate, authorize('owner', 'admin', 'owner_ceo', 'coo', 'projects_director', 'project_manager', 'construction_manager', 'hr_manager'), async (req, res) => {
     try {
-      const removed = await team.removeTeamMember(query, req.params.userProjectRoleId);
-      await policy.recordAuditEvent({
-        entity: 'team_assignment', entityId: req.params.userProjectRoleId, action: 'delete',
-        before: removed.summary, userId: req.user.id,
+      const removed = await transaction(async (client) => {
+        const q = client.query.bind(client);
+        const result = await team.removeTeamMember(q, req.params.userProjectRoleId);
+        await policy.recordAuditEvent({
+          entity: 'team_assignment', entityId: req.params.userProjectRoleId, action: 'delete',
+          before: result.summary, userId: req.user.id,
+        }, { query: q });
+        return result;
       });
       res.status(200).json({ success: true, data: removed });
     } catch (e) { return fail(res, e); }
