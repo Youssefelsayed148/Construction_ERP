@@ -75,14 +75,14 @@ Batch A and Batch B1â€“B6 are green. C1â€“C4 and Batch E implementation are comm
 - Approval limit defaults and finance mappings are provisional where noted in code/docs; finance signoff remains pending.
 - `0030` remains a documented, unreused migration-number gap. Highest migration is `0049`; next is `0050`.
 
-## Stop condition — 2026-10-13
+## Stop condition ï¿½ 2026-10-13
 
 - Blocker: required `docker info --format '{{.ServerVersion}}'` check failed with `error during connect ... dockerDesktopLinuxEngine ... Access is denied`.
 - Evidence: command output from this closeout turn; Docker engine access is unavailable to this process.
 - Next action: restore Docker Desktop engine access for this workspace/session, then rerun `docker info` before creating the new throwaway PostgreSQL 16 container. Resume at request Step 0.1; do not read `.env.docker` or `.staging-users.json`.
 - Work stopped before database, test, gate, migration, or commit operations. Existing uncommitted work remains untouched.
 
-## Closeout continuation — 2026-10-13
+## Closeout continuation ï¿½ 2026-10-13
 
 The initial sandbox Docker check returned `Access is denied`; an elevated local `docker info` retry succeeded with Docker Engine 28.3.2, clearing that blocker. Phase 5.8.2 was applied and verified against fresh throwaway PostgreSQL 16 databases. Migration 0059's PG test found and fixed the partial-index conflict predicate. Forward migration 0060 protects handover document links.
 
@@ -92,4 +92,4 @@ Pilot smoke remains unverified. Automatic review rejected the command because th
 
 ## Closeout continuation â€” after 5.8.2 commit (2026-10-13)
 
-Commit `ad8f9f6` contains the verified Phase 5.8.2 slice and gate repairs. `docs/CARRYOVER.md` now records the verified gates and remaining audit/implementation sequence. Current scan: 49 frontend `prompt()` calls across 17 page files; Phase 6 remains open. The pilot smoke remains unverified because automatic review rejected the script's access to prohibited `.env.docker` and `.staging-users.json`. Next: revalidate Batch C/E and D1-D15 evidence, then complete the Phase 6 inventory and bounded prompt replacement slices.
+Commit `ad8f9f6` contains the verified Phase 5.8.2 slice and gate repairs. `docs/CARRYOVER.md` now records the verified gates and remaining audit/implementation sequence. Current scan: 40 frontend `prompt()` calls across 12 page files; Phase 6 remains open. The typed-name deletion slice removed eight calls across four pages. The pilot smoke remains unverified because automatic review rejected the script's access to prohibited `.env.docker` and `.staging-users.json`. Next: revalidate Batch C/E and D1-D15 evidence, then complete the Phase 6 inventory and bounded prompt replacement slices.

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocale } from '../hooks/useLocale';
+import ConfirmDialog from '../components/common/ConfirmDialog';
 import { Plus, Edit, Trash2, DollarSign, Filter, X } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 
@@ -38,6 +39,7 @@ function Expenses() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [projects, setProjects] = useState([]);
 
   const loadProjects = useCallback(async () => {
@@ -62,16 +64,12 @@ function Expenses() {
 
   useEffect(() => { loadExpenses(); }, [loadExpenses]);
 
-  const handleDelete = async (id) => {
-    if (locale === 'ar') {
-      const name = prompt('اكتب وصف المصروف للحذف:');
-      const expense = expenses.find(i => i.id === id);
-      if (name !== expense?.description) return;
-    } else {
-      const name = prompt('Type expense description to confirm delete:');
-      const expense = expenses.find(i => i.id === id);
-      if (name !== expense?.description) return;
-    }
+  const handleDelete = (id) => setDeleteTarget(expenses.find((item) => item.id === id));
+
+  const confirmDelete = async () => {
+    const id = deleteTarget?.id;
+    setDeleteTarget(null);
+    if (!id) return;
     try {
       await fetchApi(`${API_URL}/expenses/${id}`, { method: 'DELETE' });
       loadExpenses();
@@ -251,6 +249,7 @@ function Expenses() {
         onClose={() => setShowModal(false)}
         onSave={loadExpenses}
       />}
+      <ConfirmDialog open={Boolean(deleteTarget)} title={t('common.dialogs.confirmTitle')} message={t('common.dialogs.confirmDelete')} confirmLabel={t('common.delete')} destructive requireText={deleteTarget?.description || ''} onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
     </div>
   );
 }

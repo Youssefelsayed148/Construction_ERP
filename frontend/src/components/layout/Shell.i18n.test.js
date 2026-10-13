@@ -172,6 +172,21 @@ describe('shared states, dialog and directional icons', () => {
     expect(onCancel).toHaveBeenCalled();
   });
 
+  test('ConfirmDialog requires the exact typed value when configured', async () => {
+    const onConfirm = jest.fn();
+    await mount(<ConfirmDialog open requireText="Asset 42" onConfirm={onConfirm} onCancel={() => {}} />, 'en');
+    const confirm = container.querySelector('.modal-footer button:last-child');
+    expect(confirm.disabled).toBe(true);
+    const input = container.querySelector('#confirm-dialog-text');
+    const setInputValue = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    act(() => { setInputValue.call(input, 'Asset 4'); input.dispatchEvent(new Event('input', { bubbles: true })); });
+    expect(confirm.disabled).toBe(true);
+    act(() => { setInputValue.call(input, 'Asset 42'); input.dispatchEvent(new Event('input', { bubbles: true })); });
+    expect(confirm.disabled).toBe(false);
+    act(() => confirm.click());
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
   test('back and next arrows mirror in RTL and are not mirrored in LTR', async () => {
     await mount(<><BackIcon data-testid="back" /><NextIcon data-testid="next" /></>, 'ar');
     const arrowsAr = [...container.querySelectorAll('svg')].map((s) => s.getAttribute('class'));

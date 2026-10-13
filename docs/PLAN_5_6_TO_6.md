@@ -128,7 +128,7 @@ The incident-table merge requested in 5.7 is not a fresh schema project: `hse-mi
 
 ### 6.2 Replace prompt flows in bounded screen slices
 
-**Status: Open and cross-cutting.** `rg "prompt\\(" frontend/src` finds remaining calls in portal, assets, approvals, document control, clients, Handover, HR, expenses, legal, QHSE/HSE, schedule, reports, site and unit-sales pages. Replace them in coherent slices, using project/record context to select IDs and shared forms/dialogs for data entry or confirmation. Prioritize 5.6 formal portal forms first, then internal destructive confirmations and record-edit forms.
+**Status: Open and cross-cutting.** The initial current-source inventory found 48 calls across 16 files. A first implementation slice replaced eight typed-name delete prompts in Assets, Clients, Expenses, and Legal with a shared bilingual accessible dialog that requires an exact name match. The latest `rg -c "prompt\\s*\\(" frontend/src --glob '*.{js,jsx,ts,tsx}'` scan finds 40 remaining calls across 12 files. Replace them in coherent slices, using project/record context to select IDs and shared forms/dialogs for data entry or confirmation. The subcontractor portal form prompts from 5.6.5 are already replaced.
 
 **Acceptance:** no `prompt()`/`window.prompt()` remains in application UI; every converted flow validates input and reports errors in EN/AR; referenced records are chosen from scoped lists rather than guessed IDs.
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocale } from '../hooks/useLocale';
+import ConfirmDialog from '../components/common/ConfirmDialog';
 import { Search, Plus, Edit, Trash2, Wrench, X } from 'lucide-react';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
@@ -40,6 +41,7 @@ function Assets() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingAsset, setEditingAsset] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [projects, setProjects] = useState([]);
 
   const loadProjects = useCallback(async () => {
@@ -64,16 +66,12 @@ function Assets() {
 
   useEffect(() => { loadAssets(); }, [loadAssets]);
 
-  const handleDelete = async (id) => {
-    if (locale === 'ar') {
-      const name = prompt('اكتب اسم المعدة للحذف:');
-      const asset = assets.find(i => i.id === id);
-      if (name !== asset?.name_en && name !== asset?.name_ar) return;
-    } else {
-      const name = prompt('Type equipment name to confirm delete:');
-      const asset = assets.find(i => i.id === id);
-      if (name !== asset?.name_en && name !== asset?.name_ar) return;
-    }
+  const handleDelete = (id) => setDeleteTarget(assets.find((item) => item.id === id));
+
+  const confirmDelete = async () => {
+    const id = deleteTarget?.id;
+    setDeleteTarget(null);
+    if (!id) return;
     try {
       await fetchApi(`${API_URL}/assets/${id}`, { method: 'DELETE' });
       loadAssets();
@@ -209,6 +207,7 @@ function Assets() {
         onClose={() => setShowModal(false)}
         onSave={loadAssets}
       />}
+      <ConfirmDialog open={Boolean(deleteTarget)} title={t('common.dialogs.confirmTitle')} message={t('common.dialogs.confirmDelete')} confirmLabel={t('common.delete')} destructive requireText={locale === 'ar' ? deleteTarget?.name_ar || deleteTarget?.name_en || '' : deleteTarget?.name_en || deleteTarget?.name_ar || ''} onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
     </div>
   );
 }

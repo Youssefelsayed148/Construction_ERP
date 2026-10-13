@@ -1332,4 +1332,10 @@ The Phase 5.8.2 changes and gate repairs are verified locally and are awaiting e
 
 ## 2026-10-13: 5.8.2 committed and carryover audit started
 
-Commit `ad8f9f6` records the verified 5.8.2 slice and associated gate repairs. A current Phase 6 prompt scan found 49 `prompt()` calls across 17 page files, so the phase remains open. Added `docs/CARRYOVER.md` with evidence, known owner decisions, and the remaining work sequence. `docs/CODEX_AUDIT_REPORT.md` remains an untracked user artifact and was not modified or staged. The route-to-screen/API inventory and fresh revalidation of the Batch C/E audit leads remain next actions.
+Commit `ad8f9f6` records the verified 5.8.2 slice and associated gate repairs. A current Phase 6 prompt scan found 48 `prompt()` calls across 16 page files, so the phase remains open. Added `docs/CARRYOVER.md` with evidence, known owner decisions, and the remaining work sequence. `docs/CODEX_AUDIT_REPORT.md` remains an untracked user artifact and was not modified or staged. The route-to-screen/API inventory and fresh revalidation of the Batch C/E audit leads remain next actions.
+
+## 2026-10-13: Phase 6.2 typed-name deletion prompts
+
+The first prompt-removal slice converted Assets, Clients, Expenses, and Legal to an accessible shared typed-confirmation dialog. It preserves exact-name matching and localizes the input instruction in EN/AR. The current scan now finds 40 `prompt()` calls across 12 page files (down from 48 across 16).
+
+Verification output: `Shell.i18n.test.js` passed 1 suite / 18 tests; `node frontend/scripts/i18n-inventory.js --check` reported `i18n:check ok`; frontend production build reported `Compiled successfully`; `git diff --check` exited 0. No full frontend suite or browser journey was run.

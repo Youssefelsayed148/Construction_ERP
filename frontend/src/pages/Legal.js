@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocale } from '../hooks/useLocale';
+import ConfirmDialog from '../components/common/ConfirmDialog';
 import { Search, Plus, Edit, Trash2, Shield, CheckCircle, XCircle, X } from 'lucide-react';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
@@ -42,6 +43,7 @@ function Legal() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingDocument, setEditingDocument] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const loadDocuments = useCallback(async () => {
     setLoading(true);
@@ -68,16 +70,12 @@ function Legal() {
     } catch (e) { alert(e.message); }
   };
 
-  const handleDelete = async (id) => {
-    if (locale === 'ar') {
-      const name = prompt('اكتب عنوان المستند للحذف:');
-      const doc = documents.find(i => i.id === id);
-      if (name !== doc?.title) return;
-    } else {
-      const name = prompt('Type document title to confirm delete:');
-      const doc = documents.find(i => i.id === id);
-      if (name !== doc?.title) return;
-    }
+  const handleDelete = (id) => setDeleteTarget(documents.find((item) => item.id === id));
+
+  const confirmDelete = async () => {
+    const id = deleteTarget?.id;
+    setDeleteTarget(null);
+    if (!id) return;
     try {
       await fetchApi(`${API_URL}/legal/${id}`, { method: 'DELETE' });
       loadDocuments();
@@ -241,6 +239,7 @@ function Legal() {
         onClose={() => setShowModal(false)}
         onSave={loadDocuments}
       />}
+      <ConfirmDialog open={Boolean(deleteTarget)} title={t('common.dialogs.confirmTitle')} message={t('common.dialogs.confirmDelete')} confirmLabel={t('common.delete')} destructive requireText={deleteTarget?.title || ''} onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
     </div>
   );
 }

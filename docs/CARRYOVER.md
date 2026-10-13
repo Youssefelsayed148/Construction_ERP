@@ -1,7 +1,7 @@
 # Closeout carryover register
 
-Audit date: 2026-10-13 (Africa/Cairo)  
-Branch: `closeout/batch-a-to-6`  
+Audit date: 2026-10-13 (Africa/Cairo)
+Branch: `closeout/batch-a-to-6`
 Last verified implementation slice: `ad8f9f6` (Phase 5.8.2 plus gate repairs)
 
 This register captures evidence-backed work that remains after the 5.8.2 slice. It is not a production readiness approval. The working tree contains only the pre-existing untracked `docs/CODEX_AUDIT_REPORT.md` artifact; it has not been edited or staged.
@@ -17,7 +17,7 @@ This register captures evidence-backed work that remains after the 5.8.2 slice. 
 
 | Area | Evidence and current status | Next action / dependency |
 |---|---|---|
-| Phase 6.2 prompt replacement | Current `rg -n "prompt\\s*\\(" frontend/src --glob '*.{js,jsx,ts,tsx}'` finds 49 calls in 17 page files: Approvals, Assets, Clients, DocControlExtended, Expenses, Handover, HR, Legal, PortalDashboard, ProjectDocuments, QHSE, QHSEExtended, Reports, SiteManagement, SiteWorkspace, UnitsSales. | Replace in bounded, localized form/confirmation slices; validate input and select scoped records. Exit criterion is zero prompt calls. |
+| Phase 6.2 prompt replacement | Current `rg -n "prompt\\s*\\(" frontend/src --glob '*.{js,jsx,ts,tsx}'` initially found 48 calls in 16 page files. The first implementation slice removed eight deletion prompts in Assets, Clients, Expenses, and Legal; the latest scan finds 40 calls in 12 files. | Replace in bounded, localized form/confirmation slices; validate input and select scoped records. Exit criterion is zero prompt calls. |
 | Phase 6.1 / 6.3 route-to-screen audit and admin UX | `docs/PLAN_5_6_TO_6.md` marks shared form kit and administration partial and requires an App/sidebar/API inventory. Existing settings, setup, shell, and module pages exist, so source-plan “missing screen” claims need route-level verification. | Build an explicit route → screen → API/permission inventory; implement only proven missing owner-facing screens. |
 | Phase 6.4 / 6.5 navigation and dashboards | Plan records project/module workspaces mostly implemented but calls out navigation reachability, attention counts, role dashboards, and canonical incident entry point for validation. | Verify each required journey from navigation with authorized role, project scope, 403 checks, and loading/empty/error behavior; document intentional API-only modules. |
 | 5.6 consultant SLA administration | `docs/PLAN_5_6_TO_6.md` §5.6.2 says due times use configured SLA and null when absent; SLA administration remains open. | Add scoped, permission-guarded administration for workflow SLA values and focused tests. |

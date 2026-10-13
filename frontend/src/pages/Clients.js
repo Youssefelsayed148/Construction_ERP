@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocale } from '../hooks/useLocale';
+import ConfirmDialog from '../components/common/ConfirmDialog';
 import { Search, Plus, Edit, Trash2, Users, X } from 'lucide-react';
 import EGYPT_CITIES from '../constants/egyptCities';
 
@@ -30,6 +31,7 @@ function Clients() {
   const [activeFilter, setActiveFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const loadClients = useCallback(async () => {
     setLoading(true);
@@ -47,16 +49,12 @@ function Clients() {
 
   useEffect(() => { loadClients(); }, [loadClients]);
 
-  const handleDelete = async (id) => {
-    if (locale === 'ar') {
-      const name = prompt('اكتب اسم العميل للحذف:');
-      const client = clients.find(i => i.id === id);
-      if (name !== client?.name_en && name !== client?.name_ar) return;
-    } else {
-      const name = prompt('Type client name to confirm delete:');
-      const client = clients.find(i => i.id === id);
-      if (name !== client?.name_en && name !== client?.name_ar) return;
-    }
+  const handleDelete = (id) => setDeleteTarget(clients.find((item) => item.id === id));
+
+  const confirmDelete = async () => {
+    const id = deleteTarget?.id;
+    setDeleteTarget(null);
+    if (!id) return;
     try {
       await fetchApi(`${API_URL}/clients/${id}`, { method: 'DELETE' });
       loadClients();
@@ -223,6 +221,7 @@ function Clients() {
         onClose={() => setShowModal(false)}
         onSave={loadClients}
       />}
+      <ConfirmDialog open={Boolean(deleteTarget)} title={t('common.dialogs.confirmTitle')} message={t('common.dialogs.confirmDelete')} confirmLabel={t('common.delete')} destructive requireText={locale === 'ar' ? deleteTarget?.name_ar || deleteTarget?.name_en || '' : deleteTarget?.name_en || deleteTarget?.name_ar || ''} onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
     </div>
   );
 }

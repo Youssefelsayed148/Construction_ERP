@@ -35,5 +35,5 @@
 
 - GL account mappings stay provisional until the finance owner confirms account purposes.
 - Human UAT has not been executed.
-- The current prompt scan finds 49 calls across 17 frontend page files; Phase 6 remains open. `docs/CARRYOVER.md` records the audit inventory and next actions.
+- The current prompt scan finds 40 calls across 12 frontend page files; Phase 6 remains open. The typed-name deletion slice removed eight calls across four pages. `docs/CARRYOVER.md` records the audit inventory and next actions.
 - `docs/CODEX_AUDIT_REPORT.md` is a pre-existing untracked user artifact and has not been edited.

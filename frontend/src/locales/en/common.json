@@ -125,6 +125,7 @@
   },
   "toast": { "dismiss": "Dismiss" },
   "dialogs": {
+    "typeToConfirm": "Type \"{value}\" to confirm.",
     "confirmTitle": "Please confirm",
     "confirmDelete": "Delete this record? This cannot be undone.",
     "unsavedChanges": "You have unsaved changes. Leave without saving?",
