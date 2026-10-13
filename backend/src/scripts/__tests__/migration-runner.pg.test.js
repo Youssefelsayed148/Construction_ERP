@@ -133,6 +133,15 @@ describePg('migration runner (real PostgreSQL)', () => {
       await c.query('DELETE FROM incidents');
       await c.query('ALTER SEQUENCE incidents_id_seq RESTART WITH 1');
       await hse.convertLegacy(q);
+      const migrated = await c.query('SELECT id, incident_type, description FROM incidents ORDER BY id');
+      expect(migrated.rows).toEqual([
+        { id: 1, incident_type: 'fall', description: 'x' },
+        { id: 2, incident_type: 'cut', description: 'y' },
+        { id: 3, incident_type: 'burn', description: 'z' },
+      ]);
+      expect(Number((await c.query("SELECT COUNT(*)::int AS count FROM safety_incidents")).rows[0].count)).toBe(3);
+      await hse.convertLegacy(q);
+      expect(Number((await c.query('SELECT COUNT(*)::int AS count FROM incidents')).rows[0].count)).toBe(3);
       const next = await c.query("INSERT INTO incidents (incident_type, description) VALUES ('after','new') RETURNING id");
       expect(Number(next.rows[0].id)).toBeGreaterThan(3);
     } finally {

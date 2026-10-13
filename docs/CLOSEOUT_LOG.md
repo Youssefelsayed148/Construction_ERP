@@ -1253,3 +1253,9 @@ Focused verification: `portal.test.js` passed 16/16, including returned-submitta
 Replaced subcontractor package and instruction acknowledgement, quantity claim, and payment application prompts. Instruction choices include only issued instructions assigned to the user's package or the user; quantity forms draw the BOQ item from the chosen awarded package; payment forms derive project/package scope from that same package. Empty BOQ availability is explained in the form.
 
 Focused verification: `portal.test.js` passed 17/17, including assigned instruction filtering; `PortalDashboard.test.js` passed 9/9 covering package/instruction acknowledgements and quantity/payment payloads; `i18n:check` and `git diff --check` passed. No full suite was run.
+
+## 2026-10-13: Phase 5.7.1 canonical incident source
+
+QHSE's legacy incident routes and site daily-report aggregation now read/write the canonical `incidents` table. The HSE migration's `safety_incidents` view remains for compatibility only. Strengthened the real-PostgreSQL conversion regression to check exact imported IDs and data, compatibility-view row parity, rerun idempotency, and sequence continuation.
+
+Focused verification: the named `legacy HSE conversion leaves usable sequences` case in `migration-runner.pg.test.js` passed 1/1; the named `every source census is exactly its own count` case in `site.test.js` passed 1/1; a source scan found no internal route/service incident SQL using the legacy name. No full suite was run.

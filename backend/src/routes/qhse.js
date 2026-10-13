@@ -271,7 +271,7 @@ router.get('/incidents', authenticate, authorize(), async (req, res) => {
     if (status) { conditions.push(`si.status = $${idx++}`); params.push(status); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const result = await query(
-      `SELECT si.*, u.name as reported_by_name FROM safety_incidents si
+      `SELECT si.*, u.name as reported_by_name FROM incidents si
        LEFT JOIN users u ON si.reported_by = u.id ${where} ORDER BY si.incident_date DESC, si.id DESC`,
       params
     );
@@ -294,7 +294,7 @@ router.post('/incidents', authenticate, authorize(), async (req, res) => {
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
     const result = await auditedTransaction((q) => q(
-      `INSERT INTO safety_incidents (project_id, incident_date, incident_type, severity, description, injured_party, reported_by, corrective_action)
+      `INSERT INTO incidents (project_id, incident_date, incident_type, severity, description, injured_party, reported_by, corrective_action)
        VALUES ($1,COALESCE($2, CURRENT_DATE),$3,$4,$5,$6,$7,$8) RETURNING *`,
       [value.project_id, value.incident_date, value.incident_type, value.severity, value.description,
        value.injured_party, req.user.id, value.corrective_action]
@@ -319,7 +319,7 @@ router.put('/incidents/:id', authenticate, authorize(), async (req, res) => {
       if (v !== undefined) { sets.push(`${k} = $${idx++}`); params.push(v); }
     }
     params.push(req.params.id);
-    const result = await query(`UPDATE safety_incidents SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
+    const result = await query(`UPDATE incidents SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Incident not found' });
     res.json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }

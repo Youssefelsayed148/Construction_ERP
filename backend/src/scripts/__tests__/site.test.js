@@ -77,7 +77,7 @@ async function buildFixture() {
     id SERIAL PRIMARY KEY, project_id INTEGER, test_type VARCHAR(100), test_date DATE, status VARCHAR(30))`);
   await q(`CREATE TABLE IF NOT EXISTS safety_inspections (
     id SERIAL PRIMARY KEY, project_id INTEGER, inspection_date DATE, status VARCHAR(20) DEFAULT 'pending')`);
-  await q(`CREATE TABLE IF NOT EXISTS safety_incidents (
+  await q(`CREATE TABLE IF NOT EXISTS incidents (
     id SERIAL PRIMARY KEY, project_id INTEGER, incident_date DATE, incident_type VARCHAR(100), status VARCHAR(30))`);
   await q(`CREATE TABLE IF NOT EXISTS material_requirements (
     id SERIAL PRIMARY KEY, project_id INTEGER, status VARCHAR(50))`);
@@ -177,7 +177,7 @@ describe('daily report on a busy day', () => {
     // Inspections.
     await q(`INSERT INTO quality_tests (id, project_id, test_type, test_date, status) VALUES ($1,$2,$3,$4,$5)`, [1, 1, 'Concrete cube', DAY, 'passed']);
     await q(`INSERT INTO safety_inspections (id, project_id, inspection_date, status) VALUES ($1,$2,$3,$4)`, [1, 1, DAY, 'passed']);
-    await q(`INSERT INTO safety_incidents (id, project_id, incident_date, incident_type, status) VALUES ($1,$2,$3,$4,$5)`, [1, 1, DAY, 'near_miss', 'open']);
+    await q(`INSERT INTO incidents (id, project_id, incident_date, incident_type, status) VALUES ($1,$2,$3,$4,$5)`, [1, 1, DAY, 'near_miss', 'open']);
     // Instruction: issued AND acknowledged the same day — counts ONCE.
     await q(`INSERT INTO engineer_instructions (id, instruction_number, project_id, title, status, issued_date, acknowledged_at, acknowledged_by_issue)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, [1, 'EI-1-001', 1, 'Remove formwork', 'acknowledged', DAY, `${DAY}T10:00:00Z`, true]).catch(async () => {
@@ -201,7 +201,7 @@ describe('daily report on a busy day', () => {
     expect(census.executed_quantities).toEqual({ source: 'quantity_measurements', count: 1 }); // approved-only
     expect(census.quality_tests).toEqual({ source: 'quality_tests', count: 1 });
     expect(census.safety_inspections).toEqual({ source: 'safety_inspections', count: 1 });
-    expect(census.safety_incidents).toEqual({ source: 'safety_incidents', count: 1 });
+    expect(census.safety_incidents).toEqual({ source: 'incidents', count: 1 });
     // The instruction moved issued_date AND acknowledged on the same day —
     // it must appear ONCE, not twice.
     expect(census.instructions).toEqual({ source: 'engineer_instructions', count: 1 });

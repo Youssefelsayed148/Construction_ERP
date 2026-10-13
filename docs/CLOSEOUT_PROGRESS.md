@@ -471,3 +471,9 @@ Focused results: `portal.test.js` passed 16/16, including a cross-package resubm
 Replaced the remaining subcontractor package/instruction acknowledgement, quantity claim and payment application prompts. Package and instruction actions use active assigned records from the dashboard; quantity claims derive the BOQ item from the selected awarded package, and payment applications derive both project and package IDs from that same assigned package. Date, quantity and monetary fields have client validation, and failures are shown in EN/AR.
 
 Focused results: `portal.test.js` passed 17/17, including issued instruction scope; `PortalDashboard.test.js` passed 9/9, covering the four form payloads; `i18n:check` and `git diff --check` passed. No full suite was run.
+
+### 5.7.1 Canonical incident readers and legacy conversion evidence
+
+QHSE incident GET/POST/PUT and site daily-report aggregation now use `incidents`. The `safety_incidents` compatibility view remains owned by the HSE migration for legacy consumers. The migration regression now verifies exact imported row IDs and values, parity through the view, idempotent rerun, and sequence continuation past migrated IDs.
+
+Focused results: the targeted `migration-runner.pg.test.js` case passed 1/1; the targeted site daily-report census case passed 1/1; the scan for internal `safety_incidents` SQL in routes/services returned no matches. No full suite was run at this ticket boundary.

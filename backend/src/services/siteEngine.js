@@ -103,7 +103,7 @@ async function dayQualityTests(q, projectId, date) {
 async function daySafety(q, projectId, date) {
   const inspections = (await safeAll(q, 'SELECT * FROM safety_inspections WHERE project_id = $1', [projectId]))
     .filter((i) => sameDateIn([i.inspection_date], date));
-  const incidents = (await safeAll(q, 'SELECT * FROM safety_incidents WHERE project_id = $1', [projectId]))
+  const incidents = (await safeAll(q, 'SELECT * FROM incidents WHERE project_id = $1', [projectId]))
     .filter((i) => sameDateIn([i.incident_date], date));
   return { inspections, incidents };
 }
@@ -212,7 +212,7 @@ async function assembleDailyReport(q, projectId, date, engineer = null, typed = 
     executed_quantities: { source: 'quantity_measurements', count: measurements.length },
     quality_tests: { source: 'quality_tests', count: quality.length },
     safety_inspections: { source: 'safety_inspections', count: safety.inspections.length },
-    safety_incidents: { source: 'safety_incidents', count: safety.incidents.length },
+    safety_incidents: { source: 'incidents', count: safety.incidents.length },
     instructions: { source: 'engineer_instructions', count: instructions.length },
     photos: { source: 'photos', count: photos.length },
     material_requirements: { source: 'material_requirements', count: material.requirements.length },

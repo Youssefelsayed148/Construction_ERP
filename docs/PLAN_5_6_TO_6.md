@@ -70,11 +70,11 @@ The incident-table merge requested in 5.7 is not a fresh schema project: `hse-mi
 
 ### 5.7.1 Converge incident paths on the canonical register
 
-**Status: Partial; schema migration exists.** Change QHSE and site/dashboard readers that still query the compatibility view to use `incidents`; keep the view only for external legacy SQL/API consumers that are documented. Verify historical counts and IDs after migration; make the migration safely repeatable on clean and legacy fixtures.
+**Status: Partial; incident source consolidation is complete.** QHSE reads/writes and site daily-report aggregation now use canonical `incidents`; the migration-owned `safety_incidents` compatibility view remains for legacy SQL/API consumers. The legacy conversion preserves row IDs and count, the compatibility view mirrors those rows, reruns do not duplicate data, and the canonical sequence advances beyond migrated IDs. No new migration was needed.
 
 **Acceptance:** both APIs expose one canonical incident record; no duplicate or lost rows; compatibility behavior and rollback/recovery expectations are documented.
 
-**Focused checks:** migration-runner PostgreSQL regression for populated legacy table and rerun; QHSE/HSE incident route tests and reconciliation count assertion.
+**Focused checks:** `migration-runner.pg.test.js`'s populated legacy conversion case passed 1/1 for exact row IDs/values, compatibility-view count, rerun idempotency and sequence continuation. The site daily-report source-census case passed 1/1 using canonical `incidents`. A source scan found no internal route/service SQL reading or writing `safety_incidents`; full HSE/Phase 5.7 exit gates remain for the phase boundary.
 
 ### 5.7.2 Certificates, safety observations and project record links
 
