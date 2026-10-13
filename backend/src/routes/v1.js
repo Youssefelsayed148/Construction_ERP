@@ -35,7 +35,8 @@ const oauthService = require('../services/oauthService');
 const webhookService = require('../services/webhookService');
 const apiResources = require('../services/apiResources');
 const assistantService = require('../services/assistantService');
-const { healthCheck } = require('../config/database');
+const policy = require('../services/policy');
+const { healthCheck, transaction } = require('../config/database');
 const buildOpenApi = require('../utils/openapi');
 
 // Internal router modules, mounted in server.js (see route-inventory comments).
@@ -620,12 +621,21 @@ function buildV1Router() {
     try {
       const { error, value } = webhookSchema.validate(req.body);
       if (error) { const err = new Error(error.details[0].message); err.status = 400; return next(err); }
-      const hook = await webhookService.createWebhook({
-        url: value.url, secret: require('crypto').randomBytes(24).toString('hex'),
-        events: value.events, description: value.description, userId: req.user.id,
+      const secret = require('crypto').randomBytes(32).toString('hex');
+      const hook = await transaction(async (client) => {
+        const q = client.query.bind(client);
+        const created = await webhookService.createWebhook({
+          url: value.url, secret,
+          events: value.events, description: value.description, userId: req.user.id, q,
+        });
+        await policy.recordAuditEvent({
+          entity: 'webhook', entityId: created.id, action: 'create',
+          after: { url: created.url, events: created.events }, userId: req.user.id,
+        }, { query: q });
+        return created;
       });
       // The secret is shown exactly once, at creation.
-      res.status(201).json({ success: true, data: { id: hook.id, url: hook.url, events: hook.events, secret: hook.secret, description: hook.description } });
+      res.status(201).json({ success: true, data: { ...hook, secret } });
     } catch (e) { next(e); }
   });
   api.get('/webhooks', authorize('owner', 'admin'), async (req, res, next) => {
@@ -636,6 +646,28 @@ function buildV1Router() {
       const hook = await webhookService.getWebhook(parseInt(req.params.id, 10));
       if (!hook) { const err = new Error('Webhook not found'); err.status = 404; return next(err); }
       res.json({ success: true, data: hook });
+    } catch (e) { next(e); }
+  });
+  api.post('/webhooks/:id/rotate-secret', authorize('owner', 'admin'), async (req, res, next) => {
+    try {
+      const id = Number.parseInt(req.params.id, 10);
+      if (!Number.isSafeInteger(id) || id <= 0) {
+        const err = new Error('Webhook not found'); err.status = 404; err.error_code = 'webhook_not_found'; return next(err);
+      }
+      const secret = require('crypto').randomBytes(32).toString('hex');
+      const hook = await transaction(async (client) => {
+        const q = client.query.bind(client);
+        const updated = await webhookService.rotateWebhookSecret(id, secret, q);
+        if (!updated) {
+          const err = new Error('Webhook not found'); err.status = 404; err.error_code = 'webhook_not_found'; throw err;
+        }
+        await policy.recordAuditEvent({
+          entity: 'webhook', entityId: updated.id, action: 'rotate_secret',
+          after: { secret_rotated: true }, userId: req.user.id,
+        }, { query: q });
+        return updated;
+      });
+      res.json({ success: true, data: { ...hook, secret } });
     } catch (e) { next(e); }
   });
   api.put('/webhooks/:id', authorize('owner', 'admin'), async (req, res, next) => {

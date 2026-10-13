@@ -21,6 +21,10 @@
 'use strict';
 
 const crypto = require('crypto');
+const dns = require('dns').promises;
+const http = require('http');
+const https = require('https');
+const net = require('net');
 const { query: defaultQuery } = require('../config/database');
 const sweepLeader = require('./sweepLeader');
 
@@ -52,7 +56,130 @@ const EVENT_CATALOG = [
 
 const BACKOFF_MINUTES = [1, 5, 30, 120, 480]; // attempt n+1 waits BACKOFF[n-1]
 const DELIVERY_TIMEOUT_MS = 10000;
+const MAX_RESPONSE_BYTES = 64 * 1024;
 const SWEEP_INTERVAL_MS = 60 * 1000;
+
+class WebhookUrlError extends Error {
+  constructor(message, code = 'webhook_url_rejected') {
+    super(message);
+    this.name = 'WebhookUrlError';
+    this.error_code = code;
+    this.status = 400;
+  }
+}
+
+function ipv4ToNumber(address) {
+  return address.split('.').reduce((value, octet) => ((value << 8) | Number(octet)) >>> 0, 0);
+}
+
+function inIpv4Cidr(address, base, bits) {
+  const shift = 32 - bits;
+  return (ipv4ToNumber(address) >>> shift) === (ipv4ToNumber(base) >>> shift);
+}
+
+function parseIpv6(address) {
+  let value = address.toLowerCase().split('%')[0];
+  if (value.includes('.')) {
+    const lastColon = value.lastIndexOf(':');
+    const ipv4 = ipv4ToNumber(value.slice(lastColon + 1));
+    value = `${value.slice(0, lastColon)}:${(ipv4 >>> 16).toString(16)}:${(ipv4 & 0xffff).toString(16)}`;
+  }
+  const halves = value.split('::');
+  if (halves.length > 2) return null;
+  const left = halves[0] ? halves[0].split(':') : [];
+  const right = halves.length === 2 && halves[1] ? halves[1].split(':') : [];
+  const missing = 8 - left.length - right.length;
+  if ((halves.length === 1 && missing !== 0) || missing < 0) return null;
+  const groups = [...left, ...Array(missing).fill('0'), ...right];
+  if (groups.length !== 8 || groups.some((part) => !/^[0-9a-f]{1,4}$/.test(part))) return null;
+  return groups.reduce((result, part) => (result << 16n) | BigInt(`0x${part}`), 0n);
+}
+
+function isBlockedAddress(address) {
+  const family = net.isIP(address);
+  if (family === 4) {
+    return [
+      ['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8],
+      ['169.254.0.0', 16], ['172.16.0.0', 12], ['192.0.0.0', 24], ['192.0.2.0', 24],
+      ['192.168.0.0', 16], ['198.18.0.0', 15], ['198.51.100.0', 24], ['203.0.113.0', 24],
+      ['224.0.0.0', 4], ['240.0.0.0', 4],
+    ].some(([base, bits]) => inIpv4Cidr(address, base, bits));
+  }
+  if (family !== 6) return true;
+  const value = parseIpv6(address);
+  if (value == null) return true;
+  const mappedPrefix = value >> 32n;
+  if (mappedPrefix === 0xffffn) {
+    const embedded = Number(value & 0xffffffffn);
+    return isBlockedAddress(`${embedded >>> 24}.${(embedded >>> 16) & 255}.${(embedded >>> 8) & 255}.${embedded & 255}`);
+  }
+  // Accept only global-unicast 2000::/3. This rejects unspecified, loopback,
+  // link-local, unique-local, multicast and IPv4-compatible addresses.
+  if ((value >> 125n) !== 1n) return true;
+  const documentation = parseIpv6('2001:db8::');
+  return (value >> 96n) === (documentation >> 96n);
+}
+
+async function resolveWebhookTarget(rawUrl, { lookup = dns.lookup } = {}) {
+  let url;
+  try { url = new URL(rawUrl); } catch { throw new WebhookUrlError('Webhook URL is invalid'); }
+  const allowHttp = process.env.WEBHOOK_ALLOW_HTTP_LOCAL === 'true';
+  if (url.protocol !== 'https:' && !(allowHttp && url.protocol === 'http:')) {
+    throw new WebhookUrlError('Webhook URLs must use HTTPS');
+  }
+  if (url.username || url.password || !url.hostname) throw new WebhookUrlError('Webhook URL credentials are not allowed');
+  let addresses;
+  const hostname = url.hostname.replace(/^\[|\]$/g, '');
+  const literalFamily = net.isIP(hostname);
+  try {
+    addresses = literalFamily
+      ? [{ address: hostname, family: literalFamily }]
+      : await lookup(hostname, { all: true, verbatim: true });
+  } catch {
+    throw new WebhookUrlError('Webhook hostname could not be resolved', 'webhook_dns_failed');
+  }
+  if (!Array.isArray(addresses) || addresses.length === 0) throw new WebhookUrlError('Webhook hostname has no addresses', 'webhook_dns_failed');
+  if (addresses.some((entry) => isBlockedAddress(entry.address))) {
+    throw new WebhookUrlError('Webhook hostname resolves to a prohibited network');
+  }
+  return { url, address: addresses[0].address, family: addresses[0].family };
+}
+
+function postWebhook(target, body, headers, { requestImpl, timeoutMs = DELIVERY_TIMEOUT_MS, maxResponseBytes = MAX_RESPONSE_BYTES } = {}) {
+  const transport = requestImpl || (target.url.protocol === 'https:' ? https.request : http.request);
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let responseBytes = 0;
+    const fail = (error) => {
+      if (settled) return;
+      settled = true;
+      req.destroy();
+      reject(error);
+    };
+    const req = transport(target.url, {
+      method: 'POST', headers, timeout: timeoutMs,
+      // Keep TLS SNI/certificate validation bound to the URL hostname while
+      // forcing the socket to the address resolved and checked above.
+      lookup: (hostname, options, callback) => (options && options.all
+        ? callback(null, [{ address: target.address, family: target.family }])
+        : callback(null, target.address, target.family)),
+    }, (res) => {
+      res.on('data', (chunk) => {
+        responseBytes += chunk.length;
+        if (responseBytes > maxResponseBytes) fail(new Error('Webhook response exceeded size limit'));
+      });
+      res.on('end', () => {
+        if (settled) return;
+        settled = true;
+        resolve({ statusCode: res.statusCode });
+      });
+      res.on('error', fail);
+    });
+    req.on('timeout', () => fail(new Error('Webhook request timed out')));
+    req.on('error', fail);
+    req.end(body);
+  });
+}
 
 function matches(events, eventType) {
   return (events || []).some((pattern) => {
@@ -68,14 +195,58 @@ function signPayload(secret, timestamp, body) {
   return crypto.createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex');
 }
 
+function webhookEncryptionKey() {
+  const master = process.env.WEBHOOK_ENCRYPTION_KEY || process.env.JWT_SECRET;
+  if (typeof master !== 'string' || master.length < 32) {
+    const error = new Error('Webhook secret encryption is not configured');
+    error.error_code = 'webhook_secret_key_missing';
+    error.status = 503;
+    throw error;
+  }
+  return Buffer.from(crypto.hkdfSync('sha256', Buffer.from(master), 'osiris-webhook-secret-v1', 'construction-erp', 32));
+}
+
+function encryptWebhookSecret(secret) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', webhookEncryptionKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(String(secret), 'utf8'), cipher.final()]);
+  return `enc:v1:${iv.toString('base64url')}:${cipher.getAuthTag().toString('base64url')}:${encrypted.toString('base64url')}`;
+}
+
+function decryptWebhookSecret(secret) {
+  if (typeof secret !== 'string') throw new Error('Webhook secret is unavailable');
+  if (!secret.startsWith('enc:v1:')) return secret; // legacy rows are encrypted on first delivery
+  const [, , ivText, tagText, encryptedText] = secret.split(':');
+  try {
+    const decipher = crypto.createDecipheriv('aes-256-gcm', webhookEncryptionKey(), Buffer.from(ivText, 'base64url'));
+    decipher.setAuthTag(Buffer.from(tagText, 'base64url'));
+    return Buffer.concat([decipher.update(Buffer.from(encryptedText, 'base64url')), decipher.final()]).toString('utf8');
+  } catch {
+    const error = new Error('Webhook secret could not be decrypted');
+    error.error_code = 'webhook_secret_decryption_failed';
+    error.status = 503;
+    throw error;
+  }
+}
+
+async function loadWebhookSecret(hook, q) {
+  const rawSecret = decryptWebhookSecret(hook.secret);
+  if (!hook.secret.startsWith('enc:v1:')) {
+    await q('UPDATE webhooks SET secret = $2 WHERE id = $1 AND secret = $3', [hook.id, encryptWebhookSecret(rawSecret), hook.secret]);
+  }
+  return rawSecret;
+}
+
 // ---------------------------------------------------------------------------
 // Registration CRUD
 // ---------------------------------------------------------------------------
 
-async function createWebhook({ url, secret, events, description = null, userId, q = defaultQuery }) {
+async function createWebhook({ url, secret, events, description = null, userId, q = defaultQuery, lookup = dns.lookup }) {
+  await resolveWebhookTarget(url, { lookup });
   const r = await q(
-    `INSERT INTO webhooks (url, secret, events, description, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-    [url, secret, JSON.stringify(events), description, userId]
+    `INSERT INTO webhooks (url, secret, events, description, created_by) VALUES ($1, $2, $3, $4, $5)
+     RETURNING id, url, events, description, is_active, created_by, created_at`,
+    [url, encryptWebhookSecret(secret), JSON.stringify(events), description, userId]
   );
   return r.rows[0];
 }
@@ -86,10 +257,20 @@ async function listWebhooks(q = defaultQuery) {
 }
 
 async function getWebhook(id, q = defaultQuery) {
-  return (await q('SELECT * FROM webhooks WHERE id = $1', [id])).rows[0] || null;
+  return (await q('SELECT id, url, events, description, is_active, created_by, created_at FROM webhooks WHERE id = $1', [id])).rows[0] || null;
 }
 
-async function updateWebhook(id, patch, q = defaultQuery) {
+async function rotateWebhookSecret(id, secret, q = defaultQuery) {
+  const r = await q(
+    `UPDATE webhooks SET secret = $2 WHERE id = $1
+     RETURNING id, url, events, description, is_active, created_by, created_at`,
+    [id, encryptWebhookSecret(secret)]
+  );
+  return r.rows[0] || null;
+}
+
+async function updateWebhook(id, patch, q = defaultQuery, { lookup = dns.lookup } = {}) {
+  if (patch.url) await resolveWebhookTarget(patch.url, { lookup });
   const sets = []; const params = []; let i = 1;
   for (const [col, val] of Object.entries(patch)) {
     sets.push(`${col} = $${i++}`);
@@ -135,7 +316,7 @@ async function dispatchEvent(evt, opts = {}) {
         [hook.id, evt.eventType, evt.eventId || null, evt.entityType, evt.entityId, payload]
       )).rows[0];
       // Fire-and-forget; each attempt is fully recorded in the delivery row.
-      attemptDelivery(d.id, { query: q }).catch(() => {});
+      attemptDelivery(d.id, { ...opts, query: q }).catch(() => {});
     }
     return targets.length;
   } catch (e) {
@@ -160,24 +341,17 @@ async function attemptDelivery(deliveryId, opts = {}) {
 
   let ok = false; let statusCode = null; let errorText = null;
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), DELIVERY_TIMEOUT_MS);
-    const res = await fetch(hook.url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Osiris-Event': d.event_type,
-        'X-Osiris-Delivery': String(d.id),
-        'X-Osiris-Timestamp': String(timestamp),
-        'X-Osiris-Signature': signPayload(hook.secret, timestamp, body),
-      },
-      body,
-      signal: controller.signal,
-    });
-    clearTimeout(timer);
-    statusCode = res.status;
-    ok = res.status >= 200 && res.status < 300;
-    if (!ok) errorText = `HTTP ${res.status}`;
+    const target = await resolveWebhookTarget(hook.url, { lookup: opts.lookup || dns.lookup });
+    const res = await postWebhook(target, body, {
+      'Content-Type': 'application/json',
+      'X-Osiris-Event': d.event_type,
+      'X-Osiris-Delivery': String(d.id),
+      'X-Osiris-Timestamp': String(timestamp),
+      'X-Osiris-Signature': signPayload(await loadWebhookSecret(hook, q), timestamp, body),
+    }, { requestImpl: opts.requestImpl, timeoutMs: DELIVERY_TIMEOUT_MS, maxResponseBytes: MAX_RESPONSE_BYTES });
+    statusCode = res.statusCode;
+    ok = res.statusCode >= 200 && res.statusCode < 300;
+    if (!ok) errorText = `HTTP ${res.statusCode}`;
   } catch (e) {
     errorText = e.message;
   }
@@ -272,11 +446,18 @@ function initWebhookEventSubscriber(queryFn = defaultQuery) {
 module.exports = {
   EVENT_CATALOG,
   BACKOFF_MINUTES,
+  MAX_RESPONSE_BYTES,
   matches,
   signPayload,
+  encryptWebhookSecret,
+  decryptWebhookSecret,
+  isBlockedAddress,
+  resolveWebhookTarget,
+  postWebhook,
   createWebhook,
   listWebhooks,
   getWebhook,
+  rotateWebhookSecret,
   updateWebhook,
   deleteWebhook,
   listDeliveries,

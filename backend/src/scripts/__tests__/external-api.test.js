@@ -18,7 +18,7 @@
 //     the internal mount visible to the policy engine — same user, same
 //     decision, including ID-guessing a project the user is not assigned to.
 
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'external-api-test-secret';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'external-api-test-secret-longer-than-32-characters';
 process.env.V1_RATE_LIMIT_PER_MIN = process.env.V1_RATE_LIMIT_PER_MIN || '300';
 
 jest.mock('../../config/database', () => ({
@@ -42,6 +42,28 @@ const policy = require('../../services/policy');
 const migration = require('../migrate-37-external-api');
 
 const SECRET = process.env.JWT_SECRET;
+const safeWebhookLookup = async () => [{ address: '8.8.8.8', family: 4 }];
+
+function fakeWebhookRequest(statusCode = 200, responseBody = 'ok') {
+  const { EventEmitter } = require('events');
+  const calls = [];
+  const requestImpl = (url, options, onResponse) => {
+    const req = new EventEmitter();
+    req.destroy = jest.fn();
+    req.end = (body) => {
+      calls.push({ url: String(url), options, body });
+      const res = new EventEmitter();
+      res.statusCode = statusCode;
+      process.nextTick(() => {
+        onResponse(res);
+        res.emit('data', Buffer.from(responseBody));
+        res.emit('end');
+      });
+    };
+    return req;
+  };
+  return { requestImpl, calls };
+}
 
 // ---------------------------------------------------------------------------
 // Flexible query stub — one mock shared by every service under test.
@@ -109,16 +131,17 @@ query.mockImplementation(async (sql, params = []) => {
   if (/UPDATE service_accounts SET last_used_at/i.test(s)) return { rows: [] };
   if (/INSERT INTO webhooks/i.test(s)) {
     const id = ++stub.webhookSeq;
-    const row = { id, url: params[0], secret: params[1], events: JSON.parse(params[2]), description: params[3], is_active: true, created_by: params[4] };
+    const row = { id, url: params[0], secret: params[1], events: JSON.parse(params[2]), description: params[3], is_active: true, created_by: params[4], created_at: new Date() };
     stub.webhooks.set(id, row);
-    return { rows: [row] };
+    return { rows: [{ id, url: row.url, events: row.events, description: row.description, is_active: true, created_by: row.created_by, created_at: row.created_at }] };
   }
-  if (/SELECT \* FROM webhooks WHERE id = \$1/i.test(s)) {
+  if (/SELECT .* FROM webhooks WHERE id = \$1/i.test(s)) {
     const hook = [...stub.webhooks.values()].find((h) => h.id === params[0]);
-    return { rows: hook ? [hook] : [] };
+    if (!hook) return { rows: [] };
+    return { rows: /SELECT \* FROM/i.test(s) ? [hook] : [{ id: hook.id, url: hook.url, events: hook.events, description: hook.description, is_active: hook.is_active, created_by: hook.created_by, created_at: hook.created_at }] };
   }
   if (/SELECT id, url, events, description, is_active, created_by, created_at FROM webhooks/i.test(s)) {
-    return { rows: [...stub.webhooks.values()].filter((h) => h.is_active) };
+    return { rows: [...stub.webhooks.values()].filter((h) => h.is_active).map((h) => ({ id: h.id, url: h.url, events: h.events, description: h.description, is_active: h.is_active, created_by: h.created_by, created_at: h.created_at })) };
   }
   if (/SELECT \* FROM webhooks WHERE is_active = true/i.test(s)) {
     return { rows: [...stub.webhooks.values()].filter((h) => h.is_active) };
@@ -127,6 +150,17 @@ query.mockImplementation(async (sql, params = []) => {
     const hook = [...stub.webhooks.values()].find((h) => h.id === params[0]);
     if (hook) { stub.webhooks.delete(hook.id); return { rows: [{ id: hook.id }] }; }
     return { rows: [] };
+  }
+  if (/UPDATE webhooks SET secret = \$2 WHERE id = \$1 AND secret = \$3/i.test(s)) {
+    const hook = stub.webhooks.get(params[0]);
+    if (hook && hook.secret === params[2]) hook.secret = params[1];
+    return { rows: [] };
+  }
+  if (/UPDATE webhooks SET secret = \$2 WHERE id = \$1/i.test(s)) {
+    const hook = stub.webhooks.get(params[0]);
+    if (!hook) return { rows: [] };
+    hook.secret = params[1];
+    return { rows: [{ id: hook.id, url: hook.url, events: hook.events, description: hook.description, is_active: hook.is_active, created_by: hook.created_by, created_at: hook.created_at }] };
   }
   if (/INSERT INTO webhook_deliveries/i.test(s)) {
     const id = ++stub.deliverySeq;
@@ -394,42 +428,135 @@ describe('webhook matching + signing', () => {
       expect(webhookService.EVENT_CATALOG).toContain(evt);
     }
   });
+
+  test('URL validation blocks private, loopback, link-local, metadata, and non-global IPv6 targets', async () => {
+    for (const address of [
+      '127.0.0.1', '10.1.2.3', '172.16.0.1', '192.168.1.1', '169.254.169.254',
+      '::1', 'fe80::1', 'fc00::1', '::ffff:192.168.1.1',
+    ]) {
+      await expect(webhookService.resolveWebhookTarget('https://target.example/hook', {
+        lookup: async () => [{ address, family: address.includes(':') ? 6 : 4 }],
+      })).rejects.toMatchObject({ error_code: 'webhook_url_rejected' });
+    }
+  });
+
+  test('URL validation requires HTTPS and rejects DNS rebinding to a private address', async () => {
+    await expect(webhookService.resolveWebhookTarget('http://public.example/hook', {
+      lookup: safeWebhookLookup,
+    })).rejects.toThrow('HTTPS');
+    const answers = [
+      [{ address: '8.8.8.8', family: 4 }],
+      [{ address: '10.0.0.7', family: 4 }],
+    ];
+    const lookup = jest.fn(async () => answers.shift());
+    await expect(webhookService.resolveWebhookTarget('https://rebinding.example/hook', { lookup })).resolves.toBeTruthy();
+    await expect(webhookService.resolveWebhookTarget('https://rebinding.example/hook', { lookup }))
+      .rejects.toMatchObject({ error_code: 'webhook_url_rejected' });
+  });
+
+  test('registration rejects private DNS answers and delivery rechecks DNS before opening a socket', async () => {
+    resetStub();
+    const privateLookup = async () => [{ address: '192.168.1.20', family: 4 }];
+    await expect(webhookService.createWebhook({
+      url: 'https://private.example/hook', secret: 's', events: ['*'], userId: 1, lookup: privateLookup,
+    })).rejects.toMatchObject({ error_code: 'webhook_url_rejected' });
+    expect(stub.webhooks.size).toBe(0);
+
+    await webhookService.createWebhook({
+      url: 'https://public.example/hook', secret: 's', events: ['*'], userId: 1, lookup: safeWebhookLookup,
+    });
+    stub.deliveries.set(99, {
+      id: 99, webhook_id: 1, event_type: 'project.created', entity_type: 'project', entity_id: 4,
+      payload: '{}', attempt_count: 0, max_attempts: 6, status: 'pending', created_at: new Date(),
+    });
+    const transport = fakeWebhookRequest();
+    await webhookService.attemptDelivery(99, { lookup: privateLookup, requestImpl: transport.requestImpl });
+    expect(transport.calls).toHaveLength(0);
+    expect(stub.deliveries.get(99).status).toBe('retrying');
+  });
+
+  test('HTTP is permitted only behind the explicit local-test flag', async () => {
+    const previous = process.env.WEBHOOK_ALLOW_HTTP_LOCAL;
+    delete process.env.WEBHOOK_ALLOW_HTTP_LOCAL;
+    await expect(webhookService.resolveWebhookTarget('http://target.example/hook', { lookup: safeWebhookLookup }))
+      .rejects.toMatchObject({ error_code: 'webhook_url_rejected' });
+    process.env.WEBHOOK_ALLOW_HTTP_LOCAL = 'true';
+    await expect(webhookService.resolveWebhookTarget('http://target.example/hook', { lookup: safeWebhookLookup })).resolves.toBeTruthy();
+    if (previous === undefined) delete process.env.WEBHOOK_ALLOW_HTTP_LOCAL;
+    else process.env.WEBHOOK_ALLOW_HTTP_LOCAL = previous;
+  });
+
+  test('bounded response handling rejects oversized bodies and treats redirects as failures', async () => {
+    const oversized = fakeWebhookRequest(200, 'too large');
+    const target = await webhookService.resolveWebhookTarget('https://large.example/hook', { lookup: safeWebhookLookup });
+    await expect(webhookService.postWebhook(target, '{}', {}, {
+      requestImpl: oversized.requestImpl, maxResponseBytes: 2,
+    })).rejects.toThrow('size limit');
+  });
+
+  test('webhook secrets are encrypted at rest and omitted from every read helper', async () => {
+    resetStub();
+    const created = await webhookService.createWebhook({
+      url: 'https://secrets.example/hook', secret: 'one-time-secret', events: ['*'], userId: 1, lookup: safeWebhookLookup,
+    });
+    const stored = stub.webhooks.get(created.id);
+    expect(stored.secret).toMatch(/^enc:v1:/);
+    expect(stored.secret).not.toContain('one-time-secret');
+    expect(webhookService.decryptWebhookSecret(stored.secret)).toBe('one-time-secret');
+    expect(created).not.toHaveProperty('secret');
+
+    const byId = await webhookService.getWebhook(created.id);
+    const listed = await webhookService.listWebhooks();
+    expect(byId).not.toHaveProperty('secret');
+    expect(listed[0]).not.toHaveProperty('secret');
+
+    const rotated = await webhookService.rotateWebhookSecret(created.id, 'rotated-once');
+    expect(rotated).not.toHaveProperty('secret');
+    expect(webhookService.decryptWebhookSecret(stub.webhooks.get(created.id).secret)).toBe('rotated-once');
+  });
 });
 
 describe('webhook delivery state machine', () => {
   test('dispatchEvent queues deliveries for matching subscribers only and delivers on 2xx', async () => {
     resetStub();
     seedUsers();
-    await webhookService.createWebhook({ url: 'https://a.example/hook', secret: 's1', events: ['rfi.*'], userId: 1 });
-    await webhookService.createWebhook({ url: 'https://b.example/hook', secret: 's2', events: ['payment.received'], userId: 1 });
+    await webhookService.createWebhook({ url: 'https://a.example/hook', secret: 's1', events: ['rfi.*'], userId: 1, lookup: safeWebhookLookup });
+    await webhookService.createWebhook({ url: 'https://b.example/hook', secret: 's2', events: ['payment.received'], userId: 1, lookup: safeWebhookLookup });
 
-    const fetchMock = jest.fn().mockResolvedValue({ status: 200 });
-    global.fetch = fetchMock;
+    const transport = fakeWebhookRequest();
 
-    await webhookService.dispatchEvent({ eventType: 'rfi.created', entityType: 'project_rfi', entityId: 3, payload: { project_id: 1 } });
+    await webhookService.dispatchEvent({ eventType: 'rfi.created', entityType: 'project_rfi', entityId: 3, payload: { project_id: 1 } }, {
+      lookup: safeWebhookLookup, requestImpl: transport.requestImpl,
+    });
+    await new Promise((resolve) => setImmediate(resolve));
     expect(stub.deliveries.size).toBe(1); // only the rfi.* subscriber
 
     const delivery = [...stub.deliveries.values()][0];
-    await webhookService.attemptDelivery(delivery.id);
     expect(delivery.status).toBe('delivered');
-    const [url, init] = fetchMock.mock.calls[0];
+    const [{ url, options, body }] = transport.calls;
     expect(url).toBe('https://a.example/hook');
-    expect(init.headers['X-Osiris-Event']).toBe('rfi.created');
-    expect(init.headers['X-Osiris-Signature']).toBeTruthy();
+    expect(options.headers['X-Osiris-Event']).toBe('rfi.created');
+    expect(options.headers['X-Osiris-Signature']).toBeTruthy();
+    expect(options.timeout).toBe(10000);
+    let pinned;
+    options.lookup('a.example', {}, (error, address, family) => { pinned = { error, address, family }; });
+    expect(pinned).toEqual({ error: null, address: '8.8.8.8', family: 4 });
     // signature verifies
     const crypto = require('crypto');
     const expectedSig = crypto.createHmac('sha256', 's1')
-      .update(`${init.headers['X-Osiris-Timestamp']}.${init.body}`).digest('hex');
-    expect(init.headers['X-Osiris-Signature']).toBe(expectedSig);
+      .update(`${options.headers['X-Osiris-Timestamp']}.${body}`).digest('hex');
+    expect(options.headers['X-Osiris-Signature']).toBe(expectedSig);
   });
 
   test('failed attempts back off, then dead-letter; redrive retries them', async () => {
     resetStub(); seedUsers();
-    global.fetch = jest.fn().mockResolvedValue({ status: 500 });
-    await webhookService.createWebhook({ url: 'https://flaky.example/hook', secret: 's3', events: ['*'], userId: 1 });
+    const failure = fakeWebhookRequest(500);
+    await webhookService.createWebhook({ url: 'https://flaky.example/hook', secret: 's3', events: ['*'], userId: 1, lookup: safeWebhookLookup });
 
     // dispatchEvent queues AND makes the first attempt in the background.
-    await webhookService.dispatchEvent({ eventType: 'project.created', entityType: 'project', entityId: 9, payload: {} });
+    await webhookService.dispatchEvent({ eventType: 'project.created', entityType: 'project', entityId: 9, payload: {} }, {
+      lookup: safeWebhookLookup, requestImpl: failure.requestImpl,
+    });
     await new Promise((r) => setImmediate(r));
     const delivery = [...stub.deliveries.values()][0];
     expect(delivery.status).toBe('retrying');
@@ -437,16 +564,29 @@ describe('webhook delivery state machine', () => {
 
     // exhaust attempts
     for (let i = 0; i < 9; i++) {
-      await webhookService.attemptDelivery(delivery.id);
+      await webhookService.attemptDelivery(delivery.id, { lookup: safeWebhookLookup, requestImpl: failure.requestImpl });
       if (delivery.status === 'dead_letter') break;
     }
     expect(delivery.status).toBe('dead_letter');
 
     // redrive with a healthy endpoint delivers it
-    global.fetch = jest.fn().mockResolvedValue({ status: 200 });
-    const result = await webhookService.redriveDelivery(delivery.id);
+    const healthy = fakeWebhookRequest();
+    const result = await webhookService.redriveDelivery(delivery.id, { lookup: safeWebhookLookup, requestImpl: healthy.requestImpl });
     expect(result.delivered).toBe(true);
     expect(delivery.status).toBe('delivered');
+  });
+
+  test('redirect responses are not followed and are recorded as retryable failures', async () => {
+    resetStub(); seedUsers();
+    const redirect = fakeWebhookRequest(302);
+    await webhookService.createWebhook({ url: 'https://redirect.example/hook', secret: 's4', events: ['*'], userId: 1, lookup: safeWebhookLookup });
+    await webhookService.dispatchEvent({ eventType: 'project.created', entityType: 'project', entityId: 10, payload: {} }, {
+      lookup: safeWebhookLookup, requestImpl: redirect.requestImpl,
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    const delivery = [...stub.deliveries.values()][0];
+    expect(delivery.status).toBe('retrying');
+    expect(redirect.calls).toHaveLength(1);
   });
 });
 
