@@ -4,6 +4,7 @@ const Joi = require('joi');
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
+const { auditedTransaction } = require('../utils/auditedTransaction');
 
 // Phase 9 — material planning surface: recipes (with editable factors) and
 // the derived material_requirements read path. Demand rows are NEVER edited
@@ -90,37 +91,37 @@ router.post('/recipes', authenticate, authorize(), async (req, res) => {
       return res.status(403).json({ success: false, error: 'Standard recipes (no project) can only be created by owner/admin' });
     }
 
-    const recipe = await query(
+    const recipe = await auditedTransaction(async (q) => {
+      const created = await q(
       `INSERT INTO material_recipes (project_id, boq_item_id, activity_type, code, name, name_en, name_ar, output_description, output_unit, notes)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
       [value.project_id ?? null, value.boq_item_id ?? null, value.activity_type ?? null, value.code || null,
        value.name, value.name_en || null, value.name_ar || null, value.output_description || null,
        value.output_unit || null, value.notes || null]
-    );
+      );
 
-    for (const line of value.lines) {
-      await query(
+      for (const line of value.lines) {
+        await q(
         `INSERT INTO recipe_lines (recipe_id, material_id, factor_per_unit, wastage_pct, unit, notes)
          VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (recipe_id, material_id)
          DO UPDATE SET factor_per_unit = EXCLUDED.factor_per_unit, wastage_pct = EXCLUDED.wastage_pct, unit = EXCLUDED.unit`,
-        [recipe.rows[0].id, line.material_id, line.factor_per_unit, line.wastage_pct, line.unit || null, line.notes || null]
-      );
-    }
-
-    await logActivity({
+        [created.rows[0].id, line.material_id, line.factor_per_unit, line.wastage_pct, line.unit || null, line.notes || null]
+        );
+      }
+      await fireEvent({
+        eventType: 'recipe.changed', entityType: 'material_recipe', entityId: created.rows[0].id,
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        payload: { recipe_id: created.rows[0].id, project_id: value.project_id ?? null, boq_item_id: value.boq_item_id ?? null },
+      }, { query: q });
+      return created;
+    }, (result) => ({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       action: 'create', module: 'materials',
       description: `Created recipe ${value.name}`,
-      entityId: recipe.rows[0].id, entityType: 'material_recipe',
-    });
+      entityId: result.rows[0].id, entityType: 'material_recipe',
+    }));
 
     // Factors changed → re-derive demand (durable event; catch-up safe).
-    await fireEvent({
-      eventType: 'recipe.changed', entityType: 'material_recipe', entityId: recipe.rows[0].id,
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      payload: { recipe_id: recipe.rows[0].id, project_id: value.project_id ?? null, boq_item_id: value.boq_item_id ?? null },
-    });
-
     res.status(201).json({ success: true, data: recipe.rows[0] });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -149,19 +150,20 @@ router.put('/recipes/:id', authenticate, authorize(), async (req, res) => {
     for (const [k, v] of Object.entries(value)) { if (v !== undefined) { sets.push(`${k} = $${i++}`); p.push(v); } }
     sets.push(`updated_at = NOW()`);
     p.push(req.params.id);
-    const r = await query(`UPDATE material_recipes SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`, p);
-
-    await logActivity({
+    const r = await auditedTransaction(async (q) => {
+      const updated = await q(`UPDATE material_recipes SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`, p);
+      await fireEvent({
+        eventType: 'recipe.changed', entityType: 'material_recipe', entityId: existing.id,
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        payload: { recipe_id: existing.id, project_id: existing.project_id, boq_item_id: value.boq_item_id ?? existing.boq_item_id },
+      }, { query: q });
+      return updated;
+    }, () => ({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       action: 'update', module: 'materials',
       description: `Updated recipe ${existing.name}`,
       entityId: existing.id, entityType: 'material_recipe',
-    });
-    await fireEvent({
-      eventType: 'recipe.changed', entityType: 'material_recipe', entityId: existing.id,
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      payload: { recipe_id: existing.id, project_id: existing.project_id, boq_item_id: value.boq_item_id ?? existing.boq_item_id },
-    });
+    }));
 
     res.json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
@@ -175,26 +177,27 @@ router.post('/recipes/:id/lines', authenticate, authorize(), async (req, res) =>
     const { error, value } = lineSchema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const r = await query(
+    const r = await auditedTransaction(async (q) => {
+      const upserted = await q(
       `INSERT INTO recipe_lines (recipe_id, material_id, factor_per_unit, wastage_pct, unit, notes)
        VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (recipe_id, material_id)
        DO UPDATE SET factor_per_unit = EXCLUDED.factor_per_unit, wastage_pct = EXCLUDED.wastage_pct,
                      unit = EXCLUDED.unit, notes = EXCLUDED.notes
        RETURNING *`,
       [recipe.id, value.material_id, value.factor_per_unit, value.wastage_pct, value.unit || null, value.notes || null]
-    );
-
-    await logActivity({
+      );
+      await fireEvent({
+        eventType: 'recipe.changed', entityType: 'material_recipe', entityId: recipe.id,
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        payload: { recipe_id: recipe.id, project_id: recipe.project_id, boq_item_id: recipe.boq_item_id },
+      }, { query: q });
+      return upserted;
+    }, () => ({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       action: 'update', module: 'materials',
       description: `Set recipe line: material ${value.material_id} factor ${value.factor_per_unit}/${recipe.output_unit || 'unit'}`,
       entityId: recipe.id, entityType: 'material_recipe',
-    });
-    await fireEvent({
-      eventType: 'recipe.changed', entityType: 'material_recipe', entityId: recipe.id,
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      payload: { recipe_id: recipe.id, project_id: recipe.project_id, boq_item_id: recipe.boq_item_id },
-    });
+    }));
 
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
@@ -308,11 +311,13 @@ router.put('/replenishment/policies', authenticate, authorize(), async (req, res
     if (value.authority_ceiling != null) ruleValue.authority_ceiling = value.authority_ceiling;
     if (value.target_max_stock != null) ruleValue.target_max_stock = value.target_max_stock;
     const key = policyKeyOf(value);
-    const row = (await query(
+    const row = await auditedTransaction(async (q) => {
+      const result = await q(
       `INSERT INTO business_rules (rule_key, rule_value, description) VALUES ($1, $2::jsonb, 'Replenishment policy')
        ON CONFLICT (rule_key) DO UPDATE SET rule_value = EXCLUDED.rule_value, is_active = true, updated_at = NOW() RETURNING rule_key, rule_value, updated_at`,
-      [key, JSON.stringify(ruleValue)])).rows[0];
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'materials', description: `Replenishment policy ${key} set to ${value.mode}`, entityId: null, entityType: 'replenishment_policy' });
+      [key, JSON.stringify(ruleValue)]);
+      return result.rows[0];
+    }, () => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'materials', description: `Replenishment policy ${key} set to ${value.mode}`, entityId: null, entityType: 'replenishment_policy' }));
     res.json({ success: true, data: row });
   } catch (e) { console.error('[MATERIALS] policy put', e); return replFail(res, 500, 'replenishment_error', e.message); }
 });
@@ -325,9 +330,8 @@ router.delete('/replenishment/policies', authenticate, authorize(), async (req, 
       return replFail(res, 400, 'policy_scope_invalid', 'Only a category or material override can be removed (scope and ref are required); the default policy stays', { scope });
     }
     const key = policyKeyOf({ scope, ref: req.query.ref });
-    const r = await query('DELETE FROM business_rules WHERE rule_key = $1 RETURNING rule_key', [key]);
+    const r = await auditedTransaction((q) => q('DELETE FROM business_rules WHERE rule_key = $1 RETURNING rule_key', [key]), (result) => result.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'materials', description: `Replenishment policy ${key} removed`, entityId: null, entityType: 'replenishment_policy' }));
     if (r.rows.length === 0) return replFail(res, 404, 'policy_not_found', `No policy ${key}`, { rule_key: key });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'materials', description: `Replenishment policy ${key} removed`, entityId: null, entityType: 'replenishment_policy' });
     res.json({ success: true, data: { rule_key: key } });
   } catch (e) { console.error('[MATERIALS] policy delete', e); return replFail(res, 500, 'replenishment_error', e.message); }
 });
