@@ -60,6 +60,7 @@ const ROUTERS = {
   payments: { router: require('./payments'), mount: '/api/payments' },
   approvals: { router: require('./approvals'), mount: '/api/approvals' },
   consultant: { router: require('./consultant'), mount: '/api/consultant' },
+  clientPortal: { router: require('./client'), mount: '/api/client-portal' },
   doccontrol: { router: require('./doccontrol'), mount: '/api/docs' },
   qhse: { router: require('./qhse'), mount: '/api/qhse' },
   hse: { router: require('./hse'), mount: '/api/hse' },
@@ -388,6 +389,7 @@ const FAMILY_MAP = {
     ['commercial', 'POST', '/variations', '/'],
     ['commercial', 'POST', '/variations/:id/start', '/:id/start'],
     ['commercial', 'POST', '/variations/:id/decide', '/:id/decide'],
+    ['clientPortal', 'POST', '/variations/:id/response', '/:id/client-response'],
   ],
   'payment-certificates': [
     ['financeLedger', 'POST', '/valuations', '/valuations'],
@@ -469,6 +471,7 @@ const FAMILY_MAP = {
     ['doccontrol', 'POST', '/documents/:id/:action(approve|reject)', '/:id/:action(approve|reject)'],
     ['doccontrol', 'GET', '/documents/:id/revisions', '/:id/revisions'],
     ['doccontrol', 'GET', '/search', '/search'],
+    ['clientPortal', 'POST', '/documents/:id/acknowledgement', '/:id/acknowledgement'],
   ],
   transmittals: [
     ['doccontrol', 'GET', '/transmittals', '/'],

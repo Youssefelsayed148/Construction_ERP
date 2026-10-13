@@ -104,6 +104,7 @@ const EXTERNAL_ROLE_MODULE_GRANTS = {
   supplier: ['portal', 'items', 'warehouses'],
 };
 const EXTERNAL_ROLE_WRITE_GRANTS = {
+  client: { 'client-portal': ['approve', 'reject'] },
   consultant: { consultant: ['create', 'edit', 'submit', 'approve', 'reject'], documents: ['create'] },
   subcontractor: { portal: ['create', 'edit', 'submit'], documents: ['create'] },
   supplier: { portal: ['create', 'edit', 'submit'], documents: ['create'] },

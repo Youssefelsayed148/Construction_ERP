@@ -101,6 +101,77 @@ async function resolveClientProjects(q, userId, { previewProjectId = null } = {}
   return projects.sort((a, b) => a - b);
 }
 
+async function assignedClientOrganizations(q, userId, projectId) {
+  return (await q(
+    `SELECT DISTINCT ou.organization_id
+       FROM organization_users ou
+       JOIN project_participants pp ON pp.organization_id = ou.organization_id
+      WHERE ou.user_id = $1 AND ou.is_active IS DISTINCT FROM false
+        AND pp.project_id = $2 AND pp.participant_type = 'client'
+        AND pp.portal_access_enabled IS DISTINCT FROM false
+        AND (pp.active_from IS NULL OR pp.active_from <= NOW())
+        AND (pp.active_to IS NULL OR pp.active_to >= NOW())
+        AND (NOT EXISTS (SELECT 1 FROM project_participant_users pu WHERE pu.project_participant_id = pp.id)
+             OR EXISTS (SELECT 1 FROM project_participant_users pu WHERE pu.project_participant_id = pp.id AND pu.user_id = $1))`,
+    [userId, projectId]
+  )).rows.map((row) => toNum(row.organization_id));
+}
+
+async function decideClientVariation(q, variationId, user, decision, comment = null) {
+  if (user.role !== 'client') throw Object.assign(new Error('Client role required'), { status: 403, error_code: 'forbidden' });
+  const variation = (await q('SELECT * FROM variations WHERE id = $1 FOR UPDATE', [variationId])).rows[0];
+  if (!variation) throw Object.assign(new Error('Variation not found'), { status: 404, error_code: 'record_not_found' });
+  const assigned = await assignedClientOrganizations(q, user.id, variation.project_id);
+  if (!assigned.length) throw Object.assign(new Error('Variation not found'), { status: 404, error_code: 'record_not_found' });
+  if (variation.variation_type !== 'client' || variation.status !== 'client_approval_reject') {
+    throw Object.assign(new Error('Variation is not awaiting client response'), { status: 409, error_code: 'invalid_workflow_transition' });
+  }
+  if (variation.client_contract_id != null) {
+    const contractParties = await q(
+      "SELECT organization_id FROM contract_parties WHERE client_contract_id = $1 AND party_role = 'employer' AND organization_id IS NOT NULL",
+      [variation.client_contract_id]
+    );
+    if (contractParties.rows.length && !contractParties.rows.some((party) => assigned.includes(toNum(party.organization_id)))) {
+      throw Object.assign(new Error('Variation not found'), { status: 404, error_code: 'record_not_found' });
+    }
+  }
+  const workflow = (await q('SELECT status, current_step_key FROM workflow_instances WHERE id = $1 FOR UPDATE', [variation.workflow_instance_id])).rows[0];
+  if (!workflow || workflow.status !== 'active' || workflow.current_step_key !== 'client_approval_reject') {
+    throw Object.assign(new Error('Variation workflow is not awaiting client response'), { status: 409, error_code: 'invalid_workflow_transition' });
+  }
+  try {
+    return await require('./commercialEngine').decideVariation(q, variationId, user, decision, comment);
+  } catch (error) {
+    throw Object.assign(error, { status: error.status || 409, error_code: error.error_code || 'invalid_workflow_transition' });
+  }
+}
+
+async function acknowledgeClientDocument(q, documentId, user, comment = null) {
+  if (user.role !== 'client') throw Object.assign(new Error('Client role required'), { status: 403, error_code: 'forbidden' });
+  const document = (await q('SELECT * FROM project_documents WHERE id = $1 FOR UPDATE', [documentId])).rows[0];
+  if (!document) throw Object.assign(new Error('Document not found'), { status: 404, error_code: 'record_not_found' });
+  const assigned = await assignedClientOrganizations(q, user.id, document.project_id);
+  if (!assigned.length || (document.recipient_organization_id != null && !assigned.includes(toNum(document.recipient_organization_id)))) {
+    throw Object.assign(new Error('Document not found'), { status: 404, error_code: 'record_not_found' });
+  }
+  if (document.portal_visibility !== 'client') throw Object.assign(new Error('Document is not visible to clients'), { status: 404, error_code: 'record_not_found' });
+  const existing = await q('SELECT id FROM client_document_acknowledgements WHERE document_id = $1', [documentId]);
+  if (existing.rows.length) throw Object.assign(new Error('Document is already acknowledged'), { status: 409, error_code: 'already_acknowledged' });
+  if (document.status !== 'awaiting_acknowledgement') {
+    throw Object.assign(new Error('Document is not awaiting acknowledgement'), { status: 409, error_code: 'invalid_workflow_transition' });
+  }
+  const organizationId = document.recipient_organization_id == null ? assigned[0] : toNum(document.recipient_organization_id);
+  const acknowledgement = (await q(
+    `INSERT INTO client_document_acknowledgements (document_id, client_user_id, client_organization_id, comment)
+     VALUES ($1,$2,$3,$4) RETURNING *`,
+    [documentId, user.id, organizationId, comment || null]
+  )).rows[0];
+  const updated = (await q(
+    "UPDATE project_documents SET status = 'acknowledged', updated_at = NOW() WHERE id = $1 RETURNING *", [documentId]
+  )).rows[0];
+  return { ...acknowledgement, document: updated };
+}
+
 // ---------------------------------------------------------------------------
 // Dashboard assembly (client-safe values only)
 // ---------------------------------------------------------------------------
@@ -298,13 +369,15 @@ async function clientActionCenter(q, user, { project_id = null, preview_project_
 
   const pendingApprovals = forProjects((await safeAll(q, "SELECT * FROM approval_requests WHERE status = 'pending'", [])));
   const variationResponses = forProjects((await safeAll(q, "SELECT * FROM variations WHERE variation_type = 'client' AND status = 'client_approval_reject'", [])));
-  const documentAcks = forProjects((await safeAll(q, "SELECT * FROM project_documents WHERE status = 'awaiting_acknowledgement'", [])));
+  const documentAcks = forProjects((await safeAll(q, `SELECT d.* FROM project_documents d
+    LEFT JOIN client_document_acknowledgements a ON a.document_id = d.id
+    WHERE d.status = 'awaiting_acknowledgement' AND a.id IS NULL`, [])));
   const overdueInputs = pendingApprovals.filter((a) => a.due_date && new Date(a.due_date) < now);
 
   return {
     approvals: { items: pendingApprovals.map((a) => ({ id: a.id, title: a.title || 'Approval request', requested_at: a.created_at })), count: pendingApprovals.length, empty_label: 'No client approvals pending' },
-    variation_responses: { items: variationResponses.map((v) => ({ id: v.id, variation_number: v.variation_number, title: v.title, amount: toNum(v.amount) })), count: variationResponses.length, empty_label: 'No variations awaiting your response' },
-    document_acknowledgements: { items: documentAcks.map((d) => ({ id: d.id, title: d.title || d.file_name, file_url: d.file_url })), count: documentAcks.length, empty_label: 'No documents awaiting acknowledgement' },
+    variation_responses: { items: variationResponses.map((v) => ({ id: v.id, project_id: toNum(v.project_id), variation_number: v.variation_number, title: v.title, amount: toNum(v.amount) })), count: variationResponses.length, empty_label: 'No variations awaiting your response' },
+    document_acknowledgements: { items: documentAcks.map((d) => ({ id: d.id, project_id: toNum(d.project_id), title: d.title || d.file_name, file_url: d.file_url })), count: documentAcks.length, empty_label: 'No documents awaiting acknowledgement' },
     overdue_inputs: { items: overdueInputs.map((a) => ({ id: a.id, due_date: a.due_date })), count: overdueInputs.length, empty_label: 'No overdue owner inputs' },
   };
 }
@@ -314,6 +387,9 @@ module.exports = {
   clientVisibilityFlags,
   stripInternalFields,
   resolveClientProjects,
+  assignedClientOrganizations,
+  decideClientVariation,
+  acknowledgeClientDocument,
   clientFinancials,
   clientDashboard,
   clientPortfolio,

@@ -52,11 +52,11 @@ The incident-table merge requested in 5.7 is not a fresh schema project: `hse-mi
 
 ### 5.6.4 Client project actions and assignment expiry
 
-**Status: Partial.** Client portfolio/action-center and assignment-based project resolution exist in `client.js` and `clientEngine.js`. Audit each requested action (variation decision/response and document acknowledgement), add missing formal endpoints, and verify multi-project results and expiry filtering across every list and mutation. Reuse the existing read-only client preview for UI review.
+**Status: Complete.** Client portfolio/action-center and assignment-based project resolution are enforced against active client organization assignments. The client action center now offers formal variation approve/reject and document acknowledgement actions. Both writes lock and recheck current participant assignment; variation responses call the existing formal workflow service and preserve workflow action history, while document acknowledgements store the actor, organization, comment, and timestamp in `client_document_acknowledgements` and advance the formal document status. Role permissions, record scope, internal API routes, and v1 family mappings are covered. The portal hides action controls during read-only preview and provides paired EN/AR labels and errors.
 
-**Acceptance:** each action writes to its formal entity with actor, time and audit trail; client users see only active assigned projects; expired assignments and other projects are denied on both list and record endpoints.
+**Acceptance:** met. Each action writes to its formal entity with actor, time and audit trail; client users see only active assigned projects; expired assignments and other projects are denied on both list and record endpoints.
 
-**Focused checks:** client-engine/API PostgreSQL tests for multiple projects, active/expired assignment, each action, and cross-project denial; focused client portal component tests.
+**Focused checks:** `client-actions.pg.test.js` passed 4/4, covering active multi-project assignment, expired and other-organization denial, variation workflow action/actor/comment, acknowledgement actor/time/status/idempotency, cross-project denial, and the HTTP activity audit. `client-portal.test.js`, module override, and record-scope tests passed 19/19. `PortalDashboard.test.js` passed 3/3; v1 router remount check passed 1/1; `i18n:check`, changed-file syntax checks, and `git diff --check` passed. Migrations 0050 and 0051 and the policy role grant applied to the disposable PostgreSQL database. No full suite was run.
 
 ### 5.6.5 Formal external registers and portal forms
 

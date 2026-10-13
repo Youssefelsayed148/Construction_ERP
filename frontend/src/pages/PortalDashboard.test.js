@@ -106,4 +106,32 @@ describe('consultant portal observation form', () => {
     expect(instructionDecision).toBeTruthy();
     expect(JSON.parse(instructionDecision[1].body)).toEqual({ decision: 'approve' });
   });
+
+  test('client action center posts variation decisions and document acknowledgements', async () => {
+    global.fetch = jest.fn(async (url, options = {}) => {
+      if (options.method === 'POST') return { ok: true, json: async () => ({ success: true, data: {} }) };
+      const data = String(url).includes('/action-center') ? {
+        variation_responses: { items: [{ id: 81, project_id: 11, title: 'Facade variation', amount: 12000 }] },
+        document_acknowledgements: { items: [{ id: 82, project_id: 12, title: 'Approved handover manual' }] },
+        approvals: { items: [] }, overdue_inputs: { items: [] },
+      } : String(url).includes('/portfolio') ? { is_portfolio: true, items: [] } : { project_ids: [11, 12], projects: [{ id: 11 }, { id: 12 }] };
+      return { ok: true, json: async () => ({ success: true, data }) };
+    });
+    await act(async () => { root.render(<PortalDashboard kind="client" />); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const variationRow = [...container.querySelectorAll('.portal-review-item')].find((row) => row.textContent.includes('Facade variation'));
+    const approve = [...variationRow.querySelectorAll('button')].find((button) => button.textContent.includes('portals.clientActions.approve'));
+    await act(async () => { approve.click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const variationDecision = global.fetch.mock.calls.find(([url, options]) => options.method === 'POST' && String(url).includes('/variations/81/response'));
+    expect(variationDecision).toBeTruthy();
+    expect(JSON.parse(variationDecision[1].body)).toEqual({ decision: 'approve' });
+    const documentRow = [...container.querySelectorAll('.portal-review-item')].find((row) => row.textContent.includes('Approved handover manual'));
+    const acknowledge = [...documentRow.querySelectorAll('button')].find((button) => button.textContent.includes('portals.clientActions.acknowledge'));
+    await act(async () => { acknowledge.click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const documentAcknowledgement = global.fetch.mock.calls.find(([url, options]) => options.method === 'POST' && String(url).includes('/documents/82/acknowledgement'));
+    expect(documentAcknowledgement).toBeTruthy();
+    expect(JSON.parse(documentAcknowledgement[1].body)).toEqual({});
+  });
 });

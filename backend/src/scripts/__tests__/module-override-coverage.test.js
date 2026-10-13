@@ -26,7 +26,7 @@ describe('module overrides', () => {
 
 describe('action overrides', () => {
   const MOUNT_FILES = {
-    approvals: 'approvals', commercial: 'commercial', consultant: 'consultant', docs: 'doccontrol', 'finance-ledger': 'financeLedger', handover: 'handover',
+    approvals: 'approvals', commercial: 'commercial', consultant: 'consultant', 'client-portal': 'client', docs: 'doccontrol', 'finance-ledger': 'financeLedger', handover: 'handover',
     procurement: 'procurement', projects: 'projects', qhse: 'qhse', subcontractors: 'subcontractors', 'work-orders': 'workorders', reports: 'reports',
     invoices: 'invoices', items: 'items', payments: 'payments', suppliers: 'suppliers', inventory: 'inventory', materials: 'materials',
   };
@@ -51,6 +51,9 @@ describe('action overrides', () => {
     expect(act('consultant', 'POST', '/variations/:id/recommendation', null, { decision: 'approve' })).toBe('approve');
     expect(act('consultant', 'POST', '/payment-certificates/:id/recommendation', null, { decision: 'reject' })).toBe('reject');
       expect(act('consultant', 'POST', '/instructions/:id/recommendation', null, { decision: 'approve' })).toBe('approve');
+    expect(act('client-portal', 'POST', '/variations/:id/response', null, { decision: 'reject' })).toBe('reject');
+    expect(act('client-portal', 'POST', '/variations/:id/response', null, { decision: 'approve' })).toBe('approve');
+    expect(act('client-portal', 'POST', '/documents/:id/acknowledgement')).toBe('approve');
     expect(act('docs', 'GET', '/documents')).toBe('view');
     // voiding a financial record and restoring a master are not plain deletes/creates
     expect(act('payments', 'DELETE', '/:id')).toBe('void');

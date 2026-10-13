@@ -15,6 +15,16 @@
     "recommendReject": "Recommend rejection",
     "submitError": "The review could not be submitted. Refresh and try again."
   },
+  "clientActions": {
+    "empty": "No client actions are waiting for you.",
+    "project": "Project {{id}}",
+    "variationActions": "Variation response actions",
+    "documentActions": "Document acknowledgement actions",
+    "approve": "Approve variation",
+    "reject": "Reject variation",
+    "acknowledge": "Acknowledge document",
+    "submitError": "The action could not be submitted. Refresh and try again."
+  },
   "observation": {
     "raise": "Raise observation",
     "title": "New site observation",

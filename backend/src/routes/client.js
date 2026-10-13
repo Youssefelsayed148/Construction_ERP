@@ -1,8 +1,11 @@
 const express = require('express');
+const Joi = require('joi');
 const router = express.Router();
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
+const { auditedTransaction } = require('../utils/auditedTransaction');
+const { typedFail, typedBody } = require('../utils/typedRoute');
 const policy = require('../services/policy');
 const engine = require('../services/clientEngine');
 
@@ -62,6 +65,37 @@ router.get('/action-center', authenticate, authorize(), async (req, res) => {
     });
     res.json({ success: true, data: strip(data) });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+router.post('/variations/:id/response', authenticate, authorize('client'), async (req, res) => {
+  const id = Joi.number().integer().positive().validate(Number(req.params.id));
+  if (id.error) return typedFail(res, Object.assign(new Error('Invalid variation id'), { status: 400, error_code: 'invalid_id' }), 'CLIENT_VARIATION_RESPONSE', req);
+  const value = typedBody(Joi.object({
+    decision: Joi.string().valid('approve', 'reject').required(),
+    comment: Joi.string().max(4000).allow('', null).optional(),
+  }), req, res);
+  if (!value) return;
+  try {
+    const result = await auditedTransaction(
+      (q) => engine.decideClientVariation(q, id.value, req.user, value.decision, value.comment),
+      (row) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: value.decision, module: 'client-portal', description: `Client ${value.decision} variation ${row.id}`, entityId: row.id, entityType: 'variation' })
+    );
+    res.json({ success: true, data: strip(result) });
+  } catch (error) { return typedFail(res, error, 'CLIENT_VARIATION_RESPONSE', req); }
+});
+
+router.post('/documents/:id/acknowledgement', authenticate, authorize('client'), async (req, res) => {
+  const id = Joi.number().integer().positive().validate(Number(req.params.id));
+  if (id.error) return typedFail(res, Object.assign(new Error('Invalid document id'), { status: 400, error_code: 'invalid_id' }), 'CLIENT_DOCUMENT_ACKNOWLEDGEMENT', req);
+  const value = typedBody(Joi.object({ comment: Joi.string().max(4000).allow('', null).optional() }).default({}), req, res);
+  if (!value) return;
+  try {
+    const result = await auditedTransaction(
+      (q) => engine.acknowledgeClientDocument(q, id.value, req.user, value.comment),
+      (row) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'client-portal', description: `Client acknowledged document ${row.document_id}`, entityId: row.document_id, entityType: 'project_document' })
+    );
+    res.json({ success: true, data: strip(result) });
+  } catch (error) { return typedFail(res, error, 'CLIENT_DOCUMENT_ACKNOWLEDGEMENT', req); }
 });
 
 // Preview-as-Client: authorized internal admins/PMs get a read-only, audited
