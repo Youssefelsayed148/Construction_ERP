@@ -1,28 +1,25 @@
-# Implementation Status
+# Implementation status
 
-Source of truth: `docs/ERP_CLOSEOUT_PLAN.md` (checkboxes). This file is a summary; update it when a phase gate closes.
+This is a concise status snapshot, not a substitute for current test output. The phase authority is [`ERP_CLOSEOUT_PLAN.md`](ERP_CLOSEOUT_PLAN.md); evidence and session state are recorded in [`CODEX_AUDIT_REPORT.md`](CODEX_AUDIT_REPORT.md), [`CLOSEOUT_LOG.md`](CLOSEOUT_LOG.md), and [`STATE.md`](../STATE.md).
 
-Verdict: **NO-GO** (blockers listed in `docs/audit/PHASES_09_18_REVIEW.md` are still open).
+## Last independently verified baseline
 
-Basis: the audits were static reads. Each finding is reproduced with a failing test before it is fixed; findings that do not reproduce are recorded in the PR and dropped.
+The 2026-10-12 audit inspected checkout `449b06a` (Phase 5.5). It recorded backend mock tests at 928/928 across 42 suites, real PostgreSQL at 565 passed / 1 failed across 56 suites, frontend tests at 97/97 across 17 suites, lint guards and i18n checks passing, and an in-memory production compilation passing. Playwright was unverified because its local runner could not resolve. The single PG failure was the delegation renewal fixture collision (D1). These are historical results; they do not prove the current working tree.
 
-| Phase | Name | Status |
-|---|---|---|
-| 0 | Baseline, docs truth, CI gates | Done (PR #1) |
-| 1 | Security blockers | 1.1-1.3 done, 1.4 done except monetary limits table (5.1), 1.5 and 1.6 open |
-| 2 | Data integrity foundation | 2.1-2.4 done; 2.5a (soft delete and void for items, suppliers, payments, invoices) 2.5b (RESTRICT on protected FKs, work orders cancel) and 2.5c (users deactivate-only) done, so 2.5 is closed; 2.6a (CHECKs) and 2.6b (money standard, one pending approval, one current revision) done; 2.6c (lines only, header material_id retired) done; status enums for the workflow tables open (needs the audit on real data); 2.7a (journal in the caller transaction, configured accounts, balanced entries) done, 2.7b (client invoice and payment postings; supplier side with 3.1) done; 2.8 (approvals atomic and locked) done; Phase 2 open items: status enums for workflow tables (needs a real-data audit), supplier-side postings (with 3.1); upgrade preflight and data-cleaning report done |
-| 3 | Cost and cross-module sync | Not started (cost accrual decision made: GRN for stocked materials, approved supplier invoice for services) |
-| 4 | Test infrastructure | Real-PG harness exists (15 suites); rest open |
-| 5 | Data-model and backend spec gaps | 5.1 slice 1 done; 5.1 org/RBAC (PR #55) and 5.2 project setup (migration 0033) done, legacy-role switch awaits review |
-| 6 | Admin, configuration and module screens | Role-based project page (first slice) and ReasonDialog done; form kit and screens open |
-| 7 | Mobile, RTL, offline | Not started |
-| 8 | Commercial, finance, planning engines | Not started |
-| 9 | Demo seed and golden E2E | Not started |
-| 10 | System-wide localization (EN/AR) | L0-L3 in PRs #6-#9 (not yet merged); L4+ open |
-| 11 | Rollout, reconciliation, go/no-go | Not started |
+## Phase snapshot from source inspection
 
-Open PR stack and per-PR history: `docs/CLOSEOUT_LOG.md`.
+| Area | Observed state |
+|---|---|
+| 0–2 | Integrity foundations and versioned migrations are present. Real-data status-enum validation and restored-copy upgrade findings remain open. |
+| 3 | Cost accrual and cross-module cost views are present in the current code. Full performance and complete historical-data reconciliation remain unverified. |
+| 4 | Mock and real-PG harnesses exist. The PG precheck now compares the versioned migration filename/checksum inventory rather than a count; current real-PG execution still requires a fresh throwaway container. |
+| 5.1–5.5 | Organization/RBAC, project setup, inventory lots, procurement awards, commercial and finance models exist. Known gaps include configurable approval limits, unwired finance flows, and 5.5 posting decisions. |
+| 5.6–5.8 | Open per `ERP_CLOSEOUT_PLAN.md`; some supporting entities and partial endpoints exist, but the phase acceptance work is not complete. |
+| 6 | A role-based project-shell slice and a reason dialog exist. The shared form kit and remaining module screens are open. |
+| 7–11 | Open. Offline/mobile, full localization exit, forecast/EAC, demo golden chain, restore drill, and UAT signoff are not established. |
 
-Baseline (2026-10-02, before any change): backend jest 37 suites / 941 tests passing on the mock DB.
+## Current closeout branch
 
-Legacy documents: `docs/legacy/`.
+Branch `closeout/batch-a-to-6` began from the audited state. Commit `f364461` contains A1 expired-delegation renewal handling and regression assertions. A1's real-PG test remains unverified because the Docker Desktop engine was unavailable. A2–A6 are in progress in the working tree; see root [`STATE.md`](../STATE.md) for exact current gates and outstanding work.
+
+Production remains **NO-GO**. There is no current evidence for all GO criteria in `ERP_CLOSEOUT_PLAN.md`.

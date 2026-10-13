@@ -9,6 +9,8 @@ Runner: `npm run migrate` (backend). It records every migration in `schema_migra
 - Database dumps in `db_dump/` are a first-boot seed only; the migrator is the authority.
 - Real-PostgreSQL tests: `TEST_PG=1 npm run test:pg` (needs a disposable migrated database).
 
+Numbering note: versioned migration `0030` is absent in the observed history. Treat `0030` as a known numbering gap: do not reuse it. The audit observed no `0030` file, and its historical intent is unverified; continue from the highest existing version (`0036` at the 2026-10-12 audit) with `0037` next.
+
 ## Before upgrading a real database
 
 1. Restore a copy of the real database somewhere disposable.

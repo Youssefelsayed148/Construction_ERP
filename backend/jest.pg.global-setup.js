@@ -9,8 +9,19 @@
 const fs = require('fs');
 const path = require('path');
 const { Client } = require('pg');
+const { checksumOf } = require('./src/scripts/migration-support');
 
-module.exports = async () => {
+function compareVersionedMigrationInventory(dir, appliedRows) {
+  const files = fs.readdirSync(dir).filter((f) => /^\d{4}_[a-z0-9_]+\.sql$/.test(f)).sort();
+  const expected = new Map(files.map((file) => [file, checksumOf(path.join(dir, file))]));
+  const applied = new Map((appliedRows || []).map((row) => [row.version, row.checksum]));
+  const missing = [...expected.keys()].filter((file) => !applied.has(file));
+  const unexpected = [...applied.keys()].filter((file) => !expected.has(file));
+  const checksumMismatch = [...expected.keys()].filter((file) => applied.has(file) && applied.get(file) !== expected.get(file));
+  return { missing, unexpected, checksumMismatch };
+}
+
+async function globalSetup() {
   if (process.env.TEST_PG !== '1') throw new Error('Real-PG suites need TEST_PG=1 and a migrated throwaway database (see docs/TESTING.md).');
   const name = process.env.DB_NAME || 'construction_erp';
   if (/prod/i.test(name)) throw new Error(`Refusing to run the test suites against a database named "${name}".`);
@@ -22,8 +33,15 @@ module.exports = async () => {
   await client.connect();
   try {
     const dir = path.join(__dirname, 'src', 'migrations');
-    const files = fs.readdirSync(dir).filter((f) => f.endsWith('.sql'));
-    const applied = (await client.query('SELECT count(*)::int n FROM schema_migrations')).rows[0].n;
-    if (applied < files.length) throw new Error(`Only ${applied} of ${files.length} SQL migrations are applied: run "npm run migrate" first.`);
+    const appliedRows = (await client.query(
+      "SELECT version, checksum FROM schema_migrations WHERE kind = 'versioned' ORDER BY version"
+    )).rows;
+    const inventory = compareVersionedMigrationInventory(dir, appliedRows);
+    if (inventory.missing.length || inventory.unexpected.length || inventory.checksumMismatch.length) {
+      throw new Error(`Versioned migration inventory does not match disk. Missing: ${inventory.missing.join(', ') || 'none'}; unexpected: ${inventory.unexpected.join(', ') || 'none'}; checksum mismatch: ${inventory.checksumMismatch.join(', ') || 'none'}. Run "npm run migrate" first.`);
+    }
   } finally { await client.end(); }
-};
+}
+
+module.exports = globalSetup;
+module.exports.compareVersionedMigrationInventory = compareVersionedMigrationInventory;
