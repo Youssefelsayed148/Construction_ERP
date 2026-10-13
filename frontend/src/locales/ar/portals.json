@@ -6,10 +6,13 @@
   "review": {
     "empty": "لا توجد مراجعات بانتظارك.",
     "wirActions": "إجراءات مراجعة فحص الأعمال",
+    "recommendationActions": "إجراءات التوصية التجارية",
     "approve": "اعتماد",
     "approveWithComments": "اعتماد مع ملاحظات",
     "reject": "رفض",
     "reinspect": "طلب إعادة الفحص",
+    "recommendApprove": "التوصية بالاعتماد",
+    "recommendReject": "التوصية بالرفض",
     "submitError": "تعذر إرسال المراجعة. حدّث الصفحة وحاول مجددًا."
   },
   "observation": {

@@ -524,6 +524,40 @@ async function decideConsultantWir(q, wirId, user, result, { comment = null } = 
   }
 }
 
+async function decideConsultantVariation(q, variationId, user, decision, comment = null) {
+  const row = (await q('SELECT * FROM variations WHERE id = $1 FOR UPDATE', [variationId])).rows[0];
+  if (!row) throw Object.assign(new Error('Variation not found'), { status: 404, error_code: 'record_not_found' });
+  if (user.role !== 'consultant') throw Object.assign(new Error('Consultant role required'), { status: 403, error_code: 'forbidden' });
+  if (!(await resolveConsultantProjects(q, user.id)).includes(toNum(row.project_id))) {
+    throw Object.assign(new Error('Variation not found'), { status: 404, error_code: 'record_not_found' });
+  }
+  if (row.status !== 'consultant_recommendation') {
+    throw Object.assign(new Error('Variation is not awaiting consultant recommendation'), { status: 409, error_code: 'invalid_workflow_transition' });
+  }
+  try {
+    return await require('./commercialEngine').decideVariation(q, variationId, user, decision, comment);
+  } catch (error) {
+    throw Object.assign(error, { status: error.status || 409, error_code: error.error_code || 'invalid_workflow_transition' });
+  }
+}
+
+async function decideConsultantCertificate(q, certificateId, user, decision, comment = null) {
+  const row = (await q('SELECT * FROM payment_certificates WHERE id = $1 FOR UPDATE', [certificateId])).rows[0];
+  if (!row) throw Object.assign(new Error('Payment certificate not found'), { status: 404, error_code: 'record_not_found' });
+  if (user.role !== 'consultant') throw Object.assign(new Error('Consultant role required'), { status: 403, error_code: 'forbidden' });
+  if (!(await resolveConsultantProjects(q, user.id)).includes(toNum(row.project_id))) {
+    throw Object.assign(new Error('Payment certificate not found'), { status: 404, error_code: 'record_not_found' });
+  }
+  if (row.status !== 'consultant_client') {
+    throw Object.assign(new Error('Payment certificate is not awaiting consultant review'), { status: 409, error_code: 'invalid_workflow_transition' });
+  }
+  try {
+    return await require('./commercialRecords').decideCertificate(q, certificateId, user, decision, comment);
+  } catch (error) {
+    throw Object.assign(error, { status: error.status || 409, error_code: error.error_code || 'invalid_workflow_transition' });
+  }
+}
+
 // ---------------------------------------------------------------------------
 // My Reviews inbox — one list, sorted by due date then priority, filterable
 // by project / discipline / type / location.
@@ -577,6 +611,36 @@ async function myReviews(q, user, filters = {}) {
     status: r0.status, discipline: null, location_id: r0.project_location_id || null,
     drawing_reference: r0.latest_drawing_ref || null, inspection_date: dateOnly(r0.inspection_date),
   }));
+
+  const variations = await safeAll(q,
+    `SELECT v.id, v.project_id, v.variation_number, v.title, v.status, v.amount,
+            CASE WHEN ws.sla_hours IS NOT NULL AND wsi.opened_at IS NOT NULL
+                 THEN wsi.opened_at + (ws.sla_hours * INTERVAL '1 hour')
+                 ELSE NULL END AS due_date
+       FROM variations v
+       JOIN workflow_instances wi ON wi.id = v.workflow_instance_id
+       JOIN workflow_step_instances wsi
+         ON wsi.instance_id = wi.id AND wsi.step_key = 'consultant_recommendation' AND wsi.status = 'pending'
+       LEFT JOIN workflow_steps ws ON ws.id = wsi.step_id
+      WHERE v.status = 'consultant_recommendation' AND wi.status = 'active'
+        AND wi.current_step_key = 'consultant_recommendation'`, []);
+  addAll('variation', variations.filter(scopedProject).filter(() => !filters.type || filters.type === 'variation'),
+    (type, r0) => ({ type, id: r0.id, project_id: toNum(r0.project_id), number: r0.variation_number, title: r0.title, status: r0.status, amount: toNum(r0.amount), due_date: r0.due_date || null, priority: 'normal' }));
+
+  const certificates = await safeAll(q,
+    `SELECT c.id, c.project_id, c.certificate_number, c.status, c.net_certificate,
+            CASE WHEN ws.sla_hours IS NOT NULL AND wsi.opened_at IS NOT NULL
+                 THEN wsi.opened_at + (ws.sla_hours * INTERVAL '1 hour')
+                 ELSE NULL END AS due_date
+       FROM payment_certificates c
+       JOIN workflow_instances wi ON wi.id = c.workflow_instance_id
+       JOIN workflow_step_instances wsi
+         ON wsi.instance_id = wi.id AND wsi.step_key = 'consultant_client' AND wsi.status = 'pending'
+       LEFT JOIN workflow_steps ws ON ws.id = wsi.step_id
+      WHERE c.status = 'consultant_client' AND wi.status = 'active'
+        AND wi.current_step_key = 'consultant_client'`, []);
+  addAll('certificate', certificates.filter(scopedProject).filter(() => !filters.type || filters.type === 'certificate'),
+    (type, r0) => ({ type, id: r0.id, project_id: toNum(r0.project_id), number: r0.certificate_number, title: `Certificate ${r0.certificate_number}`, status: r0.status, amount: toNum(r0.net_certificate), due_date: r0.due_date || null, priority: 'normal' }));
 
   const observations = (await safeAll(q, "SELECT * FROM observations WHERE status = 'submitted_for_verification'", []))
     .filter(scopedProject).filter(scopedDiscipline).filter(() => !filters.type || filters.type === 'observation');
@@ -714,6 +778,8 @@ module.exports = {
   recordSubmittalResponse,
   resubmitSubmittal,
   decideConsultantWir,
+  decideConsultantVariation,
+  decideConsultantCertificate,
   myReviews,
   consultantDashboard,
 };

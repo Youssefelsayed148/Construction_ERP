@@ -6,10 +6,13 @@
   "review": {
     "empty": "No reviews are waiting for you.",
     "wirActions": "Work inspection review actions",
+    "recommendationActions": "Commercial recommendation actions",
     "approve": "Approve",
     "approveWithComments": "Approve with comments",
     "reject": "Reject",
     "reinspect": "Request reinspection",
+    "recommendApprove": "Recommend approval",
+    "recommendReject": "Recommend rejection",
     "submitError": "The review could not be submitted. Refresh and try again."
   },
   "observation": {

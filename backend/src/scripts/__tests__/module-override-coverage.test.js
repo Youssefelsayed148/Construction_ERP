@@ -26,7 +26,7 @@ describe('module overrides', () => {
 
 describe('action overrides', () => {
   const MOUNT_FILES = {
-    approvals: 'approvals', commercial: 'commercial', docs: 'doccontrol', 'finance-ledger': 'financeLedger', handover: 'handover',
+    approvals: 'approvals', commercial: 'commercial', consultant: 'consultant', docs: 'doccontrol', 'finance-ledger': 'financeLedger', handover: 'handover',
     procurement: 'procurement', projects: 'projects', qhse: 'qhse', subcontractors: 'subcontractors', 'work-orders': 'workorders', reports: 'reports',
     invoices: 'invoices', items: 'items', payments: 'payments', suppliers: 'suppliers', inventory: 'inventory', materials: 'materials',
   };
@@ -39,13 +39,17 @@ describe('action overrides', () => {
   });
 
   test('actions resolve from the route, not the verb', () => {
-    const act = (mount, method, path, params) => policy.effectiveAction({ method, policyRoute: path, params }, mount);
+    const act = (mount, method, path, params, body) => policy.effectiveAction({ method, policyRoute: path, params, body }, mount);
     expect(act('docs', 'POST', '/documents/:id/:action(approve|reject)', { action: 'approve' })).toBe('approve');
     expect(act('docs', 'POST', '/documents/:id/:action(approve|reject)', { action: 'reject' })).toBe('reject');
     expect(act('docs', 'POST', '/documents/:id/submit')).toBe('submit');
     expect(act('procurement', 'POST', '/po/:id/issue')).toBe('issue_financial_document');
     expect(act('procurement', 'GET', '/rfq/:id/comparison')).toBe('see_supplier_value');
     expect(act('docs', 'POST', '/rfis')).toBe('create');
+    expect(act('consultant', 'POST', '/wirs/:id/result', null, { result: 'approved' })).toBe('approve');
+    expect(act('consultant', 'POST', '/wirs/:id/result', null, { result: 'rejected' })).toBe('reject');
+    expect(act('consultant', 'POST', '/variations/:id/recommendation', null, { decision: 'approve' })).toBe('approve');
+    expect(act('consultant', 'POST', '/payment-certificates/:id/recommendation', null, { decision: 'reject' })).toBe('reject');
     expect(act('docs', 'GET', '/documents')).toBe('view');
     // voiding a financial record and restoring a master are not plain deletes/creates
     expect(act('payments', 'DELETE', '/:id')).toBe('void');

@@ -86,11 +86,15 @@ function ConsultantReviews({ rows = [], onDone }) {
   const { t } = useLocale();
   const [savingId, setSavingId] = useState(null);
   const [error, setError] = useState('');
-  const decideWir = async (row, result) => {
+  const submitDecision = async (row, decision) => {
     setSavingId(row.id); setError('');
     try {
-      await request(`/api/consultant/wirs/${row.id}/result`, {
-        method: 'POST', body: JSON.stringify({ result }),
+      const path = row.type === 'wir'
+        ? `/api/consultant/wirs/${row.id}/result`
+        : `/api/consultant/${row.type === 'variation' ? 'variations' : 'payment-certificates'}/${row.id}/recommendation`;
+      const body = row.type === 'wir' ? { result: decision } : { decision };
+      await request(path, {
+        method: 'POST', body: JSON.stringify(body),
       });
       onDone();
     } catch (e) { setError(t('portals.review.submitError')); }
@@ -104,10 +108,14 @@ function ConsultantReviews({ rows = [], onDone }) {
         <div className="portal-review-item" key={`${row.type}-${row.id}`}>
           <Record value={row} />
           {row.type === 'wir' && <div className="portal-review-actions" aria-label={t('portals.review.wirActions')}>
-            <button className="btn btn-secondary btn-sm" disabled={savingId === row.id} onClick={() => decideWir(row, 'approved')}>{t('portals.review.approve')}</button>
-            <button className="btn btn-secondary btn-sm" disabled={savingId === row.id} onClick={() => decideWir(row, 'approved_with_comments')}>{t('portals.review.approveWithComments')}</button>
-            <button className="btn btn-secondary btn-sm" disabled={savingId === row.id} onClick={() => decideWir(row, 'rejected')}>{t('portals.review.reject')}</button>
-            <button className="btn btn-secondary btn-sm" disabled={savingId === row.id} onClick={() => decideWir(row, 'reinspect')}>{t('portals.review.reinspect')}</button>
+            <button className="btn btn-secondary btn-sm" disabled={savingId === row.id} onClick={() => submitDecision(row, 'approved')}>{t('portals.review.approve')}</button>
+            <button className="btn btn-secondary btn-sm" disabled={savingId === row.id} onClick={() => submitDecision(row, 'approved_with_comments')}>{t('portals.review.approveWithComments')}</button>
+            <button className="btn btn-secondary btn-sm" disabled={savingId === row.id} onClick={() => submitDecision(row, 'rejected')}>{t('portals.review.reject')}</button>
+            <button className="btn btn-secondary btn-sm" disabled={savingId === row.id} onClick={() => submitDecision(row, 'reinspect')}>{t('portals.review.reinspect')}</button>
+          </div>}
+          {['variation', 'certificate'].includes(row.type) && <div className="portal-review-actions" aria-label={t('portals.review.recommendationActions')}>
+            <button className="btn btn-secondary btn-sm" disabled={savingId === row.id} onClick={() => submitDecision(row, 'approve')}>{t('portals.review.recommendApprove')}</button>
+            <button className="btn btn-secondary btn-sm" disabled={savingId === row.id} onClick={() => submitDecision(row, 'reject')}>{t('portals.review.recommendReject')}</button>
           </div>}
         </div>
       ))}

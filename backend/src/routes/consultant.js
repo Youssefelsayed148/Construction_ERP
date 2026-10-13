@@ -58,6 +58,36 @@ router.post('/wirs/:id/result', authenticate, authorize('consultant'), async (re
   } catch (error) { return typedFail(res, error, 'CONSULTANT_WIR_RESULT', req); }
 });
 
+router.post('/variations/:id/recommendation', authenticate, authorize('consultant'), async (req, res) => {
+  const value = typedBody(Joi.object({
+    decision: Joi.string().valid('approve', 'reject').required(),
+    comment: Joi.string().max(4000).allow('', null).optional(),
+  }), req, res);
+  if (!value) return;
+  try {
+    const row = await auditedTransaction(
+      (q) => engine.decideConsultantVariation(q, parseInt(req.params.id, 10), req.user, value.decision, value.comment),
+      (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'commercial', description: `Variation ${result.id} consultant recommendation: ${value.decision}`, entityId: result.id, entityType: 'variation' })
+    );
+    res.json({ success: true, data: row });
+  } catch (error) { return typedFail(res, error, 'CONSULTANT_VARIATION_RECOMMENDATION', req); }
+});
+
+router.post('/payment-certificates/:id/recommendation', authenticate, authorize('consultant'), async (req, res) => {
+  const value = typedBody(Joi.object({
+    decision: Joi.string().valid('approve', 'reject').required(),
+    comment: Joi.string().max(4000).allow('', null).optional(),
+  }), req, res);
+  if (!value) return;
+  try {
+    const row = await auditedTransaction(
+      (q) => engine.decideConsultantCertificate(q, parseInt(req.params.id, 10), req.user, value.decision, value.comment),
+      (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'commercial', description: `Payment certificate ${result.certificate_number} consultant recommendation: ${value.decision}`, entityId: result.id, entityType: 'payment_certificate' })
+    );
+    res.json({ success: true, data: row });
+  } catch (error) { return typedFail(res, error, 'CONSULTANT_CERTIFICATE_RECOMMENDATION', req); }
+});
+
 // Observations.
 router.post('/observations', authenticate, authorize(), async (req, res) => {
   try {

@@ -183,6 +183,10 @@ const MODULE_OVERRIDES = Object.freeze({
 
 // [mount module, METHOD, route path pattern, action | (req) => action]
 const ACTION_OVERRIDES = Object.freeze([
+  ['consultant', 'POST', /^\/(?:wirs\/:id\/result|variations\/:id\/recommendation|payment-certificates\/:id\/recommendation)$/, (req) => {
+    const decision = req.body && (req.body.decision || req.body.result);
+    return decision === 'reject' || decision === 'rejected' ? 'reject' : 'approve';
+  }],
   ['approvals', 'PUT', /^\/:id\/approve$/, 'approve'],
   // Phase 3.5: progress columns are derived; setting one by hand is a distinct permission, not 'edit'.
   ['projects', 'PUT', /^\/:id$/, (req) => (req.body && req.body.completion_percentage != null ? 'override_progress' : 'edit')],
@@ -299,6 +303,9 @@ const RECORD_SCOPE_RULES = Object.freeze({
     [/^\/observations\/:id(?:\/|$)/, 'observations'],
     [/^\/rfis\/:id(?:\/|$)/, 'project_rfis'],
     [/^\/submittals\/:id(?:\/|$)/, 'project_submittals'],
+    [/^\/wirs\/:id(?:\/|$)/, 'wirs'],
+    [/^\/variations\/:id(?:\/|$)/, 'variations'],
+    [/^\/payment-certificates\/:id(?:\/|$)/, 'payment_certificates'],
   ],
   docs: [
     [/^\/documents\/:id(?:\/|$)/, 'project_documents'],

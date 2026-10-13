@@ -35,6 +35,7 @@ Updated: 2026-10-13 (Africa/Cairo)
 - Batch D UAT preparation is documented in `docs/UAT_PILOT.md`: scoped role scripts, checklist, defect template, deferred items, and signoff table. Human UAT has not been executed.
 - Batch E implementation slices E1–E5 are complete and committed as recorded in `docs/CLOSEOUT_LOG.md`; finance account-purpose signoff still requires the owner. Human UAT has not been executed.
 - Phase 5.6.1 is committed. In Phase 5.6.2, formal consultant-stage WIR reads, configured workflow SLA timestamps, a scoped transactional consultant WIR final-result action, and bilingual portal decision buttons are implemented and focused-tested. Recommendations and SLA administration remain open. Phases 5.6–6 remain incomplete.
+- Phase 5.6.2 WIR/variation/certificate review work includes commits `576fe96`, `bf9e26e`, and `5b356e4`, plus the current focused-tested variation/certificate recommendation slice. Certificate finance finalization now waits for the finance-manager workflow step. Engineer-instruction recommendations and SLA administration remain open.
 
 ## Where work stopped
 
@@ -64,7 +65,7 @@ Batch A and Batch B1–B6 are green. C1–C4 and Batch E implementation are comm
 | Batch D documentation | PASS — `docs/UAT_PILOT.md`; human UAT NOT RUN |
 | Batch E implementation | PASS — E1–E5 slices committed; owner account confirmation and human UAT outstanding |
 | Phase 5.6.1 observation completeness | PASS — focused PG 1/1, consultant/media 18/18, portal 1/1, i18n/build/syntax |
-| Phase 5.6.2 WIR inbox/SLA and result action | PASS — focused PG 3/3; consultant + QA/QC mock 27/27; portal 2/2; locale check; remainder of ticket open |
+| Phase 5.6.2 consultant review workflows | IN PROGRESS — focused PG 5/5 plus certificate 1/1; consultant/QHSE/scope mock 35/35; policy 4/4; portal 2/2; locale check; other 5.6.2 work remains |
 | Phases 5.6–6 | IN PROGRESS — 5.6.1 and formal WIR/SLA inbox read complete; remaining tickets open |
 
 ## Risks and decisions
@@ -72,4 +73,4 @@ Batch A and Batch B1–B6 are green. C1–C4 and Batch E implementation are comm
 - Production remains **NO-GO**; human UAT and owner finance account confirmation are not complete.
 - Docker test execution needed elevated local-engine access because the sandbox could not access the Docker Desktop pipe. The test DB was isolated and named explicitly; no production-looking or external database was used.
 - Approval limit defaults and finance mappings are provisional where noted in code/docs; finance signoff remains pending.
-- `0030` remains a documented, unreused migration-number gap. Highest migration is `0041`; next is `0042`.
+- `0030` remains a documented, unreused migration-number gap. Highest migration is `0047`; next is `0048`.

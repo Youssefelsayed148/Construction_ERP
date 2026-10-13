@@ -314,21 +314,24 @@ async function decideCertificate(q, certificateId, user, decision, comment = nul
   const cert = (await q('SELECT * FROM payment_certificates WHERE id = $1 FOR UPDATE', [toInt(certificateId)])).rows[0];
   if (!cert) throw missing('payment_certificate_not_found', `Payment certificate #${certificateId} not found`, { id: certificateId });
   if (cert.workflow_instance_id == null) throw conflict('workflow_not_started', 'The certificate workflow has not been started', { id: cert.id });
-  if (['certified', 'rejected', 'cancelled', 'void'].includes(cert.status)) throw conflict('payment_certificate_closed', `Certificate ${cert.certificate_number} is ${cert.status}`, { id: cert.id, status: cert.status });
+  const beforeWorkflow = (await q('SELECT status FROM workflow_instances WHERE id = $1 FOR UPDATE', [cert.workflow_instance_id])).rows[0];
+  if (!beforeWorkflow || beforeWorkflow.status !== 'active' || ['rejected', 'cancelled', 'void'].includes(cert.status)) {
+    throw conflict('payment_certificate_closed', `Certificate ${cert.certificate_number} is ${cert.status}`, { id: cert.id, status: cert.status });
+  }
   const result = await workflowEngine.recordDecision(cert.workflow_instance_id, null, user.id, decision, comment, { query: q, role: user.role, userName: user.name });
   if (!result.ok) throw new (require('./commercialErrors').CommercialError)(403, 'certificate_decision_refused', result.error, { id: cert.id });
   const wf = (await q('SELECT status, current_step_key FROM workflow_instances WHERE id = $1', [cert.workflow_instance_id])).rows[0];
-  let status = wf.current_step_key;
+  let status = wf.current_step_key === 'certified' ? 'finance_review' : wf.current_step_key;
   if (wf.status === 'approved') status = 'certified';
   else if (wf.status === 'rejected') status = 'rejected';
   const saved = (await q(
     `UPDATE payment_certificates SET status = $2::varchar, certified_by = CASE WHEN $2::varchar = 'certified' THEN $3::int ELSE certified_by END, updated_at = NOW() WHERE id = $1 RETURNING *`,
     [cert.id, status, user.id])).rows[0];
-  if (status === 'certified' && cert.party_type === 'client') {
+  if (wf.status === 'approved' && cert.party_type === 'client') {
     const contract = (await q('SELECT client_id FROM client_contracts WHERE id = $1', [cert.client_contract_id])).rows[0];
     if (!contract) throw missing('client_contract_not_found', `Client contract #${cert.client_contract_id} not found`, { id: cert.client_contract_id });
     saved.invoice = await require('./financeEngine').createInvoiceFromCertificate(q, saved, contract.client_id, user);
-  } else if (status === 'certified' && cert.party_type === 'subcontractor') {
+  } else if (wf.status === 'approved' && cert.party_type === 'subcontractor') {
     await glPosting.postSubcontractorCertificate(q, saved, { userId: user.id });
     saved.ledger_posted = true;
   }

@@ -66,6 +66,10 @@ describe('consultant portal observation form', () => {
       const data = String(url).includes('/reviews') ? [{
         type: 'wir', id: 34, project_id: 11, number: 'WIR-0034', title: 'WIR WIR-0034',
         status: 'consultant_review', due_date: '2026-10-14T08:00:00.000Z', drawing_reference: 'S-12 / Rev 4',
+      }, {
+        type: 'variation', id: 35, project_id: 11, number: 'VAR-0035', title: 'Grid C change', status: 'consultant_recommendation',
+      }, {
+        type: 'certificate', id: 36, project_id: 11, number: 'CERT-0036', title: 'Certificate CERT-0036', status: 'consultant_client',
       }] : { project_ids: [11], latest_drawings: { items: [] } };
       return { ok: true, json: async () => ({ success: true, data }) };
     });
@@ -78,5 +82,19 @@ describe('consultant portal observation form', () => {
     const decision = global.fetch.mock.calls.find(([url, options]) => options.method === 'POST' && String(url).includes('/wirs/34/result'));
     expect(decision).toBeTruthy();
     expect(JSON.parse(decision[1].body)).toEqual({ result: 'approved_with_comments' });
+    const variationRow = [...container.querySelectorAll('.portal-review-item')].find((row) => row.textContent.includes('Grid C change'));
+    const recommendationButton = [...variationRow.querySelectorAll('button')].find((button) => button.textContent.includes('portals.review.recommendApprove'));
+    await act(async () => { recommendationButton.click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const recommendation = global.fetch.mock.calls.find(([url, options]) => options.method === 'POST' && String(url).includes('/variations/35/recommendation'));
+    expect(recommendation).toBeTruthy();
+    expect(JSON.parse(recommendation[1].body)).toEqual({ decision: 'approve' });
+    const certificateRow = [...container.querySelectorAll('.portal-review-item')].find((row) => row.textContent.includes('CERT-0036'));
+    const rejectButton = [...certificateRow.querySelectorAll('button')].find((button) => button.textContent.includes('portals.review.recommendReject'));
+    await act(async () => { rejectButton.click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const certificateDecision = global.fetch.mock.calls.find(([url, options]) => options.method === 'POST' && String(url).includes('/payment-certificates/36/recommendation'));
+    expect(certificateDecision).toBeTruthy();
+    expect(JSON.parse(certificateDecision[1].body)).toEqual({ decision: 'reject' });
   });
 });

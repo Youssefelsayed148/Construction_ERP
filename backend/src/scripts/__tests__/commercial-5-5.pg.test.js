@@ -8,6 +8,7 @@ process.env.V1_RATE_LIMIT_PER_MIN = '100000';
 const fs = require('fs');
 const path = require('path');
 const tokens = require('../../services/tokens');
+const policy = require('../../services/policy');
 
 const enabled = process.env.TEST_PG === '1';
 const describePg = enabled ? describe : describe.skip;
@@ -84,6 +85,10 @@ describePg('5.5 commercial and finance (real PostgreSQL, real app)', () => {
     await makeUser('arAcc', 'staff', 'accountant_ar');
     await makeUser('keeper', 'storekeeper');
     await makeUser('client', 'client', 'client', pA);
+    await makeUser('consultant', 'consultant', 'consultant', pA);
+    const consultantOrg = (await one("INSERT INTO organizations (code, name_en, name_ar, org_type) VALUES ($1,$1,$1,'consultant') RETURNING id", [`c55-cons-${tag}`])).id;
+    await db.query('INSERT INTO organization_users (user_id, organization_id, is_active) VALUES ($1,$2,true)', [users.consultant.id, consultantOrg]);
+    await db.query("INSERT INTO project_participants (project_id, organization_id, participant_type, portal_access_enabled) VALUES ($1,$2,'consultant',true)", [pA, consultantOrg]);
     await makeUser('fresh', 'staff', null);
     for (const key of ['receivable', 'revenue', 'vat_output', 'vat_input', 'payable', 'cash', 'service_cost', 'material_cost']) {
       expect([key, await one('SELECT 1 AS ok FROM gl_account_map WHERE key = $1', [key])]).toEqual([key, { ok: 1 }]);
@@ -241,9 +246,26 @@ describePg('5.5 commercial and finance (real PostgreSQL, real app)', () => {
     expect((await call('POST', `/api/commercial/payment-certificates/${cert.id}/start`, users.owner)).body.error_code).toBe('workflow_already_started');
     let last = started.body.data;
     for (let i = 0; i < 8 && last.status !== 'certified'; i += 1) {
-      const step = await call('POST', `/api/commercial/payment-certificates/${cert.id}/decide`, users.owner, { decision: 'approve', comment: `step ${i}` });
-      expect([i, step.status, step.body.error]).toEqual([i, 200, undefined]);
-      last = step.body.data;
+      if (last.status === 'consultant_client') {
+        const policyDecision = await policy.evaluateRequest({
+          baseUrl: '/api/consultant', policyRoute: '/payment-certificates/:id/recommendation',
+          method: 'POST', params: { id: String(cert.id) }, query: {}, body: { decision: 'approve' },
+          user: { id: users.consultant.id, role: 'consultant' },
+        });
+        const consultantGrants = (await policy.loadUserPolicy(users.consultant.id)).filter((row) => row.perm_module === 'consultant');
+        expect(consultantGrants).toContainEqual(expect.objectContaining({ role_key: 'consultant', project_id: pA, perm_action: 'approve' }));
+        expect(policyDecision).toMatchObject({ allowed: true, role_keys: ['consultant'], project_id: pA });
+        const recommendation = await call('POST', `/api/consultant/payment-certificates/${cert.id}/recommendation`, users.consultant, { decision: 'approve', comment: 'Measured work is supported' });
+        expect({ status: recommendation.status, body: recommendation.body }).toMatchObject({
+          status: 200, body: { data: { status: 'finance_review', certified_by: null } },
+        });
+        expect((await one('SELECT count(*)::int AS n FROM invoices WHERE payment_certificate_id = $1', [cert.id])).n).toBe(0);
+        last = recommendation.body.data;
+      } else {
+        const step = await call('POST', `/api/commercial/payment-certificates/${cert.id}/decide`, users.owner, { decision: 'approve', comment: `step ${i}` });
+        expect([i, step.status, step.body.error]).toEqual([i, 200, undefined]);
+        last = step.body.data;
+      }
     }
     expect(last.status).toBe('certified');
     expect(last.certified_by).toBe(users.owner.id);
