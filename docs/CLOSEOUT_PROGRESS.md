@@ -213,3 +213,7 @@ Organization/company/departments/job-position/qualification/bank-account/perform
 ## 2026-10-13: A4 schedule CSV import transaction continuation (local, pending commit)
 
 Schedule CSV replacement/import now processes schedule activities, relationships, and its activity audit row through one transaction query. Syntax/whitespace checks exit 0; full backend mock suite passes 48 suites / 968 tests; lint guards print `lint-guards: ok`. Real PostgreSQL rollback remains unverified because Docker Desktop is inaccessible. Current expected commit: per-slice commit to follow.
+
+## 2026-10-13: A4 agent approval transactional audit continuation (local, pending commit)
+
+Agent approval decisions now insert activity audit in the same transaction as the decision claim. Syntax/whitespace checks exit 0; full backend mock suite passes 48 suites / 968 tests; guards print `lint-guards: ok`. Real PostgreSQL rollback remains unverified because Docker Desktop is inaccessible. Current expected commit: per-slice commit to follow.

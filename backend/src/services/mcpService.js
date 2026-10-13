@@ -26,7 +26,7 @@
 'use strict';
 
 const crypto = require('crypto');
-const { query } = require('../config/database');
+const { query, transaction } = require('../config/database');
 const agentPolicy = require('./agentPolicy');
 const policy = require('./policy');
 const { logActivity } = require('../utils/activity');
@@ -400,14 +400,24 @@ async function decideRequest(requestId, approver, decision, comment) {
 
   // Claim the request atomically. Only the caller whose UPDATE returns the row may act on it, so two
   // concurrent approvals (or an approve racing a reject) cannot both run the stored operation.
-  const claimed = (await query(
-    `UPDATE agent_action_requests
-        SET decision = $2, approver_user_id = $3, decision_comment = $4, decided_at = NOW(),
-            execution_status = $5, updated_at = NOW()
-      WHERE id = $1 AND decision IS NULL RETURNING *`,
-    [requestId, decision === 'reject' ? 'rejected' : 'approved', approver.id, comment || null,
-      decision === 'reject' ? 'rejected' : 'executing']
-  )).rows[0];
+  const claimed = await transaction(async (client) => {
+    const q = client.query.bind(client);
+    const row = (await q(
+      `UPDATE agent_action_requests
+          SET decision = $2, approver_user_id = $3, decision_comment = $4, decided_at = NOW(),
+              execution_status = $5, updated_at = NOW()
+        WHERE id = $1 AND decision IS NULL RETURNING *`,
+      [requestId, decision === 'reject' ? 'rejected' : 'approved', approver.id, comment || null,
+        decision === 'reject' ? 'rejected' : 'executing']
+    )).rows[0];
+    if (row) await logActivity({
+      userId: approver.id, userName: approver.name, userRole: approver.role,
+      action: decision, module: 'agents',
+      description: `Agent request #${requestId} (${request.tool}) ${decision === 'approve' ? 'approved for execution' : 'rejected'}`,
+      entityId: requestId, entityType: 'agent_action_request',
+    }, { query: q });
+    return row;
+  });
   if (!claimed) throw Object.assign(new Error('Request already decided'), { status: 409 });
 
   if (decision === 'reject') {

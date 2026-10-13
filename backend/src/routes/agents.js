@@ -15,7 +15,6 @@ const Joi = require('joi');
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const mcpService = require('../services/mcpService');
-const { logActivity } = require('../utils/activity');
 
 // Every tool call (audit trail) ----------------------------------------------
 router.get('/activity', authenticate, authorize('owner', 'admin'), async (req, res) => {
@@ -57,12 +56,6 @@ router.post('/requests/:id/decision', authenticate, authorize('owner', 'admin', 
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     const result = await mcpService.decideRequest(parseInt(req.params.id, 10), req.user, value.decision, value.comment);
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: value.decision, module: 'agents',
-      description: `Agent request #${req.params.id} (${result.request ? result.request.tool : ''}) ${value.decision === 'approve' ? 'approved and executed' : 'rejected'}`,
-      entityId: parseInt(req.params.id, 10), entityType: 'agent_action_request',
-    });
     res.json({ success: true, data: result });
   } catch (e) {
     res.status(e.status || 400).json({ success: false, error: e.message });

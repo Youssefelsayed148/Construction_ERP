@@ -761,4 +761,25 @@ npm run lint:guards
 lint-guards: ok
 ```
 
-Real PostgreSQL rollback remains unverified because Docker Desktop is inaccessible. This schedule-import slice is not committed yet.
+Real PostgreSQL rollback remains unverified because Docker Desktop is inaccessible. This schedule-import slice is committed as `d573c35`.
+
+## 2026-10-13: A4 agent approval transactional audit continuation (local, pending commit)
+
+The agent approval decision claim now writes its activity audit row inside the same transaction as the conditional decision update. If the audit insert fails, the claim rolls back and remains available for a valid retry; the HTTP route no longer writes a post-operation duplicate audit.
+
+Verification command output:
+
+```text
+node --check src/services/mcpService.js; node --check src/routes/agents.js; git diff --check
+exit code: 0
+
+npm test -- --runInBand
+Test Suites: 48 passed, 48 total
+Tests:       968 passed, 968 total
+Ran all test suites.
+
+npm run lint:guards
+lint-guards: ok
+```
+
+Real PostgreSQL rollback remains unverified because Docker Desktop is inaccessible. This agent-approval slice is not committed yet.
