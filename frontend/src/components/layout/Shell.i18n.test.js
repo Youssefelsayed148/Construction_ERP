@@ -62,10 +62,30 @@ describe('application shell in Arabic', () => {
   });
 
   test('the Procurement comparison and Agent Activity links are translated (they were English in Arabic mode)', async () => {
+    mockUser = { name: 'Tester', role: 'owner', policy_modules: ['*'], policy_permissions: [{ module: '*', action: '*' }] };
     await mount(shell());
     const labels = [...container.querySelectorAll('.nav-item span')].map((n) => n.textContent);
     expect(labels).toContain('مقارنة المشتريات');
     expect(labels).toContain('نشاط الوكلاء');
+  });
+
+  test('navigation follows effective module and action grants, including an empty grant set', async () => {
+    mockUser = {
+      name: 'Tester', role: 'project_manager',
+      policy_modules: ['projects', 'procurement'],
+      policy_permissions: [
+        { module: 'projects', action: 'view' },
+        { module: 'procurement', action: 'create' },
+      ],
+    };
+    await mount(shell());
+    expect(container.querySelector('a[href="/projects"]')).not.toBeNull();
+    expect(container.querySelector('a[href="/procurement/comparison"]')).toBeNull();
+    expect(container.querySelector('a[href="/inventory"]')).toBeNull();
+
+    mockUser = { name: 'Tester', role: 'project_manager', policy_modules: [], policy_permissions: [] };
+    await mount(shell());
+    expect(container.querySelectorAll('.sidebar-nav .nav-item')).toHaveLength(0);
   });
 
   test('the role is shown translated while the role code is untouched', async () => {

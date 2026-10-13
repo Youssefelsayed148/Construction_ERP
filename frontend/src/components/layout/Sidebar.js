@@ -11,8 +11,8 @@ import { LayoutDashboard, Briefcase, Users, Package, Truck, Wrench, Shield, Doll
 const mainMenuItems = [
   { path: '/dashboard', icon: LayoutDashboard, labelKey: 'dashboard', module: 'dashboard' },
   { path: '/projects', icon: Briefcase, labelKey: 'projects', module: 'projects' },
-  { path: '/inventory', icon: Package, labelKey: 'inventory', module: 'items' },
-  { path: '/procurement/comparison', icon: ClipboardList, labelKey: 'procurementComparison', module: 'procurement' },
+  { path: '/inventory', icon: Package, labelKey: 'inventory', module: 'inventory' },
+  { path: '/procurement/comparison', icon: ClipboardList, labelKey: 'procurementComparison', module: 'procurement', action: 'see_supplier_value' },
   { path: '/clients', icon: Users, labelKey: 'clients', module: 'clients' },
   { path: '/suppliers', icon: Truck, labelKey: 'suppliers', module: 'suppliers' },
   { path: '/assets', icon: Wrench, labelKey: 'assets', module: 'assets' },
@@ -23,14 +23,14 @@ const mainMenuItems = [
   { path: '/approvals', icon: ClipboardList, labelKey: 'approvals', module: 'approvals' },
   { path: '/my-actions', icon: ListChecks, labelKey: 'myActions', module: 'actions' },
   // Phase 27 — owner/admin only (filtered below).
-  { path: '/agent-activity', icon: Bot, labelKey: 'agentActivity', roles: ['owner', 'admin'] },
+  { path: '/agent-activity', icon: Bot, labelKey: 'agentActivity', module: 'agent', action: 'view', roles: ['owner', 'admin'] },
 ];
 
 const portalMenuItems = {
-  consultant: [{ path: '/consultant-portal', icon: ClipboardList, labelKey: 'portals.consultant' }],
-  client: [{ path: '/client-portal', icon: Briefcase, labelKey: 'portals.client' }],
-  subcontractor: [{ path: '/subcontractor-portal', icon: HardHat, labelKey: 'portals.subcontractor' }],
-  supplier: [{ path: '/supplier-portal', icon: Truck, labelKey: 'portals.supplier' }],
+  consultant: [{ path: '/consultant-portal', icon: ClipboardList, labelKey: 'portals.consultant', module: 'consultant', action: 'view' }],
+  client: [{ path: '/client-portal', icon: Briefcase, labelKey: 'portals.client', module: 'client-portal', action: 'view' }],
+  subcontractor: [{ path: '/subcontractor-portal', icon: HardHat, labelKey: 'portals.subcontractor', module: 'portal', action: 'view' }],
+  supplier: [{ path: '/supplier-portal', icon: Truck, labelKey: 'portals.supplier', module: 'portal', action: 'view' }],
 };
 
 const labelFor = (t, item) => t(item.labelKey.startsWith('portals.') ? `navigation.${item.labelKey}` : `navigation.items.${item.labelKey}`);
@@ -42,9 +42,18 @@ function Sidebar({ mobileOpen = false, onNavigate }) {
   const user = authService.getCurrentUser();
   const base = portalMenuItems[user?.role] || mainMenuItems;
   const modules = Array.isArray(user?.policy_modules) ? user.policy_modules : user?.module_permissions;
-  const hasModule = (module) => !module || !Array.isArray(modules) || modules.length === 0
-    || modules.includes('*') || modules.includes('all') || modules.includes(module);
-  const menuItems = base.filter((item) => (!item.roles || item.roles.includes(user?.role)) && hasModule(item.module));
+  const permissions = user?.policy_permissions;
+  const hasModule = (module) => !module || (Array.isArray(modules)
+    && (modules.includes('*') || modules.includes('all') || modules.includes(module)));
+  const hasPermission = (module, action = 'view') => {
+    if (!module) return true;
+    if (Array.isArray(permissions)) return permissions.some((grant) =>
+      (grant.module === '*' || grant.module === module) && (grant.action === '*' || grant.action === action));
+    // Compatibility for sessions created before the API returned effective policy grants.
+    return action === 'view' && hasModule(module);
+  };
+  const menuItems = base.filter((item) => (!item.roles || item.roles.includes(user?.role))
+    && hasModule(item.module) && hasPermission(item.module, item.action));
 
   const handleLogout = () => {
     authService.clearSession();

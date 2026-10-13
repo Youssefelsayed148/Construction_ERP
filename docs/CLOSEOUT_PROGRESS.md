@@ -317,4 +317,23 @@ clean
 
 An earlier local staging API journey passed the PR-to-payment path and project invoice register checks, then stopped at the existing reconcile child-process launch (`spawnSync node.exe EPERM`). It does not count as a clean full smoke result. This phase also exposed that the backend Docker runtime image build automatically runs its full mock suite: 50 suites / 960 tests passed, 56 PostgreSQL suites skipped. That suite run was incidental to the image build; future phase work will use ticket-focused checks and reserve broad gates for batch exits, following the user's requested cadence.
 
-Next: finish C2 review and commit, then C3 effective-permission navigation and C4 browser journeys.
+Batch C2 commit: `3893bc6` (`Batch C2: add project procurement workspace`).
+
+## 2026-10-13: Batch C3 effective-permission navigation (implementation in progress)
+
+Login now returns the user's effective `(module, action)` grants along with its existing module list. The sidebar uses those grants to hide inaccessible destinations, requires `see_supplier_value` for the RFQ comparison link, and treats an explicit empty grant set as no module access. Legacy module-only sessions can still show ordinary view destinations, while action-specific destinations fail closed. The inventory, agent activity, and external portal links now use their policy module keys.
+
+Focused verification:
+
+```text
+frontend: npm test -- --watchAll=false --runInBand src/components/layout/Shell.i18n.test.js
+1 suite passed; 16 tests passed
+
+backend: node --check src/routes/auth.js
+exit 0
+
+git diff --check
+clean
+```
+
+Next: finish C3 review and commit, then C4 browser journeys.

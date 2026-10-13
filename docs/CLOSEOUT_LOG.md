@@ -1103,3 +1103,7 @@ Coverage added for validation rules, structured server field errors, accessible 
 ## 2026-10-13: Batch C2 procurement workspace (implementation in progress)
 
 Added the project procurement workspace and the project-scoped supplier invoice register. RFQ bid comparison now follows the effective `see_supplier_value` policy action. The focused workspace test passed (1 suite / 1 test), `i18n:check` passed, the frontend production build compiled, backend syntax checks passed, and `git diff --check` was clean. A prior local procurement API smoke passed the main procurement journey and invoice register scope assertions but stopped at reconcile because Windows returned `spawnSync node.exe EPERM`; record it as incomplete. The Docker image build also invoked the backend mock suite as part of its test stage (50 suites / 960 tests passed; 56 PostgreSQL suites skipped). Per the user's instruction, subsequent phase changes will use ticket-related tests and broader suites will be reserved for batch exits.
+
+## 2026-10-13: Batch C3 effective-permission navigation (implementation in progress)
+
+Login now returns unique effective module/action pairs. Sidebar visibility follows those grants, including the supplier-value requirement for quotation comparison, exact policy module keys for inventory and external portals, and fail-closed behavior for explicit empty grants. The focused shell test passed 1 suite / 16 tests; `node --check src/routes/auth.js` and `git diff --check` passed. No broad suite was run for this slice.
