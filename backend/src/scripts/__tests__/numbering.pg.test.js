@@ -129,11 +129,13 @@ describePg('numbering service (real PostgreSQL)', () => {
       expect(new Set(numbers).size).toBe(50);
 
       const newest = created.map((i) => i.invoice_number).sort().pop();
+      await pool.query('DELETE FROM invoice_lines WHERE invoice_id = (SELECT id FROM invoices WHERE invoice_number = $1)', [newest]);
       await pool.query('DELETE FROM invoices WHERE invoice_number = $1', [newest]);
       const next = await make();
       expect(next.invoice_number).not.toBe(newest);
       expect(numbers).not.toContain(next.invoice_number);
     } finally {
+      await pool.query('DELETE FROM invoice_lines WHERE invoice_id IN (SELECT id FROM invoices WHERE project_id = $1)', [project]);
       await pool.query('DELETE FROM invoices WHERE project_id = $1', [project]);
       await pool.query('DELETE FROM clients WHERE id = $1', [client]);
       await pool.query('DELETE FROM projects WHERE id = $1', [project]);

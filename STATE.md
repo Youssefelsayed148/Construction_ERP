@@ -74,3 +74,18 @@ Batch A and Batch B1â€“B6 are green. C1â€“C4 and Batch E implementation are comm
 - Docker test execution needed elevated local-engine access because the sandbox could not access the Docker Desktop pipe. The test DB was isolated and named explicitly; no production-looking or external database was used.
 - Approval limit defaults and finance mappings are provisional where noted in code/docs; finance signoff remains pending.
 - `0030` remains a documented, unreused migration-number gap. Highest migration is `0049`; next is `0050`.
+
+## Stop condition — 2026-10-13
+
+- Blocker: required `docker info --format '{{.ServerVersion}}'` check failed with `error during connect ... dockerDesktopLinuxEngine ... Access is denied`.
+- Evidence: command output from this closeout turn; Docker engine access is unavailable to this process.
+- Next action: restore Docker Desktop engine access for this workspace/session, then rerun `docker info` before creating the new throwaway PostgreSQL 16 container. Resume at request Step 0.1; do not read `.env.docker` or `.staging-users.json`.
+- Work stopped before database, test, gate, migration, or commit operations. Existing uncommitted work remains untouched.
+
+## Closeout continuation — 2026-10-13
+
+The initial sandbox Docker check returned `Access is denied`; an elevated local `docker info` retry succeeded with Docker Engine 28.3.2, clearing that blocker. Phase 5.8.2 was applied and verified against fresh throwaway PostgreSQL 16 databases. Migration 0059's PG test found and fixed the partial-index conflict predicate. Forward migration 0060 protects handover document links.
+
+Current gates: backend mock 53 suites / 999 tests; real PG 67 suites / 605 tests; guards `lint-guards: ok`; frontend 28 suites / 107 tests; i18n passed; build passed; Playwright 34 passed / 50 skipped. See `docs/CLOSEOUT_LOG.md` for command evidence.
+
+Pilot smoke remains unverified. Automatic review rejected the command because the script reads `.env.docker` and `.staging-users.json`, which the request explicitly prohibits. No alternate execution path was attempted. The 5.8.2 code and gate repairs remain uncommitted; next action is explicit-path staging, cached-diff inspection, commit, then the requested carryover audit.

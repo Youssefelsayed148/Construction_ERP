@@ -353,6 +353,7 @@ const RECORD_SCOPE_RULES = Object.freeze({
     [/^\/incidents\/:id(?:\/|$)/, 'safety_incidents'],
     [/^\/checklists\/instances\/:id(?:\/|$)/, 'checklist_instances'],
     [/^\/mock-ups\/:id(?:\/|$)/, 'mock_ups'],
+    [/^\/certificates\/:id(?:\/|$)/, 'qaqc_certificates'],
   ],
   hse: [
     [/^\/incidents\/:id(?:\/|$)/, 'incidents'],

@@ -126,7 +126,9 @@ async function deliverClaimed(q, claimed, { handlers = null, maxAttempts = MAX_A
       // also reaches the in-process bus afterwards (webhook fan-out subscribes there, plan 1.5).
       const handler = routes[row.event_type] || eventDispatcher.resolveRoute(row.event_type);
       if (handler) {
-        await handler(evt, { query: q });
+        const deliveryIdempotencyKey = evt.eventLogId != null
+          ? `event-log:${evt.eventLogId}` : `event:${evt.eventId || row.id}`;
+        await handler(evt, { query: q, deliveryIdempotencyKey });
         await defaultDeliver(evt);
       } else {
         await defaultDeliver(evt);
@@ -235,8 +237,17 @@ function initOutboxDispatcher(opts = {}) {
     } catch (e) {
       console.error('[OUTBOX] startup catch-up failed:', e.message);
     }
-    timer = setInterval(() => {
-      dispatchOnce().catch((e) => console.error('[OUTBOX] dispatch cycle failed:', e.message));
+    timer = setInterval(async () => {
+      try {
+        await dispatchOnce();
+      } catch (e) {
+        console.error('[OUTBOX] dispatch cycle failed');
+      }
+      try {
+        await require('./notificationService').retryDueDeliveries();
+      } catch (e) {
+        console.error('[NOTIFY] retry cycle failed');
+      }
     }, TIMER_INTERVAL_MS);
     if (timer.unref) timer.unref();
     console.log(`[OUTBOX] dispatcher initialized every ${TIMER_INTERVAL_MS}ms — routes: ${Object.keys(ROUTES).join(', ')}`);

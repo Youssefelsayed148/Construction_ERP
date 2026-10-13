@@ -1,4 +1,4 @@
-﻿# Closeout session state
+# Closeout session state
 
 ## Completed
 
@@ -22,8 +22,14 @@
 
 ## Next
 
-1. Implement Phase 5.8 notification delivery results/retry behavior behind safe local providers.
-2. Continue Phase 6 after the notification slice.
+1. Stage explicit paths and commit the verified 5.8.2 delivery slice plus related gate repairs on `closeout/batch-a-to-6`.
+2. Audit Batch C, Batch E, and Phases 5.6–6 against the code and write the remaining carryover list before Phase 7.
+
+## In progress / stopped
+
+- Phase 5.8.2 notification delivery tracking is implemented and verified locally, but the changes are still uncommitted. Migration 0059 and forward migration 0060 applied successfully to fresh throwaway Postgres 16 test databases using runtime-generated credentials; no credential values were printed or written to tracked files.
+- Current closeout gates: backend mock 53 suites / 999 tests; real PG 67 suites / 605 tests; `lint-guards: ok`; frontend CI 28 suites / 107 tests; `i18n:check ok`; production build passed; Playwright 34 passed / 50 skipped. Details and exact output summaries are in `docs/CLOSEOUT_LOG.md`.
+- The Docker pilot smoke remains unverified. Automatic review rejected the smoke command because its script reads the explicitly prohibited `.env.docker` and `.staging-users.json` files. No workaround was attempted.
 
 ## Decisions and limits
 

@@ -66,7 +66,7 @@ export default function Handover() {
   const [warrantyDocumentId, setWarrantyDocumentId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
-  const apiCall = (url, options) => fetchApi(url, options, t);
+  const apiCall = useCallback((url, options) => fetchApi(url, options, t), [t]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -86,7 +86,7 @@ export default function Handover() {
       setWarranties(w.data || []);
     } catch (e) { setLoadError(e.message); }
     finally { setLoading(false); }
-  }, [id]);
+  }, [apiCall, id]);
 
   useEffect(() => { load(); }, [load]);
 

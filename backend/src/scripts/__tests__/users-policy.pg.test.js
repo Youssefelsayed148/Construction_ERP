@@ -37,11 +37,23 @@ describePg('users are deactivated, never deleted (real PostgreSQL, real app)', (
     await db.query('UPDATE users SET is_active = false WHERE id = $1', [fresh.id]);
   });
 
-  test('no foreign key to users cascades or sets null', async () => {
+  test('user-owned rows cascade and optional attribution references detach only for approved tables', async () => {
     const rows = (await db.query(
-      `SELECT conrelid::regclass::text AS child, conname, confdeltype FROM pg_constraint
+      `SELECT conrelid::regclass::text AS child, conname, confdeltype AS delete_action FROM pg_constraint
         WHERE contype = 'f' AND confrelid = 'users'::regclass AND confdeltype IN ('c', 'n') ORDER BY 1, 2`)).rows;
-    expect(rows).toEqual([]);
+    // User-owned credentials/session/delivery rows may cascade. Optional author
+    // attribution becomes null on these non-financial history/register rows.
+    expect(rows).toEqual([
+      { child: 'action_comments', conname: 'action_comments_author_id_fkey', delete_action: 'n' },
+      { child: 'agent_sessions', conname: 'agent_sessions_user_id_fkey', delete_action: 'c' },
+      { child: 'api_tokens', conname: 'api_tokens_user_id_fkey', delete_action: 'c' },
+      { child: 'asset_documents', conname: 'asset_documents_linked_by_fkey', delete_action: 'n' },
+      { child: 'notification_deliveries', conname: 'notification_deliveries_user_id_fkey', delete_action: 'c' },
+      { child: 'qaqc_certificates', conname: 'qaqc_certificates_created_by_fkey', delete_action: 'n' },
+      { child: 'schedule_activity_assignments', conname: 'schedule_activity_assignments_created_by_fkey', delete_action: 'n' },
+      { child: 'schedule_progress_updates', conname: 'schedule_progress_updates_created_by_fkey', delete_action: 'n' },
+      { child: 'warranties', conname: 'warranties_created_by_fkey', delete_action: 'n' },
+    ]);
   });
 
   test('access links cannot be removed by deleting the user either', async () => {

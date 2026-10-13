@@ -1301,3 +1301,31 @@ Focused command output: `npm run migrate` on `construction_erp_closeout_test_202
 Migration `0058_agent_credentials_sessions_comments.sql` adds `api_tokens`, `agent_sessions`, and `action_comments`. API token secrets use a high-entropy opaque format, SHA-256 storage, one-time response display, explicit v1 family scopes with wildcard scopes rejected, fixed v1 audience, 30-day default expiry and 90-day maximum. OAuth v1/MCP authentication accepts them and checks status, expiry, active user, and token version. MCP now creates and resumes owner-bound persisted sessions with 90-day expiry; foreign/malformed/expired/closed IDs fail closed. Internal action comment GET/POST routes use parent-record project scope, reject external portal roles, and write activity audit transactionally for reads and appends. The comment routes are available through v1 family scopes.
 
 Focused command output: `npm run migrate` applied migration 0058 (1 applied, 119 already applied); rerun reported 0 applied, 120 already applied. `npm run test:pg -- --runTestsByPath src/scripts/__tests__/agent-platform-records.pg.test.js` passed 1 suite / 3 tests. The named test in `mcp-safety.pg.test.js` passed 1/1. `npm run lint:guards` reported `lint-guards: ok`; changed route/service/test `node --check` commands exited 0; `git diff --check` exited 0. No full test suite was run.
+
+## 2026-10-13: Phase 5.8.2 notification delivery tracking — verification stopped
+
+Implemented local changes for migration 0059, durable per-channel delivery status, stable event/user/channel idempotency, preference suppression, safe provider placeholders without external sends, bounded retry handling, and user-owned status/retry endpoints with transactional retry audit. The focused PostgreSQL test file is `notification-delivery.pg.test.js`.
+
+Focused command output: `npm test -- --runInBand src/scripts/__tests__/action-engine.test.js --testNamePattern="notificationService|event dispatcher"` passed 1 suite / 11 tests (21 skipped). Changed-file `node --check` commands exited 0. `npm run lint:guards` reported `lint-guards: ok`; `git diff --check` exited 0. No full suite was run.
+
+
+## 2026-10-13: Phase 5.8.2 resumed — Postgres verification and closeout gates
+
+Created a new local Postgres 16 container `erp-closeout-pg16-20261013201559` on loopback port 55471 and fresh test DBs with runtime-generated credentials. No `.env.docker` or `.staging-users.json` file was opened or printed for database setup. The initial migration run applied 121 migrations through 0059. The focused `notification-delivery.pg.test.js` first exposed a PostgreSQL conflict-target error because `notifications.delivery_id` is protected by a partial unique index. Updated the insert to specify `WHERE delivery_id IS NOT NULL`; the focused test then passed 3/3.
+
+The full PG run exposed stale/newly incomplete safety checks and a numbering-test cleanup issue. Updated record-scope rules for QA/QC certificates, classified caller-owned agent records, refreshed route inventory coverage, added provisional GL accounts to the mock finance fixture, extended FK classification for new user-owned/history tables, made handover package document deletion `RESTRICT` with forward-only migration 0060, updated the user-FK allowlist, and deleted invoice lines before invoice rows in the numbering fixture. Focused affected PG tests passed 3 suites / 21 tests.
+
+Final fresh database `erp_closeout_pg_final_20261013202700` applied 122 migrations through 0060. Gate results from current command output:
+
+- Backend mock: 53 suites / 999 tests passed.
+- Real PostgreSQL: 67 suites / 605 tests passed.
+- `lint:guards`: `lint-guards: ok`.
+- Frontend CI: 28 suites / 107 tests passed.
+- `i18n:check`: `i18n:check ok`.
+- Frontend production build: compiled successfully.
+- Playwright: 34 passed / 50 skipped (configured backend-seeded journey and screenshot cases).
+- Docker pilot smoke: not run. Automatic review rejected the requested smoke command because its implementation reads the explicitly prohibited `.env.docker` and `.staging-users.json`; no workaround was attempted.
+
+An initial repository-root Jest autodiscovery run was discarded as an invalid gate invocation: it mixed backend, PostgreSQL and frontend tests, and produced 44 suite failures from the wrong root/config. The official backend package Jest configuration subsequently passed 53/53 suites and the PG configuration passed 67/67 suites. A first frontend unit run found missing `common.suppliers` catalog entries; added paired EN/AR keys. The first production build found a missing `apiCall` hook dependency in Handover; stabilized the callback and the build passed. Playwright needed elevated local process launch after sandbox `spawn EPERM` and then completed 34/34 executed tests.
+
+The Phase 5.8.2 changes and gate repairs are verified locally and are awaiting explicit-path staging and commit on `closeout/batch-a-to-6`.

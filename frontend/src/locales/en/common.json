@@ -36,6 +36,7 @@
   "quantity": "Quantity",
   "amount": "Amount",
   "total": "Total",
+  "suppliers": "Suppliers",
   "notes": "Notes",
   "buttons": {
     "add": "Add",

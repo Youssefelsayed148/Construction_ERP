@@ -241,7 +241,9 @@ async function dispatchEvent(eventType, evt, opts = {}) {
   const handler = resolveRoute(eventType);
   if (!handler) return { handled: false };
   try {
-    await handler(evt, opts);
+    const deliveryIdempotencyKey = opts.deliveryIdempotencyKey
+      || (evt.eventLogId != null ? `event-log:${evt.eventLogId}` : (evt.eventId ? `event:${evt.eventId}` : null));
+    await handler(evt, { ...opts, deliveryIdempotencyKey });
     return { handled: true };
   } catch (e) {
     console.error(`[EVENT_DISPATCH] handler for ${eventType} failed:`, e.message);

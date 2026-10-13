@@ -28,6 +28,10 @@ const COMPANY_LEVEL = [
   // Phase 5.5: a payment batch groups payments of several projects; its routes require a company-wide finance
   // grant (companyOnly in routes/financeLedger.js, covered by commercial-5-5.pg.test.js).
   /^\/api\/finance-ledger\/payment-batches\/:id/,
+  // Agent credentials and sessions are self-owned records; handlers require
+  // the current user id in their database predicates.
+  /^\/api\/agent\/tokens\/:id\/revoke/,
+  /^\/api\/agent\/sessions\/:id\/status/,
 ];
 // Project-owned records still without a rule. Reviewed, tracked for a later pass; do not add to this list.
 const KNOWN_GAPS = new Set([

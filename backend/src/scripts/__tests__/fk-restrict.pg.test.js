@@ -79,19 +79,19 @@ describePg('foreign keys protect financial, procurement and contractual rows (re
     // Configuration, workflow engine internals, quality/HSE registers, templates, schedule, documents, links.
     // These hold no ledger value; deleting their parent may remove them.
     const ALLOWED = new Set([
-      'activity_relationships', 'asset_register', 'baselines', 'buildings', 'calendars', 'calibration_records', 'checklist_instances',
-      'checklist_templates', 'corrective_actions', 'correspondence', 'correspondence_history', 'document_numbering_sequences', 'document_number_sequences',
-      'document_versions', 'emergency_drills', 'equipment_assignments', 'equipment_inspections', 'equipment_usage_logs', 'escalation_rules',
+      'action_comments', 'activity_relationships', 'agent_sessions', 'api_tokens', 'asset_documents', 'asset_register', 'baselines', 'buildings', 'calendars', 'calibration_records', 'checklist_instances',
+      'checklist_templates', 'client_document_acknowledgements', 'corrective_actions', 'correspondence', 'correspondence_history', 'document_numbering_sequences', 'document_number_sequences',
+      'document_versions', 'emergency_drills', 'engineer_instruction_recommendations', 'equipment_assignments', 'equipment_inspections', 'equipment_usage_logs', 'escalation_rules',
       'hse_inspections', 'incidents', 'inductions', 'itp_points', 'itps', 'jsas', 'material_recipes', 'material_requirements', 'mock_ups', 'ncrs',
-      'near_misses', 'numbering_sequences', 'observation_comments', 'observation_status_history', 'observations', 'organization_contacts',
+      'near_misses', 'notification_deliveries', 'numbering_sequences', 'observation_comments', 'observation_status_history', 'observations', 'organization_contacts',
       'organization_documents', 'organization_users', 'permits', 'photos', 'portal_submissions', 'ppe_records', 'preventive_actions',
       'project_calendars', 'project_dashboard_preferences', 'project_documents', 'project_folders', 'project_locations', 'project_milestones',
       'project_numbering_settings', 'project_participant_users', 'project_participants', 'project_phases', 'project_registers', 'project_rfis', 'project_settings',
-      'project_submittals', 'project_team', 'project_workflows', 'punch_items', 'quality_tests', 'recipe_lines', 'replenishment_alerts', 'rfi_responses',
-      'risk_assessments', 'role_permissions', 'saved_views', 'schedule_activities', 'scheduled_report_runs', 'scheduled_reports', 'site_daily_reports',
+      'project_submittals', 'project_team', 'project_workflows', 'punch_items', 'qaqc_certificates', 'quality_tests', 'recipe_lines', 'replenishment_alerts', 'rfi_responses',
+      'risk_assessments', 'role_permissions', 'saved_views', 'schedule_activities', 'schedule_activity_assignments', 'scheduled_report_runs', 'scheduled_reports', 'schedule_progress_updates', 'site_daily_reports',
       'site_visits', 'sticky_notes', 'submittal_revisions', 'supplier_materials', 'template_approval_rules', 'template_folders', 'template_locations',
       'template_wbs', 'template_workflows', 'toolbox_talks', 'unit_conversions', 'transmittal_items', 'transmittals', 'units', 'user_project_roles', 
-      'wbs_nodes', 'webhook_deliveries', 'wirs', 'work_packages', 'workflow_actions', 'workflow_step_instances', 'workflow_steps',
+      'warranties', 'wbs_nodes', 'webhook_deliveries', 'wirs', 'work_packages', 'workflow_actions', 'workflow_step_instances', 'workflow_steps',
     ]);
     const unclassified = remaining.filter((t) => !ALLOWED.has(t));
     expect(unclassified).toEqual([]);

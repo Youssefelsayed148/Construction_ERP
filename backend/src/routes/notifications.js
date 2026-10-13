@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
 const notificationService = require('../services/notificationService');
+const { transaction } = require('../config/database');
+const { logActivity } = require('../utils/activity');
+const Joi = require('joi');
+const { typedFail } = require('../utils/typedRoute');
 
 // GET /api/notifications — the in-app inbox (frontend polls).
 router.get('/', authenticate, authorize(), async (req, res) => {
@@ -29,6 +33,35 @@ router.post('/:id/read', authenticate, authorize(), async (req, res) => {
   }
 });
 
+// GET /api/notifications/deliveries — delivery status for the signed-in user.
+router.get('/deliveries', authenticate, authorize(), async (req, res) => {
+  try {
+    const items = await notificationService.getDeliveries(req.user.id, { limit: req.query.limit });
+    res.json({ success: true, data: items });
+  } catch (error) { return typedFail(res, error, 'NOTIFICATION_DELIVERY_LIST', req); }
+});
+
+// POST /api/notifications/deliveries/:id/retry — retry one of the user's failed or undelivered items.
+router.post('/deliveries/:id/retry', authenticate, authorize(), async (req, res) => {
+  try {
+    const result = await transaction(async (client) => {
+      const delivery = await notificationService.retryDelivery(req.params.id, req.user.id, { client });
+      await logActivity({
+        userId: req.user.id,
+        userName: req.user.name,
+        userRole: req.user.role,
+        action: 'retry',
+        module: 'notifications',
+        description: `Retried notification delivery #${req.params.id}`,
+        entityId: req.params.id,
+        entityType: 'notification_delivery',
+      }, { query: client.query.bind(client) });
+      return delivery;
+    });
+    res.json({ success: true, data: result });
+  } catch (error) { return typedFail(res, error, 'NOTIFICATION_DELIVERY_RETRY', req); }
+});
+
 // GET /api/notifications/preferences
 router.get('/preferences', authenticate, authorize(), async (req, res) => {
   try {
@@ -42,14 +75,16 @@ router.get('/preferences', authenticate, authorize(), async (req, res) => {
 // PUT /api/notifications/preferences — body: { event_type, channel, enabled }
 router.put('/preferences', authenticate, authorize(), async (req, res) => {
   try {
-    const { event_type, channel, enabled } = req.body;
-    if (!event_type || !channel) {
-      return res.status(400).json({ success: false, error: 'event_type and channel are required' });
-    }
-    const r = await notificationService.setPreference(req.user.id, event_type, channel, enabled !== false);
+    const { error, value } = Joi.object({
+      event_type: Joi.string().trim().min(1).max(255).required(),
+      channel: Joi.string().valid(...notificationService.CHANNELS).required(),
+      enabled: Joi.boolean().default(true),
+    }).unknown(false).validate(req.body);
+    if (error) return res.status(400).json({ success: false, error_code: 'invalid_notification_preference' });
+    const r = await notificationService.setPreference(req.user.id, value.event_type, value.channel, value.enabled);
     res.json({ success: r.ok });
-  } catch (e) {
-    res.status(500).json({ success: false, error: e.message });
+  } catch (error) {
+    return typedFail(res, error, 'NOTIFICATION_PREFERENCE_UPDATE', req);
   }
 });
 

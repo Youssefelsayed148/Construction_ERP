@@ -168,3 +168,9 @@ At the end of 5.6, run the focused real-Postgres portal/consultant integration t
 - Business pilot users: execute and sign `docs/UAT_PILOT.md`.
 - Business/IT owner: select notification provider(s), approve credentials, message templates/consent requirements and spend limits before live delivery.
 - Product owner: approve any API deprecation window if repository inspection finds external consumers of the single-answer RFI/submittal endpoints.
+
+### 5.8.2 Notification delivery status and retry
+
+**Status: Complete locally.** Migration 0059 adds per-channel delivery attempts and status, with a stable per-event/user/channel idempotency key and a safe user-owned status/retry API. In-app notification rows are linked to delivery records so redelivery cannot duplicate inbox entries. The in-app insert uses the partial unique-index predicate in its conflict target. Email console mode logs only a delivery ID; unconfigured/unimplemented providers return `undelivered` without external sends or message-content logging. Preferences are honored, failures use bounded retries, and manual retry changes are audited in the same transaction. No live provider is implemented.
+
+**Verification:** Fresh local Docker Postgres 16 test database `erp_closeout_pg_final_20261013202700` on port 55471 applied all 122 migrations through 0060. `notification-delivery.pg.test.js` passed 3/3. Full PG suite passed 67 suites / 605 tests; backend mock passed 53 suites / 999 tests; backend guards reported `lint-guards: ok`; frontend CI passed 28 suites / 107 tests; `i18n:check ok`; production build compiled; Playwright passed 34 and skipped 50 configured backend-seeded/screenshot tests. The pilot smoke was not run: automatic review rejected its command because the script reads the explicitly prohibited `.env.docker` and `.staging-users.json` files. The 5.8.2 changes remain uncommitted pending the closeout slice commit.

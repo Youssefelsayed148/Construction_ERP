@@ -1,6 +1,7 @@
 {
   "appName": "نظام إدارة الإنشاءات",
   "appShortName": "ConERP",
+  "suppliers": "الموردون",
   "footer": "نظام إدارة الإنشاءات من Osiris Labs",
   "welcome": "مرحباً",
   "loading": "جاري التحميل...",

@@ -117,7 +117,11 @@ async function buildLedgerFixture() {
   await q(`CREATE TABLE IF NOT EXISTS journal_entry_lines (
     id SERIAL PRIMARY KEY, journal_entry_id INTEGER, account_id INTEGER, debit DECIMAL(15,2) DEFAULT 0,
     credit DECIMAL(15,2) DEFAULT 0, description TEXT, line_order INTEGER)`);
-  for (const [key, code] of [['cash', '1000'], ['receivable', '1100'], ['revenue', '4000'], ['vat_output', '2100']]) {
+  for (const [key, code] of [
+    ['cash', '1000'], ['receivable', '1100'], ['revenue', '4000'], ['vat_output', '2100'],
+    // Certificate adjustment accounts mirror the provisional mappings added in Phase 5.5.
+    ['client_retention_receivable', '1100'], ['client_advance_liability', '2000'], ['client_other_deductions', '5200'],
+  ]) {
     const account = (await q('INSERT INTO accounts (code, name, type) VALUES ($1, $1, $1) RETURNING id', [code])).rows[0];
     await q('INSERT INTO gl_account_map (key, account_id) VALUES ($1, $2)', [key, account.id]);
   }

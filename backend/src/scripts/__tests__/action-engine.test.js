@@ -53,6 +53,12 @@ async function buildFixture() {
   await wfMigration.ensureTables(q);
   await wfMigration.seedTemplates(q);
   await actionMigration.run(q);
+  await q(`CREATE TABLE IF NOT EXISTS notification_deliveries (
+    id SERIAL PRIMARY KEY, user_id INTEGER, channel VARCHAR(30), event_type VARCHAR(255), entity_type VARCHAR(100),
+    entity_id INTEGER, action_item_id INTEGER, idempotency_key CHAR(64), provider VARCHAR(80), status VARCHAR(20),
+    attempts INTEGER, max_attempts INTEGER, last_error_code VARCHAR(100), next_retry_at TIMESTAMPTZ, payload JSONB, notification_id INTEGER,
+    created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ, UNIQUE (user_id, channel, idempotency_key))`);
+  await q('ALTER TABLE notifications ADD COLUMN delivery_id INTEGER');
 
   await q(`INSERT INTO users (id, name, email, role, is_active) VALUES ($1,$2,$3,$4,$5)`, [20, 'Requester', 'req@x.com', 'staff', true]);
   await q(`INSERT INTO users (id, name, email, role, is_active) VALUES ($1,$2,$3,$4,$5)`, [30, 'Finance Manager', 'fm@x.com', 'finance_manager', true]);
@@ -223,21 +229,47 @@ describe('notificationService', () => {
     expect(await count('notifications')).toBe(before + 1);
   });
 
-  test('email adapter works without SMTP (console transport, ok=true); email is opt-in', async () => {
-    // Email is opt-in: without a preference row it is filtered out.
+  test('email is opt-in and missing provider configuration stays visibly undelivered', async () => {
     const denied = await notificationService.notify({
       userId: 40, title: 'Mail', body: 'Body', eventType: 'mail.event',
     }, { client, channels: ['email'] });
     expect(denied.ok).toBe(false);
-    expect(denied.results.length).toBe(0);
+    expect(denied.results[0].status).toBe('suppressed');
 
-    // An explicit preference row enables it; no SMTP config → console transport.
+    // An explicit preference enables an attempt, but no provider must not masquerade as a send.
     await notificationService.setPreference(40, 'mail.event', 'email', true, { client });
     const r = await notificationService.notify({
       userId: 40, title: 'Mail', body: 'Body', eventType: 'mail.event',
     }, { client, channels: ['email'] });
-    expect(r.ok).toBe(true);
+    expect(r.ok).toBe(false);
     expect(r.results[0].channel).toBe('email');
+    expect(r.results[0].status).toBe('undelivered');
+  });
+
+  test('fake provider retry reuses one delivery record and hides payload from status reads', async () => {
+    const eventType = 'delivery.retry.unit';
+    await notificationService.setPreference(40, eventType, 'email', true, { client });
+    let sends = 0;
+    const providers = { email: { providerName: 'test-provider', async send() {
+      sends += 1;
+      return sends === 1 ? { ok: false, errorCode: 'temporary_failure' } : { ok: true };
+    } } };
+    const message = {
+      userId: 40, title: 'Retry title', body: 'private body', eventType, idempotencyKey: 'unit-retry-key',
+    };
+    const first = await notificationService.notify(message, { client, channels: ['email'], providers });
+    expect(first.results[0].status).toBe('failed');
+    const deliveries = await notificationService.getDeliveries(40, { client });
+    const delivery = deliveries.find((item) => item.event_type === eventType);
+    expect(delivery).toMatchObject({ status: 'failed', attempts: 1, last_error_code: 'temporary_failure' });
+    expect(JSON.stringify(delivery)).not.toContain('private body');
+
+    const retried = await notificationService.retryDelivery(delivery.id, 40, { client, providers });
+    expect(retried).toMatchObject({ status: 'sent', attempts: 2 });
+    const replay = await notificationService.notify(message, { client, channels: ['email'], providers });
+    expect(replay.results[0].status).toBe('sent');
+    expect(sends).toBe(2);
+    expect((await notificationService.getDeliveries(40, { client })).filter((item) => item.event_type === eventType)).toHaveLength(1);
   });
 
   test('stub channels (push/sms/whatsapp) resolve through the same interface', () => {
