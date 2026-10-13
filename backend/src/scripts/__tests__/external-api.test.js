@@ -750,6 +750,25 @@ describe('v1 idempotency keys', () => {
     await v1.idempotency({ ...makeReq({ amount: 1 }), headers: {} }, res4, next4);
     expect(next4).toHaveBeenCalled();
   });
+
+  test('returns a conflict when a duplicate idempotent request is still in flight', async () => {
+    resetStub(); seedUsers();
+    const req = { method: 'POST', headers: { 'idempotency-key': 'same-request' }, body: { report_date: '2026-10-13' },
+      authType: 'internal', user: { id: 1 }, originalUrl: '/api/projects/11/site-reports' };
+    const firstHandler = jest.fn();
+    await v1.idempotency(req, makeRes(), firstHandler);
+    expect(firstHandler).toHaveBeenCalledTimes(1);
+
+    const duplicateNext = jest.fn();
+    await v1.idempotency({ ...req, idempotencyHandled: false, headers: { ...req.headers } }, makeRes(), duplicateNext);
+    expect(duplicateNext).toHaveBeenCalledWith(expect.objectContaining({ status: 409, code: 'idempotency_in_progress' }));
+  });
+
+  test('requires a key when a route opts into fail-closed idempotency', async () => {
+    const next = jest.fn();
+    await v1.idempotency({ method: 'POST', headers: {}, requireIdempotencyKey: true }, makeRes(), next);
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 400, code: 'idempotency_key_required' }));
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -43,3 +43,7 @@
 ## Stop condition — 2026-10-13 — Docker engine unavailable
 
 The required `docker info --format '{{.ServerVersion}}'` check failed: `error during connect: Get "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.51/info": open //./pipe/dockerDesktopLinuxEngine: Access is denied.` The Phase 7 idempotency changes remain uncommitted. Backend mock coverage passed 46/46; the focused real-Postgres daily-report replay test is unverified. No database or credential files were accessed. Resume after Docker Desktop engine access is restored, verify `docker info`, then run the focused PG test on a named throwaway database.
+
+## 2026-10-14 continuation â€” Docker access restored; Phase 7 idempotency verified
+
+The normal shell remains denied access to the Docker Desktop pipe; elevated Docker CLI access returned Engine `28.3.2`. Used fresh loopback-only, volume-free PostgreSQL 16 container `erp-closeout-pg16-20261014` and only database `construction_erp_test`. All 122 migrations applied. Daily-report idempotency covers internal, v1 and MCP; full backend mock (53/1,001), real PostgreSQL (67/607), frontend (28/111), i18n, build and guard gates passed. The slice is not yet committed. Continue with the Phase 7 offline queue; Phases 8â€“11 remain open.

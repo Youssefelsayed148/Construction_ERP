@@ -789,6 +789,14 @@ function buildV1Router() {
       .then((data) => res.json({ success: true, data })).catch(next);
   });
 
+  // Site reports require an idempotency key before the global POST wrapper
+  // runs. The remounted internal chain sees idempotencyHandled and does not
+  // claim the same request a second time.
+  api.use((req, res, next) => {
+    if (req.method === 'POST' && /^\/daily-reports\/[^/]+\/?$/.test(req.path)) req.requireIdempotencyKey = true;
+    next();
+  });
+
   // Idempotency wraps POSTs (before the remounted chains so their responses
   // are captured for replay).
   api.use(v1.idempotency);

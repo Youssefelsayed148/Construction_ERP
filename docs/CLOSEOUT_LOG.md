@@ -1419,3 +1419,13 @@ Command: `docker info --format '{{.ServerVersion}}'`.
 Output: `error during connect: Get "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.51/info": open //./pipe/dockerDesktopLinuxEngine: Access is denied.` `docker ps --format '{{.Names}} {{.Ports}}'` failed on the same pipe. Per the closeout request's Docker STOP RULE, work stops here without retrying through another access path.
 
 Current idempotency changes are uncommitted. Backend mock middleware suite passed 1 suite / 46 tests. Real-Postgres replay test is unverified; no DB was started or changed. Resume by restoring Docker Desktop access, rerunning the required `docker info` check, then running the focused PG test against a named throwaway Postgres 16 database.
+
+## 2026-10-14: Phase 7.2 daily-report idempotency verified
+
+The normal workspace shell continued to receive `Access is denied` for the Docker Desktop engine pipe; the authorized elevated Docker CLI check returned Engine `28.3.2`. Used a new volume-free, loopback-only PostgreSQL 16 container named `erp-closeout-pg16-20261014`, bound to `127.0.0.1:55441`, with database `construction_erp_test`. Did not use the pilot container or the existing persistent test volume. `npm run migrate` completed with 122 migrations applied.
+
+Daily-report POSTs require an `Idempotency-Key` across the internal API, v1 remount and MCP. Completed results replay, in-flight duplicates return 409, missing keys return typed 400, and the report modal retains a key for retries. MCP exposes `idempotency_key` and passes it as the internal header. Fixed v1 double-wrapping by marking a successfully claimed request; fixed global typed-error handling to preserve valid status and error codes. Added paired portal catalog entries discovered by the frontend parity test.
+
+Gate output: backend mock 53 suites / 1,001 tests; real PostgreSQL 67 suites / 607 tests; frontend 28 suites / 111 tests; `i18n:check ok`; production build `Compiled successfully`; `lint-guards: ok`; focused `node --check` and `git diff --check` exited 0. The focused report suite passed 11/11, including replay/no-duplicate rows and missing-key behavior. No production/pilot database or external service was used.
+
+The Phase 7.2 code slice is ready for explicit-path commit. PWA offline browser journey, Lighthouse, IndexedDB mutation queue, responsive/table/touch work, and local Arabic font package remain unverified/open.

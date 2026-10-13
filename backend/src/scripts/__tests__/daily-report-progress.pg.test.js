@@ -25,15 +25,16 @@ describePg('A2.6 daily-report measurements and weighted progress (real PostgreSQ
   let app; let server; let base; let db; let owner; let progressEngine; let widgets;
   const tag = String(Date.now()).slice(-7);
   let seq = 0;
+  let reportSeq = 0;
   const one = async (sql, params) => (await db.query(sql, params)).rows[0];
   const all = async (sql, params) => (await db.query(sql, params)).rows;
-  const call = async (method, path, body) => {
+  const call = async (method, path, body, extraHeaders = {}) => {
     const res = await fetch(`${base}${path}`, {
-      method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${owner.token}` }, body: body ? JSON.stringify(body) : undefined,
+      method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${owner.token}`, ...extraHeaders }, body: body ? JSON.stringify(body) : undefined,
     });
     let json = null;
     try { json = await res.json(); } catch (e) { /* empty */ }
-    return { status: res.status, body: json };
+    return { status: res.status, body: json, replayed: res.headers.get('Idempotency-Replayed') };
   };
 
   // A project with a location, two BOQ items (A: 100 x 10, B: 900 x 10 => weights 1000 and 9000) and one
@@ -57,7 +58,40 @@ describePg('A2.6 daily-report measurements and weighted progress (real PostgreSQ
     return { key, project, other, location, otherLocation, itemA, itemB, otherItem, actA, actB };
   };
   const percent = async (table, id) => Number((await one(`SELECT ${table === 'projects' ? 'completion_percentage' : 'percent_complete'} AS p FROM ${table} WHERE id = $1`, [id])).p);
-  const report = (w, body) => call('POST', `/api/projects/${w.project.id}/site-reports`, { report_date: '2026-10-02', work_summary: 'Slab poured', ...body });
+  const report = (w, body) => {
+    reportSeq += 1;
+    return call('POST', `/api/projects/${w.project.id}/site-reports`, { report_date: '2026-10-02', work_summary: 'Slab poured', ...body }, {
+      'Idempotency-Key': `site-report-${tag}-${reportSeq}`,
+    });
+  };
+
+  test('daily report retries replay the original response and do not duplicate measurements', async () => {
+    const w = await world();
+    const payload = { report_date: '2026-10-03', work_summary: 'Concrete poured', measurements: [
+      { project_location_id: w.location.id, boq_item_id: w.itemA.id, quantity: 4, unit: 'm2' },
+    ] };
+    const key = `site-report-${w.key}`;
+    const path = `/api/projects/${w.project.id}/site-reports`;
+    const headers = { 'Idempotency-Key': key };
+    const first = await call('POST', path, payload, headers);
+    const replay = await call('POST', path, payload, headers);
+    expect(first.status).toBe(201);
+    expect(replay.status).toBe(201);
+    expect(replay.replayed).toBe('true');
+    expect(replay.body.data.id).toBe(first.body.data.id);
+    expect(Number((await one("SELECT count(*)::int n FROM site_daily_reports WHERE project_id = $1 AND report_date = $2", [w.project.id, '2026-10-03'])).n)).toBe(1);
+    expect(Number((await one("SELECT count(*)::int n FROM quantity_measurements WHERE source_type = 'daily_report' AND source_id = $1", [first.body.data.id])).n)).toBe(1);
+  });
+
+  test('daily report writes require an idempotency key', async () => {
+    const w = await world();
+    const missingKey = await call('POST', `/api/projects/${w.project.id}/site-reports`, {
+      report_date: '2026-10-04', work_summary: 'Concrete poured',
+    });
+    expect(missingKey.status).toBe(400);
+    expect(missingKey.body.error_code).toBe('idempotency_key_required');
+    expect(Number((await one('SELECT count(*)::int n FROM site_daily_reports WHERE project_id = $1', [w.project.id])).n)).toBe(0);
+  });
 
   beforeAll(async () => {
     ({ app } = require('../../../server'));

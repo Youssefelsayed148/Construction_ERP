@@ -172,9 +172,16 @@ function requestFingerprint(body) {
 const poolQuery = (text, params) => require('../config/database').query(text, params);
 
 async function idempotency(req, res, next) {
+  if (req.idempotencyHandled) return next();
   if (req.method !== 'POST') return next();
+  const required = req.requireIdempotencyKey === true;
   const key = req.headers['idempotency-key'];
-  if (!key || typeof key !== 'string') return next();
+  if (!key || typeof key !== 'string') {
+    if (!required) return next();
+    const err = new Error('Idempotency-Key is required for this operation');
+    err.status = 400; err.code = 'idempotency_key_required';
+    return next(err);
+  }
 
   if (key.length > 200) {
     const err = new Error('Idempotency-Key too long (max 200 characters)');
@@ -210,17 +217,42 @@ async function idempotency(req, res, next) {
       return next(err);
     }
 
-    await poolQuery(
+    const claimed = await poolQuery(
       `INSERT INTO idempotency_keys (key, subject, method, path, request_hash, status)
        VALUES ($1, $2, $3, $4, $5, 'in_flight')
-       ON CONFLICT (key, subject, method, path) DO NOTHING`,
+       ON CONFLICT (key, subject, method, path) DO NOTHING RETURNING key`,
       [key, subject, req.method, path, fingerprint]
     );
+    if (claimed.rows.length === 0) {
+      const raced = (await poolQuery(
+        'SELECT * FROM idempotency_keys WHERE key = $1 AND subject = $2 AND method = $3 AND path = $4',
+        [key, subject, req.method, path]
+      )).rows[0];
+      if (raced?.status === 'completed') {
+        if (raced.request_hash && raced.request_hash !== fingerprint) {
+          const err = new Error('Idempotency-Key was already used with a different request body');
+          err.status = 409; err.code = 'idempotency_key_reuse';
+          return next(err);
+        }
+        res.setHeader('Idempotency-Replayed', 'true');
+        return res.status(raced.response_status || 200).json(raced.response_body || { success: true, data: null });
+      }
+      const err = new Error('A request with this Idempotency-Key is still in progress');
+      err.status = 409; err.code = 'idempotency_in_progress';
+      return next(err);
+    }
   } catch (e) {
     // Storage failure must not block the request; idempotency degrades.
     console.error('[V1] idempotency lookup failed:', e.message);
+    if (required) {
+      const err = new Error('Idempotency storage is unavailable');
+      err.status = 503; err.code = 'idempotency_unavailable';
+      return next(err);
+    }
     return next();
   }
+
+  req.idempotencyHandled = true;
 
   // Capture the handler's response to persist for replays.
   const originalJson = res.json.bind(res);
@@ -232,16 +264,30 @@ async function idempotency(req, res, next) {
       // Only completed (2xx) responses are replayable; a failed request must
       // be re-executable with the same key.
       if (status >= 200 && status < 300) {
-        poolQuery(
+        const persist = poolQuery(
           `UPDATE idempotency_keys
            SET status = 'completed', response_status = $1, response_body = $2, request_hash = $3
            WHERE key = $4 AND subject = $5 AND method = $6 AND path = $7`,
           [status, JSON.stringify(payload), fingerprint, key, subject, req.method, path]
-        ).catch((e) => console.error('[V1] idempotency store failed:', e.message));
+        );
+        if (required) {
+          persist.then(() => originalJson(payload)).catch((e) => {
+            console.error('[V1] required idempotency store failed:', e.message);
+            res.status(503);
+            originalJson({ success: false, error: 'Idempotency storage is unavailable', error_code: 'idempotency_unavailable' });
+          });
+          return res;
+        }
+        persist.catch((e) => console.error('[V1] idempotency store failed:', e.message));
       }
     }
     return originalJson(payload);
   };
+  next();
+}
+
+function requireIdempotencyKey(req, res, next) {
+  req.requireIdempotencyKey = true;
   next();
 }
 
@@ -368,6 +414,7 @@ module.exports = {
   authenticateV1,
   requireScope,
   idempotency,
+  requireIdempotencyKey,
   normalizeResponses,
   structuredErrorHandler,
   parseListQuery,

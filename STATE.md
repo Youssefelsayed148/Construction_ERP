@@ -107,3 +107,7 @@ Verification: `PortalDashboard.test.js` passed 1 suite / 10 tests; `i18n:check o
 - Work state: the Phase 7 daily-report idempotency middleware/client/test changes are uncommitted. Backend mock `external-api.test.js` passed 1 suite / 46 tests. The real-Postgres `daily-report-progress.pg.test.js` was not run; no database was created or modified in this stopped slice.
 - Safety: no credential files were read, no `.env` file was edited, and no elevated or alternate Docker access attempt was made.
 - Next action: restore Docker Desktop engine access for this workspace/session, rerun `docker info --format '{{.ServerVersion}}'`, then apply the focused PG test to a named throwaway Postgres 16 database before committing this slice.
+
+## 2026-10-14 continuation — Phase 7 idempotent daily reports
+
+The normal workspace shell still cannot open Docker Desktop's named pipe; the authorized elevated Docker CLI path works. `docker info --format '{{.ServerVersion}}'` returned `28.3.2`, resolving the earlier stop condition. Used fresh, loopback-only, volume-free PostgreSQL 16 container `erp-closeout-pg16-20261014`; database `construction_erp_test` at `127.0.0.1:55441`. All 122 migrations applied. Backend mock: 53 suites / 1,001 tests; real PostgreSQL: 67 suites / 607 tests; frontend: 28 suites / 111 tests; i18n, production build, lint guards, syntax checks and `git diff --check` passed. The Phase 7.2 code is not yet committed; audit report artifact remains untouched and unstaged. Continue Phase 7 offline queue and responsive work; Phases 8–11 remain open.

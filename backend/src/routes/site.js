@@ -4,6 +4,7 @@ const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
+const { idempotency, requireIdempotencyKey } = require('../middleware/v1');
 const { logActivity, fireEvent } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 const quantityEngine = require('../services/quantityEngine');
@@ -70,7 +71,7 @@ async function recordReportMeasurements(q, report, lines, userId) {
   return touched.size;
 }
 
-router.post('/:projectId/site-reports', authenticate, authorize(), async (req, res) => {
+router.post('/:projectId/site-reports', authenticate, authorize(), requireIdempotencyKey, idempotency, async (req, res) => {
   try {
     const schema = Joi.object({
       report_date: Joi.date().iso().required(),

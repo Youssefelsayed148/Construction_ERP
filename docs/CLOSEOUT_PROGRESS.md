@@ -605,3 +605,11 @@ Verification: production build compiled; `node --check public/service-worker.js`
 ### Stop condition — Docker engine unavailable (2026-10-13)
 
 Docker Desktop pipe access was denied by the required `docker info` check. The current idempotency implementation/test changes are held uncommitted pending real-Postgres verification. Backend mock test output: `external-api.test.js` PASS, 1 suite / 46 tests. Focused PG test and database migration/application were not run. Resume after engine access is restored.
+
+### Phase 7.2 â€” idempotent daily-report writes (2026-10-14)
+
+Daily-report creation now requires `Idempotency-Key` through the internal API, `/api/v1`, and MCP. The backend records claims, replays completed responses, rejects in-flight duplicates, and fails closed when required idempotency storage is unavailable. The site report form reuses one key for retries while the form remains open. MCP's `update_daily_report_draft` accepts `idempotency_key`; the v1 middleware avoids double-claiming remounted requests. The global API error handler preserves valid typed statuses and codes so middleware errors return 400/409 rather than 500.
+
+Verification used fresh disposable PostgreSQL 16 container `erp-closeout-pg16-20261014`, loopback port 55441, database `construction_erp_test`, with no mounted volume; `npm run migrate` applied 122 migrations. Backend mock `npm test -- --runInBand`: 53 suites / 1,001 tests passed. Real PG `npm run test:pg -- --silent`: 67 suites / 607 tests passed. Frontend `npm run test:ci -- --runInBand`: 28 suites / 111 tests passed. `npm run i18n:check`: `i18n:check ok`; `npm run build`: compiled successfully; `npm run lint:guards`: `lint-guards: ok`; focused `node --check` and `git diff --check` passed.
+
+The frontend gate exposed a missing portal translation used by the localized quick action; paired English/Arabic entries were added and the full suite passed. Lighthouse/offline browser journey remains open. IndexedDB queue, conflict/sync UI, font packaging, and responsive requirements remain open. This implementation slice is pending its explicit-path commit.

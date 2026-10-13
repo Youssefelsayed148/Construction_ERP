@@ -29,11 +29,17 @@ describePg('A2.5 events: names, routes, atomicity (real PostgreSQL, real app)', 
   let app; let server; let base; let db; let owner; let outbox; let dispatcher; let notifications; let finance;
   const tag = String(Date.now()).slice(-7);
   let seq = 0;
+  let reportSeq = 0;
   const one = async (sql, params) => (await db.query(sql, params)).rows[0];
   const all = async (sql, params) => (await db.query(sql, params)).rows;
   const call = async (method, path, body) => {
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${owner.token}` };
+    if (method === 'POST' && path.includes('/site-reports')) {
+      reportSeq += 1;
+      headers['Idempotency-Key'] = `event-site-report-${tag}-${reportSeq}`;
+    }
     const res = await fetch(`${base}${path}`, {
-      method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${owner.token}` }, body: body ? JSON.stringify(body) : undefined,
+      method, headers, body: body ? JSON.stringify(body) : undefined,
     });
     let json = null;
     try { json = await res.json(); } catch (e) { /* empty */ }

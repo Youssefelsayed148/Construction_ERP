@@ -110,8 +110,22 @@ app.use('/api/mcp', require('./src/routes/mcp'));
 app.use('/api/agent', require('./src/routes/agents'));
 
 app.use((err, req, res, next) => {
-  logger.error(err.stack);
-  res.status(500).json({ success: false, error: 'Internal server error', request_id: req.requestId });
+  const requestedStatus = Number(err.status || err.statusCode);
+  const status = Number.isInteger(requestedStatus) && requestedStatus >= 400 && requestedStatus <= 599
+    ? requestedStatus : 500;
+  const errorCode = err.error_code
+    || (typeof err.code === 'string' && /^[a-z][a-z0-9_]*$/i.test(err.code) ? err.code : null)
+    || ({ 400: 'validation_error', 401: 'unauthenticated', 403: 'forbidden', 404: 'not_found', 409: 'conflict', 429: 'rate_limited' }[status])
+    || 'internal_error';
+  if (status >= 500) logger.error(err.stack);
+  else logger.warn(`${status} ${errorCode}: ${err.message || 'Request failed'}`);
+  res.status(status).json({
+    success: false,
+    error: status >= 500 ? 'Internal server error' : (err.message || 'Request failed'),
+    error_code: errorCode,
+    ...(err.error_params ? { error_params: err.error_params } : {}),
+    request_id: req.requestId,
+  });
 });
 
 const PORT = process.env.PORT || 5000;

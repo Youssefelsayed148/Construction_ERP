@@ -348,6 +348,7 @@ Exit gate: every spec screen reachable from navigation; no `prompt()` left; empt
 
 7.1 Offline (spec 30 requires it)
 - [x] Web manifest and service worker (versioned app-shell cache and user-controlled update activation; verified by production build and service-worker syntax check, 2026-10-13).
+- [x] Require an idempotency key for daily-report writes on internal, v1 and MCP surfaces; replay completed responses and reject in-flight duplicates (real PostgreSQL verification, 2026-10-14).
 - [ ] IndexedDB queue for site posts: photos, measurements, daily reports, with idempotency keys, retry, conflict display and a visible sync status.
 - [ ] Bundle fonts locally (IBM Plex Arabic) so the app works offline; adjust nginx CSP.
 

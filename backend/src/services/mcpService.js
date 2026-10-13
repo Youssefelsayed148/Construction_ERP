@@ -132,7 +132,7 @@ function makeResponseStub() {
 function buildSyntheticRequest(def, routerName, args, user, readOnly = false) {
   const argMap = def.argMap || {};
   const params = {}; const query = {}; const body = {};
-  const { reason: _reason, ...toolArgs } = args || {};
+  const { reason: _reason, idempotency_key: idempotencyKey, ...toolArgs } = args || {};
   void _reason;
   if (def.reasonInBody && _reason) body.reason = _reason; // e.g. void_financial_record: the void reason is recorded on the invoice
   for (const [key, value] of Object.entries(toolArgs)) {
@@ -149,7 +149,10 @@ function buildSyntheticRequest(def, routerName, args, user, readOnly = false) {
     // Already authenticated by routes/mcp.js (typed token); the handler chain must not re-verify.
     user, preAuthenticated: true,
     preview: readOnly ? { actor_id: user.id, role: user.role, read_only: true } : undefined,
-    headers: { 'x-request-id': `mcp-${crypto.randomUUID()}` },
+    headers: {
+      'x-request-id': `mcp-${crypto.randomUUID()}`,
+      ...(idempotencyKey ? { 'idempotency-key': idempotencyKey } : {}),
+    },
     originalUrl: `${internalMount}${def.path}`,
     ip: 'mcp-session',
     baseUrl: '/api/mcp',
@@ -168,7 +171,16 @@ async function invokeInternal(routerName, method, path, def, args, user, readOnl
     chainError = e;
   }
   if (chainError) {
-    return { status: 500, body: { success: false, error: chainError.message } };
+    const requestedStatus = Number(chainError.status || chainError.statusCode);
+    const status = Number.isInteger(requestedStatus) && requestedStatus >= 400 && requestedStatus <= 599 ? requestedStatus : 500;
+    return {
+      status,
+      body: {
+        success: false,
+        error: status >= 500 ? 'Internal server error' : (chainError.message || 'Request failed'),
+        error_code: chainError.error_code || chainError.code || 'internal_error',
+      },
+    };
   }
   return { status: res.statusCode, body: res._body };
 }

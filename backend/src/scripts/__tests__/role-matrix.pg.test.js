@@ -21,8 +21,11 @@ describePg('role matrix on internal, v1 and MCP (real PostgreSQL, real app)', ()
   const one = async (sql, params) => (await db.query(sql, params)).rows[0];
 
   const call = async (method, path, token, body) => {
+    const { idempotency_key: idempotencyKey, ...requestBody } = body || {};
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+    if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
     const res = await fetch(`${base}${path}`, {
-      method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: body ? JSON.stringify(body) : undefined,
+      method, headers, body: body ? JSON.stringify(requestBody) : undefined,
     });
     return res.status;
   };
@@ -116,7 +119,11 @@ describePg('role matrix on internal, v1 and MCP (real PostgreSQL, real app)', ()
   const A = () => ids.pA;
   let day = 0;
   const report = () => { day += 1; return { report_date: `2026-02-${String(day).padStart(2, '0')}`, work_summary: 'poured slab' }; };
-  const sameReport = () => { const r = report(); return [r, { ...r, report_date: r.report_date.replace('2026-02', '2026-03') }, { ...r, report_date: r.report_date.replace('2026-02', '2026-04') }]; };
+  const sameReport = () => { const r = report(); return [
+    { ...r, idempotency_key: `rm-internal-${tag}-${day}` },
+    { ...r, report_date: r.report_date.replace('2026-02', '2026-03'), idempotency_key: `rm-v1-${tag}-${day}` },
+    { ...r, report_date: r.report_date.replace('2026-02', '2026-04'), idempotency_key: `rm-mcp-${tag}-${day}` },
+  ]; };
   const CASES = {
     site_engineer: [
       ['allow', 'views the project', () => ({ i: ['GET', `/api/projects/${A()}`], v: ['GET', `/api/v1/projects/${A()}`], m: ['get_project', { id: A() }] })],

@@ -5,7 +5,7 @@
   "previewAsClient": "Preview as client",
   "quickActions": {
     "clarify": "Send clarification", "acknowledgePo": "Acknowledge PO", "advanceObservation": "Advance observation",
-    "reviewRfi": "Review RFI", "reviewSubmittal": "Review submittal", "quoteRfq": "Submit quotation",
+    "reviewRfi": "Review RFI", "reviewSubmittal": "Review submittal", "quoteRfq": "Submit quotation", "submitQuotation": "Submit quotation",
     "proposeDelivery": "Propose delivery", "uploadCertificate": "Upload delivery certificate", "submitInvoice": "Submit invoice",
     "sendClarification": "Send clarification", "record": "Record", "selectRecord": "Select a record",
     "message": "Clarification", "action": "Action", "comment": "Comment", "stage": "Review stage",

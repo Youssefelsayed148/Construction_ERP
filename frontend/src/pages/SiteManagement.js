@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import TextEntryDialog from '../components/common/TextEntryDialog';
@@ -164,6 +164,7 @@ function DailyReportsTab({ projectId, locale, t }) {
 
 function ReportModal({ projectId, locale, t, onClose, onSave }) {
   const today = new Date().toISOString().slice(0, 10);
+  const idempotencyKey = useRef(window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`);
   const [form, setForm] = useState({
     report_date: today, weather: '', temperature: '', workers_count: 0,
     work_summary: '', material_received: '', equipment_on_site: '', issues_notes: '', photos: [],
@@ -179,7 +180,9 @@ function ReportModal({ projectId, locale, t, onClose, onSave }) {
     setError('');
     try {
       const body = { ...form, workers_count: Number(form.workers_count) || 0 };
-      const res = await fetchApi(`${API_URL}/projects/${projectId}/site-reports`, { method: 'POST', body: JSON.stringify(body) });
+      const res = await fetchApi(`${API_URL}/projects/${projectId}/site-reports`, {
+        method: 'POST', headers: { ...headers(), 'Idempotency-Key': idempotencyKey.current }, body: JSON.stringify(body),
+      });
       if (res.success) { onSave(); onClose(); }
       else setError(res.error || 'Save failed');
     } catch (e) { setError(e.message); }
