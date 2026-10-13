@@ -617,4 +617,25 @@ npm run lint:guards
 lint-guards: ok
 ```
 
-A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This auth slice is not committed yet.
+A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This auth slice is committed as `7d13d91`.
+
+## 2026-10-13: A4 commercial and finance audit transaction continuation (local, pending commit)
+
+Added `atomicAudited` and moved mutation audit rows into their transactions for variation edits/creation, contract parties, guarantees, insurance, currency rates, payment applications and certificates, budget/forecast versions, and commitment adjustments. Client contract activity now also shares its existing transaction. Operations without an existing audit entry remain unchanged in this slice.
+
+Verification command output:
+
+```text
+node --check src/routes/commercial.js; git diff --check
+exit code: 0
+
+npm test -- --runInBand
+Test Suites: 48 passed, 48 total
+Tests:       968 passed, 968 total
+Ran all test suites.
+
+npm run lint:guards
+lint-guards: ok
+```
+
+A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This commercial slice is not committed yet.

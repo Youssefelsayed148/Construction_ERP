@@ -72,14 +72,8 @@ router.post('/contracts', authenticate, authorize(), async (req, res) => {
            line.unit || null, line.unit_rate || 0, Math.round((line.quantity * line.unit_rate + Number.EPSILON) * 100) / 100, ++sort]
         );
       }
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'commercial', description: `Created client contract ${contractNumber}`, entityId: contract.id, entityType: 'client_contract' }, { query: client.query.bind(client) });
       return contract;
-    });
-
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'create', module: 'commercial',
-      description: `Created client contract ${contractNumber}`,
-      entityId: created.id, entityType: 'client_contract',
     });
     res.status(201).json({ success: true, data: created });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
@@ -128,13 +122,8 @@ router.post('/variations', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const variation = await engine.createVariation(query, { ...value, created_by: req.user.id });
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'create', module: 'commercial',
-      description: `Created variation ${variation.variation_number}`,
-      entityId: variation.id, entityType: 'variation',
-    });
+    const variation = await atomicAudited(req, (q) => engine.createVariation(q, { ...value, created_by: req.user.id }),
+      (row) => ['create', `Created variation ${row.variation_number}`, 'variation', row.id]);
     res.status(201).json({ success: true, data: variation });
   } catch (e) { return typedFail(res, e, 'COMMERCIAL'); }
 });
@@ -200,8 +189,15 @@ router.get('/project/:projectId/legacy-snapshots', authenticate, authorize(), as
 const records = require('../services/commercialRecords');
 const budgeting = require('../services/budgeting');
 
-const audit = (req, action, description, entityType, entityId) => logActivity({
+const audit = (req, action, description, entityType, entityId, opts) => logActivity({
   userId: req.user.id, userName: req.user.name, userRole: req.user.role, action, module: 'commercial', description, entityId, entityType,
+}, opts);
+const atomicAudited = (req, work, describe) => transaction(async (client) => {
+  const q = client.query.bind(client);
+  const result = await work(q);
+  const [action, description, entityType, entityId] = describe(result);
+  await audit(req, action, description, entityType, entityId, { query: q });
+  return result;
 });
 const fail = (res, e) => typedFail(res, e, 'COMMERCIAL');
 const intId = (req) => parseInt(req.params.id, 10);
@@ -220,8 +216,8 @@ router.put('/variations/:id', authenticate, authorize(), async (req, res) => {
       time_impact_days: Joi.number().integer().allow(null), recommended_amount: money.allow(null),
     }), req, res);
     if (!value) return;
-    const row = await atomic((q) => engine.updateVariation(q, intId(req), value));
-    await audit(req, 'update', `Updated variation ${row.variation_number}`, 'variation', row.id);
+    const row = await atomicAudited(req, (q) => engine.updateVariation(q, intId(req), value),
+      (updated) => ['update', `Updated variation ${updated.variation_number}`, 'variation', updated.id]);
     res.json({ success: true, data: row });
   } catch (e) { return fail(res, e); }
 });
@@ -240,8 +236,8 @@ for (const [segment, column] of [['contracts', 'client_contract_id'], ['subcontr
     try {
       const value = typedBody(partySchema, req, res);
       if (!value) return;
-      const row = await atomic((q) => records.addParty(q, { ...value, [column]: parseInt(req.params.contractId, 10) }, req.user.id));
-      await audit(req, 'create', `Added ${row.party_role} to contract #${req.params.contractId}`, 'contract_party', row.id);
+      const row = await atomicAudited(req, (q) => records.addParty(q, { ...value, [column]: parseInt(req.params.contractId, 10) }, req.user.id),
+        (created) => ['create', `Added ${created.party_role} to contract #${req.params.contractId}`, 'contract_party', created.id]);
       res.status(201).json({ success: true, data: row });
     } catch (e) { return fail(res, e); }
   });
@@ -268,8 +264,8 @@ router.post('/guarantees', authenticate, authorize(), async (req, res) => {
   try {
     const value = typedBody(guaranteeSchema, req, res);
     if (!value) return;
-    const row = await atomic((q) => records.createGuarantee(q, { ...value, issued_on: isoDay(value.issued_on), expires_on: isoDay(value.expires_on) }, req.user.id));
-    await audit(req, 'create', `Guarantee ${row.guarantee_number}`, 'guarantee', row.id);
+    const row = await atomicAudited(req, (q) => records.createGuarantee(q, { ...value, issued_on: isoDay(value.issued_on), expires_on: isoDay(value.expires_on) }, req.user.id),
+      (created) => ['create', `Guarantee ${created.guarantee_number}`, 'guarantee', created.id]);
     res.status(201).json({ success: true, data: row });
   } catch (e) { return fail(res, e); }
 });
@@ -289,8 +285,8 @@ router.post('/guarantees/:id/close', authenticate, authorize(), async (req, res)
   try {
     const value = typedBody(Joi.object({ status: Joi.string().valid('released', 'called').required(), reason: Joi.string().required(), released_on: optDate }), req, res);
     if (!value) return;
-    const row = await atomic((q) => records.closeGuarantee(q, intId(req), value.status, { reason: value.reason, released_on: isoDay(value.released_on) }));
-    await audit(req, 'void', `Guarantee ${row.guarantee_number} ${row.status}`, 'guarantee', row.id);
+    const row = await atomicAudited(req, (q) => records.closeGuarantee(q, intId(req), value.status, { reason: value.reason, released_on: isoDay(value.released_on) }),
+      (closed) => ['void', `Guarantee ${closed.guarantee_number} ${closed.status}`, 'guarantee', closed.id]);
     res.json({ success: true, data: row });
   } catch (e) { return fail(res, e); }
 });
@@ -309,8 +305,8 @@ router.post('/insurances', authenticate, authorize(), async (req, res) => {
   try {
     const value = typedBody(insuranceSchema, req, res);
     if (!value) return;
-    const row = await atomic((q) => records.createInsurance(q, { ...value, start_date: isoDay(value.start_date), expiry_date: isoDay(value.expiry_date) }, req.user.id));
-    await audit(req, 'create', `Insurance ${row.insurance_number}`, 'insurance', row.id);
+    const row = await atomicAudited(req, (q) => records.createInsurance(q, { ...value, start_date: isoDay(value.start_date), expiry_date: isoDay(value.expiry_date) }, req.user.id),
+      (created) => ['create', `Insurance ${created.insurance_number}`, 'insurance', created.id]);
     res.status(201).json({ success: true, data: row });
   } catch (e) { return fail(res, e); }
 });
@@ -330,8 +326,8 @@ router.post('/insurances/:id/cancel', authenticate, authorize(), async (req, res
   try {
     const value = typedBody(Joi.object({ reason: Joi.string().required() }), req, res);
     if (!value) return;
-    const row = await atomic((q) => records.cancelInsurance(q, intId(req), value.reason));
-    await audit(req, 'void', `Insurance ${row.insurance_number} cancelled`, 'insurance', row.id);
+    const row = await atomicAudited(req, (q) => records.cancelInsurance(q, intId(req), value.reason),
+      (cancelled) => ['void', `Insurance ${cancelled.insurance_number} cancelled`, 'insurance', cancelled.id]);
     res.json({ success: true, data: row });
   } catch (e) { return fail(res, e); }
 });
@@ -354,8 +350,8 @@ router.post('/currency-rates', authenticate, authorize(), async (req, res) => {
       rate: Joi.number().positive().required(), effective_date: Joi.date().iso().required(), source: Joi.string().allow('', null),
     }), req, res);
     if (!value) return;
-    const row = await atomic((q) => records.setRate(q, { ...value, effective_date: isoDay(value.effective_date) }, req.user.id));
-    await audit(req, 'create', `Rate ${row.from_currency}/${row.to_currency} ${row.rate}`, 'currency_rate', row.id);
+    const row = await atomicAudited(req, (q) => records.setRate(q, { ...value, effective_date: isoDay(value.effective_date) }, req.user.id),
+      (created) => ['create', `Rate ${created.from_currency}/${created.to_currency} ${created.rate}`, 'currency_rate', created.id]);
     res.status(201).json({ success: true, data: row });
   } catch (e) { return fail(res, e); }
 });
@@ -372,8 +368,8 @@ router.post('/payment-applications', authenticate, authorize(), async (req, res)
       period_from: optDate, period_to: optDate, claimed_work: money, claimed_variations: money, claimed_materials: money, notes: Joi.string().allow('', null),
     }), req, res);
     if (!value) return;
-    const row = await atomic((q) => records.createApplication(q, { ...value, period_from: isoDay(value.period_from), period_to: isoDay(value.period_to) }, req.user.id));
-    await audit(req, 'create', `Payment application ${row.application_number}`, 'payment_application', row.id);
+    const row = await atomicAudited(req, (q) => records.createApplication(q, { ...value, period_from: isoDay(value.period_from), period_to: isoDay(value.period_to) }, req.user.id),
+      (created) => ['create', `Payment application ${created.application_number}`, 'payment_application', created.id]);
     res.status(201).json({ success: true, data: row });
   } catch (e) { return fail(res, e); }
 });
@@ -382,8 +378,8 @@ router.get('/payment-applications/:id', authenticate, authorize(), async (req, r
 });
 router.post('/payment-applications/:id/submit', authenticate, authorize(), async (req, res) => {
   try {
-    const row = await atomic((q) => records.submitApplication(q, intId(req), req.user));
-    await audit(req, 'submit', `Payment application ${row.application_number} submitted`, 'payment_application', row.id);
+    const row = await atomicAudited(req, (q) => records.submitApplication(q, intId(req), req.user),
+      (submitted) => ['submit', `Payment application ${submitted.application_number} submitted`, 'payment_application', submitted.id]);
     res.json({ success: true, data: row });
   } catch (e) { return fail(res, e); }
 });
@@ -394,8 +390,8 @@ router.post('/payment-applications/:id/certify', authenticate, authorize(), asyn
       tax_pct: Joi.number().min(0).max(100), review_notes: Joi.string().allow('', null),
     }), req, res);
     if (!value) return;
-    const out = await atomic((q) => records.certifyApplication(q, intId(req), req.user, value));
-    await audit(req, 'approve', `Payment application ${out.application.application_number} certified as ${out.certificate.certificate_number}`, 'payment_application', out.application.id);
+    const out = await atomicAudited(req, (q) => records.certifyApplication(q, intId(req), req.user, value),
+      (certified) => ['approve', `Payment application ${certified.application.application_number} certified as ${certified.certificate.certificate_number}`, 'payment_application', certified.application.id]);
     res.json({ success: true, data: out });
   } catch (e) { return fail(res, e); }
 });
@@ -419,8 +415,8 @@ router.get('/payment-certificates', authenticate, authorize(), async (req, res) 
 });
 router.post('/payment-certificates/:id/start', authenticate, authorize(), async (req, res) => {
   try {
-    const row = await atomic((q) => records.startCertificateWorkflow(q, intId(req), req.user));
-    await audit(req, 'submit', `Certificate ${row.certificate_number} workflow started`, 'payment_certificate', row.id);
+    const row = await atomicAudited(req, (q) => records.startCertificateWorkflow(q, intId(req), req.user),
+      (started) => ['submit', `Certificate ${started.certificate_number} workflow started`, 'payment_certificate', started.id]);
     res.json({ success: true, data: row });
   } catch (e) { return fail(res, e); }
 });
@@ -428,8 +424,8 @@ router.post('/payment-certificates/:id/decide', authenticate, authorize(), async
   try {
     const value = typedBody(Joi.object({ decision: Joi.string().valid('approve', 'reject').required(), comment: Joi.string().allow('', null) }), req, res);
     if (!value) return;
-    const row = await atomic((q) => records.decideCertificate(q, intId(req), req.user, value.decision, value.comment));
-    await audit(req, value.decision === 'approve' ? 'approve' : 'reject', `Certificate ${row.certificate_number}: ${row.status}`, 'payment_certificate', row.id);
+    const row = await atomicAudited(req, (q) => records.decideCertificate(q, intId(req), req.user, value.decision, value.comment),
+      (decided) => [value.decision === 'approve' ? 'approve' : 'reject', `Certificate ${decided.certificate_number}: ${decided.status}`, 'payment_certificate', decided.id]);
     res.json({ success: true, data: row });
   } catch (e) { return fail(res, e); }
 });
@@ -443,8 +439,8 @@ router.post('/budget-versions', authenticate, authorize(), async (req, res) => {
   try {
     const value = typedBody(Joi.object({ project_id: Joi.number().integer().required(), name: Joi.string().required(), notes: Joi.string().allow('', null), lines: lineSchema('amount'), copy_from_version_id: Joi.number().integer() }), req, res);
     if (!value) return;
-    const row = await atomic((q) => budgeting.createBudgetVersion(q, value, req.user.id));
-    await audit(req, 'create', `Budget version ${row.version_no}`, 'budget_version', row.id);
+    const row = await atomicAudited(req, (q) => budgeting.createBudgetVersion(q, value, req.user.id),
+      (created) => ['create', `Budget version ${created.version_no}`, 'budget_version', created.id]);
     res.status(201).json({ success: true, data: row });
   } catch (e) { return fail(res, e); }
 });
@@ -460,8 +456,8 @@ router.put('/budget-versions/:id', authenticate, authorize(), async (req, res) =
 });
 router.post('/budget-versions/:id/submit', authenticate, authorize(), async (req, res) => {
   try {
-    const row = await atomic((q) => budgeting.submitBudgetVersion(q, intId(req), req.user));
-    await audit(req, 'submit', `Budget version ${row.version_no} submitted`, 'budget_version', row.id);
+    const row = await atomicAudited(req, (q) => budgeting.submitBudgetVersion(q, intId(req), req.user),
+      (submitted) => ['submit', `Budget version ${submitted.version_no} submitted`, 'budget_version', submitted.id]);
     res.json({ success: true, data: row });
   } catch (e) { return fail(res, e); }
 });
@@ -469,8 +465,8 @@ router.post('/budget-versions/:id/decide', authenticate, authorize(), async (req
   try {
     const value = typedBody(Joi.object({ decision: Joi.string().valid('approve', 'reject').required(), comment: Joi.string().allow('', null) }), req, res);
     if (!value) return;
-    const row = await atomic((q) => budgeting.decideBudgetVersion(q, intId(req), req.user, value.decision, value.comment));
-    await audit(req, value.decision === 'approve' ? 'approve' : 'reject', `Budget version ${row.version_no}: ${row.status}`, 'budget_version', row.id);
+    const row = await atomicAudited(req, (q) => budgeting.decideBudgetVersion(q, intId(req), req.user, value.decision, value.comment),
+      (decided) => [value.decision === 'approve' ? 'approve' : 'reject', `Budget version ${decided.version_no}: ${decided.status}`, 'budget_version', decided.id]);
     res.json({ success: true, data: row });
   } catch (e) { return fail(res, e); }
 });
@@ -483,8 +479,8 @@ router.post('/forecast-versions', authenticate, authorize(), async (req, res) =>
   try {
     const value = typedBody(Joi.object({ project_id: Joi.number().integer().required(), name: Joi.string().required(), as_of_date: optDate, notes: Joi.string().allow('', null), lines: lineSchema('forecast_amount').required() }), req, res);
     if (!value) return;
-    const row = await atomic((q) => budgeting.createForecastVersion(q, { ...value, as_of_date: isoDay(value.as_of_date) }, req.user.id));
-    await audit(req, 'create', `Forecast version ${row.version_no}`, 'forecast_version', row.id);
+    const row = await atomicAudited(req, (q) => budgeting.createForecastVersion(q, { ...value, as_of_date: isoDay(value.as_of_date) }, req.user.id),
+      (created) => ['create', `Forecast version ${created.version_no}`, 'forecast_version', created.id]);
     res.status(201).json({ success: true, data: row });
   } catch (e) { return fail(res, e); }
 });
@@ -493,8 +489,8 @@ router.get('/forecast-versions/:id', authenticate, authorize(), async (req, res)
 });
 router.post('/forecast-versions/:id/approve', authenticate, authorize(), async (req, res) => {
   try {
-    const row = await atomic((q) => budgeting.approveForecastVersion(q, intId(req), req.user));
-    await audit(req, 'approve', `Forecast version ${row.version_no} approved`, 'forecast_version', row.id);
+    const row = await atomicAudited(req, (q) => budgeting.approveForecastVersion(q, intId(req), req.user),
+      (approved) => ['approve', `Forecast version ${approved.version_no} approved`, 'forecast_version', approved.id]);
     res.json({ success: true, data: row });
   } catch (e) { return fail(res, e); }
 });
@@ -510,8 +506,8 @@ router.post('/commitments/:id/adjust', authenticate, authorize(), async (req, re
   try {
     const value = typedBody(Joi.object({ cancelled_amount: money.required(), reason: Joi.string().required() }), req, res);
     if (!value) return;
-    const row = await atomic((q) => budgeting.adjustCommitment(q, intId(req), req.user, value));
-    await audit(req, 'update', `Commitment ${row.commitment_number} adjusted to cancelled ${row.cancelled_amount}`, 'commitment', row.id);
+    const row = await atomicAudited(req, (q) => budgeting.adjustCommitment(q, intId(req), req.user, value),
+      (adjusted) => ['update', `Commitment ${adjusted.commitment_number} adjusted to cancelled ${adjusted.cancelled_amount}`, 'commitment', adjusted.id]);
     res.json({ success: true, data: row });
   } catch (e) { return fail(res, e); }
 });
