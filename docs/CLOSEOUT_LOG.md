@@ -740,4 +740,25 @@ docker info
 Server: error during connect: Get "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.51/info": open //./pipe/dockerDesktopLinuxEngine: Access is denied.
 ```
 
-The first sandboxed Playwright attempt failed with `Error: spawn EPERM`; the requested browser gate passed on the elevated retry. Real PostgreSQL remains unverified because Docker Desktop is inaccessible. This organization slice is not committed yet.
+The first sandboxed Playwright attempt failed with `Error: spawn EPERM`; the requested browser gate passed on the elevated retry. Real PostgreSQL remains unverified because Docker Desktop is inaccessible. This organization slice is committed as `fb76335`.
+
+## 2026-10-13: A4 schedule CSV import transaction continuation (local, pending commit)
+
+Schedule CSV replacement/import now processes schedule activities, relationships, and the activity audit row through one transaction query. A failure during the import now rolls back the replacement and its writes together.
+
+Verification command output:
+
+```text
+node --check src/routes/organizations.js; node --check src/routes/schedule.js; git diff --check
+exit code: 0
+
+npm test -- --runInBand
+Test Suites: 48 passed, 48 total
+Tests:       968 passed, 968 total
+Ran all test suites.
+
+npm run lint:guards
+lint-guards: ok
+```
+
+Real PostgreSQL rollback remains unverified because Docker Desktop is inaccessible. This schedule-import slice is not committed yet.

@@ -522,7 +522,9 @@ router.post('/activities/import', authenticate, authorize('owner', 'admin', 'pro
       if (!checked) return;
     }
 
-    if (value.replace) await query('DELETE FROM schedule_activities WHERE project_id = $1', [value.project_id]);
+    const outcome = await transaction(async (client) => {
+    const q = client.query.bind(client);
+    if (value.replace) await q('DELETE FROM schedule_activities WHERE project_id = $1', [value.project_id]);
 
     let mode = null;
     let created = 0, relsCreated = 0, skipped = 0;
@@ -534,13 +536,13 @@ router.post('/activities/import', authenticate, authorize('owner', 'admin', 'pro
       if (mode === 'acts') {
         const [activity_code, name, wbs_path, work_package, planned_start, planned_finish, original_duration, planned_quantity, percent_complete, is_milestone] = fields;
         if (!name) { skipped++; continue; }
-        const wp = await projectSetup.resolveWorkPackage(query, value.project_id, { work_package });
-        const existing = (await query(
+        const wp = await projectSetup.resolveWorkPackage(q, value.project_id, { work_package });
+        const existing = (await q(
           'SELECT id FROM schedule_activities WHERE project_id = $1 AND activity_code = $2',
           [value.project_id, activity_code]
         )).rows[0];
         if (existing) {
-          await query(
+          await q(
             `UPDATE schedule_activities SET name = $1, wbs_path = $2, work_package = $3, planned_start = $4,
                planned_finish = $5, original_duration = $6, planned_quantity = $7, work_package_id = $9, updated_at = NOW() WHERE id = $8`,
             [name, wbs_path || null, wp.text, planned_start || null, planned_finish || null,
@@ -549,7 +551,7 @@ router.post('/activities/import', authenticate, authorize('owner', 'admin', 'pro
           byCode.set(activity_code, existing.id);
           continue;
         }
-        const r = await query(
+        const r = await q(
           `INSERT INTO schedule_activities (project_id, activity_code, name, wbs_path, work_package, work_package_id, planned_start, planned_finish, original_duration, planned_quantity, percent_complete, created_by)
            VALUES ($1,$2,$3,$4,$5,$12,$6,$7,$8,$9,$10,$11) RETURNING id`,
           [value.project_id, activity_code || `IMP${Date.now()}${created}`, name, wbs_path || null, wp.text,
@@ -560,11 +562,11 @@ router.post('/activities/import', authenticate, authorize('owner', 'admin', 'pro
         created++;
       } else if (mode === 'rels') {
         const [pred, succ, relType, lag] = fields;
-        const predId = byCode.get(pred) || (await codeLookupId(pred, value.project_id));
-        const succId = byCode.get(succ) || (await codeLookupId(succ, value.project_id));
+        const predId = byCode.get(pred) || (await codeLookupId(pred, value.project_id, q));
+        const succId = byCode.get(succ) || (await codeLookupId(succ, value.project_id, q));
         if (!predId || !succId) { skipped++; continue; }
         try {
-          await query(
+          await q(
             `INSERT INTO activity_relationships (project_id, predecessor_id, successor_id, relationship_type, lag_days, created_by)
              VALUES ($1,$2,$3,$4,$5,$6)`,
             [value.project_id, predId, succId, ['FS', 'SS', 'FF', 'SF'].includes(relType) ? relType : 'FS',
@@ -572,14 +574,16 @@ router.post('/activities/import', authenticate, authorize('owner', 'admin', 'pro
         } catch (e) { skipped++; }
       }
     }
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'schedule', description: `Imported schedule (${created} activities)`, entityId: null, entityType: 'schedule' });
-    res.json({ success: true, data: { created, skipped } });
+    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'schedule', description: `Imported schedule (${created} activities)`, entityId: null, entityType: 'schedule' }, { query: q });
+    return { created, skipped };
+    });
+    res.json({ success: true, data: outcome });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-async function codeLookupId(code, projectId) {
+async function codeLookupId(code, projectId, q = query) {
   try {
-    const r = await query('SELECT id FROM schedule_activities WHERE project_id = $1 AND activity_code = $2', [projectId, code]);
+    const r = await q('SELECT id FROM schedule_activities WHERE project_id = $1 AND activity_code = $2', [projectId, code]);
     return r.rows[0] ? r.rows[0].id : null;
   } catch (e) { return null; }
 }
