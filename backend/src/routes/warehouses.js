@@ -4,6 +4,7 @@ const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
+const { auditedTransaction } = require('../utils/auditedTransaction');
 const engine = require('../services/inventoryEngine');
 const lots = require('../services/inventoryLots');
 
@@ -141,14 +142,14 @@ router.post('/:id/movements', authenticate, authorize(), async (req, res) => {
         created_by: req.user.id,
         unit_cost: value.unit_cost == null ? null : value.unit_cost,
       });
-      return { movement: created, balances: await engine.getBalances(tq, created.warehouse_id, created.material_id) };
-    });
-
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'create', module: 'inventory',
-      description: `Stock movement ${value.movement_type}: ${value.quantity} of item #${value.material_id} at warehouse #${req.params.id}`,
-      entityId: movement.id, entityType: 'stock_movement',
+      const balances = await engine.getBalances(tq, created.warehouse_id, created.material_id);
+      await logActivity({
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        action: 'create', module: 'inventory',
+        description: `Stock movement ${value.movement_type}: ${value.quantity} of item #${value.material_id} at warehouse #${req.params.id}`,
+        entityId: created.id, entityType: 'stock_movement',
+      }, { query: tq });
+      return { movement: created, balances };
     });
     res.status(201).json({ success: true, data: { movement, balances } });
   } catch (e) {
@@ -167,17 +168,14 @@ router.post('/movements/:id/reverse', authenticate, authorize(), async (req, res
     const { error, value } = schema.validate(req.body || {});
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const movement = await transaction((client) => engine.reverseMovement(client.query.bind(client), parseInt(req.params.id, 10), {
-      reason: value.reason || null,
-      created_by: req.user.id,
-    }));
-
-    await logActivity({
+    const movement = await auditedTransaction((q) => engine.reverseMovement(q, parseInt(req.params.id, 10), {
+      reason: value.reason || null, created_by: req.user.id,
+    }), (result) => ({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       action: 'create', module: 'inventory',
-      description: `Reversed stock movement #${req.params.id} with movement #${movement.id}`,
-      entityId: movement.id, entityType: 'stock_movement',
-    });
+      description: `Reversed stock movement #${req.params.id} with movement #${result.id}`,
+      entityId: result.id, entityType: 'stock_movement',
+    }));
     res.status(201).json({ success: true, data: movement });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -213,14 +211,13 @@ router.post('/movements/:id/mir', authenticate, authorize(), async (req, res) =>
         notes: value.notes || (value.result === 'accepted' ? 'MIR accepted' : 'MIR rejected'),
         created_by: req.user.id,
       });
-      return { movement: created, balances: await engine.getBalances(tq, original.warehouse_id, original.material_id) };
-    });
-
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'create', module: 'inventory',
-      description: `MIR ${value.result} for movement #${original.id}`,
-      entityId: movement.id, entityType: 'stock_movement',
+      const balances = await engine.getBalances(tq, original.warehouse_id, original.material_id);
+      await logActivity({
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        action: 'create', module: 'inventory', description: `MIR ${value.result} for movement #${original.id}`,
+        entityId: created.id, entityType: 'stock_movement',
+      }, { query: tq });
+      return { movement: created, balances };
     });
     res.status(201).json({ success: true, data: { movement, balances } });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
@@ -272,10 +269,10 @@ router.post('/transfers', authenticate, authorize(), async (req, res) => {
         );
       }
 
-      return transfer.rows[0];
+      const created = transfer.rows[0];
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'inventory', description: `Created inventory transfer #${created.id}`, entityId: created.id, entityType: 'inventory_transfer' }, { query: client.query.bind(client) });
+      return created;
     });
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'inventory', description: `Created inventory transfer #${result.id}`, entityId: result.id, entityType: 'inventory_transfer' });
     res.status(201).json({ success: true, data: result });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -344,9 +341,8 @@ router.put('/transfers/:id/complete', authenticate, authorize(), async (req, res
           });
         }
       }
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'complete', module: 'inventory', description: `Completed inventory transfer #${req.params.id} as paired stock movements`, entityId: req.params.id, entityType: 'inventory_transfer' }, { query: txQuery });
     });
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'complete', module: 'inventory', description: `Completed inventory transfer #${req.params.id} as paired stock movements`, entityId: req.params.id, entityType: 'inventory_transfer' });
     res.json({ success: true, message: 'Transfer completed' });
   } catch (e) {
     res.status(400).json({ success: false, error: e.message });
@@ -393,7 +389,7 @@ router.post('/reservations', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const reservation = await transaction((client) => engine.createReservation(client.query.bind(client), {
+    const reservation = await auditedTransaction((q) => engine.createReservation(q, {
       material_id: value.material_id,
       project_id: value.project_id || null,
       location_id: value.location_id || null,
@@ -403,14 +399,12 @@ router.post('/reservations', authenticate, authorize(), async (req, res) => {
       reference_type: value.reference_type || null,
       reference_id: value.reference_id || null,
       created_by: req.user.id,
-    }));
-
-    await logActivity({
+    }), (result) => ({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       action: 'create', module: 'inventory',
       description: `Reserved ${value.quantity} of item #${value.material_id}`,
-      entityId: reservation.id, entityType: 'stock_reservation',
-    });
+      entityId: result.id, entityType: 'stock_reservation',
+    }));
     res.status(201).json({ success: true, data: reservation });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -418,16 +412,15 @@ router.post('/reservations', authenticate, authorize(), async (req, res) => {
 // POST /api/warehouses/reservations/:id/release
 router.post('/reservations/:id/release', authenticate, authorize(), async (req, res) => {
   try {
-    const reservation = await transaction((client) => engine.releaseReservation(client.query.bind(client), parseInt(req.params.id, 10), {
+    const reservation = await auditedTransaction((q) => engine.releaseReservation(q, parseInt(req.params.id, 10), {
       status: 'released',
       created_by: req.user.id,
-    }));
-    await logActivity({
+    }), (result) => ({
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
       action: 'update', module: 'inventory',
       description: `Released reservation #${req.params.id}`,
-      entityId: reservation.id, entityType: 'stock_reservation',
-    });
+      entityId: result.id, entityType: 'stock_reservation',
+    }));
     res.json({ success: true, data: reservation });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
