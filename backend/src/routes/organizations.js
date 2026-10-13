@@ -28,6 +28,16 @@ function fail(res, e) {
   });
 }
 
+async function auditedOrgMutation(work, eventForResult, activityForResult = null) {
+  return transaction(async (client) => {
+    const q = client.query.bind(client);
+    const result = await work(q);
+    await policy.recordAuditEvent(eventForResult(result), { query: q });
+    if (activityForResult) await logActivity(activityForResult(result), { query: q });
+    return result;
+  });
+}
+
 // ============ organizations (the v1-read family's write side; deactivate is SOFT) ============
 
 router.get('/', authenticate, authorize(), async (req, res) => {
@@ -55,15 +65,9 @@ router.post('/', authenticate, authorize('owner', 'admin', 'owner_ceo', 'coo'), 
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error' });
-    const created = await transaction((client) => org.createOrganization((t, p) => client.query(t, p), value));
-    await policy.recordAuditEvent({
-      entity: 'organization', entityId: created.id, action: 'create',
-      after: created, userId: req.user.id,
-    });
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'organizations',
-      description: `Created organization ${created.code}`, entityId: created.id, entityType: 'organization',
-    });
+    const created = await auditedOrgMutation((q) => org.createOrganization(q, value),
+      (row) => ({ entity: 'organization', entityId: row.id, action: 'create', after: row, userId: req.user.id }),
+      (row) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'organizations', description: `Created organization ${row.code}`, entityId: row.id, entityType: 'organization' }));
     res.status(201).json({ success: true, data: created });
   } catch (e) { return fail(res, e); }
 });
@@ -83,22 +87,16 @@ router.put('/:id', authenticate, authorize('owner', 'admin', 'owner_ceo', 'coo')
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error' });
-    const updated = await org.updateOrganization(query, req.params.id, value);
-    await policy.recordAuditEvent({
-      entity: 'organization', entityId: updated.id, action: 'edit',
-      before: { status: updated.status }, after: updated, userId: req.user.id,
-    });
+    const updated = await auditedOrgMutation((q) => org.updateOrganization(q, req.params.id, value),
+      (row) => ({ entity: 'organization', entityId: row.id, action: 'edit', before: { status: row.status }, after: row, userId: req.user.id }));
     res.json({ success: true, data: updated });
   } catch (e) { return fail(res, e); }
 });
 
 router.post('/:id/deactivate', authenticate, authorize('owner', 'admin', 'owner_ceo', 'coo'), async (req, res) => {
   try {
-    const updated = await org.deactivateOrganization(query, req.params.id, req.user.id);
-    await policy.recordAuditEvent({
-      entity: 'organization', entityId: updated.id, action: 'deactivate',
-      before: { status: 'active' }, after: { status: 'inactive' }, userId: req.user.id,
-    });
+    const updated = await auditedOrgMutation((q) => org.deactivateOrganization(q, req.params.id, req.user.id),
+      (row) => ({ entity: 'organization', entityId: row.id, action: 'deactivate', before: { status: 'active' }, after: { status: 'inactive' }, userId: req.user.id }));
     res.json({ success: true, data: updated });
   } catch (e) { return fail(res, e); }
 });
@@ -123,11 +121,8 @@ router.post('/company', authenticate, authorize('owner', 'admin'), async (req, r
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error' });
-    const saved = await org.upsertCompany(query, value);
-    await policy.recordAuditEvent({
-      entity: 'company_profile', entityId: saved.id, action: 'edit',
-      after: saved, userId: req.user.id,
-    });
+    const saved = await auditedOrgMutation((q) => org.upsertCompany(q, value),
+      (row) => ({ entity: 'company_profile', entityId: row.id, action: 'edit', after: row, userId: req.user.id }));
     res.status(201).json({ success: true, data: saved });
   } catch (e) { return fail(res, e); }
 });
@@ -148,11 +143,8 @@ router.post('/departments', authenticate, authorize('owner', 'admin', 'owner_ceo
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error' });
-    const created = await org.createDepartment(query, value);
-    await policy.recordAuditEvent({
-      entity: 'department', entityId: created.id, action: 'create',
-      after: created, userId: req.user.id,
-    });
+    const created = await auditedOrgMutation((q) => org.createDepartment(q, value),
+      (row) => ({ entity: 'department', entityId: row.id, action: 'create', after: row, userId: req.user.id }));
     res.status(201).json({ success: true, data: created });
   } catch (e) { return fail(res, e); }
 });
@@ -166,11 +158,8 @@ router.put('/departments/:id', authenticate, authorize('owner', 'admin', 'owner_
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error' });
-    const updated = await org.updateDepartment(query, req.params.id, value);
-    await policy.recordAuditEvent({
-      entity: 'department', entityId: updated.id, action: 'edit',
-      after: { is_active: updated.is_active }, userId: req.user.id,
-    });
+    const updated = await auditedOrgMutation((q) => org.updateDepartment(q, req.params.id, value),
+      (row) => ({ entity: 'department', entityId: row.id, action: 'edit', after: { is_active: row.is_active }, userId: req.user.id }));
     res.json({ success: true, data: updated });
   } catch (e) { return fail(res, e); }
 });
@@ -191,10 +180,8 @@ router.post('/job-positions', authenticate, authorize('owner', 'admin', 'owner_c
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error' });
-    const created = await org.createJobPosition(query, value);
-    await policy.recordAuditEvent({
-      entity: 'job_position', entityId: created.id, action: 'create', after: created, userId: req.user.id,
-    });
+    const created = await auditedOrgMutation((q) => org.createJobPosition(q, value),
+      (row) => ({ entity: 'job_position', entityId: row.id, action: 'create', after: row, userId: req.user.id }));
     res.status(201).json({ success: true, data: created });
   } catch (e) { return fail(res, e); }
 });
@@ -207,10 +194,8 @@ router.put('/job-positions/:id', authenticate, authorize('owner', 'admin', 'owne
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error' });
-    const updated = await org.updateJobPosition(query, req.params.id, value);
-    await policy.recordAuditEvent({
-      entity: 'job_position', entityId: updated.id, action: 'edit', userId: req.user.id,
-    });
+    const updated = await auditedOrgMutation((q) => org.updateJobPosition(q, req.params.id, value),
+      (row) => ({ entity: 'job_position', entityId: row.id, action: 'edit', userId: req.user.id }));
     res.json({ success: true, data: updated });
   } catch (e) { return fail(res, e); }
 });
@@ -231,20 +216,16 @@ router.post('/qualifications', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error' });
-    const created = await org.createQualification(query, req.user, value);
-    await policy.recordAuditEvent({
-      entity: 'org_qualification', entityId: created.id, action: 'create', after: created, userId: req.user.id,
-    });
+    const created = await auditedOrgMutation((q) => org.createQualification(q, req.user, value),
+      (row) => ({ entity: 'org_qualification', entityId: row.id, action: 'create', after: row, userId: req.user.id }));
     res.status(201).json({ success: true, data: created });
   } catch (e) { return fail(res, e); }
 });
 
 router.delete('/qualifications/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const removed = await org.deleteQualification(query, req.user, req.params.id);
-    await policy.recordAuditEvent({
-      entity: 'org_qualification', entityId: removed.id, action: 'delete', before: removed, userId: req.user.id,
-    });
+    const removed = await auditedOrgMutation((q) => org.deleteQualification(q, req.user, req.params.id),
+      (row) => ({ entity: 'org_qualification', entityId: row.id, action: 'delete', before: row, userId: req.user.id }));
     res.status(200).json({ success: true, data: removed });
   } catch (e) { return fail(res, e); }
 });
@@ -267,10 +248,8 @@ router.post('/bank-accounts', authenticate, authorize('owner', 'admin', 'owner_c
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error' });
-    const created = await org.createBankAccount(query, value);
-    await policy.recordAuditEvent({
-      entity: 'org_bank_account', entityId: created.id, action: 'create', after: created, userId: req.user.id,
-    });
+    const created = await auditedOrgMutation((q) => org.createBankAccount(q, value),
+      (row) => ({ entity: 'org_bank_account', entityId: row.id, action: 'create', after: row, userId: req.user.id }));
     res.status(201).json({ success: true, data: created });
   } catch (e) { return fail(res, e); }
 });
@@ -283,21 +262,16 @@ router.put('/bank-accounts/:id', authenticate, authorize('owner', 'admin', 'owne
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error' });
-    const updated = await org.updateBankAccount(query, req.params.id, value);
-    await policy.recordAuditEvent({
-      entity: 'org_bank_account', entityId: updated.id, action: 'edit', userId: req.user.id,
-    });
+    const updated = await auditedOrgMutation((q) => org.updateBankAccount(q, req.params.id, value),
+      (row) => ({ entity: 'org_bank_account', entityId: row.id, action: 'edit', userId: req.user.id }));
     res.json({ success: true, data: updated });
   } catch (e) { return fail(res, e); }
 });
 
 router.post('/bank-accounts/:id/make-primary', authenticate, authorize('owner', 'admin', 'owner_ceo', 'coo', 'finance_manager', 'accountant_ap'), async (req, res) => {
   try {
-    const updated = await org.setPrimaryBankAccount(query, req.body.organization_id, req.params.id);
-    await policy.recordAuditEvent({
-      entity: 'org_bank_account', entityId: updated.id, action: 'edit',
-      after: { is_primary: true }, userId: req.user.id,
-    });
+    const updated = await auditedOrgMutation((q) => org.setPrimaryBankAccount(q, req.body.organization_id, req.params.id),
+      (row) => ({ entity: 'org_bank_account', entityId: row.id, action: 'edit', after: { is_primary: true }, userId: req.user.id }));
     res.json({ success: true, data: updated });
   } catch (e) { return fail(res, e); }
 });
@@ -322,10 +296,8 @@ router.post('/performance-scores', authenticate, authorize('owner', 'admin', 'ow
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error' });
-    const created = await org.createPerformanceScore(query, req.user, value);
-    await policy.recordAuditEvent({
-      entity: 'org_performance_score', entityId: created.id, action: 'create', after: created, userId: req.user.id,
-    });
+    const created = await auditedOrgMutation((q) => org.createPerformanceScore(q, req.user, value),
+      (row) => ({ entity: 'org_performance_score', entityId: row.id, action: 'create', after: row, userId: req.user.id }));
     res.status(201).json({ success: true, data: created });
   } catch (e) { return fail(res, e); }
 });

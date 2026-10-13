@@ -701,4 +701,43 @@ npm run lint:guards
 lint-guards: ok
 ```
 
-A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This quantity slice is not committed yet.
+A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This quantity slice is committed as `c362950`.
+
+## 2026-10-13: A4 organization audit transaction continuation (local, pending commit)
+
+Organization, company profile, department, job-position, qualification, bank-account, and performance-score mutations now pass the transaction query to their services and insert their `audit_events` row before commit. Organization create also inserts its activity row before commit. Team assignment routes were converted in the prior `b4a18ae` slice.
+
+Verification command output:
+
+```text
+node --check src/routes/organizations.js; git diff --check
+exit code: 0
+
+npm test -- --runInBand
+Test Suites: 48 passed, 48 total
+Tests:       968 passed, 968 total
+Ran all test suites.
+
+npm run lint:guards
+lint-guards: ok
+
+frontend: npm run test:ci
+Test Suites: 17 passed, 17 total
+Tests:       97 passed, 97 total
+
+frontend: npm run i18n:check
+i18n:check ok
+
+frontend: npm run build
+Compiled successfully.
+
+frontend: npm run test:e2e (local project browser cache)
+Running 78 tests using 8 workers
+46 skipped
+32 passed (18.5s)
+
+docker info
+Server: error during connect: Get "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.51/info": open //./pipe/dockerDesktopLinuxEngine: Access is denied.
+```
+
+The first sandboxed Playwright attempt failed with `Error: spawn EPERM`; the requested browser gate passed on the elevated retry. Real PostgreSQL remains unverified because Docker Desktop is inaccessible. This organization slice is not committed yet.

@@ -205,3 +205,7 @@ Building create/link/floor inserts, unit status changes, schedule activity creat
 ## 2026-10-13: A4 quantity measurement audit continuation (local, pending commit)
 
 Quantity measurement creation now inserts its activity audit row in the same transaction as the measurement and derived progress updates. Syntax/whitespace checks exit 0; backend mock suite passes 48 suites / 968 tests; guards pass. PostgreSQL rollback remains unverified because Docker Desktop is unavailable. Current expected commit: per-slice commit to follow.
+
+## 2026-10-13: A4 organization audit transaction continuation (local, pending commit)
+
+Organization/company/departments/job-position/qualification/bank-account/performance-score mutations now insert policy audit within their write transaction; organization creation also writes activity in that transaction. Backend mock gate: 48 suites / 968 tests; `lint:guards: ok`. Frontend gates: 17 suites / 97 tests, `i18n:check ok`, production build compiled. Playwright: 32 passed / 46 skipped. Docker info returns pipe access denied; real PostgreSQL remains unverified. Current expected commit: per-slice commit to follow.
