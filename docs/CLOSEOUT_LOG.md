@@ -1259,3 +1259,9 @@ Focused verification: `portal.test.js` passed 17/17, including assigned instruct
 QHSE's legacy incident routes and site daily-report aggregation now read/write the canonical `incidents` table. The HSE migration's `safety_incidents` view remains for compatibility only. Strengthened the real-PostgreSQL conversion regression to check exact imported IDs and data, compatibility-view row parity, rerun idempotency, and sequence continuation.
 
 Focused verification: the named `legacy HSE conversion leaves usable sequences` case in `migration-runner.pg.test.js` passed 1/1; the named `every source census is exactly its own count` case in `site.test.js` passed 1/1; a source scan found no internal route/service incident SQL using the legacy name. No full suite was run.
+
+## 2026-10-13: Phase 5.7.2.a RFI impacts and project references
+
+Added versioned migration `0053_rfi_project_impacts.sql` for nullable project location, work package, cost impact and schedule impact. RFI creation verifies optional location/package references belong to its project; the document-control read adds display names/codes; consultant reviews include those fields; the bilingual RFI form chooses project references from the location and work-package APIs. The subcontractor RFI view remains allowlisted and omits cost/schedule impact data. Existing workbench certificates, observations and transmittal/document registers were confirmed and not duplicated.
+
+Focused verification: migration runner applied 0053 (1 applied, 114 already applied) to the disposable PostgreSQL database. `rfi-impacts.pg.test.js` passed 2/2, including cross-project refusal; `consultant.test.js` + `portal.test.js` passed 30/30; `ProjectDocuments.test.js` + `PortalDashboard.test.js` passed 10/10; `WorkPackageSelect.test.js` passed 4/4; `i18n:check` passed. No full suite was run.

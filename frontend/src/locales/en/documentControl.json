@@ -1,5 +1,10 @@
 {
   "title": "Document control",
   "transmittals": "Transmittals",
-  "correspondence": "Correspondence"
+  "correspondence": "Correspondence",
+  "rfiImpacts": {
+    "location": "Project location", "workPackage": "Work package", "cost": "Estimated cost impact",
+    "schedule": "Schedule impact (days)", "none": "No location linked", "loading": "Loading project locations…",
+    "locationsUnavailable": "Project locations could not be loaded. You can still raise the RFI without a location."
+  }
 }

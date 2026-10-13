@@ -601,7 +601,14 @@ async function myReviews(q, user, filters = {}) {
   const rfis = (await safeAll(q, 'SELECT * FROM project_rfis', []))
     .filter((r0) => !['closed', 'answered', 'acknowledged'].includes(r0.status))
     .filter(scopedProject).filter(scopedDiscipline).filter(() => !filters.type || filters.type === 'rfi');
-  addAll('rfi', rfis, (type, r0) => ({ type, id: r0.id, project_id: toNum(r0.project_id), number: r0.rfi_number, title: r0.subject, due_date: r0.due_date, priority: r0.priority || 'normal', status: r0.status, discipline: r0.discipline || null, location_id: null }));
+  addAll('rfi', rfis, (type, r0) => ({
+    type, id: r0.id, project_id: toNum(r0.project_id), number: r0.rfi_number, title: r0.subject,
+    due_date: r0.due_date, priority: r0.priority || 'normal', status: r0.status, discipline: r0.discipline || null,
+    location_id: r0.project_location_id == null ? null : toNum(r0.project_location_id),
+    work_package_id: r0.work_package_id == null ? null : toNum(r0.work_package_id),
+    cost_impact: r0.cost_impact == null ? null : toNum(r0.cost_impact),
+    schedule_impact_days: r0.schedule_impact_days == null ? null : toNum(r0.schedule_impact_days),
+  }));
 
   const submittals = (await safeAll(q, 'SELECT * FROM project_submittals', []))
     .filter((s) => !['closed', 'resubmit_required'].includes(s.status))

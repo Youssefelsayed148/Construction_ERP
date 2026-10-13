@@ -78,11 +78,11 @@ The incident-table merge requested in 5.7 is not a fresh schema project: `hse-mi
 
 ### 5.7.2 Certificates, safety observations and project record links
 
-**Status: Partial.** Finance certificates now have a project workbench; add a dedicated project certificate register where required by spec 15. Reuse the observation workflow from 5.6 for safety observations rather than adding a second observation table. Add `DocumentDistribution` and `DrawingRegisterItem` records only after confirming no equivalent transmittal/register entity satisfies the fields. Extend RFI with location, work package, cost and schedule impacts using nullable/additive migration fields and explicit permissions.
+**Status: Partial.** The project finance workbench already lists project payment certificates, the 5.6 observation workflow is the shared observation register, and document control already provides project transmittals plus controlled drawing/document registers, so no duplicate entities were added. RFI now supports nullable project location, work package, estimated cost and schedule impact fields through migration 0053; create and read flows validate/reference project-owned records and show EN/AR field labels. Consultant review rows include the impacts, while the subcontractor portal's allowlisted RFI payload intentionally excludes internal cost/schedule impact data. Further work: verify the project's certificate register surface against spec 15 and decide whether transmittal/register fields cover all requested distribution fields.
 
 **Acceptance:** register rows link to existing certificate/document/drawing/RFI records; impact fields are validated and included in project-scoped detail/history; no duplicate canonical entity is introduced.
 
-**Focused checks:** route/service PostgreSQL tests for links, project scope and impact field round trips; focused register component test.
+**Focused checks:** `rfi-impacts.pg.test.js` passed 2/2 for create/read round trip and cross-project reference refusal; `consultant.test.js` plus `portal.test.js` passed 30/30 including consultant impact mapping and external financial-field redaction; `ProjectDocuments.test.js` plus `PortalDashboard.test.js` passed 10/10; `WorkPackageSelect.test.js` passed 4/4; `i18n:check` passed. Migration runner applied 0053 (1 applied, 114 already applied) to the disposable PostgreSQL database. No full suite was run.
 
 ### 5.7.3 Schedule progress and resource assignment
 

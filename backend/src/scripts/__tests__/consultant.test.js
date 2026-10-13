@@ -52,7 +52,8 @@ async function buildFixture() {
     id SERIAL PRIMARY KEY, rfi_number VARCHAR(50), project_id INTEGER, subject VARCHAR(255),
     question TEXT, category VARCHAR(100), discipline VARCHAR(100), priority VARCHAR(20) DEFAULT 'normal',
     status VARCHAR(20) DEFAULT 'open', due_date DATE, raised_by INTEGER, answer TEXT,
-    answered_by INTEGER, answered_at TIMESTAMPTZ, revision INTEGER DEFAULT 1)`);
+    answered_by INTEGER, answered_at TIMESTAMPTZ, revision INTEGER DEFAULT 1,
+    project_location_id INTEGER, work_package_id INTEGER, cost_impact DECIMAL(15,2), schedule_impact_days INTEGER)`);
   await q(`CREATE TABLE IF NOT EXISTS project_submittals (
     id SERIAL PRIMARY KEY, submittal_number VARCHAR(50), project_id INTEGER, title VARCHAR(255),
     submittal_type VARCHAR(30) DEFAULT 'material', status VARCHAR(30) DEFAULT 'submitted',
@@ -357,7 +358,8 @@ describe('consultant dashboard (zero-safe widgets)', () => {
     await q(`INSERT INTO project_milestones (id, project_id, title, target_date, achieved_date) VALUES ($1,$2,$3,$4,$5)`, [1, 1, 'Structure top-out', '2026-12-01', '2026-11-20']);
     await q(`INSERT INTO work_orders (id, project_id, title, status, actual_start_date, actual_end_date) VALUES ($1,$2,$3,$4,$5,$6)`, [1, 1, 'Slab L5', 'completed', '2026-09-01', '2026-09-10']);
     await q(`INSERT INTO quality_tests (id, project_id, test_type, test_date, status) VALUES ($1,$2,$3,$4,$5)`, [1, 1, 'Cube test', new Date().toISOString().slice(0, 10), 'pending']);
-    await q(`INSERT INTO project_rfis (id, rfi_number, project_id, subject, status, due_date) VALUES ($1,$2,$3,$4,$5,$6)`, [2, 'RFI-0002', 1, 'Footing detail', 'open', '2026-09-25']);
+    await q(`INSERT INTO project_rfis (id, rfi_number, project_id, subject, status, due_date, project_location_id, work_package_id, cost_impact, schedule_impact_days)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, [2, 'RFI-0002', 1, 'Footing detail', 'open', '2026-09-25', 22, 23, 1400.5, 3]);
     await q(`INSERT INTO observations (id, observation_number, project_id, title, status, consultant_organization_id)
              VALUES ($1,$2,$3,$4,$5,$6)`, [50, 'OBS-0050', 1, 'Curing check', 'submitted_for_verification', 5]);
     await q(`INSERT INTO ncrs (id, project_id, ncr_number, title, status) VALUES ($1,$2,$3,$4,$5)`, [1, 1, 'NCR-0001', 'Rebar cover', 'verification']);
@@ -381,6 +383,7 @@ describe('My Reviews inbox', () => {
     // The RFI with a due date (2026-09-25) sorts before the undated ones.
     expect(rows[0].type).toBe('rfi');
     expect(rows[0].due_date).toBeTruthy();
+    expect(rows[0]).toMatchObject({ location_id: 22, work_package_id: 23, cost_impact: 1400.5, schedule_impact_days: 3 });
 
     const byType = await engine.myReviews(q, CONSULTANT, { type: 'observation' });
     expect(byType.every((r) => r.type === 'observation')).toBe(true);

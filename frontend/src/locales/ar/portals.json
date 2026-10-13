@@ -13,7 +13,11 @@
     "reinspect": "طلب إعادة الفحص",
     "recommendApprove": "التوصية بالاعتماد",
     "recommendReject": "التوصية بالرفض",
-    "submitError": "تعذر إرسال المراجعة. حدّث الصفحة وحاول مجددًا."
+    "submitError": "تعذر إرسال المراجعة. حدّث الصفحة وحاول مجددًا.",
+    "rfiLocation": "?????? ??? {{id}}",
+    "rfiWorkPackage": "???? ????? ??? {{id}}",
+    "rfiCostImpact": "??????? ??????? {{amount}}",
+    "rfiScheduleImpact": "??? ?????? {{days}} ?????"
   },
   "clientActions": {
     "empty": "لا توجد إجراءات عميل معلقة.",
@@ -57,27 +61,60 @@
       "observation_response": "رد على الملاحظة",
       "variation_quote": "عرض سعر للتغيير"
     },
-    "status": { "submitted": "تم الإرسال", "under_review": "قيد المراجعة", "accepted": "مقبول", "rejected": "مُعاد للتعديل", "closed": "مغلق" }
+    "status": {
+      "submitted": "تم الإرسال",
+      "under_review": "قيد المراجعة",
+      "accepted": "مقبول",
+      "rejected": "مُعاد للتعديل",
+      "closed": "مغلق"
+    }
   },
   "formalSubmission": {
-    "newRfi": "تقديم طلب معلومات RFI", "newSubmittal": "تقديم مستند",
-    "rfiTitle": "طلب معلومات جديد", "submittalTitle": "مستند جديد",
-    "subject": "الموضوع", "question": "السؤال", "title": "عنوان المستند",
-    "priority": "الأولوية", "dueDate": "تاريخ الرد المطلوب",
-    "submittalType": "نوع المستند", "submittedTo": "مقدم إلى",
-    "priorities": { "low": "منخفضة", "normal": "عادية", "high": "مرتفعة", "urgent": "عاجلة" },
-    "types": { "material": "مادة", "shop_drawing": "مخطط تنفيذي", "sample": "عينة", "method": "بيان طريقة التنفيذ" },
+    "newRfi": "تقديم طلب معلومات RFI",
+    "newSubmittal": "تقديم مستند",
+    "rfiTitle": "طلب معلومات جديد",
+    "submittalTitle": "مستند جديد",
+    "subject": "الموضوع",
+    "question": "السؤال",
+    "title": "عنوان المستند",
+    "priority": "الأولوية",
+    "dueDate": "تاريخ الرد المطلوب",
+    "submittalType": "نوع المستند",
+    "submittedTo": "مقدم إلى",
+    "priorities": {
+      "low": "منخفضة",
+      "normal": "عادية",
+      "high": "مرتفعة",
+      "urgent": "عاجلة"
+    },
+    "types": {
+      "material": "مادة",
+      "shop_drawing": "مخطط تنفيذي",
+      "sample": "عينة",
+      "method": "بيان طريقة التنفيذ"
+    },
     "submitError": "تعذر إرسال الطلب. راجع الحقول وحاول مجدداً."
   },
   "recordActions": {
-    "acknowledgeRfi": "تأكيد الرد على طلب المعلومات", "resubmitSubmittal": "إعادة تقديم المستند المعاد",
-    "acknowledgePackage": "تأكيد استلام حزمة الأعمال", "acknowledgeInstruction": "تأكيد استلام تعليمات المهندس",
-    "claimQuantity": "تقديم كمية الإنجاز", "paymentApplication": "طلب دفعة",
-    "rfi": "طلب معلومات RFI", "submittal": "المستند", "instruction": "تعليمات المهندس", "response": "الرد",
+    "acknowledgeRfi": "تأكيد الرد على طلب المعلومات",
+    "resubmitSubmittal": "إعادة تقديم المستند المعاد",
+    "acknowledgePackage": "تأكيد استلام حزمة الأعمال",
+    "acknowledgeInstruction": "تأكيد استلام تعليمات المهندس",
+    "claimQuantity": "تقديم كمية الإنجاز",
+    "paymentApplication": "طلب دفعة",
+    "rfi": "طلب معلومات RFI",
+    "submittal": "المستند",
+    "instruction": "تعليمات المهندس",
+    "response": "الرد",
     "revisionComments": "ما الذي تغير في هذه المراجعة؟",
-    "periodFrom": "بداية الفترة", "periodTo": "نهاية الفترة", "quantityClaimed": "الكمية المطالب بها",
-    "workValue": "قيمة الأعمال خلال الفترة", "retention": "الاستقطاع المحتجز", "materialsDeducted": "قيمة المواد المخصومة",
-    "otherDeductions": "استقطاعات أخرى", "notes": "ملاحظات",
+    "periodFrom": "بداية الفترة",
+    "periodTo": "نهاية الفترة",
+    "quantityClaimed": "الكمية المطالب بها",
+    "workValue": "قيمة الأعمال خلال الفترة",
+    "retention": "الاستقطاع المحتجز",
+    "materialsDeducted": "قيمة المواد المخصومة",
+    "otherDeductions": "استقطاعات أخرى",
+    "notes": "ملاحظات",
     "noBoqPackage": "لا توجد حزمة مسندة مرتبطة ببند كميات متاح للمطالبة.",
     "submitError": "تعذر تنفيذ الإجراء. حدّث الصفحة وحاول مجدداً."
   },
@@ -86,19 +123,38 @@
     "empty": "لا توجد مستندات امتثال تحتاج إلى إجراء.",
     "document": "مستند امتثال",
     "expiry": "ينتهي في {{date}}",
-    "status": { "expired": "منتهي الصلاحية", "expires_soon": "ينتهي خلال 30 يوماً", "upcoming": "ينتهي خلال 90 يوماً" }
+    "status": {
+      "expired": "منتهي الصلاحية",
+      "expires_soon": "ينتهي خلال 30 يوماً",
+      "upcoming": "ينتهي خلال 90 يوماً"
+    }
   },
   "inspections": {
-    "wirs": { "title": "طلبات فحص الأعمال", "empty": "لا توجد سجلات WIR رسمية لحزم أعمالك." },
-    "mirs": { "title": "طلبات فحص المواد", "empty": "لا توجد فحوصات مواد لتوريداتك." },
+    "wirs": {
+      "title": "طلبات فحص الأعمال",
+      "empty": "لا توجد سجلات WIR رسمية لحزم أعمالك."
+    },
+    "mirs": {
+      "title": "طلبات فحص المواد",
+      "empty": "لا توجد فحوصات مواد لتوريداتك."
+    },
     "inspectionDate": "تاريخ الفحص: {{date}}",
     "decidedDate": "تاريخ القرار: {{date}}",
     "result": "النتيجة: {{result}}",
     "status": {
-      "draft": "مسودة", "submitted": "تم الإرسال", "pending": "قيد الانتظار", "site_inspection": "فحص الموقع",
-      "qa_qc_review": "مراجعة الجودة", "pm_review": "مراجعة مدير المشروع", "consultant_review": "مراجعة الاستشاري",
-      "approved": "مقبول", "approved_with_comments": "مقبول مع ملاحظات", "rejected": "مرفوض",
-      "reinspect": "إعادة الفحص", "accepted": "مقبول", "partially_accepted": "مقبول جزئياً"
+      "draft": "مسودة",
+      "submitted": "تم الإرسال",
+      "pending": "قيد الانتظار",
+      "site_inspection": "فحص الموقع",
+      "qa_qc_review": "مراجعة الجودة",
+      "pm_review": "مراجعة مدير المشروع",
+      "consultant_review": "مراجعة الاستشاري",
+      "approved": "مقبول",
+      "approved_with_comments": "مقبول مع ملاحظات",
+      "rejected": "مرفوض",
+      "reinspect": "إعادة الفحص",
+      "accepted": "مقبول",
+      "partially_accepted": "مقبول جزئياً"
     }
   },
   "observation": {

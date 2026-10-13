@@ -477,3 +477,9 @@ Focused results: `portal.test.js` passed 17/17, including issued instruction sco
 QHSE incident GET/POST/PUT and site daily-report aggregation now use `incidents`. The `safety_incidents` compatibility view remains owned by the HSE migration for legacy consumers. The migration regression now verifies exact imported row IDs and values, parity through the view, idempotent rerun, and sequence continuation past migrated IDs.
 
 Focused results: the targeted `migration-runner.pg.test.js` case passed 1/1; the targeted site daily-report census case passed 1/1; the scan for internal `safety_incidents` SQL in routes/services returned no matches. No full suite was run at this ticket boundary.
+
+### 5.7.2.a RFI project context and impact fields
+
+Added nullable location, work-package, cost-impact and schedule-impact fields with versioned migration 0053. RFI create validates optional location/package IDs belong to the selected project in the audited transaction; the document register read includes reference names and impact values. The RFI form selects project-owned locations/work packages and captures both impacts in EN/AR. Consultant inbox rows display the added context. The subcontractor portal continues returning only its allowlisted RFI fields, with a test that excludes cost/schedule impacts. Existing finance workbench, observation register and document transmittal/register implementations were retained instead of introducing duplicates.
+
+Focused results: `rfi-impacts.pg.test.js` passed 2/2; backend `consultant.test.js` + `portal.test.js` passed 30/30; frontend `ProjectDocuments.test.js` + `PortalDashboard.test.js` passed 10/10; `WorkPackageSelect.test.js` passed 4/4; `i18n:check` passed. Migration 0053 applied to the disposable PostgreSQL database (1 applied, 114 already applied). No full suite was run.

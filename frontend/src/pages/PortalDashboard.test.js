@@ -2,7 +2,10 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import PortalDashboard from './PortalDashboard';
 
-jest.mock('../hooks/useLocale', () => ({ useLocale: () => ({ t: (key, options) => options?.id ? key.replace('{{id}}', options.id) : key, locale: 'en' }) }));
+jest.mock('../hooks/useLocale', () => ({ useLocale: () => ({
+  t: (key, options) => Object.entries(options || {}).reduce((result, [name, value]) => result.replaceAll(`{{${name}}}`, value), key),
+  locale: 'en',
+}) }));
 jest.mock('../components/DocumentUpload', () => function MockDocumentUpload({ label, onUploaded }) {
   return <button type="button" onClick={() => onUploaded([{ original_name: 'evidence.jpg', file_url: '/uploads/owned-evidence.jpg' }])}>{label}</button>;
 });
@@ -64,6 +67,9 @@ describe('consultant portal observation form', () => {
     global.fetch = jest.fn(async (url, options = {}) => {
       if (options.method === 'POST') return { ok: true, json: async () => ({ success: true, data: { status: 'approved' } }) };
       const data = String(url).includes('/reviews') ? [{
+        type: 'rfi', id: 33, project_id: 11, number: 'RFI-0033', title: 'Beam penetration', status: 'submitted',
+        location_id: 17, work_package_id: 18, cost_impact: 1400.5, schedule_impact_days: 3,
+      }, {
         type: 'wir', id: 34, project_id: 11, number: 'WIR-0034', title: 'WIR WIR-0034',
         status: 'consultant_review', due_date: '2026-10-14T08:00:00.000Z', drawing_reference: 'S-12 / Rev 4',
       }, {
@@ -77,6 +83,11 @@ describe('consultant portal observation form', () => {
     });
     await act(async () => { root.render(<PortalDashboard kind="consultant" />); });
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const rfiRow = [...container.querySelectorAll('.portal-review-item')].find((row) => row.textContent.includes('Beam penetration'));
+    expect(rfiRow.textContent).toContain('portals.review.rfiLocation');
+    expect(rfiRow.textContent).toContain('portals.review.rfiWorkPackage');
+    expect(rfiRow.textContent).toContain('portals.review.rfiCostImpact');
+    expect(rfiRow.textContent).toContain('portals.review.rfiScheduleImpact');
     const action = [...container.querySelectorAll('button')].find((button) => button.textContent.includes('portals.review.approveWithComments'));
     expect(action).toBeTruthy();
     await act(async () => { action.click(); });

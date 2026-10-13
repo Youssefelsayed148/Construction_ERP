@@ -253,9 +253,12 @@ router.get('/rfis', authenticate, authorize(), async (req, res) => {
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const result = await query(
       `SELECT r.*, ru.name as raised_by_name, au.name as answered_by_name,
+              pl.name AS project_location_name, wp.code AS work_package_code,
               (r.status = 'open' AND r.due_date IS NOT NULL AND r.due_date < CURRENT_DATE) as is_overdue
        FROM project_rfis r
        LEFT JOIN users ru ON r.raised_by = ru.id LEFT JOIN users au ON r.answered_by = au.id
+       LEFT JOIN project_locations pl ON pl.id = r.project_location_id
+       LEFT JOIN work_packages wp ON wp.id = r.work_package_id
        ${where} ORDER BY r.created_at DESC`,
       params
     );
@@ -272,22 +275,36 @@ router.post('/rfis', authenticate, authorize(), async (req, res) => {
       category: Joi.string().allow('').optional(),
       priority: Joi.string().valid('low', 'normal', 'high', 'urgent').default('normal'),
       due_date: Joi.date().iso().allow(null).optional(),
+      project_location_id: Joi.number().integer().positive().allow(null).optional(),
+      work_package_id: Joi.number().integer().positive().allow(null).optional(),
+      cost_impact: Joi.number().min(-9999999999999).max(9999999999999).precision(2).allow(null).optional(),
+      schedule_impact_days: Joi.number().integer().min(-36500).max(36500).allow(null).optional(),
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
     const result = await auditedTransaction(async (q) => {
+      if (value.project_location_id != null) {
+        const location = (await q('SELECT id FROM project_locations WHERE id = $1 AND project_id = $2', [value.project_location_id, value.project_id])).rows[0];
+        if (!location) throw Object.assign(new Error('RFI location must belong to the selected project'), { status: 400, error_code: 'rfi_location_project_mismatch' });
+      }
+      if (value.work_package_id != null) {
+        const workPackage = (await q('SELECT id FROM work_packages WHERE id = $1 AND project_id = $2', [value.work_package_id, value.project_id])).rows[0];
+        if (!workPackage) throw Object.assign(new Error('RFI work package must belong to the selected project'), { status: 400, error_code: 'rfi_work_package_project_mismatch' });
+      }
       const rfiNumber = await nextNumber(q, { table: 'project_rfis', column: 'rfi_number', prefix: `RFI-${value.project_id}`, pad: 3 });
       const inserted = await q(
-      `INSERT INTO project_rfis (rfi_number, project_id, subject, question, category, priority, due_date, raised_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [rfiNumber, value.project_id, value.subject, value.question, value.category, value.priority, value.due_date, req.user.id]
+      `INSERT INTO project_rfis (rfi_number, project_id, subject, question, category, priority, due_date,
+         project_location_id, work_package_id, cost_impact, schedule_impact_days, raised_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+      [rfiNumber, value.project_id, value.subject, value.question, value.category, value.priority, value.due_date,
+       value.project_location_id ?? null, value.work_package_id ?? null, value.cost_impact ?? null, value.schedule_impact_days ?? null, req.user.id]
       );
       await fireEvent({ eventType: 'rfi.submitted', entityType: 'project_rfi', entityId: inserted.rows[0].id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: value.project_id, rfi_number: rfiNumber, subject: value.subject, status: 'open' } }, { query: q });
       return { ...inserted, rfiNumber };
     }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Raised ${r.rfiNumber}: ${value.subject}`, entityId: r.rows[0].id, entityType: 'project_rfi' }));
     res.status(201).json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { res.status(error.status || 500).json({ success: false, error: error.message, ...(error.error_code ? { error_code: error.error_code } : {}) }); }
 });
 
 router.post('/rfis/:id/respond', authenticate, authorize(), async (req, res) => {

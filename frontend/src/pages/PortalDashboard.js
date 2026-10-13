@@ -107,6 +107,12 @@ function ConsultantReviews({ rows = [], onDone }) {
       {!rows.length ? <em>{t('portals.review.empty')}</em> : rows.map((row) => (
         <div className="portal-review-item" key={`${row.type}-${row.id}`}>
           <Record value={row} />
+          {row.type === 'rfi' && (row.location_id || row.work_package_id || row.cost_impact != null || row.schedule_impact_days != null) && <small className="portal-review-context">
+            {[row.location_id != null && t('portals.review.rfiLocation', { id: row.location_id }),
+              row.work_package_id != null && t('portals.review.rfiWorkPackage', { id: row.work_package_id }),
+              row.cost_impact != null && t('portals.review.rfiCostImpact', { amount: row.cost_impact }),
+              row.schedule_impact_days != null && t('portals.review.rfiScheduleImpact', { days: row.schedule_impact_days })].filter(Boolean).join(' · ')}
+          </small>}
           {row.type === 'wir' && <div className="portal-review-actions" aria-label={t('portals.review.wirActions')}>
             <button className="btn btn-secondary btn-sm" disabled={savingId === row.id} onClick={() => submitDecision(row, 'approved')}>{t('portals.review.approve')}</button>
             <button className="btn btn-secondary btn-sm" disabled={savingId === row.id} onClick={() => submitDecision(row, 'approved_with_comments')}>{t('portals.review.approveWithComments')}</button>

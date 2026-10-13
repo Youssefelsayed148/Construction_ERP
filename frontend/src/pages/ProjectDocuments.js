@@ -5,6 +5,7 @@ import { ArrowLeft, Plus, Search, X, FileText, FolderOpen, MessageSquare, Packag
 import { RegisterTab, TransmittalsTab, CorrespondenceTab, DocSearchTab } from './DocControlExtended';
 import DocumentUpload from '../components/DocumentUpload';
 import { openProtectedFile } from '../components/ProtectedMedia';
+import WorkPackageSelect from '../components/project/WorkPackageSelect';
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
 const API_URL = `${API_BASE_URL}/api`;
@@ -501,6 +502,12 @@ function RfisTab({ projectId, locale, t }) {
                   <td style={{ fontWeight: 500 }}>
                     {r.subject}
                     {r.question && <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>{r.question}</div>}
+                    {(r.project_location_name || r.work_package_code || r.cost_impact != null || r.schedule_impact_days != null) && <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
+                      {[r.project_location_name && `${t('documentControl.rfiImpacts.location')}: ${r.project_location_name}`,
+                        r.work_package_code && `${t('documentControl.rfiImpacts.workPackage')}: ${r.work_package_code}`,
+                        r.cost_impact != null && `${t('documentControl.rfiImpacts.cost')}: ${r.cost_impact}`,
+                        r.schedule_impact_days != null && `${t('documentControl.rfiImpacts.schedule')}: ${r.schedule_impact_days}`].filter(Boolean).join(' · ')}
+                    </div>}
                     {r.answer && <div style={{ fontSize: '12px', color: 'var(--color-success)', marginTop: '2px' }}>↳ {r.answer}</div>}
                   </td>
                   <td><span className={`badge ${RFI_STATUS_BADGE[r.status]}`}>{RFI_STATUS_LABELS[locale]?.[r.status] || r.status}</span></td>
@@ -537,9 +544,19 @@ function RfisTab({ projectId, locale, t }) {
 }
 
 function RfiModal({ projectId, locale, t, onClose, onSave }) {
-  const [form, setForm] = useState({ subject: '', question: '', category: '', priority: 'normal', due_date: '' });
+  const [form, setForm] = useState({ subject: '', question: '', category: '', priority: 'normal', due_date: '', project_location_id: '', work_package_id: null, cost_impact: '', schedule_impact_days: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [locationOptions, setLocationOptions] = useState({ loading: true, failed: false, rows: [] });
+
+  useEffect(() => {
+    let cancelled = false;
+    setLocationOptions({ loading: true, failed: false, rows: [] });
+    fetchApi(`${API_URL}/locations/project/${projectId}`)
+      .then((res) => { if (!cancelled) setLocationOptions({ loading: false, failed: false, rows: res.data || [] }); })
+      .catch(() => { if (!cancelled) setLocationOptions({ loading: false, failed: true, rows: [] }); });
+    return () => { cancelled = true; };
+  }, [projectId]);
 
   const handleChange = (field, value) => setForm(f => ({ ...f, [field]: value }));
 
@@ -547,7 +564,12 @@ function RfiModal({ projectId, locale, t, onClose, onSave }) {
     e.preventDefault();
     setSaving(true); setError('');
     try {
-      const body = { ...form, project_id: Number(projectId) };
+      const body = {
+        ...form, project_id: Number(projectId),
+        project_location_id: form.project_location_id ? Number(form.project_location_id) : null,
+        cost_impact: form.cost_impact === '' ? null : Number(form.cost_impact),
+        schedule_impact_days: form.schedule_impact_days === '' ? null : Number(form.schedule_impact_days),
+      };
       if (!body.due_date) delete body.due_date;
       const res = await fetchApi(`${API_URL}/docs/rfis`, { method: 'POST', body: JSON.stringify(body) });
       if (res.success) { onSave(); onClose(); }
@@ -589,6 +611,23 @@ function RfiModal({ projectId, locale, t, onClose, onSave }) {
                   <label className="form-label">{locale === 'ar' ? 'تاريخ الاستحقاق' : 'Due Date'}</label>
                   <input className="form-input" type="date" value={form.due_date} onChange={e => handleChange('due_date', e.target.value)} />
                 </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">{t('documentControl.rfiImpacts.location')}</label>
+                <select className="form-select" value={form.project_location_id} disabled={locationOptions.loading || locationOptions.failed} onChange={e => handleChange('project_location_id', e.target.value)}>
+                  <option value="">{t('documentControl.rfiImpacts.none')}</option>
+                  {locationOptions.rows.map((location) => <option key={location.id} value={location.id}>{location.code ? `${location.code} · ` : ''}{location.name || location.name_en || location.name_ar}</option>)}
+                </select>
+                {locationOptions.loading && <small role="status">{t('documentControl.rfiImpacts.loading')}</small>}
+                {locationOptions.failed && <small role="alert">{t('documentControl.rfiImpacts.locationsUnavailable')}</small>}
+              </div>
+              <div className="form-group">
+                <label className="form-label">{t('documentControl.rfiImpacts.workPackage')}</label>
+                <WorkPackageSelect projectId={projectId} value={form.work_package_id} onChange={(value) => handleChange('work_package_id', value)} className="form-select" />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className="form-group"><label className="form-label">{t('documentControl.rfiImpacts.cost')}</label><input className="form-input" type="number" step="0.01" value={form.cost_impact} onChange={e => handleChange('cost_impact', e.target.value)} /></div>
+                <div className="form-group"><label className="form-label">{t('documentControl.rfiImpacts.schedule')}</label><input className="form-input" type="number" step="1" value={form.schedule_impact_days} onChange={e => handleChange('schedule_impact_days', e.target.value)} /></div>
               </div>
               {error && <div className="alert alert-danger">{error}</div>}
             </div>

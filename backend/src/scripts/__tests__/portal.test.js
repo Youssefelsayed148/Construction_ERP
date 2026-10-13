@@ -77,7 +77,9 @@ async function buildFixture() {
   await q(`CREATE TABLE IF NOT EXISTS ncrs (
     id SERIAL PRIMARY KEY, project_id INTEGER, ncr_number VARCHAR(50), title VARCHAR(255), status VARCHAR(30) DEFAULT 'open')`);
   await q(`CREATE TABLE IF NOT EXISTS project_rfis (
-    id SERIAL PRIMARY KEY, rfi_number VARCHAR(50), project_id INTEGER, subject VARCHAR(255), status VARCHAR(20) DEFAULT 'open')`);
+    id SERIAL PRIMARY KEY, rfi_number VARCHAR(50), project_id INTEGER, sub_contract_id INTEGER,
+    subject VARCHAR(255), status VARCHAR(20) DEFAULT 'open', project_location_id INTEGER,
+    work_package_id INTEGER, cost_impact DECIMAL(15,2), schedule_impact_days INTEGER)`);
   await q(`CREATE TABLE IF NOT EXISTS project_submittals (
     id SERIAL PRIMARY KEY, submittal_number VARCHAR(50), project_id INTEGER, sub_contract_id INTEGER,
     title VARCHAR(255), status VARCHAR(30) DEFAULT 'submitted')`);
@@ -270,6 +272,14 @@ describe('subcontractor portal', () => {
              VALUES ($1,$2,$3,$4,$5,$6,$7)`, [2, 'WIR-OTHER', 1, 4, '2026-10-11', 'approved', 'approved']);
     const dash = await engine.subcontractorDashboard(q, SUB_A.id);
     expect(dash.wirs.items).toEqual([{ id: 1, project_id: 1, wir_number: 'WIR-OWN', status: 'consultant_review', result: null, inspection_date: '2026-10-10' }]);
+  });
+
+  test('subcontractor RFI list does not expose internal cost or schedule impact fields', async () => {
+    await q(`INSERT INTO project_rfis (id,rfi_number,project_id,sub_contract_id,subject,status,project_location_id,work_package_id,cost_impact,schedule_impact_days)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, [93, 'RFI-OWN', 1, 1, 'Own package RFI', 'open', 1, 2, 12500, 8]);
+    const dash = await engine.subcontractorDashboard(q, SUB_A.id);
+    expect(dash.rfis.items).toEqual([{ id: 93, rfi_number: 'RFI-OWN', subject: 'Own package RFI', status: 'open' }]);
+    expect(JSON.stringify(dash.rfis)).not.toMatch(/cost_impact|schedule_impact_days|12500/);
   });
 
   test('resubmission choices contain only returned records from the subcontractor package scope', async () => {
