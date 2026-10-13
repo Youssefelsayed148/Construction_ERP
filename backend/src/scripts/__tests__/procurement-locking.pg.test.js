@@ -30,9 +30,9 @@ describePg('procurement locking (real PostgreSQL, real app)', () => {
   };
 
   // A PO with one line (qty 100, tolerance 5%) in an open status, a warehouse and an item.
-  const fixture = async (label, { qty = 100, tolerance = 5 } = {}) => {
+  const fixture = async (label, { qty = 100, tolerance = 5, tracked = false } = {}) => {
     const supplier = (await one("INSERT INTO suppliers (name_ar, name_en) VALUES ($1, $1) RETURNING id", [`pl-${tag}-${label}`])).id;
-    const item = (await one("INSERT INTO item_master (code, category, name_en, name_ar, unit) VALUES ($1, 'test', $1, $1, 'ea') RETURNING id", [`PL-${tag}-${label}`])).id;
+    const item = (await one("INSERT INTO item_master (code, category, name_en, name_ar, unit, batch_lot_tracking) VALUES ($1, 'test', $1, $1, 'ea', $2) RETURNING id", [`PL-${tag}-${label}`, tracked])).id;
     const warehouse = (await one("INSERT INTO warehouses (name, name_en, type) VALUES ($1, $1, 'central') RETURNING id", [`pl-${tag}-${label}`])).id;
     const po = (await one(
       "INSERT INTO purchase_orders (order_number, supplier_id, status, tolerance_pct) VALUES ($1, $2, 'issued', $3) RETURNING id", [`PL-PO-${tag}-${label}`, supplier, tolerance]
@@ -155,6 +155,19 @@ describePg('procurement locking (real PostgreSQL, real app)', () => {
       const results = await Promise.all([1, 2].map(() => sendBack(grn, f, 7)));
       expect(results.filter((r) => r.status === 201).length).toBe(1);
       expect((await stock(f)).physical).toBe(3);
+    });
+
+    test('lot-tracked returns require and remove stock from the source GRN lot', async () => {
+      const f = await fixture('lot-return', { tracked: true });
+      const grn = await accepted(f, 10);
+      const grnLine = await one('SELECT gl.id AS grn_line_id, dl.lot_id FROM grn_lines gl JOIN mir_lines ml ON ml.id = gl.mir_line_id JOIN delivery_lines dl ON dl.id = ml.delivery_line_id WHERE gl.grn_id = $1', [grn.id]);
+      expect(grnLine.lot_id).toBeTruthy();
+      expect((await call('POST', `/api/procurement/grn/${grn.id}/returns`, { lines: [{ material_id: f.item, quantity: 2 }] })).body.error_code).toBe('return_grn_line_required');
+      const returned = await call('POST', `/api/procurement/grn/${grn.id}/returns`, { reason: 'damaged lot', lines: [{ material_id: f.item, grn_line_id: grnLine.grn_line_id, quantity: 2 }] });
+      expect(returned.status).toBe(201);
+      expect(await one("SELECT lot_id FROM stock_movements WHERE reference_type = 'supplier_return' AND reference_id = $1", [returned.body.data.id])).toEqual({ lot_id: grnLine.lot_id });
+      expect(await one('SELECT lot_id, quantity::float AS quantity FROM supplier_return_lines WHERE supplier_return_id = $1', [returned.body.data.id])).toEqual({ lot_id: grnLine.lot_id, quantity: 2 });
+      expect((await one('SELECT physical::float AS quantity FROM stock_lot_balances WHERE lot_id = $1', [grnLine.lot_id])).quantity).toBe(8);
     });
   });
 

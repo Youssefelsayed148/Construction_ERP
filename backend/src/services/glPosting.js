@@ -30,6 +30,7 @@ const ISSUED_STATUSES = new Set(['issued', 'sent', 'partially_paid', 'paid', 'ov
 const REVERSING_STATUSES = new Set(['void', 'cancelled']);
 
 const todayIso = () => new Date().toISOString().split('T')[0];
+const isCertificateInvoice = (invoice) => invoice.payment_certificate_id != null || money.toMinor(invoice.certified_gross || 0) > 0n;
 
 async function postClientInvoice(q, invoice, { userId = null, date = null } = {}) {
   if ((await journal.findEntries(q, 'client_invoice', invoice.id)).length) return null;
@@ -37,7 +38,7 @@ async function postClientInvoice(q, invoice, { userId = null, date = null } = {}
   const total = money.toMinor(invoice.amount);
   const tax = money.toMinor(invoice.tax_amount == null ? 0 : invoice.tax_amount);
   if (tax < 0n || tax > total) throw new journal.JournalError(`Invoice ${invoice.invoice_number}: tax ${money.format(tax)} is outside the invoice amount ${money.format(total)}`);
-  const hasCertificateMath = invoice.certified_gross != null;
+  const hasCertificateMath = isCertificateInvoice(invoice);
   const gross = hasCertificateMath ? money.toMinor(invoice.certified_gross) : total - tax;
   const retention = hasCertificateMath ? money.toMinor(invoice.retention_amount || 0) : 0n;
   const advance = hasCertificateMath ? money.toMinor(invoice.advance_recovery || 0) : 0n;
@@ -142,7 +143,7 @@ const reverseClientCreditNote = (q, creditNote, { userId = null } = {}) =>
 
 async function reverseClientInvoice(q, invoice, { userId = null } = {}) {
   const entry = await reverseEntry(q, 'client_invoice', invoice.id, { userId, description: `Invoice ${invoice.invoice_number} voided` });
-  if (entry && invoice.certified_gross != null) await recordCertificateMemos(q, invoice, 'client_invoice_void', 'released', 'restored');
+  if (entry && isCertificateInvoice(invoice)) await recordCertificateMemos(q, invoice, 'client_invoice_void', 'released', 'restored');
   return entry;
 }
 

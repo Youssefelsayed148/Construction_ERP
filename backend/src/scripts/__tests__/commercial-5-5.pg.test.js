@@ -13,7 +13,7 @@ const enabled = process.env.TEST_PG === '1';
 const describePg = enabled ? describe : describe.skip;
 
 describePg('5.5 commercial and finance (real PostgreSQL, real app)', () => {
-  let app; let server; let base; let db; let svc; let finance; let engine; let docs; let records; let budgeting;
+  let app; let server; let base; let db; let svc; let finance; let engine; let docs; let records; let budgeting; let glPosting;
   const tag = String(Date.now()).slice(-8);
   let seq = 0;
   const one = async (sql, params) => (await db.query(sql, params)).rows[0];
@@ -64,6 +64,7 @@ describePg('5.5 commercial and finance (real PostgreSQL, real app)', () => {
     docs = require('../../services/financeDocuments');
     records = require('../../services/commercialRecords');
     budgeting = require('../../services/budgeting');
+    glPosting = require('../../services/glPosting');
     await new Promise((resolve) => { server = app.listen(0, resolve); });
     base = `http://127.0.0.1:${server.address().port}`;
     pA = await makeProject('A'); pB = await makeProject('B');
@@ -307,11 +308,18 @@ describePg('5.5 commercial and finance (real PostgreSQL, real app)', () => {
     expect(f1.status).toBe(201);
     expect([f1.body.data.total_forecast, f1.body.data.total_actual_to_date]).toEqual([1050000, 12345.67]);
     expect(f1.body.data.lines.find((l) => l.cost_code_id === cc1).actual_to_date).toBe('12345.67');
+    expect((await call('POST', `/api/commercial/forecast-versions/${f1.body.data.id}/approve`, users.cm)).body.error_code).toBe('maker_checker_violation');
     expect((await call('POST', `/api/commercial/forecast-versions/${f1.body.data.id}/approve`, users.coo)).body.data.status).toBe('approved');
+    const forecasted = await engine.projectCommercial(db.query, pA);
+    expect(forecasted.approved_forecast_version_id).toBe(f1.body.data.id);
+    expect(forecasted.approved_forecast_total).toBe(1050000);
+    expect(forecasted.etc).toBeCloseTo(Math.max(1050000 - forecasted.actual_cost - forecasted.accrued_cost, 0), 2);
+    expect(forecasted.eac).toBeCloseTo(forecasted.actual_cost + forecasted.accrued_cost + forecasted.etc, 2);
     expect((await call('POST', `/api/commercial/forecast-versions/${f1.body.data.id}/approve`, users.coo)).body.error_code).toBe('forecast_version_not_draft');
     const f2 = (await call('POST', '/api/commercial/forecast-versions', users.cm, { project_id: pA, name: 'Q2', lines: [{ cost_code_id: cc1, forecast_amount: 820000 }] })).body.data;
     await call('POST', `/api/commercial/forecast-versions/${f2.id}/approve`, users.coo);
     expect((await all('SELECT version_no, status FROM forecast_versions WHERE project_id = $1 ORDER BY version_no', [pA])).map((r) => [r.version_no, r.status])).toEqual([[1, 'superseded'], [2, 'approved']]);
+    expect((await engine.projectCommercial(db.query, pA)).approved_forecast_version_id).toBe(f2.id);
     expect((await call('GET', `/api/commercial/project/${pA}/forecast-versions`, users.cm)).body.data).toHaveLength(2);
   });
 
@@ -396,6 +404,34 @@ describePg('5.5 commercial and finance (real PostgreSQL, real app)', () => {
     expect((await one('SELECT status FROM invoices WHERE id = $1', [invoice2.id])).status).toBe('issued');
     await db.query("DELETE FROM user_project_roles WHERE user_id = $1 AND role_id = (SELECT id FROM roles WHERE key = 'coo')", [users.arAcc.id]);
     expect((await finance.arAging(db.query)).current).toBeDefined();
+  });
+
+  test('certificate posting ties retention and advance ledger movements to the balanced journal, then reverses them', async () => {
+    const beforeRetention = await finance.retentionTotals(db.query, { project_id: pA, party_type: 'client' });
+    const beforeAdvance = Number((await one("SELECT COALESCE(SUM(CASE WHEN direction = 'recovered' THEN amount ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN direction = 'restored' THEN amount ELSE 0 END), 0) AS balance FROM advance_ledger WHERE project_id = $1 AND party_type = 'client'", [pA])).balance);
+    const invoiceId = 180000000 + Number(tag);
+    const invoice = {
+      id: invoiceId, invoice_number: `E1-${tag}`, project_id: pA, payment_certificate_id: invoiceId,
+      amount: 90, certified_gross: 100, retention_amount: 10, advance_recovery: 5,
+      other_deductions: 3, tax_amount: 8, issue_date: '2026-10-13',
+    };
+    await tx((q) => glPosting.postClientInvoice(q, invoice, { userId: users.cm.id }));
+    const posted = await entryFor('client_invoice', invoiceId);
+    expect(posted.debit).toBe(108);
+    expect(posted.credit).toBe(108);
+    const held = await finance.retentionTotals(db.query, { project_id: pA, party_type: 'client' });
+    expect(held.balance - beforeRetention.balance).toBe(10);
+    const advanced = Number((await one("SELECT COALESCE(SUM(CASE WHEN direction = 'recovered' THEN amount ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN direction = 'restored' THEN amount ELSE 0 END), 0) AS balance FROM advance_ledger WHERE project_id = $1 AND party_type = 'client'", [pA])).balance);
+    expect(advanced - beforeAdvance).toBe(5);
+
+    await tx((q) => glPosting.reverseClientInvoice(q, invoice, { userId: users.owner.id }));
+    const afterReverse = await finance.retentionTotals(db.query, { project_id: pA, party_type: 'client' });
+    expect(afterReverse.balance).toBe(beforeRetention.balance);
+    const restored = Number((await one("SELECT COALESCE(SUM(CASE WHEN direction = 'recovered' THEN amount ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN direction = 'restored' THEN amount ELSE 0 END), 0) AS balance FROM advance_ledger WHERE project_id = $1 AND party_type = 'client'", [pA])).balance);
+    expect(restored).toBe(beforeAdvance);
+    const reversal = await entryFor('client_invoice_void', invoiceId);
+    expect(reversal.debit).toBe(108);
+    expect(reversal.credit).toBe(108);
   });
 
   // --------------------------------------------------------------------------------------------------

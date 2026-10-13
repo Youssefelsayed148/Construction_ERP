@@ -211,7 +211,14 @@ async function projectCommercial(q, projectId) {
   const committed = committedCost(commitments);
   const actual = await actualCost(q, projectId);
   const accrued = accruedCost(committed, actual);
-  const etc = etcFigure(currentBudgetTotal, committed);
+  const approvedForecast = (await q(
+    `SELECT v.id, COALESCE(SUM(l.forecast_amount), 0) AS total_forecast
+       FROM forecast_versions v LEFT JOIN forecast_lines l ON l.forecast_version_id = v.id
+      WHERE v.project_id = $1 AND v.status = 'approved' GROUP BY v.id`, [projectId]
+  )).rows[0] || null;
+  const etc = approvedForecast
+    ? round2(Math.max(toNum(approvedForecast.total_forecast) - actual - accrued, 0))
+    : etcFigure(currentBudgetTotal, committed);
   const eacValue = eac(actual, accrued, etc);
   const profit = forecastProfit(revisedRevenue, eacValue);
   const margin = forecastMarginPct(profit, revisedRevenue);
@@ -231,6 +238,8 @@ async function projectCommercial(q, projectId) {
     accrued_cost: accrued,
     etc: etc,
     eac: eacValue,
+    approved_forecast_version_id: approvedForecast ? approvedForecast.id : null,
+    approved_forecast_total: approvedForecast ? round2(toNum(approvedForecast.total_forecast)) : null,
     forecast_revenue: revisedRevenue,
     forecast_profit: profit,
     forecast_margin_percent: margin,

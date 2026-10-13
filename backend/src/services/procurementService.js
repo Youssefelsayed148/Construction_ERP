@@ -793,31 +793,47 @@ async function approveSupplierInvoice(q, invoiceId, user) {
 // accepted quantity, all under row locks.
 async function createSupplierReturn(q, { grn_id, reason = null, lines = [], created_by = null }) {
   const grn = (await q('SELECT * FROM goods_receipt_notes WHERE id = $1', [grn_id])).rows[0];
-  if (!grn) throw new Error(`GRN #${grn_id} not found`);
+  if (!grn) throw Object.assign(new Error(`GRN #${grn_id} not found`), { status: 404, error_code: 'grn_not_found' });
   const po = (await q('SELECT * FROM purchase_orders WHERE id = $1', [grn.purchase_order_id])).rows[0];
 
   // Lock the PO lines first (the order every other flow uses), then the GRN lines.
   const grnLines = (await q('SELECT * FROM grn_lines WHERE grn_id = $1 ORDER BY id', [grn_id])).rows;
   const poLineIds = [...new Set(grnLines.map((l) => l.purchase_order_line_id).filter((id) => id != null))].sort((x, y) => x - y);
   if (poLineIds.length) await q('SELECT id FROM purchase_order_lines WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE', [poLineIds]);
-  const locked = (await q('SELECT * FROM grn_lines WHERE grn_id = $1 ORDER BY id FOR UPDATE', [grn_id])).rows;
+  const locked = (await q(`SELECT gl.*, dl.lot_id
+      FROM grn_lines gl
+      LEFT JOIN mir_lines ml ON ml.id = gl.mir_line_id
+      LEFT JOIN delivery_lines dl ON dl.id = ml.delivery_line_id
+      WHERE gl.grn_id = $1 ORDER BY gl.id FOR UPDATE OF gl`, [grn_id])).rows;
 
   // Allocate each requested quantity across the GRN lines of that material.
   const returnedNow = new Map(locked.map((l) => [l.id, toNum(l.returned_quantity)]));
   const allocations = [];
   for (const line of lines) {
     let remaining = round3(toNum(line.quantity));
-    const candidates = locked.filter((l) => toNum(l.material_id) === toNum(line.material_id));
+    const tracked = await inventoryLots.isLotTracked(q, line.material_id);
+    if (tracked && line.grn_line_id == null) {
+      throw Object.assign(new Error('Lot-tracked supplier returns must name the GRN line being returned'), { status: 400, error_code: 'return_grn_line_required' });
+    }
+    const candidates = locked.filter((l) => toNum(l.material_id) === toNum(line.material_id)
+      && (line.grn_line_id == null || toNum(l.id) === toNum(line.grn_line_id))
+      && (line.lot_id == null || toNum(l.lot_id) === toNum(line.lot_id)));
+    if (tracked && candidates.some((l) => l.lot_id == null)) {
+      throw Object.assign(new Error('The selected GRN line has no recorded stock lot'), { status: 409, error_code: 'return_source_lot_missing' });
+    }
     const returnable = round3(candidates.reduce((sum, l) => sum + toNum(l.quantity) - returnedNow.get(l.id), 0));
     if (remaining > returnable + 1e-9) {
-      throw new Error(`Cannot return ${remaining} of material #${line.material_id}: only ${returnable} accepted on GRN #${grn_id} is returnable`);
+      throw Object.assign(new Error(`Cannot return ${remaining} of material #${line.material_id}: only ${returnable} accepted on GRN #${grn_id} is returnable`), {
+        status: 400, error_code: 'supplier_return_exceeds_returnable',
+        error_params: { material_id: line.material_id, requested: remaining, returnable, grn_id },
+      });
     }
     for (const gl of candidates) {
       if (remaining <= 0) break;
       const take = Math.min(remaining, round3(toNum(gl.quantity) - returnedNow.get(gl.id)));
       if (take <= 0) continue;
       returnedNow.set(gl.id, round3(returnedNow.get(gl.id) + take));
-      allocations.push({ grnLine: gl, quantity: round3(take) });
+      allocations.push({ grnLine: gl, quantity: round3(take), material_id: line.material_id, notes: line.notes || null });
       remaining = round3(remaining - take);
     }
   }
@@ -829,15 +845,15 @@ async function createSupplierReturn(q, { grn_id, reason = null, lines = [], crea
     [returnNumber, grn.purchase_order_id, grn_id, po ? po.supplier_id : null, grn.warehouse_id, reason, created_by]
   );
   const supplierReturn = r.rows[0];
-  for (const line of lines) {
+  for (const allocation of allocations) {
     await q(
-      `INSERT INTO supplier_return_lines (supplier_return_id, material_id, quantity, notes)
-       VALUES ($1, $2, $3, $4)`,
-      [supplierReturn.id, line.material_id, line.quantity, line.notes || null]
+      `INSERT INTO supplier_return_lines (supplier_return_id, material_id, quantity, notes, grn_line_id, lot_id)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [supplierReturn.id, allocation.material_id, allocation.quantity, allocation.notes, allocation.grnLine.id, allocation.grnLine.lot_id]
     );
     await inventoryEngine.createMovement(q, {
-      warehouse_id: grn.warehouse_id, material_id: line.material_id,
-      movement_type: 'supplier_return', quantity: line.quantity,
+      warehouse_id: grn.warehouse_id, material_id: allocation.material_id,
+      movement_type: 'supplier_return', quantity: allocation.quantity, lot_id: allocation.grnLine.lot_id,
       reference_type: 'supplier_return', reference_id: supplierReturn.id, created_by,
     });
   }

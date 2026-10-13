@@ -168,6 +168,7 @@ async function approveForecastVersion(q, id, user) {
   const v = (await q('SELECT * FROM forecast_versions WHERE id = $1 FOR UPDATE', [toInt(id)])).rows[0];
   if (!v) throw missing('forecast_version_not_found', `Forecast version #${id} not found`, { id });
   if (v.status !== 'draft') throw conflict('forecast_version_not_draft', `Forecast version ${v.version_no} is ${v.status}: only a draft can be approved`, { id: v.id, status: v.status });
+  await assertNotMaker(q, v.created_by, user.id, 'forecast version');
   await q('SELECT id FROM projects WHERE id = $1 FOR UPDATE', [v.project_id]);
   await q("UPDATE forecast_versions SET status = 'superseded', updated_at = NOW() WHERE project_id = $1 AND status = 'approved'", [v.project_id]);
   await q("UPDATE forecast_versions SET status = 'approved', approved_by = $2, approved_at = NOW(), updated_at = NOW() WHERE id = $1", [v.id, user.id]);

@@ -578,17 +578,19 @@ router.post('/grn/:id/returns', authenticate, authorize(), async (req, res) => {
       reason: Joi.string().optional().allow('', null),
       lines: Joi.array().items(Joi.object({
         material_id: Joi.number().integer().required(),
+        grn_line_id: Joi.number().integer().optional(),
+        lot_id: Joi.number().integer().optional(),
         quantity: Joi.number().positive().required(),
         notes: Joi.string().optional().allow('', null),
       })).min(1).required(),
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const supplierReturn = await atomic((q) => svc.createSupplierReturn(q, {
+    const supplierReturn = await auditedProc(req, (q) => svc.createSupplierReturn(q, {
       grn_id: parseInt(req.params.id, 10), ...value, created_by: req.user.id,
-    }));
+    }), (row) => ({ action: 'create', description: `Recorded supplier return ${row.return_number}`, entityId: row.id, entityType: 'supplier_return' }));
     res.status(201).json({ success: true, data: supplierReturn });
-  } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+  } catch (e) { return typedFail(res, e); }
 });
 
 // ---------------------------------------------------------------------------
