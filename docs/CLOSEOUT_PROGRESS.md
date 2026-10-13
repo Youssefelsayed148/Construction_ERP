@@ -583,3 +583,9 @@ Verification: `Shell.i18n.test.js` passed 1 suite / 20 tests; `i18n:check ok`; f
 Replaced the remaining portal prompts with record selectors and localized forms. RFQ/PO details load from portal endpoints; quotation and invoice line values are validated; client preview selects from the loaded portfolio. Current `frontend/src` prompt scan returns no matches.
 
 Verification: `PortalDashboard.test.js` passed 1 suite / 10 tests; `i18n:check ok`; frontend production build compiled successfully; `git diff --check` passed. Phase 6 route-to-screen and permission journey checks remain open.
+
+### Phase 6.2 — Arabic catalog encoding correction
+
+Corrected the Arabic quick-action and client-preview catalog entries to valid UTF-8 Arabic. Rechecked JSON parsing and recursive EN/AR catalog parity.
+
+Verification: `npm run i18n:check` reported `i18n:check ok`; `git diff --check` passed.

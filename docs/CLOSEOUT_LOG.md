@@ -1393,3 +1393,9 @@ Verification output: `Shell.i18n.test.js` passed 1 suite / 20 tests, including n
 Replaced consultant and supplier prompt flows with localized forms and scoped record selectors. RFQ/PO details load through portal endpoints; quotation and invoice line values are validated; client preview selects from the loaded portfolio. `rg -n "prompt\\s*\\(" frontend/src --glob '*.{js,jsx,ts,tsx}'` returned no matches.
 
 Verification output: `npm run test:ci -- --runTestsByPath src/pages/PortalDashboard.test.js` passed 1 suite / 10 tests; `npm run i18n:check` reported `i18n:check ok`; `npm run build` reported `Compiled successfully`; `git diff --check` exited 0. The pilot smoke remains unverified because automatic review rejected the script due to its reads of `.env.docker` and `.staging-users.json`, prohibited by the closeout request.
+
+## 2026-10-13: Arabic portal catalog correction
+
+Corrected the Arabic quick-action and client-preview values to valid UTF-8 Arabic after detecting terminal-pipeline character loss in a staged diff. The catalog now stores Arabic text, not replacement question marks.
+
+Verification output: `npm run i18n:check` reported `i18n:check ok`; JSON parsing succeeded; `git diff --check` exited 0.
