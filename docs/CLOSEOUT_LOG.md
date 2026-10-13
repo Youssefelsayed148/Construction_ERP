@@ -1049,3 +1049,40 @@ Focused B5 checks passed 1 suite / 2 tests, syntax check passed, and `npm run li
 ## 2026-10-13: Batch B6 Windows staging runbook
 
 Added `docs/STAGING.md` with copy-paste Windows PowerShell commands for generated ignored configuration, Compose start/health checks, staging and demo seeds, full smoke, backup/restore rehearsal, account-file location, Compose status/logs, and stop/restart. It warns against displaying env or password files and against removing persistent pilot volumes. `git diff --check` passed for the documentation edit.
+
+## 2026-10-13: Batch B end-of-batch gate
+
+```text
+npm run lint:guards
+lint-guards: ok
+
+npm test -- --runInBand --testPathIgnorePatterns decision-record
+Test Suites: 56 skipped, 50 passed, 50 of 106 total
+Tests:       566 skipped, 960 passed, 1526 total
+
+npm run test:pg
+Test Suites: 56 passed, 56 total
+Tests:       566 passed, 566 total
+Time:        90.192 s
+Ran all test suites.
+```
+
+The real-PG gate ran after applying all 103 migrations to a new loopback-only PostgreSQL 16 container (`construction_erp_test`, port 55442) with a generated one-run password; the container and anonymous volume were removed afterward. The earlier attempt to reuse an existing test-container password was rejected by automatic review, so no existing secret was read; the fresh isolated container completed the required gate.
+
+```text
+npm run test:ci
+Test Suites: 17 passed, 17 total
+Tests:       97 passed, 97 total
+
+npm run i18n:check
+i18n:check ok
+
+npm run build
+Compiled successfully.
+
+npm run test:e2e
+46 skipped
+32 passed (18.9s)
+```
+
+The first sandboxed Playwright invocation returned `spawn EPERM`; the same local gate passed when rerun with elevated Windows process permissions. The final Compose health check returned `status=ready`, `database=healthy`; backend, database and frontend containers were healthy. Batch B commits: B1 `6c7a1ee`, B2 `6ecf390`, B3 `237a6cf`, B3.1 `1e90f7c`, B4 `0a41103`, B5 `a918f9f`, B6 `157711b`.

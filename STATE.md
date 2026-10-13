@@ -21,16 +21,17 @@ Updated: 2026-10-13 (Africa/Cairo)
 
 ## In progress
 
-- Batch B1 Compose foundation is implemented and verified. Unique project `erp-closeout-pilot-20261013` is running locally at `http://127.0.0.1:8090`; DB/API/frontend are healthy. Root `.env.docker` contains locally generated credentials and is git-ignored. Do not read or print it.
+- Batch B1–B6 is committed and green. Unique project `erp-closeout-pilot-20261013` is running locally at `http://127.0.0.1:8090`; DB/API/frontend are healthy. Root `.env.docker` contains locally generated credentials and is git-ignored. Do not read or print it.
 - B2 role/user staging seed is implemented and verified: 38 users across 33 canonical roles plus no-assignment/expired-assignment cases, requester/checker identities, three legacy workflow compatibility actors, and supplier/client seats. Passwords are in ignored root `.staging-users.json`; do not read or print them.
 - B3 pilot procure-to-pay data is implemented and verified: 3 materials, two suppliers/six rates, cost codes, 1 warehouse, stock rows, and 3 BOQ lines totaling EGP 1,376,500. Re-run is idempotent.
 - B4 smoke passed against `http://127.0.0.1:8090`: full API chain, RBAC, locale, upload scoping, journal/reconciliation, and logout revocation passed; 0 unbalanced chain entries and unchanged out-of-scope project data.
 - B5 rehearsal passed: DB dump and uploads copied; restored to temporary staging-named DB; exact row counts and 226 sequence maxima matched; all reconcile counts were 0; data-cleaning report was empty; temporary restore DB removed.
+- Batch B final gates passed: backend mock 50 suites / 960 tests; real PostgreSQL 56 suites / 566 tests; frontend 17 suites / 97 tests; i18n and production build passed; Playwright 32 passed / 46 skipped; Compose services healthy.
 - Batches C–E and Phases 5.6–6 remain open. Finance signoff still requires the owner to confirm provisional chart-of-accounts mappings.
 
 ## Where work stopped
 
-Batch A and B1–B5 are green. Next write the exact Windows PowerShell pilot and rehearsal instructions in `docs/STAGING.md`, then rerun the complete Batch B gates. After B6, Batch C is next. Keep all targets local, do not read any `.env` file, and never use production-looking databases or external services. A second ignored file `backend/.env.docker` was accidentally created with only `CORS_ALLOW_HTTP_LOCAL=true`; an attempt to remove it was rejected by auto-review, so it remains unused and untouched.
+Batch A and Batch B1–B6 are green. Next: Batch C1 shared UI kit, C2 procure-to-pay screens, C3 effective-permission navigation, and C4 browser journeys; then D, E, and the committed plan/implementation for Phases 5.6–6. Keep all targets local, do not read any `.env` file, and never use production-looking databases or external services. A second ignored file `backend/.env.docker` was accidentally created with only `CORS_ALLOW_HTTP_LOCAL=true`; an attempt to remove it was rejected by auto-review, so it remains unused and untouched.
 
 ## Current gates
 
@@ -48,7 +49,8 @@ Batch A and B1–B5 are green. Next write the exact Windows PowerShell pilot and
 | Batch B3 demo data | PASS — repeat seed stable; 3 BOQ items / EGP 1,376,500 |
 | Batch B4 full smoke | PASS — all journey checkpoints; 0 unbalanced entries; token revoked |
 | Batch B5 full rehearsal | PASS — 237 tables / 3,323 rows matched; 226 sequence maxima matched; reconcile 0; cleaning report empty |
-| Batch B6 Windows instructions | NOT RUN |
+| Batch B6 Windows instructions | PASS — `docs/STAGING.md`; `git diff --check` clean |
+| Batch B full end-of-batch gate | PASS — backend 50/960, PG 56/566, frontend 17/97, i18n/build, Playwright 32/46, Compose healthy |
 | Batches C–E and Phases 5.6–6 | NOT RUN |
 
 ## Risks and decisions
