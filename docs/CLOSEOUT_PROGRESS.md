@@ -348,3 +348,7 @@ npm run test:e2e -- --project=desktop-chromium e2e/procurement-workspace.spec.js
 ```
 
 The first invocation was blocked before test startup by `spawn EPERM`; the local process-permission retry ran only this one test and passed. Initial locator assertions were tightened based on the rendered table/action state.
+
+### C3 follow-up: project tabs and project seats
+
+Removed `projectNav`'s hard-coded role map and FULL fallback. The login grant projection now retains each grant's `project_id`; project group/sub-tab visibility and financial figures use those effective grants. Focused checks passed: project nav/shell/sidebar, 3 suites / 26 tests; `project-page.spec.js`, 6/6 across desktop and mobile (English owner, scoped site engineer, Arabic RTL).

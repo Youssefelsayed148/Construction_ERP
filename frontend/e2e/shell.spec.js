@@ -9,7 +9,7 @@ async function authenticate(page) {
   await page.addInitScript(({ jwt }) => {
     localStorage.setItem('token', jwt);
     localStorage.setItem('locale', 'en');
-    localStorage.setItem('user', JSON.stringify({ id: 1, name: 'Manual Tester', role: 'owner', policy_modules: ['*'] }));
+    localStorage.setItem('user', JSON.stringify({ id: 1, name: 'Manual Tester', role: 'owner', policy_modules: ['*'], policy_permissions: [{ module: '*', action: '*', project_id: null }] }));
   }, { jwt: token() });
   await page.route('**/api/**', async (route) => {
     const url = route.request().url();

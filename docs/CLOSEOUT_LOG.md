@@ -1111,3 +1111,7 @@ Login now returns unique effective module/action pairs. Sidebar visibility follo
 ## 2026-10-13: Batch C4 procurement browser journey (implementation in progress)
 
 Added a desktop Playwright journey for project-scoped purchase request creation and submission. The test asserts the payload sent to the API mock and the submitted state rendered in the workspace. The focused command passed 1 test. The default sandbox process launch returned `spawn EPERM`; an elevated local retry of the same single test passed. Since the test mocks the API, this verifies frontend interaction only; the C2 API smoke assertions cover the backend project scoping checks.
+
+## 2026-10-13: Batch C3 follow-up — project tabs use scoped grants
+
+Removed the remaining role-key map and FULL fallback from project navigation. The login response preserves `project_id` on each effective module/action grant, project tabs evaluate those grants for the active project, and financial cards require the internal-cost visibility action. Unknown roles and empty grants fail closed. Focused frontend tests passed 3 suites / 26 tests. The project-page browser file passed 6/6 on desktop and mobile, including the scoped site engineer and Arabic RTL cases. `node --check src/routes/auth.js` and `git diff --check` passed. No full suite was run for this slice.

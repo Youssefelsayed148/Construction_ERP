@@ -11,12 +11,12 @@ const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api
 export function ProjectTabs({ projectId, projectType }) {
   const { t } = useLocale();
   const location = useLocation();
-  const role = authService.getCurrentUser()?.role;
+  const user = authService.getCurrentUser();
   const base = `/projects/${projectId}`;
   const rest = location.pathname.startsWith(base) ? location.pathname.slice(base.length).replace(/^\/+|\/+$/g, '') : '';
   const activeKey = groupForPath(rest.split('/')[0]);
-  const groups = visibleGroups(role, projectType);
-  const active = groups.find((g) => g.key === activeKey) || groups[0];
+  const groups = visibleGroups(user, Number(projectId), projectType);
+  const active = groups.find((g) => g.key === activeKey) || groups[0] || null;
   const groupLabel = (g) => t(`projects.nav.groups.${g.key}`);
 
   return (
@@ -32,7 +32,7 @@ export function ProjectTabs({ projectId, projectType }) {
           );
         })}
       </nav>
-      {active.tabs.length > 0 && (
+      {active?.tabs.length > 0 && (
         <nav className="project-tabs-sub" aria-label={t('projects.nav.aria.tabs', { group: groupLabel(active) })}>
           {active.tabs.map((tab) => (
             <NavLink key={tab.key} to={`${base}/${tab.path}`} className="project-subtab">{t(`projects.nav.tabs.${tab.key}`)}</NavLink>

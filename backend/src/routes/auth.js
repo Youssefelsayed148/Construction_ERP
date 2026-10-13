@@ -117,7 +117,9 @@ router.post('/login', async (req, res) => {
     const policyModules = [...new Set(access.grants.map((grant) => grant.perm_module).filter(Boolean))];
     const policyPermissions = [...new Map(access.grants
       .filter((grant) => grant.perm_module && grant.perm_action)
-      .map((grant) => [`${grant.perm_module}:${grant.perm_action}`, { module: grant.perm_module, action: grant.perm_action }])).values()];
+      .map((grant) => [`${grant.perm_module}:${grant.perm_action}:${grant.project_id ?? '*'}`, {
+        module: grant.perm_module, action: grant.perm_action, project_id: grant.project_id,
+      }])).values()];
 
     res.json({
       success: true,

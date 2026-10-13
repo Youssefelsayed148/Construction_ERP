@@ -9,7 +9,10 @@ async function open(page, { role, locale }) {
   await page.addInitScript(({ jwt, role, locale }) => {
     localStorage.setItem('token', jwt);
     localStorage.setItem('locale', locale);
-    localStorage.setItem('user', JSON.stringify({ id: 1, name: 'Tester', role, policy_modules: ['*'] }));
+    const grants = role === 'site_engineer'
+      ? ['projects', 'locations', 'site', 'qhse', 'docs'].map((module) => ({ module, action: 'view', project_id: 1 }))
+      : [{ module: '*', action: '*', project_id: null }];
+    localStorage.setItem('user', JSON.stringify({ id: 1, name: 'Tester', role, policy_modules: ['*'], policy_permissions: grants }));
   }, { jwt: token(), role, locale });
   await page.route('**/api/**', async (route) => {
     const url = route.request().url();

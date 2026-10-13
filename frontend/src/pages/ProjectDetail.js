@@ -162,7 +162,7 @@ function ProjectDetail() {
   if (!project) return null;
 
   // Presentation only: the API still decides what each role may read (utils/projectNav.js).
-  const showFinancials = canSeeFinancials(authService.getCurrentUser()?.role);
+  const showFinancials = canSeeFinancials(authService.getCurrentUser(), Number(id));
   const infoCards = [
     { icon: Briefcase, label: locale === 'ar' ? 'العميل' : 'Client', value: clientName() },
     { icon: Users, label: locale === 'ar' ? 'مدير المشروع' : 'Project Manager', value: (locale === 'ar' ? project.project_manager_name : (project.project_manager_name_en || project.project_manager_name)) || '-' },
