@@ -531,3 +531,9 @@ Verification: fresh Postgres 16 database `erp_closeout_pg_final_20261013202700` 
 Replaced the exact-name deletion prompts on Assets, Clients, Expenses, and Legal with the shared accessible ConfirmDialog. The confirmation input focuses when opened, the destructive action remains disabled until the exact record name is entered, and the prompt copy is in the paired EN/AR common catalog. Current prompt inventory changed from 48 calls across 16 page files to 40 calls across 12 page files; Phase 6 remains open.
 
 Verification: `Shell.i18n.test.js` passed 18/18; `i18n:check ok`; frontend production build compiled successfully; `git diff --check` passed. No full frontend suite or browser journey was run for this slice.
+
+### Phase 6.2 — HR deletion confirmations
+
+Converted employee and daily-laborer deletion prompts to the shared typed-confirmation dialog. Current scan: 36 calls across 11 page files (from 40 across 12 after the previous slice).
+
+Verification: `Shell.i18n.test.js` passed 18/18; `i18n:check ok`; frontend production build compiled successfully without ESLint warnings; `git diff --check` passed. No HR-specific page test exists in the current frontend test inventory.

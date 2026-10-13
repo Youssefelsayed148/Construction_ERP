@@ -1339,3 +1339,9 @@ Commit `ad8f9f6` records the verified 5.8.2 slice and associated gate repairs. A
 The first prompt-removal slice converted Assets, Clients, Expenses, and Legal to an accessible shared typed-confirmation dialog. It preserves exact-name matching and localizes the input instruction in EN/AR. The current scan now finds 40 `prompt()` calls across 12 page files (down from 48 across 16).
 
 Verification output: `Shell.i18n.test.js` passed 1 suite / 18 tests; `node frontend/scripts/i18n-inventory.js --check` reported `i18n:check ok`; frontend production build reported `Compiled successfully`; `git diff --check` exited 0. No full frontend suite or browser journey was run.
+
+## 2026-10-13: Phase 6.2 HR deletion confirmations
+
+Converted employee and daily-laborer deletion prompts to the shared typed-confirmation dialog. The prompt scan now finds 36 calls across 11 page files.
+
+Verification output: `Shell.i18n.test.js` passed 1 suite / 18 tests; `node scripts/i18n-inventory.js --check` reported `i18n:check ok`; frontend production build reported `Compiled successfully` with no ESLint warning; `git diff --check` exited 0. No HR-specific page test exists in the current frontend test inventory.

@@ -16,7 +16,7 @@ export default function ConfirmDialog({ open, title, message, confirmLabel, canc
     const onKey = (event) => { if (event.key === 'Escape') onCancel?.(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, onCancel]);
+  }, [open, onCancel, requireText]);
 
   if (!open) return null;
   return (

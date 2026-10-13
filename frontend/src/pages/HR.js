@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocale } from '../hooks/useLocale';
+import ConfirmDialog from '../components/common/ConfirmDialog';
 import { Search, Plus, Edit, Trash2, Users, Calendar, Clock, HardHat, DollarSign, X } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 
@@ -92,6 +93,7 @@ function EmployeesTab({ locale, t }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const loadEmployees = useCallback(async () => {
     setLoading(true);
@@ -107,16 +109,12 @@ function EmployeesTab({ locale, t }) {
 
   useEffect(() => { loadEmployees(); }, [loadEmployees]);
 
-  const handleDelete = async (id) => {
-    if (locale === 'ar') {
-      const name = prompt('اكتب اسم الموظف للحذف:');
-      const emp = employees.find(i => i.id === id);
-      if (name !== emp?.name_en && name !== emp?.name_ar) return;
-    } else {
-      const name = prompt('Type employee name to confirm delete:');
-      const emp = employees.find(i => i.id === id);
-      if (name !== emp?.name_en && name !== emp?.name_ar) return;
-    }
+  const handleDelete = (id) => setDeleteTarget(employees.find((item) => item.id === id));
+
+  const confirmDelete = async () => {
+    const id = deleteTarget?.id;
+    setDeleteTarget(null);
+    if (!id) return;
     try {
       await fetchApi(`${API_URL}/hr/employees/${id}`, { method: 'DELETE' });
       loadEmployees();
@@ -219,6 +217,7 @@ function EmployeesTab({ locale, t }) {
         onClose={() => setShowModal(false)}
         onSave={loadEmployees}
       />}
+      <ConfirmDialog open={Boolean(deleteTarget)} title={t('common.dialogs.confirmTitle')} message={t('common.dialogs.confirmDelete')} confirmLabel={t('common.delete')} destructive requireText={locale === 'ar' ? deleteTarget?.name_ar || deleteTarget?.name_en || '' : deleteTarget?.name_en || deleteTarget?.name_ar || ''} onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
     </>
   );
 }
@@ -544,6 +543,7 @@ function LaborersTab({ locale, t }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingLaborer, setEditingLaborer] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const loadLaborers = useCallback(async () => {
     setLoading(true);
@@ -559,16 +559,12 @@ function LaborersTab({ locale, t }) {
 
   useEffect(() => { loadLaborers(); }, [loadLaborers]);
 
-  const handleDelete = async (id) => {
-    if (locale === 'ar') {
-      const name = prompt('اكتب اسم العامل للحذف:');
-      const lab = laborers.find(i => i.id === id);
-      if (name !== lab?.full_name) return;
-    } else {
-      const name = prompt('Type laborer name to confirm delete:');
-      const lab = laborers.find(i => i.id === id);
-      if (name !== lab?.full_name) return;
-    }
+  const handleDelete = (id) => setDeleteTarget(laborers.find((item) => item.id === id));
+
+  const confirmDelete = async () => {
+    const id = deleteTarget?.id;
+    setDeleteTarget(null);
+    if (!id) return;
     try {
       await fetchApi(`${API_URL}/hr/laborers/${id}`, { method: 'DELETE' });
       loadLaborers();
@@ -661,6 +657,7 @@ function LaborersTab({ locale, t }) {
         onClose={() => setShowModal(false)}
         onSave={loadLaborers}
       />}
+      <ConfirmDialog open={Boolean(deleteTarget)} title={t('common.dialogs.confirmTitle')} message={t('common.dialogs.confirmDelete')} confirmLabel={t('common.delete')} destructive requireText={deleteTarget?.full_name || ''} onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
     </>
   );
 }
