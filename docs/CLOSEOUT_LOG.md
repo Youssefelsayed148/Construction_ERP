@@ -1405,3 +1405,9 @@ Verification output: `npm run i18n:check` reported `i18n:check ok`; JSON parsing
 The existing Settings route was not reachable from the sidebar. Added an owner/admin Settings entry filtered by the existing settings module grant.
 
 Verification output: `npm run test:ci -- --runTestsByPath src/components/layout/Layout.test.js` passed 1 suite / 2 tests; `npm run i18n:check` reported `i18n:check ok`; `git diff --check` exited 0. Remaining route-to-screen inventory and RBAC journey checks are open.
+
+## 2026-10-13: Phase 7.1 app-shell foundation
+
+Added a manifest, SVG app icon, production service worker, versioned shell/static caching, offline navigation fallback, and user-controlled waiting-worker activation. Cache logic excludes `/api/` and `/uploads/`. Removed external Google Fonts import and restricted nginx style/font sources to self. Marked only the app-shell plan checkbox complete.
+
+Verification output: `npm run build` reported `Compiled successfully`; `node --check public/service-worker.js` exited 0; `npm run i18n:check` reported `i18n:check ok`; `git diff --check` exited 0. Lighthouse/PWA installation and an offline browser journey were not run. Local IBM Plex assets are absent from the repo and dependencies; local font packaging remains unverified/open, along with offline mutation queue/idempotency and responsive work.

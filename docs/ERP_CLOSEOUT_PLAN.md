@@ -347,7 +347,7 @@ Exit gate: every spec screen reachable from navigation; no `prompt()` left; empt
 ## Phase 7: Mobile, RTL and offline
 
 7.1 Offline (spec 30 requires it)
-- [ ] Web manifest and service worker (app shell cache).
+- [x] Web manifest and service worker (versioned app-shell cache and user-controlled update activation; verified by production build and service-worker syntax check, 2026-10-13).
 - [ ] IndexedDB queue for site posts: photos, measurements, daily reports, with idempotency keys, retry, conflict display and a visible sync status.
 - [ ] Bundle fonts locally (IBM Plex Arabic) so the app works offline; adjust nginx CSP.
 

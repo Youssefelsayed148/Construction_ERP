@@ -595,3 +595,9 @@ Verification: `npm run i18n:check` reported `i18n:check ok`; `git diff --check` 
 Added a permission-filtered Settings navigation entry for owner/admin roles; the existing `/settings` route and server-side account-mapping authorization remain the enforcement points.
 
 Verification: `Layout.test.js` passed 1 suite / 2 tests, including owner Settings-link visibility; `i18n:check ok`; `git diff --check` passed. Full App route-to-screen and role-matrix inventory remains open.
+
+### Phase 7.1 — versioned app shell and safe updates
+
+Added a web manifest, SVG app icon, production service worker, versioned app-shell/static asset cache, offline navigation fallback, and an update banner that activates a waiting worker only after user action. API and uploaded-file paths are excluded from the cache. Removed the Google Fonts runtime import and narrowed nginx CSP to same-origin styles and fonts. The master plan's app-shell checkbox is complete.
+
+Verification: production build compiled; `node --check public/service-worker.js` exited 0; `i18n:check ok`; `git diff --check` passed. Not verified: installability/Lighthouse score or offline browser journey. The repo has no local IBM Plex font assets; bundling those fonts remains open. Offline write queue, idempotent server handling for site-report POSTs, conflict UI, responsive/table/touch work remain open.

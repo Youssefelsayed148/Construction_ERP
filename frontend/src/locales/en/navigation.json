@@ -35,7 +35,9 @@
     "fallbackName": "User"
   },
   "offline": {
-    "banner": "You are offline. Submitted changes require a connection."
+    "banner": "You are offline. Submitted changes require a connection.",
+    "updateAvailable": "A new version is ready.",
+    "updateNow": "Update now"
   },
   "settings": {
     "title": "Settings",

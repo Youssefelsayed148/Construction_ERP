@@ -1,0 +1,14 @@
+{
+  "id": "/",
+  "name": "Osiris Construction ERP",
+  "short_name": "Osiris ERP",
+  "description": "Construction project operations and controls",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f0e8",
+  "theme_color": "#0D0C0A",
+  "icons": [
+    { "src": "/app-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

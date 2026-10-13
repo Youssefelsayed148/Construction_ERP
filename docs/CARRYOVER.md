@@ -65,3 +65,7 @@ The following dispositions use current-source inspection plus the fresh 5.8.2 ga
 3. Close the agreed 5.6 and finance/security blockers after their owner decisions are available.
 4. Continue Phases 7–11 in master-plan order, using versioned migrations, throwaway databases, per-slice commits, and current command output.
 5. Keep production status NO-GO until all required security, finance, reconciliation, recovery, and human UAT criteria are signed.
+
+## Phase 7.1 app-shell foundation (2026-10-13)
+
+The application now has a versioned app-shell cache and user-controlled service-worker update activation. Cache excludes API and upload paths. Runtime Google Fonts loading was removed; nginx CSP now permits only same-origin styles and fonts. This is not the complete offline journey: the IndexedDB site-post queue, server idempotency on site routes, conflict display, local font assets, and Lighthouse/offline-browser evidence remain open.
