@@ -5,7 +5,7 @@ const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
-const { logActivity } = require('../utils/activity');
+const { auditedTransaction } = require('../utils/auditedTransaction');
 
 // Mounted at /api/qhse — quality tests, NCRs, safety inspections & incidents.
 // All list endpoints filter by ?project_id.
@@ -43,13 +43,12 @@ router.post('/quality-tests', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const result = await query(
+    const result = await auditedTransaction((q) => q(
       `INSERT INTO quality_tests (project_id, boq_item_id, test_type, test_date, result, tested_by, notes, attachments, created_by)
        VALUES ($1,$2,$3,COALESCE($4, CURRENT_DATE),$5,$6,$7,$8::jsonb,$9) RETURNING *`,
       [value.project_id, value.boq_item_id, value.test_type, value.test_date, value.result,
        value.tested_by, value.notes, JSON.stringify(value.attachments), req.user.id]
-    );
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Logged quality test "${value.test_type}" (${value.result})`, entityId: result.rows[0].id, entityType: 'quality_test' });
+    ), (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Logged quality test "${value.test_type}" (${value.result})`, entityId: r.rows[0].id, entityType: 'quality_test' }));
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -125,14 +124,15 @@ router.post('/ncrs', authenticate, authorize(), async (req, res) => {
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
     const year = new Date().getFullYear();
-    const ncrNumber = await nextNumber(query, { table: 'ncrs', column: 'ncr_number', prefix: `NCR-${year}`, pad: 4 });
-
-    const result = await query(
+    const result = await auditedTransaction(async (q) => {
+      const ncrNumber = await nextNumber(q, { table: 'ncrs', column: 'ncr_number', prefix: `NCR-${year}`, pad: 4 });
+      const inserted = await q(
       `INSERT INTO ncrs (ncr_number, project_id, boq_item_id, quality_test_id, description, severity, raised_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
       [ncrNumber, value.project_id, value.boq_item_id, value.quality_test_id, value.description, value.severity, req.user.id]
-    );
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Raised ${ncrNumber} (${value.severity})`, entityId: result.rows[0].id, entityType: 'ncr' });
+      );
+      return { ...inserted, ncrNumber };
+    }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Raised ${r.ncrNumber} (${value.severity})`, entityId: r.rows[0].id, entityType: 'ncr' }));
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -155,19 +155,21 @@ router.post('/ncrs/:id/status', authenticate, authorize(), async (req, res) => {
       return res.status(400).json({ success: false, error: `Cannot transition from '${current}' to '${value.status}'` });
     }
 
-    const result = value.status === 'resolved'
-      ? await query(
+    const result = await auditedTransaction(async (q) => {
+      const updated = value.status === 'resolved'
+      ? await q(
           `UPDATE ncrs SET status = $1, resolution_notes = COALESCE($2, resolution_notes),
              resolved_by = $3, resolved_at = NOW(), updated_at = NOW()
            WHERE id = $4 RETURNING *`,
           [value.status, value.resolution_notes, req.user.id, req.params.id]
         )
-      : await query(
+      : await q(
           `UPDATE ncrs SET status = $1, resolution_notes = COALESCE($2, resolution_notes), updated_at = NOW()
            WHERE id = $3 RETURNING *`,
           [value.status, value.resolution_notes, req.params.id]
         );
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'qhse', description: `${existing.rows[0].ncr_number} → ${value.status}`, entityId: req.params.id, entityType: 'ncr' });
+      return updated;
+    }, () => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'qhse', description: `${existing.rows[0].ncr_number} → ${value.status}`, entityId: req.params.id, entityType: 'ncr' }));
     res.json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -226,12 +228,11 @@ router.post('/inspections', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const result = await query(
+    const result = await auditedTransaction((q) => q(
       `INSERT INTO safety_inspections (project_id, inspection_date, inspector_id, checklist_items, findings, status)
        VALUES ($1,COALESCE($2, CURRENT_DATE),$3,$4::jsonb,$5,$6) RETURNING *`,
       [value.project_id, value.inspection_date, req.user.id, JSON.stringify(value.checklist_items), value.findings, value.status]
-    );
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Logged safety inspection (${value.status})`, entityId: result.rows[0].id, entityType: 'safety_inspection' });
+    ), (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Logged safety inspection (${value.status})`, entityId: r.rows[0].id, entityType: 'safety_inspection' }));
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -292,13 +293,12 @@ router.post('/incidents', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const result = await query(
+    const result = await auditedTransaction((q) => q(
       `INSERT INTO safety_incidents (project_id, incident_date, incident_type, severity, description, injured_party, reported_by, corrective_action)
        VALUES ($1,COALESCE($2, CURRENT_DATE),$3,$4,$5,$6,$7,$8) RETURNING *`,
       [value.project_id, value.incident_date, value.incident_type, value.severity, value.description,
        value.injured_party, req.user.id, value.corrective_action]
-    );
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Reported safety incident (${value.severity})`, entityId: result.rows[0].id, entityType: 'safety_incident' });
+    ), (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Reported safety incident (${value.severity})`, entityId: r.rows[0].id, entityType: 'safety_incident' }));
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -409,26 +409,28 @@ router.post('/itps', authenticate, authorize(), async (req, res) => {
 
     const wp = await projectSetup.resolveOrRespond(query, res, value.project_id, value);
     if (!wp) return;
-    const itpNumber = await qaqcEngine.nextNumber(query, 'itps', 'itp_number', 'ITP');
-    const r = await query(
+    const r = await auditedTransaction(async (q) => {
+      const itpNumber = await qaqcEngine.nextNumber(q, 'itps', 'itp_number', 'ITP');
+      const inserted = await q(
       `INSERT INTO itps (itp_number, project_id, title, discipline, work_package, work_package_id, project_location_id, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
       [itpNumber, value.project_id, value.title, value.discipline || null, wp.text, wp.id,
        value.project_location_id || null, req.user.id]
-    );
-    const itp = r.rows[0];
-    for (const p of value.points) {
-      await query(
+      );
+      const itp = inserted.rows[0];
+      for (const p of value.points) {
+        await q(
         `INSERT INTO itp_points (itp_id, seq, title, point_type, required_documents, responsible_party,
            responsible_user_id, consultant_responsibility, acceptance_criteria, checklist_template_id)
          VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7,$8,$9,$10)`,
         [itp.id, p.seq, p.title, p.point_type, JSON.stringify(p.required_documents),
          p.responsible_party || null, p.responsible_user_id || null,
          p.consultant_responsibility || null, p.acceptance_criteria || null, p.checklist_template_id || null]
-      );
-    }
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Created ITP ${itpNumber} (${value.points.length} points)`, entityId: itp.id, entityType: 'itp' });
-    res.status(201).json({ success: true, data: { ...itp, points: value.points } });
+        );
+      }
+      return { itp: { ...itp, points: value.points }, itpNumber };
+    }, (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Created ITP ${result.itpNumber} (${value.points.length} points)`, entityId: result.itp.id, entityType: 'itp' }));
+    res.status(201).json({ success: true, data: r.itp });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -569,8 +571,7 @@ router.post('/wirs', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const wir = await qaqcEngine.createWir(query, value, req.user);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Created ${wir.wir_number}`, entityId: wir.id, entityType: 'wir' });
+    const wir = await auditedTransaction((q) => qaqcEngine.createWir(q, value, req.user), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Created ${result.wir_number}`, entityId: result.id, entityType: 'wir' }));
     res.status(201).json({ success: true, data: wir });
   } catch (error) {
     if (projectSetup.respondIfSetupError(res, error)) return;
@@ -581,8 +582,7 @@ router.post('/wirs', authenticate, authorize(), async (req, res) => {
 // Requester submits the draft into the QA/QC stage.
 router.post('/wirs/:id/submit', authenticate, authorize(), async (req, res) => {
   try {
-    const wir = await qaqcEngine.submitWir(query, req.params.id, req.user);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'qhse', description: `${wir.wir_number} submitted for QA/QC`, entityId: wir.id, entityType: 'wir' });
+    const wir = await auditedTransaction((q) => qaqcEngine.submitWir(q, req.params.id, req.user), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'qhse', description: `${result.wir_number} submitted for QA/QC`, entityId: result.id, entityType: 'wir' }));
     res.json({ success: true, data: wir });
   } catch (error) {
     const code = error.statusCode || 500;
@@ -600,8 +600,7 @@ router.post('/wirs/:id/decision', authenticate, authorize(), async (req, res) =>
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const wir = await qaqcEngine.wirStepDecision(query, req.params.id, null, req.user, value.decision, value.comment);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'qhse', description: `${wir.wir_number} — ${value.decision} at ${wir.status}`, entityId: wir.id, entityType: 'wir' });
+    const wir = await auditedTransaction((q) => qaqcEngine.wirStepDecision(q, req.params.id, null, req.user, value.decision, value.comment), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'qhse', description: `${result.wir_number} — ${value.decision} at ${result.status}`, entityId: result.id, entityType: 'wir' }));
     res.json({ success: true, data: wir });
   } catch (error) {
     res.status(error.statusCode || 500).json({ success: false, error: error.message });
@@ -618,8 +617,7 @@ router.post('/wirs/:id/result', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const wir = await qaqcEngine.decideWir(query, req.params.id, req.user, value.result, { comment: value.comment });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'qhse', description: `${wir.wir_number} result: ${value.result}`, entityId: wir.id, entityType: 'wir' });
+    const wir = await auditedTransaction((q) => qaqcEngine.decideWir(q, req.params.id, req.user, value.result, { comment: value.comment }), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'qhse', description: `${result.wir_number} result: ${value.result}`, entityId: result.id, entityType: 'wir' }));
     res.json({ success: true, data: wir });
   } catch (error) {
     res.status(error.statusCode || 500).json({ success: false, error: error.message });
@@ -671,11 +669,10 @@ router.post('/checklists/templates', authenticate, authorize(), async (req, res)
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const r = await query(
+    const r = await auditedTransaction((q) => q(
       `INSERT INTO checklist_templates (project_id, name, discipline, items, created_by)
        VALUES ($1,$2,$3,$4::jsonb,$5) RETURNING *`,
-      [value.project_id || null, value.name, value.discipline || null, JSON.stringify(value.items), req.user.id]);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Created checklist template "${value.name}"`, entityId: r.rows[0].id, entityType: 'checklist_template' });
+      [value.project_id || null, value.name, value.discipline || null, JSON.stringify(value.items), req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Created checklist template "${value.name}"`, entityId: result.rows[0].id, entityType: 'checklist_template' }));
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -796,12 +793,11 @@ router.post('/actions', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     const table = CAPA_TABLES[value.kind];
-    const r = await query(
+    const r = await auditedTransaction((q) => q(
       `INSERT INTO ${table} (project_id, source_type, source_id, description, assigned_user_id, assigned_role, due_date, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
       [value.project_id, value.source_type || 'manual', value.source_id || null, value.description,
-       value.assigned_user_id || null, value.assigned_role || null, value.due_date || null, req.user.id]);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Raised ${value.kind} action`, entityId: r.rows[0].id, entityType: `${value.kind}_action` });
+       value.assigned_user_id || null, value.assigned_role || null, value.due_date || null, req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Raised ${value.kind} action`, entityId: result.rows[0].id, entityType: `${value.kind}_action` }));
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -887,12 +883,11 @@ router.post('/mock-ups', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const r = await query(
+    const r = await auditedTransaction((q) => q(
       `INSERT INTO mock_ups (project_id, title, discipline, project_location_id, subcontractor_organization_id, remarks, photos, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8) RETURNING *`,
       [value.project_id, value.title, value.discipline || null, value.project_location_id || null,
-       value.subcontractor_organization_id || null, value.remarks || null, JSON.stringify(value.photos), req.user.id]);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Proposed mock-up "${value.title}"`, entityId: r.rows[0].id, entityType: 'mock_up' });
+       value.subcontractor_organization_id || null, value.remarks || null, JSON.stringify(value.photos), req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Proposed mock-up "${value.title}"`, entityId: result.rows[0].id, entityType: 'mock_up' }));
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -960,13 +955,12 @@ router.post('/calibration-records', authenticate, authorize(), async (req, res) 
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const r = await query(
+    const r = await auditedTransaction((q) => q(
       `INSERT INTO calibration_records (project_id, asset_id, instrument_name, serial_no, calibration_date, next_calibration_date, certificate_ref, result, issued_by, notes, created_by)
        VALUES ($1,$2,$3,$4,COALESCE($5, CURRENT_DATE),$6,$7,$8,$9,$10,$11) RETURNING *`,
       [value.project_id || null, value.asset_id || null, value.instrument_name, value.serial_no || null,
        value.calibration_date || null, value.next_calibration_date || null, value.certificate_ref || null,
-       value.result, value.issued_by || null, value.notes || null, req.user.id]);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Recorded calibration for "${value.instrument_name}"`, entityId: r.rows[0].id, entityType: 'calibration_record' });
+       value.result, value.issued_by || null, value.notes || null, req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Recorded calibration for "${value.instrument_name}"`, entityId: result.rows[0].id, entityType: 'calibration_record' }));
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -1012,8 +1006,7 @@ router.post('/punch-items', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const punch = await qaqcEngine.createPunchItem(query, value, req.user);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Raised ${punch.punch_number}`, entityId: punch.id, entityType: 'punch_item' });
+    const punch = await auditedTransaction((q) => qaqcEngine.createPunchItem(q, value, req.user), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Raised ${result.punch_number}`, entityId: result.id, entityType: 'punch_item' }));
     res.status(201).json({ success: true, data: punch });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -1026,8 +1019,7 @@ router.post('/punch-items/:id/status', authenticate, authorize(), async (req, re
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const punch = await qaqcEngine.transitionPunchItem(query, req.params.id, value.status, req.user, { comment: value.comment });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'qhse', description: `${punch.punch_number} → ${value.status}`, entityId: punch.id, entityType: 'punch_item' });
+    const punch = await auditedTransaction((q) => qaqcEngine.transitionPunchItem(q, req.params.id, value.status, req.user, { comment: value.comment }), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'qhse', description: `${result.punch_number} → ${value.status}`, entityId: result.id, entityType: 'punch_item' }));
     res.json({ success: true, data: punch });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -1105,12 +1097,11 @@ router.post('/ncrs/:id/verify', authenticate, authorize(), async (req, res) => {
     if (!['resolved', 'in_progress'].includes(existing.status)) {
       return res.status(400).json({ success: false, error: `Cannot verify an NCR in '${existing.status}' state` });
     }
-    const r = await query(
+    const r = await auditedTransaction((q) => q(
       `UPDATE ncrs SET status = 'closed', verification_notes = $1, closure_authority = COALESCE($2, closure_authority),
          verified_by = $3, verified_at = NOW(), closed_at = NOW(), resolved_by = COALESCE(resolved_by, $3), updated_at = NOW()
        WHERE id = $4 RETURNING *`,
-      [value.verification_notes, value.closure_authority || null, req.user.id, req.params.id]);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'qhse', description: `NCR #${req.params.id} verified & closed`, entityId: req.params.id, entityType: 'ncr' });
+      [value.verification_notes, value.closure_authority || null, req.user.id, req.params.id]), (result) => result.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'qhse', description: `NCR #${req.params.id} verified & closed`, entityId: req.params.id, entityType: 'ncr' }));
     res.json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
