@@ -3,7 +3,7 @@ const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
-const { logActivity } = require('../utils/activity');
+const { auditedTransaction } = require('../utils/auditedTransaction');
 
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
@@ -37,12 +37,10 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const result = await query(
+    const result = await auditedTransaction((q) => q(
       `INSERT INTO legal_documents (title, document_type, description, file_path, submitted_by, project_id) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
       [value.title, value.document_type, value.description, value.file_path, value.submitted_by, value.project_id]
-    );
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'legal', description: `Created legal document "${value.title}"`, entityId: result.rows[0].id, entityType: 'legal_document' });
+    ), (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'legal', description: `Created legal document "${value.title}"`, entityId: r.rows[0].id, entityType: 'legal_document' }));
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -66,18 +64,16 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
     }
     if (value.status === 'verified') { sets.push(`verified_by = $${idx++}`); params.push(req.user.id); }
     params.push(req.params.id);
-    const result = await query(`UPDATE legal_documents SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'legal', description: `Updated legal document "${result.rows[0].title}"`, entityId: req.params.id, entityType: 'legal_document' });
+    const result = await auditedTransaction((q) => q(`UPDATE legal_documents SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'legal', description: `Updated legal document "${r.rows[0].title}"`, entityId: req.params.id, entityType: 'legal_document' }));
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Document not found' });
     res.json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const result = await query('DELETE FROM legal_documents WHERE id = $1 RETURNING title', [req.params.id]);
+    const result = await auditedTransaction((q) => q('DELETE FROM legal_documents WHERE id = $1 RETURNING title', [req.params.id]), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'legal', description: `Deleted legal document "${r.rows[0].title}"`, entityId: req.params.id, entityType: 'legal_document' }));
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Document not found' });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'legal', description: `Deleted legal document "${result.rows[0].title}"`, entityId: req.params.id, entityType: 'legal_document' });
     res.json({ success: true, message: 'Document deleted' });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

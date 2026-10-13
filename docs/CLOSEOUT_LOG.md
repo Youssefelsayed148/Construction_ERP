@@ -446,4 +446,10 @@ Time:        5.012 s
 Ran all test suites.
 ```
 
-A9 is not committed yet. PostgreSQL migrations/integration remain unverified because Docker Desktop is unavailable. External security review is not signed. MFA has a design stub only. A4's route-wide audit sweep remains incomplete, so Batch A's PG exit gate is not met.
+A9 was committed as `67ba313`. PostgreSQL migrations/integration remain unverified because Docker Desktop is unavailable. External security review is not signed. MFA has a design stub only. A4's route-wide audit sweep remains incomplete, so Batch A's PG exit gate is not met.
+
+## 2026-10-13: A4 transactional audit continuation (local, not committed)
+
+Converted equipment create/update/delete, assignment and usage-log creation; client CRUD; item create/update/soft-delete/restore; legal-document CRUD; and supplier CRUD/restore/material-link changes to write their activity row on the same transaction client as the business mutation. Generated codes and duplicate checks for new clients, suppliers and items now run inside the transaction. Equipment usage creation now also records an audit row.
+
+Verification: `node --check` passed for all five changed route files; `git diff --check` passed; full backend mock suite passed (48 suites / 968 tests). A route-tree search now finds 129 direct activity-audit call references (down from 168 at the initial A4 inventory); A4 remains incomplete and real PostgreSQL rollback behavior remains unverified because Docker Desktop is unavailable. This slice is not committed yet.

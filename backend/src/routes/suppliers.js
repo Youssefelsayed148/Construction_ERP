@@ -4,7 +4,7 @@ const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
-const { logActivity } = require('../utils/activity');
+const { auditedTransaction } = require('../utils/auditedTransaction');
 const { reasonFrom } = require('../utils/reason');
 
 const SPECIALTIES = ['concrete', 'steel', 'electrical', 'plumbing', 'wood', 'paint_coating', 'aggregate', 'equipment', 'safety', 'general', 'other'];
@@ -81,20 +81,17 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    if (!value.code) {
-      value.code = await nextNumber(query, { table: 'suppliers', column: 'code', prefix: 'SUP', pad: 4 });
-    }
-
-    const existing = await query('SELECT id FROM suppliers WHERE code = $1', [value.code]);
-    if (existing.rows.length > 0) return res.status(400).json({ success: false, error: 'Code already exists' });
-
-    const result = await query(
+    const result = await auditedTransaction(async (q) => {
+      if (!value.code) value.code = await nextNumber(q, { table: 'suppliers', column: 'code', prefix: 'SUP', pad: 4 });
+      const existing = await q('SELECT id FROM suppliers WHERE code = $1', [value.code]);
+      if (existing.rows.length > 0) return { rows: [], duplicate: true };
+      return q(
       `INSERT INTO suppliers (code, name_ar, name_en, contact_person, phone, email, address, city, specialty, tax_id, payment_terms, organization_id, is_active)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
       [value.code, value.name_ar, value.name_en, value.contact_person, value.phone, value.email, value.address, value.city, value.specialty, value.tax_id, value.payment_terms, value.organization_id || null, value.is_active !== undefined ? value.is_active : true]
-    );
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'suppliers', description: `Created supplier ${value.code}`, entityId: result.rows[0].id, entityType: 'supplier' });
+      );
+    }, (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'suppliers', description: `Created supplier ${value.code}`, entityId: r.rows[0].id, entityType: 'supplier' }));
+    if (result.duplicate) return res.status(400).json({ success: false, error: 'Code already exists' });
 
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) {
@@ -125,9 +122,8 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
       if (v !== undefined) { sets.push(`${k} = $${idx++}`); params.push(v); }
     }
     params.push(req.params.id);
-    const result = await query(`UPDATE suppliers SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'suppliers', description: `Updated supplier ${existing.rows[0].code}`, entityId: req.params.id, entityType: 'supplier' });
+    const result = await auditedTransaction((q) => q(`UPDATE suppliers SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'suppliers', description: `Updated supplier ${existing.rows[0].code}`, entityId: req.params.id, entityType: 'supplier' }));
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Supplier not found' });
 
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
@@ -139,12 +135,11 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const reason = reasonFrom(req) || null;
-    const result = await query(
+    const result = await auditedTransaction((q) => q(
       `UPDATE suppliers SET deleted_at = NOW(), deleted_by = $2, delete_reason = $3, is_active = false, updated_at = NOW()
         WHERE id = $1 AND deleted_at IS NULL RETURNING code`,
-      [req.params.id, req.user.id, reason]);
+      [req.params.id, req.user.id, reason]), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'suppliers', description: `Deleted supplier ${r.rows[0].code}${reason ? `: ${reason}` : ''}`, entityId: req.params.id, entityType: 'supplier' }));
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Supplier not found' });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'suppliers', description: `Deleted supplier ${result.rows[0].code}${reason ? `: ${reason}` : ''}`, entityId: req.params.id, entityType: 'supplier' });
     res.json({ success: true, message: 'Supplier deleted' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -153,11 +148,10 @@ router.delete('/:id', authenticate, authorize(), async (req, res) => {
 
 router.post('/:id/restore', authenticate, authorize(), async (req, res) => {
   try {
-    const result = await query(
+    const result = await auditedTransaction((q) => q(
       `UPDATE suppliers SET deleted_at = NULL, deleted_by = NULL, delete_reason = NULL, is_active = true, updated_at = NOW()
-        WHERE id = $1 AND deleted_at IS NOT NULL RETURNING *`, [req.params.id]);
+        WHERE id = $1 AND deleted_at IS NOT NULL RETURNING *`, [req.params.id]), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'restore', module: 'suppliers', description: `Restored supplier ${r.rows[0].code}`, entityId: req.params.id, entityType: 'supplier' }));
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Deleted supplier not found' });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'restore', module: 'suppliers', description: `Restored supplier ${result.rows[0].code}`, entityId: req.params.id, entityType: 'supplier' });
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -201,13 +195,11 @@ router.post('/:id/materials', authenticate, authorize(), async (req, res) => {
     const existing = await query('SELECT id FROM supplier_materials WHERE supplier_id = $1 AND material_id = $2', [req.params.id, value.material_id]);
     if (existing.rows.length > 0) return res.status(409).json({ success: false, error: 'This material is already linked to this supplier' });
 
-    const result = await query(
+    const result = await auditedTransaction((q) => q(
       `INSERT INTO supplier_materials (supplier_id, material_id, unit_price, lead_time_days, notes)
        VALUES ($1,$2,$3,$4,$5) RETURNING *`,
       [req.params.id, value.material_id, value.unit_price ?? null, value.lead_time_days ?? null, value.notes || null]
-    );
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'suppliers', description: `Linked material #${value.material_id} to supplier #${req.params.id}`, entityId: result.rows[0].id, entityType: 'supplier_material' });
+    ), (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'suppliers', description: `Linked material #${value.material_id} to supplier #${req.params.id}`, entityId: r.rows[0].id, entityType: 'supplier_material' }));
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) {
     if (error.code === '23505') return res.status(409).json({ success: false, error: 'This material is already linked to this supplier' });
@@ -217,9 +209,8 @@ router.post('/:id/materials', authenticate, authorize(), async (req, res) => {
 
 router.delete('/:id/materials/:material_id', authenticate, authorize(), async (req, res) => {
   try {
-    const result = await query('DELETE FROM supplier_materials WHERE supplier_id = $1 AND material_id = $2 RETURNING id', [req.params.id, req.params.material_id]);
+    const result = await auditedTransaction((q) => q('DELETE FROM supplier_materials WHERE supplier_id = $1 AND material_id = $2 RETURNING id', [req.params.id, req.params.material_id]), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'suppliers', description: `Unlinked material #${req.params.material_id} from supplier #${req.params.id}`, entityId: req.params.id, entityType: 'supplier_material' }));
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Link not found' });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'suppliers', description: `Unlinked material #${req.params.material_id} from supplier #${req.params.id}`, entityId: req.params.id, entityType: 'supplier_material' });
     res.json({ success: true, message: 'Material unlinked' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

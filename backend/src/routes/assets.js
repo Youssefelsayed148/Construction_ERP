@@ -4,7 +4,7 @@ const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
-const { logActivity } = require('../utils/activity');
+const { auditedTransaction } = require('../utils/auditedTransaction');
 
 const EQUIPMENT_TYPES = ['owned', 'rented'];
 const EQUIPMENT_CATEGORIES = ['earthmoving', 'lifting', 'concrete', 'compaction', 'transport', 'generator', 'tool', 'pump', 'scaffolding', 'other'];
@@ -59,17 +59,14 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    if (!value.code) {
-      value.code = await nextNumber(query, { table: 'assets', column: 'code', prefix: 'EQ', pad: 4 });
-    }
-
-    const result = await query(
-      `INSERT INTO assets (code, name_ar, name_en, name, asset_type, category, equipment_type, manufacturer, model, serial_number, purchase_date, purchase_cost, hourly_rate, daily_rate, operator_required, current_project_id, status)
-       VALUES ($1,$2,$3,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
-      [value.code, value.name_ar, value.name_en || value.name_ar, value.asset_type, value.category, value.equipment_type, value.manufacturer, value.model, value.serial_number, value.purchase_date, value.purchase_cost, value.hourly_rate, value.daily_rate, value.operator_required, value.current_project_id || null, value.status]
-    );
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'assets', description: `Created equipment ${value.code}`, entityId: result.rows[0].id, entityType: 'asset' });
+    const result = await auditedTransaction(async (q) => {
+      if (!value.code) value.code = await nextNumber(q, { table: 'assets', column: 'code', prefix: 'EQ', pad: 4 });
+      return q(
+        `INSERT INTO assets (code, name_ar, name_en, name, asset_type, category, equipment_type, manufacturer, model, serial_number, purchase_date, purchase_cost, hourly_rate, daily_rate, operator_required, current_project_id, status)
+         VALUES ($1,$2,$3,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
+        [value.code, value.name_ar, value.name_en || value.name_ar, value.asset_type, value.category, value.equipment_type, value.manufacturer, value.model, value.serial_number, value.purchase_date, value.purchase_cost, value.hourly_rate, value.daily_rate, value.operator_required, value.current_project_id || null, value.status]
+      );
+    }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'assets', description: `Created equipment ${value.code}`, entityId: r.rows[0].id, entityType: 'asset' }));
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -96,18 +93,16 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
       if (v !== undefined) { sets.push(`${k} = $${idx++}`); params.push(v); }
     }
     params.push(req.params.id);
-    const result = await query(`UPDATE assets SET ${sets.join(', ')}, name = COALESCE(name_en, name_ar), updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'assets', description: `Updated equipment ${existing.rows[0].code}`, entityId: req.params.id, entityType: 'asset' });
+    const result = await auditedTransaction((q) => q(`UPDATE assets SET ${sets.join(', ')}, name = COALESCE(name_en, name_ar), updated_at = NOW() WHERE id = $${idx} RETURNING *`, params), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'assets', description: `Updated equipment ${existing.rows[0].code}`, entityId: req.params.id, entityType: 'asset' }));
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Equipment not found' });
     res.json({ success: true, data: result.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const r = await query('DELETE FROM assets WHERE id = $1 RETURNING code', [req.params.id]);
+    const r = await auditedTransaction((q) => q('DELETE FROM assets WHERE id = $1 RETURNING code', [req.params.id]), (result) => result.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'assets', description: `Deleted equipment ${result.rows[0].code}`, entityId: req.params.id, entityType: 'asset' }));
     if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Equipment not found' });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'assets', description: `Deleted equipment ${r.rows[0].code}`, entityId: req.params.id, entityType: 'asset' });
     res.json({ success: true, message: 'Deleted' });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -129,12 +124,10 @@ router.post('/:id/assignments', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const r = await query(
+    const r = await auditedTransaction((q) => q(
       `INSERT INTO equipment_assignments (equipment_id, project_id, assigned_from, assigned_to) VALUES ($1,$2,$3,$4) RETURNING *`,
       [req.params.id, value.project_id, value.assigned_from, value.assigned_to || null]
-    );
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'assign', module: 'assets', description: `Assigned equipment #${req.params.id} to project #${value.project_id}`, entityId: r.rows[0].id, entityType: 'equipment_assignment' });
+    ), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'assign', module: 'assets', description: `Assigned equipment #${req.params.id} to project #${value.project_id}`, entityId: result.rows[0].id, entityType: 'equipment_assignment' }));
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -157,10 +150,10 @@ router.post('/:id/usage-logs', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const r = await query(
+    const r = await auditedTransaction((q) => q(
       `INSERT INTO equipment_usage_logs (equipment_id, project_id, log_date, hours_operated, operator_id, fuel_liters, notes) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
       [req.params.id, value.project_id, value.log_date, value.hours_operated, value.operator_id || null, value.fuel_liters, value.notes]
-    );
+    ), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'log_usage', module: 'assets', description: `Recorded equipment usage for #${req.params.id}`, entityId: result.rows[0].id, entityType: 'equipment_usage_log' }));
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

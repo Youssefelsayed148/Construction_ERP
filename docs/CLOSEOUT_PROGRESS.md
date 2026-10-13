@@ -90,7 +90,7 @@ backend> npm run lint:guards
 lint-guards: ok
 ```
 
-Migration application and PG approval/delegation integration remain unverified because Docker Desktop is unavailable. A7 is not committed yet.
+Migration application and PG approval/delegation integration remain unverified because Docker Desktop is unavailable. A7 is committed as `0514025`.
 
 ## 2026-10-13: A8 Playwright runner and frontend gates
 
@@ -98,8 +98,14 @@ Fixed package resolution from `frontend/`, added a wrapper that uses the fronten
 
 Verified: Playwright discovered 78 tests in 7 files; suite result was 32 passed / 46 skipped in 1.4m (real-backend seeds and screenshot baselines were not run). Frontend CI unit gate: 17 suites / 97 tests passed. `npm run i18n:check` printed `i18n:check ok`. `npm run build` printed `Compiled successfully.`
 
-## 2026-10-13: A9 Phase 1.5/1.6 security scan
+## 2026-10-13: A9 Phase 1.5/1.6 security scan (committed as 67ba313)
 
 Completed a code-level scan against each checklist item in `docs/ERP_CLOSEOUT_PLAN.md` 1.5/1.6. Existing last-owner protection, event outbox, retry/dead-letter tables, wildcard matcher, and upload size cap were confirmed. Added webhook project scopes and connected wildcard matching to every durable outbox event (0039); closed report column/filter/export and project-scope gaps; applied role/project checks to media and removed external access to unapproved photos; added upload content validation and removed archive/legacy spreadsheet types; introduced persistent login lockout and cost-12 password upgrades (0038); validated CORS and TRUST_PROXY; disabled x-powered-by; added generic 500 redaction; and added persistent per-authenticated-subject v1 rate limits after token auth (0040). The MFA/provider and AV scanning boundaries are documented in DECISIONS.md.
 
 Focused tests: 6 suites / 76 tests pass. Full backend mock: 48 suites / 968 tests pass. `npm run lint:guards` prints `lint-guards: ok`. Real-PG and external security review are unverified. A4 remains partial, so Batch A exit is not green.
+
+## 2026-10-13: A4 transactional audit continuation (local, not committed)
+
+Converted equipment create/update/delete, assignment and usage-log creation; client CRUD; item create/update/soft-delete/restore; legal-document CRUD; and supplier CRUD/restore/material-link changes to write their activity row on the same transaction client as the business mutation. Generated codes and duplicate checks for new clients, suppliers and items now run inside the transaction. Equipment usage creation now also records an audit row.
+
+Verification: `node --check` passed for all five changed route files; `git diff --check` passed; full backend mock suite passed (48 suites / 968 tests). A route-tree search now finds 129 direct activity-audit call references (down from 168 at the initial A4 inventory); A4 remains incomplete and real PostgreSQL rollback behavior remains unverified because Docker Desktop is unavailable. This slice is not committed yet.

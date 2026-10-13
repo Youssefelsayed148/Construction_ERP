@@ -4,7 +4,7 @@ const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
-const { logActivity } = require('../utils/activity');
+const { auditedTransaction } = require('../utils/auditedTransaction');
 
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
@@ -40,20 +40,17 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    if (!value.code) {
-      value.code = await nextNumber(query, { table: 'clients', column: 'code', prefix: 'CLI', pad: 4 });
-    }
-
-    const existing = await query('SELECT id FROM clients WHERE code = $1', [value.code]);
-    if (existing.rows.length > 0) return res.status(400).json({ success: false, error: 'Code already exists' });
-
-    const result = await query(
-      `INSERT INTO clients (code, name_ar, name_en, client_type, contact_person, phone, email, address, city, credit_limit, payment_terms, tax_id, is_active)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
-      [value.code, value.name_ar, value.name_en, value.client_type, value.contact_person, value.phone, value.email, value.address, value.city, value.credit_limit, value.payment_terms, value.tax_id, value.is_active !== undefined ? value.is_active : true]
-    );
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'clients', description: `Created client ${value.code}`, entityId: result.rows[0].id, entityType: 'client' });
+    const result = await auditedTransaction(async (q) => {
+      if (!value.code) value.code = await nextNumber(q, { table: 'clients', column: 'code', prefix: 'CLI', pad: 4 });
+      const existing = await q('SELECT id FROM clients WHERE code = $1', [value.code]);
+      if (existing.rows.length > 0) return { rows: [], duplicate: true };
+      return q(
+        `INSERT INTO clients (code, name_ar, name_en, client_type, contact_person, phone, email, address, city, credit_limit, payment_terms, tax_id, is_active)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+        [value.code, value.name_ar, value.name_en, value.client_type, value.contact_person, value.phone, value.email, value.address, value.city, value.credit_limit, value.payment_terms, value.tax_id, value.is_active !== undefined ? value.is_active : true]
+      );
+    }, (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'clients', description: `Created client ${value.code}`, entityId: r.rows[0].id, entityType: 'client' }));
+    if (result.duplicate) return res.status(400).json({ success: false, error: 'Code already exists' });
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -79,18 +76,16 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
       if (v !== undefined) { sets.push(`${k} = $${idx++}`); params.push(v); }
     }
     params.push(req.params.id);
-    const result = await query(`UPDATE clients SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'clients', description: `Updated client ${existing.rows[0].code}`, entityId: req.params.id, entityType: 'client' });
+    const result = await auditedTransaction((q) => q(`UPDATE clients SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'clients', description: `Updated client ${existing.rows[0].code}`, entityId: req.params.id, entityType: 'client' }));
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Client not found' });
     res.json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const result = await query('DELETE FROM clients WHERE id = $1 RETURNING code', [req.params.id]);
+    const result = await auditedTransaction((q) => q('DELETE FROM clients WHERE id = $1 RETURNING code', [req.params.id]), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'clients', description: `Deleted client ${r.rows[0].code}`, entityId: req.params.id, entityType: 'client' }));
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Client not found' });
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'clients', description: `Deleted client ${result.rows[0].code}`, entityId: req.params.id, entityType: 'client' });
     res.json({ success: true, message: 'Client deleted' });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

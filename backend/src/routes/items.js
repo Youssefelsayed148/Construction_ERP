@@ -4,7 +4,7 @@ const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
-const { logActivity } = require('../utils/activity');
+const { auditedTransaction } = require('../utils/auditedTransaction');
 const { reasonFrom } = require('../utils/reason');
 
 const CATEGORIES = ['raw_material', 'finished_material', 'equipment_rental', 'consumable', 'tool', 'safety', 'other'];
@@ -133,25 +133,17 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    if (!value.code) {
-      value.code = await nextNumber(query, { table: 'item_master', column: 'code', prefix: 'MAT', pad: 4 });
-    }
-
-    const existing = await query('SELECT id FROM item_master WHERE code = $1', [value.code]);
-    if (existing.rows.length > 0) return res.status(400).json({ success: false, error: 'Code already exists' });
-
-    const result = await query(
+    const result = await auditedTransaction(async (q) => {
+      if (!value.code) value.code = await nextNumber(q, { table: 'item_master', column: 'code', prefix: 'MAT', pad: 4 });
+      const existing = await q('SELECT id FROM item_master WHERE code = $1', [value.code]);
+      if (existing.rows.length > 0) return { rows: [], duplicate: true };
+      return q(
       `INSERT INTO item_master (code, category, sub_category, unit, name_en, name_ar, description, is_active)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
       [value.code, value.category, value.sub_category, value.unit, value.name_en, value.name_ar, value.description, value.is_active]
-    );
-
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'create', module: 'items',
-      description: `Created item ${value.code} - ${value.name_en}`,
-      entityId: result.rows[0].id, entityType: 'item'
-    });
+      );
+    }, (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'items', description: `Created item ${value.code} - ${value.name_en}`, entityId: r.rows[0].id, entityType: 'item' }));
+    if (result.duplicate) return res.status(400).json({ success: false, error: 'Code already exists' });
 
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) {
@@ -193,17 +185,11 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
     if (sets.length === 0) return res.status(400).json({ success: false, error: 'No fields to update' });
 
     params.push(req.params.id);
-    const result = await query(
+    const result = await auditedTransaction((q) => q(
       `UPDATE item_master SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`,
       params
-    );
-
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'update', module: 'items',
-      description: `Updated item ${result.rows[0].code}`,
-      entityId: req.params.id, entityType: 'item'
-    });
+    ), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'items', description: `Updated item ${r.rows[0].code}`, entityId: req.params.id, entityType: 'item' }));
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Item not found' });
 
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
@@ -215,18 +201,11 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const reason = reasonFrom(req) || null;
-    const result = await query(
+    const result = await auditedTransaction((q) => q(
       `UPDATE item_master SET deleted_at = NOW(), deleted_by = $2, delete_reason = $3, is_active = false
         WHERE id = $1 AND deleted_at IS NULL RETURNING code, name_en`,
-      [req.params.id, req.user.id, reason]);
+      [req.params.id, req.user.id, reason]), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'items', description: `Deleted item ${r.rows[0].code}${reason ? `: ${reason}` : ''}`, entityId: req.params.id, entityType: 'item' }));
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Item not found' });
-
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'delete', module: 'items',
-      description: `Deleted item ${result.rows[0].code}${reason ? `: ${reason}` : ''}`,
-      entityId: req.params.id, entityType: 'item'
-    });
 
     res.json({ success: true, message: 'Item deleted' });
   } catch (error) {
@@ -236,15 +215,10 @@ router.delete('/:id', authenticate, authorize(), async (req, res) => {
 
 router.post('/:id/restore', authenticate, authorize(), async (req, res) => {
   try {
-    const result = await query(
+    const result = await auditedTransaction((q) => q(
       `UPDATE item_master SET deleted_at = NULL, deleted_by = NULL, delete_reason = NULL, is_active = true
-        WHERE id = $1 AND deleted_at IS NOT NULL RETURNING *`, [req.params.id]);
+        WHERE id = $1 AND deleted_at IS NOT NULL RETURNING *`, [req.params.id]), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'restore', module: 'items', description: `Restored item ${r.rows[0].code}`, entityId: req.params.id, entityType: 'item' }));
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Deleted item not found' });
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'restore', module: 'items', description: `Restored item ${result.rows[0].code}`,
-      entityId: req.params.id, entityType: 'item'
-    });
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
