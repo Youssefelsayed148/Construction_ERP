@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
+import TextEntryDialog from '../components/common/TextEntryDialog';
 import { ArrowLeft, Plus, CalendarDays, ClipboardList, Users, Sun, CheckCircle, X } from 'lucide-react';
 import DocumentUpload from '../components/DocumentUpload';
 import { openProtectedFile, ProtectedImage } from '../components/ProtectedMedia';
@@ -256,6 +257,7 @@ function InstructionsTab({ projectId, locale, t }) {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
+  const [closeTarget, setCloseTarget] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -272,16 +274,21 @@ function InstructionsTab({ projectId, locale, t }) {
   const advance = async (inst) => {
     const action = NEXT_ACTION[inst.status];
     if (!action) return;
-    let response;
     if (action === 'close') {
-      response = prompt(locale === 'ar' ? 'ملاحظات الإغلاق (اختياري):' : 'Closing response (optional):') || undefined;
+      setCloseTarget(inst);
+      return;
     }
+    await submitInstructionAction(inst, action);
+  };
+
+  const submitInstructionAction = async (inst, action, response) => {
     try {
       await fetchApi(`${API_URL}/projects/${projectId}/instructions/${inst.id}/${action}`, {
         method: 'POST', body: JSON.stringify(response ? { response } : {}),
       });
-      load();
-    } catch (e) { alert(e.message); }
+      setCloseTarget(null);
+      await load();
+    } catch (e) { throw e; }
   };
 
   return (
@@ -353,6 +360,7 @@ function InstructionsTab({ projectId, locale, t }) {
       )}
 
       {showModal && <InstructionModal projectId={projectId} locale={locale} t={t} onClose={() => setShowModal(false)} onSave={load} />}
+      <TextEntryDialog open={Boolean(closeTarget)} title={t('common.dialogs.closeInstructionTitle')} label={t('common.dialogs.closingResponseLabel')} required={false} onSubmit={(response) => submitInstructionAction(closeTarget, 'close', response)} onCancel={() => setCloseTarget(null)} />
     </div>
   );
 }

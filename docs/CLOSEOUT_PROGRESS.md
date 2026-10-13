@@ -559,3 +559,9 @@ Verification: `Shell.i18n.test.js` passed 19/19; `i18n:check ok`; frontend produ
 Converted rejected/revised submittal reason entry to `TextEntryDialog`; response remains optional as before. Current prompt scan: 30 calls across 5 files.
 
 Verification: `ProjectDocuments.test.js` + `Shell.i18n.test.js` passed 2 suites / 21 tests; `i18n:check ok`; frontend production build compiled successfully; `git diff --check` passed.
+
+### Phase 6.2 — engineer-instruction closeout response
+
+Replaced the optional closeout-response prompt with a bilingual text-entry dialog while preserving the existing close action and response payload. Current prompt scan: 29 calls across 4 files.
+
+Verification: `i18n:check ok`; frontend production build compiled successfully; `git diff --check` passed. No SiteManagement page-specific test exists in the current frontend test inventory.

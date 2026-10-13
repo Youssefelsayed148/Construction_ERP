@@ -138,6 +138,8 @@
     "resolveNcrLabel": "Resolution notes",
     "submittalResponseTitle": "Respond to submittal",
     "reasonNotesLabel": "Reason or notes (optional)",
+    "closeInstructionTitle": "Close engineer instruction",
+    "closingResponseLabel": "Closing response (optional)",
     "confirmTitle": "Please confirm",
     "confirmDelete": "Delete this record? This cannot be undone.",
     "unsavedChanges": "You have unsaved changes. Leave without saving?",

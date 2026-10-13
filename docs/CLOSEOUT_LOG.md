@@ -1369,3 +1369,9 @@ Verification output: `Shell.i18n.test.js` passed 1 suite / 19 tests; `node scrip
 Replaced the prompt for rejected/revised submittal response text with the shared text-entry dialog; the reason remains optional. Current prompt scan: 30 calls across 5 page files.
 
 Verification output: `ProjectDocuments.test.js` + `Shell.i18n.test.js` passed 2 suites / 21 tests; `node scripts/i18n-inventory.js --check` reported `i18n:check ok`; frontend production build reported `Compiled successfully`; `git diff --check` exited 0.
+
+## 2026-10-13: Phase 6.2 engineer-instruction response
+
+Converted the optional response prompt used when closing engineer instructions to `TextEntryDialog`. Current prompt scan: 29 calls across 4 files.
+
+Verification output: `node scripts/i18n-inventory.js --check` reported `i18n:check ok`; frontend production build reported `Compiled successfully`; `git diff --check` exited 0. No SiteManagement page-specific test exists.

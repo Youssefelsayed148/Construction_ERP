@@ -138,6 +138,8 @@
     "resolveNcrLabel": "ملاحظات الحل",
     "submittalResponseTitle": "الرد على الاعتماد",
     "reasonNotesLabel": "السبب أو الملاحظات (اختياري)",
+    "closeInstructionTitle": "إغلاق تعليمات المهندس",
+    "closingResponseLabel": "ملاحظات الإغلاق (اختياري)",
     "confirmTitle": "يرجى التأكيد",
     "confirmDelete": "هل تريد حذف هذا السجل؟ لا يمكن التراجع عن هذا الإجراء.",
     "unsavedChanges": "لديك تغييرات غير محفوظة. هل تريد المغادرة دون حفظ؟",
