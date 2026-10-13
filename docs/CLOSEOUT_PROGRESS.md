@@ -553,3 +553,9 @@ Verification: `Shell.i18n.test.js` and `Handover.test.js` passed 2 suites / 20 t
 Converted inline approval decision notes and NCR resolution notes to `TextEntryDialog`, retaining optional approval notes and required resolution notes. Current scan: 31 prompt calls across 6 files.
 
 Verification: `Shell.i18n.test.js` passed 19/19; `i18n:check ok`; frontend production build compiled successfully; `git diff --check` passed. No Approvals or QHSE page-specific test exists in the current frontend test inventory.
+
+### Phase 6.2 — submittal response reasons
+
+Converted rejected/revised submittal reason entry to `TextEntryDialog`; response remains optional as before. Current prompt scan: 30 calls across 5 files.
+
+Verification: `ProjectDocuments.test.js` + `Shell.i18n.test.js` passed 2 suites / 21 tests; `i18n:check ok`; frontend production build compiled successfully; `git diff --check` passed.

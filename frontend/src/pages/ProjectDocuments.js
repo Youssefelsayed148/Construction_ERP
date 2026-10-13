@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
+import TextEntryDialog from '../components/common/TextEntryDialog';
 import { ArrowLeft, Plus, Search, X, FileText, FolderOpen, MessageSquare, PackageCheck, History, CheckCircle, XCircle, Upload, Download, AlertTriangle } from 'lucide-react';
 import { RegisterTab, TransmittalsTab, CorrespondenceTab, DocSearchTab } from './DocControlExtended';
 import DocumentUpload from '../components/DocumentUpload';
@@ -736,6 +737,7 @@ function SubmittalsTab({ projectId, locale, t }) {
   const [submittals, setSubmittals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [responseTarget, setResponseTarget] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -749,17 +751,21 @@ function SubmittalsTab({ projectId, locale, t }) {
   useEffect(() => { load(); }, [load]);
 
   const respond = async (sub, status) => {
-    let response;
     if (status === 'rejected' || status === 'revised') {
-      response = prompt(locale === 'ar' ? 'سبب / ملاحظات:' : 'Reason / notes:');
-      if (response === null) return;
+      setResponseTarget({ sub, status });
+      return;
     }
+    await submitResponse(sub, status, '');
+  };
+
+  const submitResponse = async (sub, status, response) => {
     try {
       await fetchApi(`${API_URL}/docs/submittals/${sub.id}/respond`, {
         method: 'POST', body: JSON.stringify({ status, ...(response ? { response } : {}) }),
       });
-      load();
-    } catch (e) { alert(e.message); }
+      setResponseTarget(null);
+      await load();
+    } catch (e) { throw e; }
   };
 
   return (
@@ -827,6 +833,7 @@ function SubmittalsTab({ projectId, locale, t }) {
       )}
 
       {showModal && <SubmittalModal projectId={projectId} locale={locale} t={t} onClose={() => setShowModal(false)} onSave={load} />}
+      <TextEntryDialog open={Boolean(responseTarget)} title={t('common.dialogs.submittalResponseTitle')} label={t('common.dialogs.reasonNotesLabel')} required={false} onSubmit={(response) => submitResponse(responseTarget.sub, responseTarget.status, response)} onCancel={() => setResponseTarget(null)} />
     </div>
   );
 }

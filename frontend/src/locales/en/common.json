@@ -136,6 +136,8 @@
     "approvalNotesLabel": "Notes (optional)",
     "resolveNcrTitle": "Resolve non-conformance",
     "resolveNcrLabel": "Resolution notes",
+    "submittalResponseTitle": "Respond to submittal",
+    "reasonNotesLabel": "Reason or notes (optional)",
     "confirmTitle": "Please confirm",
     "confirmDelete": "Delete this record? This cannot be undone.",
     "unsavedChanges": "You have unsaved changes. Leave without saving?",

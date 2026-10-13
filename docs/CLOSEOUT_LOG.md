@@ -1363,3 +1363,9 @@ Verification output: `Shell.i18n.test.js` + `Handover.test.js` passed 2 suites /
 Converted approval decision notes and NCR resolution notes to the shared text-entry dialog. Required behavior is retained for NCR resolution; approval notes remain optional. Current prompt scan: 31 calls across 6 files.
 
 Verification output: `Shell.i18n.test.js` passed 1 suite / 19 tests; `node scripts/i18n-inventory.js --check` reported `i18n:check ok`; frontend production build reported `Compiled successfully`; `git diff --check` exited 0. No focused Approvals or QHSE page test exists.
+
+## 2026-10-13: Phase 6.2 submittal response reasons
+
+Replaced the prompt for rejected/revised submittal response text with the shared text-entry dialog; the reason remains optional. Current prompt scan: 30 calls across 5 page files.
+
+Verification output: `ProjectDocuments.test.js` + `Shell.i18n.test.js` passed 2 suites / 21 tests; `node scripts/i18n-inventory.js --check` reported `i18n:check ok`; frontend production build reported `Compiled successfully`; `git diff --check` exited 0.

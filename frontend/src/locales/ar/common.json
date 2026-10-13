@@ -136,6 +136,8 @@
     "approvalNotesLabel": "ملاحظات (اختياري)",
     "resolveNcrTitle": "إغلاق حالة عدم المطابقة",
     "resolveNcrLabel": "ملاحظات الحل",
+    "submittalResponseTitle": "الرد على الاعتماد",
+    "reasonNotesLabel": "السبب أو الملاحظات (اختياري)",
     "confirmTitle": "يرجى التأكيد",
     "confirmDelete": "هل تريد حذف هذا السجل؟ لا يمكن التراجع عن هذا الإجراء.",
     "unsavedChanges": "لديك تغييرات غير محفوظة. هل تريد المغادرة دون حفظ؟",
