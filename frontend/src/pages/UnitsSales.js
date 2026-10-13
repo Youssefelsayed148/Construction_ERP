@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
+import TextEntryDialog from '../components/common/TextEntryDialog';
 import { ArrowLeft, Plus, Building2, LayoutGrid, Trash2 } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 
@@ -159,6 +160,7 @@ function BuildingPanel({ building, locale, t, onBulk, onAddUnit, onChanged }) {
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [contractTarget, setContractTarget] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -174,9 +176,8 @@ function BuildingPanel({ building, locale, t, onBulk, onAddUnit, onChanged }) {
   const changeStatus = async (unit, status) => {
     let extra = {};
     if (status === 'contracted') {
-      const amount = prompt(locale === 'ar' ? 'قيمة البيع:' : 'Sold amount:', unit.price || '');
-      if (amount === null) return;
-      if (amount) extra.sold_amount = Number(amount);
+      setContractTarget(unit);
+      return;
     }
     if (status === 'delivered') {
       extra.handover_date = new Date().toISOString().slice(0, 10);
@@ -187,6 +188,14 @@ function BuildingPanel({ building, locale, t, onBulk, onAddUnit, onChanged }) {
       });
       load(); onChanged();
     } catch (e) { alert(e.message); }
+  };
+
+  const submitContractAmount = async (amount) => {
+    await fetchApi(`${API_URL}/sales/units/${contractTarget.id}/status`, {
+      method: 'POST', body: JSON.stringify({ status: 'contracted', sold_amount: Number(amount) }),
+    });
+    setContractTarget(null);
+    await load(); onChanged();
   };
 
   const deleteUnit = async (unit) => {
@@ -271,6 +280,7 @@ function BuildingPanel({ building, locale, t, onBulk, onAddUnit, onChanged }) {
           ))}
         </div>
       )}
+      <TextEntryDialog open={Boolean(contractTarget)} title={t('common.dialogs.contractUnitTitle')} label={t('common.dialogs.soldAmountLabel')} type="number" min="0" step="any" initialValue={String(contractTarget?.price ?? '')} validate={(value) => Number.isFinite(Number(value)) && Number(value) >= 0 ? '' : t('common.validation.invalid')} onSubmit={submitContractAmount} onCancel={() => setContractTarget(null)} />
     </div>
   );
 }

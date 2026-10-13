@@ -74,6 +74,9 @@ export function ItpTab({ projectId, locale, t }) {
   const [expanded, setExpanded] = useState(null);
   const [points, setPoints] = useState([]);
   const [form, setForm] = useState({ title: '', discipline: '', work_package_id: null, project_location_id: '' });
+  const [pointFormTarget, setPointFormTarget] = useState(null);
+  const [pointForm, setPointForm] = useState({ title: '', point_type: 'review', acceptance_criteria: '' });
+  const [pointError, setPointError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -112,17 +115,21 @@ export function ItpTab({ projectId, locale, t }) {
     } catch (err) { alert(err.message); }
   };
 
-  const addPoint = async (itpId) => {
-    const title = prompt(locale === 'ar' ? 'عنوان نقطة الفحص' : 'Inspection point title');
-    if (!title) return;
-    const type = prompt(locale === 'ar' ? 'النوع: hold / witness / review' : 'Type: hold / witness / review', 'review') || 'review';
-    const criteria = prompt(locale === 'ar' ? 'معايير القبول' : 'Acceptance criteria') || '';
+  const addPoint = (itpId) => {
+    setPointFormTarget(itpId);
+    setPointForm({ title: '', point_type: 'review', acceptance_criteria: '' });
+    setPointError('');
+  };
+
+  const submitPoint = async (event) => {
+    event.preventDefault();
     try {
-      await fetchApi(`${API_URL}/qhse/itps/${itpId}/points`, { method: 'POST', body: JSON.stringify({ title, point_type: type, acceptance_criteria: criteria }) });
-      const r = await fetchApi(`${API_URL}/qhse/itps/${itpId}`);
+      await fetchApi(`${API_URL}/qhse/itps/${pointFormTarget}/points`, { method: 'POST', body: JSON.stringify(pointForm) });
+      const r = await fetchApi(`${API_URL}/qhse/itps/${pointFormTarget}`);
       setPoints(r.success ? (r.data.points || []) : []);
+      setPointFormTarget(null);
       load();
-    } catch (err) { alert(err.message); }
+    } catch (err) { setPointError(err.message); }
   };
 
   return (
@@ -208,6 +215,18 @@ export function ItpTab({ projectId, locale, t }) {
           </table>
         </div>
       )}
+      {pointFormTarget && <div className="modal-overlay" onClick={() => setPointFormTarget(null)}>
+        <form className="modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} onSubmit={submitPoint}>
+          <div className="modal-header"><h2 className="modal-title">{t('common.dialogs.addInspectionPointTitle')}</h2></div>
+          <div className="modal-body">
+            <label className="form-group"><span className="form-label">{t('common.dialogs.inspectionPointTitleLabel')} *</span><input className="form-input" required value={pointForm.title} onChange={(event) => setPointForm({ ...pointForm, title: event.target.value })} /></label>
+            <label className="form-group"><span className="form-label">{t('common.dialogs.inspectionPointTypeLabel')}</span><select className="form-select" value={pointForm.point_type} onChange={(event) => setPointForm({ ...pointForm, point_type: event.target.value })}>{['hold', 'witness', 'review'].map((type) => <option key={type} value={type}>{POINT_TYPE_LABELS[type]}</option>)}</select></label>
+            <label className="form-group"><span className="form-label">{t('common.dialogs.inspectionCriteriaLabel')}</span><textarea className="form-textarea" value={pointForm.acceptance_criteria} onChange={(event) => setPointForm({ ...pointForm, acceptance_criteria: event.target.value })} /></label>
+            {pointError && <div className="form-error" role="alert">{pointError}</div>}
+          </div>
+          <div className="modal-footer"><button type="button" className="btn" onClick={() => setPointFormTarget(null)}>{t('common.cancel')}</button><button type="submit" className="btn btn-primary">{t('common.save')}</button></div>
+        </form>
+      </div>}
     </div>
   );
 }

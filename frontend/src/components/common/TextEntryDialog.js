@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocale } from '../../hooks/useLocale';
 
-export default function TextEntryDialog({ open, title, label, initialValue = '', multiline = false, required = true, onSubmit, onCancel }) {
+export default function TextEntryDialog({ open, title, label, initialValue = '', multiline = false, required = true, type = 'text', min, step, validate, onSubmit, onCancel }) {
   const { t } = useLocale();
   const inputRef = useRef(null);
   const [value, setValue] = useState(initialValue);
@@ -24,6 +24,11 @@ export default function TextEntryDialog({ open, title, label, initialValue = '',
       setError(t('common.validation.required'));
       return;
     }
+    const validationError = validate?.(normalized);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
     setSaving(true);
     setError('');
     try { await onSubmit(normalized); }
@@ -40,7 +45,7 @@ export default function TextEntryDialog({ open, title, label, initialValue = '',
           <div className="modal-body">
             <div className="form-group">
               <label className="form-label" htmlFor="text-entry-dialog-value">{label}{required ? ' *' : ''}</label>
-              <Field ref={inputRef} id="text-entry-dialog-value" className={multiline ? 'form-textarea' : 'form-input'} value={value} onChange={(event) => { setValue(event.target.value); setError(''); }} required={required} aria-invalid={error ? 'true' : undefined} />
+              <Field ref={inputRef} id="text-entry-dialog-value" type={multiline ? undefined : type} min={multiline ? undefined : min} step={multiline ? undefined : step} className={multiline ? 'form-textarea' : 'form-input'} value={value} onChange={(event) => { setValue(event.target.value); setError(''); }} required={required} aria-invalid={error ? 'true' : undefined} />
               {error && <div className="form-error" role="alert">{error}</div>}
             </div>
           </div>

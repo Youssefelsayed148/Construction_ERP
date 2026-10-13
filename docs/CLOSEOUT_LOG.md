@@ -1381,3 +1381,9 @@ Verification output: `node scripts/i18n-inventory.js --check` reported `i18n:che
 Converted the amended-body prompt to a multiline dialog prefilled from the selected correspondence. Current prompt scan: 28 calls across 3 files.
 
 Verification output: `node scripts/i18n-inventory.js --check` reported `i18n:check ok`; frontend production build reported `Compiled successfully`; `git diff --check` exited 0. No DocControlExtended page-specific test exists.
+
+## 2026-10-13: Phase 6.2 ITP point form and unit contract amount
+
+Replaced three sequential ITP inspection-point prompts with a structured form; replaced the unit sold-amount prompt with a validated numeric dialog. Prompt inventory now has 24 calls, all in `PortalDashboard.js`.
+
+Verification output: `Shell.i18n.test.js` passed 1 suite / 20 tests, including non-negative numeric validation; `node scripts/i18n-inventory.js --check` reported `i18n:check ok`; frontend production build reported `Compiled successfully`; `git diff --check` exited 0. No focused QHSEExtended or UnitsSales page test exists.

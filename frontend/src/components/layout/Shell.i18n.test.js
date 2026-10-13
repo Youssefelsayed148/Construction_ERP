@@ -204,6 +204,25 @@ describe('shared states, dialog and directional icons', () => {
     expect(onSubmit).toHaveBeenCalledWith('My view');
   });
 
+  test('TextEntryDialog applies field-specific validation before submit', async () => {
+    const onSubmit = jest.fn();
+    await mount(<TextEntryDialog open title="Contract unit" label="Sold amount" type="number" validate={(value) => Number(value) >= 0 ? '' : 'Amount must be non-negative'} onSubmit={onSubmit} onCancel={() => {}} />, 'en');
+    const form = container.querySelector('form');
+    const input = container.querySelector('#text-entry-dialog-value');
+    const setInputValue = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    await act(async () => {
+      setInputValue.call(input, '-1'); input.dispatchEvent(new Event('input', { bubbles: true }));
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    });
+    expect(container.textContent).toContain('Amount must be non-negative');
+    expect(onSubmit).not.toHaveBeenCalled();
+    await act(async () => {
+      setInputValue.call(input, '12.5'); input.dispatchEvent(new Event('input', { bubbles: true }));
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    });
+    expect(onSubmit).toHaveBeenCalledWith('12.5');
+  });
+
   test('back and next arrows mirror in RTL and are not mirrored in LTR', async () => {
     await mount(<><BackIcon data-testid="back" /><NextIcon data-testid="next" /></>, 'ar');
     const arrowsAr = [...container.querySelectorAll('svg')].map((s) => s.getAttribute('class'));

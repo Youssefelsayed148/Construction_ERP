@@ -571,3 +571,9 @@ Verification: `i18n:check ok`; frontend production build compiled successfully; 
 Replaced the amended-body prompt with a multiline text-entry dialog prefilled from the selected correspondence record. Current prompt scan: 28 calls across 3 files.
 
 Verification: `i18n:check ok`; frontend production build compiled successfully; `git diff --check` passed. No DocControlExtended page-specific test exists in the current frontend test inventory.
+
+### Phase 6.2 — ITP point form and unit contract amount
+
+Replaced the three sequential inspection-point prompts with one bilingual form that validates the required title and offers the hold/witness/review enum plus acceptance criteria. Replaced unit sold amount entry with the shared numeric dialog and a non-negative finite-number validator. Current scan: 24 calls, all in `PortalDashboard.js`.
+
+Verification: `Shell.i18n.test.js` passed 1 suite / 20 tests; `i18n:check ok`; frontend production build compiled successfully; `git diff --check` passed. No QHSEExtended or UnitsSales page-specific test exists in the current frontend test inventory.
