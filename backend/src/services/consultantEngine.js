@@ -532,6 +532,31 @@ async function myReviews(q, user, filters = {}) {
     .filter(scopedProject).filter(() => !filters.type || filters.type === 'submittal');
   addAll('submittal', submittals, (type, r0) => ({ type, id: r0.id, project_id: toNum(r0.project_id), number: r0.submittal_number, title: r0.title, due_date: null, priority: 'normal', status: r0.status, discipline: null, location_id: null }));
 
+  // Formal WIR consultant decisions live on the QA/QC register. The workflow
+  // step's configured SLA starts when the consultant step is opened; legacy
+  // sub-work-verification rows are not a source for the WIR review inbox.
+  const wirs = await safeAll(q,
+    `SELECT w.id, w.project_id, w.wir_number, w.status, w.project_location_id,
+            w.latest_drawing_ref, w.inspection_date,
+            CASE WHEN ws.sla_hours IS NOT NULL AND wsi.opened_at IS NOT NULL
+                 THEN wsi.opened_at + (ws.sla_hours * INTERVAL '1 hour')
+                 ELSE NULL END AS due_date
+       FROM wirs w
+       LEFT JOIN workflow_instances wi ON wi.id = w.workflow_instance_id
+       LEFT JOIN workflow_step_instances wsi
+         ON wsi.instance_id = wi.id AND wsi.step_key = 'consultant' AND wsi.status = 'pending'
+       LEFT JOIN workflow_steps ws ON ws.id = wsi.step_id
+      WHERE w.status = 'consultant_review' AND wi.status = 'active'
+        AND wi.current_step_key = 'consultant'`, []);
+  const consultantWirs = wirs.filter(scopedProject)
+    .filter(() => !filters.type || filters.type === 'wir');
+  addAll('wir', consultantWirs, (type, r0) => ({
+    type, id: r0.id, project_id: toNum(r0.project_id), number: r0.wir_number,
+    title: `WIR ${r0.wir_number}`, due_date: r0.due_date || null, priority: 'normal',
+    status: r0.status, discipline: null, location_id: r0.project_location_id || null,
+    drawing_reference: r0.latest_drawing_ref || null, inspection_date: dateOnly(r0.inspection_date),
+  }));
+
   const observations = (await safeAll(q, "SELECT * FROM observations WHERE status = 'submitted_for_verification'", []))
     .filter(scopedProject).filter(scopedDiscipline).filter(() => !filters.type || filters.type === 'observation');
   addAll('observation', observations, (type, r0) => ({ type, id: r0.id, project_id: toNum(r0.project_id), number: r0.observation_number, title: r0.title, due_date: dateOnly(r0.due_date), priority: r0.severity === 'urgent' ? 'high' : 'normal', status: r0.status, discipline: r0.discipline || null, location_id: r0.location_id || null, drawing_reference: r0.drawing_reference || null, drawing_document_id: r0.drawing_document_id || null }));
@@ -618,8 +643,8 @@ async function consultantDashboard(q, user, { project_id = null, now = new Date(
   // WIR/MIR pending, RFIs, submittals, observations, NCRs.
   const mirs = forProjects(await safeAll(q, "SELECT * FROM material_inspection_requests WHERE status IN ('pending','submitted')", []));
   dashboard.mir_pending = { items: mirs.map((m) => ({ id: m.id, mir_number: m.mir_number || String(m.id) })), count: mirs.length, empty_label: 'No MIRs pending your review' };
-  const wirs = forProjects(await safeAll(q, "SELECT * FROM sub_work_verifications WHERE status = 'pending'", []));
-  dashboard.wir_pending = { items: wirs.map((w) => ({ id: w.id })), count: wirs.length, empty_label: 'No WIRs pending your review' };
+  const wirs = forProjects(await safeAll(q, "SELECT * FROM wirs WHERE status = 'consultant_review'", []));
+  dashboard.wir_pending = { items: wirs.map((w) => ({ id: w.id, wir_number: w.wir_number, status: w.status })), count: wirs.length, empty_label: 'No WIRs pending your review' };
 
   const rfis = forProjects((await safeAll(q, 'SELECT * FROM project_rfis', []))
     .filter((r0) => !['closed', 'answered', 'acknowledged'].includes(r0.status)));

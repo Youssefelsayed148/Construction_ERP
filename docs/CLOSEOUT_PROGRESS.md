@@ -413,3 +413,9 @@ Audited `docs/ERP_CLOSEOUT_PLAN.md` lines 275–343 against current routes, migr
 Added migration `0046_observation_record_completeness.sql` for observation due dates and drawing links. Observation creation now verifies drawing type/project/consultant visibility, validates same-project locations and actor-owned uploaded evidence, and records before/after photos in the shared photo model. Consultant media reads require the matching assigned organization and project. The portal's raise-observation prompt is now a bilingual scoped form with due date, drawing selection/reference, severity and separate before/after uploads. Date-only fields are normalized to prevent timezone shifts in JSON.
 
 Focused verification: isolated PostgreSQL migration applied; real-Postgres observation test passed 1/1; consultant and media-access tests passed 2 suites / 18 tests; portal observation-form test passed 1/1; i18n check and production build passed; backend syntax checks and `git diff --check` passed. No full suite was run.
+
+## 2026-10-13: Phase 5.6.2 formal WIR inbox and SLA read
+
+The consultant inbox and dashboard now take WIR reviews from the formal `wirs` register at `consultant_review`, replacing the legacy `sub_work_verifications` dashboard read. Inbox results include the drawing reference and inspection date. A due timestamp is based on the configured active consultant workflow step (`opened_at + sla_hours`); without both values it stays null.
+
+Focused checks: `consultant-observation.pg.test.js` 1 suite / 2 tests passed against the isolated local PostgreSQL database, including the configured 24-hour SLA and project filter; `consultant.test.js` 1 suite / 12 tests passed. No full suite was run. Inspection decisions, formal recommendations, SLA administration and inbox component coverage are still open in 5.6.2.

@@ -33,14 +33,14 @@ Updated: 2026-10-13 (Africa/Cairo)
 - C3 follow-up removes the remaining project role map/FULL fallback. Project tabs and financial cards now use effective module/action grants and project IDs. Targeted frontend checks pass: 3 suites / 26 tests; project-page Playwright passes 6/6 across desktop/mobile, including Arabic and site-engineer visibility.
 - Batch C4 passes the real local backend procure-to-pay journey on English/Arabic desktop and mobile, plus an unassigned-user API denial. The run covers PR, RFQ and two quotes, award approval, PO workflow, delivery/MIR/GRN, supplier invoice and allocated payment. Read-only reconciliation reported zero violations across all 11 checks.
 - Batch D UAT preparation is documented in `docs/UAT_PILOT.md`: scoped role scripts, checklist, defect template, deferred items, and signoff table. Human UAT has not been executed.
-- Batch E is in progress. E1 mapping foundation is additive and migrated locally: configurable GL map with provisional/owner-confirmation fields, owner-only confirmation API, and bilingual Settings UI. Certificate ledger postings, invoice line writer/from-certificate, E3–E5, and broader E exit checks remain.
-- Phases 5.6–6 remain open. Finance signoff still requires the owner to confirm provisional chart-of-accounts mappings.
+- Batch E implementation slices E1–E5 are complete and committed as recorded in `docs/CLOSEOUT_LOG.md`; finance account-purpose signoff still requires the owner. Human UAT has not been executed.
+- Phase 5.6.1 is committed. In Phase 5.6.2, formal consultant-stage WIR reads and configured workflow SLA timestamps are implemented and focused-tested. Inspection-decision/recommendation records, SLA administration, and remaining portal UI coverage are still open. Phases 5.6–6 remain incomplete.
 
 ## Where work stopped
 
-C1–C4 and D preparation are complete and committed; human UAT remains outstanding. Continue Batch E, then plan and implement Phases 5.6–6. Finance signoff remains a human decision.
+C1–C4, D preparation and Batch E implementation are complete and committed; human UAT and finance account confirmation remain outstanding. Continue the remaining 5.6.2 work, then follow `docs/PLAN_5_6_TO_6.md` through Phases 5.6–6.
 
-Batch A and Batch B1–B6 are green. C1–C4 are committed. Continue with D, E, and the Phase 5.6–6 plan/implementation. Keep targets local and never use production-looking databases or external services. The ignored `backend/.env.docker` file is unrelated and remains untouched.
+Batch A and Batch B1–B6 are green. C1–C4 and Batch E implementation are committed. Continue the remaining Phase 5.6–6 tickets with focused tests tied to each ticket; run broader gates at integration checkpoints. Keep targets local and never use production-looking databases or external services. Do not read or print generated secrets.
 
 ## Current gates
 
@@ -62,8 +62,10 @@ Batch A and Batch B1–B6 are green. C1–C4 are committed. Continue with D, E, 
 | Batch B full end-of-batch gate | PASS — backend 50/960, PG 56/566, frontend 17/97, i18n/build, Playwright 32/46, Compose healthy |
 | Batch C4 live browser journeys | PASS — EN/AR desktop/mobile 4/4; unassigned procurement API 403; reconciliation 11/11 checks at zero |
 | Batch D documentation | PASS — `docs/UAT_PILOT.md`; human UAT NOT RUN |
-| Batch E | IN PROGRESS — E1 mapping foundation; certificate posting and E2–E5 open |
-| Phases 5.6–6 | NOT RUN |
+| Batch E implementation | PASS — E1–E5 slices committed; owner account confirmation and human UAT outstanding |
+| Phase 5.6.1 observation completeness | PASS — focused PG 1/1, consultant/media 18/18, portal 1/1, i18n/build/syntax |
+| Phase 5.6.2 formal WIR inbox/SLA read | PASS — focused PG 2/2 and consultant mock 12/12; remainder of ticket open |
+| Phases 5.6–6 | IN PROGRESS — 5.6.1 and formal WIR/SLA inbox read complete; remaining tickets open |
 
 ## Risks and decisions
 

@@ -85,4 +85,41 @@ describePg('consultant observation completeness (real PostgreSQL)', () => {
       user: { id: consultant.id, role: 'consultant', name: consultant.name },
     })).rejects.toThrow(/same project/);
   });
+
+  test('My Reviews reads consultant-stage WIRs from the formal register and calculates configured SLA', async () => {
+    const template = (await db.query("SELECT id FROM workflow_templates WHERE key = 'wir'")).rows[0];
+    const step = (await db.query("SELECT id, sla_hours FROM workflow_steps WHERE template_id = $1 AND step_key = 'consultant'", [template.id])).rows[0];
+    const instance = (await db.query(
+      `INSERT INTO workflow_instances (template_id, template_key, entity_type, entity_id, project_id, context, current_step_key, status, requester_id)
+       VALUES ($1,'wir','wir',$2,$3,'{}','consultant','active',$4) RETURNING id`,
+      [template.id, tag, project.id, consultant.id]
+    )).rows[0];
+    const openedAt = '2026-10-12T08:00:00.000Z';
+    const wir = (await db.query(
+      `INSERT INTO wirs (wir_number, project_id, status, workflow_instance_id, latest_drawing_ref, inspection_date)
+       VALUES ($1,$2,'consultant_review',$3,'S-12 / Rev 4','2026-10-12') RETURNING id`,
+      [`WIR-${tag}`, project.id, instance.id]
+    )).rows[0];
+    await db.query(
+      `INSERT INTO workflow_step_instances (instance_id, step_id, step_key, name, status, opened_at)
+       VALUES ($1,$2,'consultant','Consultant','pending',$3)`,
+      [instance.id, step.id, openedAt]
+    );
+    await db.query('UPDATE workflow_steps SET sla_hours = 24 WHERE id = $1', [step.id]);
+
+    try {
+      const inbox = await engine.myReviews(db.query, { id: teammate.id, role: 'consultant' }, { type: 'wir' });
+      expect(inbox).toContainEqual(expect.objectContaining({
+        type: 'wir', id: wir.id, project_id: project.id, number: `WIR-${tag}`,
+        status: 'consultant_review', due_date: new Date('2026-10-13T08:00:00.000Z'),
+        drawing_reference: 'S-12 / Rev 4', inspection_date: '2026-10-12',
+      }));
+      const outOfScope = await engine.myReviews(db.query, { id: teammate.id, role: 'consultant' }, { project_id: otherProject.id, type: 'wir' });
+      expect(outOfScope).toEqual([]);
+    } finally {
+      await db.query('DELETE FROM workflow_instances WHERE id = $1', [instance.id]);
+      await db.query('DELETE FROM wirs WHERE id = $1', [wir.id]);
+      await db.query('UPDATE workflow_steps SET sla_hours = $1 WHERE id = $2', [step.sla_hours, step.id]);
+    }
+  });
 });

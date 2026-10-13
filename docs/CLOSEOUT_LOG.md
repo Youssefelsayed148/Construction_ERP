@@ -1179,3 +1179,9 @@ Reviewed the Phase 5.6–6 checklist in `ERP_CLOSEOUT_PLAN.md` against current b
 Observations now include due date, drawing reference and an optional project drawing link. Before/after uploads attach to the shared photo model after server-side owner, project, type and portal-visibility checks. Consultant media access is constrained to the assigned organization/project. `myReviews` returns the due date as a stable date-only string. The consultant portal's raise action is a bilingual form backed by the upload component and selects only the consultant's assigned projects and approved visible drawings.
 
 Verification: migration 0046 applied to the disposable PostgreSQL database; focused real-Postgres round-trip/scoping test 1/1; consultant/media mock tests 18/18; portal component test 1/1; locale check and frontend build passed; syntax and diff checks passed. No broad suite was run.
+
+## 2026-10-13: Phase 5.6.2 formal WIR inbox and SLA read
+
+Consultant `My Reviews` and dashboard WIR items now come from the formal `wirs` register at `consultant_review`, rather than the legacy `sub_work_verifications` table. Inbox rows include drawing reference and inspection date. Due timestamps are calculated from the open consultant workflow step's `opened_at` and configured `workflow_steps.sla_hours`; if no SLA or opening time is configured, the row stays undated.
+
+Focused verification on the disposable local PostgreSQL database: `consultant-observation.pg.test.js` passed 1 suite / 2 tests, including formal WIR inbox sourcing, configured 24-hour SLA, and denial by project filter. `consultant.test.js` passed 1 suite / 12 tests. No full suite was run. Inspection decisions/recommendations and the focused inbox component test remain open under 5.6.2.
