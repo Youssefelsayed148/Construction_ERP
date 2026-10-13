@@ -183,7 +183,7 @@ const MODULE_OVERRIDES = Object.freeze({
 
 // [mount module, METHOD, route path pattern, action | (req) => action]
 const ACTION_OVERRIDES = Object.freeze([
-  ['consultant', 'POST', /^\/(?:wirs\/:id\/result|variations\/:id\/recommendation|payment-certificates\/:id\/recommendation)$/, (req) => {
+  ['consultant', 'POST', /^\/(?:wirs\/:id\/result|variations\/:id\/recommendation|payment-certificates\/:id\/recommendation|instructions\/:id\/recommendation)$/, (req) => {
     const decision = req.body && (req.body.decision || req.body.result);
     return decision === 'reject' || decision === 'rejected' ? 'reject' : 'approve';
   }],
@@ -306,6 +306,7 @@ const RECORD_SCOPE_RULES = Object.freeze({
     [/^\/wirs\/:id(?:\/|$)/, 'wirs'],
     [/^\/variations\/:id(?:\/|$)/, 'variations'],
     [/^\/payment-certificates\/:id(?:\/|$)/, 'payment_certificates'],
+    [/^\/instructions\/:id(?:\/|$)/, 'engineer_instructions'],
   ],
   docs: [
     [/^\/documents\/:id(?:\/|$)/, 'project_documents'],

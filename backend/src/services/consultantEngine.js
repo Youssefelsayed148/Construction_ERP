@@ -558,6 +558,27 @@ async function decideConsultantCertificate(q, certificateId, user, decision, com
   }
 }
 
+async function recommendEngineerInstruction(q, instructionId, user, decision, comment = null) {
+  if (user.role !== 'consultant') throw Object.assign(new Error('Consultant role required'), { status: 403, error_code: 'forbidden' });
+  const found = await q('SELECT * FROM engineer_instructions WHERE id = $1 FOR UPDATE', [instructionId]);
+  if (!found.rows.length) throw Object.assign(new Error('Engineer instruction not found'), { status: 404, error_code: 'record_not_found' });
+  const instruction = found.rows[0];
+  if (!(await resolveConsultantProjects(q, user.id)).includes(toNum(instruction.project_id))) {
+    throw Object.assign(new Error('Engineer instruction not found'), { status: 404, error_code: 'record_not_found' });
+  }
+  if (!['issued', 'acknowledged'].includes(instruction.status)) {
+    throw Object.assign(new Error('Engineer instruction is not awaiting consultant recommendation'), { status: 409, error_code: 'invalid_workflow_transition' });
+  }
+  const previous = await q('SELECT id FROM engineer_instruction_recommendations WHERE instruction_id = $1', [instructionId]);
+  if (previous.rows.length) throw Object.assign(new Error('Engineer instruction already has a consultant recommendation'), { status: 409, error_code: 'already_recommended' });
+  const saved = await q(
+    `INSERT INTO engineer_instruction_recommendations (instruction_id, consultant_user_id, decision, comment)
+     VALUES ($1,$2,$3,$4) RETURNING *`,
+    [instructionId, user.id, decision, comment || null]
+  );
+  return { ...saved.rows[0], instruction_number: instruction.instruction_number, project_id: instruction.project_id };
+}
+
 // ---------------------------------------------------------------------------
 // My Reviews inbox — one list, sorted by due date then priority, filterable
 // by project / discipline / type / location.
@@ -641,6 +662,14 @@ async function myReviews(q, user, filters = {}) {
         AND wi.current_step_key = 'consultant_client'`, []);
   addAll('certificate', certificates.filter(scopedProject).filter(() => !filters.type || filters.type === 'certificate'),
     (type, r0) => ({ type, id: r0.id, project_id: toNum(r0.project_id), number: r0.certificate_number, title: `Certificate ${r0.certificate_number}`, status: r0.status, amount: toNum(r0.net_certificate), due_date: r0.due_date || null, priority: 'normal' }));
+
+  const instructions = await safeAll(q,
+    `SELECT ei.id, ei.project_id, ei.instruction_number, ei.title, ei.status, ei.priority
+       FROM engineer_instructions ei
+       LEFT JOIN engineer_instruction_recommendations eir ON eir.instruction_id = ei.id
+      WHERE ei.status IN ('issued', 'acknowledged') AND eir.id IS NULL`, []);
+  addAll('instruction', instructions.filter(scopedProject).filter(() => !filters.type || filters.type === 'instruction'),
+    (type, r0) => ({ type, id: r0.id, project_id: toNum(r0.project_id), number: r0.instruction_number, title: r0.title, status: r0.status, due_date: null, priority: r0.priority || 'normal' }));
 
   const observations = (await safeAll(q, "SELECT * FROM observations WHERE status = 'submitted_for_verification'", []))
     .filter(scopedProject).filter(scopedDiscipline).filter(() => !filters.type || filters.type === 'observation');
@@ -780,6 +809,7 @@ module.exports = {
   decideConsultantWir,
   decideConsultantVariation,
   decideConsultantCertificate,
+  recommendEngineerInstruction,
   myReviews,
   consultantDashboard,
 };

@@ -88,6 +88,23 @@ router.post('/payment-certificates/:id/recommendation', authenticate, authorize(
   } catch (error) { return typedFail(res, error, 'CONSULTANT_CERTIFICATE_RECOMMENDATION', req); }
 });
 
+router.post('/instructions/:id/recommendation', authenticate, authorize('consultant'), async (req, res) => {
+  const id = Joi.number().integer().positive().validate(Number(req.params.id));
+  if (id.error) return typedFail(res, Object.assign(new Error('Invalid engineer instruction id'), { status: 400, error_code: 'invalid_id' }), 'CONSULTANT_INSTRUCTION_RECOMMENDATION', req);
+  const value = typedBody(Joi.object({
+    decision: Joi.string().valid('approve', 'reject').required(),
+    comment: Joi.string().max(4000).allow('', null).optional(),
+  }), req, res);
+  if (!value) return;
+  try {
+    const result = await auditedTransaction(
+      (q) => engine.recommendEngineerInstruction(q, id.value, req.user, value.decision, value.comment),
+      (row) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'site', description: `Engineer instruction ${row.instruction_number} consultant recommendation: ${value.decision}`, entityId: row.instruction_id, entityType: 'engineer_instruction' })
+    );
+    res.json({ success: true, data: result });
+  } catch (error) { return typedFail(res, error, 'CONSULTANT_INSTRUCTION_RECOMMENDATION', req); }
+});
+
 // Observations.
 router.post('/observations', authenticate, authorize(), async (req, res) => {
   try {

@@ -50,6 +50,7 @@ describe('action overrides', () => {
     expect(act('consultant', 'POST', '/wirs/:id/result', null, { result: 'rejected' })).toBe('reject');
     expect(act('consultant', 'POST', '/variations/:id/recommendation', null, { decision: 'approve' })).toBe('approve');
     expect(act('consultant', 'POST', '/payment-certificates/:id/recommendation', null, { decision: 'reject' })).toBe('reject');
+      expect(act('consultant', 'POST', '/instructions/:id/recommendation', null, { decision: 'approve' })).toBe('approve');
     expect(act('docs', 'GET', '/documents')).toBe('view');
     // voiding a financial record and restoring a master are not plain deletes/creates
     expect(act('payments', 'DELETE', '/:id')).toBe('void');

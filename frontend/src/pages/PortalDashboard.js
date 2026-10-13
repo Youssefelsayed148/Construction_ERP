@@ -91,7 +91,7 @@ function ConsultantReviews({ rows = [], onDone }) {
     try {
       const path = row.type === 'wir'
         ? `/api/consultant/wirs/${row.id}/result`
-        : `/api/consultant/${row.type === 'variation' ? 'variations' : 'payment-certificates'}/${row.id}/recommendation`;
+        : `/api/consultant/${row.type === 'variation' ? 'variations' : row.type === 'instruction' ? 'instructions' : 'payment-certificates'}/${row.id}/recommendation`;
       const body = row.type === 'wir' ? { result: decision } : { decision };
       await request(path, {
         method: 'POST', body: JSON.stringify(body),
@@ -113,7 +113,7 @@ function ConsultantReviews({ rows = [], onDone }) {
             <button className="btn btn-secondary btn-sm" disabled={savingId === row.id} onClick={() => submitDecision(row, 'rejected')}>{t('portals.review.reject')}</button>
             <button className="btn btn-secondary btn-sm" disabled={savingId === row.id} onClick={() => submitDecision(row, 'reinspect')}>{t('portals.review.reinspect')}</button>
           </div>}
-          {['variation', 'certificate'].includes(row.type) && <div className="portal-review-actions" aria-label={t('portals.review.recommendationActions')}>
+          {['variation', 'certificate', 'instruction'].includes(row.type) && <div className="portal-review-actions" aria-label={t('portals.review.recommendationActions')}>
             <button className="btn btn-secondary btn-sm" disabled={savingId === row.id} onClick={() => submitDecision(row, 'approve')}>{t('portals.review.recommendApprove')}</button>
             <button className="btn btn-secondary btn-sm" disabled={savingId === row.id} onClick={() => submitDecision(row, 'reject')}>{t('portals.review.recommendReject')}</button>
           </div>}

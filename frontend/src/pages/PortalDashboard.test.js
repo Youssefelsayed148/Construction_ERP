@@ -70,6 +70,8 @@ describe('consultant portal observation form', () => {
         type: 'variation', id: 35, project_id: 11, number: 'VAR-0035', title: 'Grid C change', status: 'consultant_recommendation',
       }, {
         type: 'certificate', id: 36, project_id: 11, number: 'CERT-0036', title: 'Certificate CERT-0036', status: 'consultant_client',
+      }, {
+        type: 'instruction', id: 37, project_id: 11, number: 'EI-0011', title: 'Repair wall at grid C3', status: 'issued',
       }] : { project_ids: [11], latest_drawings: { items: [] } };
       return { ok: true, json: async () => ({ success: true, data }) };
     });
@@ -96,5 +98,12 @@ describe('consultant portal observation form', () => {
     const certificateDecision = global.fetch.mock.calls.find(([url, options]) => options.method === 'POST' && String(url).includes('/payment-certificates/36/recommendation'));
     expect(certificateDecision).toBeTruthy();
     expect(JSON.parse(certificateDecision[1].body)).toEqual({ decision: 'reject' });
+    const instructionRow = [...container.querySelectorAll('.portal-review-item')].find((row) => row.textContent.includes('Repair wall at grid C3'));
+    const instructionDecisionButton = [...instructionRow.querySelectorAll('button')].find((button) => button.textContent.includes('portals.review.recommendApprove'));
+    await act(async () => { instructionDecisionButton.click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const instructionDecision = global.fetch.mock.calls.find(([url, options]) => options.method === 'POST' && String(url).includes('/instructions/37/recommendation'));
+    expect(instructionDecision).toBeTruthy();
+    expect(JSON.parse(instructionDecision[1].body)).toEqual({ decision: 'approve' });
   });
 });

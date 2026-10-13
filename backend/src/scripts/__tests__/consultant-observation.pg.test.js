@@ -271,4 +271,53 @@ describePg('consultant observation completeness (real PostgreSQL)', () => {
       await db.query('DELETE FROM payment_certificates WHERE id = $1', [certificate.id]);
     }
   });
+
+  test('engineer instruction recommendations are project-scoped, audited, and appear in My Reviews until decided', async () => {
+    const instruction = (await db.query(
+      `INSERT INTO engineer_instructions (instruction_number, project_id, title, status, issued_by)
+       VALUES ($1,$2,'Repair wall at grid C3','issued',$3) RETURNING id`,
+      [`EI-${tag}-consultant`, project.id, consultant.id]
+    )).rows[0];
+    const otherInstruction = (await db.query(
+      `INSERT INTO engineer_instructions (instruction_number, project_id, title, status, issued_by)
+       VALUES ($1,$2,'Other project instruction','issued',$3) RETURNING id`,
+      [`EI-${tag}-outside`, otherProject.id, consultant.id]
+    )).rows[0];
+    expect(await engine.myReviews(db.query, teammate, { type: 'instruction' })).toContainEqual(expect.objectContaining({
+      type: 'instruction', id: instruction.id, project_id: project.id, number: `EI-${tag}-consultant`,
+    }));
+    await expect(db.transaction((client) => engine.recommendEngineerInstruction(
+      client.query.bind(client), otherInstruction.id, teammate, 'approve', 'Out of scope'
+    ))).rejects.toMatchObject({ status: 404, error_code: 'record_not_found' });
+    await db.query(
+      'INSERT INTO user_project_roles (user_id, project_id, role_id) SELECT $1,$2,id FROM roles WHERE key = $3 ON CONFLICT DO NOTHING',
+      [teammate.id, project.id, 'consultant']
+    );
+
+    const { app } = require('../../../server');
+    const server = await new Promise((resolve) => { const started = app.listen(0, () => resolve(started)); });
+    try {
+      const token = tokens.signSession({ userId: teammate.id, tokenVersion: teammate.token_version || 0 });
+      const response = await fetch(`http://127.0.0.1:${server.address().port}/api/consultant/instructions/${instruction.id}/recommendation`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ decision: 'approve', comment: 'Proceed with repair' }),
+      });
+      const payload = await response.json();
+      expect(response.status).toBe(200);
+      expect(payload).toMatchObject({ success: true });
+      expect(payload.data).toMatchObject({ instruction_id: instruction.id, consultant_user_id: teammate.id, decision: 'approve' });
+      expect((await db.query("SELECT count(*)::int AS count FROM activity_log WHERE entity_type = 'engineer_instruction' AND entity_id = $1", [instruction.id])).rows[0].count).toBe(1);
+      expect(await engine.myReviews(db.query, teammate, { type: 'instruction' })).not.toEqual(expect.arrayContaining([expect.objectContaining({ id: instruction.id })]));
+      const repeated = await fetch(`http://127.0.0.1:${server.address().port}/api/consultant/instructions/${instruction.id}/recommendation`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ decision: 'reject' }),
+      });
+      expect(repeated.status).toBe(409);
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+      await db.query('DELETE FROM user_project_roles WHERE user_id = $1 AND project_id = $2', [teammate.id, project.id]);
+      await db.query('DELETE FROM engineer_instruction_recommendations WHERE instruction_id = ANY($1::int[])', [[instruction.id, otherInstruction.id]]);
+      await db.query('DELETE FROM engineer_instructions WHERE id = ANY($1::int[])', [[instruction.id, otherInstruction.id]]);
+    }
+  });
 });
