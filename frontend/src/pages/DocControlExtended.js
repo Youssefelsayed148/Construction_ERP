@@ -157,7 +157,25 @@ export function RegisterTab({ projectId, locale, t }) {
 export function TransmittalsTab({ projectId, locale, t }) {
   const { rows, loading, reload } = useTransmittals(projectId);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ direction: 'outgoing', purpose: '', attention: '', response_due: '' });
+  const [form, setForm] = useState({ direction: 'outgoing', purpose: '', attention: '', response_due: '', recipient_organization_id: '', document_ids: [] });
+  const [documents, setDocuments] = useState([]);
+  const [recipients, setRecipients] = useState([]);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalError, setModalError] = useState('');
+
+  const openModal = async () => {
+    setShowModal(true); setModalLoading(true); setModalError('');
+    try {
+      const [documentResult, recipientResult] = await Promise.all([
+        fetchApi(`${API_URL}/docs/documents?project_id=${projectId}`),
+        fetchApi(`${API_URL}/docs/transmittal-recipients?project_id=${projectId}`),
+      ]);
+      setDocuments(documentResult.data || []);
+      setRecipients(recipientResult.data || []);
+    } catch (err) {
+      setModalError(t(`errors.${err.error_code || err.message}`, { defaultValue: t('documentControl.transmittalForm.loadError') }));
+    } finally { setModalLoading(false); }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -165,8 +183,10 @@ export function TransmittalsTab({ projectId, locale, t }) {
       await fetchApi(`${API_URL}/docs/transmittals`, { method: 'POST', body: JSON.stringify({
         project_id: Number(projectId), direction: form.direction, purpose: form.purpose,
         attention: form.attention, response_due: form.response_due || null,
+        recipient_organization_id: form.recipient_organization_id ? Number(form.recipient_organization_id) : null,
+        items: form.document_ids.map((document_id) => ({ document_id })),
       }) });
-      setShowModal(false); setForm({ direction: 'outgoing', purpose: '', attention: '', response_due: '' });
+      setShowModal(false); setForm({ direction: 'outgoing', purpose: '', attention: '', response_due: '', recipient_organization_id: '', document_ids: [] });
       reload();
     } catch (err) { alert(err.message); }
   };
@@ -181,20 +201,34 @@ export function TransmittalsTab({ projectId, locale, t }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{locale === 'ar' ? 'مذكرة جديدة' : 'New Transmittal'}</button>
+        <button className="btn btn-primary" onClick={openModal}><Plus size={16} />{t('documentControl.transmittalForm.new')}</button>
       </div>
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: '16px', display: 'grid', gap: '10px', maxWidth: 520 }}>
           <select className="input" value={form.direction} onChange={e => setForm({ ...form, direction: e.target.value })}>
-            <option value="outgoing">{locale === 'ar' ? 'صادرة' : 'Outgoing'}</option>
-            <option value="incoming">{locale === 'ar' ? 'واردة' : 'Incoming'}</option>
+            <option value="outgoing">{t('documentControl.transmittalForm.outgoing')}</option>
+            <option value="incoming">{t('documentControl.transmittalForm.incoming')}</option>
           </select>
-          <input className="input" placeholder={locale === 'ar' ? 'الغرض' : 'Purpose'} value={form.purpose} onChange={e => setForm({ ...form, purpose: e.target.value })} />
-          <input className="input" placeholder={locale === 'ar' ? 'إلى وجهة الشخص' : 'Attention'} value={form.attention} onChange={e => setForm({ ...form, attention: e.target.value })} />
-          <input className="input" type="date" title="Response due" value={form.response_due} onChange={e => setForm({ ...form, response_due: e.target.value })} />
+          <label>{t('documentControl.transmittalForm.recipient')}
+            <select className="input" value={form.recipient_organization_id} onChange={e => setForm({ ...form, recipient_organization_id: e.target.value })}>
+              <option value="">{t('documentControl.transmittalForm.selectRecipient')}</option>
+              {recipients.map((organization) => <option key={organization.id} value={organization.id}>{organization.name}</option>)}
+            </select>
+          </label>
+          <label>{t('documentControl.transmittalForm.purpose')}<input className="input" value={form.purpose} onChange={e => setForm({ ...form, purpose: e.target.value })} /></label>
+          <label>{t('documentControl.transmittalForm.attention')}<input className="input" value={form.attention} onChange={e => setForm({ ...form, attention: e.target.value })} /></label>
+          <label>{t('documentControl.transmittalForm.responseDue')}<input className="input" type="date" value={form.response_due} onChange={e => setForm({ ...form, response_due: e.target.value })} /></label>
+          <label>{t('documentControl.transmittalForm.documents')}
+            <select className="input" multiple value={form.document_ids.map(String)} disabled={modalLoading}
+              onChange={e => setForm({ ...form, document_ids: [...e.target.selectedOptions].map(option => Number(option.value)) })}>
+              {documents.map((document) => <option key={document.id} value={document.id}>{document.doc_number ? `${document.doc_number} · ` : ''}{document.title}</option>)}
+            </select>
+          </label>
+          {modalLoading && <p role="status">{t('documentControl.transmittalForm.loading')}</p>}
+          {modalError && <p role="alert" className="alert alert-danger">{modalError}</p>}
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-primary" type="submit">{t('common.save') || 'Save'}</button>
-            <button className="btn" type="button" onClick={() => setShowModal(false)}>Cancel</button>
+            <button className="btn btn-primary" type="submit" disabled={modalLoading || Boolean(modalError)}>{t('common.save') || 'Save'}</button>
+            <button className="btn" type="button" onClick={() => setShowModal(false)}>{t('common.cancel')}</button>
           </div>
         </form>
       )}
@@ -209,15 +243,18 @@ export function TransmittalsTab({ projectId, locale, t }) {
         <div className="table-container">
           <table className="table">
             <thead><tr>
-              <th>Transmittal</th><th>{locale === 'ar' ? 'الاتجاه' : 'Direction'}</th><th>{locale === 'ar' ? 'الغرض' : 'Purpose'}</th>
-              <th>{locale === 'ar' ? 'رد مستحق' : 'Response due'}</th><th>{locale === 'ar' ? 'الحالة' : 'Status'}</th><th>{t('common.actions')}</th>
+              <th>{t('documentControl.transmittalForm.number')}</th><th>{t('documentControl.transmittalForm.direction')}</th><th>{t('documentControl.transmittalForm.recipient')}</th>
+              <th>{t('documentControl.transmittalForm.purpose')}</th><th>{t('documentControl.transmittalForm.documents')}</th>
+              <th>{t('documentControl.transmittalForm.responseDue')}</th><th>{t('documentControl.transmittalForm.status')}</th><th>{t('common.actions')}</th>
             </tr></thead>
             <tbody>
               {rows.map(tr => (
                 <tr key={tr.id}>
                   <td style={{ fontFamily: 'monospace', fontSize: 13 }}>{tr.transmittal_number}</td>
                   <td>{tr.direction === 'incoming' ? (locale === 'ar' ? 'واردة' : 'Incoming') : (locale === 'ar' ? 'صادرة' : 'Outgoing')}</td>
+                  <td>{tr.recipient_organization_name || '-'}</td>
                   <td>{tr.purpose || '-'}</td>
+                  <td>{tr.item_count || 0}</td>
                   <td>{fmtDate(tr.response_due)}</td>
                   <td><span className={`badge ${TR_STATUS_BADGE[tr.status]}`}>{tr.status}</span></td>
                   <td style={{ whiteSpace: 'nowrap' }}>

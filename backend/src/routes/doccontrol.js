@@ -416,6 +416,14 @@ const doccontrolEngine = require('../services/doccontrolEngine');
 const { canExternalViewDocument } = require('../services/documentVisibility');
 const { renderDocument } = require('../utils/procurementPdf');
 
+function documentProjectAllowed(req, projectId) {
+  return req.accessScope?.companyWide || (req.accessScope?.projectIds || []).includes(Number(projectId));
+}
+
+function transmittalFailure(res, status, code) {
+  return res.status(status).json({ success: false, error_code: code });
+}
+
 const DOC_REGISTER_SELECT = `
   SELECT d.*, dc.name as category_name, COALESCE(oo.name_en, oo.name_ar) as originator_name,
          COALESCE(ro.name_en, ro.name_ar) as recipient_name, u.name as uploaded_by_name,
@@ -507,18 +515,43 @@ router.get('/documents/:id/revisions', authenticate, authorize(), async (req, re
 const TRANSMITTAL_SELECT = `
   SELECT t.*, COALESCE(so.name_en, so.name_ar) as sender_organization_name,
          COALESCE(ro.name_en, ro.name_ar) as recipient_organization_name,
-         su.name as sender_user_name, ru.name as recipient_user_name
+         su.name as sender_user_name, ru.name as recipient_user_name,
+         (SELECT COUNT(*)::int FROM transmittal_items ti WHERE ti.transmittal_id = t.id) AS item_count
   FROM transmittals t
   LEFT JOIN organizations so ON t.sender_organization_id = so.id
   LEFT JOIN organizations ro ON t.recipient_organization_id = ro.id
   LEFT JOIN users su ON t.sender_user_id = su.id
   LEFT JOIN users ru ON t.recipient_user_id = ru.id`;
 
+router.get('/transmittal-recipients', authenticate, authorize(), async (req, res) => {
+  const projectId = Number(req.query.project_id);
+  if (!Number.isInteger(projectId) || projectId < 1) return transmittalFailure(res, 400, 'invalid_project_id');
+  if (!documentProjectAllowed(req, projectId)) return transmittalFailure(res, 403, 'project_scope_denied');
+  try {
+    const result = await query(
+      `SELECT DISTINCT o.id, COALESCE(o.name_en, o.name_ar) AS name, pp.participant_type
+       FROM project_participants pp JOIN organizations o ON o.id = pp.organization_id
+       WHERE pp.project_id = $1 AND (pp.active_to IS NULL OR pp.active_to >= CURRENT_DATE)
+       ORDER BY name, o.id`, [projectId]);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('documents.transmittal.recipients failed', error);
+    return transmittalFailure(res, 500, 'transmittal_recipients_failed');
+  }
+});
+
 router.get('/transmittals', authenticate, authorize(), async (req, res) => {
   try {
     const { project_id, direction, status } = req.query;
     let conditions = []; let params = []; let idx = 1;
-    if (project_id) { conditions.push(`t.project_id = $${idx++}`); params.push(project_id); }
+    if (project_id) {
+      const parsedProjectId = Number(project_id);
+      if (!Number.isInteger(parsedProjectId) || parsedProjectId < 1) return transmittalFailure(res, 400, 'invalid_project_id');
+      if (!documentProjectAllowed(req, parsedProjectId)) return transmittalFailure(res, 403, 'project_scope_denied');
+      conditions.push(`t.project_id = $${idx++}`); params.push(parsedProjectId);
+    } else if (!req.accessScope?.companyWide) {
+      conditions.push(`t.project_id = ANY($${idx++}::int[])`); params.push(req.accessScope?.projectIds || []);
+    }
     if (direction) { conditions.push(`t.direction = $${idx++}`); params.push(direction); }
     if (status) { conditions.push(`t.status = $${idx++}`); params.push(status); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -528,8 +561,7 @@ router.get('/transmittals', authenticate, authorize(), async (req, res) => {
 });
 
 router.post('/transmittals', authenticate, authorize(), async (req, res) => {
-  try {
-    const schema = Joi.object({
+  const schema = Joi.object({
       project_id: Joi.number().integer().required(),
       direction: Joi.string().valid('incoming', 'outgoing').default('outgoing'),
       purpose: Joi.string().allow('', null).optional(),
@@ -546,9 +578,27 @@ router.post('/transmittals', authenticate, authorize(), async (req, res) => {
         copies_note: Joi.string().allow('', null).optional(),
       })).default([]),
     });
-    const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+  const { error, value } = schema.validate(req.body);
+  if (error) return transmittalFailure(res, 400, 'invalid_transmittal');
+  if (!documentProjectAllowed(req, value.project_id)) return transmittalFailure(res, 403, 'project_scope_denied');
+  try {
     const t = await auditedTransaction(async (q) => {
+      if (value.recipient_organization_id != null) {
+        const participant = await q('SELECT 1 FROM project_participants WHERE project_id = $1 AND organization_id = $2 AND (active_to IS NULL OR active_to >= CURRENT_DATE)', [value.project_id, value.recipient_organization_id]);
+        if (!participant.rows.length) throw Object.assign(new Error('transmittal_recipient_project_mismatch'), { status: 400, error_code: 'transmittal_recipient_project_mismatch' });
+      }
+      if (value.recipient_user_id != null) {
+        const participantUser = await q(
+          `SELECT 1 FROM project_participant_users pu JOIN project_participants pp ON pp.id = pu.project_participant_id
+           WHERE pp.project_id = $1 AND pu.user_id = $2 AND (pp.active_to IS NULL OR pp.active_to >= CURRENT_DATE)`,
+          [value.project_id, value.recipient_user_id]);
+        if (!participantUser.rows.length) throw Object.assign(new Error('transmittal_recipient_project_mismatch'), { status: 400, error_code: 'transmittal_recipient_project_mismatch' });
+      }
+      for (const item of value.items) {
+        if (item.document_id == null) continue;
+        const document = await q('SELECT 1 FROM project_documents WHERE id = $1 AND project_id = $2', [item.document_id, value.project_id]);
+        if (!document.rows.length) throw Object.assign(new Error('transmittal_document_project_mismatch'), { status: 400, error_code: 'transmittal_document_project_mismatch' });
+      }
       const transmittal = await doccontrolEngine.createTransmittal(q, value, req.user);
       for (const item of value.items) {
         await q(
@@ -561,13 +611,18 @@ router.post('/transmittals', authenticate, authorize(), async (req, res) => {
       return transmittal;
     }, (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Created transmittal ${result.transmittal_number}`, entityId: result.id, entityType: 'transmittal' }));
     res.status(201).json({ success: true, data: t });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) {
+    if (error.error_code) return transmittalFailure(res, error.status || 400, error.error_code);
+    console.error('documents.transmittal.create failed', error);
+    transmittalFailure(res, 500, 'transmittal_create_failed');
+  }
 });
 
 router.get('/transmittals/:id', authenticate, authorize(), async (req, res) => {
   try {
     const t = (await query(`${TRANSMITTAL_SELECT} WHERE t.id = $1`, [req.params.id])).rows[0];
     if (!t) return res.status(404).json({ success: false, error: 'Transmittal not found' });
+    if (!documentProjectAllowed(req, t.project_id)) return transmittalFailure(res, 404, 'transmittal_not_found');
     const items = (await query(
       `SELECT ti.*, d.title as document_title, d.doc_number FROM transmittal_items ti
        LEFT JOIN project_documents d ON ti.document_id = d.id WHERE ti.transmittal_id = $1 ORDER BY ti.id`,
@@ -578,23 +633,36 @@ router.get('/transmittals/:id', authenticate, authorize(), async (req, res) => {
 });
 
 router.post('/transmittals/:id/items', authenticate, authorize(), async (req, res) => {
-  try {
-    const schema = Joi.object({
+  const schema = Joi.object({
       document_id: Joi.number().integer().allow(null).optional(),
       item_description: Joi.string().allow('', null).optional(),
       ref_number: Joi.string().allow('', null).optional(),
       rev_code: Joi.string().allow('', null).optional(),
       copies_note: Joi.string().allow('', null).optional(),
     }).min(1);
-    const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const r = await query(
-      `INSERT INTO transmittal_items (transmittal_id, document_id, item_description, ref_number, rev_code, copies_note)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [req.params.id, value.document_id || null, value.item_description || null,
-       value.ref_number || null, value.rev_code || null, value.copies_note || null]);
-    res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  const { error, value } = schema.validate(req.body);
+  if (error) return transmittalFailure(res, 400, 'invalid_transmittal_item');
+  try {
+    const result = await auditedTransaction(async (q) => {
+      const transmittal = (await q('SELECT * FROM transmittals WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!transmittal) throw Object.assign(new Error('transmittal_not_found'), { status: 404, error_code: 'transmittal_not_found' });
+      if (!documentProjectAllowed(req, transmittal.project_id)) throw Object.assign(new Error('transmittal_not_found'), { status: 404, error_code: 'transmittal_not_found' });
+      if (value.document_id != null) {
+        const document = await q('SELECT 1 FROM project_documents WHERE id = $1 AND project_id = $2', [value.document_id, transmittal.project_id]);
+        if (!document.rows.length) throw Object.assign(new Error('transmittal_document_project_mismatch'), { status: 400, error_code: 'transmittal_document_project_mismatch' });
+      }
+      return q(
+        `INSERT INTO transmittal_items (transmittal_id, document_id, item_description, ref_number, rev_code, copies_note)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+        [req.params.id, value.document_id ?? null, value.item_description || null,
+          value.ref_number || null, value.rev_code || null, value.copies_note || null]);
+    }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Added item to transmittal #${req.params.id}`, entityId: req.params.id, entityType: 'transmittal' }));
+    res.status(201).json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    if (error.error_code) return transmittalFailure(res, error.status || 400, error.error_code);
+    console.error('documents.transmittal.item.create failed', error);
+    transmittalFailure(res, 500, 'transmittal_item_create_failed');
+  }
 });
 
 router.post('/transmittals/:id/status', authenticate, authorize(), async (req, res) => {
@@ -605,6 +673,8 @@ router.post('/transmittals/:id/status', authenticate, authorize(), async (req, r
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    const existing = (await query('SELECT project_id FROM transmittals WHERE id = $1', [req.params.id])).rows[0];
+    if (!existing || !documentProjectAllowed(req, existing.project_id)) return transmittalFailure(res, 404, 'transmittal_not_found');
     const t = await auditedTransaction((q) => doccontrolEngine.transitionTransmittal(q, req.params.id, value.status, req.user, { ackNote: value.ack_note }), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `Transmittal ${result.transmittal_number} → ${value.status}`, entityId: result.id, entityType: 'transmittal' }));
     res.json({ success: true, data: t });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
@@ -614,6 +684,7 @@ router.get('/transmittals/:id/pdf', authenticate, authorize(), async (req, res) 
   try {
     const t = (await query(`${TRANSMITTAL_SELECT} WHERE t.id = $1`, [req.params.id])).rows[0];
     if (!t) return res.status(404).json({ success: false, error: 'Transmittal not found' });
+    if (!documentProjectAllowed(req, t.project_id)) return transmittalFailure(res, 404, 'transmittal_not_found');
     const items = (await query('SELECT * FROM transmittal_items WHERE transmittal_id = $1 ORDER BY id', [req.params.id])).rows;
     const name = await projectNameFor(query, t.project_id);
     const pdf = await renderDocument({

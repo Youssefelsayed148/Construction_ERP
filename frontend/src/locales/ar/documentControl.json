@@ -1,16 +1,73 @@
 {
   "title": "التحكم في المستندات",
   "transmittals": "مراسلات إرسال المستندات",
+  "transmittalForm": {
+    "new": "مذكرة إرسال جديدة",
+    "number": "رقم مذكرة الإرسال",
+    "direction": "الاتجاه",
+    "outgoing": "صادرة",
+    "incoming": "واردة",
+    "recipient": "الجهة المستلمة",
+    "selectRecipient": "اختر طرفاً مشاركاً بالمشروع",
+    "purpose": "الغرض",
+    "attention": "عناية",
+    "responseDue": "موعد الرد",
+    "documents": "المستندات",
+    "status": "الحالة",
+    "loading": "جاري تحميل سجلات المشروع…",
+    "loadError": "تعذر تحميل جهات الاستلام أو مستندات المشروع."
+  },
   "correspondence": "المراسلات",
   "register": {
-    "number": "رقم المستند", "title": "العنوان", "type": "النوع", "status": "الحالة", "locationPackage": "الموقع / الحزمة",
-    "controlledType": "نوع المستند الخاضع للضبط", "discipline": "التخصص", "issueDate": "تاريخ الإصدار", "reviewDue": "موعد المراجعة",
-    "confidentiality": "درجة السرية", "visibility": "إمكانية الظهور في البوابة", "locationId": "رقم موقع المشروع", "package": "الحزمة",
-    "originatorId": "رقم الجهة المُصدرة", "recipientId": "رقم الجهة المستلمة",
-    "confidentialityLevels": { "public": "عام", "internal": "داخلي", "confidential": "سري", "restricted": "مقيد" },
-    "visibilityLevels": { "internal": "داخلي فقط", "client": "العميل", "consultant": "الاستشاري", "subcontractor": "مقاول الباطن", "all_external": "جميع الحسابات الخارجية" },
-    "types": { "drawing": "رسم", "specification": "مواصفة", "contract": "عقد", "report": "تقرير", "method_statement": "بيان طريقة العمل", "as_built": "مخطط كما نُفذ", "o_m": "التشغيل والصيانة", "other": "أخرى" },
-    "disciplines": { "architectural": "معماري", "structural": "إنشائي", "civil": "مدني", "mechanical": "ميكانيكي", "electrical": "كهربائي", "plumbing": "سباكة", "hvac": "تكييف وتهوية", "fire": "حريق", "general": "عام" }
+    "number": "رقم المستند",
+    "title": "العنوان",
+    "type": "النوع",
+    "status": "الحالة",
+    "locationPackage": "الموقع / الحزمة",
+    "controlledType": "نوع المستند الخاضع للضبط",
+    "discipline": "التخصص",
+    "issueDate": "تاريخ الإصدار",
+    "reviewDue": "موعد المراجعة",
+    "confidentiality": "درجة السرية",
+    "visibility": "إمكانية الظهور في البوابة",
+    "locationId": "رقم موقع المشروع",
+    "package": "الحزمة",
+    "originatorId": "رقم الجهة المُصدرة",
+    "recipientId": "رقم الجهة المستلمة",
+    "confidentialityLevels": {
+      "public": "عام",
+      "internal": "داخلي",
+      "confidential": "سري",
+      "restricted": "مقيد"
+    },
+    "visibilityLevels": {
+      "internal": "داخلي فقط",
+      "client": "العميل",
+      "consultant": "الاستشاري",
+      "subcontractor": "مقاول الباطن",
+      "all_external": "جميع الحسابات الخارجية"
+    },
+    "types": {
+      "drawing": "رسم",
+      "specification": "مواصفة",
+      "contract": "عقد",
+      "report": "تقرير",
+      "method_statement": "بيان طريقة العمل",
+      "as_built": "مخطط كما نُفذ",
+      "o_m": "التشغيل والصيانة",
+      "other": "أخرى"
+    },
+    "disciplines": {
+      "architectural": "معماري",
+      "structural": "إنشائي",
+      "civil": "مدني",
+      "mechanical": "ميكانيكي",
+      "electrical": "كهربائي",
+      "plumbing": "سباكة",
+      "hvac": "تكييف وتهوية",
+      "fire": "حريق",
+      "general": "عام"
+    }
   },
   "rfiImpacts": {
     "location": "???? ???????",
