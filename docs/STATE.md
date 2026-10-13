@@ -12,8 +12,9 @@
 
 ## Next
 
-1. Commit the audited `docs/PLAN_5_6_TO_6.md` before implementation.
-2. Implement Phases 5.6, 5.7, 5.8, and 6 slice by slice, running only ticket-related checks during phase work and broader suites at phase integration checkpoints.
+1. Commit the Phase 5.6.1 observation record completeness slice after final diff review.
+2. Continue with Phase 5.6.2 consultant site and review workflow, using focused checks; broader verification remains at the Phase 5.6 integration gate.
+3. Continue Phases 5.7, 5.8 and 6 in the audited order in `docs/PLAN_5_6_TO_6.md`.
 
 ## Decisions and limits
 

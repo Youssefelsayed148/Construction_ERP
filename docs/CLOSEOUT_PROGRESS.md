@@ -407,3 +407,9 @@ Migration `0045_retention_release_postings.sql` applied to the local staging and
 ## 2026-10-13: Phase 5.6–6 code audit and execution plan
 
 Audited `docs/ERP_CLOSEOUT_PLAN.md` lines 275–343 against current routes, migrations, services, frontend routes and screens. The detailed status and ticket acceptance criteria are in `docs/PLAN_5_6_TO_6.md`. The audit corrected stale items: incident-table migration/compatibility view, schedule entities, handover records, project setup APIs, project navigation, procurement and finance workspaces already exist. Remaining work is scoped to missing workflow behavior, formal portal registers/forms, record links/register gaps, remaining prompt flows, and provider/token/session decisions. The dedicated plan is committed before Phase 5.6 implementation begins. Per the user's cadence, each ticket will use focused checks; broader verification is reserved for phase integration gates.
+
+## 2026-10-13: Phase 5.6.1 observation record completeness
+
+Added migration `0046_observation_record_completeness.sql` for observation due dates and drawing links. Observation creation now verifies drawing type/project/consultant visibility, validates same-project locations and actor-owned uploaded evidence, and records before/after photos in the shared photo model. Consultant media reads require the matching assigned organization and project. The portal's raise-observation prompt is now a bilingual scoped form with due date, drawing selection/reference, severity and separate before/after uploads. Date-only fields are normalized to prevent timezone shifts in JSON.
+
+Focused verification: isolated PostgreSQL migration applied; real-Postgres observation test passed 1/1; consultant and media-access tests passed 2 suites / 18 tests; portal observation-form test passed 1/1; i18n check and production build passed; backend syntax checks and `git diff --check` passed. No full suite was run.

@@ -28,11 +28,11 @@ The incident-table merge requested in 5.7 is not a fresh schema project: `hse-mi
 
 ### 5.6.1 Observation record completeness
 
-**Status: Open.** Extend observations with due date, drawing reference, and before/after evidence links. Use the existing document/media upload and protected-media patterns; store references and captions, not untrusted inline file data. Return the fields consistently from the consultant inbox and project/site views. Add project-scope checks and typed validation errors.
+**Status: Implemented in slice `Phase 5.6.1` (2026-10-13).** Observations now store due date and drawing reference/document link, attach before/after evidence through the shared photo model, and show due dates in the consultant inbox. Drawing links are checked for project and consultant visibility; evidence must be an upload owned by the actor. Protected media access is limited to consultants in the assigned organization and project. Date-only values are preserved through PostgreSQL reads and JSON responses.
 
 **Acceptance:** create, update, list, and detail preserve the metadata and evidence; users cannot attach or read evidence across project scope; EN/AR forms have loading, empty and error states.
 
-**Focused checks:** consultant/observation PostgreSQL tests for validation, scoping and round-trip metadata; observation component test; locale parity for touched keys.
+**Verification:** migration `0046_observation_record_completeness.sql` applied to the isolated PostgreSQL test database; focused real-Postgres observation test passed 1/1; consultant and media-access tests passed 2 suites / 18 tests; portal observation-form test passed 1/1; `i18n:check`, production build, Node syntax checks and `git diff --check` passed. No full suite was run.
 
 ### 5.6.2 Consultant site and review workflow
 

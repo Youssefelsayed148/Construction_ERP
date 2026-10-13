@@ -2,6 +2,7 @@
 
 const { canAccessMedia } = require('../../services/mediaAccess');
 const clientEngine = require('../../services/clientEngine');
+const consultantEngine = require('../../services/consultantEngine');
 
 describe('authenticated media access', () => {
   afterEach(() => jest.restoreAllMocks());
@@ -42,6 +43,26 @@ describe('authenticated media access', () => {
     });
     expect(await canAccessMedia(q, { id: 12, role: 'client' }, 'site-photo.jpg')).toBe(false);
     expect(q).not.toHaveBeenCalledWith(expect.stringContaining('photos'), expect.anything());
+  });
+
+  test('consultants can access observation evidence only within their assigned organization and project', async () => {
+    jest.spyOn(consultantEngine, 'resolveConsultantProjects').mockResolvedValue([7]);
+    const q = jest.fn(async (sql) => {
+      if (sql.includes('uploaded_files')) return { rows: [] };
+      if (sql.includes('organization_users')) return { rows: [{ organization_id: 5, is_active: true }] };
+      if (sql.includes('photos')) return { rows: [{ project_id: 7, organization_id: 5 }] };
+      if (sql.includes('project_documents')) return { rows: [] };
+      return { rows: [] };
+    });
+    expect(await canAccessMedia(q, { id: 20, role: 'consultant' }, 'before.jpg')).toBe(true);
+    q.mockImplementation(async (sql) => {
+      if (sql.includes('uploaded_files')) return { rows: [] };
+      if (sql.includes('organization_users')) return { rows: [{ organization_id: 5, is_active: true }] };
+      if (sql.includes('photos')) return { rows: [{ project_id: 8, organization_id: 5 }] };
+      if (sql.includes('project_documents')) return { rows: [] };
+      return { rows: [] };
+    });
+    expect(await canAccessMedia(q, { id: 20, role: 'consultant' }, 'before.jpg')).toBe(false);
   });
 
   test('requires internal users to have policy access to the project that owns the media', async () => {

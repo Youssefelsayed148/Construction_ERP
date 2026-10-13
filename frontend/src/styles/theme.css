@@ -791,6 +791,24 @@ html[dir='rtl'] .table td {
   margin-block-start: 0;
 }
 
+.portal-observation-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 12px;
+  margin-block: 16px;
+  padding: 16px;
+}
+
+.portal-observation-form h2,
+.portal-observation-form .form-actions {
+  grid-column: 1 / -1;
+}
+
+.portal-observation-form label {
+  display: grid;
+  gap: 5px;
+}
+
 @media (max-width: 900px) {
   .main-content {
     margin-inline: 0;

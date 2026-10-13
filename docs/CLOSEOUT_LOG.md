@@ -1173,3 +1173,9 @@ Migration `0045_retention_release_postings.sql` was applied to local staging and
 ## 2026-10-13: Phase 5.6–6 code audit and execution plan
 
 Reviewed the Phase 5.6–6 checklist in `ERP_CLOSEOUT_PLAN.md` against current backend routes/migrations/services and frontend routes/components. `PLAN_5_6_TO_6.md` records evidence, stale source-plan entries, open work, acceptance criteria, focused checks, dependencies and external decisions. Key corrections: the incident merge migration/view, schedules, handover records, project setup APIs and procurement/finance workspaces are already present; remaining work is narrower and tied to missing formal workflows, registers and screens. The plan must be committed before phase implementation.
+
+## 2026-10-13: Phase 5.6.1 observation record completeness
+
+Observations now include due date, drawing reference and an optional project drawing link. Before/after uploads attach to the shared photo model after server-side owner, project, type and portal-visibility checks. Consultant media access is constrained to the assigned organization/project. `myReviews` returns the due date as a stable date-only string. The consultant portal's raise action is a bilingual form backed by the upload component and selects only the consultant's assigned projects and approved visible drawings.
+
+Verification: migration 0046 applied to the disposable PostgreSQL database; focused real-Postgres round-trip/scoping test 1/1; consultant/media mock tests 18/18; portal component test 1/1; locale check and frontend build passed; syntax and diff checks passed. No broad suite was run.

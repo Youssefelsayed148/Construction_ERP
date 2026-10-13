@@ -2,5 +2,28 @@
   "title": "البوابة",
   "actionCenter": "مركز الإجراءات",
   "myReviews": "مراجعاتي",
-  "previewBanner": "وضع المعاينة: للقراءة فقط"
+  "previewBanner": "وضع المعاينة: للقراءة فقط",
+  "observation": {
+    "raise": "رفع ملاحظة",
+    "title": "ملاحظة موقع جديدة",
+    "project": "المشروع",
+    "projectOption": "المشروع {{id}}",
+    "titleField": "العنوان",
+    "description": "الوصف",
+    "dueDate": "تاريخ الاستحقاق",
+    "drawing": "المخطط المرجعي",
+    "noDrawing": "لا يوجد مخطط محدد",
+    "drawingReference": "مرجع المخطط",
+    "severity": "الأهمية",
+    "severityOptions": {
+      "low": "منخفض",
+      "normal": "عادي",
+      "high": "مرتفع",
+      "urgent": "عاجل"
+    },
+    "beforePhotos": "صور قبل الإصلاح",
+    "afterPhotos": "صور بعد الإصلاح",
+    "submit": "إرسال الملاحظة",
+    "submitError": "تعذر إرسال الملاحظة. تحقق من الحقول المطلوبة والملفات المرفوعة."
+  }
 }

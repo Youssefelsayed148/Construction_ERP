@@ -2,5 +2,23 @@
   "title": "Portal",
   "actionCenter": "Action center",
   "myReviews": "My reviews",
-  "previewBanner": "Preview mode: read-only"
+  "previewBanner": "Preview mode: read-only",
+  "observation": {
+    "raise": "Raise observation",
+    "title": "New site observation",
+    "project": "Project",
+    "projectOption": "Project {{id}}",
+    "titleField": "Title",
+    "description": "Description",
+    "dueDate": "Due date",
+    "drawing": "Reference drawing",
+    "noDrawing": "No drawing selected",
+    "drawingReference": "Drawing reference",
+    "severity": "Severity",
+    "severityOptions": { "low": "Low", "normal": "Normal", "high": "High", "urgent": "Urgent" },
+    "beforePhotos": "Before photos",
+    "afterPhotos": "After photos",
+    "submit": "Submit observation",
+    "submitError": "The observation could not be submitted. Check the required fields and uploaded evidence."
+  }
 }

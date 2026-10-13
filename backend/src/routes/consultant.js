@@ -49,6 +49,17 @@ router.post('/observations', authenticate, authorize(), async (req, res) => {
       description: Joi.string().allow('').optional(),
       discipline: Joi.string().allow('', null),
       location_id: Joi.number().integer().optional().allow(null),
+      due_date: Joi.string().isoDate().allow(null),
+      drawing_reference: Joi.string().trim().max(255).allow('', null),
+      drawing_document_id: Joi.number().integer().positive().allow(null),
+      before_photos: Joi.array().max(5).items(Joi.object({
+        file_name: Joi.string().pattern(/^[a-zA-Z0-9_.-]+$/).required(),
+        file_url: Joi.string().max(1000).required(), caption: Joi.string().max(1000).allow('', null),
+      })).default([]),
+      after_photos: Joi.array().max(5).items(Joi.object({
+        file_name: Joi.string().pattern(/^[a-zA-Z0-9_.-]+$/).required(),
+        file_url: Joi.string().max(1000).required(), caption: Joi.string().max(1000).allow('', null),
+      })).default([]),
       severity: Joi.string().valid('low', 'normal', 'high', 'urgent').default('normal'),
     });
     const { error, value } = schema.validate(req.body);

@@ -63,7 +63,9 @@ async function buildFixture() {
     description TEXT, status VARCHAR(30) DEFAULT 'open')`);
   await q(`CREATE TABLE IF NOT EXISTS project_documents (
     id SERIAL PRIMARY KEY, project_id INTEGER, category_id INTEGER, title VARCHAR(255), file_name VARCHAR(255),
-    document_type VARCHAR(50), status VARCHAR(30), portal_visibility VARCHAR(30))`);
+    document_type VARCHAR(50), status VARCHAR(30), portal_visibility VARCHAR(30), file_url VARCHAR(1000))`);
+  await q(`CREATE TABLE IF NOT EXISTS uploaded_files (
+    file_name VARCHAR(255) PRIMARY KEY, uploaded_by INTEGER, uploaded_at TIMESTAMPTZ DEFAULT NOW())`);
   await q(`CREATE TABLE IF NOT EXISTS document_categories (id SERIAL PRIMARY KEY, code VARCHAR(50))`);
   await q(`CREATE TABLE IF NOT EXISTS site_daily_reports (
     id SERIAL PRIMARY KEY, project_id INTEGER, report_date DATE, work_summary TEXT)`);
@@ -111,6 +113,9 @@ async function buildFixture() {
   await consultantMigration.ensureTables(q);
   await consultantMigration.widenObservationTemplate(q);
   await consultantMigration.ensureTables(q); // idempotent
+  await q('ALTER TABLE observations ADD COLUMN IF NOT EXISTS due_date DATE');
+  await q('ALTER TABLE observations ADD COLUMN IF NOT EXISTS drawing_reference VARCHAR(255)');
+  await q('ALTER TABLE observations ADD COLUMN IF NOT EXISTS drawing_document_id INTEGER REFERENCES project_documents(id) ON DELETE SET NULL');
 
   await q(`INSERT INTO users (id, name, email, role, is_active) VALUES ($1,$2,$3,$4,$5)`, [20, 'Consultant Rep', 'c@x.com', 'consultant', true]);
   await q(`INSERT INTO users (id, name, email, role, is_active) VALUES ($1,$2,$3,$4,$5)`, [4, 'PM', 'pm@x.com', 'project_manager', true]);
@@ -176,6 +181,30 @@ describe('observation workflow (exact states)', () => {
     expect(history[0].to_status).toBe('raised');
   });
 
+  test('new observation preserves due date, drawing reference, and owned before/after evidence', async () => {
+    await q(`INSERT INTO project_documents (id, project_id, title, file_name, document_type, status, portal_visibility, file_url)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, [901, 1, 'Structural plan S-12', 's12.pdf', 'drawing', 'approved', 'consultant', '/uploads/s12.pdf']);
+    await q(`INSERT INTO project_documents (id, project_id, title, file_name, document_type, status, portal_visibility, file_url)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, [902, 1, 'Submittal file', 'submittal.pdf', 'submittal', 'approved', 'consultant', '/uploads/submittal.pdf']);
+    await q('INSERT INTO uploaded_files (file_name, uploaded_by) VALUES ($1,$2)', ['before-obs.jpg', CONSULTANT.id]);
+    await q('INSERT INTO uploaded_files (file_name, uploaded_by) VALUES ($1,$2)', ['after-obs.jpg', CONSULTANT.id]);
+    const obs = await engine.createObservation(q, {
+      project_id: 1, title: 'Column repair review', description: 'Inspect the repaired face', user: CONSULTANT,
+      due_date: '2026-10-20', drawing_reference: 'S-12 / Rev 4', drawing_document_id: 901,
+      before_photos: [{ file_name: 'before-obs.jpg', file_url: '/uploads/before-obs.jpg', caption: 'Before repair' }],
+      after_photos: [{ file_name: 'after-obs.jpg', file_url: '/uploads/after-obs.jpg', caption: 'After repair' }],
+    });
+    expect(obs).toMatchObject({ due_date: '2026-10-20', drawing_reference: 'S-12 / Rev 4', drawing_document_id: 901 });
+    const evidence = (await q('SELECT * FROM photos WHERE linked_entity_id = $1', [obs.id])).rows;
+    expect(evidence.map((row) => [row.linked_entity_type, row.file_url, row.caption, row.organization_id])).toEqual([
+      ['observation_before', '/uploads/before-obs.jpg', 'Before repair', 5],
+      ['observation_after', '/uploads/after-obs.jpg', 'After repair', 5],
+    ]);
+    await expect(engine.createObservation(q, {
+      project_id: 1, title: 'Wrong document type', user: CONSULTANT, drawing_document_id: 902,
+    })).rejects.toThrow(/Reference drawing/);
+  });
+
   test('full lifecycle: acknowledged → assigned → rectification → submitted → rejected → reopened → accepted → closed', async () => {
     let obs = await engine.advanceObservation(q, obsId, CONSULTANT, 'acknowledge');
     expect(obs.status).toBe('acknowledged');
@@ -184,7 +213,7 @@ describe('observation workflow (exact states)', () => {
     expect(obs.status).toBe('assigned');
     expect(obs.assigned_user_id).toBe(SUPERVISOR.id);
     // Assignment creates a rectification action for the assignee.
-    const rectActions = (await q("SELECT * FROM action_items WHERE source_type = 'observation' AND status = 'open'")).rows;
+    const rectActions = (await q("SELECT * FROM action_items WHERE source_type = 'observation' AND source_id = $1 AND status = 'open'", [obsId])).rows;
     expect(rectActions.length).toBe(1);
     expect(rectActions[0].assigned_user_id).toBe(SUPERVISOR.id);
 
@@ -202,7 +231,7 @@ describe('observation workflow (exact states)', () => {
     expect(photos[0].caption).toBe('Repaired column');
 
     // The rectification action completed on submission.
-    const openAfterSubmit = (await q("SELECT * FROM action_items WHERE source_type = 'observation' AND status = 'open'")).rows;
+    const openAfterSubmit = (await q("SELECT * FROM action_items WHERE source_type = 'observation' AND source_id = $1 AND status = 'open'", [obsId])).rows;
     expect(openAfterSubmit.length).toBe(0);
 
     // Rejection reopens with a new comment and full audit trail.

@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshCw, FolderKanban, ClipboardCheck, Building2, Truck, Send } from 'lucide-react';
 import { authService } from '../services/api';
 import { openProtectedFile } from '../components/ProtectedMedia';
+import DocumentUpload from '../components/DocumentUpload';
+import { useLocale } from '../hooks/useLocale';
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
 
@@ -81,6 +83,13 @@ function Record({ value }) {
 }
 
 function QuickActions({ kind, data, onDone }) {
+  const { t } = useLocale();
+  const [showObservationForm, setShowObservationForm] = useState(false);
+  const [observation, setObservation] = useState({ project_id: data.project_ids?.[0] || '', title: '', description: '', due_date: '', drawing_reference: '', drawing_document_id: '', severity: 'normal' });
+  const [beforePhotos, setBeforePhotos] = useState([]);
+  const [afterPhotos, setAfterPhotos] = useState([]);
+  const [observationError, setObservationError] = useState('');
+  const [savingObservation, setSavingObservation] = useState(false);
   const submit = async (path, body) => {
     await request(path, { method: 'POST', body: JSON.stringify(body) });
     onDone();
@@ -107,11 +116,24 @@ function QuickActions({ kind, data, onDone }) {
     if (!response.ok) throw new Error(body.error || 'Upload failed');
     return body.data.map((file) => ({ file_name: file.original_name, file_url: file.file_url }));
   };
-  const createObservation = async () => {
-    const project_id = Number(window.prompt('Project ID', data.project_ids?.[0] || ''));
-    const title = window.prompt('Observation title');
-    if (project_id && title) await submit('/api/consultant/observations', { project_id, title });
+  const createObservation = async (event) => {
+    event.preventDefault(); setObservationError(''); setSavingObservation(true);
+    try {
+      const evidence = (files) => files.map((file) => ({
+        file_name: file.file_url.split('/').pop(), file_url: file.file_url, caption: file.original_name,
+      }));
+      await submit('/api/consultant/observations', {
+        ...observation, project_id: Number(observation.project_id), due_date: observation.due_date || null,
+        drawing_document_id: observation.drawing_document_id ? Number(observation.drawing_document_id) : null,
+        before_photos: evidence(beforePhotos), after_photos: evidence(afterPhotos),
+      });
+      setShowObservationForm(false);
+      setObservation({ project_id: data.project_ids?.[0] || '', title: '', description: '', due_date: '', drawing_reference: '', drawing_document_id: '', severity: 'normal' });
+      setBeforePhotos([]); setAfterPhotos([]);
+    } catch (error) { setObservationError(t('portals.observation.submitError')); }
+    finally { setSavingObservation(false); }
   };
+  const drawings = (data.latest_drawings?.items || []).filter((drawing) => Number(drawing.project_id) === Number(observation.project_id));
   const createRfi = async () => {
     const sub_contract_id = Number(window.prompt('Package ID', data.packages?.[0]?.id || ''));
     const project_id = Number(data.packages?.find(p => p.id === sub_contract_id)?.project_id);
@@ -240,7 +262,7 @@ function QuickActions({ kind, data, onDone }) {
     });
   };
   const actions = kind === 'consultant'
-    ? [['Raise observation', createObservation], ['Advance observation', advanceObservation], ['Review RFI', reviewRfi], ['Review submittal', reviewSubmittal]]
+    ? [[t('portals.observation.raise'), () => setShowObservationForm((open) => !open)], ['Advance observation', advanceObservation], ['Review RFI', reviewRfi], ['Review submittal', reviewSubmittal]]
     : kind === 'subcontractor'
       ? [['Acknowledge package', acknowledgeContract], ['Acknowledge instruction', acknowledgeInstruction],
         ['Submit RFI', createRfi], ['Acknowledge RFI', acknowledgeRfi], ['Submit submittal', createSubmittal],
@@ -254,7 +276,29 @@ function QuickActions({ kind, data, onDone }) {
           ['Propose delivery', proposeDelivery], ['Upload delivery certificate', uploadCertificate], ['Submit invoice', submitInvoice]]
         : [];
   if (!actions.length) return null;
-  return <div className="portal-actions">{actions.map(([text, fn]) => <button className="btn btn-primary btn-sm" key={text} onClick={() => fn().catch(e => window.alert(e.message))}><Send size={14} /> {text}</button>)}</div>;
+  return <div className="portal-actions">{actions.map(([text, fn]) => <button className="btn btn-primary btn-sm" key={text} onClick={() => Promise.resolve(fn()).catch(e => window.alert(e.message))}><Send size={14} /> {text}</button>)}
+    {showObservationForm && kind === 'consultant' && <form className="card portal-observation-form" onSubmit={createObservation}>
+      <h2>{t('portals.observation.title')}</h2>
+      {observationError && <p className="alert alert-danger" role="alert">{observationError}</p>}
+      <label>{t('portals.observation.project')}<select required value={observation.project_id} onChange={(event) => setObservation({ ...observation, project_id: event.target.value, drawing_document_id: '' })}>
+        {(data.project_ids || []).map((projectId) => <option key={projectId} value={projectId}>{t('portals.observation.projectOption', { id: projectId })}</option>)}
+      </select></label>
+      <label>{t('portals.observation.titleField')}<input required maxLength="255" value={observation.title} onChange={(event) => setObservation({ ...observation, title: event.target.value })} /></label>
+      <label>{t('portals.observation.description')}<textarea maxLength="5000" value={observation.description} onChange={(event) => setObservation({ ...observation, description: event.target.value })} /></label>
+      <label>{t('portals.observation.dueDate')}<input type="date" value={observation.due_date} onChange={(event) => setObservation({ ...observation, due_date: event.target.value })} /></label>
+      <label>{t('portals.observation.drawing')}<select value={observation.drawing_document_id} onChange={(event) => {
+        const drawing = drawings.find((item) => String(item.id) === event.target.value);
+        setObservation({ ...observation, drawing_document_id: event.target.value, drawing_reference: drawing?.title || observation.drawing_reference });
+      }}><option value="">{t('portals.observation.noDrawing')}</option>{drawings.map((drawing) => <option key={drawing.id} value={drawing.id}>{drawing.title}</option>)}</select></label>
+      <label>{t('portals.observation.drawingReference')}<input maxLength="255" value={observation.drawing_reference} onChange={(event) => setObservation({ ...observation, drawing_reference: event.target.value })} /></label>
+      <label>{t('portals.observation.severity')}<select value={observation.severity} onChange={(event) => setObservation({ ...observation, severity: event.target.value })}>
+        {['low', 'normal', 'high', 'urgent'].map((value) => <option value={value} key={value}>{t(`portals.observation.severityOptions.${value}`)}</option>)}
+      </select></label>
+      <DocumentUpload label={t('portals.observation.beforePhotos')} onUploaded={setBeforePhotos} maxFiles={5} accept="image/*" />
+      <DocumentUpload label={t('portals.observation.afterPhotos')} onUploaded={setAfterPhotos} maxFiles={5} accept="image/*" />
+      <div className="form-actions"><button type="button" className="btn" onClick={() => setShowObservationForm(false)} disabled={savingObservation}>{t('common.cancel')}</button><button type="submit" className="btn btn-primary" disabled={savingObservation}>{t('portals.observation.submit')}</button></div>
+    </form>}
+  </div>;
 }
 
 export default function PortalDashboard({ kind }) {

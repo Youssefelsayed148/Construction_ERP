@@ -50,6 +50,16 @@ async function canAccessMedia(q, user, fileName, preview = null, policyEvaluator
     projectIds = projectIds.filter((id) => previewProjects.includes(Number(id)));
   }
   if (!projectIds.length) return false;
+  if (user.role === 'consultant') {
+    const links = (await q('SELECT organization_id, is_active FROM organization_users WHERE user_id = $1', [user.id])).rows
+      .filter((link) => link.is_active !== false)
+      .map((link) => Number(link.organization_id));
+    const evidence = (await q(
+      `SELECT project_id, organization_id FROM photos
+        WHERE file_url = $1 AND linked_entity_type IN ('observation_before', 'observation_after')`, [fileUrl]
+    )).rows;
+    if (evidence.some((photo) => projectIds.includes(Number(photo.project_id)) && links.includes(Number(photo.organization_id)))) return true;
+  }
   const docs = (await q('SELECT project_id, status, portal_visibility FROM project_documents WHERE file_url = $1', [fileUrl])).rows;
   if (docs.some((d) => projectIds.includes(Number(d.project_id)) && d.status === 'approved' && allowedVisibility.includes(d.portal_visibility))) return true;
   // Photo metadata has no approval or external-visibility state, so project membership alone is not sufficient.

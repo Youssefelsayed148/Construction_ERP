@@ -23,6 +23,7 @@
 const { query: defaultQuery } = require('../config/database');
 const { nextNumber } = require('./numbering');
 const workflowEngine = require('./workflowEngine');
+const OBSERVATION_IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
 
 const OBSERVATION_TRANSITIONS = {
   raised: ['acknowledged'],
@@ -48,6 +49,15 @@ function toNum(v) {
   if (v == null) return 0;
   const n = typeof v === 'number' ? v : parseFloat(v);
   return Number.isFinite(n) ? n : 0;
+}
+
+function dateOnly(value) {
+  if (value == null || value === '') return null;
+  if (typeof value === 'string') return value.slice(0, 10);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const pad = (part) => String(part).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 // Best-effort widget loader — a missing table renders an empty widget, never
@@ -126,20 +136,51 @@ async function consultantIdentity(q, user, projectId) {
 
 async function createObservation(q, {
   project_id, title, description = null, discipline = null, location_id = null,
-  severity = 'normal', user, organization_id = null,
+  severity = 'normal', due_date = null, drawing_reference = null, drawing_document_id = null,
+  before_photos = [], after_photos = [], user, organization_id = null,
 }) {
   await assertConsultantProject(q, user, project_id);
   if (user.role === 'consultant') organization_id = (await consultantIdentity(q, user, project_id)).organization_id;
+  if (location_id != null) {
+    const location = (await q('SELECT project_id FROM project_locations WHERE id = $1', [location_id])).rows[0];
+    if (!location || toNum(location.project_id) !== toNum(project_id)) throw new Error('Observation location must belong to the same project');
+  }
+  if (drawing_document_id != null) {
+    const drawing = (await q('SELECT * FROM project_documents WHERE id = $1', [drawing_document_id])).rows[0];
+    if (!drawing || toNum(drawing.project_id) !== toNum(project_id) || drawing.document_type !== 'drawing') throw new Error('Reference drawing must belong to the same project');
+    if (user.role === 'consultant' && (drawing.status !== 'approved' || !['consultant', 'all_external'].includes(drawing.portal_visibility))) {
+      throw new Error('Reference drawing is not available in the consultant portal');
+    }
+  }
   const observationNumber = await nextNumber(q, { table: 'observations', column: 'observation_number', prefix: 'OBS', pad: 4 });
 
   const r = await q(
     `INSERT INTO observations (observation_number, project_id, consultant_organization_id, consultant_user_id,
-       discipline, location_id, title, description, severity, status, raised_by_user_id, raised_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'raised',$10,$11) RETURNING *`,
+       discipline, location_id, title, description, severity, due_date, drawing_reference, drawing_document_id,
+       status, raised_by_user_id, raised_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'raised',$13,$14) RETURNING *`,
     [observationNumber, project_id, organization_id, user.id, discipline, location_id,
-     title, description, severity, user.id, new Date()]
+     title, description, severity, due_date || null, drawing_reference || null, drawing_document_id || null, user.id, new Date()]
   );
   const observation = r.rows[0];
+  observation.due_date = dateOnly(observation.due_date);
+
+  for (const [kind, evidence] of [['observation_before', before_photos], ['observation_after', after_photos]]) {
+    for (const file of evidence) {
+      const fileName = String(file.file_name || '');
+      const extension = fileName.slice(fileName.lastIndexOf('.')).toLowerCase();
+      if (!/^[a-zA-Z0-9_.-]+$/.test(fileName) || fileName === '.' || fileName === '..' || !OBSERVATION_IMAGE_EXTENSIONS.has(extension) || file.file_url !== `/uploads/${fileName}`) {
+        throw new Error('Observation evidence must reference an uploaded image file');
+      }
+      const ownedFile = (await q('SELECT file_name FROM uploaded_files WHERE file_name = $1 AND uploaded_by = $2', [fileName, user.id])).rows[0];
+      if (!ownedFile) throw new Error('Observation evidence must be uploaded by the current user');
+      await q(
+        `INSERT INTO photos (project_id, linked_entity_type, linked_entity_id, file_name, file_url, uploader_user_id, organization_id, caption)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [project_id, kind, observation.id, fileName, file.file_url, user.id, organization_id, file.caption || null]
+      );
+    }
+  }
 
   const workflow = await workflowEngine.startWorkflow(
     'consultant_observation', 'observation', observation.id,
@@ -183,7 +224,7 @@ async function createObservation(q, {
       entityType: 'observation',
       entityId: observation.id,
       userId: user.id, userName: user.name, userRole: user.role,
-      payload: { project_id, title, description, severity },
+      payload: { project_id, title, description, severity, due_date, drawing_document_id },
     }, { query: q });
   } catch (e) {
     console.error('[CONSULTANT] observation event failed:', e.message);
@@ -493,7 +534,7 @@ async function myReviews(q, user, filters = {}) {
 
   const observations = (await safeAll(q, "SELECT * FROM observations WHERE status = 'submitted_for_verification'", []))
     .filter(scopedProject).filter(scopedDiscipline).filter(() => !filters.type || filters.type === 'observation');
-  addAll('observation', observations, (type, r0) => ({ type, id: r0.id, project_id: toNum(r0.project_id), number: r0.observation_number, title: r0.title, due_date: null, priority: r0.severity === 'urgent' ? 'high' : 'normal', status: r0.status, discipline: r0.discipline || null, location_id: r0.location_id || null }));
+  addAll('observation', observations, (type, r0) => ({ type, id: r0.id, project_id: toNum(r0.project_id), number: r0.observation_number, title: r0.title, due_date: dateOnly(r0.due_date), priority: r0.severity === 'urgent' ? 'high' : 'normal', status: r0.status, discipline: r0.discipline || null, location_id: r0.location_id || null, drawing_reference: r0.drawing_reference || null, drawing_document_id: r0.drawing_document_id || null }));
 
   const ncrs = (await safeAll(q, "SELECT * FROM ncrs WHERE status IN ('verification','resolved')", []))
     .filter(scopedProject).filter(() => !filters.type || filters.type === 'ncr');
@@ -589,7 +630,7 @@ async function consultantDashboard(q, user, { project_id = null, now = new Date(
   dashboard.submittals_awaiting_review = { items: submittals.map((s) => ({ id: s.id, submittal_number: s.submittal_number, title: s.title })), count: submittals.length, empty_label: 'No submittals awaiting review' };
 
   const obs = forProjects((await safeAll(q, "SELECT * FROM observations WHERE status = 'submitted_for_verification'", [])));
-  dashboard.observations_awaiting_verification = { items: obs.map((o) => ({ id: o.id, observation_number: o.observation_number, title: o.title })), count: obs.length, empty_label: 'No observations awaiting verification' };
+  dashboard.observations_awaiting_verification = { items: obs.map((o) => ({ id: o.id, observation_number: o.observation_number, title: o.title, due_date: dateOnly(o.due_date), drawing_reference: o.drawing_reference || null })), count: obs.length, empty_label: 'No observations awaiting verification' };
 
   const ncrs = forProjects((await safeAll(q, "SELECT * FROM ncrs WHERE status IN ('verification','resolved')", [])));
   dashboard.ncr_closeouts_awaiting_review = { items: ncrs.map((n) => ({ id: n.id })), count: ncrs.length, empty_label: 'No NCR closeouts awaiting review' };
@@ -597,7 +638,7 @@ async function consultantDashboard(q, user, { project_id = null, now = new Date(
   // Latest drawings, recent daily progress/photos, notes, upcoming visits.
   const drawings = forProjects(await safeAll(q,
     "SELECT * FROM project_documents WHERE document_type = 'drawing' AND status = 'approved' AND portal_visibility IN ('consultant','all_external') ORDER BY id DESC", []));
-  dashboard.latest_drawings = { items: drawings.slice(0, 5).map((d) => ({ id: d.id, title: d.title || d.file_name, file_url: d.file_url })), count: drawings.length, empty_label: 'No drawings uploaded yet' };
+  dashboard.latest_drawings = { items: drawings.slice(0, 5).map((d) => ({ id: d.id, project_id: toNum(d.project_id), title: d.title || d.file_name, file_url: d.file_url })), count: drawings.length, empty_label: 'No drawings uploaded yet' };
 
   const dailyReports = forProjects(await safeAll(q, 'SELECT * FROM site_daily_reports ORDER BY report_date DESC', []));
   dashboard.recent_daily_reports = { items: dailyReports.slice(0, 5).map((d) => ({ id: d.id, report_date: d.report_date, work_summary: d.work_summary })), count: dailyReports.length, empty_label: 'No daily reports yet' };
