@@ -197,3 +197,7 @@ Added `atomicAudited` and moved audit rows into mutation transactions for commer
 ## 2026-10-13: A4 unit sales audit continuation (local, pending commit)
 
 Unit-sale invoice activity now shares the invoice creation/posting transaction. Bulk unit creation activity now shares the generated-unit insert transaction. Syntax/whitespace checks exit 0; backend mock suite passes 48 suites / 968 tests; guards print `lint-guards: ok`. PostgreSQL rollback verification remains unverified because Docker Desktop is unavailable. Current expected commit: per-slice commit to follow.
+
+## 2026-10-13: A4 sales and schedule transactional audit continuation (local, pending commit)
+
+Building create/link/floor inserts, unit status changes, schedule activity create/progress, and baseline replacement now include their audit row in the corresponding transaction. Schedule progress sync errors now propagate and roll back. Syntax/whitespace checks exit 0; backend mock suite passes 48 suites / 968 tests; lint guards pass. PostgreSQL rollback remains unverified because Docker Desktop is unavailable. Current expected commit: per-slice commit to follow.

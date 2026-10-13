@@ -12,7 +12,7 @@ const projectSetup = require('../services/projectSetupService');
 const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
-const { query } = require('../config/database');
+const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const engine = require('../services/schedulingEngine');
@@ -171,19 +171,23 @@ router.post('/activities', authenticate, authorize(), async (req, res) => {
     if (!code) {
       code = await nextNumber(query, { table: 'schedule_activities', column: 'activity_code', prefix: 'A', sep: '', pad: 4, where: { project_id: value.project_id } });
     }
-    const r = await query(
-      `INSERT INTO schedule_activities (project_id, activity_code, name, wbs_path, work_package, work_package_id, phase_id,
-         project_location_id, boq_item_id, boq_location_allocation_id, calendar_id, responsible_organization_id,
-         responsible_user_id, subcontractor_organization_id, planned_start, planned_finish, original_duration,
-         planned_quantity, progress_source, is_milestone, notes, created_by)
-       VALUES ($1,$2,$3,$4,$5,$22,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING *`,
-      [value.project_id, code, value.name, value.wbs_path || null, wp.text, value.phase_id || null,
-       value.project_location_id || null, value.boq_item_id || null, value.boq_location_allocation_id || null,
-       value.calendar_id || null, value.responsible_organization_id || null, value.responsible_user_id || null,
-       value.subcontractor_organization_id || null, value.planned_start || null, value.planned_finish || null,
-       value.is_milestone ? 0 : value.original_duration, value.planned_quantity || null,
-       value.progress_source, value.is_milestone, value.notes || null, req.user.id, wp.id]);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'schedule', description: `Created activity ${code}: ${value.name}`, entityId: r.rows[0].id, entityType: 'schedule_activity' });
+    const r = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const inserted = await q(
+        `INSERT INTO schedule_activities (project_id, activity_code, name, wbs_path, work_package, work_package_id, phase_id,
+           project_location_id, boq_item_id, boq_location_allocation_id, calendar_id, responsible_organization_id,
+           responsible_user_id, subcontractor_organization_id, planned_start, planned_finish, original_duration,
+           planned_quantity, progress_source, is_milestone, notes, created_by)
+         VALUES ($1,$2,$3,$4,$5,$22,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING *`,
+        [value.project_id, code, value.name, value.wbs_path || null, wp.text, value.phase_id || null,
+         value.project_location_id || null, value.boq_item_id || null, value.boq_location_allocation_id || null,
+         value.calendar_id || null, value.responsible_organization_id || null, value.responsible_user_id || null,
+         value.subcontractor_organization_id || null, value.planned_start || null, value.planned_finish || null,
+         value.is_milestone ? 0 : value.original_duration, value.planned_quantity || null,
+         value.progress_source, value.is_milestone, value.notes || null, req.user.id, wp.id]);
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'schedule', description: `Created activity ${code}: ${value.name}`, entityId: inserted.rows[0].id, entityType: 'schedule_activity' }, { query: q });
+      return inserted;
+    });
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -258,13 +262,14 @@ router.post('/activities/:id/progress', authenticate, authorize('owner', 'admin'
     }).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const updated = await engine.updateProgress(query, req.params.id, value, req.user);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'schedule', description: `Activity ${updated.activity_code} progress → ${updated.percent_complete}%`, entityId: updated.id, entityType: 'schedule_activity' });
-    // Phase 3.5: the project's derived progress follows activity progress changes.
-    try {
+    const updated = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const row = await engine.updateProgress(q, req.params.id, value, req.user);
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'schedule', description: `Activity ${row.activity_code} progress → ${row.percent_complete}%`, entityId: row.id, entityType: 'schedule_activity' }, { query: q });
       const progressEngine = require('../services/progressEngine');
-      await progressEngine.syncProjectProgress(query, updated.project_id);
-    } catch (e) { console.error('[SCHEDULE] project progress recompute failed:', e.message); }
+      await progressEngine.syncProjectProgress(q, row.project_id);
+      return row;
+    });
     res.json({ success: true, data: updated });
   } catch (error) {
     res.status(error.statusCode || 500).json({ success: false, error: error.message });
@@ -468,11 +473,15 @@ router.post('/baselines', authenticate, authorize(), async (req, res) => {
       id: a.id, activity_code: a.activity_code, name: a.name, planned_start: a.planned_start,
       planned_finish: a.planned_finish, original_duration: a.original_duration, planned_quantity: a.planned_quantity,
     }));
-    await query('UPDATE baselines SET is_current = false WHERE project_id = $1', [value.project_id]);
-    const r = await query(
-      `INSERT INTO baselines (project_id, name, data, is_current, created_by) VALUES ($1,$2,$3::jsonb,true,$4) RETURNING *`,
-      [value.project_id, value.name, JSON.stringify(snapshot), req.user.id]);
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'schedule', description: `Captured baseline "${value.name}" (${snapshot.length} activities)`, entityId: r.rows[0].id, entityType: 'baseline' });
+    const r = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      await q('UPDATE baselines SET is_current = false WHERE project_id = $1', [value.project_id]);
+      const inserted = await q(
+        `INSERT INTO baselines (project_id, name, data, is_current, created_by) VALUES ($1,$2,$3::jsonb,true,$4) RETURNING *`,
+        [value.project_id, value.name, JSON.stringify(snapshot), req.user.id]);
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'schedule', description: `Captured baseline "${value.name}" (${snapshot.length} activities)`, entityId: inserted.rows[0].id, entityType: 'baseline' }, { query: q });
+      return inserted;
+    });
     res.status(201).json({ success: true, data: { ...r.rows[0], activity_count: snapshot.length } });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

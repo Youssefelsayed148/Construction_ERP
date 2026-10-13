@@ -659,4 +659,25 @@ npm run lint:guards
 lint-guards: ok
 ```
 
-A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This unit-sales slice is not committed yet.
+A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This unit-sales slice is committed as `761637c`.
+
+## 2026-10-13: A4 sales and schedule transactional audit continuation (local, pending commit)
+
+Building creation now writes its linked building/floor locations and activity entry in one transaction. Unit status changes write their activity entry in the same transaction. Schedule activity creation/progress updates and baseline replacement now include activity audit in the associated transaction; progress synchronization now propagates failure so the transaction rolls back instead of silently committing stale derived progress.
+
+Verification command output:
+
+```text
+node --check src/routes/units.js; node --check src/routes/schedule.js; git diff --check
+exit code: 0
+
+npm test -- --runInBand
+Test Suites: 48 passed, 48 total
+Tests:       968 passed, 968 total
+Ran all test suites.
+
+npm run lint:guards
+lint-guards: ok
+```
+
+A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This sales/schedule slice is not committed yet.

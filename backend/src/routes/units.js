@@ -97,30 +97,33 @@ router.post('/buildings', authenticate, authorize(), async (req, res) => {
     // Building location rows are real project_locations; floors are one row
     // per integer, not a count. The buildings row keeps its legacy columns
     // during the transition and links to its location.
-    const result = await query(
-      `INSERT INTO buildings (project_id, code, name, status, completion_percentage)
-       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [value.project_id, value.code, value.name, value.status, value.completion_percentage]
-    );
-    const building = result.rows[0];
-    const loc = await query(
-      `INSERT INTO project_locations (project_id, parent_id, location_type_id, code, name, name_en, name_ar, legacy_building_id, sort_order)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0) RETURNING id`,
-      [value.project_id, parentId, buildingTypeId, value.code, value.name, value.name, value.name, building.id]
-    );
-    const locationId = loc.rows[0].id;
-    for (let f = 1; f <= value.floors; f++) {
-      await query(
-        `INSERT INTO project_locations (project_id, parent_id, location_type_id, code, name, name_en, name_ar, sort_order)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-        [value.project_id, locationId, floorTypeId, `F-${String(f).padStart(2, '0')}`, `Floor ${f}`, `Floor ${f}`, `الطابق ${f}`, f]
+    const created = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const result = await q(
+        `INSERT INTO buildings (project_id, code, name, status, completion_percentage)
+         VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+        [value.project_id, value.code, value.name, value.status, value.completion_percentage]
       );
-    }
-    await query('UPDATE buildings SET project_location_id = $1 WHERE id = $2', [locationId, building.id]);
-    const fresh = await query('SELECT * FROM buildings WHERE id = $1', [building.id]);
-
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'sales', description: `Created building ${value.code} - ${value.name}`, entityId: building.id, entityType: 'building' });
-    res.status(201).json({ success: true, data: fresh.rows[0] });
+      const building = result.rows[0];
+      const loc = await q(
+        `INSERT INTO project_locations (project_id, parent_id, location_type_id, code, name, name_en, name_ar, legacy_building_id, sort_order)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0) RETURNING id`,
+        [value.project_id, parentId, buildingTypeId, value.code, value.name, value.name, value.name, building.id]
+      );
+      const locationId = loc.rows[0].id;
+      for (let f = 1; f <= value.floors; f++) {
+        await q(
+          `INSERT INTO project_locations (project_id, parent_id, location_type_id, code, name, name_en, name_ar, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+          [value.project_id, locationId, floorTypeId, `F-${String(f).padStart(2, '0')}`, `Floor ${f}`, `Floor ${f}`, `الطابق ${f}`, f]
+        );
+      }
+      await q('UPDATE buildings SET project_location_id = $1 WHERE id = $2', [locationId, building.id]);
+      const fresh = await q('SELECT * FROM buildings WHERE id = $1', [building.id]);
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'sales', description: `Created building ${value.code} - ${value.name}`, entityId: building.id, entityType: 'building' }, { query: q });
+      return fresh.rows[0];
+    });
+    res.status(201).json({ success: true, data: created });
   } catch (error) {
     if (error.code === '23505') return res.status(409).json({ success: false, error: 'Building code already exists in this project' });
     res.status(500).json({ success: false, error: error.message });
@@ -366,7 +369,12 @@ router.post('/units/:id/status', authenticate, authorize(), async (req, res) => 
     if (value.status === 'available') { sets.push('sold_amount = NULL'); sets.push('client_id = NULL'); }
     params.push(req.params.id);
 
-    const result = await query(`UPDATE units SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
+    const result = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const updated = await q(`UPDATE units SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
+      if (updated.rows[0]) await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'sales', description: `Unit ${unit.code} → ${value.status}`, entityId: req.params.id, entityType: 'unit' }, { query: q });
+      return updated;
+    });
 
     // Auto-create invoice when unit transitions to 'contracted'
     let invoice = null;
@@ -382,7 +390,6 @@ router.post('/units/:id/status', authenticate, authorize(), async (req, res) => 
       });
     }
 
-    await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'sales', description: `Unit ${unit.code} → ${value.status}`, entityId: req.params.id, entityType: 'unit' });
     res.json({
       success: true,
       data: { ...result.rows[0], auto_invoice: invoice }
