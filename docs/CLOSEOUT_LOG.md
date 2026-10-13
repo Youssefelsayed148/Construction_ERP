@@ -1411,3 +1411,11 @@ Verification output: `npm run test:ci -- --runTestsByPath src/components/layout/
 Added a manifest, SVG app icon, production service worker, versioned shell/static caching, offline navigation fallback, and user-controlled waiting-worker activation. Cache logic excludes `/api/` and `/uploads/`. Removed external Google Fonts import and restricted nginx style/font sources to self. Marked only the app-shell plan checkbox complete.
 
 Verification output: `npm run build` reported `Compiled successfully`; `node --check public/service-worker.js` exited 0; `npm run i18n:check` reported `i18n:check ok`; `git diff --check` exited 0. Lighthouse/PWA installation and an offline browser journey were not run. Local IBM Plex assets are absent from the repo and dependencies; local font packaging remains unverified/open, along with offline mutation queue/idempotency and responsive work.
+
+## 2026-10-13: stop — Docker engine unavailable for Phase 7 idempotency PG gate
+
+Command: `docker info --format '{{.ServerVersion}}'`.
+
+Output: `error during connect: Get "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.51/info": open //./pipe/dockerDesktopLinuxEngine: Access is denied.` `docker ps --format '{{.Names}} {{.Ports}}'` failed on the same pipe. Per the closeout request's Docker STOP RULE, work stops here without retrying through another access path.
+
+Current idempotency changes are uncommitted. Backend mock middleware suite passed 1 suite / 46 tests. Real-Postgres replay test is unverified; no DB was started or changed. Resume by restoring Docker Desktop access, rerunning the required `docker info` check, then running the focused PG test against a named throwaway Postgres 16 database.

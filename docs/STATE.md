@@ -39,3 +39,7 @@
 - `docs/CODEX_AUDIT_REPORT.md` is a pre-existing untracked user artifact and has not been edited.
 
 - Targeted revalidation of audit leads D1-D15 is recorded in `docs/CARRYOVER.md`; multiple findings from the old report are fixed/superseded in current code. Revalidation is not a full security or business-journey acceptance pass.
+
+## Stop condition — 2026-10-13 — Docker engine unavailable
+
+The required `docker info --format '{{.ServerVersion}}'` check failed: `error during connect: Get "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.51/info": open //./pipe/dockerDesktopLinuxEngine: Access is denied.` The Phase 7 idempotency changes remain uncommitted. Backend mock coverage passed 46/46; the focused real-Postgres daily-report replay test is unverified. No database or credential files were accessed. Resume after Docker Desktop engine access is restored, verify `docker info`, then run the focused PG test on a named throwaway database.

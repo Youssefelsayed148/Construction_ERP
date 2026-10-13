@@ -99,3 +99,11 @@ Commit `ad8f9f6` contains the verified Phase 5.8.2 slice and gate repairs. `docs
 Replaced consultant and supplier portal prompt flows with localized forms. Record choices come from dashboard lists; RFQ and PO details load from portal endpoints; amount fields validate before submission. Client preview selects from the loaded portfolio. Current source scan returned no `prompt()` calls.
 
 Verification: `PortalDashboard.test.js` passed 1 suite / 10 tests; `i18n:check ok`; frontend production build compiled successfully; `git diff --check` passed. The pilot smoke remains unverified because automatic review rejected the script due to its reads of prohibited `.env.docker` and `.staging-users.json`.
+
+## Stop condition — 2026-10-13 — Docker engine unavailable
+
+- Blocker: the required `docker info --format '{{.ServerVersion}}'` check failed with Docker Desktop pipe access denied.
+- Evidence: output was `error during connect: Get "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.51/info": open //./pipe/dockerDesktopLinuxEngine: Access is denied.` The accompanying `docker ps` check failed on the same pipe.
+- Work state: the Phase 7 daily-report idempotency middleware/client/test changes are uncommitted. Backend mock `external-api.test.js` passed 1 suite / 46 tests. The real-Postgres `daily-report-progress.pg.test.js` was not run; no database was created or modified in this stopped slice.
+- Safety: no credential files were read, no `.env` file was edited, and no elevated or alternate Docker access attempt was made.
+- Next action: restore Docker Desktop engine access for this workspace/session, rerun `docker info --format '{{.ServerVersion}}'`, then apply the focused PG test to a named throwaway Postgres 16 database before committing this slice.
