@@ -1,6 +1,7 @@
 'use strict';
 
 const policy = require('./policy');
+const { canExternalViewDocument } = require('./documentVisibility');
 
 async function canAccessMedia(q, user, fileName, preview = null, policyEvaluator = policy.evaluate) {
   if (!user || !/^[a-zA-Z0-9_.-]+$/.test(fileName) || fileName === '.' || fileName === '..') return false;
@@ -60,8 +61,9 @@ async function canAccessMedia(q, user, fileName, preview = null, policyEvaluator
     )).rows;
     if (evidence.some((photo) => projectIds.includes(Number(photo.project_id)) && links.includes(Number(photo.organization_id)))) return true;
   }
-  const docs = (await q('SELECT project_id, status, portal_visibility FROM project_documents WHERE file_url = $1', [fileUrl])).rows;
-  if (docs.some((d) => projectIds.includes(Number(d.project_id)) && d.status === 'approved' && allowedVisibility.includes(d.portal_visibility))) return true;
+  const docs = (await q('SELECT project_id, status, portal_visibility, confidentiality FROM project_documents WHERE file_url = $1', [fileUrl])).rows;
+  if (docs.some((d) => projectIds.includes(Number(d.project_id)) && d.status === 'approved'
+    && allowedVisibility.includes(d.portal_visibility) && canExternalViewDocument(d, user.role))) return true;
   // Photo metadata has no approval or external-visibility state, so project membership alone is not sufficient.
   return false;
 }

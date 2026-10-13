@@ -253,7 +253,11 @@ function LibraryTab({ projectId, locale, t }) {
 }
 
 function UploadDocModal({ projectId, categories, locale, t, onClose, onSave }) {
-  const [form, setForm] = useState({ title: '', description: '', document_type: 'drawing', category_id: '', tags: '' });
+  const [form, setForm] = useState({
+    title: '', description: '', document_type: 'drawing', doc_type: 'drawing', discipline: 'general',
+    category_id: '', tags: '', issue_date: '', review_due_date: '', confidentiality: 'internal',
+    portal_visibility: 'internal', project_location_id: '', package: '', originator_organization_id: '', recipient_organization_id: '',
+  });
   const [file, setFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -275,6 +279,16 @@ function UploadDocModal({ projectId, categories, locale, t, onClose, onSave }) {
         file_type: file.file_type,
         file_size_bytes: file.file_size_bytes,
         tags: form.tags ? form.tags.split(',').map(s => s.trim()).filter(Boolean) : [],
+        doc_type: form.doc_type,
+        discipline: form.discipline,
+        issue_date: form.issue_date || null,
+        review_due_date: form.review_due_date || null,
+        confidentiality: form.confidentiality,
+        portal_visibility: form.portal_visibility,
+        project_location_id: form.project_location_id ? Number(form.project_location_id) : null,
+        package: form.package || null,
+        originator_organization_id: form.originator_organization_id ? Number(form.originator_organization_id) : null,
+        recipient_organization_id: form.recipient_organization_id ? Number(form.recipient_organization_id) : null,
       };
       const res = await fetchApi(`${API_URL}/docs/documents`, { method: 'POST', body: JSON.stringify(body) });
       if (res.success) { onSave(); onClose(); }
@@ -311,6 +325,34 @@ function UploadDocModal({ projectId, categories, locale, t, onClose, onSave }) {
                     {['drawing', 'contract', 'report', 'photo', 'other'].map(dt => <option key={dt} value={dt}>{DOC_TYPE_LABELS[locale]?.[dt] || dt}</option>)}
                   </select>
                 </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <label className="form-group">{t('documentControl.register.controlledType')}
+                  <select className="form-select" value={form.doc_type} onChange={e => handleChange('doc_type', e.target.value)}>
+                    {['drawing', 'specification', 'contract', 'report', 'method_statement', 'as_built', 'o_m', 'other'].map(type => <option key={type} value={type}>{t(`documentControl.register.types.${type}`)}</option>)}
+                  </select>
+                </label>
+                <label className="form-group">{t('documentControl.register.discipline')}
+                  <select className="form-select" value={form.discipline} onChange={e => handleChange('discipline', e.target.value)}>
+                    {['architectural', 'structural', 'civil', 'mechanical', 'electrical', 'plumbing', 'hvac', 'fire', 'general'].map(discipline => <option key={discipline} value={discipline}>{t(`documentControl.register.disciplines.${discipline}`)}</option>)}
+                  </select>
+                </label>
+                <label className="form-group">{t('documentControl.register.issueDate')}<input className="form-input" type="date" value={form.issue_date} onChange={e => handleChange('issue_date', e.target.value)} /></label>
+                <label className="form-group">{t('documentControl.register.reviewDue')}<input className="form-input" type="date" value={form.review_due_date} onChange={e => handleChange('review_due_date', e.target.value)} /></label>
+                <label className="form-group">{t('documentControl.register.confidentiality')}
+                  <select className="form-select" value={form.confidentiality} onChange={e => handleChange('confidentiality', e.target.value)}>
+                    {['public', 'internal', 'confidential', 'restricted'].map(level => <option key={level} value={level}>{t(`documentControl.register.confidentialityLevels.${level}`)}</option>)}
+                  </select>
+                </label>
+                <label className="form-group">{t('documentControl.register.visibility')}
+                  <select className="form-select" value={form.portal_visibility} onChange={e => handleChange('portal_visibility', e.target.value)}>
+                    {['internal', 'client', 'consultant', 'subcontractor', 'all_external'].map(level => <option key={level} value={level}>{t(`documentControl.register.visibilityLevels.${level}`)}</option>)}
+                  </select>
+                </label>
+                <label className="form-group">{t('documentControl.register.locationId')}<input className="form-input" type="number" min="1" value={form.project_location_id} onChange={e => handleChange('project_location_id', e.target.value)} /></label>
+                <label className="form-group">{t('documentControl.register.package')}<input className="form-input" maxLength="150" value={form.package} onChange={e => handleChange('package', e.target.value)} /></label>
+                <label className="form-group">{t('documentControl.register.originatorId')}<input className="form-input" type="number" min="1" value={form.originator_organization_id} onChange={e => handleChange('originator_organization_id', e.target.value)} /></label>
+                <label className="form-group">{t('documentControl.register.recipientId')}<input className="form-input" type="number" min="1" value={form.recipient_organization_id} onChange={e => handleChange('recipient_organization_id', e.target.value)} /></label>
               </div>
               <div className="form-group">
                 <label className="form-label">{t('common.description')}</label>

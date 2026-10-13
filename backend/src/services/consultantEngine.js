@@ -20,6 +20,8 @@
 
 'use strict';
 
+const { canExternalViewDocument } = require('./documentVisibility');
+
 const { query: defaultQuery } = require('../config/database');
 const { nextNumber } = require('./numbering');
 const workflowEngine = require('./workflowEngine');
@@ -149,7 +151,7 @@ async function createObservation(q, {
   if (drawing_document_id != null) {
     const drawing = (await q('SELECT * FROM project_documents WHERE id = $1', [drawing_document_id])).rows[0];
     if (!drawing || toNum(drawing.project_id) !== toNum(project_id) || drawing.document_type !== 'drawing') throw new Error('Reference drawing must belong to the same project');
-    if (user.role === 'consultant' && (drawing.status !== 'approved' || !['consultant', 'all_external'].includes(drawing.portal_visibility))) {
+    if (user.role === 'consultant' && (drawing.status !== 'approved' || !canExternalViewDocument(drawing, 'consultant'))) {
       throw new Error('Reference drawing is not available in the consultant portal');
     }
   }
@@ -783,7 +785,8 @@ async function consultantDashboard(q, user, { project_id = null, now = new Date(
 
   // Latest drawings, recent daily progress/photos, notes, upcoming visits.
   const drawings = forProjects(await safeAll(q,
-    "SELECT * FROM project_documents WHERE document_type = 'drawing' AND status = 'approved' AND portal_visibility IN ('consultant','all_external') ORDER BY id DESC", []));
+    "SELECT * FROM project_documents WHERE document_type = 'drawing' AND status = 'approved' AND portal_visibility IN ('consultant','all_external') ORDER BY id DESC", []))
+    .filter((document) => canExternalViewDocument(document, 'consultant'));
   dashboard.latest_drawings = { items: drawings.slice(0, 5).map((d) => ({ id: d.id, project_id: toNum(d.project_id), title: d.title || d.file_name, file_url: d.file_url })), count: drawings.length, empty_label: 'No drawings uploaded yet' };
 
   const dailyReports = forProjects(await safeAll(q, 'SELECT * FROM site_daily_reports ORDER BY report_date DESC', []));

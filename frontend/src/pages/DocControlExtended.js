@@ -124,18 +124,23 @@ export function RegisterTab({ projectId, locale, t }) {
         <div className="table-container">
           <table className="table">
             <thead><tr>
-              <th>{locale === 'ar' ? 'رقم المستند' : 'Doc number'}</th><th>{locale === 'ar' ? 'العنوان' : 'Title'}</th>
-              <th>{locale === 'ar' ? 'النوع' : 'Type'}</th><th>{locale === 'ar' ? 'التخصص' : 'Discipline'}</th>
-              <th>{locale === 'ar' ? 'الحزمة' : 'Package'}</th><th>{locale === 'ar' ? 'الحالة' : 'Status'}</th>
+              <th>{t('documentControl.register.number')}</th><th>{t('documentControl.register.title')}</th>
+              <th>{t('documentControl.register.type')}</th><th>{t('documentControl.register.discipline')}</th>
+              <th>{t('documentControl.register.locationPackage')}</th><th>{t('documentControl.register.issueDate')}</th>
+              <th>{t('documentControl.register.reviewDue')}</th><th>{t('documentControl.register.confidentiality')}</th>
+              <th>{t('documentControl.register.status')}</th>
             </tr></thead>
             <tbody>
               {rows.map(d => (
                 <tr key={d.id}>
                   <td style={{ fontFamily: 'monospace', fontSize: 13 }}>{d.doc_number}{!d.is_current && <span className="badge badge-danger" style={{ marginLeft: 6 }}><AlertTriangle size={10} /> superseded</span>}</td>
                   <td style={{ fontWeight: 500 }}>{d.title}</td>
-                  <td>{d.doc_type || d.document_type}</td>
+                  <td>{t(`documentControl.register.types.${d.doc_type || d.document_type}`)}</td>
                   <td>{d.discipline || '-'}</td>
-                  <td>{d.package || '-'}</td>
+                  <td>{[d.location_name, d.package].filter(Boolean).join(' / ') || '-'}</td>
+                  <td>{fmtDate(d.issue_date)}</td>
+                  <td>{fmtDate(d.review_due_date)}</td>
+                  <td>{t(`documentControl.register.confidentialityLevels.${d.confidentiality || 'internal'}`)}</td>
                   <td><span className="badge badge-info">{d.doc_status || d.status}</span></td>
                 </tr>
               ))}

@@ -6,6 +6,8 @@ const Joi = require('joi');
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditedTransaction } = require('../utils/auditedTransaction');
+const { dateOnly } = require('../utils/validation');
+const { normalizeDateFields } = require('../utils/dateOnly');
 
 // Mounted at /api/qhse — quality tests, NCRs, safety inspections & incidents.
 // All list endpoints filter by ?project_id.
@@ -1177,8 +1179,8 @@ const CERTIFICATE_CREATE = Joi.object({
   certificate_type: Joi.string().valid(...CERTIFICATE_TYPES).required(),
   title: Joi.string().trim().min(1).max(255).required(),
   issuer: Joi.string().trim().max(255).allow('', null),
-  issue_date: Joi.date().iso().allow(null),
-  expiry_date: Joi.date().iso().allow(null),
+  issue_date: dateOnly().allow(null),
+  expiry_date: dateOnly().allow(null),
   project_document_id: Joi.number().integer().positive().allow(null),
   mir_id: Joi.number().integer().positive().allow(null),
   notes: Joi.string().max(10000).allow('', null),
@@ -1188,8 +1190,8 @@ const CERTIFICATE_UPDATE = Joi.object({
   certificate_type: Joi.string().valid(...CERTIFICATE_TYPES),
   title: Joi.string().trim().min(1).max(255),
   issuer: Joi.string().trim().max(255).allow('', null),
-  issue_date: Joi.date().iso().allow(null),
-  expiry_date: Joi.date().iso().allow(null),
+  issue_date: dateOnly().allow(null),
+  expiry_date: dateOnly().allow(null),
   status: Joi.string().valid('active', 'superseded', 'revoked'),
   project_document_id: Joi.number().integer().positive().allow(null),
   mir_id: Joi.number().integer().positive().allow(null),
@@ -1233,7 +1235,7 @@ router.get('/certificates', authenticate, authorize(), async (req, res) => {
        LEFT JOIN project_documents d ON d.id = c.project_document_id
        LEFT JOIN material_inspection_requests m ON m.id = c.mir_id
        ${where} ORDER BY c.created_at DESC, c.id DESC`, params);
-    res.json({ success: true, data: result.rows });
+    res.json({ success: true, data: result.rows.map((certificate) => normalizeDateFields(certificate, ['issue_date', 'expiry_date'])) });
   } catch (error) {
     console.error('qhse.certificate.list failed', error);
     certificateFailure(res, 500, 'certificate_list_failed');
@@ -1258,7 +1260,7 @@ router.post('/certificates', authenticate, authorize(), async (req, res) => {
           value.issue_date || null, value.expiry_date || null, value.project_document_id ?? null,
           value.mir_id ?? null, value.notes || null, req.user.id]);
     }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Registered QA/QC certificate ${r.rows[0].certificate_number}`, entityId: r.rows[0].id, entityType: 'qaqc_certificate' }));
-    res.status(201).json({ success: true, data: result.rows[0] });
+    res.status(201).json({ success: true, data: normalizeDateFields(result.rows[0], ['issue_date', 'expiry_date']) });
   } catch (error) {
     if (error.error_code) return certificateFailure(res, error.status || 400, error.error_code);
     console.error('qhse.certificate.create failed', error);
@@ -1289,7 +1291,7 @@ router.put('/certificates/:id', authenticate, authorize(), async (req, res) => {
       params.push(current.id);
       return q(`UPDATE qaqc_certificates SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${params.length} RETURNING *`, params);
     }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'qhse', description: `Updated QA/QC certificate ${r.rows[0].certificate_number}`, entityId: r.rows[0].id, entityType: 'qaqc_certificate' }));
-    res.json({ success: true, data: result.rows[0] });
+    res.json({ success: true, data: normalizeDateFields(result.rows[0], ['issue_date', 'expiry_date']) });
   } catch (error) {
     if (error.error_code) return certificateFailure(res, error.status || 400, error.error_code);
     console.error('qhse.certificate.update failed', error);

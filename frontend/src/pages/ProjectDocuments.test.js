@@ -5,7 +5,9 @@ import ProjectDocuments from './ProjectDocuments';
 
 jest.mock('../hooks/useLocale', () => ({ useLocale: () => ({ locale: 'en', t: (key) => key }) }));
 jest.mock('./DocControlExtended', () => ({ RegisterTab: () => null, TransmittalsTab: () => null, CorrespondenceTab: () => null, DocSearchTab: () => null }));
-jest.mock('../components/DocumentUpload', () => function MockDocumentUpload() { return null; });
+jest.mock('../components/DocumentUpload', () => function MockDocumentUpload({ onUploaded }) {
+  return <button type="button" data-testid="mock-upload" onClick={() => onUploaded({ file_url: '/uploads/register.pdf', file_type: 'pdf', file_size_bytes: 12 })}>Mock uploaded file</button>;
+});
 jest.mock('../components/ProtectedMedia', () => ({ openProtectedFile: jest.fn() }));
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -70,6 +72,36 @@ describe('ProjectDocuments RFI impacts', () => {
     expect(JSON.parse(options.body)).toMatchObject({
       project_id: 7, project_location_id: 17, work_package_id: 23,
       cost_impact: 1400.5, schedule_impact_days: 3,
+    });
+  });
+
+  test('uploads a document with issue date, controlled-register fields and explicit visibility', async () => {
+    await act(async () => { root.render(<MemoryRouter initialEntries={['/projects/7/documents']}><Routes><Route path="/projects/:id/documents" element={<ProjectDocuments />} /></Routes></MemoryRouter>); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const upload = [...container.querySelectorAll('button')].find((button) => button.textContent.includes('Upload Document'));
+    await act(async () => { upload.click(); });
+    await fill('.modal input', 'Issued structural drawing');
+    await act(async () => { container.querySelector('[data-testid="mock-upload"]').click(); });
+    const selects = container.querySelectorAll('.modal select');
+    await act(async () => {
+      const set = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(selects[2]), 'value').set;
+      set.call(selects[2], 'drawing'); selects[2].dispatchEvent(new Event('change', { bubbles: true }));
+      set.call(selects[4], 'public'); selects[4].dispatchEvent(new Event('change', { bubbles: true }));
+      set.call(selects[5], 'consultant'); selects[5].dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    const dates = container.querySelectorAll('.modal input[type="date"]');
+    await act(async () => {
+      const set = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(dates[0]), 'value').set;
+      set.call(dates[0], '2026-10-12'); dates[0].dispatchEvent(new Event('input', { bubbles: true }));
+      set.call(dates[1], '2026-11-12'); dates[1].dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const save = [...container.querySelectorAll('.modal-footer button')].find((button) => button.textContent.includes('common.save'));
+    await act(async () => { save.click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const [, options] = global.fetch.mock.calls.find(([url, request]) => request.method === 'POST' && String(url).endsWith('/docs/documents'));
+    expect(JSON.parse(options.body)).toMatchObject({
+      project_id: 7, title: 'Issued structural drawing', doc_type: 'drawing', issue_date: '2026-10-12',
+      review_due_date: '2026-11-12', confidentiality: 'public', portal_visibility: 'consultant',
     });
   });
 });

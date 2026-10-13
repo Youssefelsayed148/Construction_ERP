@@ -70,7 +70,7 @@ describePg('QA/QC certificate register (real PostgreSQL)', () => {
     expect(result.status).toBe(201);
     created.certificates.push(result.body.data.id);
     expect(result.body.data.certificate_number).toMatch(/^QC-CERT-\d{5}$/);
-    expect(result.body.data).toMatchObject({ project_id: project, project_document_id: documentId, mir_id: mirId, status: 'active' });
+    expect(result.body.data).toMatchObject({ project_id: project, project_document_id: documentId, mir_id: mirId, status: 'active', issue_date: '2026-10-01', expiry_date: '2027-10-01' });
 
     const listed = await call('GET', `/api/qhse/certificates?project_id=${project}`);
     expect(listed.status).toBe(200);

@@ -28,6 +28,18 @@ describe('authenticated media access', () => {
     expect(await canAccessMedia(q, { id: 12, role: 'client' }, 'drawing.pdf')).toBe(false);
   });
 
+  test('an explicit portal audience does not override confidential classification', async () => {
+    jest.spyOn(clientEngine, 'resolveClientProjects').mockResolvedValue([7]);
+    const q = jest.fn(async (sql) => {
+      if (sql.includes('uploaded_files')) return { rows: [] };
+      if (sql.includes('project_documents')) return { rows: [
+        { project_id: 7, status: 'approved', portal_visibility: 'client', confidentiality: 'confidential' },
+      ] };
+      return { rows: [] };
+    });
+    expect(await canAccessMedia(q, { id: 14, role: 'client' }, 'restricted-drawing.pdf')).toBe(false);
+  });
+
   test('lets the uploader retrieve a private upload', async () => {
     const q = jest.fn().mockResolvedValue({ rows: [{ uploaded_by: 4 }] });
     expect(await canAccessMedia(q, { id: 4, role: 'supplier' }, 'quote.pdf')).toBe(true);

@@ -18,6 +18,8 @@
 
 'use strict';
 
+const { canExternalViewDocument } = require('./documentVisibility');
+
 const { nextNumber } = require('./numbering');
 
 function toNum(v) {
@@ -161,7 +163,7 @@ async function subcontractorDashboard(q, userId, { now = new Date() } = {}) {
   // Latest approved drawings.
   const drawings = (await safeAll(q, 'SELECT * FROM project_documents', []))
     .filter((d) => projectIds.includes(toNum(d.project_id)) && d.status === 'approved'
-      && ['subcontractor', 'all_external'].includes(d.portal_visibility));
+      && canExternalViewDocument(d, 'subcontractor'));
   dashboard.latest_drawings = { items: drawings.slice(0, 5).map((d) => ({ id: toNum(d.id), title: d.title || d.file_name, file_url: d.file_url })), count: drawings.length, empty_label: 'No approved drawings yet' };
 
   // Inspections needed + executed/approved quantities (sub_work_verifications).

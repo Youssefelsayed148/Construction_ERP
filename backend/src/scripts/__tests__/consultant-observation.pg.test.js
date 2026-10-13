@@ -40,10 +40,10 @@ describePg('consultant observation completeness (real PostgreSQL)', () => {
     otherOrgConsultant = await makeUser('other-org', otherConsultantOrg.id);
     await db.query("INSERT INTO project_participants (project_id, organization_id, participant_type, portal_access_enabled) VALUES ($1,$2,'consultant',true),($1,$3,'consultant',true)", [project.id, consultantOrg.id, otherConsultantOrg.id]);
     drawing = (await db.query(
-      "INSERT INTO project_documents (project_id, title, document_type, status, portal_visibility, file_url) VALUES ($1,'Structural plan S-12','drawing','approved','consultant','/uploads/s12.pdf') RETURNING *",
+      "INSERT INTO project_documents (project_id, title, document_type, status, portal_visibility, confidentiality, file_url) VALUES ($1,'Structural plan S-12','drawing','approved','consultant','public','/uploads/s12.pdf') RETURNING *",
       [project.id]
     )).rows[0];
-    await db.query("INSERT INTO project_documents (project_id, title, document_type, status, portal_visibility) VALUES ($1,'Other project drawing','drawing','approved','consultant')", [otherProject.id]);
+    await db.query("INSERT INTO project_documents (project_id, title, document_type, status, portal_visibility, confidentiality) VALUES ($1,'Other project drawing','drawing','approved','consultant','public')", [otherProject.id]);
   });
 
   afterAll(async () => {

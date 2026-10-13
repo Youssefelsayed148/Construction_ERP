@@ -6,6 +6,8 @@ const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
+const { dateOnly } = require('../utils/validation');
+const { normalizeDateFields } = require('../utils/dateOnly');
 
 // Mounted at /api/docs — document library with versioning, RFIs, submittals.
 // File uploads go through /api/documents/upload first; this router stores the returned URLs.
@@ -59,7 +61,7 @@ router.get('/documents', authenticate, authorize(), async (req, res) => {
        ${where} ORDER BY d.updated_at DESC LIMIT $${idx++} OFFSET $${idx}`,
       [...params, parseInt(limit), parseInt(offset)]
     );
-    res.json({ success: true, data: result.rows });
+    res.json({ success: true, data: result.rows.map((doc) => normalizeDateFields(doc, ['issue_date', 'review_due_date'])) });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -96,6 +98,8 @@ router.post('/documents', authenticate, authorize(), async (req, res) => {
       file_size_bytes: Joi.number().integer().optional(),
       tags: Joi.array().items(Joi.string()).default([]),
       portal_visibility: Joi.string().valid('internal', 'client', 'consultant', 'subcontractor', 'all_external').default('internal'),
+      confidentiality: Joi.string().valid('public', 'internal', 'confidential', 'restricted').default('internal'),
+      issue_date: dateOnly().allow(null).optional(),
       // Phase 21 register dimension
       doc_type: Joi.string().valid('drawing', 'specification', 'contract', 'report', 'method_statement', 'as_built', 'o_m', 'other').default('other'),
       doc_status: Joi.string().valid('draft', 'in_review', 'approved', 'superseded', 'void').default('draft'),
@@ -104,20 +108,33 @@ router.post('/documents', authenticate, authorize(), async (req, res) => {
       package: Joi.string().allow('', null).optional(),
       originator_organization_id: Joi.number().integer().allow(null).optional(),
       recipient_organization_id: Joi.number().integer().allow(null).optional(),
-      review_due_date: Joi.date().iso().allow(null).optional(),
+      review_due_date: dateOnly().allow(null).optional(),
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (value.portal_visibility !== 'internal' && value.confidentiality !== 'public') {
+      return res.status(400).json({ success: false, error_code: 'external_visibility_requires_public_confidentiality' });
+    }
 
     const result = await auditedTransaction(async (q) => {
+      if (value.project_location_id != null) {
+        const location = await q('SELECT 1 FROM project_locations WHERE id = $1 AND project_id = $2', [value.project_location_id, value.project_id]);
+        if (!location.rows.length) throw Object.assign(new Error('document_location_project_mismatch'), { status: 400, error_code: 'document_location_project_mismatch' });
+      }
+      for (const organizationId of [value.originator_organization_id, value.recipient_organization_id].filter((id) => id != null)) {
+        const participant = await q('SELECT 1 FROM project_participants WHERE project_id = $1 AND organization_id = $2', [value.project_id, organizationId]);
+        if (!participant.rows.length) throw Object.assign(new Error('document_organization_project_mismatch'), { status: 400, error_code: 'document_organization_project_mismatch' });
+      }
       const inserted = await q(
       `INSERT INTO project_documents (project_id, category_id, title, description, document_type, file_url, file_type, file_size_bytes, tags, uploaded_by, portal_visibility,
-         doc_type, doc_status, discipline, project_location_id, package, originator_organization_id, recipient_organization_id, review_due_date)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *`,
+         doc_type, doc_status, discipline, project_location_id, package, originator_organization_id, recipient_organization_id, review_due_date,
+         issue_date, confidentiality)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING *`,
       [value.project_id, value.category_id, value.title, value.description, value.document_type,
        value.file_url, value.file_type, value.file_size_bytes, JSON.stringify(value.tags), req.user.id, value.portal_visibility,
        value.doc_type, value.doc_status, value.discipline || null, value.project_location_id || null,
-       value.package || null, value.originator_organization_id || null, value.recipient_organization_id || null, value.review_due_date || null]
+       value.package || null, value.originator_organization_id || null, value.recipient_organization_id || null, value.review_due_date || null,
+       value.issue_date || null, value.confidentiality]
       );
 
     // Record v1 in version history
@@ -128,8 +145,11 @@ router.post('/documents', authenticate, authorize(), async (req, res) => {
       );
       return inserted;
     }, (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Uploaded document "${value.title}"`, entityId: result.rows[0].id, entityType: 'project_document' }));
-    res.status(201).json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+    res.status(201).json({ success: true, data: normalizeDateFields(result.rows[0], ['issue_date', 'review_due_date']) });
+  } catch (error) {
+    if (error.error_code) return res.status(error.status || 400).json({ success: false, error_code: error.error_code });
+    res.status(500).json({ success: false, error_code: 'document_create_failed' });
+  }
 });
 
 // Upload a new version — bumps version, archives previous file in document_versions.
@@ -188,21 +208,36 @@ router.put('/documents/:id', authenticate, authorize(), async (req, res) => {
       status: Joi.string().valid('draft', 'review', 'archived'),
       tags: Joi.array().items(Joi.string()),
       portal_visibility: Joi.string().valid('internal', 'client', 'consultant', 'subcontractor', 'all_external'),
+      confidentiality: Joi.string().valid('public', 'internal', 'confidential', 'restricted'),
+      issue_date: dateOnly().allow(null),
     }).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-
-    const sets = []; const params = []; let idx = 1;
-    for (const [k, v] of Object.entries(value)) {
-      if (v === undefined) continue;
-      if (k === 'tags') { sets.push(`tags = $${idx++}::jsonb`); params.push(JSON.stringify(v)); }
-      else { sets.push(`${k} = $${idx++}`); params.push(v); }
-    }
-    params.push(req.params.id);
-    const result = await query(`UPDATE project_documents SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
-    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Document not found' });
-    res.json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+    const result = await auditedTransaction(async (q) => {
+      const current = (await q('SELECT * FROM project_documents WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!current) return null;
+      const visibility = value.portal_visibility || current.portal_visibility || 'internal';
+      const confidentiality = value.confidentiality || current.confidentiality || 'internal';
+      if (visibility !== 'internal' && confidentiality !== 'public') {
+        const scopedError = new Error('external_visibility_requires_public_confidentiality');
+        scopedError.status = 400; scopedError.error_code = 'external_visibility_requires_public_confidentiality'; throw scopedError;
+      }
+      const sets = []; const params = []; let idx = 1;
+      for (const [k, v] of Object.entries(value)) {
+        if (v === undefined) continue;
+        if (k === 'tags') { sets.push(`tags = $${idx++}::jsonb`); params.push(JSON.stringify(v)); }
+        else { sets.push(`${k} = $${idx++}`); params.push(v); }
+      }
+      params.push(req.params.id);
+      return q(`UPDATE project_documents SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
+    }, (updated) => updated && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `Updated document ${updated.rows[0].title}`, entityId: updated.rows[0].id, entityType: 'project_document' }));
+    if (!result) return res.status(404).json({ success: false, error: 'Document not found' });
+    if (!result.rows?.length) return res.status(404).json({ success: false, error: 'Document not found' });
+    res.json({ success: true, data: normalizeDateFields(result.rows[0], ['issue_date']) });
+  } catch (error) {
+    if (error.error_code) return res.status(error.status || 400).json({ success: false, error_code: error.error_code });
+    res.status(500).json({ success: false, error_code: 'document_update_failed' });
+  }
 });
 
 // Submit for approval (document controllers submit; approving needs the separate `approve` action).
@@ -378,6 +413,7 @@ router.post('/submittals/:id/respond', authenticate, authorize(), async (req, re
 // ============================================================================
 
 const doccontrolEngine = require('../services/doccontrolEngine');
+const { canExternalViewDocument } = require('../services/documentVisibility');
 const { renderDocument } = require('../utils/procurementPdf');
 
 const DOC_REGISTER_SELECT = `
@@ -421,7 +457,7 @@ router.get('/registers', authenticate, authorize(), async (req, res) => {
     if (current === 'true') conditions.push(`d.is_current = true`);
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const r = await query(`${DOC_REGISTER_SELECT} ${where} ORDER BY d.doc_number NULLS LAST, d.created_at DESC`, params);
-    res.json({ success: true, data: r.rows });
+    res.json({ success: true, data: r.rows.map((doc) => normalizeDateFields(doc, ['issue_date', 'review_due_date'])) });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -501,7 +537,7 @@ router.post('/transmittals', authenticate, authorize(), async (req, res) => {
       recipient_organization_id: Joi.number().integer().allow(null).optional(),
       recipient_user_id: Joi.number().integer().allow(null).optional(),
       attention: Joi.string().allow('', null).optional(),
-      response_due: Joi.date().iso().allow(null).optional(),
+      response_due: dateOnly().allow(null).optional(),
       items: Joi.array().items(Joi.object({
         document_id: Joi.number().integer().allow(null).optional(),
         item_description: Joi.string().allow('', null).optional(),
@@ -648,7 +684,7 @@ router.post('/correspondence', authenticate, authorize(), async (req, res) => {
       linked_entity_type: Joi.string().allow('', null).optional(),
       linked_entity_id: Joi.number().integer().allow(null).optional(),
       contract_ref: Joi.string().allow('', null).optional(),
-      response_due: Joi.date().iso().allow(null).optional(),
+      response_due: dateOnly().allow(null).optional(),
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
@@ -776,7 +812,7 @@ router.get('/search', authenticate, authorize(), async (req, res) => {
     // Documents — every revision matches, visibility resolved per revision's document.
     const docs = await query(
       `SELECT d.id, d.doc_number, d.title, d.document_type, d.doc_type, d.status, d.doc_status,
-              d.is_current, d.revision_code, d.created_at, d.portal_visibility
+              d.is_current, d.revision_code, d.created_at, d.portal_visibility, d.confidentiality
        FROM project_documents d
        WHERE ($1::text IS NULL OR d.project_id::text = $1)
          AND (d.title ILIKE $2 OR d.description ILIKE $2 OR d.doc_number ILIKE $2 OR d.revision_code ILIKE $2)
@@ -784,7 +820,7 @@ router.get('/search', authenticate, authorize(), async (req, res) => {
       [project_id || null, like, parseInt(limit, 10)]
     );
     for (const d of docs.rows) {
-      if (isExternal && d.portal_visibility !== 'all_external' && d.portal_visibility !== externalRolesKey(req.user.role)) continue;
+      if (isExternal && !canExternalViewDocument(d, req.user.role)) continue;
       results.push({ record_type: 'document', id: d.id, number: d.doc_number, title: d.title, type: d.doc_type || d.document_type, status: d.doc_status || d.status, is_current: d.is_current, revision: d.revision_code, created_at: d.created_at, url: `/projects/documents?doc=${d.id}` });
     }
     const trans = await query(
@@ -826,9 +862,5 @@ router.get('/search', authenticate, authorize(), async (req, res) => {
     res.json({ success: true, data: results.slice(0, parseInt(limit, 10)) });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
-
-function externalRolesKey(role) {
-  return role; // portal_visibility values include 'client' / 'consultant' / 'subcontractor'
-}
 
 module.exports = router;

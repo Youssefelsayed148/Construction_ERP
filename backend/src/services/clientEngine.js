@@ -15,6 +15,8 @@
 
 'use strict';
 
+const { canExternalViewDocument } = require('./documentVisibility');
+
 const { query: defaultQuery } = require('../config/database');
 
 // Fields a client must never receive, whatever the UI does. Stripped
@@ -155,6 +157,7 @@ async function acknowledgeClientDocument(q, documentId, user, comment = null) {
     throw Object.assign(new Error('Document not found'), { status: 404, error_code: 'record_not_found' });
   }
   if (document.portal_visibility !== 'client') throw Object.assign(new Error('Document is not visible to clients'), { status: 404, error_code: 'record_not_found' });
+  if (!canExternalViewDocument(document, 'client')) throw Object.assign(new Error('Document is not visible to clients'), { status: 404, error_code: 'record_not_found' });
   const existing = await q('SELECT id FROM client_document_acknowledgements WHERE document_id = $1', [documentId]);
   if (existing.rows.length) throw Object.assign(new Error('Document is already acknowledged'), { status: 409, error_code: 'already_acknowledged' });
   if (document.status !== 'awaiting_acknowledgement') {
@@ -307,7 +310,8 @@ async function clientDashboard(q, user, { project_id = null, preview_project_id 
 
   // Owner-facing documents.
   const documents = forProjects(await safeAll(q,
-    "SELECT * FROM project_documents WHERE status = 'approved' AND portal_visibility IN ('client','all_external')", []));
+    "SELECT * FROM project_documents WHERE status = 'approved' AND portal_visibility IN ('client','all_external')", []))
+    .filter((document) => canExternalViewDocument(document, 'client'));
   dashboard.owner_documents = {
     items: documents.slice(0, 10).map((d) => ({ id: d.id, title: d.title || d.file_name, file_url: d.file_url })),
     count: documents.length,
@@ -369,9 +373,10 @@ async function clientActionCenter(q, user, { project_id = null, preview_project_
 
   const pendingApprovals = forProjects((await safeAll(q, "SELECT * FROM approval_requests WHERE status = 'pending'", [])));
   const variationResponses = forProjects((await safeAll(q, "SELECT * FROM variations WHERE variation_type = 'client' AND status = 'client_approval_reject'", [])));
-  const documentAcks = forProjects((await safeAll(q, `SELECT d.* FROM project_documents d
+  const documentAckRows = await safeAll(q, `SELECT d.* FROM project_documents d
     LEFT JOIN client_document_acknowledgements a ON a.document_id = d.id
-    WHERE d.status = 'awaiting_acknowledgement' AND a.id IS NULL`, [])));
+    WHERE d.status = 'awaiting_acknowledgement' AND a.id IS NULL`, []);
+  const documentAcks = forProjects(documentAckRows).filter((document) => canExternalViewDocument(document, 'client'));
   const overdueInputs = pendingApprovals.filter((a) => a.due_date && new Date(a.due_date) < now);
 
   return {

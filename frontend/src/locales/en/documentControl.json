@@ -2,6 +2,16 @@
   "title": "Document control",
   "transmittals": "Transmittals",
   "correspondence": "Correspondence",
+  "register": {
+    "number": "Document number", "title": "Title", "type": "Type", "status": "Status", "locationPackage": "Location / package",
+    "controlledType": "Controlled document type", "discipline": "Discipline", "issueDate": "Issue date", "reviewDue": "Review due date",
+    "confidentiality": "Confidentiality", "visibility": "Portal visibility", "locationId": "Project location ID", "package": "Package",
+    "originatorId": "Originator organization ID", "recipientId": "Recipient organization ID",
+    "confidentialityLevels": { "public": "Public", "internal": "Internal", "confidential": "Confidential", "restricted": "Restricted" },
+    "visibilityLevels": { "internal": "Internal only", "client": "Client", "consultant": "Consultant", "subcontractor": "Subcontractor", "all_external": "All external seats" },
+    "types": { "drawing": "Drawing", "specification": "Specification", "contract": "Contract", "report": "Report", "method_statement": "Method statement", "as_built": "As-built", "o_m": "O&M", "other": "Other" },
+    "disciplines": { "architectural": "Architectural", "structural": "Structural", "civil": "Civil", "mechanical": "Mechanical", "electrical": "Electrical", "plumbing": "Plumbing", "hvac": "HVAC", "fire": "Fire", "general": "General" }
+  },
   "rfiImpacts": {
     "location": "Project location", "workPackage": "Work package", "cost": "Estimated cost impact",
     "schedule": "Schedule impact (days)", "none": "No location linked", "loading": "Loading project locations…",

@@ -108,13 +108,13 @@ describePg('client portal actions and assignment scope (real PostgreSQL)', () =>
 
   test('document acknowledgement records actor/time, updates formal status, and cannot be repeated or crossed by project', async () => {
     const document = (await db.query(
-      `INSERT INTO project_documents (project_id, title, status, portal_visibility, recipient_organization_id)
-       VALUES ($1,'Client handover guide','awaiting_acknowledgement','client',$2) RETURNING id`,
+      `INSERT INTO project_documents (project_id, title, status, portal_visibility, confidentiality, recipient_organization_id)
+       VALUES ($1,'Client handover guide','awaiting_acknowledgement','client','public',$2) RETURNING id`,
       [projectA, clientOrg]
     )).rows[0];
     const otherDocument = (await db.query(
-      `INSERT INTO project_documents (project_id, title, status, portal_visibility, recipient_organization_id)
-       VALUES ($1,'Other client guide','awaiting_acknowledgement','client',$2) RETURNING id`,
+      `INSERT INTO project_documents (project_id, title, status, portal_visibility, confidentiality, recipient_organization_id)
+       VALUES ($1,'Other client guide','awaiting_acknowledgement','client','public',$2) RETURNING id`,
       [otherProject, otherOrg]
     )).rows[0];
     created.documents.push(document.id, otherDocument.id);
@@ -131,8 +131,8 @@ describePg('client portal actions and assignment scope (real PostgreSQL)', () =>
 
   test('HTTP acknowledgement enforces client policy and writes the activity audit in the same transaction', async () => {
     const document = (await db.query(
-      `INSERT INTO project_documents (project_id, title, status, portal_visibility, recipient_organization_id)
-       VALUES ($1,'Route-tested client document','awaiting_acknowledgement','client',$2) RETURNING id`,
+      `INSERT INTO project_documents (project_id, title, status, portal_visibility, confidentiality, recipient_organization_id)
+       VALUES ($1,'Route-tested client document','awaiting_acknowledgement','client','public',$2) RETURNING id`,
       [projectA, clientOrg]
     )).rows[0];
     created.documents.push(document.id);
