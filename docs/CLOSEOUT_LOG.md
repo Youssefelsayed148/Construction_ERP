@@ -680,4 +680,25 @@ npm run lint:guards
 lint-guards: ok
 ```
 
-A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This sales/schedule slice is not committed yet.
+A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This sales/schedule slice is committed as `270c022`.
+
+## 2026-10-13: A4 quantity measurement audit continuation (local, pending commit)
+
+Quantity measurement creation now inserts its activity audit row in the same transaction as the measurement and derived progress updates.
+
+Verification command output:
+
+```text
+node --check src/routes/quantities.js; git diff --check
+exit code: 0
+
+npm test -- --runInBand
+Test Suites: 48 passed, 48 total
+Tests:       968 passed, 968 total
+Ran all test suites.
+
+npm run lint:guards
+lint-guards: ok
+```
+
+A4 remains incomplete; PostgreSQL rollback verification remains unavailable because Docker Desktop is unavailable. This quantity slice is not committed yet.

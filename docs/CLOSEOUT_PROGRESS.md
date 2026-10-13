@@ -201,3 +201,7 @@ Unit-sale invoice activity now shares the invoice creation/posting transaction. 
 ## 2026-10-13: A4 sales and schedule transactional audit continuation (local, pending commit)
 
 Building create/link/floor inserts, unit status changes, schedule activity create/progress, and baseline replacement now include their audit row in the corresponding transaction. Schedule progress sync errors now propagate and roll back. Syntax/whitespace checks exit 0; backend mock suite passes 48 suites / 968 tests; lint guards pass. PostgreSQL rollback remains unverified because Docker Desktop is unavailable. Current expected commit: per-slice commit to follow.
+
+## 2026-10-13: A4 quantity measurement audit continuation (local, pending commit)
+
+Quantity measurement creation now inserts its activity audit row in the same transaction as the measurement and derived progress updates. Syntax/whitespace checks exit 0; backend mock suite passes 48 suites / 968 tests; guards pass. PostgreSQL rollback remains unverified because Docker Desktop is unavailable. Current expected commit: per-slice commit to follow.

@@ -195,14 +195,13 @@ router.post('/measurements', authenticate, authorize(), async (req, res) => {
         source_type: value.source_type, source_id: value.source_id, measured_by: req.user.id, photos: value.photos,
       });
       await progressEngine.onMeasurementsChanged(q, { boqItemId: value.boq_item_id, projectId: value.project_id });
+      await logActivity({
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        action: 'create', module: 'quantities',
+        description: `Measured ${value.quantity} on BOQ #${value.boq_item_id}`,
+        entityId: inserted.id, entityType: 'quantity_measurement',
+      }, { query: q });
       return { rows: [inserted] };
-    });
-
-    await logActivity({
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      action: 'create', module: 'quantities',
-      description: `Measured ${value.quantity} on BOQ #${value.boq_item_id}`,
-      entityId: r.rows[0].id, entityType: 'quantity_measurement',
     });
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) {
