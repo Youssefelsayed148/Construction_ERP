@@ -3,7 +3,7 @@
   "comparison": { "title": "Procurement comparison", "noQuotations": "No quotations received yet." },
   "rfq": "Request for quotation",
   "fields": {
-    "title": "Title", "description": "Description", "estimatedPrice": "Estimated unit price", "priority": "Priority",
+    "title": "Title", "description": "Description", "material": "Material", "estimatedPrice": "Estimated unit price", "priority": "Priority",
     "purchaseRequest": "Purchase request", "dueDate": "Due date", "quotations": "Quotations", "rfq": "Request for quotation",
     "rfqLine": "Request line", "unitPrice": "Unit price", "leadTime": "Lead time (days)", "paymentTerms": "Payment terms",
     "deliveryTerms": "Delivery terms", "reference": "Reference", "compliant": "Compliant", "selectedQuote": "Selected quote",
@@ -20,7 +20,7 @@
   "actions": {
     "createPr": "Create request", "submit": "Submit", "cancel": "Cancel", "createRfq": "Create request for quotation",
     "invite": "Invite selected suppliers", "submitQuote": "Submit quotation", "submitRecommendation": "Submit for approval",
-    "approve": "Approve", "reject": "Reject", "createPo": "Create purchase order", "approveIssue": "Approve purchase order",
+    "approve": "Approve", "reject": "Reject", "createPo": "Create purchase order", "startPoApproval": "Submit for approval", "approveIssue": "Approve purchase order",
     "save": "Save changes", "recordDelivery": "Record delivery", "createMir": "Create inspection request", "accept": "Accept inspection",
     "createGrn": "Create goods receipt", "createReturn": "Record supplier return", "recordInvoice": "Record supplier invoice",
     "approveInvoice": "Approve supplier invoice", "recordPayment": "Record supplier payment"

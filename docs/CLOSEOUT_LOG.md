@@ -1115,3 +1115,15 @@ Added a desktop Playwright journey for project-scoped purchase request creation 
 ## 2026-10-13: Batch C3 follow-up — project tabs use scoped grants
 
 Removed the remaining role-key map and FULL fallback from project navigation. The login response preserves `project_id` on each effective module/action grant, project tabs evaluate those grants for the active project, and financial cards require the internal-cost visibility action. Unknown roles and empty grants fail closed. Focused frontend tests passed 3 suites / 26 tests. The project-page browser file passed 6/6 on desktop and mobile, including the scoped site engineer and Arabic RTL cases. `node --check src/routes/auth.js` and `git diff --check` passed. No full suite was run for this slice.
+
+## 2026-10-13: Batch C4 real procurement browser journey
+
+Implemented the real backend browser journey and closed the schema/UI gaps it found. The project procurement read model now resolves delivery and GRN project ownership through purchase orders because those receipt tables have no `project_id`. PR/RFQ entry supports a material selector and sends the material ID in each line. Draft POs expose the approval-start action, and the existing PO issue route now records the state change through the audited transaction helper.
+
+The journey exercised a requester plus distinct accountant, purchasing manager, finance manager, inventory checker, and owner/requester actors through PR submission and approval, two-supplier RFQ quotations, award review, PO approval, delivery, MIR approval, GRN, supplier invoice approval, and a supplier payment allocation. It passed on desktop and mobile in English and Arabic. An unassigned pilot user received 403 from `GET /api/procurement/project/:id`.
+
+Focused evidence: live Playwright 4/4; denial Playwright 1/1; `ProcurementWorkspace.test.js` 1/1; `i18n:check`; production build; backend route syntax check; and read-only database reconciliation (11 checks, 0 violations). The reconciliation function was invoked directly because the CLI wrapper requires a separately confirmed restorable backup; the function itself is read-only. No full suite was run for this slice, following the user's test cadence.
+
+The first attempts found a local API origin mismatch, form selectors that assumed an explicit `type="submit"`, and role assumptions that did not match configured workflow resolvers. The harness and actor handoffs were corrected. The four final live runs each completed the full chain.
+
+Batch C is complete. D UAT execution requires human pilot users; E finance account mappings stay provisional until the finance owner confirms them. Continue with the UAT guide, provisional enablement, and Phase 5.6–6 work.

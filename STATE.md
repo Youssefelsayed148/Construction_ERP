@@ -31,14 +31,14 @@ Updated: 2026-10-13 (Africa/Cairo)
 - Batch C2 committed: `3893bc6` (`Batch C2: add project procurement workspace`). Its focused UI test (1/1), localization check, production build, backend syntax checks, and whitespace check passed. One local API smoke run passed the procurement journey and scoped invoice-list checks, then hit `spawnSync node.exe EPERM` at the reconcile child-process step; it is not recorded as a clean full smoke. A Docker image build incidentally ran the backend mock suite (50 suites / 960 tests passed; 56 PostgreSQL suites skipped). Per the user's test-cadence instruction, use tests tied to the active ticket and defer broad suites to batch exits.
 - Batch C3 committed: `df7047c` (`Batch C3: filter navigation by policy grants`). Its focused shell test passed 16/16 tests; auth route syntax and whitespace checks passed.
 - C3 follow-up removes the remaining project role map/FULL fallback. Project tabs and financial cards now use effective module/action grants and project IDs. Targeted frontend checks pass: 3 suites / 26 tests; project-page Playwright passes 6/6 across desktop/mobile, including Arabic and site-engineer visibility.
-- Batch C4 focused procurement browser journey passes on desktop (1 test); it exercises request creation/submission with a mocked API.
-- Batches C–E and Phases 5.6–6 remain open. Finance signoff still requires the owner to confirm provisional chart-of-accounts mappings.
+- Batch C4 passes the real local backend procure-to-pay journey on English/Arabic desktop and mobile, plus an unassigned-user API denial. The run covers PR, RFQ and two quotes, award approval, PO workflow, delivery/MIR/GRN, supplier invoice and allocated payment. Read-only reconciliation reported zero violations across all 11 checks.
+- Batches D–E and Phases 5.6–6 remain open. Finance signoff still requires the owner to confirm provisional chart-of-accounts mappings.
 
 ## Where work stopped
 
-C1–C3 are complete. C4 procurement browser journey is implemented; continue C4 journeys, then D, E, and the committed plan/implementation for Phases 5.6–6.
+C1–C4 are complete and committed. Continue with D UAT documentation, E provisional finance enablement, then the Phase 5.6–6 plan and implementation. Finance signoff remains a human decision.
 
-Batch A and Batch B1–B6 are green. C1–C3 are committed; C4 browser journeys are in progress. Continue with D, E, and the committed plan/implementation for Phases 5.6–6 after C4. Keep all targets local, do not read any `.env` file, and never use production-looking databases or external services. A second ignored file `backend/.env.docker` was accidentally created with only `CORS_ALLOW_HTTP_LOCAL=true`; an attempt to remove it was rejected by auto-review, so it remains unused and untouched.
+Batch A and Batch B1–B6 are green. C1–C4 are committed. Continue with D, E, and the Phase 5.6–6 plan/implementation. Keep targets local and never use production-looking databases or external services. The ignored `backend/.env.docker` file is unrelated and remains untouched.
 
 ## Current gates
 
@@ -58,7 +58,8 @@ Batch A and Batch B1–B6 are green. C1–C3 are committed; C4 browser journeys 
 | Batch B5 full rehearsal | PASS — 237 tables / 3,323 rows matched; 226 sequence maxima matched; reconcile 0; cleaning report empty |
 | Batch B6 Windows instructions | PASS — `docs/STAGING.md`; `git diff --check` clean |
 | Batch B full end-of-batch gate | PASS — backend 50/960, PG 56/566, frontend 17/97, i18n/build, Playwright 32/46, Compose healthy |
-| Batches C–E and Phases 5.6–6 | NOT RUN |
+| Batch C4 live browser journeys | PASS — EN/AR desktop/mobile 4/4; unassigned procurement API 403; reconciliation 11/11 checks at zero |
+| Batches D–E and Phases 5.6–6 | NOT RUN |
 
 ## Risks and decisions
 

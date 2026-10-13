@@ -32,9 +32,11 @@ router.get('/project/:projectId', authenticate, authorize(), async (req, res) =>
       query('SELECT * FROM purchase_requests WHERE project_id = $1 ORDER BY created_at DESC, id DESC LIMIT 200', [projectId]),
       query('SELECT * FROM rfqs WHERE project_id = $1 ORDER BY created_at DESC, id DESC LIMIT 200', [projectId]),
       query('SELECT * FROM purchase_orders WHERE project_id = $1 ORDER BY created_at DESC, id DESC LIMIT 200', [projectId]),
-      query('SELECT * FROM deliveries WHERE project_id = $1 ORDER BY created_at DESC, id DESC LIMIT 200', [projectId]),
+      query(`SELECT d.* FROM deliveries d JOIN purchase_orders po ON po.id = d.purchase_order_id
+        WHERE po.project_id = $1 ORDER BY d.created_at DESC, d.id DESC LIMIT 200`, [projectId]),
       query('SELECT * FROM material_inspection_requests WHERE project_id = $1 ORDER BY created_at DESC, id DESC LIMIT 200', [projectId]),
-      query('SELECT * FROM goods_receipt_notes WHERE project_id = $1 ORDER BY created_at DESC, id DESC LIMIT 200', [projectId]),
+      query(`SELECT g.* FROM goods_receipt_notes g JOIN purchase_orders po ON po.id = g.purchase_order_id
+        WHERE po.project_id = $1 ORDER BY g.created_at DESC, g.id DESC LIMIT 200`, [projectId]),
     ]);
     res.json({ success: true, data: {
       purchase_requests: purchaseRequests.rows,
@@ -467,7 +469,8 @@ router.post('/po', authenticate, authorize(), async (req, res) => {
 
 router.post('/po/:id/issue', authenticate, authorize(), async (req, res) => {
   try {
-    const result = await atomic((q) => svc.issuePurchaseOrder(q, parseInt(req.params.id, 10), req.user));
+    const result = await auditedProc(req, (q) => svc.issuePurchaseOrder(q, parseInt(req.params.id, 10), req.user),
+      (row) => ({ action: 'submit', description: `Started approval for purchase order #${req.params.id}`, entityType: 'purchase_order', entityId: parseInt(req.params.id, 10) }));
     res.json({ success: true, data: result });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });

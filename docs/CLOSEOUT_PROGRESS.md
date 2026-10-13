@@ -352,3 +352,24 @@ The first invocation was blocked before test startup by `spawn EPERM`; the local
 ### C3 follow-up: project tabs and project seats
 
 Removed `projectNav`'s hard-coded role map and FULL fallback. The login grant projection now retains each grant's `project_id`; project group/sub-tab visibility and financial figures use those effective grants. Focused checks passed: project nav/shell/sidebar, 3 suites / 26 tests; `project-page.spec.js`, 6/6 across desktop and mobile (English owner, scoped site engineer, Arabic RTL).
+
+## 2026-10-13: Batch C4 live procure-to-pay journeys
+
+The real local API and disposable pilot database now pass the complete browser journey with a requester and separate workflow actors: purchase request and approvals, RFQ with two quotations, award recommendation/approval, PO workflow, delivery, MIR checker acceptance, GRN, supplier invoice approval, and payment allocation. The workspace now offers material selection for PR/RFQ lines, joins delivery/GRN read models through project purchase orders, and starts PO approval through the existing workflow route with an audited state change. A real unassigned pilot session receives HTTP 403 from the project procurement endpoint.
+
+Focused verification:
+
+```text
+Playwright real backend: EN desktop 1/1, EN mobile 1/1, AR desktop 1/1, AR mobile 1/1
+Playwright denied access: 1/1 (unassigned account, procurement project endpoint returns 403)
+frontend ProcurementWorkspace.test.js: 1 suite / 1 test
+npm run i18n:check: passed
+npm run build: compiled successfully
+node --check backend/src/routes/procurement.js: passed
+Read-only database reconciliation: 11 checks, 0 violations
+git diff --check: passed
+```
+
+The first live-browser attempts exposed local API CORS setup, form buttons without explicit submit types, and workflow actors that needed to match each configured resolver. Those issues were corrected before the four final runs. The journey uses separate accountant, purchasing manager, finance manager, inventory checker, and requester/owner roles as the workflow requires. No full suite was run for this slice, following the user's test cadence.
+
+Batch C is complete. Next: D UAT pilot instructions, E provisional finance mapping/UI/docs with finance owner confirmation still pending, then the Phase 5.6–6 plan and implementation.

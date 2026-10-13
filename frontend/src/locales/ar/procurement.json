@@ -3,7 +3,7 @@
   "comparison": { "title": "مقارنة المشتريات", "noQuotations": "لم يتم استلام عروض أسعار بعد." },
   "rfq": "طلب عرض سعر",
   "fields": {
-    "title": "العنوان", "description": "الوصف", "estimatedPrice": "سعر الوحدة التقديري", "priority": "الأولوية",
+    "title": "العنوان", "description": "الوصف", "material": "المادة", "estimatedPrice": "سعر الوحدة التقديري", "priority": "الأولوية",
     "purchaseRequest": "طلب الشراء", "dueDate": "تاريخ الاستحقاق", "quotations": "العروض", "rfq": "طلب عرض سعر",
     "rfqLine": "بند الطلب", "unitPrice": "سعر الوحدة", "leadTime": "مدة التوريد (أيام)", "paymentTerms": "شروط الدفع",
     "deliveryTerms": "شروط التسليم", "reference": "المرجع", "compliant": "مطابق", "selectedQuote": "العرض المحدد",
@@ -20,7 +20,7 @@
   "actions": {
     "createPr": "إنشاء طلب شراء", "submit": "إرسال", "cancel": "إلغاء", "createRfq": "إنشاء طلب عرض سعر",
     "invite": "دعوة الموردين المحددين", "submitQuote": "إرسال عرض السعر", "submitRecommendation": "إرسال للموافقة",
-    "approve": "موافقة", "reject": "رفض", "createPo": "إنشاء أمر شراء", "approveIssue": "اعتماد أمر الشراء",
+    "approve": "موافقة", "reject": "رفض", "createPo": "إنشاء أمر شراء", "startPoApproval": "إرسال للاعتماد", "approveIssue": "اعتماد أمر الشراء",
     "save": "حفظ التغييرات", "recordDelivery": "تسجيل التسليم", "createMir": "إنشاء طلب فحص", "accept": "قبول الفحص",
     "createGrn": "إنشاء إذن استلام", "createReturn": "تسجيل مرتجع للمورد", "recordInvoice": "تسجيل فاتورة المورد",
     "approveInvoice": "اعتماد فاتورة المورد", "recordPayment": "تسجيل دفعة المورد"

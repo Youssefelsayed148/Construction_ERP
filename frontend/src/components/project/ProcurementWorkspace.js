@@ -47,7 +47,7 @@ function ProcurementWorkspace({ projectId }) {
   const { showToast } = useToast();
   const [active, setActive] = useState('requests');
   const [data, setData] = useState({});
-  const [options, setOptions] = useState({ suppliers: [], warehouses: [], invoices: [] });
+  const [options, setOptions] = useState({ suppliers: [], warehouses: [], materials: [], invoices: [] });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -66,19 +66,20 @@ function ProcurementWorkspace({ projectId }) {
       const optional = await Promise.all([
         api('/suppliers?limit=500&is_active=true').catch(() => []),
         api(`/warehouses?project_id=${projectId}`).catch(() => []),
+        api('/items?limit=500&is_active=true').catch(() => []),
         api(`/procurement/analytics/spend?project_id=${projectId}`).catch(() => []),
         api(`/procurement/analytics/vendor-performance?project_id=${projectId}`).catch(() => []),
         api(`/procurement/award-recommendations?project_id=${projectId}`).catch(() => []),
         api(`/procurement/invoices?project_id=${projectId}`).catch(() => []),
       ]);
-      const [suppliers, warehouses, spend, performance, awards, invoices] = optional;
+      const [suppliers, warehouses, materials, spend, performance, awards, invoices] = optional;
       const spendRows = (Array.isArray(spend) ? spend : spend?.rows || []).map((row) => ({ ...row, supplier_name: row.name, order_count: row.orders, committed_amount: row.committed, actual_amount: row.invoiced }));
       const performanceRows = (Array.isArray(performance) ? performance : performance?.rows || []).map((row) => ({ ...row,
         supplier_name: row.supplier_name_en || row.supplier_name_ar || row.supplier_code, order_count: row.po_count,
         on_time_pct: row.on_time_rate == null ? null : Math.round(row.on_time_rate * 100), quality_pct: row.acceptance_rate == null ? null : Math.round(row.acceptance_rate * 100),
       }));
       setData({ ...workspace, award_recommendations: awards || [], spend: spendRows, performance: performanceRows });
-      setOptions({ suppliers: suppliers || [], warehouses: warehouses || [], invoices: invoices || [] });
+      setOptions({ suppliers: suppliers || [], warehouses: warehouses || [], materials: materials || [], invoices: invoices || [] });
     } catch (error) {
       setLoadError(t(`errors.${error.code || 'requestFailed'}`, { defaultValue: t('errors.requestFailed') }));
     } finally { setLoading(false); }
@@ -128,16 +129,18 @@ function ProcurementWorkspace({ projectId }) {
   const grnOptions = useMemo(() => (data.goods_receipt_notes || []).map((row) => ({ value: row.id, label: `${refOf(row)} · ${row.status}` })), [data.goods_receipt_notes]);
   const prOptions = useMemo(() => (data.purchase_requests || []).map((row) => ({ value: row.id, label: `${refOf(row)} · ${row.title}` })), [data.purchase_requests]);
   const warehouses = useMemo(() => options.warehouses.map((row) => ({ value: row.id, label: row.name })), [options.warehouses]);
+  const materialOptions = useMemo(() => options.materials.map((row) => ({ value: row.id, label: `${row.code} · ${row.name_en || row.name_ar || ''}` })), [options.materials]);
   const selectedLine = (items, id) => (items || []).find((item) => idOf(item) === Number(id));
   const sectionLabel = (key) => t(`procurement.workspace.sections.${key}`);
   const renderRequests = () => <div className="procurement-grid">
     <section className="card"><h2>{t('procurement.workspace.createPr')}</h2><form onSubmit={(event) => {
       event.preventDefault(); const form = new FormData(event.currentTarget);
       const body = { project_id: Number(projectId), title: form.get('title'), priority: form.get('priority'), needed_by: form.get('needed_by') || null,
-        lines: [{ description: form.get('description'), quantity: Number(form.get('quantity')), unit: form.get('unit'), estimated_unit_price: Number(form.get('price')) }] };
+        lines: [{ material_id: Number(form.get('material_id')) || null, description: form.get('description'), quantity: Number(form.get('quantity')), unit: form.get('unit'), estimated_unit_price: Number(form.get('price')) }] };
       run(async () => { await send('/procurement/pr', 'POST', body); event.currentTarget?.reset?.(); }, 'created');
     }}>
       <FormField id="pr-title" name="title" label={t('procurement.fields.title')} required maxLength={200} />
+      <SelectField id="pr-material" name="material_id" label={t('procurement.fields.material')} required={false} emptyLabel={t('common.none')} value="" options={materialOptions} />
       <FormField id="pr-description" name="description" label={t('procurement.fields.description')} required />
       <div className="procurement-form-row"><FormField id="pr-qty" name="quantity" label={t('common.quantity')} required type="number" min="0.001" step="any" defaultValue="1" />
         <FormField id="pr-unit" name="unit" label={t('common.unit')} defaultValue="each" />
@@ -165,10 +168,11 @@ function ProcurementWorkspace({ projectId }) {
     <section className="card"><h2>{t('procurement.workspace.createRfq')}</h2><form onSubmit={(event) => {
       event.preventDefault(); const form = new FormData(event.currentTarget);
       postAction('/procurement/rfq', { project_id: Number(projectId), purchase_request_id: Number(form.get('pr_id')) || null, title: form.get('title'), due_date: form.get('due_date') || null,
-        lines: [{ description: form.get('description'), quantity: Number(form.get('quantity')), unit: form.get('unit') || null }] });
+        lines: [{ material_id: Number(form.get('material_id')) || null, description: form.get('description'), quantity: Number(form.get('quantity')), unit: form.get('unit') || null }] });
     }}>
       <FormField id="rfq-title" name="title" label={t('procurement.fields.title')} required />
       <SelectField id="rfq-pr" name="pr_id" label={t('procurement.fields.purchaseRequest')} required={false} emptyLabel={t('common.none')} value="" options={prOptions} />
+      <SelectField id="rfq-material" name="material_id" label={t('procurement.fields.material')} required={false} emptyLabel={t('common.none')} value="" options={materialOptions} />
       <FormField id="rfq-description" name="description" label={t('procurement.fields.description')} required />
       <div className="procurement-form-row"><FormField id="rfq-qty" name="quantity" label={t('common.quantity')} required type="number" min="0.001" step="any" defaultValue="1" />
         <FormField id="rfq-unit" name="unit" label={t('common.unit')} defaultValue="each" /><FormField id="rfq-due" name="due_date" label={t('procurement.fields.dueDate')} type="date" /></div>
@@ -246,7 +250,9 @@ function ProcurementWorkspace({ projectId }) {
       {poDetail && <><p>{refOf(poDetail)} · {poDetail.status}</p><EntityTable rows={poDetail.lines} title={t('procurement.workspace.orderLines')} empty={t('procurement.messages.noLines')}
         columns={[["id", t('procurement.fields.line')], ['description', t('procurement.fields.description')], ['quantity', t('common.quantity')], ['unit_rate', t('procurement.fields.unitPrice')]]} />
         <div className="procurement-action-row">
-          {['draft', 'submitted', 'authority_approval'].includes(poDetail.status) && <button className="btn btn-primary" disabled={busy} onClick={() => postAction(`/procurement/po/${poDetail.id}/decide`, { decision: 'approve' })}>{t('procurement.actions.approveIssue')}</button>}
+          {poDetail.status === 'draft' && !poDetail.workflow_instance_id && <button className="btn btn-primary" disabled={busy} onClick={() => postAction(`/procurement/po/${poDetail.id}/issue`)}>{t('procurement.actions.startPoApproval')}</button>}
+          {poDetail.workflow_instance_id && ['draft', 'commercial_procurement_approval', 'financial_authority'].includes(poDetail.status)
+            && <button className="btn btn-primary" disabled={busy} onClick={() => postAction(`/procurement/po/${poDetail.id}/decide`, { decision: 'approve' })}>{t('procurement.actions.approveIssue')}</button>}
           {poDetail.status === 'draft' && <button className="btn" disabled={busy} onClick={() => run(() => send(`/procurement/po/${poDetail.id}`, 'PUT', { payment_terms: poDetail.payment_terms || '' }))}>{t('procurement.actions.save')}</button>}
           {!['cancelled', 'received'].includes(poDetail.status) && <button className="btn btn-danger" disabled={busy} onClick={() => setCancelTarget({ kind: 'po', id: poDetail.id, reference: refOf(poDetail) })}>{t('procurement.actions.cancel')}</button>}
         </div></>}
