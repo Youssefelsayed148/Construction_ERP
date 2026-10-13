@@ -147,6 +147,7 @@ describePg('golden chain: requirement -> PR -> PO -> GRN -> invoice -> payment -
     expect(delivery.status).toBe(201);
     const mir = await call('POST', `/api/procurement/deliveries/${delivery.body.data.id}/mir`);
     expect(mir.status).toBe(201);
+    expect(Number(mir.body.data.project_id)).toBe(w.project.id);                 // MIR approval retains the PO's project scope
     expect((await call('POST', `/api/procurement/mir/${mir.body.data.id}/decide`, { decision: 'accept' })).status).toBe(200);
     const grnRes = await call('POST', `/api/procurement/mir/${mir.body.data.id}/grn`);
     expect(grnRes.status).toBe(201);

@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, authorize, authorizeSelfSession } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const policy = require('../services/policy');
 
@@ -188,7 +188,7 @@ router.post('/change-password', authenticate, authorize(), async (req, res) => {
 });
 
 // POST /api/auth/logout-all — revoke every session and delegated token issued to this user.
-router.post('/logout-all', authenticate, authorize(), async (req, res) => {
+router.post('/logout-all', authenticate, authorizeSelfSession(), async (req, res) => {
   try {
     await transaction(async (client) => {
       const q = client.query.bind(client);

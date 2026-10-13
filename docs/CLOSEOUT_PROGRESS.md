@@ -239,3 +239,27 @@ The guarded staging seed passed against the local pilot. It created 35 users acr
 
 The idempotent demo-data seed passed twice. Verified 3 materials, cost codes, supplier rates, 1 warehouse, 3 stock rows, and 3 BOQ lines (total EGP 1,376,500). Backend mock passed 49 suites / 972 tests; lint guards passed. Next: implement and run B4’s local API smoke across requester/checker, PR→RFQ→quotes→award→approval→PO→partial receipt→MIR/GRN→supplier invoice/payment, file access checks, locale headers, journal balance, and reconcile checks.
 B3 follow-up: added a second fictional supplier and alternative prices; verified two pilot suppliers and six supplier/material rates. This enables the B4 bid comparison path. The earlier single-supplier B3 log is historical; current seed state has two suppliers/six rates.
+## 2026-10-13: Batch B4 local procure-to-pay smoke
+
+The local-only staging smoke passed at `http://127.0.0.1:8090`. It logged into the 33 canonical roles plus staging edge/workflow accounts; checked unassigned, expired-assignment, and cross-project denial; checked EN/AR headers; ran PR → RFQ → two quotations → comparison → award recommendation → checker/authority approval → PO → partial delivery → MIR/GRN → matched supplier invoice → allocated payment; uploaded and scoped a PDF; checked balanced journals, project cost, unchanged out-of-scope data, reconciliation, and logout revocation. No credentials or tokens were printed.
+
+The journey found and fixed two defects: MIR creation now carries the PO project ID so scoped inventory approval resolves correctly, and logout-all uses an authenticated self-session guard because it only changes `req.user.id` and is not a business permission.
+
+```text
+npm --prefix backend run smoke:staging
+[PASS] health: API ready and database healthy
+[PASS] login: 33 canonical roles and 5 staging edge/workflow accounts
+[PASS] RBAC: no-assignment and expired-seat users receive 403; cross-project actor is scoped to its own project
+[PASS] EN/AR: Accept-Language en/ar requests both include bilingual project names
+[PASS] P2P: PR → RFQ → 2 quotations → comparison → award recommendation → separate checker/authority approval
+[PASS] P2P: approved PO → partial delivery → MIR/GRN → matched supplier invoice → payment allocation
+[PASS] media: uploaded PDF is readable by its uploader and denied outside project scope
+[PASS] reconcile: 0 unbalanced chain entries; out-of-scope project unchanged; project cost view updated
+[PASS] npm run reconcile
+[PASS] logout: checker token revoked and rejected
+STAGING_SMOKE_OK base=http://127.0.0.1:8090 project=PILOT-PTP-001 pr=13 rfq=13 po=12 grn=4 invoice=4 payment=4
+```
+
+The backend image build completed its mock gate (49 suites / 958 tests; 56 PG suites skipped in the image build). Focused route/isolation tests passed 2 suites / 424 tests. A local `pg_dump` restore was verified with 305 tables in an isolated temporary DB, then the temporary DB and dump were removed. B5's repeatable script, migrate dry-run, data-cleaning report, and before/after counts remain in progress.
+
+B4 final verification: the backend mock gate passed 49 suites / 958 tests (56 PostgreSQL suites skipped), `npm run lint:guards` printed `lint-guards: ok`, and the fresh isolated Postgres 16 test database passed `npm run test:pg` with 56 suites / 566 tests. It was built by applying all 103 migrations to an empty container and was removed after testing. The MIR project-scope assertion passed in the golden-chain PG suite.

@@ -19,7 +19,7 @@ const CANONICAL_ROLES = Object.freeze([
   'consultant_reviewer', 'subcontractor_manager', 'subcontractor_site_engineer', 'supplier_sales', 'testing_lab',
 ]);
 const PILOT_PROJECT_CODE = 'PILOT-PTP-001';
-const SEED_EMAIL_DOMAIN = 'pilot.staging.invalid';
+const SEED_EMAIL_DOMAIN = 'pilot.example.com';
 
 function assertSafeTarget(env = process.env) {
   if (env.APP_ENV !== 'staging') throw new Error('Refusing to seed: APP_ENV must be exactly staging');
@@ -75,10 +75,14 @@ async function main() {
          contract_value = EXCLUDED.contract_value, client_id = EXCLUDED.client_id
        RETURNING id`, [PILOT_PROJECT_CODE, clientRow.id])).rows[0];
 
-    const definitions = CANONICAL_ROLES.map((role) => ({ key: role, role, roleAtOrg: null, orgId: null }));
+    const definitions = CANONICAL_ROLES.map((role) => ({ key: role, role, grantRole: role }));
     definitions.push(
-      { key: 'unassigned', role: 'procurement_officer', roleAtOrg: null, orgId: null, noAssignment: true },
-      { key: 'expired_assignment', role: 'site_engineer', roleAtOrg: null, orgId: null, expired: true },
+      { key: 'unassigned', role: 'procurement_officer', grantRole: 'procurement_officer', noAssignment: true },
+      { key: 'expired_assignment', role: 'site_engineer', grantRole: 'site_engineer', expired: true },
+      // Existing workflow definitions use these compatibility role values.
+      { key: 'workflow_owner', role: 'owner', grantRole: 'owner' },
+      { key: 'workflow_checker', role: 'purchasing_mgr', grantRole: 'procurement_manager' },
+      { key: 'workflow_budget', role: 'accountant', grantRole: 'accountant' },
     );
     for (const account of definitions) {
       const plainPassword = password();
@@ -93,8 +97,8 @@ async function main() {
       await client.query('DELETE FROM user_project_roles WHERE user_id = $1', [row.id]);
       await client.query('DELETE FROM organization_users WHERE user_id = $1', [row.id]);
 
-      const roleId = (await client.query('SELECT id FROM roles WHERE key = $1', [account.role])).rows[0];
-      if (!roleId) throw new Error(`Canonical role missing from migrated database: ${account.role}`);
+      const roleId = (await client.query('SELECT id FROM roles WHERE key = $1', [account.grantRole])).rows[0];
+      if (!roleId) throw new Error(`Role missing from migrated database: ${account.grantRole}`);
       if (!account.noAssignment) {
         const organizationId = account.role === 'supplier_sales' ? supplierOrg.id
           : account.role === 'client_executive' ? clientOrg.id : null;
@@ -108,7 +112,7 @@ async function main() {
            DO UPDATE SET role_at_org = EXCLUDED.role_at_org, is_active = true`,
           [organizationId, row.id, account.role]);
       }
-      generated.push({ email: emailFor(account.key), password: plainPassword, role: account.role, assignment: account.noAssignment ? 'none' : account.expired ? 'expired' : 'pilot-project' });
+      generated.push({ key: account.key, email: emailFor(account.key), password: plainPassword, role: account.role, assignment: account.noAssignment ? 'none' : account.expired ? 'expired' : 'pilot-project' });
     }
 
     const secretFile = JSON.stringify({ generated_at: new Date().toISOString(), project_code: PILOT_PROJECT_CODE, accounts: generated }, null, 2) + '\n';

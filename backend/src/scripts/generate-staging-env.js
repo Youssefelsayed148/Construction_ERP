@@ -16,6 +16,7 @@ const values = {
   FRONTEND_URL: 'http://localhost:8090',
   CORS_ALLOW_HTTP_LOCAL: 'true',
   TRUST_PROXY: '1',
+  AUTH_RATE_LIMIT_PER_15_MIN: '100',
 };
 const contents = `${Object.entries(values).map(([key, value]) => `${key}=${value}`).join('\n')}\n`;
 

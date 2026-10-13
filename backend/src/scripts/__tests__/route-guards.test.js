@@ -72,6 +72,12 @@ describe('every guarded route carries authorize() (static check)', () => {
       if (!/router\.(get|post|put|delete)\s*\(/.test(line)) continue;
       // Public routes are the explicit exception: /login (no authenticate).
       if (file === 'auth.js' && /router\.post\('\/login'/.test(line)) continue;
+      // Logout-all changes only req.user.id and is authenticated self-service, not a business permission.
+      if (file === 'auth.js' && /router\.post\('\/logout-all'/.test(line)) {
+        expect(line).toMatch(/\bauthenticate\b/);
+        expect(line).toMatch(/\bauthorizeSelfSession\(\)/);
+        continue;
+      }
       if (file === 'media.js' && /router\.get\('\/:fileName'/.test(line)) continue; // Resource-level access is checked by canAccessMedia.
       expect(line).toMatch(/\bauthenticate\b/);
       expect(line).toMatch(/\bauthorize\b/);

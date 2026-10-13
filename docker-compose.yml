@@ -32,7 +32,7 @@ services:
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8090}
       CORS_ALLOW_HTTP_LOCAL: ${CORS_ALLOW_HTTP_LOCAL:-false}
       TRUST_PROXY: "1"
-      AUTH_RATE_LIMIT_PER_15_MIN: "20"
+      AUTH_RATE_LIMIT_PER_15_MIN: ${AUTH_RATE_LIMIT_PER_15_MIN:-20}
     depends_on:
       db:
         condition: service_healthy

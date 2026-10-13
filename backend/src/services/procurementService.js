@@ -604,7 +604,10 @@ async function createDelivery(q, {
 }
 
 async function createMir(q, { delivery_id, lines = null, created_by = null }) {
-  const delivery = (await q('SELECT * FROM deliveries WHERE id = $1', [delivery_id])).rows[0];
+  const delivery = (await q(
+    `SELECT d.*, po.project_id AS purchase_project_id FROM deliveries d
+      JOIN purchase_orders po ON po.id = d.purchase_order_id WHERE d.id = $1`, [delivery_id]
+  )).rows[0];
   if (!delivery) throw new Error(`Delivery #${delivery_id} not found`);
   const existing = (await q('SELECT * FROM material_inspection_requests WHERE delivery_id = $1', [delivery_id])).rows[0];
   if (existing) throw new Error(`Delivery #${delivery_id} already has MIR #${existing.mir_number}`);
@@ -613,9 +616,9 @@ async function createMir(q, { delivery_id, lines = null, created_by = null }) {
   const mirNumber = await nextNumber(q, 'material_inspection_requests', 'mir_number', 'MIR');
   const r = await q(
     `INSERT INTO material_inspection_requests
-       (mir_number, purchase_order_id, delivery_id, supplier_id, warehouse_id, status, created_by)
-     VALUES ($1, $2, $3, $4, $5, 'pending', $6) RETURNING *`,
-    [mirNumber, delivery.purchase_order_id, delivery_id, delivery.supplier_id, delivery.warehouse_id, created_by]
+       (mir_number, purchase_order_id, delivery_id, supplier_id, warehouse_id, project_id, status, created_by)
+     VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7) RETURNING *`,
+    [mirNumber, delivery.purchase_order_id, delivery_id, delivery.supplier_id, delivery.warehouse_id, delivery.purchase_project_id, created_by]
   );
   const mir = r.rows[0];
   const sourceLines = Array.isArray(lines) && lines.length ? lines

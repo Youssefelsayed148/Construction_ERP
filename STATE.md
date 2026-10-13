@@ -22,13 +22,14 @@ Updated: 2026-10-13 (Africa/Cairo)
 ## In progress
 
 - Batch B1 Compose foundation is implemented and verified. Unique project `erp-closeout-pilot-20261013` is running locally at `http://127.0.0.1:8090`; DB/API/frontend are healthy. Root `.env.docker` contains locally generated credentials and is git-ignored. Do not read or print it.
-- B2 role/user staging seed is implemented and verified: 35 users across the 33 canonical roles plus no-assignment/expired-assignment cases, requester/checker identities, and supplier/client seats. Passwords are in ignored root `.staging-users.json`; do not read or print them.
-- B3 pilot procure-to-pay data is implemented and verified: 3 materials, supplier rates, cost codes, 1 warehouse, stock rows, and 3 BOQ lines totaling EGP 1,376,500. Re-run is idempotent. B4 full smoke, B5 backup/restore rehearsal, and B6 instructions remain open.
+- B2 role/user staging seed is implemented and verified: 38 users across 33 canonical roles plus no-assignment/expired-assignment cases, requester/checker identities, three legacy workflow compatibility actors, and supplier/client seats. Passwords are in ignored root `.staging-users.json`; do not read or print them.
+- B3 pilot procure-to-pay data is implemented and verified: 3 materials, two suppliers/six rates, cost codes, 1 warehouse, stock rows, and 3 BOQ lines totaling EGP 1,376,500. Re-run is idempotent.
+- B4 smoke passed against `http://127.0.0.1:8090`: full API chain, RBAC, locale, upload scoping, journal/reconciliation, and logout revocation passed; 0 unbalanced chain entries and unchanged out-of-scope project data.
 - Batches C–E and Phases 5.6–6 remain open. Finance signoff still requires the owner to confirm provisional chart-of-accounts mappings.
 
 ## Where work stopped
 
-Batch A and B1–B3 are green. Next implement B4’s full end-to-end local API smoke flow and reconciliation, then B5 backup/restore and B6 Windows PowerShell instructions. Keep all targets local, do not read any `.env` file, and never use production-looking databases or external services. A second ignored file `backend/.env.docker` was accidentally created with only `CORS_ALLOW_HTTP_LOCAL=true`; an attempt to remove it was rejected by auto-review, so it remains unused and untouched.
+Batch A and B1–B4 are green. A local pg_dump restored into a temporary database with 305 tables, and that temporary database/dump were removed. B5 still needs its reproducible rehearsal script, migration dry-run, data-cleaning report, and before/after counts. Next implement B5/B6, then Batch C. Keep all targets local, do not read any `.env` file, and never use production-looking databases or external services. A second ignored file `backend/.env.docker` was accidentally created with only `CORS_ALLOW_HTTP_LOCAL=true`; an attempt to remove it was rejected by auto-review, so it remains unused and untouched.
 
 ## Current gates
 
@@ -42,9 +43,10 @@ Batch A and B1–B3 are green. Next implement B4’s full end-to-end local API s
 | Frontend production build | PASS — compiled successfully |
 | Playwright | PASS — 32 passed / 46 skipped |
 | Batch B1 image build / fresh Compose health | PASS — all 3 services healthy, localhost health ready |
-| Batch B2 staging seed + guard/re-run assertions | PASS — 35 users; guards verified |
+| Batch B2 staging seed + guard/re-run assertions | PASS — 38 users including compatibility actors; guards verified |
 | Batch B3 demo data | PASS — repeat seed stable; 3 BOQ items / EGP 1,376,500 |
-| Batch B4–B5 full smoke, backup/restore | NOT RUN |
+| Batch B4 full smoke | PASS — all journey checkpoints; 0 unbalanced entries; token revoked |
+| Batch B5 full rehearsal | PARTIAL — local dump restored successfully (305 tables); script/dry-run/data-cleaning/count checks remain |
 | Batches C–E and Phases 5.6–6 | NOT RUN |
 
 ## Risks and decisions

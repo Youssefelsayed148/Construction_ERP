@@ -175,4 +175,11 @@ const authorize = (...roles) => {
   return middleware;
 };
 
-module.exports = { authenticate, authorize, createPreviewToken, externalPortalAllowed, filterScopedPayload };
+// Revoking the authenticated user's own sessions is a security self-service operation, not a business
+// permission. Call only after authenticate; the route must use req.user.id and accept no target user ID.
+const authorizeSelfSession = () => function authorizeSelfSessionMiddleware(req, res, next) {
+  if (!req.user) return res.status(401).json({ success: false, error: 'Authentication required' });
+  return next();
+};
+
+module.exports = { authenticate, authorize, authorizeSelfSession, createPreviewToken, externalPortalAllowed, filterScopedPayload };

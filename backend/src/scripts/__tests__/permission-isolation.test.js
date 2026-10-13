@@ -122,7 +122,7 @@ function loadRoutes(file) {
     methods: Object.keys(l.route.methods),
     authorizeMws: l.route.stack
       .map((s) => s.handle)
-      .filter((h) => typeof h === 'function' && h.name === 'authorizeMiddleware'),
+      .filter((h) => typeof h === 'function' && ['authorizeMiddleware', 'authorizeSelfSessionMiddleware'].includes(h.name)),
   }));
 }
 
@@ -278,6 +278,14 @@ describe('DoD sweep: external roles get 403 (not empty data) on routes they must
 
   test.each(allRoutes)('$file $methods / $path', async (route) => {
     if (route.file === 'auth' && route.path === '/login') return;
+    if (route.file === 'auth' && route.path === '/logout-all') {
+      for (const user of Object.values(EXTERNAL_USERS)) {
+        const { res, next } = await runAuthorize(route.authorizeMws[0], user, { method: 'POST', baseUrl: FILE_MOUNT.auth });
+        expect(res.status).not.toHaveBeenCalled();
+        expect(next).toHaveBeenCalled();
+      }
+      return;
+    }
     for (const [role, user] of Object.entries(EXTERNAL_USERS)) {
       const method = route.methods[0].toUpperCase();
       const mount = FILE_MOUNT[route.file];

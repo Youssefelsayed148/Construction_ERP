@@ -972,3 +972,45 @@ Project 2; suppliers 2, 4; warehouse 5.
 suppliers=2
 supplier_rates=6
 ```
+## 2026-10-13: Batch B4 full local API smoke
+
+The smoke is intentionally localhost-only, loads generated `.env.docker` settings without opening `.env`, reads ignored staging credentials programmatically, and never emits passwords or session tokens. It exercises each canonical role login, RBAC denials, requester/checker separation, full P2P, EN/AR headers, file access/deny, balanced journal and project-cost reconciliation, database integrity reconciliation, and session revocation.
+
+```text
+npm --prefix backend run smoke:staging
+[PASS] health: API ready and database healthy
+[PASS] login: 33 canonical roles and 5 staging edge/workflow accounts
+[PASS] RBAC: no-assignment and expired-seat users receive 403; cross-project actor is scoped to its own project
+[PASS] EN/AR: Accept-Language en/ar requests both include bilingual project names
+[PASS] P2P: PR → RFQ → 2 quotations → comparison → award recommendation → separate checker/authority approval
+[PASS] P2P: approved PO → partial delivery → MIR/GRN → matched supplier invoice → payment allocation
+[PASS] media: uploaded PDF is readable by its uploader and denied outside project scope
+[PASS] reconcile: 0 unbalanced chain entries; out-of-scope project unchanged; project cost view updated
+[PASS] npm run reconcile
+[PASS] logout: checker token revoked and rejected
+STAGING_SMOKE_OK base=http://127.0.0.1:8090 project=PILOT-PTP-001 pr=13 rfq=13 po=12 grn=4 invoice=4 payment=4
+```
+
+The smoke exposed two implementation defects and they were fixed: `createMir` now carries the PO project ID, which makes approval evaluate against the right project grant; logout-all is now authenticated self-service, bound only to `req.user.id`, and no longer requires a business-module permission. Focused checks: route guard + permission isolation, 2 suites / 424 tests passed. The Docker image build passed the backend mock tests (49 suites / 958 tests; 56 PostgreSQL suites excluded from this image gate).
+
+Backup confirmation was not assumed: local custom-format `pg_dump` was restored into `closeout_pilot_restore_check`; a read-only query returned 305 tables. Only this temporary restore database and `/tmp/closeout-pilot-restore-check.dump` were removed. The `RECONCILIATION_BACKUP_CONFIRMED=true` variable was set only on the final smoke process after restore verification and removed from the PowerShell process environment afterward. B5 still requires its committed rehearsal script, migration dry-run, data-cleaning report, and before/after sequence/count output.
+
+Batch B4 follow-up verification on a fresh disposable PostgreSQL 16 container
+
+A fresh `construction_erp_test` container on `127.0.0.1:55441` was created with a process-generated temporary password, migrated from empty (103 migrations applied; highest versioned SQL migration 0041), and removed with its anonymous volume after the run. No existing test/pilot DB credentials were read.
+
+```text
+npm run migrate
+[migrate] all migrations completed (103 applied, 0 already applied)
+
+npm run lint:guards
+lint-guards: ok
+
+npm run test:pg
+Test Suites: 56 passed, 56 total
+Tests:       566 passed, 566 total
+Time:        79.554 s
+Ran all test suites.
+```
+
+The PG gate includes the new golden-chain assertion that MIR retains the purchase-order project scope. Backend mock gate also passed on the host with a test-only JWT value: 56 skipped, 49 passed suites; 566 skipped, 958 passed tests. The temporary local Postgres container and volume were removed after the gate.
