@@ -380,6 +380,8 @@ const RECORD_SCOPE_RULES = Object.freeze({
   handover: [
     [/^\/process\/:id(?:\/|$)/, 'handover_processes'],
     [/^\/package\/items\/:id(?:\/|$)/, 'handover_package_items'],
+    [/^\/assets\/:id(?:\/|$)/, 'asset_register'],
+    [/^\/warranties\/:id(?:\/|$)/, 'warranties'],
     [/^\/claims\/:id(?:\/|$)/, 'warranty_claims'],
   ],
   quantities: [

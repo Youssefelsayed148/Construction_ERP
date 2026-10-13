@@ -94,11 +94,11 @@ The incident-table merge requested in 5.7 is not a fresh schema project: `hse-mi
 
 ### 5.7.4 Handover evidence and warranty register
 
-**Status: Partial.** `handover_package_items`, `asset_register`, and `warranty_claims` exist, and `/api/documents/upload` already accepts files. Handover currently accepts document URLs. Add asset-document links and real upload flow using the existing upload/protected-media mechanisms; audit whether warranty claims can become the required standalone warranty register without breaking claim lifecycle. Add only the missing warranty entity/fields after that audit.
+**Status: Complete.** Migration 0057 links handover package items to controlled project documents, adds an asset-document relation, and creates a standalone warranty coverage register. Existing asset warranty date pairs are backfilled idempotently with explicit legacy issuer/document notes. The existing claim lifecycle stays intact. Package evidence and asset/warranty documents use the existing upload endpoint, controlled project-document registration and protected-file reads. APIs enforce project scope, same-project record links, audited mutations, date validation and typed operational errors. The EN/AR handover screen includes upload, asset, warranty, loading/error and empty states.
 
 **Acceptance:** package items and assets link to authorized stored documents; warranty coverage has dates, issuer, asset/package linkage and claim history; file reads enforce access policy.
 
-**Focused checks:** handover/document PostgreSQL tests for links and authorization; focused upload/form component test.
+**Focused checks:** Migration 0057 applied to the disposable PostgreSQL database (1 applied, 118 already applied); idempotent rerun applied 0 (119 already applied). `handover-documents-warranties.pg.test.js` passed 3/3 for controlled links, warranty expiry/void/reactivation, missing evidence, cross-project rejection and project scope. `Handover.test.js` passed 1/1 for package evidence upload and warranty creation. `i18n:check` passed. `i18n:parity` continues to report seven existing missing `common.suppliers` keys in ProcurementWorkspace and no handover key issues. Backend syntax and `git diff --check` passed. No full suite was run.
 
 ## Phase 5.8 — notification providers
 

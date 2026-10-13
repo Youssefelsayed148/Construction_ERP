@@ -18,6 +18,23 @@ const { logActivity } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 const engine = require('../services/handoverEngine');
 const { renderDocument } = require('../utils/procurementPdf');
+const { nextNumber } = require('../services/numbering');
+const { dateOnly } = require('../utils/validation');
+const { normalizeDateFields } = require('../utils/dateOnly');
+const { typedFail } = require('../utils/typedRoute');
+
+function handoverProjectAllowed(req, projectId) {
+  return req.accessScope?.companyWide || (req.accessScope?.projectIds || []).includes(Number(projectId));
+}
+
+function handoverFailure(res, status, code) {
+  return res.status(status).json({ success: false, error_code: code });
+}
+
+function handoverError(res, error, tag, req) {
+  if (error.error_code) return handoverFailure(res, error.statusCode || 400, error.error_code);
+  return typedFail(res, error, tag, req);
+}
 
 async function projectNameFor(q, projectId) {
   try {
@@ -70,10 +87,12 @@ router.post('/process/:id/transition', authenticate, authorize('owner', 'admin',
 
 router.get('/package/:projectId', authenticate, authorize(), async (req, res) => {
   try {
+    if (!handoverProjectAllowed(req, req.params.projectId)) return handoverFailure(res, 403, 'project_scope_denied');
     const items = (await query(
-      `SELECT hi.*, u.name as uploaded_by_name, vu.name as verified_by_name
+      `SELECT hi.*, u.name as uploaded_by_name, vu.name as verified_by_name, d.title AS project_document_title, d.file_url AS project_document_url
        FROM handover_package_items hi LEFT JOIN users u ON hi.uploaded_by = u.id
-       LEFT JOIN users vu ON hi.verified_by = vu.id WHERE hi.project_id = $1 ORDER BY hi.id`,
+       LEFT JOIN users vu ON hi.verified_by = vu.id LEFT JOIN project_documents d ON d.id = hi.project_document_id
+       WHERE hi.project_id = $1 ORDER BY hi.id`,
       [req.params.projectId]
     )).rows;
     const readiness = await engine.handoverReadiness(query, req.params.projectId);
@@ -83,6 +102,7 @@ router.get('/package/:projectId', authenticate, authorize(), async (req, res) =>
 
 router.post('/package/:projectId/items', authenticate, authorize(), async (req, res) => {
   try {
+    if (!handoverProjectAllowed(req, req.params.projectId)) return handoverFailure(res, 403, 'project_scope_denied');
     const schema = Joi.object({
       item_type: Joi.string().valid(...engine.PACKAGE_ITEM_TYPES).required(),
       title: Joi.string().required(),
@@ -101,26 +121,39 @@ router.post('/package/:projectId/items', authenticate, authorize(), async (req, 
 router.put('/package/items/:id', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
-      document_url: Joi.string().allow('', null),
+      project_document_id: Joi.number().integer().positive().allow(null),
       notes: Joi.string().allow('', null),
-      status: Joi.string().valid('pending', 'uploaded', 'approved', 'complete'),
+      status: Joi.string().valid('pending', 'uploaded'),
     }).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const sets = []; const params = []; let idx = 1;
-    for (const [k, v] of Object.entries(value)) {
-      if (v === undefined) continue;
-      sets.push(`${k} = $${idx++}`); params.push(v);
-    }
-    if (value.status) {
-      sets.push(`uploaded_by = $${idx++}`, `uploaded_at = $${idx++}`);
-      params.push(req.user.id, new Date());
-    }
-    params.push(req.params.id);
-    const r = await query(`UPDATE handover_package_items SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Package item not found' });
-    res.json({ success: true, data: r.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+    const result = await auditedTransaction(async (q) => {
+      const item = (await q('SELECT * FROM handover_package_items WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!item || !handoverProjectAllowed(req, item.project_id)) throw Object.assign(new Error('handover_package_item_not_found'), { statusCode: item ? 403 : 404, error_code: 'handover_package_item_not_found' });
+      if (Object.prototype.hasOwnProperty.call(value, 'project_document_id') && value.project_document_id != null) {
+        const document = await q('SELECT file_url FROM project_documents WHERE id = $1 AND project_id = $2', [value.project_document_id, item.project_id]);
+        if (!document.rows.length) throw Object.assign(new Error('handover_document_project_mismatch'), { statusCode: 400, error_code: 'handover_document_project_mismatch' });
+        value.document_url = document.rows[0].file_url;
+      } else if (Object.prototype.hasOwnProperty.call(value, 'project_document_id')) {
+        value.document_url = null;
+      }
+      const effectiveDocumentId = Object.prototype.hasOwnProperty.call(value, 'project_document_id') ? value.project_document_id : item.project_document_id;
+      if (value.status === 'uploaded' && effectiveDocumentId == null) {
+        throw Object.assign(new Error('handover_document_required'), { statusCode: 400, error_code: 'handover_document_required' });
+      }
+      const sets = []; const params = []; let idx = 1;
+      for (const key of ['project_document_id', 'document_url', 'notes', 'status']) {
+        if (value[key] === undefined) continue;
+        sets.push(`${key} = $${idx++}`); params.push(value[key]);
+      }
+      if (value.project_document_id != null || value.status === 'uploaded') {
+        sets.push(`uploaded_by = $${idx++}`, `uploaded_at = $${idx++}`); params.push(req.user.id, new Date());
+      }
+      params.push(req.params.id);
+      return q(`UPDATE handover_package_items SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
+    }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'handover', description: `Updated handover package item #${req.params.id}`, entityId: req.params.id, entityType: 'handover_package_item' }));
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) { return handoverError(res, error, 'HANDOVER_PACKAGE_UPDATE', req); }
 });
 
 router.post('/package/items/:id/verify', authenticate, authorize('owner', 'admin', 'project_manager', 'consultant'), async (req, res) => {
@@ -146,6 +179,8 @@ router.post('/package/items/:id/verify', authenticate, authorize('owner', 'admin
 router.get('/assets', authenticate, authorize(), async (req, res) => {
   try {
     const { project_id } = req.query;
+    if (!project_id) return handoverFailure(res, 400, 'project_id_required');
+    if (!handoverProjectAllowed(req, project_id)) return handoverFailure(res, 403, 'project_scope_denied');
     let conditions = []; let params = []; let idx = 1;
     if (project_id) { conditions.push(`a.project_id = $${idx++}`); params.push(project_id); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -157,8 +192,8 @@ router.get('/assets', authenticate, authorize(), async (req, res) => {
        LEFT JOIN organizations so ON a.supplier_organization_id = so.id
        LEFT JOIN organizations sco ON a.subcontractor_organization_id = sco.id
        ${where} ORDER BY a.id`, params);
-    res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+    res.json({ success: true, data: r.rows.map((row) => normalizeDateFields(row, ['commissioning_date', 'warranty_start', 'warranty_end'])) });
+  } catch (error) { return handoverError(res, error, 'HANDOVER_ASSET_READ', req); }
 });
 
 router.post('/assets', authenticate, authorize(), async (req, res) => {
@@ -172,12 +207,14 @@ router.post('/assets', authenticate, authorize(), async (req, res) => {
       serial_no: Joi.string().allow('', null).optional(),
       supplier_organization_id: Joi.number().integer().allow(null).optional(),
       subcontractor_organization_id: Joi.number().integer().allow(null).optional(),
-      commissioning_date: Joi.date().iso().allow(null).optional(),
-      warranty_start: Joi.date().iso().allow(null).optional(),
-      warranty_end: Joi.date().iso().allow(null).optional(),
-    });
+      commissioning_date: dateOnly().allow(null).optional(),
+      warranty_start: dateOnly().allow(null).optional(),
+      warranty_end: dateOnly().allow(null).optional(),
+    }).custom((value, helpers) => value.warranty_start && value.warranty_end && value.warranty_end < value.warranty_start
+      ? helpers.error('date.range') : value);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (!handoverProjectAllowed(req, value.project_id)) return handoverFailure(res, 403, 'project_scope_denied');
     const r = await auditedTransaction((q) => q(
       `INSERT INTO asset_register (project_id, asset_code, name, project_location_id, model, serial_no,
          supplier_organization_id, subcontractor_organization_id, commissioning_date, warranty_start, warranty_end, created_by)
@@ -185,8 +222,113 @@ router.post('/assets', authenticate, authorize(), async (req, res) => {
       [value.project_id, value.asset_code, value.name, value.project_location_id || null, value.model || null,
        value.serial_no || null, value.supplier_organization_id || null, value.subcontractor_organization_id || null,
        value.commissioning_date || null, value.warranty_start || null, value.warranty_end || null, req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'handover', description: `Registered asset ${value.asset_code}`, entityId: result.rows[0].id, entityType: 'asset_register' }));
-    res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+    res.status(201).json({ success: true, data: normalizeDateFields(r.rows[0], ['commissioning_date', 'warranty_start', 'warranty_end']) });
+  } catch (error) { return handoverError(res, error, 'HANDOVER_ASSET_CREATE', req); }
+});
+
+router.get('/assets/:id/documents', authenticate, authorize(), async (req, res) => {
+  try {
+    const asset = (await query('SELECT id, project_id FROM asset_register WHERE id = $1', [req.params.id])).rows[0];
+    if (!asset || !handoverProjectAllowed(req, asset.project_id)) return handoverFailure(res, 404, 'asset_not_found');
+    const result = await query(
+      `SELECT ad.*, d.doc_number, d.file_url, d.status AS document_status
+       FROM asset_documents ad JOIN project_documents d ON d.id = ad.project_document_id
+       WHERE ad.asset_id = $1 ORDER BY ad.linked_at DESC, ad.id DESC`, [req.params.id]);
+    res.json({ success: true, data: result.rows });
+  } catch (error) { return handoverError(res, error, 'HANDOVER_ASSET_DOCUMENT_READ', req); }
+});
+
+router.post('/assets/:id/documents', authenticate, authorize(), async (req, res) => {
+  try {
+    const schema = Joi.object({
+      project_document_id: Joi.number().integer().positive().required(),
+      document_type: Joi.string().valid('manual', 'warranty', 'certificate', 'photo', 'other').default('other'),
+      title: Joi.string().max(255).allow('', null),
+    });
+    const { error, value } = schema.validate(req.body);
+    if (error) return handoverFailure(res, 400, 'invalid_asset_document');
+    const result = await auditedTransaction(async (q) => {
+      const asset = (await q('SELECT id, project_id FROM asset_register WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!asset || !handoverProjectAllowed(req, asset.project_id)) throw Object.assign(new Error('asset_not_found'), { statusCode: asset ? 403 : 404, error_code: 'asset_not_found' });
+      const document = (await q('SELECT id, title FROM project_documents WHERE id = $1 AND project_id = $2', [value.project_document_id, asset.project_id])).rows[0];
+      if (!document) throw Object.assign(new Error('handover_document_project_mismatch'), { statusCode: 400, error_code: 'handover_document_project_mismatch' });
+      return q(
+        `INSERT INTO asset_documents (project_id, asset_id, project_document_id, document_type, title, linked_by)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+        [asset.project_id, asset.id, document.id, value.document_type, value.title || document.title, req.user.id]);
+    }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'handover', description: `Linked a controlled document to asset #${req.params.id}`, entityId: r.rows[0].id, entityType: 'asset_document' }));
+    res.status(201).json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    return handoverError(res, error, 'HANDOVER_ASSET_DOCUMENT_CREATE', req);
+  }
+});
+
+router.get('/warranties', authenticate, authorize(), async (req, res) => {
+  const projectId = Number(req.query.project_id);
+  if (!Number.isInteger(projectId) || projectId < 1) return handoverFailure(res, 400, 'invalid_project_id');
+  if (!handoverProjectAllowed(req, projectId)) return handoverFailure(res, 403, 'project_scope_denied');
+  try {
+    const result = await query(
+      `SELECT w.*, a.asset_code, a.name AS asset_name, d.title AS project_document_title, d.file_url AS project_document_url,
+              CASE WHEN w.status = 'active' AND w.end_date < CURRENT_DATE THEN 'expired' ELSE w.status END AS effective_status
+       FROM warranties w LEFT JOIN asset_register a ON a.id = w.asset_id
+       LEFT JOIN project_documents d ON d.id = w.project_document_id
+       WHERE w.project_id = $1 ORDER BY w.end_date, w.id`, [projectId]);
+    res.json({ success: true, data: result.rows.map((row) => normalizeDateFields(row, ['start_date', 'end_date'])) });
+  } catch (error) { return handoverError(res, error, 'HANDOVER_WARRANTY_READ', req); }
+});
+
+router.post('/warranties', authenticate, authorize(), async (req, res) => {
+  const schema = Joi.object({
+    project_id: Joi.number().integer().positive().required(), asset_id: Joi.number().integer().positive().allow(null),
+    handover_package_item_id: Joi.number().integer().positive().allow(null), project_document_id: Joi.number().integer().positive().allow(null),
+    title: Joi.string().max(255).required(), issuer: Joi.string().max(255).required(), coverage_description: Joi.string().allow('', null),
+    start_date: dateOnly().required(), end_date: dateOnly().required(), notes: Joi.string().allow('', null),
+  }).custom((value, helpers) => value.end_date < value.start_date ? helpers.error('date.range') : value);
+  const { error, value } = schema.validate(req.body);
+  if (error) return handoverFailure(res, 400, 'invalid_warranty');
+  if (!handoverProjectAllowed(req, value.project_id)) return handoverFailure(res, 403, 'project_scope_denied');
+  try {
+    const result = await auditedTransaction(async (q) => {
+      if (value.asset_id != null && !(await q('SELECT 1 FROM asset_register WHERE id = $1 AND project_id = $2', [value.asset_id, value.project_id])).rows.length) {
+        throw Object.assign(new Error('warranty_asset_project_mismatch'), { statusCode: 400, error_code: 'warranty_asset_project_mismatch' });
+      }
+      if (value.handover_package_item_id != null && !(await q('SELECT 1 FROM handover_package_items WHERE id = $1 AND project_id = $2', [value.handover_package_item_id, value.project_id])).rows.length) {
+        throw Object.assign(new Error('warranty_package_project_mismatch'), { statusCode: 400, error_code: 'warranty_package_project_mismatch' });
+      }
+      if (value.project_document_id != null && !(await q('SELECT 1 FROM project_documents WHERE id = $1 AND project_id = $2', [value.project_document_id, value.project_id])).rows.length) {
+        throw Object.assign(new Error('handover_document_project_mismatch'), { statusCode: 400, error_code: 'handover_document_project_mismatch' });
+      }
+      const number = await nextNumber(q, { table: 'warranties', column: 'warranty_number', prefix: `WAR-${value.project_id}`, pad: 4, where: { project_id: value.project_id } });
+      return q(
+        `INSERT INTO warranties (project_id, warranty_number, asset_id, handover_package_item_id, project_document_id, title, issuer, coverage_description, start_date, end_date, notes, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+        [value.project_id, number, value.asset_id || null, value.handover_package_item_id || null, value.project_document_id || null,
+          value.title, value.issuer, value.coverage_description || null, value.start_date, value.end_date, value.notes || null, req.user.id]);
+    }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'handover', description: `Created warranty ${r.rows[0].warranty_number}`, entityId: r.rows[0].id, entityType: 'warranty' }));
+    res.status(201).json({ success: true, data: normalizeDateFields(result.rows[0], ['start_date', 'end_date']) });
+  } catch (error) {
+    return handoverError(res, error, 'HANDOVER_WARRANTY_CREATE', req);
+  }
+});
+
+router.put('/warranties/:id/status', authenticate, authorize(), async (req, res) => {
+  const schema = Joi.object({ status: Joi.string().valid('active', 'void').required() });
+  const { error, value } = schema.validate(req.body);
+  if (error) return handoverFailure(res, 400, 'invalid_warranty_status');
+  try {
+    const result = await auditedTransaction(async (q) => {
+      const warranty = (await q('SELECT * FROM warranties WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!warranty || !handoverProjectAllowed(req, warranty.project_id)) throw Object.assign(new Error('warranty_not_found'), { statusCode: warranty ? 403 : 404, error_code: 'warranty_not_found' });
+      const updated = await q(
+        `UPDATE warranties SET status = CASE WHEN $1 = 'active' AND end_date < CURRENT_DATE THEN 'expired' ELSE $1 END, updated_at = NOW()
+         WHERE id = $2 RETURNING *`, [value.status, req.params.id]);
+      return updated;
+    }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'handover', description: `Updated warranty status to ${r.rows[0].status}`, entityId: req.params.id, entityType: 'warranty' }));
+    res.json({ success: true, data: normalizeDateFields(result.rows[0], ['start_date', 'end_date']) });
+  } catch (error) {
+    return handoverError(res, error, 'HANDOVER_WARRANTY_STATUS', req);
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -293,16 +435,22 @@ router.get('/assets/:projectId/pdf', authenticate, authorize(), async (req, res)
 router.get('/warranty-register/:projectId/pdf', authenticate, authorize(), async (req, res) => {
   try {
     const projectId = parseInt(req.params.projectId, 10);
+    if (!handoverProjectAllowed(req, projectId)) return handoverFailure(res, 403, 'project_scope_denied');
     const name = await projectNameFor(query, projectId);
-    const claims = (await query('SELECT * FROM warranty_claims WHERE project_id = $1 ORDER BY id', [projectId])).rows;
+    const warranties = (await query(
+      `SELECT w.*, a.asset_code, a.name AS asset_name,
+              CASE WHEN w.status = 'active' AND w.end_date < CURRENT_DATE THEN 'expired' ELSE w.status END AS effective_status
+       FROM warranties w LEFT JOIN asset_register a ON a.id = w.asset_id
+       WHERE w.project_id = $1 ORDER BY w.end_date, w.id`, [projectId])).rows;
     const pdf = await renderDocument({
       docType: 'WARRANTY / DLP REGISTER', number: `WREG-${projectId}`, date: new Date(),
-      meta: [['Project', name], ['Claims', String(claims.length)]],
-      columns: ['Claim', 'Title', 'Status', 'Due', 'SLA (days)'],
-      rows: claims.map((c) => [c.claim_number, c.title, c.status, c.due_date || '-', c.sla_days]),
+      meta: [['Project', name], ['Warranties', String(warranties.length)]],
+      columns: ['Warranty', 'Title', 'Asset', 'Issuer', 'Start', 'End', 'Status'],
+      rows: warranties.map((w) => [w.warranty_number, w.title, w.asset_code || '-', w.issuer,
+        w.start_date, w.end_date, w.effective_status]),
     });
     sendPdf(res, pdf, `warranty-register-${projectId}.pdf`);
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { return handoverError(res, error, 'HANDOVER_WARRANTY_PDF', req); }
 });
 
 router.get('/certificate/:projectId/pdf', authenticate, authorize(), async (req, res) => {
