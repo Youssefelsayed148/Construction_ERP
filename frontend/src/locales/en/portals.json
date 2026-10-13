@@ -69,6 +69,12 @@
     "types": { "material": "Material", "shop_drawing": "Shop drawing", "sample": "Sample", "method": "Method statement" },
     "submitError": "The request could not be submitted. Check the form and try again."
   },
+  "recordActions": {
+    "acknowledgeRfi": "Acknowledge RFI response", "resubmitSubmittal": "Resubmit returned submittal",
+    "rfi": "RFI", "submittal": "Submittal", "response": "Response",
+    "revisionComments": "What changed in this revision?",
+    "submitError": "The action could not be completed. Refresh and try again."
+  },
   "compliance": {
     "title": "Supplier compliance alerts",
     "empty": "No compliance documents need attention.",

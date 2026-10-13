@@ -64,7 +64,7 @@ The incident-table merge requested in 5.7 is not a fresh schema project: `hse-mi
 
 **Acceptance:** portal screens list the user's assigned projects and scoped records, show status/history, validate each submission, and provide accessible EN/AR forms with empty/loading/error states; server payloads contain no internal cost fields.
 
-**Focused checks:** Slice 5.6.5.b passed `portal.test.js` 15/15, `subcontractor-submissions.pg.test.js` 3/3 including formal WIR organization/project isolation, `PortalDashboard.test.js` 5/5 including localized formal WIR/MIR registers, and `i18n:check`. Slice 5.6.5.c passed `PortalDashboard.test.js` 7/7 for package-derived RFI and submittal form payloads, and `i18n:check`. The preceding 5.6.5.a checks and migration 0052 are recorded in `docs/CLOSEOUT_LOG.md`. No full suite was run.
+**Focused checks:** Slice 5.6.5.b passed `portal.test.js` 15/15, `subcontractor-submissions.pg.test.js` 3/3 including formal WIR organization/project isolation, `PortalDashboard.test.js` 5/5 including localized formal WIR/MIR registers, and `i18n:check`. Slice 5.6.5.c passed `PortalDashboard.test.js` 7/7 for package-derived RFI and submittal form payloads. Slice 5.6.5.d passed `portal.test.js` 16/16 including resubmittal option isolation, `PortalDashboard.test.js` 8/8 for RFI acknowledgement and returned-submittal resubmission, and `i18n:check`. The preceding 5.6.5.a checks and migration 0052 are recorded in `docs/CLOSEOUT_LOG.md`. No full suite was run.
 
 ## Phase 5.7 — QA/QC, HSE, document control, planning and handover
 

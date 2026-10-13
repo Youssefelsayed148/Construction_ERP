@@ -186,6 +186,12 @@ async function subcontractorDashboard(q, userId, { now = new Date() } = {}) {
     .filter((s) => projectIds.includes(toNum(s.project_id)) && contractIds.includes(toNum(s.sub_contract_id))
       && !['closed', 'resubmit_required'].includes(s.status));
   dashboard.submittals = { items: submittals.map((s) => ({ id: toNum(s.id), submittal_number: s.submittal_number, title: s.title, status: s.status })), count: submittals.length, empty_label: 'No submittals open' };
+  const returnedSubmittals = (await safeAll(q, 'SELECT * FROM project_submittals', []))
+    .filter((s) => projectIds.includes(toNum(s.project_id)) && contractIds.includes(toNum(s.sub_contract_id)) && s.status === 'resubmit_required');
+  dashboard.submittals_for_resubmission = {
+    items: returnedSubmittals.map((s) => ({ id: toNum(s.id), submittal_number: s.submittal_number, title: s.title, status: s.status })),
+    count: returnedSubmittals.length, empty_label: 'No submittals need resubmission',
+  };
 
   // Payment application status (the shared Phase 13 certificates).
   const certificates = forContracts(await safeAll(q, "SELECT * FROM payment_certificates WHERE party_type = 'subcontractor'", []));

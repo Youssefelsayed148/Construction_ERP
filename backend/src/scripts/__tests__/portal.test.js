@@ -78,7 +78,8 @@ async function buildFixture() {
   await q(`CREATE TABLE IF NOT EXISTS project_rfis (
     id SERIAL PRIMARY KEY, rfi_number VARCHAR(50), project_id INTEGER, subject VARCHAR(255), status VARCHAR(20) DEFAULT 'open')`);
   await q(`CREATE TABLE IF NOT EXISTS project_submittals (
-    id SERIAL PRIMARY KEY, submittal_number VARCHAR(50), project_id INTEGER, title VARCHAR(255), status VARCHAR(30) DEFAULT 'submitted')`);
+    id SERIAL PRIMARY KEY, submittal_number VARCHAR(50), project_id INTEGER, sub_contract_id INTEGER,
+    title VARCHAR(255), status VARCHAR(30) DEFAULT 'submitted')`);
   await q(`CREATE TABLE IF NOT EXISTS variations (
     id SERIAL PRIMARY KEY, variation_number VARCHAR(50), project_id INTEGER, client_contract_id INTEGER,
     sub_contract_id INTEGER, title VARCHAR(255), amount DECIMAL(15,2) DEFAULT 0, status VARCHAR(50) DEFAULT 'change_event')`);
@@ -255,6 +256,15 @@ describe('subcontractor portal', () => {
              VALUES ($1,$2,$3,$4,$5,$6,$7)`, [2, 'WIR-OTHER', 1, 4, '2026-10-11', 'approved', 'approved']);
     const dash = await engine.subcontractorDashboard(q, SUB_A.id);
     expect(dash.wirs.items).toEqual([{ id: 1, project_id: 1, wir_number: 'WIR-OWN', status: 'consultant_review', result: null, inspection_date: '2026-10-10' }]);
+  });
+
+  test('resubmission choices contain only returned records from the subcontractor package scope', async () => {
+    await q(`INSERT INTO project_submittals (id,submittal_number,project_id,sub_contract_id,title,status)
+             VALUES ($1,$2,$3,$4,$5,$6)`, [91, 'SUB-OWN', 1, 1, 'Own material submittal', 'resubmit_required']);
+    await q(`INSERT INTO project_submittals (id,submittal_number,project_id,sub_contract_id,title,status)
+             VALUES ($1,$2,$3,$4,$5,$6)`, [92, 'SUB-OTHER', 1, 2, 'Other subcontractor submittal', 'resubmit_required']);
+    const dash = await engine.subcontractorDashboard(q, SUB_A.id);
+    expect(dash.submittals_for_resubmission.items).toEqual([{ id: 91, submittal_number: 'SUB-OWN', title: 'Own material submittal', status: 'resubmit_required' }]);
   });
 });
 

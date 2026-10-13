@@ -288,6 +288,12 @@ function QuickActions({ kind, data, onDone }) {
   const [formalSubmissionError, setFormalSubmissionError] = useState('');
   const [savingFormalSubmission, setSavingFormalSubmission] = useState(false);
   const [formalSubmissionValues, setFormalSubmissionValues] = useState({ package_id: data.packages?.[0]?.id || '', title: '', question: '', priority: 'normal', due_date: '', submittal_type: 'material', submitted_to: '' });
+  const [showAcknowledgeRfi, setShowAcknowledgeRfi] = useState(false);
+  const [showResubmitSubmittal, setShowResubmitSubmittal] = useState(false);
+  const [recordActionError, setRecordActionError] = useState('');
+  const [recordActionSaving, setRecordActionSaving] = useState(false);
+  const [rfiAcknowledgement, setRfiAcknowledgement] = useState({ id: '', response: '' });
+  const [submittalResubmission, setSubmittalResubmission] = useState({ id: '', comments: '' });
   const [observation, setObservation] = useState({ project_id: data.project_ids?.[0] || '', title: '', description: '', due_date: '', drawing_reference: '', drawing_document_id: '', severity: 'normal' });
   const [beforePhotos, setBeforePhotos] = useState([]);
   const [afterPhotos, setAfterPhotos] = useState([]);
@@ -409,14 +415,21 @@ function QuickActions({ kind, data, onDone }) {
       project_id: pkg.project_id, sub_contract_id: pkg.id, period_from: today(), period_to: today(), work_value,
     });
   };
-  const acknowledgeRfi = async () => {
-    const id = Number(window.prompt('Answered RFI ID', data.rfis?.items?.[0]?.id || ''));
-    if (id) await submit(`/api/portal/subcontractor/rfis/${id}/acknowledge`, { body: 'Acknowledged' });
+  const acknowledgeRfi = async (event) => {
+    event.preventDefault(); setRecordActionError(''); setRecordActionSaving(true);
+    try {
+      await submit(`/api/portal/subcontractor/rfis/${Number(rfiAcknowledgement.id)}/acknowledge`, { body: rfiAcknowledgement.response.trim() || 'Acknowledged' });
+      setShowAcknowledgeRfi(false); setRfiAcknowledgement({ id: '', response: '' });
+    } catch (error) { setRecordActionError(t('portals.recordActions.submitError')); }
+    finally { setRecordActionSaving(false); }
   };
-  const resubmitSubmittal = async () => {
-    const id = Number(window.prompt('Submittal ID requiring resubmission'));
-    const comments = window.prompt('What changed in this revision?');
-    if (id && comments) await submit(`/api/portal/subcontractor/submittals/${id}/resubmit`, { comments });
+  const resubmitSubmittal = async (event) => {
+    event.preventDefault(); setRecordActionError(''); setRecordActionSaving(true);
+    try {
+      await submit(`/api/portal/subcontractor/submittals/${Number(submittalResubmission.id)}/resubmit`, { comments: submittalResubmission.comments.trim() });
+      setShowResubmitSubmittal(false); setSubmittalResubmission({ id: '', comments: '' });
+    } catch (error) { setRecordActionError(t('portals.recordActions.submitError')); }
+    finally { setRecordActionSaving(false); }
   };
   const quoteRfq = async () => {
     const id = Number(window.prompt('RFQ ID', data.open_rfqs?.items?.[0]?.id || ''));
@@ -466,8 +479,8 @@ function QuickActions({ kind, data, onDone }) {
     ? [[t('portals.observation.raise'), () => setShowObservationForm((open) => !open)], ['Advance observation', advanceObservation], ['Review RFI', reviewRfi], ['Review submittal', reviewSubmittal]]
     : kind === 'subcontractor'
       ? [['Acknowledge package', acknowledgeContract], ['Acknowledge instruction', acknowledgeInstruction],
-        [t('portals.formalSubmission.newRfi'), () => { setFormalSubmission('rfi'); setFormalSubmissionError(''); }], ['Acknowledge RFI', acknowledgeRfi], [t('portals.formalSubmission.newSubmittal'), () => { setFormalSubmission('submittal'); setFormalSubmissionError(''); }],
-        ['Resubmit submittal', resubmitSubmittal], ['Claim quantity', submitQuantity], ['Payment application', submitPaymentApplication],
+        [t('portals.formalSubmission.newRfi'), () => { setFormalSubmission('rfi'); setFormalSubmissionError(''); }], [t('portals.recordActions.acknowledgeRfi'), () => { setRecordActionError(''); setShowAcknowledgeRfi((open) => !open); }], [t('portals.formalSubmission.newSubmittal'), () => { setFormalSubmission('submittal'); setFormalSubmissionError(''); }],
+        [t('portals.recordActions.resubmitSubmittal'), () => { setRecordActionError(''); setShowResubmitSubmittal((open) => !open); }], ['Claim quantity', submitQuantity], ['Payment application', submitPaymentApplication],
         [t('portals.submissions.new'), () => setShowSubmissionForm(true)]]
       : kind === 'supplier'
         ? [['Submit quotation', quoteRfq], ['Send clarification', clarify], ['Acknowledge PO', acknowledgePo],
@@ -517,6 +530,26 @@ function QuickActions({ kind, data, onDone }) {
         <label>{t('portals.formalSubmission.submittedTo')}<input name="submitted_to" maxLength="255" value={formalSubmissionValues.submitted_to} onChange={(event) => setFormalSubmissionValues({ ...formalSubmissionValues, submitted_to: event.target.value })} /></label>
       </>}
       <div className="form-actions"><button type="button" className="btn" disabled={savingFormalSubmission} onClick={() => setFormalSubmission('')}>{t('common.cancel')}</button><button type="submit" className="btn btn-primary" disabled={savingFormalSubmission || !(data.packages || []).length}>{savingFormalSubmission ? t('portals.submissions.saving') : t('portals.submissions.submit')}</button></div>
+    </form>}
+    {showAcknowledgeRfi && kind === 'subcontractor' && <form className="card portal-observation-form" onSubmit={acknowledgeRfi}>
+      <h2>{t('portals.recordActions.acknowledgeRfi')}</h2>
+      {recordActionError && <p className="alert alert-danger" role="alert">{recordActionError}</p>}
+      <label>{t('portals.recordActions.rfi')}<select required value={rfiAcknowledgement.id} onChange={(event) => setRfiAcknowledgement({ ...rfiAcknowledgement, id: event.target.value })}>
+        <option value="">{t('portals.submissions.selectRecord')}</option>
+        {(data.rfis?.items || []).map((item) => <option key={item.id} value={item.id}>{item.rfi_number || `#${item.id}`} — {item.subject}</option>)}
+      </select></label>
+      <label>{t('portals.recordActions.response')}<textarea maxLength="2000" value={rfiAcknowledgement.response} onChange={(event) => setRfiAcknowledgement({ ...rfiAcknowledgement, response: event.target.value })} /></label>
+      <div className="form-actions"><button type="button" className="btn" disabled={recordActionSaving} onClick={() => setShowAcknowledgeRfi(false)}>{t('common.cancel')}</button><button type="submit" className="btn btn-primary" disabled={recordActionSaving || !(data.rfis?.items || []).length}>{recordActionSaving ? t('portals.submissions.saving') : t('portals.submissions.submit')}</button></div>
+    </form>}
+    {showResubmitSubmittal && kind === 'subcontractor' && <form className="card portal-observation-form" onSubmit={resubmitSubmittal}>
+      <h2>{t('portals.recordActions.resubmitSubmittal')}</h2>
+      {recordActionError && <p className="alert alert-danger" role="alert">{recordActionError}</p>}
+      <label>{t('portals.recordActions.submittal')}<select required value={submittalResubmission.id} onChange={(event) => setSubmittalResubmission({ ...submittalResubmission, id: event.target.value })}>
+        <option value="">{t('portals.submissions.selectRecord')}</option>
+        {(data.submittals_for_resubmission?.items || []).map((item) => <option key={item.id} value={item.id}>{item.submittal_number || `#${item.id}`} — {item.title}</option>)}
+      </select></label>
+      <label>{t('portals.recordActions.revisionComments')}<textarea required maxLength="5000" value={submittalResubmission.comments} onChange={(event) => setSubmittalResubmission({ ...submittalResubmission, comments: event.target.value })} /></label>
+      <div className="form-actions"><button type="button" className="btn" disabled={recordActionSaving} onClick={() => setShowResubmitSubmittal(false)}>{t('common.cancel')}</button><button type="submit" className="btn btn-primary" disabled={recordActionSaving || !(data.submittals_for_resubmission?.items || []).length}>{recordActionSaving ? t('portals.submissions.saving') : t('portals.submissions.submit')}</button></div>
     </form>}
   </div>;
 }

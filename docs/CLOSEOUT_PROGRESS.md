@@ -459,3 +459,9 @@ Focused results: `portal.test.js` passed 15/15; `subcontractor-submissions.pg.te
 Replaced the RFI and submittal creation prompts with EN/AR forms. Each form selects an awarded package from the caller's dashboard and derives its project ID from that package; RFI fields include question, priority and optional response date, while submittal fields include type and recipient. Errors render in the form and duplicate record IDs are not entered by hand.
 
 Focused results: `PortalDashboard.test.js` passed 7/7, including scoped RFI payload and submittal type/recipient coverage; `i18n:check` passed. No backend or whole-suite tests were needed for this frontend-only change.
+
+### 5.6.5.d Scoped RFI acknowledgement and submittal resubmission
+
+The subcontractor portal now selects RFIs from its package-scoped dashboard records for acknowledgement, and returned submittals from a separately scoped list for resubmission. The dashboard only offers resubmittal records with `resubmit_required` status that belong to one of the caller's packages. Both actions use bilingual forms and visible error handling.
+
+Focused results: `portal.test.js` passed 16/16, including a cross-package resubmittal-list isolation case; `PortalDashboard.test.js` passed 8/8, including both action payloads; `i18n:check` passed. No full suite was run.

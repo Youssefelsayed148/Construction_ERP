@@ -1241,3 +1241,9 @@ Focused verification: `portal.test.js` passed 15/15, including organization isol
 Replaced the subcontractor RFI and submittal prompt submissions with bilingual forms. Package selection uses the assigned package list and derives the project/package IDs for the request. The RFI form captures subject, question, priority and optional due date; the submittal form captures title, type and recipient. Submission failures appear in the form.
 
 Focused verification: `PortalDashboard.test.js` passed 7/7, including assigned-package-derived RFI payload and submittal type/recipient payload; `i18n:check` passed. No backend or whole-suite tests were needed for this frontend-only change.
+
+## 2026-10-13: Phase 5.6.5.d scoped RFI and submittal follow-up actions
+
+RFI acknowledgements now use a record selector populated by the user's package-scoped RFI list. Returned submittals have a separate dashboard list restricted to `resubmit_required` records on the user's packages; the portal resubmission form selects from that list and captures revision comments. Both forms provide localized labels and error handling.
+
+Focused verification: `portal.test.js` passed 16/16, including returned-submittal package isolation; `PortalDashboard.test.js` passed 8/8, including acknowledgement and resubmission payloads; `i18n:check` passed. No full suite was run.

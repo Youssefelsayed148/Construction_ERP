@@ -223,6 +223,37 @@ describe('consultant portal observation form', () => {
     });
   });
 
+  test('RFI acknowledgement and returned submittal resubmission select scoped records', async () => {
+    global.fetch = jest.fn(async (url, options = {}) => options.method === 'POST'
+      ? { ok: true, json: async () => ({ success: true, data: { id: 73 } }) }
+      : { ok: true, json: async () => ({ success: true, data: {
+        project_ids: [8], packages: [{ id: 31, project_id: 8, contract_number: 'SC-31' }],
+        rfis: { items: [{ id: 81, rfi_number: 'RFI-81', subject: 'Rebar splice detail' }] },
+        submittals_for_resubmission: { items: [{ id: 82, submittal_number: 'SUB-82', title: 'Waterproofing method' }] },
+      } }) });
+    await act(async () => { root.render(<PortalDashboard kind="subcontractor" />); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const acknowledge = [...container.querySelectorAll('button')].find((button) => button.textContent.includes('portals.recordActions.acknowledgeRfi'));
+    await act(async () => { acknowledge.click(); });
+    let form = [...container.querySelectorAll('form')].find((node) => node.textContent.includes('portals.recordActions.acknowledgeRfi'));
+    await fill('form select', '81');
+    await fill('form textarea', 'Acknowledged; proceed with the approved detail.');
+    await act(async () => { form.querySelector('button[type="submit"]').click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    let post = global.fetch.mock.calls.find(([url, options]) => options.method === 'POST' && String(url).includes('/rfis/81/acknowledge'));
+    expect(JSON.parse(post[1].body)).toEqual({ body: 'Acknowledged; proceed with the approved detail.' });
+
+    const resubmit = [...container.querySelectorAll('button')].find((button) => button.textContent.includes('portals.recordActions.resubmitSubmittal'));
+    await act(async () => { resubmit.click(); });
+    form = [...container.querySelectorAll('form')].find((node) => node.textContent.includes('portals.recordActions.resubmitSubmittal'));
+    await fill('form select', '82');
+    await fill('form textarea', 'Updated membrane thickness and method steps.');
+    await act(async () => { form.querySelector('button[type="submit"]').click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    post = global.fetch.mock.calls.find(([url, options]) => options.method === 'POST' && String(url).includes('/submittals/82/resubmit'));
+    expect(JSON.parse(post[1].body)).toEqual({ comments: 'Updated membrane thickness and method steps.' });
+  });
+
   test('supplier compliance panel labels expired and near-expiry documents', async () => {
     global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ success: true, data: {
       project_ids: [8], inspections: { count: 1, items: [{ id: 8, project_id: 8, mir_number: 'MIR-0008', status: 'accepted' }] },
