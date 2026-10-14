@@ -132,20 +132,32 @@ function actionFromRequest(req) {
 // is only trusted on the /api/projects mount, where it always denotes a project;
 // elsewhere it may be an invoice/payment/document id and is ignored.
 function extractProjectId(req, module) {
-  if (req.params) {
-    if (req.params.projectId != null) return Number(req.params.projectId);
-    if (req.params.project_id != null) return Number(req.params.project_id);
+  const supplied = [];
+  for (const source of [req.params, req.query, req.body]) {
+    for (const key of ['project_id', 'projectId', 'current_project_id']) {
+      if (!source || !Object.prototype.hasOwnProperty.call(source, key)) continue;
+      const raw = source[key];
+      if (raw === undefined) continue;
+      const value = raw == null || raw === '' ? null : Number(raw);
+      if (value != null && (!Number.isSafeInteger(value) || value <= 0 || typeof raw === 'object')) {
+        throw Object.assign(new Error('Invalid project id'), { status: 400, error_code: 'project_id_invalid', error_params: {} });
+      }
+      supplied.push(value);
+    }
   }
-  if (req.query && req.query.project_id != null) return Number(req.query.project_id);
-  if (req.body && req.body.project_id != null) return Number(req.body.project_id);
-  if (req.body && req.body.projectId != null) return Number(req.body.projectId);
-  if (module === 'projects' && req.params && req.params.id != null) {
-    return Number(req.params.id);
+  const routePath = String(req.policyRoute || req.route?.path || '');
+  if (module === 'projects' && req.params && req.params.id != null
+    && (!routePath || /^\/:id(?:\/|$)/.test(routePath))
+    && req.params.projectId == null && req.params.project_id == null) {
+    supplied.push(Number(req.params.id));
   }
-  if (req.route && /^\/project\/:id(?:\/|$)/.test(String(req.route.path)) && req.params?.id != null) {
-    return Number(req.params.id);
+  if (/^\/project\/:id(?:\/|$)/.test(String(req.policyRoute || req.route?.path || '')) && req.params?.id != null) {
+    supplied.push(Number(req.params.id));
   }
-  return null;
+  if (new Set(supplied).size > 1) {
+    throw Object.assign(new Error('Supplied project ids disagree'), { status: 400, error_code: 'project_id_mismatch', error_params: {} });
+  }
+  return supplied.length ? supplied[0] : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -283,6 +295,9 @@ function effectiveAction(req, mountModule) {
 // bypassed by guessing another project's record id. Every table name below is
 // a constant owned by the server; request input is used only as a parameter.
 const RECORD_SCOPE_RULES = Object.freeze({
+  assets: [
+    [/^\/:id$/, 'SELECT current_project_id AS project_id FROM assets WHERE id = $1'],
+  ],
   actions: [[/^\/:id(?:\/|$)/, 'action_items']],
   agent: [[/^\/requests\/:id(?:\/|$)/, 'agent_action_requests']],
   boq: [[/^\/sections\/:id(?:\/|$)/, 'boq_sections'], [/^\/items\/:id(?:\/|$)/, 'boq_items']],
@@ -453,12 +468,16 @@ async function resolveProjectContext(req, module, q = query) {
   const resolvedProjectId = row && row.project_id != null ? Number(row.project_id) : null;
   // A caller cannot override a record's real owner by supplying an allowed
   // project_id in the request body or query string.
-  const ownershipMatches = explicit == null || resolvedProjectId == null
+  const movingProject = ['PUT', 'PATCH'].includes(req.method)
+    && ['project_id', 'projectId', 'current_project_id'].some(key => Object.prototype.hasOwnProperty.call(req.body || {}, key))
+    && explicit !== resolvedProjectId;
+  const ownershipMatches = movingProject || explicit == null || resolvedProjectId == null
     || Number(explicit) === resolvedProjectId;
   return {
     projectId: resolvedProjectId,
     recordScoped: true,
     recordFound: Boolean(row) && ownershipMatches,
+    ...(movingProject ? { movingProject: true, destinationProjectId: explicit } : {}),
   };
 }
 
@@ -575,7 +594,7 @@ async function evaluateRequest(req, opts = {}) {
     if (context.recordScoped && projectId == null && decision.source === 'policy' && !decision.company_wide) {
       return { ...decision, allowed: false, project_id: null };
     }
-    return { ...decision, project_id: projectId };
+    return { ...decision, project_id: context.movingProject ? context.destinationProjectId : projectId, source_project_id: projectId };
   };
   if (req.preview && req.user) {
     const decision = await evaluateForRole(req.user.role, {
@@ -587,6 +606,12 @@ async function evaluateRequest(req, opts = {}) {
     return constrainRecordDecision(decision);
   }
   const decision = await evaluate({ user: req.user, module, action, projectId }, opts);
+  if (decision.allowed && context.movingProject) {
+    const destination = await evaluate({ user: req.user, module, action, projectId: context.destinationProjectId }, opts);
+    if (!destination.allowed || (context.destinationProjectId == null && !destination.company_wide)) {
+      return { ...destination, allowed: false, project_id: context.destinationProjectId, source_project_id: projectId };
+    }
+  }
   const constrained = constrainRecordDecision(decision);
   if (constrained.allowed) return constrained;
   // Phase 5.1 delegation of authority: an active delegation lets the DELEGATE act as the DELEGATOR

@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
@@ -184,17 +185,18 @@ router.post('/measurements', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     // The measurement and everything derived from it (allocations, completed quantity, quantity-driven activities,
     // project progress) commit together. Inserts only: executed roll-ups are derived, never hand-edited.
     const r = await transaction(async (client) => {
       const q = client.query.bind(client);
       const inserted = await engine.recordMeasurement(q, {
-        project_id: value.project_id, project_location_id: value.project_location_id, boq_item_id: value.boq_item_id,
+        project_id: authorizedProjectId(req, value), project_location_id: value.project_location_id, boq_item_id: value.boq_item_id,
         work_package_id: value.work_package_id, measured_date: value.measured_date, quantity: value.quantity, unit: value.unit,
         source_type: value.source_type, source_id: value.source_id, measured_by: req.user.id, photos: value.photos,
       });
-      await progressEngine.onMeasurementsChanged(q, { boqItemId: value.boq_item_id, projectId: value.project_id });
+      await progressEngine.onMeasurementsChanged(q, { boqItemId: value.boq_item_id, projectId: authorizedProjectId(req, value) });
       await logActivity({
         userId: req.user.id, userName: req.user.name, userRole: req.user.role,
         action: 'create', module: 'quantities',

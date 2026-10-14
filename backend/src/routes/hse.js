@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 // Phase 20 — HSE routes (mounted at /api/hse).
 //
 // Typed safety registers: incidents (replacing safety_incidents via the
@@ -84,11 +85,12 @@ router.post('/incidents', authenticate, authorize(), async (req, res) => {
   try {
     const { error, value } = INCIDENT_SCHEMA.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const r = await auditedTransaction((q) => q(
       `INSERT INTO incidents (project_id, incident_date, incident_type, incident_category, severity, description,
          injured_party, is_lti, lost_days, corrective_action, investigation_notes, root_cause, reported_by)
        VALUES ($1,COALESCE($2, CURRENT_DATE),$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
-      [value.project_id, value.incident_date || null, value.incident_type || null, value.incident_category,
+      [authorizedProjectId(req, value), value.incident_date || null, value.incident_type || null, value.incident_category,
        value.severity, value.description, value.injured_party || null, value.is_lti, value.lost_days,
        value.corrective_action || null, value.investigation_notes || null, value.root_cause || null, req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hse', description: `Reported incident (${value.severity}${value.is_lti ? ', LTI' : ''})`, entityId: result.rows[0].id, entityType: 'incident' }));
     res.status(201).json({ success: true, data: r.rows[0] });
@@ -100,6 +102,7 @@ router.put('/incidents/:id', authenticate, authorize(), async (req, res) => {
     const schema = INCIDENT_SCHEMA.fork(Object.keys(INCIDENT_SCHEMA.describe().keys), (s) => s.optional()).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const sets = []; const params = []; let idx = 1;
     for (const [k, v] of Object.entries(value)) {
       if (v === undefined) continue;
@@ -181,10 +184,11 @@ router.post('/inspections', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const r = await auditedTransaction((q) => q(
       `INSERT INTO hse_inspections (project_id, inspection_date, inspector_id, inspection_type, checklist_items, findings, follow_up_due, status)
        VALUES ($1,COALESCE($2, CURRENT_DATE),$3,$4,$5::jsonb,$6,$7,$8) RETURNING *`,
-      [value.project_id, value.inspection_date || null, req.user.id, value.inspection_type,
+      [authorizedProjectId(req, value), value.inspection_date || null, req.user.id, value.inspection_type,
        JSON.stringify(value.checklist_items), value.findings || null, value.follow_up_due || null, value.status]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hse', description: `Logged ${value.inspection_type} inspection (${value.status})`, entityId: result.rows[0].id, entityType: 'hse_inspection' }));
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
@@ -272,6 +276,7 @@ router.post('/permits', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const permit = await auditedTransaction((q) => hseEngine.createPermit(q, value, req.user), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hse', description: `Created permit ${result.permit_number} (${result.permit_type})`, entityId: result.id, entityType: 'permit' }));
     res.status(201).json({ success: true, data: permit });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
@@ -361,10 +366,11 @@ router.post('/jsas', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const r = await auditedTransaction((q) => q(
       `INSERT INTO jsas (project_id, title, activity, hazards, controls, created_by)
        VALUES ($1,$2,$3,$4::jsonb,$5,$6) RETURNING *`,
-      [value.project_id, value.title, value.activity || null, JSON.stringify(value.hazards), value.controls || null, req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hse', description: `Created JSA "${value.title}"`, entityId: result.rows[0].id, entityType: 'jsa' }));
+      [authorizedProjectId(req, value), value.title, value.activity || null, JSON.stringify(value.hazards), value.controls || null, req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hse', description: `Created JSA "${value.title}"`, entityId: result.rows[0].id, entityType: 'jsa' }));
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -430,12 +436,13 @@ router.post('/risk-assessments', authenticate, authorize(), async (req, res) => 
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const matrix = { 'low+low': 'low', 'low+medium': 'medium', 'medium+low': 'medium', 'low+high': 'high', 'high+low': 'medium', 'medium+medium': 'high', 'medium+high': 'high', 'high+medium': 'high', 'high+high': 'critical' };
     const riskLevel = matrix[`${value.likelihood}+${value.severity}`] || 'medium';
     const r = await auditedTransaction((q) => q(
       `INSERT INTO risk_assessments (project_id, title, activity, likelihood, severity, risk_level, controls, residual_risk, assessor, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-      [value.project_id, value.title, value.activity || null, value.likelihood, value.severity, riskLevel,
+      [authorizedProjectId(req, value), value.title, value.activity || null, value.likelihood, value.severity, riskLevel,
        value.controls || null, value.residual_risk || null, value.assessor || null, req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hse', description: `Created risk assessment "${value.title}" (${riskLevel})`, entityId: result.rows[0].id, entityType: 'risk_assessment' }));
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
@@ -505,10 +512,11 @@ router.post('/inductions', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const r = await query(
       `INSERT INTO inductions (project_id, person_name, organization_id, induction_date, induction_type, trainer, valid_until, notes, created_by)
        VALUES ($1,$2,$3,COALESCE($4, CURRENT_DATE),$5,$6,$7,$8,$9) RETURNING *`,
-      [value.project_id, value.person_name, value.organization_id || null, value.induction_date || null,
+      [authorizedProjectId(req, value), value.person_name, value.organization_id || null, value.induction_date || null,
        value.induction_type, value.trainer || null, value.valid_until || null, value.notes || null, req.user.id]);
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
@@ -538,12 +546,13 @@ router.post('/toolbox-talks', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const r = await auditedTransaction((q) => q(
       `INSERT INTO toolbox_talks (project_id, title, topic, conducted_by, attendees_count, attendees, notes, created_by)
        VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8) RETURNING *`,
-      [value.project_id, value.title, value.topic || null, value.conducted_by || null,
+      [authorizedProjectId(req, value), value.title, value.topic || null, value.conducted_by || null,
        value.attendees_count, JSON.stringify(value.attendees), value.notes || null, req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hse', description: `Recorded toolbox talk "${value.title}"`, entityId: result.rows[0].id, entityType: 'toolbox_talk' }));
-    const name = await projectNameFor(query, value.project_id);
+    const name = await projectNameFor(query, authorizedProjectId(req, value));
     const pdf = await renderDocument({
       docType: 'TOOLBOX TALK', number: `TBT-${String(r.rows[0].id).padStart(5, '0')}`, date: r.rows[0].held_at,
       meta: [['Project', name], ['Topic', value.topic || '-'], ['Attendees', String(value.attendees_count)]],
@@ -582,13 +591,14 @@ router.post('/near-misses', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const year = new Date().getFullYear();
     const r = await auditedTransaction(async (q) => {
       const nearMissNumber = await nextNumber(q, { table: 'near_misses', column: 'near_miss_number', prefix: `NM-${year}`, pad: 4 });
       const inserted = await q(
       `INSERT INTO near_misses (near_miss_number, project_id, incident_date, project_location_id, category, severity, description, immediate_action, reported_by, created_by)
        VALUES ($1,$2,COALESCE($3, CURRENT_DATE),$4,$5,$6,$7,$8,$9,$9) RETURNING *`,
-      [nearMissNumber, value.project_id, value.incident_date || null, value.project_location_id || null,
+      [nearMissNumber, authorizedProjectId(req, value), value.incident_date || null, value.project_location_id || null,
        value.category || null, value.severity, value.description, value.immediate_action || null, req.user.id]);
       return { ...inserted, nearMissNumber };
     }, (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hse', description: `Reported near miss ${result.nearMissNumber}`, entityId: result.rows[0].id, entityType: 'near_miss' }));
@@ -648,10 +658,11 @@ router.post('/ppe-records', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const r = await query(
       `INSERT INTO ppe_records (project_id, person_name, organization_id, item, quantity, size, issued_by, notes, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-      [value.project_id, value.person_name, value.organization_id || null, value.item, value.quantity,
+      [authorizedProjectId(req, value), value.person_name, value.organization_id || null, value.item, value.quantity,
        value.size || null, value.issued_by || null, value.notes || null, req.user.id]);
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
@@ -683,10 +694,11 @@ router.post('/equipment-inspections', authenticate, authorize(), async (req, res
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const r = await query(
       `INSERT INTO equipment_inspections (project_id, asset_id, equipment_name, inspection_date, inspector, result, defects, next_inspection_date, created_by)
        VALUES ($1,$2,$3,COALESCE($4, CURRENT_DATE),$5,$6,$7,$8,$9) RETURNING *`,
-      [value.project_id, value.asset_id || null, value.equipment_name, value.inspection_date || null,
+      [authorizedProjectId(req, value), value.asset_id || null, value.equipment_name, value.inspection_date || null,
        value.inspector || null, value.result, value.defects || null, value.next_inspection_date || null, req.user.id]);
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
@@ -716,10 +728,11 @@ router.post('/emergency-drills', authenticate, authorize(), async (req, res) => 
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const r = await query(
       `INSERT INTO emergency_drills (project_id, drill_type, drill_date, participants_count, findings, improvements, conducted_by, created_by)
        VALUES ($1,$2,COALESCE($3, CURRENT_DATE),$4,$5,$6,$7,$8) RETURNING *`,
-      [value.project_id, value.drill_type, value.drill_date || null, value.participants_count,
+      [authorizedProjectId(req, value), value.drill_type, value.drill_date || null, value.participants_count,
        value.findings || null, value.improvements || null, value.conducted_by || null, req.user.id]);
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }

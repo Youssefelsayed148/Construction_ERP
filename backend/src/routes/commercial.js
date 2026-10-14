@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const { nextNumber } = require('../services/numbering');
 const router = express.Router();
@@ -50,6 +51,7 @@ router.post('/contracts', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     const contractNumber = await nextNumber(query, { table: 'client_contracts', column: 'contract_number', prefix: 'CC', pad: 5 });
 
@@ -59,7 +61,7 @@ router.post('/contracts', authenticate, authorize(), async (req, res) => {
          (contract_number, project_id, client_id, title, original_value, revised_value,
             retention_percent, advance_percent, advance_amount, contract_date, start_date, end_date, notes, created_by)
          VALUES ($1,$2,$3,$4,$5,$5,$6,$7,COALESCE($8, ROUND($5::numeric * $7::numeric / 100, 2)),$9,$10,$11,$12,$13) RETURNING *`,
-        [contractNumber, value.project_id, value.client_id || null, value.title || null, value.original_value,
+        [contractNumber, authorizedProjectId(req, value), value.client_id || null, value.title || null, value.original_value,
          value.retention_percent ?? null, value.advance_percent, value.advance_amount ?? null, value.contract_date || null,
          value.start_date || null, value.end_date || null, value.notes || null, req.user.id]
       );
@@ -130,6 +132,7 @@ router.post('/variations', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     const variation = await atomicAudited(req, (q) => engine.createVariation(q, { ...value, created_by: req.user.id }),
       (row) => ['create', `Created variation ${row.variation_number}`, 'variation', row.id]);
@@ -273,6 +276,7 @@ router.post('/guarantees', authenticate, authorize(), async (req, res) => {
   try {
     const value = typedBody(guaranteeSchema, req, res);
     if (!value) return;
+    authorizeProjectPayload(req, value);
     const row = await atomicAudited(req, (q) => records.createGuarantee(q, { ...value, issued_on: isoDay(value.issued_on), expires_on: isoDay(value.expires_on) }, req.user.id),
       (created) => ['create', `Guarantee ${created.guarantee_number}`, 'guarantee', created.id]);
     res.status(201).json({ success: true, data: row });
@@ -285,6 +289,7 @@ router.put('/guarantees/:id', authenticate, authorize(), async (req, res) => {
   try {
     const value = typedBody(guaranteeSchema.fork(['guarantee_type', 'amount', 'expires_on'], (s) => s.optional()).keys({ project_id: Joi.forbidden(), client_contract_id: Joi.forbidden(), sub_contract_id: Joi.forbidden(), guarantee_type: Joi.forbidden() }), req, res);
     if (!value) return;
+    authorizeProjectPayload(req, value);
     if (value.issued_on) value.issued_on = isoDay(value.issued_on);
     if (value.expires_on) value.expires_on = isoDay(value.expires_on);
     res.json({ success: true, data: await atomic((q) => records.updateGuarantee(q, intId(req), value)) });
@@ -314,6 +319,7 @@ router.post('/insurances', authenticate, authorize(), async (req, res) => {
   try {
     const value = typedBody(insuranceSchema, req, res);
     if (!value) return;
+    authorizeProjectPayload(req, value);
     const row = await atomicAudited(req, (q) => records.createInsurance(q, { ...value, start_date: isoDay(value.start_date), expiry_date: isoDay(value.expiry_date) }, req.user.id),
       (created) => ['create', `Insurance ${created.insurance_number}`, 'insurance', created.id]);
     res.status(201).json({ success: true, data: row });
@@ -326,6 +332,7 @@ router.put('/insurances/:id', authenticate, authorize(), async (req, res) => {
   try {
     const value = typedBody(insuranceSchema.fork(['insurance_type', 'policy_number', 'coverage_amount', 'expiry_date'], (s) => s.optional()).keys({ project_id: Joi.forbidden(), client_contract_id: Joi.forbidden(), sub_contract_id: Joi.forbidden(), insurance_type: Joi.forbidden() }), req, res);
     if (!value) return;
+    authorizeProjectPayload(req, value);
     if (value.start_date) value.start_date = isoDay(value.start_date);
     if (value.expiry_date) value.expiry_date = isoDay(value.expiry_date);
     res.json({ success: true, data: await atomic((q) => records.updateInsurance(q, intId(req), value)) });
@@ -383,6 +390,7 @@ router.post('/payment-applications', authenticate, authorize(), async (req, res)
       return value;
     }), req, res);
     if (!value) return;
+    authorizeProjectPayload(req, value);
     const row = await atomicAudited(req, (q) => records.createApplication(q, { ...value, period_from: isoDay(value.period_from), period_to: isoDay(value.period_to) }, req.user.id),
       (created) => ['create', `Payment application ${created.application_number}`, 'payment_application', created.id]);
     res.status(201).json({ success: true, data: row });
@@ -409,6 +417,7 @@ router.post('/payment-applications/:id/certify', authenticate, authorize(), asyn
       return value;
     }), req, res);
     if (!value) return;
+    authorizeProjectPayload(req, value);
     const out = await atomicAudited(req, (q) => records.certifyApplication(q, intId(req), req.user, value),
       (certified) => ['approve', `Payment application ${certified.application.application_number} certified as ${certified.certificate.certificate_number}${certified.advance_recovery_overridden ? `; advance recovery overridden to ${certified.certificate.advance_recovery} (calculated ${certified.advance_recovery_calculated})` : '; advance recovery derived from project rule and capped by contract advance'}`, 'payment_application', certified.application.id]);
     res.json({ success: true, data: out });
@@ -467,6 +476,7 @@ router.post('/budget-versions', authenticate, authorize(), async (req, res) => {
   try {
     const value = typedBody(Joi.object({ project_id: Joi.number().integer().required(), name: Joi.string().required(), notes: Joi.string().allow('', null), lines: lineSchema('amount'), copy_from_version_id: Joi.number().integer() }), req, res);
     if (!value) return;
+    authorizeProjectPayload(req, value);
     const row = await atomicAudited(req, (q) => budgeting.createBudgetVersion(q, value, req.user.id),
       (created) => ['create', `Budget version ${created.version_no}`, 'budget_version', created.id]);
     res.status(201).json({ success: true, data: row });
@@ -507,6 +517,7 @@ router.post('/forecast-versions', authenticate, authorize(), async (req, res) =>
   try {
     const value = typedBody(Joi.object({ project_id: Joi.number().integer().required(), name: Joi.string().required(), as_of_date: optDate, notes: Joi.string().allow('', null), lines: lineSchema('forecast_amount').required() }), req, res);
     if (!value) return;
+    authorizeProjectPayload(req, value);
     const row = await atomicAudited(req, (q) => budgeting.createForecastVersion(q, { ...value, as_of_date: isoDay(value.as_of_date) }, req.user.id),
       (created) => ['create', `Forecast version ${created.version_no}`, 'forecast_version', created.id]);
     res.status(201).json({ success: true, data: row });

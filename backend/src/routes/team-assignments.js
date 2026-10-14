@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 // Phase 5.1 (spec 04) — team assignments. Mounted at /api/team (server.js).
 //
 // Re-exports the same service surface as the /api/organizations/team endpoints (services/teamService.js):
@@ -49,12 +50,13 @@ router.post('/', authenticate, authorize('owner', 'admin', 'owner_ceo', 'coo', '
       });
       const { error, value } = schema.validate(req.body);
       if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error' });
+    authorizeProjectPayload(req, value);
       const created = await transaction(async (client) => {
         const q = client.query.bind(client);
         const result = await team.assignTeamMember(q, { ...value, granted_by: req.user.id });
         await policy.recordAuditEvent({
           entity: 'team_assignment', entityId: result.assignment.id, action: 'create',
-          after: { user_id: value.user_id, project_id: value.project_id, role_key: value.role_key, expires_at: value.expires_at || null },
+          after: { user_id: value.user_id, project_id: authorizedProjectId(req, value), role_key: value.role_key, expires_at: value.expires_at || null },
           userId: req.user.id,
         }, { query: q });
         return result;

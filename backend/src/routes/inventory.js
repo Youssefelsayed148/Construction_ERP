@@ -5,6 +5,7 @@
 //   lots          GET /lots, /lots/expiring, /lots/:id   POST /lots   PUT /lots/:id/status
 //   conversions   GET /conversions, /conversions/convert   POST/PUT/DELETE /conversions
 //   documents     issues | returns | adjustments:  GET, GET/:id, POST, PUT/:id (draft), POST/:id/post, POST/:id/void
+const { authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
@@ -205,6 +206,7 @@ function documentRoutes(plural, docType) {
         reason: Joi.string().allow('', null), notes: Joi.string().allow('', null), lines: Joi.array().items(lineSchema).min(1).required(),
       }), req.body, res);
       if (!value) return;
+      authorizeProjectPayload(req, value);
       if (!(await warehouseInScope(req, res, value.warehouse_id))) return;
       const doc = await transaction((client) => docs.createDraft(client.query.bind(client), { ...value, doc_type: docType, created_by: req.user.id }));
       await audit(req, `Created ${docType} document ${doc.doc_number}`, 'inventory_document', doc.id);
@@ -219,6 +221,7 @@ function documentRoutes(plural, docType) {
         lines: Joi.array().items(lineSchema).min(1),
       }).min(1), req.body, res);
       if (!value) return;
+      authorizeProjectPayload(req, value);
       const doc = await transaction((client) => docs.updateDraft(client.query.bind(client), req.params.id, docType, value));
       await audit(req, `Updated ${docType} document ${doc.doc_number}`, 'inventory_document', doc.id);
       res.json({ success: true, data: doc });

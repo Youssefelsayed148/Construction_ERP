@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
@@ -59,6 +60,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     // The expense and its ledger entry commit together; a posting failure fails the request and creates nothing.
     const result = await transaction(async (client) => {
@@ -66,7 +68,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
       const inserted = await q(
         `INSERT INTO expenses (category, description, amount, date, project_id, paid_by, notes, created_by)
          VALUES ($1,$2,$3,COALESCE($4,CURRENT_DATE),$5,$6,$7,$8) RETURNING *`,
-        [value.category, value.description, value.amount, value.date, value.project_id || null, value.paid_by, value.notes, req.user.id]
+        [value.category, value.description, value.amount, value.date, authorizedProjectId(req, value) || null, value.paid_by, value.notes, req.user.id]
       );
       await journalExpenseCreated(q, inserted.rows[0], req.user.id);
       await costAccrual.accrueExpenseCost(q, inserted.rows[0]);
@@ -91,10 +93,11 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
     }).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     const row = existing.rows[0];
     const changesMoney = (value.amount !== undefined && Number(value.amount) !== Number(row.amount))
-      || (value.project_id !== undefined && (value.project_id || null) !== (row.project_id || null));
+      || (authorizedProjectId(req, value) !== undefined && (authorizedProjectId(req, value) || null) !== (row.project_id || null));
     if (changesMoney && await isPosted(row.id)) return postedResponse(res);
 
     const sets = []; const params = []; let idx = 1;

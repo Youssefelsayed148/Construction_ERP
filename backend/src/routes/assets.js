@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const { nextNumber } = require('../services/numbering');
 const router = express.Router();
@@ -58,6 +59,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     const result = await auditedTransaction(async (q) => {
       if (!value.code) value.code = await nextNumber(q, { table: 'assets', column: 'code', prefix: 'EQ', pad: 4 });
@@ -87,6 +89,7 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
     }).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     const sets = []; const params = []; let idx = 1;
     for (const [k, v] of Object.entries(value)) {
@@ -123,11 +126,12 @@ router.post('/:id/assignments', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     const r = await auditedTransaction((q) => q(
       `INSERT INTO equipment_assignments (equipment_id, project_id, assigned_from, assigned_to) VALUES ($1,$2,$3,$4) RETURNING *`,
-      [req.params.id, value.project_id, value.assigned_from, value.assigned_to || null]
-    ), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'assign', module: 'assets', description: `Assigned equipment #${req.params.id} to project #${value.project_id}`, entityId: result.rows[0].id, entityType: 'equipment_assignment' }));
+      [req.params.id, authorizedProjectId(req, value), value.assigned_from, value.assigned_to || null]
+    ), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'assign', module: 'assets', description: `Assigned equipment #${req.params.id} to project #${authorizedProjectId(req, value)}`, entityId: result.rows[0].id, entityType: 'equipment_assignment' }));
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -149,10 +153,11 @@ router.post('/:id/usage-logs', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     const r = await auditedTransaction((q) => q(
       `INSERT INTO equipment_usage_logs (equipment_id, project_id, log_date, hours_operated, operator_id, fuel_liters, notes) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [req.params.id, value.project_id, value.log_date, value.hours_operated, value.operator_id || null, value.fuel_liters, value.notes]
+      [req.params.id, authorizedProjectId(req, value), value.log_date, value.hours_operated, value.operator_id || null, value.fuel_liters, value.notes]
     ), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'log_usage', module: 'assets', description: `Recorded equipment usage for #${req.params.id}`, entityId: result.rows[0].id, entityType: 'equipment_usage_log' }));
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }

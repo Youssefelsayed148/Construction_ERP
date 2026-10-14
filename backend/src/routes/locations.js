@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
@@ -72,12 +73,13 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     let parentId = value.parent_id ?? null;
     if (value.parent_code && parentId == null) {
       const parent = await query(
         'SELECT id FROM project_locations WHERE project_id = $1 AND code = $2 LIMIT 1',
-        [value.project_id, value.parent_code]
+        [authorizedProjectId(req, value), value.parent_code]
       );
       if (parent.rows[0]) parentId = parent.rows[0].id;
     }
@@ -87,13 +89,13 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     const r = await query(
       `INSERT INTO project_locations (project_id, parent_id, location_type_id, code, name, name_en, name_ar, sort_order)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [value.project_id, parentId, typeId, value.code, value.name, value.name_en || value.name, value.name_ar || value.name_en || value.name, value.sort_order]
+      [authorizedProjectId(req, value), parentId, typeId, value.code, value.name, value.name_en || value.name, value.name_ar || value.name_en || value.name, value.sort_order]
     );
 
     await fireEvent({
       eventType: 'location.created', entityType: 'project_location', entityId: r.rows[0].id,
       userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      payload: { project_id: value.project_id, location_type_code: value.location_type_code },
+      payload: { project_id: authorizedProjectId(req, value), location_type_code: value.location_type_code },
     });
 
     res.status(201).json({ success: true, data: r.rows[0] });

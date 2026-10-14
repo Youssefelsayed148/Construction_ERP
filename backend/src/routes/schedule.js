@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 // Phase 22 — planning / scheduling routes (mounted at /api/schedule).
 //
 // Activities, relationships, calendars, baselines, the CPM views (Gantt,
@@ -47,7 +48,7 @@ router.get('/resource-load', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.query);
     if (error) return scheduleFailure(res, 400, 'invalid_resource_load_range');
-    if (!scheduleProjectAllowed(req, value.project_id)) return scheduleFailure(res, 403, 'schedule_project_scope_denied');
+    if (!scheduleProjectAllowed(req, authorizedProjectId(req, value))) return scheduleFailure(res, 403, 'schedule_project_scope_denied');
     const from = value.from ? isoDay(value.from) : currentLocalDate();
     const to = value.to ? isoDay(value.to) : isoDay(new Date(new Date(`${from}T12:00:00`).getTime() + 13 * 86400000));
     const dayCount = Math.floor((new Date(`${to}T12:00:00`).getTime() - new Date(`${from}T12:00:00`).getTime()) / 86400000);
@@ -69,7 +70,7 @@ router.get('/resource-load', authenticate, authorize(), async (req, res) => {
          LEFT JOIN asset_register ar ON ar.id = a.asset_register_id
         WHERE a.project_id = $1 AND a.status IN ('planned', 'active')
         GROUP BY d.load_date, a.employee_id, a.asset_register_id, e.name_en, e.name_ar, ar.name
-        ORDER BY d.load_date, resource_type, resource_name`, [value.project_id, from, to]
+        ORDER BY d.load_date, resource_type, resource_name`, [authorizedProjectId(req, value), from, to]
     )).rows;
     res.json({ success: true, data: rows, from, to });
   } catch (error) {
@@ -103,10 +104,11 @@ router.post('/calendars', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const r = await query(
       `INSERT INTO calendars (project_id, name, is_default, work_days, exceptions, created_by)
        VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6) RETURNING *`,
-      [value.project_id, value.name, value.is_default, JSON.stringify(value.work_days), JSON.stringify(value.exceptions), req.user.id]);
+      [authorizedProjectId(req, value), value.name, value.is_default, JSON.stringify(value.work_days), JSON.stringify(value.exceptions), req.user.id]);
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -225,12 +227,13 @@ router.post('/activities', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const wp = await projectSetup.resolveOrRespond(query, res, value.project_id, value);
+    authorizeProjectPayload(req, value);
+    const wp = await projectSetup.resolveOrRespond(query, res, authorizedProjectId(req, value), value);
     if (!wp) return;
     // Auto code when absent.
     let code = value.activity_code || null;
     if (!code) {
-      code = await nextNumber(query, { table: 'schedule_activities', column: 'activity_code', prefix: 'A', sep: '', pad: 4, where: { project_id: value.project_id } });
+      code = await nextNumber(query, { table: 'schedule_activities', column: 'activity_code', prefix: 'A', sep: '', pad: 4, where: { project_id: authorizedProjectId(req, value) } });
     }
     const r = await transaction(async (client) => {
       const q = client.query.bind(client);
@@ -240,7 +243,7 @@ router.post('/activities', authenticate, authorize(), async (req, res) => {
            responsible_user_id, subcontractor_organization_id, planned_start, planned_finish, original_duration,
            planned_quantity, budgeted_cost, progress_source, is_milestone, notes, created_by)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING *`,
-        [value.project_id, code, value.name, value.wbs_path || null, wp.text, wp.id, value.phase_id || null,
+        [authorizedProjectId(req, value), code, value.name, value.wbs_path || null, wp.text, wp.id, value.phase_id || null,
          value.project_location_id || null, value.boq_item_id || null, value.boq_location_allocation_id || null,
          value.calendar_id || null, value.responsible_organization_id || null, value.responsible_user_id || null,
          value.subcontractor_organization_id || null, value.planned_start || null, value.planned_finish || null,
@@ -537,13 +540,14 @@ router.post('/relationships', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     if (value.predecessor_id === value.successor_id) {
       return res.status(400).json({ success: false, error: 'An activity cannot depend on itself' });
     }
     const r = await query(
       `INSERT INTO activity_relationships (project_id, predecessor_id, successor_id, relationship_type, lag_days, created_by)
        VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [value.project_id, value.predecessor_id, value.successor_id, value.relationship_type, value.lag_days, req.user.id]);
+      [authorizedProjectId(req, value), value.predecessor_id, value.successor_id, value.relationship_type, value.lag_days, req.user.id]);
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -761,8 +765,9 @@ router.post('/baselines', authenticate, authorize(), async (req, res) => {
     const schema = Joi.object({ project_id: Joi.number().integer().required(), name: Joi.string().required() });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    if (!scheduleProjectAllowed(req, value.project_id)) return scheduleFailure(res, 403, 'schedule_project_scope_denied');
-    const acts = (await query('SELECT * FROM schedule_activities WHERE project_id = $1', [value.project_id])).rows;
+    authorizeProjectPayload(req, value);
+    if (!scheduleProjectAllowed(req, authorizedProjectId(req, value))) return scheduleFailure(res, 403, 'schedule_project_scope_denied');
+    const acts = (await query('SELECT * FROM schedule_activities WHERE project_id = $1', [authorizedProjectId(req, value)])).rows;
     const snapshot = acts.map((a) => ({
       id: a.id, activity_code: a.activity_code, name: a.name, planned_start: a.planned_start,
       planned_finish: a.planned_finish, original_duration: a.original_duration, planned_quantity: a.planned_quantity,
@@ -770,10 +775,10 @@ router.post('/baselines', authenticate, authorize(), async (req, res) => {
     }));
     const r = await transaction(async (client) => {
       const q = client.query.bind(client);
-      await q('UPDATE baselines SET is_current = false WHERE project_id = $1', [value.project_id]);
+      await q('UPDATE baselines SET is_current = false WHERE project_id = $1', [authorizedProjectId(req, value)]);
       const inserted = await q(
         `INSERT INTO baselines (project_id, name, data, is_current, created_by) VALUES ($1,$2,$3::jsonb,true,$4) RETURNING *`,
-        [value.project_id, value.name, JSON.stringify(snapshot), req.user.id]);
+        [authorizedProjectId(req, value), value.name, JSON.stringify(snapshot), req.user.id]);
       await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'schedule', description: `Captured baseline "${value.name}" (${snapshot.length} activities)`, entityId: inserted.rows[0].id, entityType: 'baseline' }, { query: q });
       return inserted;
     });
@@ -802,6 +807,7 @@ router.post('/activities/import', authenticate, authorize('owner', 'admin', 'pro
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     const lines = value.csv.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     // Every work package the file names must exist BEFORE anything is deleted or written: a refused row
@@ -813,13 +819,13 @@ router.post('/activities/import', authenticate, authorize('owner', 'admin', 'pro
       if (preMode !== 'acts') continue;
       const preFields = line.match(/("([^"]|"")*"|[^,]*)(,|$)/g)?.map((f) => f.replace(/,$/, '').replace(/^"|"$/g, '').replace(/""/g, '"')) || [];
       if (!preFields[1]) continue;
-      const checked = await projectSetup.resolveOrRespond(query, res, value.project_id, { work_package: preFields[3] });
+      const checked = await projectSetup.resolveOrRespond(query, res, authorizedProjectId(req, value), { work_package: preFields[3] });
       if (!checked) return;
     }
 
     const outcome = await transaction(async (client) => {
     const q = client.query.bind(client);
-    if (value.replace) await q('DELETE FROM schedule_activities WHERE project_id = $1', [value.project_id]);
+    if (value.replace) await q('DELETE FROM schedule_activities WHERE project_id = $1', [authorizedProjectId(req, value)]);
 
     let mode = null;
     let created = 0, relsCreated = 0, skipped = 0;
@@ -831,10 +837,10 @@ router.post('/activities/import', authenticate, authorize('owner', 'admin', 'pro
       if (mode === 'acts') {
         const [activity_code, name, wbs_path, work_package, planned_start, planned_finish, original_duration, planned_quantity, percent_complete, is_milestone] = fields;
         if (!name) { skipped++; continue; }
-        const wp = await projectSetup.resolveWorkPackage(q, value.project_id, { work_package });
+        const wp = await projectSetup.resolveWorkPackage(q, authorizedProjectId(req, value), { work_package });
         const existing = (await q(
           'SELECT id FROM schedule_activities WHERE project_id = $1 AND activity_code = $2',
-          [value.project_id, activity_code]
+          [authorizedProjectId(req, value), activity_code]
         )).rows[0];
         if (existing) {
           await q(
@@ -849,7 +855,7 @@ router.post('/activities/import', authenticate, authorize('owner', 'admin', 'pro
         const r = await q(
           `INSERT INTO schedule_activities (project_id, activity_code, name, wbs_path, work_package, work_package_id, planned_start, planned_finish, original_duration, planned_quantity, percent_complete, created_by)
            VALUES ($1,$2,$3,$4,$5,$12,$6,$7,$8,$9,$10,$11) RETURNING id`,
-          [value.project_id, activity_code || `IMP${Date.now()}${created}`, name, wbs_path || null, wp.text,
+          [authorizedProjectId(req, value), activity_code || `IMP${Date.now()}${created}`, name, wbs_path || null, wp.text,
            planned_start || null, planned_finish || null, parseInt(original_duration, 10) || 0,
            planned_quantity ? parseFloat(planned_quantity) : null, percent_complete ? Math.min(100, parseFloat(percent_complete)) : 0, req.user.id, wp.id]
         );
@@ -857,14 +863,14 @@ router.post('/activities/import', authenticate, authorize('owner', 'admin', 'pro
         created++;
       } else if (mode === 'rels') {
         const [pred, succ, relType, lag] = fields;
-        const predId = byCode.get(pred) || (await codeLookupId(pred, value.project_id, q));
-        const succId = byCode.get(succ) || (await codeLookupId(succ, value.project_id, q));
+        const predId = byCode.get(pred) || (await codeLookupId(pred, authorizedProjectId(req, value), q));
+        const succId = byCode.get(succ) || (await codeLookupId(succ, authorizedProjectId(req, value), q));
         if (!predId || !succId) { skipped++; continue; }
         try {
           await q(
             `INSERT INTO activity_relationships (project_id, predecessor_id, successor_id, relationship_type, lag_days, created_by)
              VALUES ($1,$2,$3,$4,$5,$6)`,
-            [value.project_id, predId, succId, ['FS', 'SS', 'FF', 'SF'].includes(relType) ? relType : 'FS',
+            [authorizedProjectId(req, value), predId, succId, ['FS', 'SS', 'FF', 'SF'].includes(relType) ? relType : 'FS',
              parseInt(lag, 10) || 0, req.user.id]);
         } catch (e) { skipped++; }
       }

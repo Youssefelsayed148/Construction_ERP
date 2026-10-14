@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 // Phase 24 — reporting engine routes (mounted at /api/reports).
 //
 // The catalog, permission-aware filtered data + export per report, saved
@@ -233,13 +234,14 @@ router.post('/scheduled', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     if (!REPORTS[value.report_key]) return res.status(400).json({ success: false, error: 'Unknown report' });
     const r = await transaction(async (client) => {
       const q = client.query.bind(client);
       const scheduled = await q(
         `INSERT INTO scheduled_reports (project_id, report_key, name, frequency, recipients, format, created_by)
          VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7) RETURNING *`,
-        [value.project_id, value.report_key, value.name, value.frequency, JSON.stringify(value.recipients), value.format, req.user.id]);
+        [authorizedProjectId(req, value), value.report_key, value.name, value.frequency, JSON.stringify(value.recipients), value.format, req.user.id]);
       await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'reports', description: `Scheduled report "${value.name}" (${value.frequency})`, entityId: scheduled.rows[0].id, entityType: 'scheduled_report' }, { query: q });
       return scheduled;
     });

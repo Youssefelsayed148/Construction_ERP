@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const { nextNumber } = require('../services/numbering');
 const router = express.Router();
@@ -112,17 +113,18 @@ router.post('/documents', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     if (value.portal_visibility !== 'internal' && value.confidentiality !== 'public') {
       return res.status(400).json({ success: false, error_code: 'external_visibility_requires_public_confidentiality' });
     }
 
     const result = await auditedTransaction(async (q) => {
       if (value.project_location_id != null) {
-        const location = await q('SELECT 1 FROM project_locations WHERE id = $1 AND project_id = $2', [value.project_location_id, value.project_id]);
+        const location = await q('SELECT 1 FROM project_locations WHERE id = $1 AND project_id = $2', [value.project_location_id, authorizedProjectId(req, value)]);
         if (!location.rows.length) throw Object.assign(new Error('document_location_project_mismatch'), { status: 400, error_code: 'document_location_project_mismatch' });
       }
       for (const organizationId of [value.originator_organization_id, value.recipient_organization_id].filter((id) => id != null)) {
-        const participant = await q('SELECT 1 FROM project_participants WHERE project_id = $1 AND organization_id = $2', [value.project_id, organizationId]);
+        const participant = await q('SELECT 1 FROM project_participants WHERE project_id = $1 AND organization_id = $2', [authorizedProjectId(req, value), organizationId]);
         if (!participant.rows.length) throw Object.assign(new Error('document_organization_project_mismatch'), { status: 400, error_code: 'document_organization_project_mismatch' });
       }
       const inserted = await q(
@@ -130,7 +132,7 @@ router.post('/documents', authenticate, authorize(), async (req, res) => {
          doc_type, doc_status, discipline, project_location_id, package, originator_organization_id, recipient_organization_id, review_due_date,
          issue_date, confidentiality)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING *`,
-      [value.project_id, value.category_id, value.title, value.description, value.document_type,
+      [authorizedProjectId(req, value), value.category_id, value.title, value.description, value.document_type,
        value.file_url, value.file_type, value.file_size_bytes, JSON.stringify(value.tags), req.user.id, value.portal_visibility,
        value.doc_type, value.doc_status, value.discipline || null, value.project_location_id || null,
        value.package || null, value.originator_organization_id || null, value.recipient_organization_id || null, value.review_due_date || null,
@@ -317,25 +319,26 @@ router.post('/rfis', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     const result = await auditedTransaction(async (q) => {
       if (value.project_location_id != null) {
-        const location = (await q('SELECT id FROM project_locations WHERE id = $1 AND project_id = $2', [value.project_location_id, value.project_id])).rows[0];
+        const location = (await q('SELECT id FROM project_locations WHERE id = $1 AND project_id = $2', [value.project_location_id, authorizedProjectId(req, value)])).rows[0];
         if (!location) throw Object.assign(new Error('RFI location must belong to the selected project'), { status: 400, error_code: 'rfi_location_project_mismatch' });
       }
       if (value.work_package_id != null) {
-        const workPackage = (await q('SELECT id FROM work_packages WHERE id = $1 AND project_id = $2', [value.work_package_id, value.project_id])).rows[0];
+        const workPackage = (await q('SELECT id FROM work_packages WHERE id = $1 AND project_id = $2', [value.work_package_id, authorizedProjectId(req, value)])).rows[0];
         if (!workPackage) throw Object.assign(new Error('RFI work package must belong to the selected project'), { status: 400, error_code: 'rfi_work_package_project_mismatch' });
       }
-      const rfiNumber = await nextNumber(q, { table: 'project_rfis', column: 'rfi_number', prefix: `RFI-${value.project_id}`, pad: 3 });
+      const rfiNumber = await nextNumber(q, { table: 'project_rfis', column: 'rfi_number', prefix: `RFI-${authorizedProjectId(req, value)}`, pad: 3 });
       const inserted = await q(
       `INSERT INTO project_rfis (rfi_number, project_id, subject, question, category, priority, due_date,
          project_location_id, work_package_id, cost_impact, schedule_impact_days, raised_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
-      [rfiNumber, value.project_id, value.subject, value.question, value.category, value.priority, value.due_date,
+      [rfiNumber, authorizedProjectId(req, value), value.subject, value.question, value.category, value.priority, value.due_date,
        value.project_location_id ?? null, value.work_package_id ?? null, value.cost_impact ?? null, value.schedule_impact_days ?? null, req.user.id]
       );
-      await fireEvent({ eventType: 'rfi.submitted', entityType: 'project_rfi', entityId: inserted.rows[0].id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: value.project_id, rfi_number: rfiNumber, subject: value.subject, status: 'open' } }, { query: q });
+      await fireEvent({ eventType: 'rfi.submitted', entityType: 'project_rfi', entityId: inserted.rows[0].id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: authorizedProjectId(req, value), rfi_number: rfiNumber, subject: value.subject, status: 'open' } }, { query: q });
       return { ...inserted, rfiNumber };
     }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Raised ${r.rfiNumber}: ${value.subject}`, entityId: r.rows[0].id, entityType: 'project_rfi' }));
     res.status(201).json({ success: true, data: result.rows[0] });
@@ -387,15 +390,16 @@ router.post('/submittals', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     const result = await auditedTransaction(async (q) => {
-      const subNumber = await nextNumber(q, { table: 'project_submittals', column: 'submittal_number', prefix: `SUB-${value.project_id}`, pad: 3 });
+      const subNumber = await nextNumber(q, { table: 'project_submittals', column: 'submittal_number', prefix: `SUB-${authorizedProjectId(req, value)}`, pad: 3 });
       const inserted = await q(
       `INSERT INTO project_submittals (submittal_number, project_id, title, submittal_type, submitted_to, submitted_by)
        VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [subNumber, value.project_id, value.title, value.submittal_type, value.submitted_to, req.user.id]
+      [subNumber, authorizedProjectId(req, value), value.title, value.submittal_type, value.submitted_to, req.user.id]
       );
-      await fireEvent({ eventType: 'submittal.created', entityType: 'project_submittal', entityId: inserted.rows[0].id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: value.project_id, submittal_number: subNumber, title: value.title, status: 'submitted' } }, { query: q });
+      await fireEvent({ eventType: 'submittal.created', entityType: 'project_submittal', entityId: inserted.rows[0].id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: authorizedProjectId(req, value), submittal_number: subNumber, title: value.title, status: 'submitted' } }, { query: q });
       return { ...inserted, subNumber };
     }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Submitted ${r.subNumber}: ${value.title}`, entityId: r.rows[0].id, entityType: 'project_submittal' }));
     res.status(201).json({ success: true, data: result.rows[0] });
@@ -580,23 +584,24 @@ router.post('/transmittals', authenticate, authorize(), async (req, res) => {
     });
   const { error, value } = schema.validate(req.body);
   if (error) return transmittalFailure(res, 400, 'invalid_transmittal');
-  if (!documentProjectAllowed(req, value.project_id)) return transmittalFailure(res, 403, 'project_scope_denied');
+    authorizeProjectPayload(req, value);
+  if (!documentProjectAllowed(req, authorizedProjectId(req, value))) return transmittalFailure(res, 403, 'project_scope_denied');
   try {
     const t = await auditedTransaction(async (q) => {
       if (value.recipient_organization_id != null) {
-        const participant = await q('SELECT 1 FROM project_participants WHERE project_id = $1 AND organization_id = $2 AND (active_to IS NULL OR active_to >= CURRENT_DATE)', [value.project_id, value.recipient_organization_id]);
+        const participant = await q('SELECT 1 FROM project_participants WHERE project_id = $1 AND organization_id = $2 AND (active_to IS NULL OR active_to >= CURRENT_DATE)', [authorizedProjectId(req, value), value.recipient_organization_id]);
         if (!participant.rows.length) throw Object.assign(new Error('transmittal_recipient_project_mismatch'), { status: 400, error_code: 'transmittal_recipient_project_mismatch' });
       }
       if (value.recipient_user_id != null) {
         const participantUser = await q(
           `SELECT 1 FROM project_participant_users pu JOIN project_participants pp ON pp.id = pu.project_participant_id
            WHERE pp.project_id = $1 AND pu.user_id = $2 AND (pp.active_to IS NULL OR pp.active_to >= CURRENT_DATE)`,
-          [value.project_id, value.recipient_user_id]);
+          [authorizedProjectId(req, value), value.recipient_user_id]);
         if (!participantUser.rows.length) throw Object.assign(new Error('transmittal_recipient_project_mismatch'), { status: 400, error_code: 'transmittal_recipient_project_mismatch' });
       }
       for (const item of value.items) {
         if (item.document_id == null) continue;
-        const document = await q('SELECT 1 FROM project_documents WHERE id = $1 AND project_id = $2', [item.document_id, value.project_id]);
+        const document = await q('SELECT 1 FROM project_documents WHERE id = $1 AND project_id = $2', [item.document_id, authorizedProjectId(req, value)]);
         if (!document.rows.length) throw Object.assign(new Error('transmittal_document_project_mismatch'), { status: 400, error_code: 'transmittal_document_project_mismatch' });
       }
       const transmittal = await doccontrolEngine.createTransmittal(q, value, req.user);
@@ -759,6 +764,7 @@ router.post('/correspondence', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const c = await auditedTransaction((q) => doccontrolEngine.createCorrespondence(q, value, req.user), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Created ${value.corr_type} ${result.corr_number}: ${value.subject.slice(0, 60)}`, entityId: result.id, entityType: 'correspondence' }));
     res.status(201).json({ success: true, data: c });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }

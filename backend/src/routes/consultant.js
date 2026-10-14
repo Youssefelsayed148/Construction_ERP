@@ -1,3 +1,4 @@
+const { authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
@@ -129,6 +130,7 @@ router.post('/observations', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const observation = await auditedTransaction((q) => engine.createObservation(q, { ...value, user: req.user }), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'observations', description: `Raised observation ${result.observation_number}`, entityId: result.id, entityType: 'observation' }));
     res.status(201).json({ success: true, data: observation });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }

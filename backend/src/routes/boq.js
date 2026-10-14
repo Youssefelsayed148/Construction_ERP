@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const projectSetup = require('../services/projectSetupService');
 const { nextNumber } = require('../services/numbering');
@@ -26,12 +27,13 @@ router.post('/sections', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
-    if (!value.code) value.code = await nextNumber(query, { table: 'boq_sections', column: 'code', prefix: 'SEC', pad: 3, where: { project_id: value.project_id } });
+    if (!value.code) value.code = await nextNumber(query, { table: 'boq_sections', column: 'code', prefix: 'SEC', pad: 3, where: { project_id: authorizedProjectId(req, value) } });
 
     const r = await query(
       `INSERT INTO boq_sections (project_id, code, name, name_ar, name_en, parent_id, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [value.project_id, value.code, value.name_ar, value.name_ar, value.name_en || value.name_ar, value.parent_id, value.sort_order]
+      [authorizedProjectId(req, value), value.code, value.name_ar, value.name_ar, value.name_en || value.name_ar, value.parent_id, value.sort_order]
     );
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
@@ -109,15 +111,16 @@ router.post('/items', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
-    const wp = await projectSetup.resolveOrRespond(query, res, value.project_id, { work_package_id: value.work_package_id });
+    const wp = await projectSetup.resolveOrRespond(query, res, authorizedProjectId(req, value), { work_package_id: value.work_package_id });
     if (!wp) return;
-    if (!value.code) value.code = await nextNumber(query, { table: 'boq_items', column: 'code', prefix: 'BOQ', pad: 4, where: { project_id: value.project_id } });
+    if (!value.code) value.code = await nextNumber(query, { table: 'boq_items', column: 'code', prefix: 'BOQ', pad: 4, where: { project_id: authorizedProjectId(req, value) } });
 
     const r = await query(
       `INSERT INTO boq_items (project_id, section_id, code, description, description_ar, description_en, unit, quantity, unit_rate, item_master_id, type, work_package_id)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
-      [value.project_id, value.section_id, value.code, value.description_ar, value.description_ar, value.description_en || value.description_ar, value.unit, value.quantity, value.unit_rate, value.item_master_id, value.type, wp.id]
+      [authorizedProjectId(req, value), value.section_id, value.code, value.description_ar, value.description_ar, value.description_en || value.description_ar, value.unit, value.quantity, value.unit_rate, value.item_master_id, value.type, wp.id]
     );
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }

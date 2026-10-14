@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const { nextNumber } = require('../services/numbering');
 const router = express.Router();
@@ -77,7 +78,7 @@ router.post('/subcontractor/instructions/:id/acknowledge', authenticate, authori
     const instruction = await transaction(async (client) => {
       const q = client.query.bind(client);
       const result = await engine.acknowledgeInstruction(q, req.user.id, {
-        project_id: value.project_id, instruction_id: parseInt(req.params.id, 10), response: value.response,
+        project_id: authorizedProjectId(req, value), instruction_id: parseInt(req.params.id, 10), response: value.response,
       });
       if (result) await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'portal', description: `Acknowledged instruction #${req.params.id} (portal)`, entityId: result.id, entityType: 'engineer_instruction' }, { query: q });
       return result;
@@ -132,6 +133,7 @@ router.post('/subcontractor/payment-applications', authenticate, authorize(), as
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const certificate = await transaction(async (client) => {
       await client.query('SELECT id FROM sub_contracts WHERE id = $1 FOR UPDATE', [value.sub_contract_id]);
       const q = client.query.bind(client);
@@ -154,14 +156,15 @@ router.post('/subcontractor/rfis', authenticate, authorize(), async (req, res) =
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const contract = await engine.subContractForOrg(query, value.sub_contract_id, req.user.id);
-    if (!contract || Number(contract.project_id) !== value.project_id) return res.status(404).json({ success: false, error: 'Package not found' });
+    if (!contract || Number(contract.project_id) !== authorizedProjectId(req, value)) return res.status(404).json({ success: false, error: 'Package not found' });
     const row = await transaction(async (client) => {
-      const number = await nextNumber((t, p) => client.query(t, p), { table: 'project_rfis', column: 'rfi_number', prefix: `RFI-${value.project_id}`, pad: 3 });
+      const number = await nextNumber((t, p) => client.query(t, p), { table: 'project_rfis', column: 'rfi_number', prefix: `RFI-${authorizedProjectId(req, value)}`, pad: 3 });
       return (await client.query(
         `INSERT INTO project_rfis (rfi_number, project_id, sub_contract_id, subject, question, category, priority, due_date, raised_by, status)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'submitted') RETURNING *`,
-        [number, value.project_id, value.sub_contract_id, value.subject, value.question, value.category, value.priority, value.due_date, req.user.id]
+        [number, authorizedProjectId(req, value), value.sub_contract_id, value.subject, value.question, value.category, value.priority, value.due_date, req.user.id]
       )).rows[0];
     });
     res.status(201).json({ success: true, data: row });
@@ -177,14 +180,15 @@ router.post('/subcontractor/submittals', authenticate, authorize(), async (req, 
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const contract = await engine.subContractForOrg(query, value.sub_contract_id, req.user.id);
-    if (!contract || Number(contract.project_id) !== value.project_id) return res.status(404).json({ success: false, error: 'Package not found' });
+    if (!contract || Number(contract.project_id) !== authorizedProjectId(req, value)) return res.status(404).json({ success: false, error: 'Package not found' });
     const row = await transaction(async (client) => {
-      const number = await nextNumber((t, p) => client.query(t, p), { table: 'project_submittals', column: 'submittal_number', prefix: `SUB-${value.project_id}`, pad: 3 });
+      const number = await nextNumber((t, p) => client.query(t, p), { table: 'project_submittals', column: 'submittal_number', prefix: `SUB-${authorizedProjectId(req, value)}`, pad: 3 });
       return (await client.query(
         `INSERT INTO project_submittals (submittal_number, project_id, sub_contract_id, title, submittal_type, submitted_to, submitted_by, status)
          VALUES ($1,$2,$3,$4,$5,$6,$7,'submitted') RETURNING *`,
-        [number, value.project_id, value.sub_contract_id, value.title, value.submittal_type, value.submitted_to, req.user.id]
+        [number, authorizedProjectId(req, value), value.sub_contract_id, value.title, value.submittal_type, value.submitted_to, req.user.id]
       )).rows[0];
     });
     res.status(201).json({ success: true, data: row });
@@ -243,25 +247,26 @@ router.post('/subcontractor/submissions/:kind', authenticate, authorize(), async
   if (!kind) return typedFail(res, Object.assign(new Error('Unsupported submission type'), { status: 400, error_code: 'unsupported_submission_type' }), 'SUBCONTRACTOR_SUBMISSION', req);
   const value = typedBody(Joi.object({ project_id: Joi.number().integer().positive().required(), payload: kind.schema }).required(), req, res);
   if (!value) return;
+    authorizeProjectPayload(req, value);
   try {
     const created = await auditedTransaction(async (q) => {
-      const scope = await engine.assertSubcontractorProject(q, req.user.id, value.project_id);
-      const contract = scope.packages.find((p) => Number(p.id) === value.payload.sub_contract_id && Number(p.project_id) === value.project_id);
+      const scope = await engine.assertSubcontractorProject(q, req.user.id, authorizedProjectId(req, value));
+      const contract = scope.packages.find((p) => Number(p.id) === value.payload.sub_contract_id && Number(p.project_id) === authorizedProjectId(req, value));
       if (!contract) throw Object.assign(new Error('Package not found'), { status: 404, error_code: 'record_not_found' });
       let relatedId = value.payload.related_entity_id || null;
       if (kind.entityType) {
         const tables = { ncr: 'ncrs', observation: 'observations', variation: 'variations' };
-        const target = (await q(`SELECT id FROM ${tables[kind.entityType]} WHERE id = $1 AND project_id = $2 AND sub_contract_id = $3 FOR SHARE`, [relatedId, value.project_id, contract.id])).rows[0];
+        const target = (await q(`SELECT id FROM ${tables[kind.entityType]} WHERE id = $1 AND project_id = $2 AND sub_contract_id = $3 FOR SHARE`, [relatedId, authorizedProjectId(req, value), contract.id])).rows[0];
         if (!target) throw Object.assign(new Error('Related record not found'), { status: 404, error_code: 'record_not_found' });
       }
       const payload = { ...value.payload };
       delete payload.related_entity_id;
       const row = await engine.createPortalSubmission(q, req.user.id, {
-        organization_id: contract.organization_id, project_id: value.project_id, submission_type: req.params.kind,
+        organization_id: contract.organization_id, project_id: authorizedProjectId(req, value), submission_type: req.params.kind,
         related_entity_type: kind.entityType, related_entity_id: relatedId, payload,
       });
       return { ...row, payload: engine.safePortalSubmissionPayload(req.params.kind, row.payload) };
-    }, (row) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'submit', module: 'portal', description: `Submitted ${req.params.kind} for project ${value.project_id}`, entityId: row.id, entityType: 'portal_submission' }));
+    }, (row) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'submit', module: 'portal', description: `Submitted ${req.params.kind} for project ${authorizedProjectId(req, value)}`, entityId: row.id, entityType: 'portal_submission' }));
     res.status(201).json({ success: true, data: created });
   } catch (error) { return typedFail(res, error, 'SUBCONTRACTOR_SUBMISSION', req); }
 });

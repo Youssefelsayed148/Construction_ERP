@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
@@ -86,8 +87,9 @@ router.post('/recipes', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
-    if (value.project_id == null && !['owner', 'admin'].includes(req.user.role)) {
+    if (authorizedProjectId(req, value) == null && !['owner', 'admin'].includes(req.user.role)) {
       return res.status(403).json({ success: false, error: 'Standard recipes (no project) can only be created by owner/admin' });
     }
 
@@ -95,7 +97,7 @@ router.post('/recipes', authenticate, authorize(), async (req, res) => {
       const created = await q(
       `INSERT INTO material_recipes (project_id, boq_item_id, activity_type, code, name, name_en, name_ar, output_description, output_unit, notes)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-      [value.project_id ?? null, value.boq_item_id ?? null, value.activity_type ?? null, value.code || null,
+      [authorizedProjectId(req, value) ?? null, value.boq_item_id ?? null, value.activity_type ?? null, value.code || null,
        value.name, value.name_en || null, value.name_ar || null, value.output_description || null,
        value.output_unit || null, value.notes || null]
       );
@@ -111,7 +113,7 @@ router.post('/recipes', authenticate, authorize(), async (req, res) => {
       await fireEvent({
         eventType: 'recipe.changed', entityType: 'material_recipe', entityId: created.rows[0].id,
         userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-        payload: { recipe_id: created.rows[0].id, project_id: value.project_id ?? null, boq_item_id: value.boq_item_id ?? null },
+        payload: { recipe_id: created.rows[0].id, project_id: authorizedProjectId(req, value) ?? null, boq_item_id: value.boq_item_id ?? null },
       }, { query: q });
       return created;
     }, (result) => ({

@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
@@ -40,12 +41,13 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     const r = await transaction(async (client) => {
       const q = (text, params) => client.query(text, params);
       const result = await q(
       `INSERT INTO maintenance_reminders (asset_id, title, description, maintenance_type, priority, scheduled_date, next_due_date, interval_value, interval_unit, estimated_hours, estimated_cost, assigned_tech, project_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
-      [value.asset_id, value.title, value.description, value.maintenance_type, value.priority, value.scheduled_date, value.next_due_date, value.interval_value, value.interval_unit, value.estimated_hours, value.estimated_cost, value.assigned_tech, value.project_id]
+      [value.asset_id, value.title, value.description, value.maintenance_type, value.priority, value.scheduled_date, value.next_due_date, value.interval_value, value.interval_unit, value.estimated_hours, value.estimated_cost, value.assigned_tech, authorizedProjectId(req, value)]
       );
       await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'maintenance', description: `Scheduled maintenance for equipment #${value.asset_id}`, entityId: result.rows[0].id, entityType: 'maintenance_reminder' }, { query: q });
       return result;

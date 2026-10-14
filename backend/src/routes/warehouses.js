@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
@@ -371,10 +372,11 @@ router.post('/reservations', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     const reservation = await auditedTransaction((q) => engine.createReservation(q, {
       material_id: value.material_id,
-      project_id: value.project_id || null,
+      project_id: authorizedProjectId(req, value) || null,
       location_id: value.location_id || null,
       warehouse_id: value.warehouse_id || null,
       quantity: value.quantity,

@@ -124,7 +124,7 @@ function walk(dir, out = []) {
 }
 
 function scan() {
-  const result = { 'silent-catch': {}, 'count-numbering': {}, 'counter-rmw': {}, 'catch-to-zero': {}, 'cost-view': {}, 'event-swallow': {}, 'post-commit-audit': {} };
+  const result = { 'silent-catch': {}, 'count-numbering': {}, 'counter-rmw': {}, 'catch-to-zero': {}, 'cost-view': {}, 'event-swallow': {}, 'post-commit-audit': {}, 'direct-project-id': {} };
   for (const file of walk(srcDir)) {
     const rel = path.relative(srcDir, file).split(path.sep).join('/');
     if (isExcluded(rel)) continue;
@@ -134,6 +134,8 @@ function scan() {
       if (auditCalls) result['post-commit-audit'][rel] = auditCalls;
     }
     if (rel.startsWith('routes/')) {
+      const projectReads = (text.match(/\b(?:req\.body|value)\.project_id\b/g) || []).length;
+      if (projectReads) result['direct-project-id'][rel] = projectReads;
       const unboundAuditCalls = countUnboundActivityAudits(text, rel);
       if (unboundAuditCalls) result['post-commit-audit'][rel] = (result['post-commit-audit'][rel] || 0) + unboundAuditCalls;
     }
@@ -193,6 +195,12 @@ function main() {
     return 1;
   }
   const current = scan();
+  if (Object.keys(current['direct-project-id']).length) {
+    for (const [file, count] of Object.entries(current['direct-project-id'])) {
+      console.error(`FAIL  direct-project-id: ${file} has ${count} reads outside the authorized helper`);
+    }
+    return 1; // Strict zero rule; --update cannot baseline these reads.
+  }
   if (process.argv.includes('--update')) {
     fs.writeFileSync(baselinePath, `${JSON.stringify(current, null, 2)}\n`);
     console.log(`baseline written: ${baselinePath}`);

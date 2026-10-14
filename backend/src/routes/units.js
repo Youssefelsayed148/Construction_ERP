@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const { createInvoiceRecord } = require('../services/financeEngine');
 const router = express.Router();
@@ -88,10 +89,11 @@ router.post('/buildings', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     const buildingTypeId = (await query("SELECT id FROM location_types WHERE code = 'building'")).rows[0]?.id || null;
     const floorTypeId = (await query("SELECT id FROM location_types WHERE code = 'floor'")).rows[0]?.id || null;
-    const root = await query('SELECT id FROM project_locations WHERE project_id = $1 AND parent_id IS NULL ORDER BY id LIMIT 1', [value.project_id]);
+    const root = await query('SELECT id FROM project_locations WHERE project_id = $1 AND parent_id IS NULL ORDER BY id LIMIT 1', [authorizedProjectId(req, value)]);
     const parentId = root.rows[0] ? root.rows[0].id : null;
 
     // Building location rows are real project_locations; floors are one row
@@ -102,20 +104,20 @@ router.post('/buildings', authenticate, authorize(), async (req, res) => {
       const result = await q(
         `INSERT INTO buildings (project_id, code, name, status, completion_percentage)
          VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-        [value.project_id, value.code, value.name, value.status, value.completion_percentage]
+        [authorizedProjectId(req, value), value.code, value.name, value.status, value.completion_percentage]
       );
       const building = result.rows[0];
       const loc = await q(
         `INSERT INTO project_locations (project_id, parent_id, location_type_id, code, name, name_en, name_ar, legacy_building_id, sort_order)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0) RETURNING id`,
-        [value.project_id, parentId, buildingTypeId, value.code, value.name, value.name, value.name, building.id]
+        [authorizedProjectId(req, value), parentId, buildingTypeId, value.code, value.name, value.name, value.name, building.id]
       );
       const locationId = loc.rows[0].id;
       for (let f = 1; f <= value.floors; f++) {
         await q(
           `INSERT INTO project_locations (project_id, parent_id, location_type_id, code, name, name_en, name_ar, sort_order)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-          [value.project_id, locationId, floorTypeId, `F-${String(f).padStart(2, '0')}`, `Floor ${f}`, `Floor ${f}`, `الطابق ${f}`, f]
+          [authorizedProjectId(req, value), locationId, floorTypeId, `F-${String(f).padStart(2, '0')}`, `Floor ${f}`, `Floor ${f}`, `الطابق ${f}`, f]
         );
       }
       await q('UPDATE buildings SET project_location_id = $1 WHERE id = $2', [locationId, building.id]);

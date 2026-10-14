@@ -158,6 +158,10 @@ const authorize = (...roles) => {
     try {
       decision = await policy.evaluateRequest(req);
     } catch (error) {
+      if (error.status === 400 && ['project_id_mismatch', 'project_id_invalid'].includes(error.error_code)) {
+        return res.status(400).json({ success: false, error: error.message, error_code: error.error_code,
+          error_key: error.error_code === 'project_id_mismatch' ? 'errors.projectIdMismatch' : 'errors.invalidProjectId', error_params: {} });
+      }
       // Fail closed on policy evaluation errors.
       return res.status(500).json({ success: false, error: 'Policy evaluation failed' });
     }
@@ -171,6 +175,7 @@ const authorize = (...roles) => {
     }
 
     // Handlers that list across projects read this to filter at the query, not after the fact.
+    req.policy = { ...decision };
     req.accessScope = {
       companyWide: Boolean(decision.company_wide),
       projectIds: decision.scoped_project_ids || [],

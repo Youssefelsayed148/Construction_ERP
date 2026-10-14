@@ -1,3 +1,4 @@
+const { authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
@@ -36,6 +37,7 @@ router.post('/valuations', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const invoice = await finance.createClientValuation(query, { ...value, created_by: req.user.id, actor_name: req.user.name });
     res.status(201).json({ success: true, data: invoice });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
@@ -110,6 +112,7 @@ router.post('/retention', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     if (value.direction === 'released') {
       return res.status(409).json({ success: false, error: 'Use the balanced retention release endpoint', error_code: 'retention_release_route_required', error_params: {} });
     }
@@ -136,6 +139,7 @@ router.post('/retention/releases', authenticate, authorize(), async (req, res) =
       idempotency_key: Joi.string().guid({ version: 'uuidv4' }).required(),
     }), req, res);
     if (!value) return;
+    authorizeProjectPayload(req, value);
     const row = await auditedFin(req, (q) => releases.createRetentionRelease(q, value, req.user), 'release',
       (created) => ({ description: `Retention ${created.direction} for ${created.party_type}: ${created.amount}`, entityType: 'retention_release', entityId: created.id }));
     res.status(row.reused ? 200 : 201).json({ success: true, data: row });
@@ -308,6 +312,7 @@ router.post('/payment-batches', authenticate, authorize(), companyOnly, async (r
       items: Joi.array().items(Joi.object({ supplier_invoice_id: Joi.number().integer().required(), amount: amountSchema, project_id: Joi.number().integer() })).min(1).required(),
     }), req, res);
     if (!value) return;
+    authorizeProjectPayload(req, value);
     const row = await auditedFin(req, (q) => docs.createBatch(q, { ...value, payment_date: value.payment_date ? new Date(value.payment_date).toISOString().slice(0, 10) : null }, req.user.id), 'create',
       (result) => ({ description: `Payment batch ${result.batch_number}`, entityType: 'payment_batch', entityId: result.id }));
     res.status(201).json({ success: true, data: row });

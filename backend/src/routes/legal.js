@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
@@ -36,10 +37,11 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     const result = await auditedTransaction((q) => q(
       `INSERT INTO legal_documents (title, document_type, description, file_path, submitted_by, project_id) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [value.title, value.document_type, value.description, value.file_path, value.submitted_by, value.project_id]
+      [value.title, value.document_type, value.description, value.file_path, value.submitted_by, authorizedProjectId(req, value)]
     ), (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'legal', description: `Created legal document "${value.title}"`, entityId: r.rows[0].id, entityType: 'legal_document' }));
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }

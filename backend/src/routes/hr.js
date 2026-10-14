@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const { nextNumber } = require('../services/numbering');
 const router = express.Router();
@@ -279,6 +280,7 @@ router.post('/labor-payments', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     const total_amount = value.days_worked * value.daily_rate;
 
@@ -290,14 +292,14 @@ router.post('/labor-payments', authenticate, authorize(), async (req, res) => {
       const inserted = await q(
         `INSERT INTO labor_payments (project_id, laborer_id, work_order_id, payment_date, days_worked, daily_rate, total_amount, paid_by, notes)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-        [value.project_id, value.laborer_id, value.work_order_id || null, value.payment_date, value.days_worked, value.daily_rate, total_amount, value.paid_by, value.notes]
+        [authorizedProjectId(req, value), value.laborer_id, value.work_order_id || null, value.payment_date, value.days_worked, value.daily_rate, total_amount, value.paid_by, value.notes]
       );
       await fireEvent({
         eventType: 'labor_payment.created',
         entityType: 'labor_payment',
         entityId: inserted.rows[0].id,
         userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-        payload: { project_id: value.project_id, amount: total_amount, laborer_id: value.laborer_id }
+        payload: { project_id: authorizedProjectId(req, value), amount: total_amount, laborer_id: value.laborer_id }
       }, { query: q });
       await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hr', description: `Labor payment: ${total_amount} EGP`, entityId: inserted.rows[0].id, entityType: 'labor_payment', amount: total_amount }, { query: q });
       return inserted;

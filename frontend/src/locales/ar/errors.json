@@ -1,4 +1,6 @@
 {
+  "projectIdMismatch": "معرّفات المشروع المقدمة غير متطابقة.",
+  "invalidProjectId": "أدخل معرّف مشروع صحيحًا.",
   "authenticationUnavailable": "خدمة تسجيل الدخول غير متاحة مؤقتًا. يرجى المحاولة بعد قليل.",
   "apiRouteNotFound": "مسار واجهة البرمجة غير موجود",
   "requestFailed": "تعذر إكمال الطلب.",

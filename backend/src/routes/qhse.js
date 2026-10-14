@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const projectSetup = require('../services/projectSetupService');
 const { nextNumber } = require('../services/numbering');
@@ -44,11 +45,12 @@ router.post('/quality-tests', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     const result = await auditedTransaction((q) => q(
       `INSERT INTO quality_tests (project_id, boq_item_id, test_type, test_date, result, tested_by, notes, attachments, created_by)
        VALUES ($1,$2,$3,COALESCE($4, CURRENT_DATE),$5,$6,$7,$8::jsonb,$9) RETURNING *`,
-      [value.project_id, value.boq_item_id, value.test_type, value.test_date, value.result,
+      [authorizedProjectId(req, value), value.boq_item_id, value.test_type, value.test_date, value.result,
        value.tested_by, value.notes, JSON.stringify(value.attachments), req.user.id]
     ), (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Logged quality test "${value.test_type}" (${value.result})`, entityId: r.rows[0].id, entityType: 'quality_test' }));
     res.status(201).json({ success: true, data: result.rows[0] });
@@ -124,6 +126,7 @@ router.post('/ncrs', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     const year = new Date().getFullYear();
     const result = await auditedTransaction(async (q) => {
@@ -131,7 +134,7 @@ router.post('/ncrs', authenticate, authorize(), async (req, res) => {
       const inserted = await q(
       `INSERT INTO ncrs (ncr_number, project_id, boq_item_id, quality_test_id, description, severity, raised_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [ncrNumber, value.project_id, value.boq_item_id, value.quality_test_id, value.description, value.severity, req.user.id]
+      [ncrNumber, authorizedProjectId(req, value), value.boq_item_id, value.quality_test_id, value.description, value.severity, req.user.id]
       );
       return { ...inserted, ncrNumber };
     }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Raised ${r.ncrNumber} (${value.severity})`, entityId: r.rows[0].id, entityType: 'ncr' }));
@@ -229,11 +232,12 @@ router.post('/inspections', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     const result = await auditedTransaction((q) => q(
       `INSERT INTO safety_inspections (project_id, inspection_date, inspector_id, checklist_items, findings, status)
        VALUES ($1,COALESCE($2, CURRENT_DATE),$3,$4::jsonb,$5,$6) RETURNING *`,
-      [value.project_id, value.inspection_date, req.user.id, JSON.stringify(value.checklist_items), value.findings, value.status]
+      [authorizedProjectId(req, value), value.inspection_date, req.user.id, JSON.stringify(value.checklist_items), value.findings, value.status]
     ), (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Logged safety inspection (${value.status})`, entityId: r.rows[0].id, entityType: 'safety_inspection' }));
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
@@ -294,11 +298,12 @@ router.post('/incidents', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     const result = await auditedTransaction((q) => q(
       `INSERT INTO incidents (project_id, incident_date, incident_type, severity, description, injured_party, reported_by, corrective_action)
        VALUES ($1,COALESCE($2, CURRENT_DATE),$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [value.project_id, value.incident_date, value.incident_type, value.severity, value.description,
+      [authorizedProjectId(req, value), value.incident_date, value.incident_type, value.severity, value.description,
        value.injured_party, req.user.id, value.corrective_action]
     ), (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Reported safety incident (${value.severity})`, entityId: r.rows[0].id, entityType: 'safety_incident' }));
     res.status(201).json({ success: true, data: result.rows[0] });
@@ -408,15 +413,16 @@ router.post('/itps', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
-    const wp = await projectSetup.resolveOrRespond(query, res, value.project_id, value);
+    const wp = await projectSetup.resolveOrRespond(query, res, authorizedProjectId(req, value), value);
     if (!wp) return;
     const r = await auditedTransaction(async (q) => {
       const itpNumber = await qaqcEngine.nextNumber(q, 'itps', 'itp_number', 'ITP');
       const inserted = await q(
       `INSERT INTO itps (itp_number, project_id, title, discipline, work_package, work_package_id, project_location_id, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [itpNumber, value.project_id, value.title, value.discipline || null, wp.text, wp.id,
+      [itpNumber, authorizedProjectId(req, value), value.title, value.discipline || null, wp.text, wp.id,
        value.project_location_id || null, req.user.id]
       );
       const itp = inserted.rows[0];
@@ -573,6 +579,7 @@ router.post('/wirs', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const wir = await auditedTransaction((q) => qaqcEngine.createWir(q, value, req.user), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Created ${result.wir_number}`, entityId: result.id, entityType: 'wir' }));
     res.status(201).json({ success: true, data: wir });
   } catch (error) {
@@ -671,10 +678,11 @@ router.post('/checklists/templates', authenticate, authorize(), async (req, res)
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const r = await auditedTransaction((q) => q(
       `INSERT INTO checklist_templates (project_id, name, discipline, items, created_by)
        VALUES ($1,$2,$3,$4::jsonb,$5) RETURNING *`,
-      [value.project_id || null, value.name, value.discipline || null, JSON.stringify(value.items), req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Created checklist template "${value.name}"`, entityId: result.rows[0].id, entityType: 'checklist_template' }));
+      [authorizedProjectId(req, value) || null, value.name, value.discipline || null, JSON.stringify(value.items), req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Created checklist template "${value.name}"`, entityId: result.rows[0].id, entityType: 'checklist_template' }));
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -691,6 +699,7 @@ router.post('/checklists/instances', authenticate, authorize(), async (req, res)
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     let items = [];
     let templateTitle = null;
@@ -703,7 +712,7 @@ router.post('/checklists/instances', authenticate, authorize(), async (req, res)
     const r = await query(
       `INSERT INTO checklist_instances (template_id, context_type, context_id, project_id, title, items, created_by)
        VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7) RETURNING *`,
-      [value.template_id || null, value.context_type, value.context_id || null, value.project_id,
+      [value.template_id || null, value.context_type, value.context_id || null, authorizedProjectId(req, value),
        value.title || templateTitle, JSON.stringify(items.map((it) => ({ ...it, ok: false, note: '' }))), req.user.id]);
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
@@ -794,11 +803,12 @@ router.post('/actions', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const table = CAPA_TABLES[value.kind];
     const r = await auditedTransaction((q) => q(
       `INSERT INTO ${table} (project_id, source_type, source_id, description, assigned_user_id, assigned_role, due_date, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [value.project_id, value.source_type || 'manual', value.source_id || null, value.description,
+      [authorizedProjectId(req, value), value.source_type || 'manual', value.source_id || null, value.description,
        value.assigned_user_id || null, value.assigned_role || null, value.due_date || null, req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Raised ${value.kind} action`, entityId: result.rows[0].id, entityType: `${value.kind}_action` }));
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
@@ -885,10 +895,11 @@ router.post('/mock-ups', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const r = await auditedTransaction((q) => q(
       `INSERT INTO mock_ups (project_id, title, discipline, project_location_id, subcontractor_organization_id, remarks, photos, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8) RETURNING *`,
-      [value.project_id, value.title, value.discipline || null, value.project_location_id || null,
+      [authorizedProjectId(req, value), value.title, value.discipline || null, value.project_location_id || null,
        value.subcontractor_organization_id || null, value.remarks || null, JSON.stringify(value.photos), req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Proposed mock-up "${value.title}"`, entityId: result.rows[0].id, entityType: 'mock_up' }));
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
@@ -958,10 +969,11 @@ router.post('/calibration-records', authenticate, authorize(), async (req, res) 
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const r = await auditedTransaction((q) => q(
       `INSERT INTO calibration_records (project_id, asset_id, instrument_name, serial_no, calibration_date, next_calibration_date, certificate_ref, result, issued_by, notes, created_by)
        VALUES ($1,$2,$3,$4,COALESCE($5, CURRENT_DATE),$6,$7,$8,$9,$10,$11) RETURNING *`,
-      [value.project_id || null, value.asset_id || null, value.instrument_name, value.serial_no || null,
+      [authorizedProjectId(req, value) || null, value.asset_id || null, value.instrument_name, value.serial_no || null,
        value.calibration_date || null, value.next_calibration_date || null, value.certificate_ref || null,
        value.result, value.issued_by || null, value.notes || null, req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Recorded calibration for "${value.instrument_name}"`, entityId: result.rows[0].id, entityType: 'calibration_record' }));
     res.status(201).json({ success: true, data: r.rows[0] });
@@ -1009,6 +1021,7 @@ router.post('/punch-items', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const punch = await auditedTransaction((q) => qaqcEngine.createPunchItem(q, value, req.user), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Raised ${result.punch_number}`, entityId: result.id, entityType: 'punch_item' }));
     res.status(201).json({ success: true, data: punch });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
@@ -1246,18 +1259,19 @@ router.get('/certificates', authenticate, authorize(), async (req, res) => {
 router.post('/certificates', authenticate, authorize(), async (req, res) => {
   const { error, value } = CERTIFICATE_CREATE.validate(req.body);
   if (error) return certificateFailure(res, 400, 'invalid_certificate');
-  if (!certificateProjectAllowed(req, value.project_id)) return certificateFailure(res, 403, 'project_scope_denied');
+    authorizeProjectPayload(req, value);
+  if (!certificateProjectAllowed(req, authorizedProjectId(req, value))) return certificateFailure(res, 403, 'project_scope_denied');
   if (!certificateDatesValid(value.issue_date, value.expiry_date)) return certificateFailure(res, 400, 'invalid_certificate_dates');
   try {
     const result = await auditedTransaction(async (q) => {
-      const mismatch = await certificateLinksBelongToProject(q, value.project_id, value);
+      const mismatch = await certificateLinksBelongToProject(q, authorizedProjectId(req, value), value);
       if (mismatch) { const e = new Error(mismatch); e.status = 400; e.error_code = mismatch; throw e; }
-      const number = await nextNumber(q, { table: 'qaqc_certificates', column: 'certificate_number', prefix: 'QC-CERT', pad: 5, where: { project_id: value.project_id } });
+      const number = await nextNumber(q, { table: 'qaqc_certificates', column: 'certificate_number', prefix: 'QC-CERT', pad: 5, where: { project_id: authorizedProjectId(req, value) } });
       return q(
         `INSERT INTO qaqc_certificates (project_id, certificate_number, certificate_type, title, issuer, issue_date,
            expiry_date, project_document_id, mir_id, notes, created_by)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
-        [value.project_id, number, value.certificate_type, value.title, value.issuer || null,
+        [authorizedProjectId(req, value), number, value.certificate_type, value.title, value.issuer || null,
           value.issue_date || null, value.expiry_date || null, value.project_document_id ?? null,
           value.mir_id ?? null, value.notes || null, req.user.id]);
     }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Registered QA/QC certificate ${r.rows[0].certificate_number}`, entityId: r.rows[0].id, entityType: 'qaqc_certificate' }));
@@ -1338,6 +1352,7 @@ router.put('/mirs/:id', authenticate, authorize(), async (req, res) => {
     }).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const sets = []; const params = []; let idx = 1;
     for (const [k, v] of Object.entries(value)) {
       if (v === undefined) continue;

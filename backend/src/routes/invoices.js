@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const { createInvoiceRecord, writeAuditEvent } = require('../services/financeEngine');
 const { reasonFrom } = require('../utils/reason');
@@ -100,19 +101,20 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     // The invoice and its ledger entry commit together.
     const invoice = await transaction(async (client) => {
       const q = client.query.bind(client);
       const created = await createInvoiceRecord(q, {
-        project_id: value.project_id, client_id: value.client_id, amount: value.amount,
+        project_id: authorizedProjectId(req, value), client_id: value.client_id, amount: value.amount,
         issue_date: value.issue_date, due_date: value.due_date || null, status: 'sent',
         description: value.description, created_by: req.user.id,
       }, { actor_id: req.user.id, actor_name: req.user.name });
       await fireEvent({
         eventType: 'invoice.created', entityType: 'invoice', entityId: created.id,
         userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-        payload: { invoice_id: created.id, invoice_number: created.invoice_number, amount: value.amount, project_id: value.project_id, status: 'sent' },
+        payload: { invoice_id: created.id, invoice_number: created.invoice_number, amount: value.amount, project_id: authorizedProjectId(req, value), status: 'sent' },
       }, { query: q });
       await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'invoices', description: `Created invoice ${created.invoice_number} — ${value.amount} EGP`, entityId: created.id, entityType: 'invoice', amount: value.amount }, { query: q });
       return created;

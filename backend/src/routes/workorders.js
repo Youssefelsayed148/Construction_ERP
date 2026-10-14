@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
@@ -60,11 +61,12 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     const r = await auditedTransaction((q) => q(
       `INSERT INTO work_orders (project_id, phase_id, boq_section_id, title, title_ar, title_en, description, planned_start_date, planned_end_date, assigned_to, notes)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
-      [value.project_id, value.phase_id, value.boq_section_id, value.title_ar, value.title_ar, value.title_en || value.title_ar, value.description, value.planned_start_date, value.planned_end_date, value.assigned_to, value.notes]
+      [authorizedProjectId(req, value), value.phase_id, value.boq_section_id, value.title_ar, value.title_ar, value.title_en || value.title_ar, value.description, value.planned_start_date, value.planned_end_date, value.assigned_to, value.notes]
     ), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'work_orders', description: `Created WO: ${value.title_ar}`, entityId: result.rows[0].id, entityType: 'work_order' }));
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }

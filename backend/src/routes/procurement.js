@@ -1,3 +1,4 @@
+const { authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
@@ -68,6 +69,7 @@ router.post('/pr', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
     const pr = await auditedTransaction(
       (q) => svc.createPurchaseRequest(q, { ...value, created_by: req.user.id }),
@@ -127,6 +129,7 @@ router.post('/rfq', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const rfq = await atomic((q) => svc.createRfq(q, { ...value, created_by: req.user.id }));
     res.status(201).json({ success: true, data: rfq });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
@@ -362,6 +365,7 @@ router.put('/pr/:id', authenticate, authorize(), async (req, res) => {
   try {
     const value = typedBody(prEditSchema, req, res);
     if (!value) return;
+    authorizeProjectPayload(req, value);
     const pr = await auditedProc(req, (q) => docsSvc.updatePurchaseRequest(q, req.params.id, value),
       (row) => ({ action: 'update', description: `Edited purchase requisition ${row.request_number}`, entityType: 'purchase_request', entityId: row.id }));
     res.json({ success: true, data: pr });
@@ -458,6 +462,7 @@ router.post('/po', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const po = await auditedTransaction(
       (q) => svc.createPurchaseOrder(q, { ...value, created_by: req.user.id }),
       (row) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'procurement',

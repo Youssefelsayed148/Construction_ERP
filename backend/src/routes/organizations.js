@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 // Phase 5.1 (spec 03, 04) — the organization & RBAC router. Mounted at /api/organizations (server.js).
 //
 // Everything runs through services/orgService.js and services/teamService.js; every write is audited
@@ -333,17 +334,18 @@ router.post('/team', authenticate, authorize('owner', 'admin', 'owner_ceo', 'coo
       });
       const { error, value } = schema.validate(req.body);
       if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error' });
+    authorizeProjectPayload(req, value);
       const created = await transaction(async (client) => {
         const q = client.query.bind(client);
         const result = await team.assignTeamMember(q, { ...value, granted_by: req.user.id });
         await policy.recordAuditEvent({
           entity: 'team_assignment', entityId: result.assignment.id, action: 'create',
-          after: { user_id: value.user_id, project_id: value.project_id, role_key: value.role_key, expires_at: value.expires_at || null },
+          after: { user_id: value.user_id, project_id: authorizedProjectId(req, value), role_key: value.role_key, expires_at: value.expires_at || null },
           userId: req.user.id,
         }, { query: q });
         await logActivity({
           userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'team',
-          description: `Assigned ${value.role_key} to user #${value.user_id} on project #${value.project_id}`,
+          description: `Assigned ${value.role_key} to user #${value.user_id} on project #${authorizedProjectId(req, value)}`,
           entityId: result.assignment.id, entityType: 'team_assignment',
         }, { query: q });
         return result;

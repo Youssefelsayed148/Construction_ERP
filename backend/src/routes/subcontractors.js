@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const { nextNumber } = require('../services/numbering');
 const router = express.Router();
@@ -99,8 +100,9 @@ router.post('/contracts', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
 
-    if (!req.accessScope?.companyWide && !req.accessScope?.projectIds?.includes(value.project_id)) {
+    if (!req.accessScope?.companyWide && !req.accessScope?.projectIds?.includes(authorizedProjectId(req, value))) {
       return res.status(403).json({ success: false, error: 'Insufficient permissions', code: 'project_scope_denied' });
     }
 
@@ -115,7 +117,7 @@ router.post('/contracts', authenticate, authorize(), async (req, res) => {
       const created = await q(
         `INSERT INTO sub_contracts (contract_number, project_id, subcontractor_id, boq_item_id, scope, contract_value, start_date, end_date, retention_percent, advance_percent, advance_amount)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,COALESCE($11, ROUND($6::numeric * $10::numeric / 100, 2))) RETURNING *`,
-        [contract_number, value.project_id, value.subcontractor_id, value.boq_item_id, value.scope, value.contract_value, value.start_date, value.end_date, retentionPercent, value.advance_percent, value.advance_amount ?? null]
+        [contract_number, authorizedProjectId(req, value), value.subcontractor_id, value.boq_item_id, value.scope, value.contract_value, value.start_date, value.end_date, retentionPercent, value.advance_percent, value.advance_amount ?? null]
       );
       await logActivity({
         userId: req.user.id, userName: req.user.name, userRole: req.user.role,

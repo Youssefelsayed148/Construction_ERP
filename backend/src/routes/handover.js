@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 // Phase 25 — handover, closeout & warranty routes (mounted at /api/handover).
 //
 // The full §79 lifecycle, the §80 warranty/DLP claim flow with SLA tracking,
@@ -214,12 +215,13 @@ router.post('/assets', authenticate, authorize(), async (req, res) => {
       ? helpers.error('date.range') : value);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    if (!handoverProjectAllowed(req, value.project_id)) return handoverFailure(res, 403, 'project_scope_denied');
+    authorizeProjectPayload(req, value);
+    if (!handoverProjectAllowed(req, authorizedProjectId(req, value))) return handoverFailure(res, 403, 'project_scope_denied');
     const r = await auditedTransaction((q) => q(
       `INSERT INTO asset_register (project_id, asset_code, name, project_location_id, model, serial_no,
          supplier_organization_id, subcontractor_organization_id, commissioning_date, warranty_start, warranty_end, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
-      [value.project_id, value.asset_code, value.name, value.project_location_id || null, value.model || null,
+      [authorizedProjectId(req, value), value.asset_code, value.name, value.project_location_id || null, value.model || null,
        value.serial_no || null, value.supplier_organization_id || null, value.subcontractor_organization_id || null,
        value.commissioning_date || null, value.warranty_start || null, value.warranty_end || null, req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'handover', description: `Registered asset ${value.asset_code}`, entityId: result.rows[0].id, entityType: 'asset_register' }));
     res.status(201).json({ success: true, data: normalizeDateFields(r.rows[0], ['commissioning_date', 'warranty_start', 'warranty_end']) });
@@ -287,23 +289,24 @@ router.post('/warranties', authenticate, authorize(), async (req, res) => {
   }).custom((value, helpers) => value.end_date < value.start_date ? helpers.error('date.range') : value);
   const { error, value } = schema.validate(req.body);
   if (error) return handoverFailure(res, 400, 'invalid_warranty');
-  if (!handoverProjectAllowed(req, value.project_id)) return handoverFailure(res, 403, 'project_scope_denied');
+    authorizeProjectPayload(req, value);
+  if (!handoverProjectAllowed(req, authorizedProjectId(req, value))) return handoverFailure(res, 403, 'project_scope_denied');
   try {
     const result = await auditedTransaction(async (q) => {
-      if (value.asset_id != null && !(await q('SELECT 1 FROM asset_register WHERE id = $1 AND project_id = $2', [value.asset_id, value.project_id])).rows.length) {
+      if (value.asset_id != null && !(await q('SELECT 1 FROM asset_register WHERE id = $1 AND project_id = $2', [value.asset_id, authorizedProjectId(req, value)])).rows.length) {
         throw Object.assign(new Error('warranty_asset_project_mismatch'), { statusCode: 400, error_code: 'warranty_asset_project_mismatch' });
       }
-      if (value.handover_package_item_id != null && !(await q('SELECT 1 FROM handover_package_items WHERE id = $1 AND project_id = $2', [value.handover_package_item_id, value.project_id])).rows.length) {
+      if (value.handover_package_item_id != null && !(await q('SELECT 1 FROM handover_package_items WHERE id = $1 AND project_id = $2', [value.handover_package_item_id, authorizedProjectId(req, value)])).rows.length) {
         throw Object.assign(new Error('warranty_package_project_mismatch'), { statusCode: 400, error_code: 'warranty_package_project_mismatch' });
       }
-      if (value.project_document_id != null && !(await q('SELECT 1 FROM project_documents WHERE id = $1 AND project_id = $2', [value.project_document_id, value.project_id])).rows.length) {
+      if (value.project_document_id != null && !(await q('SELECT 1 FROM project_documents WHERE id = $1 AND project_id = $2', [value.project_document_id, authorizedProjectId(req, value)])).rows.length) {
         throw Object.assign(new Error('handover_document_project_mismatch'), { statusCode: 400, error_code: 'handover_document_project_mismatch' });
       }
-      const number = await nextNumber(q, { table: 'warranties', column: 'warranty_number', prefix: `WAR-${value.project_id}`, pad: 4, where: { project_id: value.project_id } });
+      const number = await nextNumber(q, { table: 'warranties', column: 'warranty_number', prefix: `WAR-${authorizedProjectId(req, value)}`, pad: 4, where: { project_id: authorizedProjectId(req, value) } });
       return q(
         `INSERT INTO warranties (project_id, warranty_number, asset_id, handover_package_item_id, project_document_id, title, issuer, coverage_description, start_date, end_date, notes, created_by)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
-        [value.project_id, number, value.asset_id || null, value.handover_package_item_id || null, value.project_document_id || null,
+        [authorizedProjectId(req, value), number, value.asset_id || null, value.handover_package_item_id || null, value.project_document_id || null,
           value.title, value.issuer, value.coverage_description || null, value.start_date, value.end_date, value.notes || null, req.user.id]);
     }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'handover', description: `Created warranty ${r.rows[0].warranty_number}`, entityId: r.rows[0].id, entityType: 'warranty' }));
     res.status(201).json({ success: true, data: normalizeDateFields(result.rows[0], ['start_date', 'end_date']) });
@@ -371,6 +374,7 @@ router.post('/claims', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     const claim = await auditedTransaction((q) => engine.createWarrantyClaim(q, value, req.user), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'handover', description: `Raised warranty claim ${result.claim_number}`, entityId: result.id, entityType: 'warranty_claim' }));
     res.status(201).json({ success: true, data: claim });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }

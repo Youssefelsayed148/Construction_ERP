@@ -1,3 +1,4 @@
+const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
@@ -76,6 +77,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
     if (value.direction === 'ap' && !value.supplier_id) {
       return res.status(400).json({ success: false, error: 'A supplier payment needs supplier_id', error_code: 'supplier_required', error_params: {} });
     }
@@ -90,7 +92,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
       const q = client.query.bind(client);
       if (value.direction === 'ar' && value.invoice_id) {
         const inv = (await q('SELECT * FROM invoices WHERE id = $1 FOR UPDATE', [value.invoice_id])).rows[0];
-        if (!inv || Number(inv.project_id) !== value.project_id || Number(inv.client_id) !== value.client_id) {
+        if (!inv || Number(inv.project_id) !== authorizedProjectId(req, value) || Number(inv.client_id) !== value.client_id) {
           throw new Error('Invoice does not belong to the selected project and client');
         }
         if (['void', 'cancelled', 'credited'].includes(inv.status)) throw new Error('Invoice is not payable');
@@ -100,7 +102,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
       const row = (await q(
         `INSERT INTO payments (invoice_id, project_id, client_id, direction, supplier_id, amount, payment_date, payment_method, reference_number, notes)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-        [value.invoice_id || null, value.project_id, value.direction === 'ap' ? null : value.client_id,
+        [value.invoice_id || null, authorizedProjectId(req, value), value.direction === 'ap' ? null : value.client_id,
          value.direction, value.direction === 'ap' ? value.supplier_id : null, value.amount,
          value.payment_date, value.payment_method, value.reference_number, value.notes]
       )).rows[0];
@@ -116,7 +118,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
       await fireEvent({
         eventType: 'payment.received', entityType: 'payment', entityId: row.id,
         userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-        payload: { payment_id: row.id, amount: value.amount, invoice_id: value.invoice_id || null, project_id: value.project_id, client_id: value.client_id },
+        payload: { payment_id: row.id, amount: value.amount, invoice_id: value.invoice_id || null, project_id: authorizedProjectId(req, value), client_id: value.client_id },
       }, { query: q });
       await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'payments', description: `Recorded payment of ${value.amount} EGP`, entityId: row.id, entityType: 'payment', amount: value.amount }, { query: q });
       return row;
