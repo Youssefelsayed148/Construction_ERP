@@ -4,10 +4,10 @@ Updated: 2026-10-14 (Africa/Cairo). Root STATE.md is the single current authorit
 
 ## Current remediation scope and position
 
-- Branch closeout/batch-a-to-6. R0.1-R0.9 and R1.1-R1.2 implementation and exit gates are complete. R1.1 inventory-only commit is 940c41e; implementation is 60b735a. R1.2 is the final scoped-aggregate slice. Do not start R2.
-- Earlier Docker access and missing-node_modules stops are superseded 2026-10-14: owner completed npm ci, elevated local Docker works, and tests execute. Only new erp-r01- throwaway containers on loopback ports are authorized.
+- Branch closeout/batch-a-to-6. R2 is authorized by the 2026-10-14 batch request and in progress. Pre-flight matches backend mock 59/1,048 and lint-guards: ok; fresh PG16 migrations 126 applied. R2.0 static UI project identity scan complete without a clear bug. Next R2.1 inventory-only commit before any auditing fix. Do not start R3.
+- Earlier Docker access and missing-node_modules stops are superseded 2026-10-14. For current R2 only new erp-r02- throwaway containers on loopback ports are authorized, with process-env credentials and exact removal. R2 pre-flight container removed.
 - Highest migration is `0064`; next is `0065`. `0030` remains unused. Current fresh test migrations: 126 applied / 0 already applied (63 legacy + 63 versioned).
-- Resume position: R0/R1 exit is green, including fresh golden-data reconciliation; await a separate instruction for R2. No deployment or push.
+- Resume position: R2.0 complete; generate and verify R2.1 live mutation audit inventory, commit it alone before fixes. Current R2 scorecard: docs/R2_SCORECARD.md. No deployment or push.
 - Older implementation slices in Phases 5.6-5.8, 7-11 are present; whole phase acceptance is incomplete. Independent review findings and human UAT/finance confirmation remain open. Production stays NO-GO.
 
 ## Current command evidence
