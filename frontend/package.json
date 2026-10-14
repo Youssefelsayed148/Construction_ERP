@@ -6,8 +6,6 @@
     "@fontsource/ibm-plex-sans": "^5.3.0",
     "@fontsource/ibm-plex-sans-arabic": "^5.3.0",
     "@reduxjs/toolkit": "^2.11.2",
-    "axios": "^1.13.5",
-    "date-fns": "^4.1.0",
     "jwt-decode": "^4.0.0",
     "lucide-react": "^0.575.0",
     "react": "^19.2.4",
@@ -15,7 +13,6 @@
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.13.0",
     "react-scripts": "5.0.1",
-    "recharts": "^3.7.0",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
