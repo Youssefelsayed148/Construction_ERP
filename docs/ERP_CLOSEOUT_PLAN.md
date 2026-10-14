@@ -356,7 +356,7 @@ Exit gate: every spec screen reachable from navigation; no `prompt()` left; empt
 - [x] Replace the 110 inline `gridTemplateColumns` occurrences under `frontend/src/pages` with responsive CSS classes/utilities (verified zero remain, 2026-10-14).
 - [x] Wrap every `<table>` in `frontend/src` in `.table-container` (72 tables, zero unwrapped by JSX AST scan, 2026-10-14).
 - [x] Touch targets: raise buttons and icon buttons on Site Management screens to 44px; minimum 14px text on forms.
-- [ ] Mobile viewport Playwright test per major screen and per portal.
+- [x] Mobile viewport Playwright test per major screen and per portal. All 36 application routes (including every project route and all four portals) passed the Pixel 7 no-overflow smoke sweep; this does not replace workflow acceptance.
 
 7.3 i18n and RTL
 - [ ] Moved to Phase 10 (System-wide localization), which supersedes the earlier ternary-migration, formatter, logical-CSS and `index.html` direction items.

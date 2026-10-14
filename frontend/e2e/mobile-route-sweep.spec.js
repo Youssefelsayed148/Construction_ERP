@@ -8,12 +8,18 @@ function token() {
 }
 
 const routes = [
-  ['/login', null], ['/dashboard', 'owner'], ['/projects', 'owner'],
-  ['/projects/1', 'owner'], ['/projects/1/operations', 'owner'],
-  ['/projects/1/site', 'site_engineer'], ['/projects/1/qhse', 'owner'],
-  ['/projects/1/hse', 'owner'], ['/projects/1/schedule', 'owner'],
-  ['/projects/1/boq', 'owner'], ['/invoices', 'finance_manager'],
-  ['/procurement/comparison', 'procurement_manager'], ['/approvals', 'owner'],
+  ['/login', null], ['/dashboard', 'owner'], ['/projects', 'owner'], ['/projects/new', 'owner'],
+  ['/inventory', 'owner'], ['/procurement/comparison', 'procurement_manager'],
+  ['/suppliers', 'procurement_manager'], ['/clients', 'owner'], ['/legal', 'owner'],
+  ['/approvals', 'owner'], ['/my-actions', 'owner'], ['/expenses', 'finance_manager'],
+  ['/invoices', 'finance_manager'], ['/assets', 'owner'], ['/hr', 'owner'], ['/hr/payroll', 'owner'],
+  ['/settings', 'owner'], ['/agent-activity', 'owner'],
+  ['/projects/1', 'owner'], ['/projects/1/boq', 'owner'], ['/projects/1/work-orders', 'owner'],
+  ['/projects/1/site', 'site_engineer'], ['/projects/1/site-workspace', 'site_engineer'],
+  ['/projects/1/operations', 'owner'], ['/projects/1/locations', 'owner'],
+  ['/projects/1/qhse', 'owner'], ['/projects/1/hse', 'owner'], ['/projects/1/schedule', 'owner'],
+  ['/projects/1/reports', 'owner'], ['/projects/1/handover', 'owner'],
+  ['/projects/1/documents', 'owner'], ['/projects/1/units', 'owner'],
   ['/consultant-portal', 'consultant'], ['/client-portal', 'client'],
   ['/subcontractor-portal', 'subcontractor'], ['/supplier-portal', 'supplier'],
 ];

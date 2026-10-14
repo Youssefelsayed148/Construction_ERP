@@ -1597,3 +1597,10 @@ Verification: formatter tests 5/5; frontend CI 29 suites / 123 tests; i18n check
 Portal dashboard widget and field labels now resolve through the bilingual portals.dashboard.* catalog instead of replacing underscores and title-casing arbitrary API values. Record status and priority use the shared enum translators, with the stored machine value preserved as fallback for unknown enums. Added EN/AR labels for common portal metrics and the empty state. This is a bounded caller migration; the system-wide API-value and dynamic-content audit remains open.
 
 Verification: frontend PortalDashboard suite PASS (11/11); npm run i18n:check PASS; npm run i18n:parity PASS (35 namespaces, 1,146 English keys). No backend changes or migrations. Implementation commit: 1740ed7.
+
+
+## 2026-10-14 - Phase 7 responsive route sweep expansion
+
+Expanded the mobile Playwright sweep from 17 representative routes to all 36 application routes, covering each major internal page, every project subroute, and all four external portals. Each route starts with isolated local test auth, mocked API responses, and checks that the page renders without document-level horizontal overflow at the configured Pixel 7 viewport.
+
+Verification: `npx playwright test e2e/mobile-route-sweep.spec.js --project=mobile-chromium --reporter=line` PASS, 36/36. A first overlapping test invocation caused dev-server connection refusals after 19 cases; the clean single invocation completed all 36 successfully. This is route/overflow smoke coverage only; it does not assert screen-specific business workflows.
