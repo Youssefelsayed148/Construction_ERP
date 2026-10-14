@@ -34,5 +34,15 @@
   "supplier_invoice_duplicate": "??? ?? ??? ?????? ??? ???????? ???.",
   "supplier_invoice_not_approvable": "?? ???? ?????? ?????? ?????? ?? ?????? ???????.",
   "invoice_match_failed": "?? ?????? ???????? ?? ??? ?????? ?????? ???????? ????????.",
-  "advance_recovery_exceeds_balance": "لا يمكن أن يتجاوز استرداد الدفعة المقدمة رصيدها المتبقي."
+  "advance_recovery_exceeds_balance": "لا يمكن أن يتجاوز استرداد الدفعة المقدمة رصيدها المتبقي.",
+  "quantity_measurement_not_found": "تعذر العثور على قياس واحد أو أكثر للكميات.",
+  "quantity_measurement_not_certified": "يمكن المطالبة بالقياسات المعتمدة من هذا المشروع فقط.",
+  "quantity_claim_invalid": "يجب أن تكون الكمية المطالب بها موجبة وألا تتجاوز كمية القياس المعتمد.",
+  "quantity_measurement_duplicate": "يمكن إدراج القياس مرة واحدة فقط في الطلب.",
+  "quantity_already_claimed": "هذه الكمية محجوزة أو معتمدة بالفعل في طلب آخر.",
+  "contract_boq_rate_ambiguous": "يجب أن يكون لكل بند في جدول الكميات سعر تعاقدي مطابق واحد فقط.",
+  "certified_quantity_lines_required": "أدخل الكمية المعتمدة لكل بند من المطالبة.",
+  "certified_quantity_invalid": "يجب ألا تتجاوز الكميات المعتمدة المطالبة، ويجب أن تظل القياسات معتمدة.",
+  "quantity_valuation_other_amounts_unsupported": "لا يمكن أن تتضمن طلبات الكميات مبالغ منفصلة للتغييرات أو المواد.",
+  "certified_quantity_amount_override": "يتم احتساب قيمة الأعمال المعتمدة من الكميات المعتمدة والأسعار التعاقدية."
 }

@@ -34,5 +34,15 @@
   "supplier_invoice_duplicate": "This supplier has already submitted that invoice number.",
   "supplier_invoice_not_approvable": "This supplier invoice cannot be approved in its current state.",
   "invoice_match_failed": "The invoice does not match the purchase order and accepted receipt quantities.",
-  "advance_recovery_exceeds_balance": "Advance recovery cannot exceed the unrecovered contract advance."
+  "advance_recovery_exceeds_balance": "Advance recovery cannot exceed the unrecovered contract advance.",
+  "quantity_measurement_not_found": "One or more quantity measurements could not be found.",
+  "quantity_measurement_not_certified": "Only certified measurements from this project can be claimed.",
+  "quantity_claim_invalid": "Claimed quantity must be positive and within the certified measurement quantity.",
+  "quantity_measurement_duplicate": "A measurement can appear only once in an application.",
+  "quantity_already_claimed": "That quantity is already reserved or certified on another application.",
+  "contract_boq_rate_ambiguous": "Each BOQ item must have exactly one matching contract rate.",
+  "certified_quantity_lines_required": "Enter the certified quantity for every claimed line.",
+  "certified_quantity_invalid": "Certified quantities must be within the claimed amounts and measurements must remain certified.",
+  "quantity_valuation_other_amounts_unsupported": "Quantity-based applications cannot include separate variation or material amounts.",
+  "certified_quantity_amount_override": "Certified work is calculated from certified quantities and contract rates."
 }

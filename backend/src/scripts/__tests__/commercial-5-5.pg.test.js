@@ -105,7 +105,7 @@ describePg('5.5 commercial and finance (real PostgreSQL, real app)', () => {
 
   // --------------------------------------------------------------------------------------------------
   test('1. migration: tables exist, money is NUMERIC(15,2), the variation backfill is exact, and it is repeatable', async () => {
-    for (const t of ['contract_parties', 'guarantees', 'insurances', 'payment_applications', 'invoice_lines', 'currency_rates', 'budget_versions', 'budget_lines', 'forecast_versions',
+    for (const t of ['contract_parties', 'guarantees', 'insurances', 'payment_applications', 'payment_application_quantity_lines', 'invoice_lines', 'currency_rates', 'budget_versions', 'budget_lines', 'forecast_versions',
       'forecast_lines', 'commitment_adjustments', 'credit_notes', 'payment_batches', 'payment_batch_items']) {
       expect([t, (await one('SELECT count(*)::int n FROM information_schema.tables WHERE table_name = $1', [t])).n]).toEqual([t, 1]);
     }
@@ -334,6 +334,51 @@ describePg('5.5 commercial and finance (real PostgreSQL, real app)', () => {
     const listed = await call('GET', `/api/commercial/payment-certificates?project_id=${pA}`, users.cm);
     expect([listed.status, listed.body.error]).toEqual([200, undefined]);
     expect(listed.body.data.map((c) => c.id)).toContain(cert.id);
+  });
+
+  test('5b. quantity valuation snapshots contract rates, reserves claimed measurements, and derives certified work from certified quantities', async () => {
+    const boq = (await one("INSERT INTO boq_items (project_id, code, description, unit, quantity, unit_rate) VALUES ($1, $2, 'Measured work', 'm3', 20, 700) RETURNING id", [pA, `QVAL-${tag}`])).id;
+    await db.query('INSERT INTO contract_lines (client_contract_id, boq_item_id, description, quantity, unit, unit_rate, amount) VALUES ($1,$2,$3,20,$4,1000,20000)', [contractA, boq, 'Contract rate', 'm3']);
+    const measurement = (await one("INSERT INTO quantity_measurements (project_id, boq_item_id, measured_date, quantity, unit, approval_state) VALUES ($1,$2,'2026-10-01',10,'m3','certified') RETURNING id", [pA, boq])).id;
+    const claimed = await call('POST', '/api/commercial/payment-applications', users.qs, {
+      party_type: 'client', project_id: pA, client_contract_id: contractA,
+      quantity_lines: [{ quantity_measurement_id: measurement, quantity: 5 }],
+    });
+    expect(claimed.status).toBe(201);
+    expect([claimed.body.data.valuation_basis, Number(claimed.body.data.claimed_work)]).toEqual(['certified_quantity', 5000]);
+    const detail = await call('GET', `/api/commercial/payment-applications/${claimed.body.data.id}`, users.qs);
+    expect(detail.body.data.quantity_lines).toHaveLength(1);
+    expect((await call('POST', '/api/commercial/payment-applications', users.qs, {
+      party_type: 'client', project_id: pA, client_contract_id: contractA,
+      quantity_lines: [{ quantity_measurement_id: measurement, quantity: 6 }],
+    })).body.error_code).toBe('quantity_already_claimed');
+    const appId = claimed.body.data.id;
+    await call('POST', `/api/commercial/payment-applications/${appId}/submit`, users.qs);
+    const certified = await call('POST', `/api/commercial/payment-applications/${appId}/certify`, users.owner, {
+      certified_quantity_lines: [{ quantity_measurement_id: measurement, quantity: 3 }],
+    });
+    expect(certified.status).toBe(200);
+    expect([Number(certified.body.data.application.certified_work), Number(certified.body.data.certificate.gross_current_work)]).toEqual([3000, 3000]);
+    const remainder = await call('POST', '/api/commercial/payment-applications', users.qs, {
+      party_type: 'client', project_id: pA, client_contract_id: contractA,
+      quantity_lines: [{ quantity_measurement_id: measurement, quantity: 7 }],
+    });
+    expect([remainder.status, Number(remainder.body.data.claimed_work)]).toEqual([201, 7000]);
+    const savedLine = await one('SELECT unit_rate, claimed_quantity, certified_quantity, certified_amount FROM payment_application_quantity_lines WHERE payment_application_id = $1', [appId]);
+    expect([Number(savedLine.unit_rate), Number(savedLine.claimed_quantity), Number(savedLine.certified_quantity), Number(savedLine.certified_amount)]).toEqual([1000, 5, 3, 3000]);
+    const subBoq = (await one("INSERT INTO boq_items (project_id, code, description, unit, quantity, unit_rate) VALUES ($1, $2, 'Subcontract work', 'm2', 10, 80) RETURNING id", [pA, `SQVAL-${tag}`])).id;
+    await db.query('INSERT INTO sub_contract_lines (sub_contract_id, boq_item_id, description, quantity, unit, unit_rate, amount) VALUES ($1,$2,$3,10,$4,120,1200)', [subContractA, subBoq, 'Subcontract rate', 'm2']);
+    const subMeasurement = (await one("INSERT INTO quantity_measurements (project_id, boq_item_id, measured_date, quantity, unit, approval_state) VALUES ($1,$2,'2026-10-01',4,'m2','certified') RETURNING id", [pA, subBoq])).id;
+    const subClaim = await call('POST', '/api/commercial/payment-applications', users.qs, {
+      party_type: 'subcontractor', project_id: pA, sub_contract_id: subContractA,
+      quantity_lines: [{ quantity_measurement_id: subMeasurement, quantity: 4 }],
+    });
+    expect([subClaim.status, Number(subClaim.body.data.claimed_work)]).toEqual([201, 480]);
+    await call('POST', `/api/commercial/payment-applications/${subClaim.body.data.id}/submit`, users.qs);
+    const subCertified = await call('POST', `/api/commercial/payment-applications/${subClaim.body.data.id}/certify`, users.owner, {
+      certified_quantity_lines: [{ quantity_measurement_id: subMeasurement, quantity: 4 }],
+    });
+    expect([subCertified.status, Number(subCertified.body.data.certificate.gross_current_work)]).toEqual([200, 480]);
   });
 
   // --------------------------------------------------------------------------------------------------

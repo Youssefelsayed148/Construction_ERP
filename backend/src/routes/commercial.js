@@ -375,6 +375,12 @@ router.post('/payment-applications', authenticate, authorize(), async (req, res)
       party_type: Joi.string().valid('client', 'subcontractor').required(), project_id: Joi.number().integer().required(),
       client_contract_id: Joi.number().integer().allow(null), sub_contract_id: Joi.number().integer().allow(null),
       period_from: optDate, period_to: optDate, claimed_work: money, claimed_variations: money, claimed_materials: money, notes: Joi.string().allow('', null),
+      quantity_lines: Joi.array().items(Joi.object({ quantity_measurement_id: Joi.number().integer().positive().required(), quantity: Joi.number().positive().precision(3).required() })).min(1),
+    }).custom((value, helpers) => {
+      if (value.quantity_lines && ['claimed_work', 'claimed_variations', 'claimed_materials'].some((key) => value[key] !== undefined)) {
+        return helpers.error('any.invalid');
+      }
+      return value;
     }), req, res);
     if (!value) return;
     const row = await atomicAudited(req, (q) => records.createApplication(q, { ...value, period_from: isoDay(value.period_from), period_to: isoDay(value.period_to) }, req.user.id),
@@ -395,8 +401,12 @@ router.post('/payment-applications/:id/submit', authenticate, authorize(), async
 router.post('/payment-applications/:id/certify', authenticate, authorize(), async (req, res) => {
   try {
     const value = typedBody(Joi.object({
-      certified_work: money.required(), certified_variations: money, certified_materials: money, advance_recovery: money, other_deductions: money,
+      certified_work: money, certified_variations: money, certified_materials: money, advance_recovery: money, other_deductions: money,
+      certified_quantity_lines: Joi.array().items(Joi.object({ quantity_measurement_id: Joi.number().integer().positive().required(), quantity: Joi.number().min(0).precision(3).required() })).min(1),
       tax_pct: Joi.number().min(0).max(100), review_notes: Joi.string().allow('', null),
+    }).custom((value, helpers) => {
+      if (value.certified_work === undefined && value.certified_quantity_lines === undefined) return helpers.error('any.required');
+      return value;
     }), req, res);
     if (!value) return;
     const out = await atomicAudited(req, (q) => records.certifyApplication(q, intId(req), req.user, value),

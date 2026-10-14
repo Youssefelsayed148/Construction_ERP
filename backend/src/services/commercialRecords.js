@@ -198,6 +198,14 @@ async function convert(q, { amount, from_currency, to_currency, as_of = null }) 
 async function getApplication(q, id) {
   const row = (await q('SELECT * FROM payment_applications WHERE id = $1', [toInt(id)])).rows[0];
   if (!row) throw missing('payment_application_not_found', `Payment application #${id} not found`, { id });
+  if (row.valuation_basis === 'certified_quantity') {
+    row.quantity_lines = (await q(`SELECT l.id, l.quantity_measurement_id, l.boq_item_id, l.claimed_quantity,
+      l.certified_quantity, l.unit_rate, l.claimed_amount, l.certified_amount,
+      qm.measured_date, qm.unit, qm.approval_state
+      FROM payment_application_quantity_lines l
+      JOIN quantity_measurements qm ON qm.id = l.quantity_measurement_id
+      WHERE l.payment_application_id = $1 ORDER BY l.id`, [row.id])).rows;
+  }
   return row;
 }
 
@@ -217,12 +225,72 @@ async function createApplication(q, data, userId) {
   const contract = contractId == null ? null : (await q(`SELECT id, project_id FROM ${table} WHERE id = $1`, [contractId])).rows[0];
   if (!contract) throw bad('contract_required', `A ${data.party_type === 'client' ? 'client' : 'sub'}contract is required`, { party_type: data.party_type });
   if (Number(contract.project_id) !== Number(data.project_id)) throw bad('contract_project_mismatch', 'The contract belongs to a different project', { project_id: data.project_id });
+  let quantityLines = [];
+  let claimedWork = data.claimed_work ?? 0;
+  if (Array.isArray(data.quantity_lines) && data.quantity_lines.length) {
+    const ids = data.quantity_lines.map((line) => toInt(line.quantity_measurement_id));
+    if (ids.some((id) => !id) || new Set(ids).size !== ids.length) throw bad('quantity_measurement_duplicate', 'Each certified measurement can appear once per application', {});
+    const measurements = (await q(
+      `SELECT id, project_id, boq_item_id, quantity, approval_state
+         FROM quantity_measurements WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE`, [ids]
+    )).rows;
+    if (measurements.length !== ids.length) throw missing('quantity_measurement_not_found', 'One or more measurements were not found', {});
+    const byId = new Map(measurements.map((row) => [Number(row.id), row]));
+    const contractLinesTable = data.party_type === 'client' ? 'contract_lines' : 'sub_contract_lines';
+    const contractKey = data.party_type === 'client' ? 'client_contract_id' : 'sub_contract_id';
+    const lineRates = (await q(
+      `SELECT boq_item_id, unit_rate FROM ${contractLinesTable} WHERE ${contractKey} = $1 AND boq_item_id = ANY($2::int[]) ORDER BY boq_item_id, id`, [contractId, [...new Set(measurements.map((m) => Number(m.boq_item_id)))]]
+    )).rows;
+    const ratesByItem = new Map();
+    for (const row of lineRates) ratesByItem.set(Number(row.boq_item_id), [...(ratesByItem.get(Number(row.boq_item_id)) || []), row.unit_rate]);
+    quantityLines = data.quantity_lines.map((line) => {
+      const measurement = byId.get(toInt(line.quantity_measurement_id));
+      if (Number(measurement.project_id) !== Number(data.project_id) || measurement.approval_state !== 'certified') {
+        throw bad('quantity_measurement_not_certified', 'Every claimed measurement must be certified and belong to this project', { measurement_id: measurement.id });
+      }
+      const quantity = Number(line.quantity);
+      if (!Number.isFinite(quantity) || quantity <= 0 || quantity > Number(measurement.quantity)) {
+        throw bad('quantity_claim_invalid', 'Claimed quantity must be positive and no greater than its certified measurement', { measurement_id: measurement.id });
+      }
+      const rates = ratesByItem.get(Number(measurement.boq_item_id)) || [];
+      if (rates.length !== 1) throw bad('contract_boq_rate_ambiguous', 'Each claimed BOQ item must have exactly one line on the client contract', { boq_item_id: measurement.boq_item_id });
+      return { measurement_id: Number(measurement.id), boq_item_id: Number(measurement.boq_item_id), quantity, unit_rate: rates[0] };
+    });
+    const reserved = (await q(
+      `SELECT l.quantity_measurement_id,
+              COALESCE(SUM(CASE WHEN a.status = 'certified' THEN COALESCE(l.certified_quantity, 0) ELSE l.claimed_quantity END), 0) AS quantity
+         FROM payment_application_quantity_lines l
+         JOIN payment_applications a ON a.id = l.payment_application_id
+        WHERE l.quantity_measurement_id = ANY($1::int[]) AND a.status IN ('draft', 'submitted', 'certified')
+        GROUP BY l.quantity_measurement_id`, [ids]
+    )).rows;
+    const reservedByMeasurement = new Map(reserved.map((row) => [Number(row.quantity_measurement_id), Number(row.quantity)]));
+    for (const line of quantityLines) {
+      const measurement = byId.get(line.measurement_id);
+      if ((reservedByMeasurement.get(line.measurement_id) || 0) + line.quantity > Number(measurement.quantity) + 1e-9) {
+        throw conflict('quantity_already_claimed', 'The requested quantity has already been reserved or certified on another application', { measurement_id: line.measurement_id });
+      }
+    }
+    claimedWork = (await q(
+      `SELECT ROUND(SUM(ROUND(x.qty * x.rate, 2)), 2) AS total
+         FROM unnest($1::numeric[], $2::numeric[]) AS x(qty, rate)`,
+      [quantityLines.map((line) => line.quantity), quantityLines.map((line) => line.unit_rate)]
+    )).rows[0].total;
+  }
   const number = await numbering.nextNumber(q, { table: 'payment_applications', column: 'application_number', prefix: 'PAP', pad: 5 });
-  return (await q(
-    `INSERT INTO payment_applications (application_number, party_type, project_id, client_contract_id, sub_contract_id, period_from, period_to, claimed_work, claimed_variations, claimed_materials, notes, created_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+  const app = (await q(
+    `INSERT INTO payment_applications (application_number, party_type, project_id, client_contract_id, sub_contract_id, period_from, period_to, claimed_work, claimed_variations, claimed_materials, notes, created_by, valuation_basis)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
     [number, data.party_type, data.project_id, data.party_type === 'client' ? contractId : null, data.party_type === 'client' ? null : contractId,
-      data.period_from ?? null, data.period_to ?? null, data.claimed_work ?? 0, data.claimed_variations ?? 0, data.claimed_materials ?? 0, data.notes ?? null, userId])).rows[0];
+      data.period_from ?? null, data.period_to ?? null, claimedWork, quantityLines.length ? 0 : data.claimed_variations ?? 0,
+      quantityLines.length ? 0 : data.claimed_materials ?? 0, data.notes ?? null, userId, quantityLines.length ? 'certified_quantity' : 'manual'])).rows[0];
+  for (const line of quantityLines) {
+    const amount = (await q('SELECT ROUND($1::numeric * $2::numeric, 2) AS amount', [line.quantity, line.unit_rate])).rows[0].amount;
+    await q(`INSERT INTO payment_application_quantity_lines
+      (payment_application_id, quantity_measurement_id, boq_item_id, claimed_quantity, unit_rate, claimed_amount)
+      VALUES ($1,$2,$3,$4,$5,$6)`, [app.id, line.measurement_id, line.boq_item_id, line.quantity, line.unit_rate, amount]);
+  }
+  return app;
 }
 
 async function submitApplication(q, id, user) {
@@ -236,20 +304,47 @@ async function submitApplication(q, id, user) {
 // Certify (or certify less than claimed): creates the DRAFT payment certificate with the engine's certificate math
 // (retention at the contract's percentage; advance recovery and other deductions are recorded as given and post
 // nowhere yet: the chart accounts wait for the owner, see the PR). The certificate then runs the workflow.
-async function certifyApplication(q, id, user, { certified_work, certified_variations = 0, certified_materials = 0, advance_recovery, other_deductions = 0, tax_pct = 0, review_notes = null }) {
+async function certifyApplication(q, id, user, { certified_work, certified_variations = 0, certified_materials = 0, certified_quantity_lines, advance_recovery, other_deductions = 0, tax_pct = 0, review_notes = null }) {
   const app = (await q('SELECT * FROM payment_applications WHERE id = $1 FOR UPDATE', [toInt(id)])).rows[0];
   if (!app) throw missing('payment_application_not_found', `Payment application #${id} not found`, { id });
   if (app.status !== 'submitted') throw conflict('payment_application_not_submitted', `Application ${app.application_number} is ${app.status}: only a submitted one can be certified`, { id: app.id, status: app.status });
   const contract = app.party_type === 'client'
     ? (await q('SELECT retention_percent, advance_amount FROM client_contracts WHERE id = $1', [app.client_contract_id])).rows[0]
     : (await q('SELECT retention_percent, advance_amount FROM sub_contracts WHERE id = $1', [app.sub_contract_id])).rows[0];
-  const work = toNum(certified_work); const variations = toNum(certified_variations); const materials = toNum(certified_materials);
+  let work = toNum(certified_work); const variations = toNum(certified_variations); const materials = toNum(certified_materials);
+  if (app.valuation_basis === 'certified_quantity') {
+    if (certified_work !== undefined) throw bad('certified_quantity_amount_override', 'Certified work is calculated from the certified quantities and contract rates', {});
+    const lines = (await q(`SELECT l.*, qm.quantity, qm.approval_state FROM payment_application_quantity_lines l
+      JOIN quantity_measurements qm ON qm.id = l.quantity_measurement_id
+      WHERE l.payment_application_id = $1 ORDER BY l.id FOR UPDATE OF l, qm`, [app.id])).rows;
+    if (!Array.isArray(certified_quantity_lines) || certified_quantity_lines.length !== lines.length) {
+      throw bad('certified_quantity_lines_required', 'Provide the certified quantity for every claimed line', { application_id: app.id });
+    }
+    const requested = new Map();
+    for (const line of certified_quantity_lines) {
+      const measurementId = toInt(line.quantity_measurement_id);
+      if (!measurementId || requested.has(measurementId)) throw bad('quantity_measurement_duplicate', 'Each claimed measurement can be certified once', {});
+      requested.set(measurementId, Number(line.quantity));
+    }
+    let total = 0;
+    for (const line of lines) {
+      const qty = requested.get(Number(line.quantity_measurement_id));
+      if (qty === undefined || !Number.isFinite(qty) || qty < 0 || qty > Number(line.claimed_quantity) || line.approval_state !== 'certified') {
+        throw bad('certified_quantity_invalid', 'Certified quantities must map to certified measurements and cannot exceed each claim', { measurement_id: line.quantity_measurement_id });
+      }
+      const amount = (await q('SELECT ROUND($1::numeric * $2::numeric, 2) AS amount', [qty, line.unit_rate])).rows[0].amount;
+      await q('UPDATE payment_application_quantity_lines SET certified_quantity = $1, certified_amount = $2 WHERE id = $3', [qty, amount, line.id]);
+      total += Number(amount);
+    }
+    work = (await q('SELECT ROUND($1::numeric, 2) AS amount', [total])).rows[0].amount;
+    if (variations !== 0 || materials !== 0) throw bad('quantity_valuation_other_amounts_unsupported', 'Quantity-based applications cannot add variation or material amounts to certified work', {});
+  }
   if (work > toNum(app.claimed_work) + 1e-9 || variations > toNum(app.claimed_variations) + 1e-9 || materials > toNum(app.claimed_materials) + 1e-9) {
     throw bad('certified_exceeds_claimed', 'The certified amount cannot exceed what was claimed', { id: app.id });
   }
   const gross = (await q(
     'SELECT ROUND($1::numeric + $2::numeric, 2) AS gross_work, ROUND($1::numeric + $2::numeric + $3::numeric, 2) AS gross_certified',
-    [certified_work, certified_materials, certified_variations]
+    [work, certified_materials, certified_variations]
   )).rows[0];
   const grossWork = gross.gross_work;
   const grossCertified = gross.gross_certified;
