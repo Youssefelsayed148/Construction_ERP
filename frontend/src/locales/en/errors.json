@@ -1,4 +1,5 @@
 {
+  "authenticationUnavailable": "Authentication is temporarily unavailable. Please try again shortly.",
   "apiRouteNotFound": "API route not found",
   "requestFailed": "The request could not be completed.",
   "networkError": "Cannot reach the server. Check your connection.",

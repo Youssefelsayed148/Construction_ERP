@@ -66,7 +66,16 @@ const authenticate = async (req, res, next) => {
 
     const token = authHeader.split(' ')[1];
     // Only session and preview tokens authenticate the internal API; v1 access and refresh tokens do not.
-    const decoded = tokens.verify(token, ['session', 'preview']);
+    let decoded;
+    try {
+      decoded = tokens.verify(token, ['session', 'preview']);
+    } catch (error) {
+      if (['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'].includes(error.name)
+        || ['token kind not accepted here', 'token kind mismatch'].includes(error.message)) {
+        return res.status(401).json({ success: false, error: 'Invalid token' });
+      }
+      throw error;
+    }
 
     const result = await query(
       'SELECT id, email, name, role, department, is_active, token_version FROM users WHERE id = $1',
@@ -115,7 +124,11 @@ const authenticate = async (req, res, next) => {
 
     next();
   } catch (error) {
-    return res.status(401).json({ success: false, error: 'Invalid token' });
+    res.setHeader('Retry-After', '5');
+    return res.status(503).json({
+      success: false, error: 'Authentication service temporarily unavailable',
+      error_code: 'authentication_unavailable', error_key: 'errors.authenticationUnavailable', error_params: {},
+    });
   }
 };
 

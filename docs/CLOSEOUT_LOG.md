@@ -1827,3 +1827,9 @@ Before: corrected media-role-matrix.pg.test.js against committed pre-fix media s
 Fix: all non-external roles reach docs/site policy evaluation on the linked project; removed INTERNAL_ROLES gate. Canonical external role names from migration 0031 retain portal restrictions instead of receiving generic internal access. The legacy external assignment/approval/confidentiality behavior is preserved. Canonical external aliases without implemented portal-resolution branches continue to deny others' internal files; this ticket does not broaden their portal behavior. Uploaded-file owner fast path and preview scoping remain intact.
 
 Changed mediaAccess.js; added media-role-matrix.pg.test.js. Fresh volume-free erp-r01-remediation-20261014 containers were removed after every before/after run; all 126 migrations applied. No secrets files/external adapters used; random credentials stayed in process env. Commit message: R0.4: authorize internal media through project policy.
+
+## 2026-10-14 - R0.5 distinguish authentication outages
+
+Before: npm.cmd test -- --runInBand src/scripts/__tests__/auth-infrastructure.test.js failed 3 pool outage/timeout cases (expected 503, received 401), while malformed/expired JWT 401 checks passed. Fix: JWT validation errors remain 401; failures outside JWT validation return typed authentication_unavailable 503 with Retry-After=5, empty error_params and paired errors.authenticationUnavailable key. Raw infrastructure messages are not exposed. Existing account/revocation and preview checks unchanged.
+
+After: same suite passes all 5 cases; combined infrastructure/tokens/permission-isolation suites PASS, 3 suites / 368 tests. Frontend i18n:check PASS, parity PASS 35 namespaces / 1,285 English keys. Changed auth.js and two errors catalogs; new auth-infrastructure.test.js. Full R0 exit gates remain due. Commit message: R0.5: return retryable 503 for authentication infrastructure failures.
