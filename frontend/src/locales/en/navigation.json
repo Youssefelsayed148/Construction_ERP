@@ -35,7 +35,7 @@
     "fallbackName": "User"
   },
   "offline": {
-    "banner": "You are offline. Submitted changes require a connection.",
+    "banner": "You are offline. Daily reports can be queued on this device; other changes need a connection.",
     "updateAvailable": "A new version is ready.",
     "updateNow": "Update now"
   },

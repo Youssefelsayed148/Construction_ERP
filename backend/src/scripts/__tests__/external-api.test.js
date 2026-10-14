@@ -105,7 +105,13 @@ query.mockImplementation(async (sql, params = []) => {
     if (inactiveOnly && acct && acct.is_active === false) return { rows: [] };
     return { rows: acct ? [acct] : [] };
   }
-  if (/DELETE FROM idempotency_keys/i.test(s)) return { rows: [] };
+  if (/DELETE FROM idempotency_keys/i.test(s)) {
+    if (params?.length === 4) {
+      const entry = [...stub.idempotency.entries()].find(([, row]) => row.key === params[0] && row.subject === params[1] && row.method === params[2] && row.path === params[3]);
+      if (entry) stub.idempotency.delete(entry[0]);
+    }
+    return { rows: [] };
+  }
   if (/SELECT \* FROM idempotency_keys/i.test(s)) {
     const key = params.join('|');
     const row = [...stub.idempotency.values()].find((r) => r.key === params[0] && r.subject === params[1] && r.method === params[2] && r.path === params[3]);
@@ -768,6 +774,22 @@ describe('v1 idempotency keys', () => {
     const next = jest.fn();
     await v1.idempotency({ method: 'POST', headers: {}, requireIdempotencyKey: true }, makeRes(), next);
     expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 400, code: 'idempotency_key_required' }));
+  });
+
+  test('releases an in-flight claim after a client error so the same key can be corrected and retried', async () => {
+    resetStub(); seedUsers();
+    const req = { method: 'POST', headers: { 'idempotency-key': 'correctable-request' }, body: { invalid: true },
+      authType: 'internal', user: { id: 1 }, originalUrl: '/api/projects/11/site-reports', requireIdempotencyKey: true };
+    const firstRes = makeRes();
+    await v1.idempotency(req, firstRes, (err) => { if (err) throw err; firstRes.status(400).json({ success: false, error_code: 'validation_error' }); });
+    expect(stub.idempotency.size).toBe(0);
+
+    const corrected = { ...req, idempotencyHandled: false, body: { work_summary: 'Corrected' } };
+    const secondRes = makeRes();
+    const next = jest.fn(() => { secondRes.status(201).json({ success: true }); });
+    await v1.idempotency(corrected, secondRes, next);
+    expect(next).toHaveBeenCalled();
+    expect([...stub.idempotency.values()][0].status).toBe('completed');
   });
 });
 

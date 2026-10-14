@@ -2,9 +2,11 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import TextEntryDialog from '../components/common/TextEntryDialog';
-import { ArrowLeft, Plus, CalendarDays, ClipboardList, Users, Sun, CheckCircle, X } from 'lucide-react';
+import ConfirmDialog from '../components/common/ConfirmDialog';
 import DocumentUpload from '../components/DocumentUpload';
+import { ArrowLeft, Plus, CalendarDays, ClipboardList, Users, Sun, CheckCircle, X, Trash2, RefreshCw, WifiOff } from 'lucide-react';
 import { openProtectedFile, ProtectedImage } from '../components/ProtectedMedia';
+import { currentQueueOwnerId, notifySiteReportQueueChanged, siteReportQueueStore, syncQueuedSiteReports } from '../services/siteReportQueue';
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
 const API_URL = `${API_BASE_URL}/api`;
@@ -15,9 +17,32 @@ const headers = () => {
 };
 
 const fetchApi = (url, options) => fetch(url, { headers: headers(), ...options }).then(r => {
-  if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
+  if (!r.ok) return r.json().then(e => {
+    const error = new Error(e.error || 'Request failed');
+    error.status = r.status;
+    error.code = e.error_code || e.code;
+    throw error;
+  });
   return r.json();
 });
+
+const newId = () => window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+async function uploadReportPhotos(files) {
+  if (!files.length) return [];
+  const formData = new FormData();
+  files.forEach((file) => formData.append('files', file, file.name));
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_URL}/documents/upload`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok || !body.success) {
+    const error = new Error(body.error || 'Photo upload failed');
+    error.status = response.status;
+    error.code = body.error_code || body.code;
+    throw error;
+  }
+  return body.data || [];
+}
 
 const PRIORITY_LABELS = {
   en: { low: 'Low', normal: 'Normal', high: 'High', urgent: 'Urgent' },
@@ -92,8 +117,11 @@ function SiteManagement() {
 
 function DailyReportsTab({ projectId, locale, t }) {
   const [reports, setReports] = useState([]);
+  const [queuedReports, setQueuedReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [discarding, setDiscarding] = useState(null);
+  const ownerId = currentQueueOwnerId();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -104,10 +132,83 @@ function DailyReportsTab({ projectId, locale, t }) {
     finally { setLoading(false); }
   }, [projectId]);
 
-  useEffect(() => { load(); }, [load]);
+  const refreshQueue = useCallback(async () => {
+    if (!ownerId) { setQueuedReports([]); return; }
+    try { setQueuedReports(await siteReportQueueStore.list(ownerId, String(projectId))); }
+    catch (error) { console.error('Could not read the site report queue:', error); }
+  }, [ownerId, projectId]);
+
+  const syncQueue = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!ownerId || !token || !navigator.onLine) return;
+    const result = await syncQueuedSiteReports({ ownerId, projectId: String(projectId), token });
+    await refreshQueue();
+    if (result.synced > 0) load();
+  }, [load, ownerId, projectId, refreshQueue]);
+
+  useEffect(() => {
+    load();
+    refreshQueue();
+    if (navigator.onLine) syncQueue();
+    const onOnline = () => syncQueue();
+    const onQueueChanged = () => refreshQueue();
+    window.addEventListener('online', onOnline);
+    window.addEventListener('site-report-queue-updated', onQueueChanged);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('site-report-queue-updated', onQueueChanged);
+    };
+  }, [load, refreshQueue, syncQueue]);
+
+  useEffect(() => {
+    if (!navigator.onLine) return undefined;
+    const retryAt = queuedReports
+      .filter((item) => item.status === 'queued' && item.nextAttemptAt > Date.now())
+      .reduce((earliest, item) => Math.min(earliest, item.nextAttemptAt), Infinity);
+    if (!Number.isFinite(retryAt)) return undefined;
+    const timer = window.setTimeout(syncQueue, Math.max(0, retryAt - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [queuedReports, syncQueue]);
+
+  const retryQueuedReport = async (item) => {
+    await siteReportQueueStore.update(item.id, { status: 'queued', errorCode: null, nextAttemptAt: null });
+    await refreshQueue();
+    await syncQueue();
+  };
+
+  const discardQueuedReport = async () => {
+    if (!discarding) return;
+    await siteReportQueueStore.remove(discarding.id);
+    setDiscarding(null);
+    await refreshQueue();
+    notifySiteReportQueueChanged();
+  };
 
   return (
     <div>
+      {queuedReports.length > 0 && <section className="card site-report-queue" aria-live="polite">
+        <h3><WifiOff size={16} aria-hidden="true" /> {t('site.offline.title')} ({queuedReports.length})</h3>
+        <div className="site-report-queue-list">
+          {queuedReports.map((item) => <article key={item.id} className="site-report-queue-item">
+            <div>
+              <strong>{item.payload.report_date}</strong>
+              <p>{item.payload.work_summary}</p>
+              <span className={`badge ${item.status === 'conflict' || item.status === 'failed' ? 'badge-danger' : 'badge-info'}`}>
+                {t(`site.offline.status.${item.status}`)}
+              </span>
+              {item.errorCode && <span className="site-report-queue-error">{t('site.offline.syncError')}</span>}
+            </div>
+            <div className="site-report-queue-actions">
+              {item.status !== 'syncing' && <button type="button" className="btn btn-sm" onClick={() => retryQueuedReport(item)}>
+                <RefreshCw size={14} aria-hidden="true" /> {t('site.offline.retry')}
+              </button>}
+              <button type="button" className="btn btn-sm btn-danger" onClick={() => setDiscarding(item)}>
+                <Trash2 size={14} aria-hidden="true" /> {t('site.offline.remove')}
+              </button>
+            </div>
+          </article>)}
+        </div>
+      </section>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>
           <Plus size={16} />
@@ -137,7 +238,7 @@ function DailyReportsTab({ projectId, locale, t }) {
                 <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>{r.created_by_name || ''}</span>
               </div>
               {r.work_summary && <p style={{ marginTop: '12px', fontSize: '14px' }}>{r.work_summary}</p>}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', marginTop: '12px', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+              <div className="site-report-summary-grid">
                 {r.material_received && <div><strong>{locale === 'ar' ? 'مواد مستلمة: ' : 'Materials received: '}</strong>{r.material_received}</div>}
                 {r.equipment_on_site && <div><strong>{locale === 'ar' ? 'معدات بالموقع: ' : 'Equipment on site: '}</strong>{r.equipment_on_site}</div>}
                 {r.issues_notes && <div style={{ color: 'var(--color-danger, #e5534b)' }}><strong>{locale === 'ar' ? 'مشاكل: ' : 'Issues: '}</strong>{r.issues_notes}</div>}
@@ -157,35 +258,116 @@ function DailyReportsTab({ projectId, locale, t }) {
         </div>
       )}
 
-      {showModal && <ReportModal projectId={projectId} locale={locale} t={t} onClose={() => setShowModal(false)} onSave={load} />}
+      {showModal && <ReportModal projectId={projectId} locale={locale} t={t} onClose={() => setShowModal(false)} onSave={() => { load(); refreshQueue(); }} />}
+      <ConfirmDialog open={!!discarding} title={t('site.offline.removeTitle')} message={t('site.offline.removeMessage')}
+        confirmLabel={t('site.offline.remove')} destructive onConfirm={discardQueuedReport} onCancel={() => setDiscarding(null)} />
     </div>
   );
 }
 
 function ReportModal({ projectId, locale, t, onClose, onSave }) {
   const today = new Date().toISOString().slice(0, 10);
-  const idempotencyKey = useRef(window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const idempotencyKey = useRef(newId());
+  const photoInput = useRef(null);
   const [form, setForm] = useState({
     report_date: today, weather: '', temperature: '', workers_count: 0,
-    work_summary: '', material_received: '', equipment_on_site: '', issues_notes: '', photos: [],
+    work_summary: '', material_received: '', equipment_on_site: '', issues_notes: '',
   });
+  const [measurements, setMeasurements] = useState([]);
+  const [photos, setPhotos] = useState([]);
+  const [catalog, setCatalog] = useState({ locations: [], items: [], loading: true, error: false });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const handleChange = (field, value) => setForm(f => ({ ...f, [field]: value }));
 
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      fetchApi(`${API_URL}/locations/project/${projectId}`),
+      fetchApi(`${API_URL}/boq/items/${projectId}`),
+    ]).then(([locationsRes, itemsRes]) => {
+      if (active) setCatalog({ locations: locationsRes.data || [], items: itemsRes.data || [], loading: false, error: false });
+    }).catch(() => {
+      if (active) setCatalog((current) => ({ ...current, loading: false, error: true }));
+    });
+    return () => { active = false; };
+  }, [projectId]);
+
+  const addMeasurement = () => setMeasurements((rows) => [...rows, { rowId: newId(), project_location_id: '', boq_item_id: '', quantity: '' }]);
+  const changeMeasurement = (rowId, field, value) => setMeasurements((rows) => rows.map((row) => row.rowId === rowId ? { ...row, [field]: value } : row));
+  const removeMeasurement = (rowId) => setMeasurements((rows) => rows.filter((row) => row.rowId !== rowId));
+
+  const handlePhotos = (fileList) => {
+    const picked = Array.from(fileList || []);
+    if (photos.length + picked.length > 5) { setError(t('common.upload.tooMany', { count: 5 })); return; }
+    if (picked.some((file) => file.size > 10 * 1024 * 1024)) { setError(t('common.upload.tooLarge', { size: 10 })); return; }
+    setError('');
+    setPhotos((current) => [...current, ...picked]);
+    if (photoInput.current) photoInput.current.value = '';
+  };
+
+  const saveForSync = async (payload, uploadedPhotos = [], remainingFiles = photos) => {
+    const ownerId = currentQueueOwnerId();
+    if (!ownerId) throw new Error(t('site.offline.userUnavailable'));
+    await siteReportQueueStore.add({
+      id: newId(), ownerId, projectId: String(projectId), status: 'queued', idempotencyKey: idempotencyKey.current,
+      payload, photos: uploadedPhotos, files: remainingFiles, attempts: 0, errorCode: null, nextAttemptAt: null,
+      createdAt: Date.now(), updatedAt: Date.now(),
+    });
+    notifySiteReportQueueChanged();
+    onSave();
+    onClose();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
     setError('');
+    let uploadedPhotos = [];
+    let filesToSync = photos;
     try {
-      const body = { ...form, workers_count: Number(form.workers_count) || 0 };
+      const measurementRows = measurements.filter((row) => row.project_location_id || row.boq_item_id || row.quantity !== '');
+      if (measurementRows.some((row) => !row.project_location_id || !row.boq_item_id || row.quantity === '' || !Number.isFinite(Number(row.quantity)) || Number(row.quantity) < 0)) {
+        setError(t('site.offline.invalidMeasurement'));
+        return;
+      }
+      const payload = {
+        ...form,
+        workers_count: Number(form.workers_count) || 0,
+        measurements: measurementRows.map((row) => {
+          const item = catalog.items.find((candidate) => Number(candidate.id) === Number(row.boq_item_id));
+          return {
+            project_location_id: Number(row.project_location_id), boq_item_id: Number(row.boq_item_id),
+            quantity: Number(row.quantity), unit: item?.unit || null,
+          };
+        }),
+      };
+      if (!navigator.onLine) {
+        await saveForSync(payload);
+        return;
+      }
+      if (photos.length) {
+        uploadedPhotos = await uploadReportPhotos(photos);
+        filesToSync = [];
+      }
       const res = await fetchApi(`${API_URL}/projects/${projectId}/site-reports`, {
-        method: 'POST', headers: { ...headers(), 'Idempotency-Key': idempotencyKey.current }, body: JSON.stringify(body),
+        method: 'POST', headers: { ...headers(), 'Idempotency-Key': idempotencyKey.current },
+        body: JSON.stringify({ ...payload, photos: uploadedPhotos }),
       });
       if (res.success) { onSave(); onClose(); }
       else setError(res.error || 'Save failed');
-    } catch (e) { setError(e.message); }
+    } catch (submitError) {
+      if (submitError instanceof TypeError || !navigator.onLine) {
+        try { await saveForSync({
+          ...form,
+          workers_count: Number(form.workers_count) || 0,
+          measurements: measurements.filter((row) => row.project_location_id && row.boq_item_id && row.quantity !== '')
+            .map((row) => ({ project_location_id: Number(row.project_location_id), boq_item_id: Number(row.boq_item_id), quantity: Number(row.quantity), unit: catalog.items.find((candidate) => Number(candidate.id) === Number(row.boq_item_id))?.unit || null })),
+        }, uploadedPhotos, filesToSync); }
+        catch (queueError) { setError(queueError.message || t('site.offline.storageError')); }
+      } else setError(submitError.message || t('site.offline.syncError'));
+    }
     finally { setSaving(false); }
   };
 
@@ -199,7 +381,7 @@ function ReportModal({ projectId, locale, t, onClose, onSave }) {
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+              <div className="site-report-form-grid site-report-form-grid-three">
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'التاريخ' : 'Date'} *</label>
                   <input className="form-input" type="date" value={form.report_date} onChange={e => handleChange('report_date', e.target.value)} required />
@@ -221,7 +403,7 @@ function ReportModal({ projectId, locale, t, onClose, onSave }) {
                 <label className="form-label">{locale === 'ar' ? 'ملخص الأعمال' : 'Work Summary'} *</label>
                 <textarea className="form-textarea" value={form.work_summary} onChange={e => handleChange('work_summary', e.target.value)} required />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="site-report-form-grid">
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'مواد مستلمة' : 'Materials Received'}</label>
                   <textarea className="form-textarea" value={form.material_received} onChange={e => handleChange('material_received', e.target.value)} />
@@ -235,9 +417,57 @@ function ReportModal({ projectId, locale, t, onClose, onSave }) {
                 <label className="form-label">{locale === 'ar' ? 'مشاكل / ملاحظات' : 'Issues / Notes'}</label>
                 <textarea className="form-textarea" value={form.issues_notes} onChange={e => handleChange('issues_notes', e.target.value)} />
               </div>
-              <DocumentUpload locale={locale} accept="image/*,.pdf"
-                label={locale === 'ar' ? 'صور الموقع' : 'Site Photos'}
-                onUploaded={files => handleChange('photos', files || [])} />
+              <section className="site-report-measurements">
+                <div className="site-report-section-heading">
+                  <h4>{t('site.offline.measurements')}</h4>
+                  <button type="button" className="btn btn-sm" onClick={addMeasurement} disabled={catalog.loading || catalog.error || !catalog.items.length || !catalog.locations.length}>
+                    <Plus size={14} aria-hidden="true" /> {t('site.offline.addMeasurement')}
+                  </button>
+                </div>
+                {catalog.loading && <p role="status">{t('site.offline.catalogLoading')}</p>}
+                {catalog.error && <p className="alert alert-danger" role="alert">{t('site.offline.catalogError')}</p>}
+                {!catalog.loading && !catalog.error && measurements.map((row) => {
+                  const selectedItem = catalog.items.find((item) => Number(item.id) === Number(row.boq_item_id));
+                  return <div className="site-report-measurement-row" key={row.rowId}>
+                    <label className="form-group">
+                      <span className="form-label">{t('site.offline.location')}</span>
+                      <select className="form-input" value={row.project_location_id} onChange={(event) => changeMeasurement(row.rowId, 'project_location_id', event.target.value)} required>
+                        <option value="">{t('site.offline.chooseLocation')}</option>
+                        {catalog.locations.map((location) => <option key={location.id} value={location.id}>{locale === 'ar' ? (location.name_ar || location.name || location.name_en) : (location.name_en || location.name || location.name_ar)}</option>)}
+                      </select>
+                    </label>
+                    <label className="form-group">
+                      <span className="form-label">{t('site.offline.boqItem')}</span>
+                      <select className="form-input" value={row.boq_item_id} onChange={(event) => changeMeasurement(row.rowId, 'boq_item_id', event.target.value)} required>
+                        <option value="">{t('site.offline.chooseItem')}</option>
+                        {catalog.items.map((item) => <option key={item.id} value={item.id}>{item.code} · {locale === 'ar' ? (item.description_ar || item.description || item.description_en) : (item.description_en || item.description || item.description_ar)}</option>)}
+                      </select>
+                    </label>
+                    <label className="form-group">
+                      <span className="form-label">{t('site.offline.quantity')}</span>
+                      <input className="form-input" type="number" min="0" step="any" required value={row.quantity} onChange={(event) => changeMeasurement(row.rowId, 'quantity', event.target.value)} />
+                    </label>
+                    <span className="site-report-measurement-unit">{selectedItem?.unit || t('site.offline.unit')}</span>
+                    <button type="button" className="btn btn-sm btn-danger" aria-label={t('site.offline.removeMeasurement')} onClick={() => removeMeasurement(row.rowId)}>
+                      <X size={15} aria-hidden="true" />
+                    </button>
+                  </div>;
+                })}
+              </section>
+              <div className="form-group">
+                <label className="form-label" htmlFor="site-report-photos">{t('site.offline.photos')}</label>
+                <input ref={photoInput} id="site-report-photos" className="form-input" type="file" accept="image/*,.pdf" multiple
+                  onChange={(event) => handlePhotos(event.target.files)} />
+                <div className="form-hint">{t('common.upload.limits', { count: 5, size: 10 })}</div>
+                {photos.length > 0 && <ul className="site-report-photo-list">
+                  {photos.map((file, index) => <li key={`${file.name}-${file.lastModified}-${index}`}>
+                    <span>{file.name} ({Math.ceil(file.size / 1024)} KB)</span>
+                    <button type="button" className="btn btn-sm" aria-label={t('common.upload.remove', { name: file.name })} onClick={() => setPhotos((current) => current.filter((_, i) => i !== index))}>
+                      <X size={14} aria-hidden="true" />
+                    </button>
+                  </li>)}
+                </ul>}
+              </div>
               {error && <div className="alert alert-danger">{error}</div>}
             </div>
           </form>
@@ -550,7 +780,7 @@ function VisitModal({ projectId, locale, t, onClose, onSave }) {
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+              <div className="site-report-form-grid site-report-form-grid-three">
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'التاريخ' : 'Date'} *</label>
                   <input className="form-input" type="date" value={form.visit_date} onChange={e => handleChange('visit_date', e.target.value)} required />

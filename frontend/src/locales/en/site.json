@@ -1,5 +1,29 @@
 {
   "title": "Site management",
   "dailyReport": "Daily report",
-  "instructions": "Site instructions"
+  "instructions": "Site instructions",
+  "offline": {
+    "title": "Daily reports waiting to sync",
+    "status": { "queued": "Waiting to sync", "syncing": "Syncing", "conflict": "Needs review", "failed": "Sync failed" },
+    "retry": "Retry sync",
+    "remove": "Remove",
+    "removeTitle": "Remove offline report?",
+    "removeMessage": "This unsent report and its local photos will be deleted from this device.",
+    "userUnavailable": "Sign in again before saving a report offline.",
+    "storageError": "This report could not be saved on this device. Keep this page open and try again.",
+    "syncError": "The report needs attention before it can be sent.",
+    "measurements": "Reported quantities",
+    "addMeasurement": "Add quantity",
+    "location": "Project location",
+    "boqItem": "BOQ item",
+    "quantity": "Quantity",
+    "unit": "Unit",
+    "chooseLocation": "Choose a location",
+    "chooseItem": "Choose a BOQ item",
+    "catalogLoading": "Loading project locations and BOQ items…",
+    "catalogError": "Project locations or BOQ items could not be loaded. Try again while connected.",
+    "invalidMeasurement": "Complete each quantity row or remove it before saving.",
+    "removeMeasurement": "Remove quantity row",
+    "photos": "Site photos"
+  }
 }

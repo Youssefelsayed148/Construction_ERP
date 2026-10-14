@@ -279,6 +279,19 @@ async function idempotency(req, res, next) {
           return res;
         }
         persist.catch((e) => console.error('[V1] idempotency store failed:', e.message));
+      } else if (status >= 400 && status < 500) {
+        const release = poolQuery(
+          'DELETE FROM idempotency_keys WHERE key = $1 AND subject = $2 AND method = $3 AND path = $4 AND status = \'in_flight\'',
+          [key, subject, req.method, path]
+        );
+        if (required) {
+          release.then(() => originalJson(payload)).catch((e) => {
+            console.error('[V1] required idempotency claim release failed:', e.message);
+            originalJson(payload);
+          });
+          return res;
+        }
+        release.catch((e) => console.error('[V1] idempotency claim release failed:', e.message));
       }
     }
     return originalJson(payload);

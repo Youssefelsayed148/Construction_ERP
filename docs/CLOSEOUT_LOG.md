@@ -1431,3 +1431,21 @@ Gate output: backend mock 53 suites / 1,001 tests; real PostgreSQL 67 suites / 6
 The Phase 7.2 code slice is ready for explicit-path commit. PWA offline browser journey, Lighthouse, IndexedDB mutation queue, responsive/table/touch work, and local Arabic font package remain unverified/open.
 
 Commit: `2f31c01` — `Phase 7.2: require idempotent daily reports` (explicit-path commit on `closeout/batch-a-to-6`). The only untracked file is the pre-existing user artifact `docs/CODEX_AUDIT_REPORT.md`, not staged or modified.
+
+## 2026-10-14 — Phase 7.2 IndexedDB site-report queue
+
+Implementation: `frontend/src/services/siteReportQueue.js` provides an owner/project-filtered IndexedDB store, local staged photos and daily-report measurements, atomic claim/update/remove, network backoff, stale sync recovery, and replay through the same server idempotency key. `SiteManagement.js` now stages photos locally, lets site staff associate quantities to project locations and BOQ items, displays queue state, and supports retry/removal. Responsive form classes, 14px inputs and 44px queue action targets were added. `backend/src/middleware/v1.js` now releases an idempotency claim on client 4xx so corrected requests can retry; PostgreSQL and mock tests cover this.
+
+Commands and observed results:
+- `npm test -- --runInBand`: PASS, 53 suites / 1,002 tests.
+- `TEST_PG=1 npm run test:pg -- --silent` with `DB_HOST=127.0.0.1`, `DB_PORT=55441`, `DB_NAME=construction_erp_test`, `DB_USER=construction_erp_test`, blank `DB_PASSWORD`, and a throwaway process-only `JWT_SECRET`: PASS, 67 suites / 608 tests.
+- `npm run test:ci`: PASS, 29 suites / 117 tests.
+- `npm run i18n:check`: `i18n:check ok`.
+- `npm run build`: `Compiled successfully.`
+- `npm run lint:guards`: `lint-guards: ok`.
+- `npm run test:e2e -- --reporter=line`: PASS, 34 passed / 50 skipped; gated backend/pilot/screenshots remain skipped.
+- `npx playwright test e2e/site-report-offline.spec.js --project=desktop-chromium --reporter=line`: PASS, 1 test.
+- `npx playwright test e2e/site-report-offline.spec.js --project=mobile-chromium --reporter=line`: PASS, 1 test.
+- `git diff --check`: run before commit.
+
+The fresh local Docker Desktop Postgres container is `erp-closeout-pg16-20261014`, loopback-only and volume-free. No `.env.docker`, `.staging-users.json`, production DB, pilot DB, paid service, or external provider was accessed. The existing normal-shell Docker pipe denial remains a host permission quirk; elevated local Docker CLI access was used. PWA Lighthouse score and local Arabic font packaging are unverified. Current global responsive audit count is 110 inline `gridTemplateColumns` occurrences and 64 `<table>` tags; these and Phase 7 exit requirements remain open.

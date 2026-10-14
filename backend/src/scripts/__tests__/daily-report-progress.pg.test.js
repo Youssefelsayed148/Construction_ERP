@@ -93,6 +93,17 @@ describePg('A2.6 daily-report measurements and weighted progress (real PostgreSQ
     expect(Number((await one('SELECT count(*)::int n FROM site_daily_reports WHERE project_id = $1', [w.project.id])).n)).toBe(0);
   });
 
+  test('a client validation error releases the report key for a corrected retry', async () => {
+    const w = await world();
+    const path = `/api/projects/${w.project.id}/site-reports`;
+    const headers = { 'Idempotency-Key': `corrected-site-report-${w.key}` };
+    const invalid = await call('POST', path, { report_date: '2026-10-05' }, headers);
+    expect(invalid.status).toBe(400);
+    const corrected = await call('POST', path, { report_date: '2026-10-05', work_summary: 'Corrected report' }, headers);
+    expect(corrected.status).toBe(201);
+    expect(Number((await one('SELECT count(*)::int n FROM site_daily_reports WHERE project_id = $1 AND report_date = $2', [w.project.id, '2026-10-05'])).n)).toBe(1);
+  });
+
   beforeAll(async () => {
     ({ app } = require('../../../server'));
     db = require('../../config/database');

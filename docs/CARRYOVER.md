@@ -69,3 +69,7 @@ The following dispositions use current-source inspection plus the fresh 5.8.2 ga
 ## Phase 7.1 app-shell foundation (2026-10-13)
 
 The application now has a versioned app-shell cache and user-controlled service-worker update activation. Cache excludes API and upload paths. Runtime Google Fonts loading was removed; nginx CSP now permits only same-origin styles and fonts. This is not the complete offline journey: the IndexedDB site-post queue, server idempotency on site routes, conflict display, local font assets, and Lighthouse/offline-browser evidence remain open.
+
+## Phase 7 continuation — offline queue (2026-10-14)
+
+The former open queue gap is now implemented and verified by desktop/mobile offline-reconnect browser journeys plus full backend mock, full real-Postgres, frontend, i18n, guard and build gates; see the latest Phase 7.2 log/progress entries. Remaining Phase 7 carryover: local IBM Plex Arabic fonts, Lighthouse score, app-wide responsive class conversion (110 inline grid declarations), all-table `.table-container` pass (64 table tags), and additional major-screen/portal mobile journeys.
