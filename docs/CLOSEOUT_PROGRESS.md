@@ -1,5 +1,13 @@
 # Closeout progress (append-only)
 
+## 2026-10-15 — R2b.2 task B checkpoint
+
+OAuth required attributed audit, transaction-bound last_used_at; MCP proposal and tool/activity audit transaction; agent rejection logs in claim transaction and approval completion logs in completion transaction. Preview already audit-gated; covered without runtime change. Draft-only owner fallback fixes NOT NULL failure. Final original-service regression: 10 failed / 2 passed; fixed focused 3 suites / 31 tests PASS. Registry 4 additional endpoints / 9 tests PASS; pending 323 -> 319. Accumulated 276 / 601 includes 2 documented audit-only exceptions; 6 exempt. Mapped-handler transaction boundary documented/tested in STATE.md; do not claim complete global atomicity.
+
+Checkpoint: mock 60/1,056; guards; frontend 32/131; i18n 35/1,287; build; golden 16/16 all PASS. First full PG 1 failed / 1,222 passed tests (payroll DELETE audit fixture); focused payroll + cost-posting 2/23 PASS; full diagnostic rerun pending. Stop at requested context checkpoint after commit/state update; next C finance-ledger + aliases, then inventory, project-setup, organizations, rest; accepted HR deletion/QHSE duplicate fixes still pending. No R3.
+
+Diagnostic full PG reproduced record_in_use on payroll DELETE. Fixed only that happy-path fixture to insert an empty draft period, independent of other suites' active employees; migration 0010 intentionally protects payroll_details references. Final full PG PASS 74 suites / 1,223 tests (+1/+22 vs requested baseline); exact container removed. All checkpoint gates now green. Stop at requested context checkpoint after B, R2 not complete; 319 fixtures remain.
+
 ## 2026-10-15 — R2b.1 database-date regression
 
 Migration initialization clarified by owner (existing migrations on throwaway DBs only). Task A failing-first PG: 1 failed / 31 passed, failing pre-due +25h. Fix uses CURRENT_DATE returned with invoice insertion as explicit sweep `now`; rerun 1 suite / 32 tests PASS. Fake clock offsets +0/+23/+25h verified; socket timers real. Registry remains 272 verified / 323 pending / 6 exempt; next B. No R3.

@@ -28,7 +28,7 @@ jest.mock('../../config/database', () => ({
   healthCheck: jest.fn().mockResolvedValue({ status: 'healthy' }),
 }));
 
-const { query } = require('../../config/database');
+const { query, transaction } = require('../../config/database');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const express = require('express');
@@ -261,6 +261,7 @@ function callChain(handlers, req) {
 }
 
 beforeAll(async () => {
+  transaction.mockImplementation(async callback => callback({ query: (sql, params) => query(sql, params) }));
   resetStub();
   seedUsers();
 });

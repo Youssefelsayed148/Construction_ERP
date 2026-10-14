@@ -28,7 +28,7 @@
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const Joi = require('joi');
-const { query } = require('../config/database');
+const { query, transaction } = require('../config/database');
 
 const tokens = require('./tokens');
 
@@ -141,7 +141,7 @@ async function issueForPassword(body) {
   // reduction, never an expansion.
   const granted = requested && requested.length ? requested : ['api:read'];
   const token = signAccessToken({ sub: `user:${u.id}`, userId: u.id, scope: granted, tokenVersion: u.token_version });
-  await auditIssuance({ subject: `user:${u.id}`, kind: 'password', scopes: granted });
+  await auditIssuance({ subject: `user:${u.id}`, kind: 'password', scopes: granted, userId: u.id });
   return {
     access_token: token,
     token_type: 'Bearer',
@@ -185,8 +185,11 @@ async function issueForClientCredentials(body) {
   const token = signAccessToken({
     sub: `service:${acct.id}`, userId: user.id, serviceAccountId: acct.id, scope: scopes,
   });
-  await query('UPDATE service_accounts SET last_used_at = NOW() WHERE id = $1', [acct.id]);
-  await auditIssuance({ subject: `service:${acct.id}`, kind: 'client_credentials', scopes });
+  await transaction(async client => {
+    const q = client.query.bind(client);
+    await q('UPDATE service_accounts SET last_used_at = NOW() WHERE id = $1', [acct.id]);
+    await auditIssuance({ subject: `service:${acct.id}`, kind: 'client_credentials', scopes, userId: user.id }, q);
+  });
   return {
     access_token: token,
     refresh_token: signRefreshToken({ sub: `service:${acct.id}`, userId: user.id, serviceAccountId: acct.id, scope: scopes }),
@@ -225,8 +228,11 @@ async function issueForRefresh(body) {
     const token = signAccessToken({
       sub: `service:${acct.id}`, userId: acct.user_id, serviceAccountId: acct.id, scope: scopes,
     });
-    await query('UPDATE service_accounts SET last_used_at = NOW() WHERE id = $1', [acct.id]);
-    await auditIssuance({ subject: `service:${acct.id}`, kind: 'client_credentials', scopes });
+    await transaction(async client => {
+      const q = client.query.bind(client);
+      await q('UPDATE service_accounts SET last_used_at = NOW() WHERE id = $1', [acct.id]);
+      await auditIssuance({ subject: `service:${acct.id}`, kind: 'client_credentials', scopes, userId: acct.user_id }, q);
+    });
     return {
       access_token: token,
       token_type: 'Bearer',
@@ -240,14 +246,12 @@ async function issueForRefresh(body) {
   throw Object.assign(new Error('Refresh is only available for service accounts'), { code: 'invalid_grant', status: 401 });
 }
 
-async function auditIssuance({ subject, kind, scopes }) {
-  try {
-    await query(
-      `INSERT INTO audit_events (entity, entity_id, action, after)
-       VALUES ('v1_token', NULL, $1, $2)`,
-      [kind, JSON.stringify({ subject, scopes, at: new Date().toISOString() })]
-    );
-  } catch (e) { /* audit failure must not block token issuance */ }
+async function auditIssuance({ subject, kind, scopes, userId }, q = query) {
+  await q(
+    `INSERT INTO audit_events (entity, entity_id, action, after, user_id)
+     VALUES ('v1_token', NULL, $1, $2, $3)`,
+    [kind, JSON.stringify({ subject, scopes, at: new Date().toISOString() }), userId]
+  );
 }
 
 // ---------------------------------------------------------------------------

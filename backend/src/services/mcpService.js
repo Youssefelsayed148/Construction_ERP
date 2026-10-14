@@ -189,34 +189,27 @@ async function invokeInternal(routerName, method, path, def, args, user, readOnl
 // Audit surfaces
 // ---------------------------------------------------------------------------
 
-async function logToolCall({ toolName, def, user, agentSession, args, authorized, authorizationDetail, result, requestId, correlationId }) {
-  try {
-    const summary = result && result.body && result.body.success
-      ? JSON.stringify(result.body).slice(0, 500)
-      : `status ${result ? result.status : 'n/a'}: ${result && result.body ? (result.body.error || '') : ''}`;
-    await query(
+async function logToolCall({ toolName, def, user, agentSession, args, authorized, authorizationDetail, result, requestId, correlationId }, q = query) {
+  const summary = result && result.body && result.body.success
+    ? JSON.stringify(result.body).slice(0, 500)
+    : `status ${result ? result.status : 'n/a'}: ${result && result.body ? (result.body.error || '') : ''}`;
+  await q(
       `INSERT INTO agent_tool_calls (tool, risk, user_id, user_role, agent_session, arguments,
          authorized, authorization_detail, response_status, response_summary, request_id, correlation_id)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
       [toolName, def.risk, user.id, user.role, agentSession || null, JSON.stringify(args || {}),
         authorized, JSON.stringify(authorizationDetail || {}), result ? result.status : null,
         summary, requestId || null, correlationId || null]
-    );
-  } catch (e) {
-    console.error('[MCP] tool call logging failed:', e.message);
-  }
+  );
 }
 
-async function recordActivity({ tool, user, detail }) {
-  try {
-    await logActivity({
-      userId: user.id, userName: user.name, userRole: user.role,
-      action: 'agent_tool', module: 'agents',
-      description: `MCP tool ${tool}`,
-      entityType: 'agent_tool_call',
-    });
-  } catch (e) { /* activity log best-effort */ }
-  void detail;
+async function recordActivity({ tool, user }, q = query) {
+  await logActivity({
+    userId: user.id, userName: user.name, userRole: user.role,
+    action: 'agent_tool', module: 'agents',
+    description: `MCP tool ${tool}`,
+    entityType: 'agent_tool_call',
+  }, { query: q });
 }
 
 // The project a gated request belongs to: the project_id argument, else the project of the record the tool
@@ -232,9 +225,9 @@ async function resolveRequestProject(def, args) {
   return ctx.recordScoped && ctx.recordFound && ctx.projectId != null ? ctx.projectId : null;
 }
 
-async function createConfirmationRecord({ toolName, def, args, reason, user, agentSession, projectId }) {
-  const requiredApproverRole = agentPolicy.requiredApproverRole(toolName);
-  const r = await query(
+async function createConfirmationRecord({ toolName, def, args, reason, user, agentSession, projectId }, q = query) {
+  const requiredApproverRole = agentPolicy.requiredApproverRole(toolName) || 'owner';
+  const r = await q(
     `INSERT INTO agent_action_requests
        (tool, operation, payload, reason, agent_session, requesting_user_id, required_approver_role, execution_status, project_id)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
@@ -255,7 +248,7 @@ async function createConfirmationRecord({ toolName, def, args, reason, user, age
 // Tool execution
 // ---------------------------------------------------------------------------
 
-async function callTool({ toolName, args, reason, user, agentSession, flags, readOnly = false, scopes = null }) {
+async function callTool({ toolName, args, reason, user, agentSession, flags, readOnly = false, scopes = null }, q = query) {
   const def = agentPolicy.TOOLS[toolName];
   if (!def) return { ok: false, status: 400, body: { success: false, error: `Unknown tool '${toolName}'` } };
   if (readOnly && def.risk !== 'read') {
@@ -280,7 +273,7 @@ async function callTool({ toolName, args, reason, user, agentSession, flags, rea
     if (projectId == null && !def.companyWide) {
       return { ok: false, status: 422, body: { success: false, code: 'project_unresolved', error: 'The project this request belongs to could not be determined, so it cannot be submitted for approval' } };
     }
-    const request = await createConfirmationRecord({ toolName, def, args, reason, user, agentSession, projectId });
+    const request = await createConfirmationRecord({ toolName, def, args, reason, user, agentSession, projectId }, q);
     return {
       ok: true,
       status: 202,
@@ -301,7 +294,7 @@ async function callTool({ toolName, args, reason, user, agentSession, flags, rea
 
   // ---- draft-only (no safe internal write path): store a draft proposal ---
   if (def.draftOnly) {
-    const request = await createConfirmationRecord({ toolName, def, args, reason, user, agentSession, projectId: args && args.project_id });
+    const request = await createConfirmationRecord({ toolName, def, args, reason, user, agentSession, projectId: args && args.project_id }, q);
     return {
       ok: true,
       status: 201,
@@ -331,30 +324,35 @@ async function executeTool({ toolName, args, reason, user, agentSession, correla
   if (!def) return { status: 400, body: { success: false, error: `Unknown tool '${toolName}'` } };
 
   const allowed = agentPolicy.toolAllowed(user.role, toolName);
-  let result;
-  if (!allowed) {
-    result = { ok: false, status: 403, body: { success: false, error: `Tool '${toolName}' is not allowed for role '${user.role}'` } };
-  } else {
-    // v1 tokens carry scopes; assistants pass them on through the user object they were called with.
-    result = await callTool({ toolName, args, reason, user, agentSession, readOnly, scopes: scopes !== undefined ? scopes : (user.tokenScopes || null) });
-  }
+  // Proposal state and both audit surfaces share this transaction. Mapped tools
+  // retain the internal handler's own business transaction; see STATE.md.
+  return transaction(async client => {
+    const q = client.query.bind(client);
+    let result;
+    if (!allowed) {
+      result = { ok: false, status: 403, body: { success: false, error: `Tool '${toolName}' is not allowed for role '${user.role}'` } };
+    } else {
+      // v1 tokens carry scopes; assistants pass them on through the user object they were called with.
+      result = await callTool({ toolName, args, reason, user, agentSession, readOnly, scopes: scopes !== undefined ? scopes : (user.tokenScopes || null) }, q);
+    }
 
-  // Redact before anything model-facing is built (point 8). Gated/draft
-  // proposal responses carry no business records, but redact uniformly.
-  const flags = await agentPolicy.resolveVisibilityFlags(user);
-  const redacted = redactBody(result.body, flags, user.role);
+    // Redact before anything model-facing is built (point 8). Gated/draft
+    // proposal responses carry no business records, but redact uniformly.
+    const flags = await agentPolicy.resolveVisibilityFlags(user);
+    const redacted = redactBody(result.body, flags, user.role);
 
-  // The log is written from the REDACTED body: it is read by people who may not see the money fields.
-  await logToolCall({
-    toolName, def, user, agentSession, args, authorized: allowed,
-    authorizationDetail: { class: def.risk, allowlisted: allowed },
-    result: { status: result.status, body: redacted },
-    requestId: result.request ? result.request.id : null,
-    correlationId,
+    // The log is written from the REDACTED body: it is read by people who may not see the money fields.
+    await logToolCall({
+      toolName, def, user, agentSession, args, authorized: allowed,
+      authorizationDetail: { class: def.risk, allowlisted: allowed },
+      result: { status: result.status, body: redacted },
+      requestId: result.request ? result.request.id : null,
+      correlationId,
+    }, q);
+    await recordActivity({ tool: toolName, user }, q);
+
+    return { ...result, body: redacted };
   });
-  await recordActivity({ tool: toolName, user, detail: {} });
-
-  return { ...result, body: redacted };
 }
 
 function redactBody(body, flags, role) {
@@ -429,17 +427,17 @@ async function decideRequest(requestId, approver, decision, comment) {
       description: `Agent request #${requestId} (${request.tool}) ${decision === 'approve' ? 'approved for execution' : 'rejected'}`,
       entityId: requestId, entityType: 'agent_action_request',
     }, { query: q });
+    if (row && decision === 'reject') await logToolCall({
+      toolName: request.tool, def: { risk: 'gated' }, user: { id: request.requesting_user_id },
+      agentSession: request.agent_session, args,
+      authorized: true, authorizationDetail: { decision: 'rejected', approver: approver.id },
+      result: { status: 200, body: { success: true } }, requestId, correlationId: null,
+    }, q);
     return row;
   });
   if (!claimed) throw Object.assign(new Error('Request already decided'), { status: 409 });
 
   if (decision === 'reject') {
-    await logToolCall({
-      toolName: request.tool, def: { risk: 'gated' }, user: { id: request.requesting_user_id },
-      agentSession: request.agent_session, args,
-      authorized: true, authorizationDetail: { decision: 'rejected', approver: approver.id },
-      result: { status: 200, body: { success: true } }, requestId, correlationId: null,
-    });
     return claimed;
   }
 
@@ -467,18 +465,27 @@ async function decideRequest(requestId, approver, decision, comment) {
     executionStatus = 'failed';
   }
 
-  const r = await query(
-    `UPDATE agent_action_requests
-       SET execution_status = $2, execution_result = $3, executed_transaction_id = $4, updated_at = NOW()
-     WHERE id = $1 RETURNING *`,
-    [requestId, executionStatus, JSON.stringify(executionResult.body || {}), transactionId]
-  );
-  await logToolCall({
-    toolName: request.tool, def: { risk: 'gated' }, user: requestingUser, agentSession: request.agent_session,
-    args, authorized: true, authorizationDetail: { decision: 'approved', approver: approver.id },
-    result: executionResult, requestId, correlationId: null,
+  return transaction(async client => {
+    const q = client.query.bind(client);
+    const r = await q(
+      `UPDATE agent_action_requests
+         SET execution_status = $2, execution_result = $3, executed_transaction_id = $4, updated_at = NOW()
+       WHERE id = $1 RETURNING *`,
+      [requestId, executionStatus, JSON.stringify(executionResult.body || {}), transactionId]
+    );
+    await logToolCall({
+      toolName: request.tool, def: { risk: 'gated' }, user: requestingUser, agentSession: request.agent_session,
+      args, authorized: true, authorizationDetail: { decision: 'approved', approver: approver.id },
+      result: executionResult, requestId, correlationId: null,
+    }, q);
+    await logActivity({
+      userId: approver.id, userName: approver.name, userRole: approver.role,
+      action: 'agent_execution', module: 'agents',
+      description: `Agent request #${requestId} execution ${executionStatus}`,
+      entityId: requestId, entityType: 'agent_action_request',
+    }, { query: q });
+    return { request: r.rows[0], execution: executionResult };
   });
-  return { request: r.rows[0], execution: executionResult };
 }
 
 // ---------------------------------------------------------------------------

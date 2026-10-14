@@ -1,5 +1,23 @@
 # Closeout log
 
+## 2026-10-15 — R2b.2 commands and evidence
+
+All PG work through tracked `backend/scripts/r02-pg-gate.ps1`, existing no-dotenv preload, existing migrations only, fresh erp-r02-* loopback-only PG16, exact container removed. No generated/patched runtime scripts, secret files, external adapters, installs or pushes.
+
+- `-Suite src/scripts/__tests__/r2b-atomic.pg.test.js`: initial setup correction (scopes uses JSONB, not text[]; username uses supported test.io TLD). Draft-only tests exposed real required_approver_role NOT NULL bug. Final valid gated fixtures rerun against original services: 10 failed / 2 passed; original service changes temporarily reversed/reapplied with apply_patch, not runtime helper scripts.
+- Fixed `-Suite r2b-atomic.pg.test.js,agent-approval.pg.test.js,mcp-safety.pg.test.js`: 3 suites / 31 tests PASS. Final-completion audit failure assertion subsequently included in full PG checkpoint.
+- Registry with R2_ONLY for decision/MCP/preview/OAuth: 9 tests PASS. pending.json shrank 323 -> 319; no expansion. Mock agent/external-api focused: 2 suites / 70 tests PASS.
+- `npm.cmd test -- --runInBand --no-colors`: 60 suites / 1,056 tests PASS. `npm.cmd run lint:guards`: PASS.
+- Frontend `npm.cmd run test:ci -- --no-colors`: 32 suites / 131 tests PASS; `i18n:check`, `i18n:parity`: PASS 35 namespaces / 1,287 English keys; CI=true `npm.cmd run build`: PASS.
+- `-Reconcile`: fresh golden seed success, 16 [OK] checks, runner exit=0 and exact removal confirmed from captured output; only count printed.
+- First `-All`: 74 suites (73 pass / 1 fail), 1,223 tests (1,222 pass / 1 fail); `DELETE /api/payroll/:id success writes an audit row`. Focused payroll registry + cost-posting: 2 suites / 23 tests PASS. Full diagnostic rerun pending; initial failure not waived.
+
+No pending task C fixture family attempted before context checkpoint. All remaining 319 listed entries remain unverified for that reason; no claim R2 complete. Guarded internal-operation transaction boundary and preview/password pure-signing semantics documented in STATE.md.
+
+Full diagnostic rerun reproduced payroll DELETE `record_in_use` (1 failure / 1,222 passes). Source evidence: payroll creation includes global active employees, making payroll_details children whose FK was deliberately restricted by migration 0010. Fixed existing happy-delete fixture to insert an empty draft period, preserving runtime referenced-row protection. Final full rerun pending. No migration/handler changes for this failure.
+
+Final `backend/scripts/r02-pg-gate.ps1 -All`: PASS 74 suites / 1,223 tests. 126 existing migrations applied, exact erp-r02-gate-20261015015749 removed, exit 0. Delta vs R2b baseline 73/1,201: +1 suite, +22 tests (clock offsets +2, atomicity suite +12, 4 registry fixtures +8). The original and diagnostic full failures are explained above and were resolved by fixture isolation; no unrun/failed gate marked passed. All 276 registered endpoints exercised on this final database (274 audit+rollback, 2 pre-existing documented audit-only sweep exceptions). `git diff --check`: PASS. Context checkpoint after B, before C; no R3. B modifies services mcpService/oauthService, external-api mock adapter, new atomicity PG suite, new agent-auth fixtures, fixture registry/pending, payroll fixture isolation, and the four required closeout documents.
+
 ## 2026-10-15 — R2b.1 task A
 
 `backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/event-integrity.pg.test.js -Filter 'Test Suites:|Tests:|^\s+●'`, existing no-dotenv preload via NODE_OPTIONS. Before: 1 failed / 31 passed (pre-due JS clock +25h). After database-date fixture fix: 1 suite / 32 tests PASS. Each fresh throwaway PG16 run applied 126 existing migrations, exact container removed. Initial preload invocation failed (MODULE_NOT_FOUND, backslashes parsed by Node); corrected env path separators without generating/patching scripts. Owner authorized existing initialization migrations; no migration-file change. Full exit gates not yet run.

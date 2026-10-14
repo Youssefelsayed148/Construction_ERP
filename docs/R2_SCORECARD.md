@@ -2,9 +2,37 @@
 
 ## Current R2b evidence
 
-Owner permits existing migrations for fresh throwaway initialization, with no migration-file changes. R2b.1 fixes the pre-due fixture's clock source: CURRENT_DATE returned by the invoice INSERT supplies the sweep's explicit `now`. JS clocks +0/+23/+25 hours are exercised. Before: pre-due +25h fails (1 failed / 31 passed); after: 1 PG suite / 32 tests PASS. 126 existing migrations applied per run, exact containers removed. Registry coverage remains prior-session 272 / 601, pending 323, exempt 6; full R2b exit gates are not yet run. Historical initialization blocker below is superseded.
+R2b.2 completes task B's transactional changes where the handler boundary permits them. Four new registry fixtures pass success audits and forced-failure rollback. Current accumulated coverage is **276 of 601 endpoints**: 274 audit+rollback; 2 historical documented sweep exceptions assert audit only. Pending is 319, exemptions 6. All 319 remaining entries in pending.json are unverified because task C has not been reached before this context checkpoint; no remaining entry is waived.
 
-## R2b checkpoint — migration initialization clarification
+| R2b measure | Before | After |
+|---|---:|---:|
+| Verified endpoints (including 2 documented sweep exceptions) | 272 | 276 |
+| Pending fixtures | 323 | 319 |
+| Exempt endpoints | 6 | 6 |
+| Pre-due fake-clock regression | 1 failure / 31 passes | 32 passes |
+| Atomicity regressions, valid fixtures on original services | 10 failures / 2 passes | 12 passes in focused 3-suite / 31-test run |
+
+OAuth client/refresh last_used_at and attributed audit share a transaction; password issuance must audit before returning a token. MCP proposals, agent_tool_calls and activity_log share a transaction; rejected decisions include their logs in the claim transaction; approval completion and logs share a completion transaction. Preview already withheld tokens until audit success and now has success/failure coverage. Draft-only proposals also had a real NOT NULL violation (required approver NULL); fallback owner fixes it.
+
+Limits: mapped MCP tools and approved actions execute the existing guarded handler chain, whose business transactions cannot accept an outer transaction client. A subsequent completion/telemetry failure cannot undo an already committed internal operation. The approved/executing claim retains its audit and prevents re-execution; tested with final-log failure injection. This is documented in STATE.md; no global atomicity claim or authorization bypass. B's fixtures exercise a draft proposal and a rejection, not every MCP tool variant or approval branch.
+
+| Checkpoint gate | Requested R2b baseline | Current output |
+|---|---|---|
+| Backend mock | 60 / 1,056 | PASS 60 / 1,056 |
+| Real PG | 73 / 1,201 | PASS 74 / 1,223 (+1 suite / +22 tests: date +2, atomicity +12, registry +8) |
+| lint:guards | pass | PASS |
+| Frontend test:ci | 32 / 131 | PASS 32 / 131 |
+| i18n check/parity | 35 / 1,287 | PASS 35 / 1,287 |
+| Build | pass | PASS |
+| Fresh golden reconciliation | 16 checks | PASS 16 / 16 |
+
+Owner decisions waiting: none for the four supplied decisions; all accepted. Their labour-payment refusal and QHSE duplicate removal implementations are still pending. R2 remains incomplete; no R3.
+
+The first two full PG runs each failed only the payroll DELETE happy fixture with record_in_use. Source diagnosis: API-created periods include global active employees, so suite ordering created payroll_details children protected by migration 0010. The fixture now inserts its own empty draft period; referenced-row protection and runtime hard deletes are unchanged. Final full rerun PASS 74 suites / 1,223 tests, including all 276 registry fixtures. Final-completion audit-failure assertions also passed in that run. Stop at requested context checkpoint after B; this is an interim checkpoint, not completed R2 or a final task D exit after all families.
+
+Owner permits existing migrations for fresh throwaway initialization, with no migration-file changes. R2b.1 fixes the pre-due fixture's clock source: CURRENT_DATE returned by the invoice INSERT supplies the sweep's explicit `now`. JS clocks +0/+23/+25 hours are exercised. Before: pre-due +25h fails (1 failed / 31 passed); after: 1 PG suite / 32 tests PASS. 126 existing migrations applied per run, exact containers removed. Coverage at the task A checkpoint was 272 / 601, pending 323, exempt 6; task B's current evidence is above. Historical initialization blocker below is superseded.
+
+## R2b checkpoint — migration initialization clarification (superseded)
 
 Pre-flight confirmed branch `closeout/batch-a-to-6`, HEAD `db86f49`, and only the two excluded untracked reports. R2b is blocked before its first failing-first PG run: the request forbids migrations, while the required tracked PG runner executes `npm.cmd run migrate` to initialize each fresh database. Question recorded in STATE.md: are existing migrations allowed solely for throwaway initialization, with no migration-file changes? No migrations or containers were run; no implementation changes retained; no new runtime verification claimed.
 
@@ -19,6 +47,8 @@ Pre-flight confirmed branch `closeout/batch-a-to-6`, HEAD `db86f49`, and only th
 The four OWNER DECISIONS in the resume request are accepted and supersede the historical waiting items below: audit definition, costed/posted labour-payment deletion refusal, removal of unreachable QHSE PUT duplicates, and preservation of listed hard deletes. Their required implementations remain pending. R3 not started.
 
 Checkpoint commit was not created: explicit staging and commit commands failed creating `.git/index.lock` (Permission denied). Recorded without retry; four documentation files remain unstaged. Whitespace check passed; application tests and exit gates remain unrun.
+
+## Historical R2 interim scorecard (before R2b; superseded above)
 
 Scope: R2 (audit-trail completeness) only; no R3 work. Status: **R2.2 and R2.3 fixes done for every route the inventory classed unaudited; R2.4 gates run and green except one pre-existing time-of-day failure; runtime verification covers 272 of 601 endpoints. 323 endpoints are still source-audited only and are NOT counted as verified.**
 
