@@ -7,6 +7,7 @@ const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
+const { auditedMutation } = require('../utils/auditedMutation');
 const { typedFail, typedBody } = require('../utils/typedRoute');
 const engine = require('../services/portalEngine');
 const procurement = require('../services/procurementService');
@@ -62,8 +63,11 @@ router.post('/subcontractor/contracts/:id/acknowledge', authenticate, authorize(
   try {
     const contract = await engine.subContractForOrg(query, parseInt(req.params.id, 10), req.user.id);
     if (!contract) return res.status(404).json({ success: false, error: 'Package not found' });
-    const row = (await query('UPDATE sub_contracts SET acknowledged_at = NOW() WHERE id = $1 RETURNING *', [contract.id])).rows[0];
-    res.json({ success: true, data: row });
+    const out = await auditedMutation(req, { action: 'acknowledge', module: 'portal', entityType: 'sub_contract' }, async (q) => {
+      const row = (await q('UPDATE sub_contracts SET acknowledged_at = NOW() WHERE id = $1 RETURNING *', [contract.id])).rows[0];
+      return { data: row, entityId: row.id, projectId: row.project_id, before: contract, after: row, description: `Acknowledged subcontract package ${row.contract_number || row.id}` };
+    });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 
@@ -108,12 +112,15 @@ router.post('/subcontractor/quantities', authenticate, authorize(), async (req, 
     if (!boq || Number(boq.project_id) !== Number(contract.project_id)) {
       return res.status(400).json({ success: false, error: 'BOQ item is outside this package project' });
     }
-    const r = await query(
-      `INSERT INTO sub_work_verifications (sub_contract_id, boq_item_id, period_from, period_to, quantity_claimed, notes)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [value.sub_contract_id, value.boq_item_id, value.period_from, value.period_to, value.quantity_claimed, value.notes]
-    );
-    res.status(201).json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'submit', module: 'portal', entityType: 'sub_work_verification' }, async (q) => {
+      const r = await q(
+        `INSERT INTO sub_work_verifications (sub_contract_id, boq_item_id, period_from, period_to, quantity_claimed, notes)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+        [value.sub_contract_id, value.boq_item_id, value.period_from, value.period_to, value.quantity_claimed, value.notes]
+      );
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: contract.project_id, after: r.rows[0], description: `Submitted quantity claim for package ${value.sub_contract_id}` };
+    });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 
@@ -159,15 +166,16 @@ router.post('/subcontractor/rfis', authenticate, authorize(), async (req, res) =
     authorizeProjectPayload(req, value);
     const contract = await engine.subContractForOrg(query, value.sub_contract_id, req.user.id);
     if (!contract || Number(contract.project_id) !== authorizedProjectId(req, value)) return res.status(404).json({ success: false, error: 'Package not found' });
-    const row = await transaction(async (client) => {
-      const number = await nextNumber((t, p) => client.query(t, p), { table: 'project_rfis', column: 'rfi_number', prefix: `RFI-${authorizedProjectId(req, value)}`, pad: 3 });
-      return (await client.query(
+    const out = await auditedMutation(req, { action: 'submit', module: 'portal', entityType: 'project_rfi' }, async (q) => {
+      const number = await nextNumber(q, { table: 'project_rfis', column: 'rfi_number', prefix: `RFI-${authorizedProjectId(req, value)}`, pad: 3 });
+      const row = (await q(
         `INSERT INTO project_rfis (rfi_number, project_id, sub_contract_id, subject, question, category, priority, due_date, raised_by, status)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'submitted') RETURNING *`,
         [number, authorizedProjectId(req, value), value.sub_contract_id, value.subject, value.question, value.category, value.priority, value.due_date, req.user.id]
       )).rows[0];
+      return { data: row, entityId: row.id, projectId: row.project_id, after: row, description: `Raised RFI ${row.rfi_number}` };
     });
-    res.status(201).json({ success: true, data: row });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 
@@ -183,15 +191,16 @@ router.post('/subcontractor/submittals', authenticate, authorize(), async (req, 
     authorizeProjectPayload(req, value);
     const contract = await engine.subContractForOrg(query, value.sub_contract_id, req.user.id);
     if (!contract || Number(contract.project_id) !== authorizedProjectId(req, value)) return res.status(404).json({ success: false, error: 'Package not found' });
-    const row = await transaction(async (client) => {
-      const number = await nextNumber((t, p) => client.query(t, p), { table: 'project_submittals', column: 'submittal_number', prefix: `SUB-${authorizedProjectId(req, value)}`, pad: 3 });
-      return (await client.query(
+    const out = await auditedMutation(req, { action: 'submit', module: 'portal', entityType: 'project_submittal' }, async (q) => {
+      const number = await nextNumber(q, { table: 'project_submittals', column: 'submittal_number', prefix: `SUB-${authorizedProjectId(req, value)}`, pad: 3 });
+      const row = (await q(
         `INSERT INTO project_submittals (submittal_number, project_id, sub_contract_id, title, submittal_type, submitted_to, submitted_by, status)
          VALUES ($1,$2,$3,$4,$5,$6,$7,'submitted') RETURNING *`,
         [number, authorizedProjectId(req, value), value.sub_contract_id, value.title, value.submittal_type, value.submitted_to, req.user.id]
       )).rows[0];
+      return { data: row, entityId: row.id, projectId: row.project_id, after: row, description: `Submitted submittal ${row.submittal_number}` };
     });
-    res.status(201).json({ success: true, data: row });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 
@@ -204,14 +213,15 @@ router.post('/subcontractor/rfis/:id/acknowledge', authenticate, authorize(), as
     }
     const { error, value } = Joi.object({ body: Joi.string().allow('', null).default('Acknowledged') }).validate(req.body || {});
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const row = await transaction(async (client) => {
-      await client.query('SELECT id FROM project_rfis WHERE id = $1 FOR UPDATE', [rfiId]);
-      return require('../services/consultantEngine').recordRfiResponse(client.query.bind(client), {
+    const out = await auditedMutation(req, { action: 'acknowledge', module: 'portal', entityType: 'project_rfi' }, async (q) => {
+      await q('SELECT id FROM project_rfis WHERE id = $1 FOR UPDATE', [rfiId]);
+      const row = await require('../services/consultantEngine').recordRfiResponse(q, {
         rfi_id: rfiId, stage: 'acknowledgement', revision: Number(rfi.revision || 1),
         user: req.user, body: value.body || 'Acknowledged',
       });
+      return { data: row, entityId: rfiId, projectId: rfi.project_id, before: rfi, after: row, description: `Acknowledged RFI ${rfi.rfi_number || rfiId}` };
     });
-    res.status(201).json({ success: true, data: row });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 
@@ -224,11 +234,12 @@ router.post('/subcontractor/submittals/:id/resubmit', authenticate, authorize(),
     }
     const { error, value } = Joi.object({ comments: Joi.string().allow('', null), attachments: Joi.array().default([]) }).validate(req.body || {});
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const row = await transaction(async (client) => {
-      await client.query('SELECT id FROM project_submittals WHERE id = $1 FOR UPDATE', [id]);
-      return require('../services/consultantEngine').resubmitSubmittal(client.query.bind(client), id, req.user, value);
+    const out = await auditedMutation(req, { action: 'resubmit', module: 'portal', entityType: 'project_submittal' }, async (q) => {
+      await q('SELECT id FROM project_submittals WHERE id = $1 FOR UPDATE', [id]);
+      const row = await require('../services/consultantEngine').resubmitSubmittal(q, id, req.user, value);
+      return { data: row, entityId: id, projectId: submittal.project_id, before: submittal, after: row, description: `Resubmitted submittal ${submittal.submittal_number || id}` };
     });
-    res.status(201).json({ success: true, data: row });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 
@@ -326,10 +337,13 @@ router.post('/supplier/rfqs/:id/quotations', authenticate, authorize(), async (r
     const access = await engine.supplierRfq(query, req.user.id, parseInt(req.params.id, 10));
     if (!access) return res.status(404).json({ success: false, error: 'RFQ not found' });
     const assignment = rfqSupplier(access, value.supplier_id);
-    const result = await transaction((client) => procurement.submitQuotation(client.query.bind(client), {
-      ...value, rfq_id: access.rfq.id, supplier_id: assignment.supplier_id, created_by: req.user.id,
-    }));
-    res.status(201).json({ success: true, data: result });
+    const out = await auditedMutation(req, { action: 'submit_quotation', module: 'portal', entityType: 'supplier_quotation' }, async (q) => {
+      const result = await procurement.submitQuotation(q, {
+        ...value, rfq_id: access.rfq.id, supplier_id: assignment.supplier_id, created_by: req.user.id,
+      });
+      return { data: result, entityId: result.id, projectId: access.rfq.project_id, after: result, amount: result.total_price == null ? undefined : Number(result.total_price), description: `Supplier quotation on RFQ ${access.rfq.rfq_number || access.rfq.id}` };
+    });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 
@@ -340,12 +354,15 @@ router.post('/supplier/rfqs/:id/clarifications', authenticate, authorize(), asyn
     const access = await engine.supplierRfq(query, req.user.id, parseInt(req.params.id, 10));
     if (!access) return res.status(404).json({ success: false, error: 'RFQ not found' });
     const assignment = rfqSupplier(access, value.supplier_id);
-    const row = await engine.createPortalSubmission(query, req.user.id, {
-      organization_id: assignment.organization_id, project_id: access.rfq.project_id,
-      submission_type: 'rfq_clarification', related_entity_type: 'rfq', related_entity_id: access.rfq.id,
-      payload: value,
+    const out = await auditedMutation(req, { action: 'submit', module: 'portal', entityType: 'portal_submission' }, async (q) => {
+      const row = await engine.createPortalSubmission(q, req.user.id, {
+        organization_id: assignment.organization_id, project_id: access.rfq.project_id,
+        submission_type: 'rfq_clarification', related_entity_type: 'rfq', related_entity_id: access.rfq.id,
+        payload: value,
+      });
+      return { data: row, entityId: row.id, projectId: access.rfq.project_id, after: row, description: `RFQ clarification submitted for RFQ #${access.rfq.id}` };
     });
-    res.status(201).json({ success: true, data: row });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 
@@ -353,8 +370,11 @@ router.post('/supplier/purchase-orders/:id/acknowledge', authenticate, authorize
   try {
     const po = await engine.supplierPurchaseOrder(query, req.user.id, parseInt(req.params.id, 10));
     if (!po) return res.status(404).json({ success: false, error: 'Purchase order not found' });
-    const row = (await query('UPDATE purchase_orders SET acknowledged_at = NOW() WHERE id = $1 RETURNING *', [po.id])).rows[0];
-    res.json({ success: true, data: row });
+    const out = await auditedMutation(req, { action: 'acknowledge', module: 'portal', entityType: 'purchase_order' }, async (q) => {
+      const row = (await q('UPDATE purchase_orders SET acknowledged_at = NOW() WHERE id = $1 RETURNING *', [po.id])).rows[0];
+      return { data: row, entityId: row.id, projectId: row.project_id, before: po, after: row, description: `Supplier acknowledged PO ${row.order_number || row.id}` };
+    });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 
@@ -365,12 +385,15 @@ router.post('/supplier/purchase-orders/:id/propose-delivery', authenticate, auth
     const po = await engine.supplierPurchaseOrder(query, req.user.id, parseInt(req.params.id, 10));
     if (!po) return res.status(404).json({ success: false, error: 'Purchase order not found' });
     const scope = await engine.supplierScope(query, req.user.id);
-    const row = await engine.createPortalSubmission(query, req.user.id, {
-      organization_id: supplierAssignment(scope, po.supplier_id, po.project_id).organization_id, project_id: po.project_id,
-      submission_type: 'delivery_date_proposal', related_entity_type: 'purchase_order', related_entity_id: po.id,
-      payload: value,
+    const out = await auditedMutation(req, { action: 'submit', module: 'portal', entityType: 'portal_submission' }, async (q) => {
+      const row = await engine.createPortalSubmission(q, req.user.id, {
+        organization_id: supplierAssignment(scope, po.supplier_id, po.project_id).organization_id, project_id: po.project_id,
+        submission_type: 'delivery_date_proposal', related_entity_type: 'purchase_order', related_entity_id: po.id,
+        payload: value,
+      });
+      return { data: row, entityId: row.id, projectId: po.project_id, after: row, description: `Delivery date proposed for PO #${po.id}` };
     });
-    res.status(201).json({ success: true, data: row });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 
@@ -384,12 +407,15 @@ router.post('/supplier/deliveries/:id/certificates', authenticate, authorize(), 
     const po = await engine.supplierPurchaseOrder(query, req.user.id, delivery.purchase_order_id);
     if (!po) return res.status(404).json({ success: false, error: 'Delivery not found' });
     const scope = await engine.supplierScope(query, req.user.id);
-    const row = await engine.createPortalSubmission(query, req.user.id, {
-      organization_id: supplierAssignment(scope, po.supplier_id, po.project_id).organization_id, project_id: po.project_id,
-      submission_type: 'delivery_certificate', related_entity_type: 'delivery', related_entity_id: delivery.id,
-      payload: value,
+    const out = await auditedMutation(req, { action: 'submit', module: 'portal', entityType: 'portal_submission' }, async (q) => {
+      const row = await engine.createPortalSubmission(q, req.user.id, {
+        organization_id: supplierAssignment(scope, po.supplier_id, po.project_id).organization_id, project_id: po.project_id,
+        submission_type: 'delivery_certificate', related_entity_type: 'delivery', related_entity_id: delivery.id,
+        payload: value,
+      });
+      return { data: row, entityId: row.id, projectId: po.project_id, after: row, description: `Delivery certificate submitted for delivery #${delivery.id}` };
     });
-    res.status(201).json({ success: true, data: row });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 
@@ -407,10 +433,13 @@ router.post('/supplier/invoices', authenticate, authorize(), async (req, res) =>
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     const po = await engine.supplierPurchaseOrder(query, req.user.id, value.purchase_order_id);
     if (!po) return res.status(404).json({ success: false, error: 'Purchase order not found' });
-    const result = await transaction((client) => procurement.recordSupplierInvoice(client.query.bind(client), {
-      ...value, supplier_id: po.supplier_id, created_by: req.user.id,
-    }));
-    res.status(201).json({ success: true, data: result });
+    const out = await auditedMutation(req, { action: 'submit_invoice', module: 'portal', entityType: 'supplier_invoice' }, async (q) => {
+      const result = await procurement.recordSupplierInvoice(q, {
+        ...value, supplier_id: po.supplier_id, created_by: req.user.id,
+      });
+      return { data: result, entityId: result.invoice && result.invoice.id, projectId: po.project_id, after: result.invoice, amount: Number(value.total_amount), description: `Supplier invoice ${value.invoice_number} submitted via portal` };
+    });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 

@@ -663,3 +663,4 @@ R2.3/materials+units+locations+maintenance+workorders done cdedf5f; next project
 R2.3/projects+site+quantities+schedule done 4dbc352; next hr
 Observation (owner decision, not changed): DELETE /api/hr/labor-payments/:id physically deletes a payment whose project cost was booked by the labor_payment.created event; no reversing cost event exists. R2 only adds a before-snapshot audit.
 R2.3/hr+hse done 8e8d83f; next qhse
+R2.3/qhse done cf383ee; next portal

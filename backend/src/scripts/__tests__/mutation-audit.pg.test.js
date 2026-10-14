@@ -25,7 +25,7 @@ const pending = fs.existsSync(pendingPath) ? JSON.parse(fs.readFileSync(pendingP
 const describePg = process.env.TEST_PG === '1' ? describe : describe.skip;
 const ONLY = process.env.R2_ONLY ? new RegExp(process.env.R2_ONLY) : null;
 // Infrastructure tables written outside the business transaction by design.
-const INFRA_TABLES = new Set(['idempotency_keys', 'v1_rate_limits', 'rate_limits', 'user_sessions', 'refresh_tokens', 'event_outbox_attempts']);
+const INFRA_TABLES = new Set(['r02_fail_users', 'idempotency_keys', 'v1_rate_limits', 'rate_limits', 'user_sessions', 'refresh_tokens', 'event_outbox_attempts']);
 
 function enumerateMutations(app) {
   const routes = new Set();
@@ -73,7 +73,24 @@ describePg('R2 every mounted mutation has a successful audited payload', () => {
       if (!expected.includes(r.status)) throw new Error(`prerequisite ${method} ${url} -> ${r.status} ${r.text.slice(0, 160)}`);
       return r.json?.data ?? r.json;
     };
-    return { db, owner, project, tag, n, api, one, token, pid: project.id };
+    // Actors: a user in another role, optionally linked to an organization (portal users). The registry then calls
+    // the route as that actor, and the failure-injection run makes that same actor's audit inserts throw.
+    const org = async (type) => one('INSERT INTO organizations (code, name_ar, name_en, org_type) VALUES ($1, $1, $1, $2) RETURNING id', [`r02-${type}-${n()}`, type]);
+    const participant = (orgId, type, legacy = {}) => one(
+      'INSERT INTO project_participants (project_id, organization_id, participant_type, portal_access_enabled, legacy_subcontractor_id, legacy_supplier_id) VALUES ($1, $2, $3, true, $4, $5) RETURNING id',
+      [project.id, orgId, type, legacy.subcontractor || null, legacy.supplier || null]);
+    const actor = async (role, orgId = null) => {
+      const row = await one("INSERT INTO users (name, email, password, role) VALUES ($1, $2, 'unused', $3) RETURNING id, token_version", [`r02-${role}`, `r02-${role}-${n()}@test.invalid`, role]);
+      if (orgId) await db.query('INSERT INTO organization_users (user_id, organization_id, is_active) VALUES ($1, $2, true)', [row.id, orgId]);
+      await db.query('INSERT INTO user_project_roles (user_id, project_id, role_id) SELECT $1, NULL, id FROM roles WHERE key = $2', [row.id, role]);
+      return { userId: row.id, token: tokens.signSession({ userId: row.id, tokenVersion: row.token_version }) };
+    };
+    const as = async (who, method, url, body, expected = [200, 201], headers = {}) => {
+      const r = await send(method, url, body, who.token, headers);
+      if (!expected.includes(r.status)) throw new Error(`prerequisite (actor) ${method} ${url} -> ${r.status} ${r.text.slice(0, 160)}`);
+      return r.json?.data ?? r.json;
+    };
+    return { db, owner, project, tag, n, api, as, one, token, pid: project.id, org, participant, actor };
   };
 
   beforeAll(async () => {
@@ -90,9 +107,16 @@ describePg('R2 every mounted mutation has a successful audited payload', () => {
     token = tokens.signSession({ userId: owner.id, tokenVersion: owner.token_version });
     failToken = tokens.signSession({ userId: failer.id, tokenVersion: failer.token_version });
     // Failure injection scoped to one user: any audit row for the failer raises.
-    await db.query(`CREATE OR REPLACE FUNCTION r02_fail_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'r02 injected audit failure'; END $$`);
-    await db.query(`CREATE TRIGGER r02_fail_activity BEFORE INSERT ON activity_log FOR EACH ROW WHEN (NEW.user_id = ${Number(failer.id)}) EXECUTE FUNCTION r02_fail_audit()`);
-    await db.query(`CREATE TRIGGER r02_fail_policy BEFORE INSERT ON audit_events FOR EACH ROW WHEN (NEW.user_id = ${Number(failer.id)} OR NEW.actor_id = ${Number(failer.id)}) EXECUTE FUNCTION r02_fail_audit()`);
+    await db.query('CREATE TABLE IF NOT EXISTS r02_fail_users (user_id INTEGER PRIMARY KEY)');
+    await db.query('INSERT INTO r02_fail_users (user_id) VALUES ($1) ON CONFLICT DO NOTHING', [failer.id]);
+    await db.query(`CREATE OR REPLACE FUNCTION r02_fail_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+      IF EXISTS (SELECT 1 FROM r02_fail_users f WHERE f.user_id = NEW.user_id) THEN RAISE EXCEPTION 'r02 injected audit failure'; END IF;
+      RETURN NEW; END $$`);
+    await db.query(`CREATE OR REPLACE FUNCTION r02_fail_policy_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+      IF EXISTS (SELECT 1 FROM r02_fail_users f WHERE f.user_id = NEW.user_id OR f.user_id = NEW.actor_id) THEN RAISE EXCEPTION 'r02 injected audit failure'; END IF;
+      RETURN NEW; END $$`);
+    await db.query('CREATE TRIGGER r02_fail_activity BEFORE INSERT ON activity_log FOR EACH ROW EXECUTE FUNCTION r02_fail_audit()');
+    await db.query('CREATE TRIGGER r02_fail_policy BEFORE INSERT ON audit_events FOR EACH ROW EXECUTE FUNCTION r02_fail_policy_audit()');
     await new Promise(resolve => { server = app.listen(0, '127.0.0.1', resolve); });
     base = `http://127.0.0.1:${server.address().port}`;
   });
@@ -103,6 +127,8 @@ describePg('R2 every mounted mutation has a successful audited payload', () => {
       await db.query('DROP TRIGGER IF EXISTS r02_fail_activity ON activity_log');
       await db.query('DROP TRIGGER IF EXISTS r02_fail_policy ON audit_events');
       await db.query('DROP FUNCTION IF EXISTS r02_fail_audit()');
+      await db.query('DROP FUNCTION IF EXISTS r02_fail_policy_audit()');
+      await db.query('DROP TABLE IF EXISTS r02_fail_users');
       for (const u of [owner, failer]) if (u) {
         await db.query('DELETE FROM user_project_roles WHERE user_id = $1', [u.id]);
         await db.query('UPDATE users SET is_active = false WHERE id = $1', [u.id]);
@@ -130,10 +156,11 @@ describePg('R2 every mounted mutation has a successful audited payload', () => {
   test.each(keys)('%s success writes an audit row', async key => {
     expect(enumerateMutations(app)).toContain(key);
     const payload = await registry[key](ctx());
-    const before = await counts(owner.id);
-    const r = await send(key.split(' ')[0], payload.path, payload.body, token, payload.headers);
+    const who = payload.actor || { userId: owner.id, token };
+    const before = await counts(who.userId);
+    const r = await send(key.split(' ')[0], payload.path, payload.body, who.token, payload.headers);
     if (r.status !== payload.status) throw new Error(`R2 fixture error ${key}: status=${r.status} expected ${payload.status} ${r.text.slice(0, 200)}`);
-    const after = await counts(owner.id);
+    const after = await counts(who.userId);
     const delta = { activity: after.activity - before.activity, audit_events: after.policy - before.policy };
     console.log(`R2 audit ${key}: status=${r.status}; activity_log +${delta.activity}; audit_events +${delta.audit_events}`);
     if (delta.activity + delta.audit_events < 1) throw new Error(`R2 no audit row ${key}: request succeeded (${r.status}) but wrote no activity_log/audit_events row`);
@@ -143,7 +170,8 @@ describePg('R2 every mounted mutation has a successful audited payload', () => {
     const payload = await registry[key](ctx());
     if (payload.nonAtomic) { console.log(`R2 rollback skipped ${key}: documented non-atomic exception - ${payload.nonAtomic}`); return; }
     const { xid } = await one('SELECT txid_current()::text AS xid');
-    const r = await send(key.split(' ')[0], payload.path, payload.body, failToken, payload.headers);
+    if (payload.actor) await db.query('INSERT INTO r02_fail_users (user_id) VALUES ($1) ON CONFLICT DO NOTHING', [payload.actor.userId]);
+    const r = await send(key.split(' ')[0], payload.path, payload.body, payload.actor ? payload.actor.token : failToken, payload.headers);
     const { rows } = await db.query(`
       SELECT c.relname, (xpath('/row/n/text()', query_to_xml(format('SELECT count(*) AS n FROM %I.%I WHERE xmin::text::bigint > %s', n.nspname, c.relname, $1::bigint), false, true, '')))[1]::text::int AS n
       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace

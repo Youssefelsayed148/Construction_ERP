@@ -10,7 +10,7 @@ function group(keys, build) {
       if (spec.params?.[name] === undefined) throw new Error(`fixture ${key} lacks param ${name}`);
       return spec.params[name];
     });
-    return { path: route + (spec.query ? `?${spec.query}` : ''), body: spec.body, status: spec.status ?? 200, nonAtomic: spec.nonAtomic, headers: spec.headers };
+    return { path: route + (spec.query ? `?${spec.query}` : ''), body: spec.body, status: spec.status ?? 200, nonAtomic: spec.nonAtomic, headers: spec.headers, actor: spec.actor };
   }]));
 }
 
