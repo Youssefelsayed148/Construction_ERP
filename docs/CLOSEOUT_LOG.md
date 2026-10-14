@@ -1459,3 +1459,5 @@ Replaced all 110 page-level inline `gridTemplateColumns` declarations with respo
 Verification: `npm run test:ci` PASS, 29 suites / 117 tests; `npm run i18n:check` PASS; `npm run build` reported `Compiled successfully`; `npm run lint:guards` printed `lint-guards: ok`; `git diff --check` exited 0. Full Playwright after grid/table changes: 36 passed / 50 skipped (the 50 backend/pilot/screenshot cases remain gated). The offline report journey passed 1/1 desktop and 1/1 mobile after final touch sizing. Previously completed backend gates remain 53/1,002 mock and 67/608 real PG; no backend code changed in this layout-only slice.
 
 Phase 7 remains open: font files are absent locally, Lighthouse has not been run, and mobile journeys are not yet present for every major screen and portal.
+
+Responsive layout/table commit: `7fd068a` (`Phase 7.2: make page grids responsive`). The audit report artifact was excluded; explicit-path staging showed 35 files in this slice.

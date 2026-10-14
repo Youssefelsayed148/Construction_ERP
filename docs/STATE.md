@@ -59,3 +59,5 @@ Phase 7.2 offline site-report queue committed as `7487787` (`Phase 7.2: queue si
 ## 2026-10-14 continuation — Phase 7 responsive utilities
 
 App-wide page grid declarations were converted to responsive classes (110 to 0). All 72 JSX tables now sit in `.table-container` (AST check: 0 unwrapped). Site Management buttons are 44px minimum and form controls 14px. Post-change Playwright: 36 passed / 50 skipped, including offline flow on desktop/mobile; frontend 29/117, i18n and build passed. Phase 7 remains open for bundled IBM Plex Arabic, Lighthouse evidence, and broader route/portal mobile coverage.
+
+Responsive grid/table slice committed as `7fd068a` (`Phase 7.2: make page grids responsive`).

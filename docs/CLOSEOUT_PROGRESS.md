@@ -633,3 +633,5 @@ Converted 110 inline `gridTemplateColumns` declarations in frontend page files t
 Verification after the layout conversion: frontend CI 29 suites / 117 tests; `i18n:check ok`; production build compiled; backend `lint-guards: ok`; `git diff --check` exited 0; full Playwright 36 passed / 50 skipped. Desktop and mobile offline daily-report journeys each passed 1/1 after the final Site Management sizing change. Real PG/backend gates remain valid from the immediately preceding Phase 7 queue slice because this slice changes only frontend layout and docs; they passed 67 suites / 608 tests and 53 suites / 1,002 tests respectively.
 
 Remaining Phase 7 items: locally bundle licensed IBM Plex Arabic fonts; run Lighthouse and record an actual PWA score; extend mobile viewport coverage to every major screen and portal. Do not mark Phase 7 complete until those items and its exit gate are satisfied.
+
+Responsive layout/table commit: `7fd068a` (`Phase 7.2: make page grids responsive`) on `closeout/batch-a-to-6`.
