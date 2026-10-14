@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { setUser, setError } from '../store/slices/authSlice';
+import { useAuth } from '../store';
 import { authApi, authService } from '../services/api';
 import { useLocale } from '../hooks/useLocale';
 import { HardHat, Eye, EyeOff } from 'lucide-react';
@@ -12,7 +11,7 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const dispatch = useDispatch();
+  const { setUser, setError } = useAuth();
   const navigate = useNavigate();
   const { t, locale, setLocale } = useLocale();
 
@@ -25,14 +24,14 @@ function Login() {
       const response = await authApi.login(email, password);
       if (response.success) {
         authService.setSession(response.data.token, response.data.user);
-        dispatch(setUser(response.data.user));
+        setUser(response.data.user);
         navigate('/');
       } else {
         setErrorMsg(response.error || t('auth.login.failed'));
       }
     } catch (err) {
       setErrorMsg(err.message || t('auth.login.failed'));
-      dispatch(setError(err.message));
+      setError(err.message);
     } finally {
       setLoading(false);
     }

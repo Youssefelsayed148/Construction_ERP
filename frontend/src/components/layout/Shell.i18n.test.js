@@ -1,8 +1,7 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Provider } from 'react-redux';
+import { AuthProvider } from '../../store';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import store from '../../store';
 import { LocaleProvider } from '../../i18n/LocaleContext';
 import { _resetCatalogCache } from '../../i18n/catalog';
 import { toEnumKey, translateEnum, translateRole } from '../../i18n/enums';
@@ -31,7 +30,7 @@ describe('application shell in Arabic', () => {
   };
   const shell = (path = '/') => (
     <LocaleProvider initialLocale="ar">
-      <Provider store={store}>
+      <AuthProvider>
         <MemoryRouter initialEntries={[path]}>
           <Routes>
             <Route path="/" element={<Layout />}>
@@ -40,7 +39,7 @@ describe('application shell in Arabic', () => {
             </Route>
           </Routes>
         </MemoryRouter>
-      </Provider>
+      </AuthProvider>
     </LocaleProvider>
   );
   // Everything a user (or screen reader) can read from the shell.

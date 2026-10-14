@@ -1,7 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { logout as reduxLogout } from '../../store/slices/authSlice';
+import { useAuth } from '../../store';
 import { authService } from '../../services/api';
 import { useLocale } from '../../hooks/useLocale';
 import { translateRole } from '../../i18n/enums';
@@ -37,7 +36,7 @@ const portalMenuItems = {
 const labelFor = (t, item) => t(item.labelKey.startsWith('portals.') ? `navigation.${item.labelKey}` : `navigation.items.${item.labelKey}`);
 
 function Sidebar({ mobileOpen = false, onNavigate }) {
-  const dispatch = useDispatch();
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const { t, setLocale, locale } = useLocale();
   const user = authService.getCurrentUser();
@@ -57,8 +56,7 @@ function Sidebar({ mobileOpen = false, onNavigate }) {
     && hasModule(item.module) && hasPermission(item.module, item.action));
 
   const handleLogout = () => {
-    authService.clearSession();
-    dispatch(reduxLogout());
+    logout();
     navigate('/login');
   };
 

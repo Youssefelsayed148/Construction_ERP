@@ -1,8 +1,7 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Provider } from 'react-redux';
+import { AuthProvider } from '../../store';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import store from '../../store';
 import Layout from './Layout';
 
 jest.mock('../../hooks/useLocale', () => ({
@@ -28,7 +27,7 @@ describe('responsive application shell', () => {
   });
 
   test('opens and closes the mobile navigation with an accessible control', () => {
-    act(() => root.render(<Provider store={store}><MemoryRouter><Routes><Route path="/" element={<Layout />}><Route index element={<p>Page</p>} /></Route></Routes></MemoryRouter></Provider>));
+    act(() => root.render(<AuthProvider><MemoryRouter><Routes><Route path="/" element={<Layout />}><Route index element={<p>Page</p>} /></Route></Routes></MemoryRouter></AuthProvider>));
     expect(container.querySelector('.sidebar-nav a[href="/settings"]')).toBeTruthy();
     const button = container.querySelector('.mobile-menu-button');
     expect(button.getAttribute('aria-expanded')).toBe('false');
@@ -39,7 +38,7 @@ describe('responsive application shell', () => {
 
   test('shows an actionable offline state', () => {
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
-    act(() => root.render(<Provider store={store}><MemoryRouter><Routes><Route path="/" element={<Layout />} /></Routes></MemoryRouter></Provider>));
+    act(() => root.render(<AuthProvider><MemoryRouter><Routes><Route path="/" element={<Layout />} /></Routes></MemoryRouter></AuthProvider>));
     expect(container.querySelector('.offline-banner').textContent).toContain('offline');
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
   });

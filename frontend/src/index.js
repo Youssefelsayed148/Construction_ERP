@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { Provider } from 'react-redux';
-import store from './store';
+import { AuthProvider } from './store';
 import App from './App';
 import { LocaleProvider } from './i18n/LocaleContext';
 import { applyDocumentLocale, readStoredLocale } from './i18n/config';
@@ -23,10 +22,10 @@ root.render(
   <React.StrictMode>
     <LocaleProvider>
       <ToastProvider>
-        <Provider store={store}>
+        <AuthProvider>
           <ServiceWorkerUpdatePrompt />
           <App />
-        </Provider>
+        </AuthProvider>
       </ToastProvider>
     </LocaleProvider>
   </React.StrictMode>
