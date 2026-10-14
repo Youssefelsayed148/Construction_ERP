@@ -5,6 +5,7 @@ import { openProtectedFile } from '../components/ProtectedMedia';
 import DocumentUpload from '../components/DocumentUpload';
 import { useLocale } from '../hooks/useLocale';
 import { translatePriority, translateStatus } from '../i18n/enums';
+import { formatNumber } from '../utils/formatters';
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
 
@@ -33,10 +34,10 @@ async function request(path, options = {}) {
 
 const dashboardLabel = (t, group, value) => t(`portals.dashboard.${group}.${value}`, { defaultValue: String(value ?? '') });
 
-function valueText(value) {
+function valueText(value, t) {
   if (value == null || value === '') return '—';
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-  if (typeof value === 'number') return value.toLocaleString();
+  if (typeof value === 'boolean') return t(value ? 'common.yes' : 'common.no');
+  if (typeof value === 'number') return formatNumber(value);
   if (typeof value === 'string') return value;
   return null;
 }
@@ -54,7 +55,7 @@ function Widget({ name, value }) {
     );
   }
   if (typeof value !== 'object') {
-    return <section className="card portal-widget"><div className="card-header">{title}</div><div className="card-body portal-metric">{valueText(value)}</div></section>;
+    return <section className="card portal-widget"><div className="card-header">{title}</div><div className="card-body portal-metric">{valueText(value, t)}</div></section>;
   }
   const items = Array.isArray(value.items) ? value.items : null;
   if (items) {
@@ -67,23 +68,23 @@ function Widget({ name, value }) {
       </section>
     );
   }
-  const simple = Object.entries(value).filter(([, v]) => valueText(v) != null);
+  const simple = Object.entries(value).filter(([, v]) => valueText(v, t) != null);
   if (!simple.length) return null;
   return (
     <section className="card portal-widget">
       <div className="card-header">{title}</div>
-      <div className="card-body">{simple.map(([k, v]) => <div className="portal-row" key={k}><span>{dashboardLabel(t, 'fields', k)}</span><strong>{valueText(v)}</strong></div>)}</div>
+      <div className="card-body">{simple.map(([k, v]) => <div className="portal-row" key={k}><span>{dashboardLabel(t, 'fields', k)}</span><strong>{valueText(v, t)}</strong></div>)}</div>
     </section>
   );
 }
 
 function Record({ value }) {
   const { t } = useLocale();
-  if (value == null || typeof value !== 'object') return <div className="portal-record">{valueText(value)}</div>;
+  if (value == null || typeof value !== 'object') return <div className="portal-record">{valueText(value, t)}</div>;
   const title = value.title || value.name || value.subject || value.number || value.order_number || value.contract_number || value.invoice_number || value.rfq_number || `Record #${value.id}`;
   const status = value.status ? translateStatus(t, value.status) : translatePriority(t, value.priority);
   const detail = value.amount ?? value.total_amount ?? value.net_certificate ?? value.deadline ?? value.due_date;
-  return <div className="portal-record"><span>{value.file_url ? <a href="#open-file" onClick={e => { e.preventDefault(); openProtectedFile(value.file_url).catch(error => window.alert(error.message)); }}>{title}</a> : title}</span><span>{detail != null ? valueText(detail) : ''} {status ? <small className="badge badge-secondary">{status}</small> : null}</span></div>;
+  return <div className="portal-record"><span>{value.file_url ? <a href="#open-file" onClick={e => { e.preventDefault(); openProtectedFile(value.file_url).catch(error => window.alert(error.message)); }}>{title}</a> : title}</span><span>{detail != null ? valueText(detail, t) : ''} {status ? <small className="badge badge-secondary">{status}</small> : null}</span></div>;
 }
 
 function ConsultantReviews({ rows = [], onDone }) {
