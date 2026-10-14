@@ -792,4 +792,4 @@ Verification: PortalDashboard suite PASS (11/11); i18n check passed; parity pass
 
 Localized the ProcurementReview title and description, RFQ input label, loading/compare actions, every comparison column, boolean values, document buttons, recommendation, and empty state. Load and download failures now show localized generic messages rather than raw server/network text. The sidebar entry already uses the translated navigation key.
 
-Verification: ProcurementReview component tests PASS (2/2), covering translated comparison data and generic load/download errors; i18n check passed; parity passed (35 namespaces / 1,241 English keys); git diff --check passed. The full production build is scheduled with the frontend batch gate.
+Verification: ProcurementReview component tests PASS (2/2), covering translated comparison data and generic load/download errors; i18n check passed; parity passed (35 namespaces / 1,241 English keys); git diff --check passed. The full production build passed in the frontend batch gate before this page-only change; rerun it before batch close. Implementation commit: 1d14afb.
