@@ -370,7 +370,7 @@ Exit gate: Lighthouse PWA pass; airplane-mode site journey passes in Playwright.
 - [ ] EAC: real forecast input per cost code (ForecastVersion), `EAC = actual + ETC` with ETC from forecast or remaining-commitment rules; fix the degenerate `max(committed - actual, 0)` logic; add the cash-contribution metric.
 - [ ] Retention and advance: derive recovery from contract percentage and cap; manual override audited.
 - [x] Valuation: pull `gross_current_work` from certified quantities. Quantity-backed client and subcontractor applications now snapshot contract-line rates and derive the certificate amount from individually certified quantities; historical/manual applications retain their recorded basis.
-- [ ] Reminder tiers including pre-due (-7) and per-client rules.
+- [x] Reminder tiers including pre-due (-7) and per-client rules. The sweep emits the due-soon tier once when 1–7 days remain and resolves active client, project, then company rules for each invoice; an explicit disabled rule suppresses the reminder.
 - [ ] Earned value: enable SPI/CPI by default where baselines exist; resource-loaded planning.
 - [ ] Decide and execute the retirement of the legacy approval system: migrate in-flight items, drop dual writes, remove `verify-approval-parity.js` once parity is proven.
 - [ ] Remove duplicate surfaces: transition view, `payment_certificates` vs `sub_payment_certificates`.

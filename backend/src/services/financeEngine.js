@@ -584,14 +584,15 @@ async function companyFinanceDashboard(q, { now = new Date() } = {}) {
 
 async function reminderConfig(q, { project_id = null, client_id = null } = {}) {
   const keys = [];
-  if (project_id != null) keys.push(`receivable_reminder_config:project:${project_id}`);
   if (client_id != null) keys.push(`receivable_reminder_config:client:${client_id}`);
+  if (project_id != null) keys.push(`receivable_reminder_config:project:${project_id}`);
   keys.push('receivable_reminder_config:company');
   for (const key of keys) {
-    const row = (await q('SELECT rule_value FROM business_rules WHERE rule_key = $1', [key])).rows[0];
+    const row = (await q('SELECT rule_value FROM business_rules WHERE rule_key = $1 AND is_active = true', [key])).rows[0];
     if (!row) continue;
     const v = typeof row.rule_value === 'string' ? JSON.parse(row.rule_value) : row.rule_value;
-    if (v && v.enabled !== false) return { ...v, config_key: key };
+    if (v && v.enabled === false) return { ...v, config_key: key };
+    if (v) return { ...v, config_key: key };
   }
   return { enabled: true, config_key: 'receivable_reminder_config:company' };
 }
@@ -606,15 +607,17 @@ async function runInTransaction(q, fn) {
 async function runReceivableReminderSweep(q = defaultQuery, opts = {}) {
   const now = opts.now || new Date();
   const nowMs = new Date(now).getTime();
-  const config = await reminderConfig(q, opts);
-  if (config.enabled === false) return { reminders_sent: 0, disabled: true };
-
   const invoices = (await q('SELECT * FROM invoices')).rows.filter(
     (i) => !['draft', 'cancelled', 'void', 'credited', 'paid'].includes(i.status === 'sent' ? 'issued' : i.status)
   );
   let sent = 0;
   const failures = [];
+  const configs = new Map();
   for (const inv of invoices) {
+    const configKey = `${inv.project_id ?? ''}:${inv.client_id ?? ''}`;
+    if (!configs.has(configKey)) configs.set(configKey, await reminderConfig(q, { project_id: inv.project_id, client_id: inv.client_id }));
+    const config = configs.get(configKey);
+    if (config.enabled === false) continue;
     const net = inv.net_amount != null && toNum(inv.net_amount) > 0 ? toNum(inv.net_amount) : toNum(inv.amount);
     const allocs = (await q(
       "SELECT * FROM payment_allocations WHERE invoice_id = $1 AND target_type = 'client_invoice' AND voided_at IS NULL",
@@ -630,7 +633,7 @@ async function runReceivableReminderSweep(q = defaultQuery, opts = {}) {
     else if (daysOverdueOf(inv, now) >= 14) stage = 'overdue_14';
     else if (daysOverdueOf(inv, now) >= 7) stage = 'overdue_7';
     else if (daysOverdueOf(inv, now) > 0) stage = null; // between thresholds — the overdue status covers it
-    else if (Math.ceil((new Date(inv.due_date).getTime() - nowMs) / 86400000) === 7) stage = 'due_soon';
+    else if (daysUntilDue > 0 && daysUntilDue <= 7) stage = 'due_soon';
     else if (new Date(inv.due_date).toDateString() === new Date(now).toDateString()) stage = 'due_today';
     if (!stage) continue;
 
@@ -657,7 +660,7 @@ async function runReceivableReminderSweep(q = defaultQuery, opts = {}) {
           entityType: 'invoice', entityId: inv.id, userId: null, userName: null, userRole: 'system',
           payload: {
             stage, reminder_id: reminder.id, roles, invoice_number: inv.invoice_number, outstanding, due_date: inv.due_date,
-            days_overdue: daysOverdueOf(inv, now),
+            days_overdue: daysOverdueOf(inv, now), days_until_due: daysUntilDue,
             title: `[${stage}] invoice ${inv.invoice_number} — ${outstanding} outstanding`,
             body: `Due ${inv.due_date}. Outstanding balance ${outstanding}.`,
           },

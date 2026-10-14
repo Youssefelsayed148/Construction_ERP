@@ -125,6 +125,33 @@ describePg('A2.5 events: names, routes, atomicity (real PostgreSQL, real app)', 
     } finally { spy.mockRestore(); }
   });
 
+  test('pre-due seven-day tier uses client-specific reminder rules before project defaults', async () => {
+    const w = await world();
+    await db.query('INSERT INTO business_rules (rule_key, rule_value) VALUES ($1,$2) ON CONFLICT (rule_key) DO UPDATE SET rule_value = EXCLUDED.rule_value, is_active = true',
+      [`receivable_reminder_config:project:${w.project.id}`, JSON.stringify({ escalation_roles: { due_soon: ['finance_manager'] } })]);
+    await db.query('INSERT INTO business_rules (rule_key, rule_value) VALUES ($1,$2) ON CONFLICT (rule_key) DO UPDATE SET rule_value = EXCLUDED.rule_value, is_active = true',
+      [`receivable_reminder_config:client:${w.client.id}`, JSON.stringify({ escalation_roles: { due_soon: ['owner'] } })]);
+    const invoice = await one(
+      `INSERT INTO invoices (invoice_number, project_id, client_id, amount, status, issue_date, due_date, created_by)
+       VALUES ($1, $2, $3, 1000, 'issued', CURRENT_DATE, CURRENT_DATE + 6, $4) RETURNING *`, [`EV-PRE-${tag}-${seq}`, w.project.id, w.client.id, owner.id]);
+    await finance.runReceivableReminderSweep(db.query, {});
+    await finance.runReceivableReminderSweep(db.query, {});
+    const events = await all("SELECT * FROM event_outbox WHERE event_type = 'invoice.due' AND entity_id = $1", [invoice.id]);
+    expect(events).toHaveLength(1);
+    expect(events[0].payload).toMatchObject({ stage: 'due_soon', days_until_due: 6, roles: ['owner'] });
+  });
+
+  test('an explicit disabled client reminder rule suppresses company-level reminders', async () => {
+    const w = await world();
+    await db.query('INSERT INTO business_rules (rule_key, rule_value) VALUES ($1,$2) ON CONFLICT (rule_key) DO UPDATE SET rule_value = EXCLUDED.rule_value, is_active = true',
+      [`receivable_reminder_config:client:${w.client.id}`, JSON.stringify({ enabled: false })]);
+    const invoice = await one(
+      `INSERT INTO invoices (invoice_number, project_id, client_id, amount, status, issue_date, due_date, created_by)
+       VALUES ($1, $2, $3, 1000, 'issued', CURRENT_DATE, CURRENT_DATE + 2, $4) RETURNING *`, [`EV-DIS-${tag}-${seq}`, w.project.id, w.client.id, owner.id]);
+    await finance.runReceivableReminderSweep(db.query, {});
+    expect(await all('SELECT id FROM receivable_reminders WHERE invoice_id = $1', [invoice.id])).toHaveLength(0);
+  });
+
   test('a failed enqueue fails the sweep step and leaves no reminder behind (no "sent" reminder for a lost event)', async () => {
     const w = await world();
     const invoice = await one(
