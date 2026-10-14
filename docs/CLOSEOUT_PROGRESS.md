@@ -722,4 +722,4 @@ Added locale-aware shared currency, number, date, date-time, and percent formatt
 
 Verification: formatter suite 5/5; frontend CI 29 suites / 123 tests; `i18n:check` and `i18n:parity` passed (35 namespaces / 1,123 English keys); production build compiled successfully. No backend or migration changes.
 
-L6 shared formatter/name-helper items are closed. API-value rendering audit, broader page call-site migration, dynamic status coverage, PDFs, RTL review, and Phase 10 exit remain open. Implementation commit: pending.
+L6 shared formatter/name-helper items are closed. API-value rendering audit, broader page call-site migration, dynamic status coverage, PDFs, RTL review, and Phase 10 exit remain open. Implementation commit: 39e0b6e.
