@@ -226,3 +226,17 @@ Verification: `npx playwright test e2e/mobile-route-sweep.spec.js --project=mobi
 Portal dashboard boolean values now use common.yes/common.no and numeric values use the shared locale-aware formatNumber helper. The empty value remains a typographic dash. This closes only boolean and metric-number rendering for this caller; Phase 10 L4C remains open for titles, controls, remaining dynamic fields, empty states, and broader translation audit.
 
 Verification: frontend PortalDashboard and formatter suites PASS (2 suites / 16 tests); git diff --check passed. No catalog, backend, or migration changes. Implementation commit: b93dc27.
+
+
+## 2026-10-14 - Phase 8 certificate surface retirement audit
+
+Read-only code and disposable database inspection confirmed two live certificate surfaces. The legacy subcontractor table still backs its route list/write actions, project-scope resolution, and subcontractor payment cost listener. The shared table has different financial columns. The existing v_sub_payment_certificates view projects the shared subcontractor rows; it neither replaces nor mirrors the legacy table. On the retained disposable PG16 database, counts were 62 shared rows, 28 legacy rows, and 17 rows in the transition view; no certificate-number collisions were found. These fixtures are not a real-data parity result.
+
+No table or financial history was modified. Column aliases such as materials_deducted/advance_recovery and penalties/other_deductions cannot be assumed to have equivalent accounting meaning. Removal would violate additive-only migrations and could sever legacy source identifiers. Added docs/CERTIFICATE_SURFACE_RETIREMENT.md with a safe additive mapping plan; Phase 8 remains open pending real-data mapping and parity.
+
+Implementation commit: documentation only; no schema migration or application behavior changed.
+
+
+## Continuation frontend gates (2026-10-14)
+
+After the Phase 7 route and Phase 10 portal slices: `npm run test:ci -- --silent` PASS (29 suites / 124 tests); `npm run build` PASS (Compiled successfully); `npm run i18n:check` PASS; `npm run i18n:parity` PASS (35 namespaces / 1,146 English keys).

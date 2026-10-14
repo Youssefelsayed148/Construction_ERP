@@ -373,7 +373,7 @@ Exit gate: Lighthouse PWA pass; airplane-mode site journey passes in Playwright.
 - [x] Reminder tiers including pre-due (-7) and per-client rules. The sweep emits the due-soon tier once when 1–7 days remain and resolves active client, project, then company rules for each invoice; an explicit disabled rule suppresses the reminder.
 - [x] Earned value: enable SPI/CPI by default where baselines exist; resource-loaded planning. Current baselines snapshot explicit activity BAC; financial PV/EV/SPI use baseline BAC and CPI uses the shared project actual-cost view. Legacy baselines without BAC retain quantity SPI and show CPI as unavailable. Schedule analytics include project-scoped daily employee/asset load.
 - [ ] Decide and execute the retirement of the legacy approval system: workflow-backed status projections and a reversible dual-write flag are prepared; keep the mirror enabled until a real-data two-week parity hold and an approved migration resolve the legacy pending-index re-submission blocker. Then migrate/verify in-flight items, drop dual writes, remove `verify-approval-parity.js`.
-- [ ] Remove duplicate surfaces: transition view, `payment_certificates` vs `sub_payment_certificates`.
+- [ ] Remove duplicate surfaces: transition view, `payment_certificates` vs `sub_payment_certificates`. Legacy routes, scope policy, and cost listener still use the old table; schemas differ and no lossless financial mapping is established. See `docs/CERTIFICATE_SURFACE_RETIREMENT.md`; additive real-data mapping and parity are required.
 
 Exit gate: commercial and finance numbers on the demo project match hand-calculated golden values.
 
