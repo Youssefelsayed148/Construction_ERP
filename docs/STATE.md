@@ -68,7 +68,7 @@ Implemented and verified the Phase 8 earned-value/resource-load plan item. Migra
 
 Verification: Docker Desktop Engine 28.3.2; only disposable loopback PostgreSQL container `erp-closeout-pg16-20261014` and test database `construction_erp_test` used. Migration output: 1 applied, 125 already applied. Focused schedule PG 6/6; full PG 67/616; backend mocks 53/1,003; lint guards passed; frontend CI 29/120; focused Schedule component 4/4; i18n check/parity passed (35 namespaces / 1,123 English keys); build compiled; changed JS syntax, EN/AR JSON parse, `git diff --check` passed. Exact commands/output summary recorded in `docs/CLOSEOUT_LOG.md`.
 
-Current open Phase 8 items: legacy approvals dual-write hold/retirement and duplicate transition/payment-certificate surfaces. Phase 7 PWA/Lighthouse, Phases 9-11, and all human/production-evidence gates remain open. `docs/CODEX_AUDIT_REPORT.md` remains an untracked user artifact and is not part of this slice. Implementation commit: pending.
+Current open Phase 8 items: legacy approvals dual-write hold/retirement and duplicate transition/payment-certificate surfaces. Phase 7 PWA/Lighthouse, Phases 9-11, and all human/production-evidence gates remain open. `docs/CODEX_AUDIT_REPORT.md` remains an untracked user artifact and is not part of this slice. Implementation commit: db10c5e.
 
 ## 2026-10-14 stop note — approval retirement cutover
 
