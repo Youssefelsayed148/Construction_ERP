@@ -1525,3 +1525,5 @@ Verification:
 - `npm run lint:guards` (backend), `node --check` for changed JS, and `git diff --check` — pass.
 
 This resolves the formula mismatch for new forecasts while preserving legacy approvals. Finance owner signoff is still required before production. Remaining Phase 8 work and Phases 7, 9, 10, and 11 are not complete.
+
+Commit references: `c8cc6fe` (`Phase 8: cap contract retention and advance recovery`), `96c344e` (`Phase 7: add mobile route sweep`), `0a2ee09` (`Phase 8: define forecast ETC basis per cost code`). All three commits exclude the pre-existing user artifact `docs/CODEX_AUDIT_REPORT.md`.
