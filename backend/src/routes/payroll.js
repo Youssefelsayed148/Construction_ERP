@@ -5,6 +5,7 @@ const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { isReferenceViolation, recordInUse } = require('../utils/references');
 const { logActivity } = require('../utils/activity');
+const { auditedMutation } = require('../utils/auditedMutation');
 const { journalPayrollPosted } = require('../utils/journal');
 const costAccrual = require('../services/costAccrual');
 
@@ -95,27 +96,38 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
     }
     p.push(req.params.id);
     // The update and, the first time it is posted to finance, its ledger entry commit together.
-    const r = await transaction(async (client) => {
-      const q = (text, params) => client.query(text, params);
-      const locked = await q('SELECT posted_to_finance FROM payroll_periods WHERE id = $1 FOR UPDATE', [req.params.id]);
-      const alreadyPosted = locked.rows[0] && locked.rows[0].posted_to_finance === true;
+    const r = await auditedMutation(req, { action: 'update', module: 'payroll', entityType: 'payroll_period' }, async (q) => {
+      const locked = await q('SELECT * FROM payroll_periods WHERE id = $1 FOR UPDATE', [req.params.id]);
+      if (!locked.rows[0]) return { skipAudit: true };
+      const alreadyPosted = locked.rows[0].posted_to_finance === true;
       const updated = await q(`UPDATE payroll_periods SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`, p);
       if (value.posted_to_finance && !alreadyPosted) {
         await journalPayrollPosted(q, updated.rows[0], req.user.id);
         await costAccrual.allocatePayrollCost(q, updated.rows[0]);
       }
-      if (value.posted_to_finance) await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'post_to_finance', module: 'payroll', description: `Posted payroll to finance`, entityId: req.params.id, entityType: 'payroll_period' }, { query: q });
-      return updated;
+      // Every change is audited (status moves included), not only the finance posting.
+      const posted = value.posted_to_finance && !alreadyPosted;
+      return {
+        data: updated.rows[0], entityId: locked.rows[0].id, action: posted ? 'post_to_finance' : 'update',
+        before: locked.rows[0], after: updated.rows[0], oldStatus: locked.rows[0].status, newStatus: updated.rows[0].status,
+        amount: posted ? Number(updated.rows[0].total_net_salary) : undefined,
+        description: posted ? 'Posted payroll to finance' : `Updated payroll period ${locked.rows[0].period_name}`,
+      };
     });
 
-    res.json({ success: true, data: r.rows[0] });
+    if (!r.data) return res.status(404).json({ success: false, error: 'Not found' });
+    res.json({ success: true, data: r.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 router.delete('/:id', authenticate, authorize('owner', 'admin'), async (req, res) => {
   try {
-    const r = await query('DELETE FROM payroll_periods WHERE id = $1 RETURNING id', [req.params.id]);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Not found' });
+    const r = await auditedMutation(req, { action: 'delete', module: 'payroll', entityType: 'payroll_period' }, async (q) => {
+      const deleted = await q('DELETE FROM payroll_periods WHERE id = $1 RETURNING *', [req.params.id]);
+      if (deleted.rows.length === 0) return { skipAudit: true };
+      return { data: deleted.rows[0], entityId: deleted.rows[0].id, before: deleted.rows[0], description: `Deleted payroll period ${deleted.rows[0].period_name}` };
+    });
+    if (!r.data) return res.status(404).json({ success: false, error: 'Not found' });
     res.json({ success: true, message: 'Deleted' });
   } catch (e) {
     if (isReferenceViolation(e)) return recordInUse(res, 'Payroll period');   // it has payroll details
