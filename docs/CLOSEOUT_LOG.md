@@ -1590,3 +1590,10 @@ The checklist expansion is complete; restored-copy dry run and discrepancy resol
 Shared formatters now support locale-aware currency, number, date, date-time, and percent output; `localizedName` follows Arabic-first or English-first field preference with neutral/other-language fallback. Locale defaults from the live document `lang` or an explicit locale, Arabic EGP uses `ج.م.`, and number digits can be selected by `numberingSystem`. Existing enum helpers supply localized status/role/priority/severity/entity/workflow labels. No component call-site migration was included in this slice.
 
 Verification: formatter tests 5/5; frontend CI 29 suites / 123 tests; i18n check passed; parity passed for 35 namespaces / 1,123 English keys; production build compiled. Phase 10 remains open for call-site migration, API error messages, Arabic PDFs, RTL/a11y review, and role-based E2E. Implementation commit: 39e0b6e.
+
+
+## 2026-10-14 - Phase 10 L6 portal dashboard labels
+
+Portal dashboard widget and field labels now resolve through the bilingual portals.dashboard.* catalog instead of replacing underscores and title-casing arbitrary API values. Record status and priority use the shared enum translators, with the stored machine value preserved as fallback for unknown enums. Added EN/AR labels for common portal metrics and the empty state. This is a bounded caller migration; the system-wide API-value and dynamic-content audit remains open.
+
+Verification: frontend PortalDashboard suite PASS (11/11); npm run i18n:check PASS; npm run i18n:parity PASS (35 namespaces, 1,146 English keys). No backend changes or migrations. Implementation is ready for commit.

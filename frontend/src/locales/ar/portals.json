@@ -236,5 +236,34 @@
       "pm": "مراجعة مدير المشروع",
       "reviewer": "مراجعة المدقق"
     }
+  },
+  "dashboard": {
+    "title": "لوحة المعلومات",
+    "noRecords": "لا توجد سجلات",
+    "widgets": {
+      "latest_drawings": "أحدث المخططات",
+      "approvals": "الموافقات",
+      "overdue_inputs": "المدخلات المتأخرة",
+      "packages": "حزم الأعمال",
+      "projects": "المشروعات",
+      "expiring_documents": "المستندات قاربت على الانتهاء",
+      "inspections": "الفحوصات",
+      "wirs": "طلبات فحص الأعمال",
+      "ncrs": "تقارير عدم المطابقة",
+      "observations": "الملاحظات",
+      "variations": "التغييرات",
+      "instructions_for_acknowledgement": "التعليمات المطلوب تأكيدها",
+      "project_ids": "المشروعات"
+    },
+    "fields": {
+      "count": "العدد",
+      "total": "الإجمالي",
+      "pending": "قيد الانتظار",
+      "approved": "معتمد",
+      "overdue": "متأخر",
+      "active": "نشط",
+      "completed": "مكتمل",
+      "expiring": "قارب على الانتهاء"
+    }
   }
 }

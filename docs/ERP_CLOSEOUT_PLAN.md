@@ -458,7 +458,7 @@ L5 Partially localized modules
 
 L6 Dynamic values and formatting helpers
 - [x] Shared helpers: `translateStatus/Role/Priority/Severity/EntityType/WorkflowAction`, `localizedName(record, locale, fields)`, `formatDate/DateTime/Number/Currency/Percent`. Shared formatting follows the document `lang` when no locale is supplied; helpers also accept explicit locales.
-- [ ] Send API values unchanged (`pending_approval`) and render through `enums.status.pendingApproval`; never `replaceAll('_', ' ')` as a translation.
+- [ ] Send API values unchanged (`pending_approval`) and render through `enums.status.pendingApproval`; never `replaceAll('_', ' ')` as a translation. PortalDashboard now follows this rule for widget/field labels and record statuses; system-wide audit remains open.
 - [x] Name order helper: Arabic = `name_ar`, neutral, `name_en`; English = `name_en`, neutral, `name_ar`. Callers still need migration to this helper for descriptions, titles, project and material names.
 - [x] Shared formatters no longer force `en-US`: use the document locale or explicit `ar-EG`, support a `numberingSystem` option, and render EGP / ج.م by locale.
 - Exit: statuses and system values translate consistently; number and date formats follow the language.

@@ -35,6 +35,19 @@ describe('consultant portal observation form', () => {
     node.dispatchEvent(new Event(node.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }));
   });
 
+  test('uses catalog labels for portal widgets and shared enum translation for record status', async () => {
+    global.fetch = jest.fn(async (url) => ({ ok: true, json: async () => ({ success: true, data: String(url).includes('/reviews') ? [] : {
+      latest_drawings: { items: [{ id: 9, title: 'Drawing A', status: 'pending_approval' }], count: 1 },
+    } }) }));
+    await act(async () => { root.render(<PortalDashboard kind="consultant" />); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+
+    expect(container.textContent).toContain('portals.dashboard.widgets.latest_drawings');
+    expect(container.textContent).toContain('enums.status.pendingApproval');
+    expect(container.textContent).not.toContain('Latest Drawings');
+    expect(container.textContent).not.toContain('Pending Approval');
+  });
+
   test('submits a project-scoped observation with dates, a drawing link, and separate evidence', async () => {
     await act(async () => { root.render(<PortalDashboard kind="consultant" />); });
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });

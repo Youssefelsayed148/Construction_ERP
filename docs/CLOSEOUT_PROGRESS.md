@@ -723,3 +723,10 @@ Added locale-aware shared currency, number, date, date-time, and percent formatt
 Verification: formatter suite 5/5; frontend CI 29 suites / 123 tests; `i18n:check` and `i18n:parity` passed (35 namespaces / 1,123 English keys); production build compiled successfully. No backend or migration changes.
 
 L6 shared formatter/name-helper items are closed. API-value rendering audit, broader page call-site migration, dynamic status coverage, PDFs, RTL review, and Phase 10 exit remain open. Implementation commit: 39e0b6e.
+
+
+## 2026-10-14 - Phase 10 L6 portal dashboard labels
+
+Portal dashboard widget and field labels now resolve through the bilingual portals.dashboard.* catalog instead of replacing underscores and title-casing arbitrary API values. Record status and priority use the shared enum translators, with the stored machine value preserved as fallback for unknown enums. Added EN/AR labels for common portal metrics and the empty state. This is a bounded caller migration; the system-wide API-value and dynamic-content audit remains open.
+
+Verification: frontend PortalDashboard suite PASS (11/11); npm run i18n:check PASS; npm run i18n:parity PASS (35 namespaces, 1,146 English keys). No backend changes or migrations. Implementation is ready for commit.

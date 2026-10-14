@@ -1,5 +1,34 @@
 {
   "title": "Portal",
+  "dashboard": {
+    "title": "Dashboard",
+    "noRecords": "No records",
+    "widgets": {
+      "latest_drawings": "Latest drawings",
+      "approvals": "Approvals",
+      "overdue_inputs": "Overdue inputs",
+      "packages": "Work packages",
+      "projects": "Projects",
+      "expiring_documents": "Expiring documents",
+      "inspections": "Inspections",
+      "wirs": "Work inspection requests",
+      "ncrs": "Nonconformance reports",
+      "observations": "Observations",
+      "variations": "Variations",
+      "instructions_for_acknowledgement": "Instructions to acknowledge",
+      "project_ids": "Projects"
+    },
+    "fields": {
+      "count": "Count",
+      "total": "Total",
+      "pending": "Pending",
+      "approved": "Approved",
+      "overdue": "Overdue",
+      "active": "Active",
+      "completed": "Completed",
+      "expiring": "Expiring"
+    }
+  },
   "previewProject": "Client preview project",
   "selectPreviewProject": "Select project to preview",
   "previewAsClient": "Preview as client",
