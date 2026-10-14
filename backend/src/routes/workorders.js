@@ -6,6 +6,7 @@ const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
+const { auditedMutation } = require('../utils/auditedMutation');
 const inventoryEngine = require('../services/inventoryEngine');
 const { reasonFrom } = require('../utils/reason');
 
@@ -88,9 +89,14 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
     const sets = []; const p = []; let i = 1;
     for (const [k, v] of Object.entries(value)) { if (v !== undefined) { sets.push(`${k} = $${i++}`); p.push(v); } }
     p.push(req.params.id);
-    const r = await query(`UPDATE work_orders SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`, p);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Work order not found' });
-    res.json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'update', module: 'work_orders', entityType: 'work_order' }, async (q) => {
+      const before = (await q('SELECT * FROM work_orders WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true };
+      const r = await q(`UPDATE work_orders SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`, p);
+      return { data: r.rows[0], entityId: before.id, projectId: before.project_id, before, after: r.rows[0], oldStatus: before.status, newStatus: r.rows[0].status, description: `Updated WO: ${before.title_ar || before.title}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Work order not found' });
+    res.json({ success: true, data: out.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -142,8 +148,7 @@ router.post('/:id/materials', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    await transaction(async (client) => {
-      const txQuery = client.query.bind(client);
+    await auditedMutation(req, { action: 'issue_material', module: 'work_orders', entityType: 'work_order_material' }, async (txQuery) => {
       // Phase 10 — issuance is ledgered: the movement API deducts stock
       // (gated on available stock) instead of direct warehouse_stock mutation.
       if (value.warehouse_id && value.actual_quantity > 0) {
@@ -153,7 +158,7 @@ router.post('/:id/materials', authenticate, authorize(), async (req, res) => {
         }
       }
 
-      const wom = await client.query(
+      const wom = await txQuery(
         `INSERT INTO work_order_materials (work_order_id, item_id, boq_item_id, planned_quantity, actual_quantity, unit_cost, total_cost, warehouse_id, issued_by)
          VALUES ($1,$2,$3,$4,$5,0,0,$6,$7) RETURNING id`,
         [req.params.id, value.item_id, value.boq_item_id, value.planned_quantity, value.actual_quantity, value.warehouse_id, req.user.id]
@@ -170,11 +175,13 @@ router.post('/:id/materials', authenticate, authorize(), async (req, res) => {
           created_by: req.user.id,
         });
         // The cost of what was issued is the ledger's weighted average, exactly as the database computed it.
-        await client.query(
+        await txQuery(
           'UPDATE work_order_materials SET unit_cost = $1, total_cost = $2 WHERE id = $3',
           [issued.unit_cost == null ? 0 : issued.unit_cost, issued.total_cost == null ? 0 : issued.total_cost, wom.rows[0].id]
         );
       }
+      const row = (await txQuery('SELECT * FROM work_order_materials WHERE id = $1', [wom.rows[0].id])).rows[0];
+      return { data: row, entityId: row.id, after: row, amount: Number(row.total_cost), description: `Recorded material for WO #${req.params.id}: item ${value.item_id} qty ${value.actual_quantity}` };
     });
 
     res.status(201).json({ success: true, message: 'Material issued' });
@@ -201,11 +208,14 @@ router.post('/:id/labor', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const r = await query(
-      `INSERT INTO work_order_labor (work_order_id, skill_category, worker_count, hours, work_date, notes) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [req.params.id, value.skill_category, value.worker_count, value.hours, value.work_date, value.notes]
-    );
-    res.status(201).json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'create', module: 'work_orders', entityType: 'work_order_labor' }, async (q) => {
+      const r = await q(
+        `INSERT INTO work_order_labor (work_order_id, skill_category, worker_count, hours, work_date, notes) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+        [req.params.id, value.skill_category, value.worker_count, value.hours, value.work_date, value.notes]
+      );
+      return { data: r.rows[0], entityId: r.rows[0].id, after: r.rows[0], description: `Recorded labor for WO #${req.params.id}: ${value.skill_category} x${value.worker_count}` };
+    });
+    res.status(201).json({ success: true, data: out.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -231,11 +241,14 @@ router.post('/:id/equipment', authenticate, authorize(), async (req, res) => {
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
     const total_cost = value.hours * value.hourly_cost;
-    const r = await query(
-      `INSERT INTO work_order_equipment (work_order_id, equipment_id, hours, hourly_cost, total_cost, work_date) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [req.params.id, value.equipment_id, value.hours, value.hourly_cost, total_cost, value.work_date]
-    );
-    res.status(201).json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'create', module: 'work_orders', entityType: 'work_order_equipment' }, async (q) => {
+      const r = await q(
+        `INSERT INTO work_order_equipment (work_order_id, equipment_id, hours, hourly_cost, total_cost, work_date) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+        [req.params.id, value.equipment_id, value.hours, value.hourly_cost, total_cost, value.work_date]
+      );
+      return { data: r.rows[0], entityId: r.rows[0].id, after: r.rows[0], amount: total_cost, description: `Recorded equipment for WO #${req.params.id}: asset ${value.equipment_id} ${value.hours}h` };
+    });
+    res.status(201).json({ success: true, data: out.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -271,8 +284,7 @@ router.post('/:id/completions', authenticate, authorize(), async (req, res) => {
     // matching measurement (or vice versa) would silently break the
     // quantity engine's "executed quantity enters the system ONLY as a
     // measurement" invariant (ground rule 2: transactional multi-record writes).
-    const completion = await transaction(async (client) => {
-      const txQuery = (text, params) => client.query(text, params);
+    const completionAudit = await auditedMutation(req, { action: 'create', module: 'work_orders', entityType: 'work_completion' }, async (txQuery) => {
 
       // work_completions.project_location_id is NOT NULL once the Phase 8
       // migration's backfill is verified (migrate-21), so a completion
@@ -302,10 +314,10 @@ router.post('/:id/completions', authenticate, authorize(), async (req, res) => {
          value.quantity_completed, unit, r.rows[0].id, req.user.id]
       );
 
-      return r.rows[0];
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId, after: r.rows[0], description: `Recorded completion for WO #${req.params.id}: BOQ item ${value.boq_item_id} qty ${value.quantity_completed}` };
     });
 
-    res.status(201).json({ success: true, data: completion });
+    res.status(201).json({ success: true, data: completionAudit.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 

@@ -6,6 +6,7 @@ const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
+const { auditedMutation } = require('../utils/auditedMutation');
 
 // Phase 9 — material planning surface: recipes (with editable factors) and
 // the derived material_requirements read path. Demand rows are NEVER edited
@@ -208,13 +209,17 @@ router.post('/recipes/:id/lines', authenticate, authorize(), async (req, res) =>
 // DELETE /api/materials/recipes/:id/lines/:lineId
 router.delete('/recipes/:id/lines/:lineId', authenticate, authorize(), async (req, res) => {
   try {
-    const r = await query('DELETE FROM recipe_lines WHERE id = $1 AND recipe_id = $2 RETURNING id', [req.params.lineId, req.params.id]);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Recipe line not found' });
-    await fireEvent({
-      eventType: 'recipe.changed', entityType: 'material_recipe', entityId: parseInt(req.params.id, 10),
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      payload: { recipe_id: parseInt(req.params.id, 10) },
+    const out = await auditedMutation(req, { action: 'delete', module: 'materials', entityType: 'recipe_line' }, async (q) => {
+      const r = await q('DELETE FROM recipe_lines WHERE id = $1 AND recipe_id = $2 RETURNING *', [req.params.lineId, req.params.id]);
+      if (r.rows.length === 0) return { skipAudit: true };
+      await fireEvent({
+        eventType: 'recipe.changed', entityType: 'material_recipe', entityId: parseInt(req.params.id, 10),
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        payload: { recipe_id: parseInt(req.params.id, 10) },
+      }, { query: q });
+      return { data: r.rows[0], entityId: r.rows[0].id, before: r.rows[0], description: `Removed recipe line ${r.rows[0].id} from recipe #${req.params.id}` };
     });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Recipe line not found' });
     res.json({ success: true, message: 'Line deleted' });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });

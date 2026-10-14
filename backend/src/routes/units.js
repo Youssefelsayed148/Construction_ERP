@@ -6,6 +6,7 @@ const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
+const { auditedMutation, auditedChange } = require('../utils/auditedMutation');
 
 // Mounted at /api/sales — buildings & sellable units (real estate).
 
@@ -152,12 +153,14 @@ router.put('/buildings/:id', authenticate, authorize(), async (req, res) => {
       if (v !== undefined) { sets.push(`${k} = $${idx++}`); params.push(v); }
     }
     params.push(req.params.id);
-    const result = await query(`UPDATE buildings SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
-    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Building not found' });
+    const out = await auditedMutation(req, { action: 'update', module: 'sales', entityType: 'building' }, async (q) => {
+    const before = (await q('SELECT * FROM buildings WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+    if (!before) return { skipAudit: true };
+    const result = await q(`UPDATE buildings SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
 
     if (floors !== undefined) {
-      const floorTypeId = (await query("SELECT id FROM location_types WHERE code = 'floor'")).rows[0]?.id || null;
-      const existing = await query(
+      const floorTypeId = (await q("SELECT id FROM location_types WHERE code = 'floor'")).rows[0]?.id || null;
+      const existing = await q(
         `SELECT pl.* FROM project_locations pl
          JOIN location_types lt ON lt.id = pl.location_type_id
          WHERE pl.parent_id = $1 AND lt.code = 'floor' ORDER BY pl.sort_order, pl.id`,
@@ -166,7 +169,7 @@ router.put('/buildings/:id', authenticate, authorize(), async (req, res) => {
       const floorLocs = existing.rows;
       if (floors > floorLocs.length) {
         for (let f = floorLocs.length + 1; f <= floors; f++) {
-          await query(
+          await q(
             `INSERT INTO project_locations (project_id, parent_id, location_type_id, code, name, name_en, name_ar, sort_order)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
             [result.rows[0].project_id, result.rows[0].project_location_id, floorTypeId,
@@ -176,29 +179,37 @@ router.put('/buildings/:id', authenticate, authorize(), async (req, res) => {
       } else if (floors < floorLocs.length) {
         for (let f = floorLocs.length; f > floors; f--) {
           const loc = floorLocs[f - 1];
-          const kids = await query('SELECT COUNT(*) AS c FROM project_locations WHERE parent_id = $1', [loc.id]);
+          const kids = await q('SELECT COUNT(*) AS c FROM project_locations WHERE parent_id = $1', [loc.id]);
           if (Number(kids.rows[0].c) === 0) {
-            await query('DELETE FROM project_locations WHERE id = $1', [loc.id]);
+            await q('DELETE FROM project_locations WHERE id = $1', [loc.id]);
           }
         }
       }
     }
+    return { data: result.rows[0], entityId: before.id, projectId: before.project_id, before, after: result.rows[0], description: `Updated building ${before.code}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Building not found' });
 
-    res.json({ success: true, data: result.rows[0] });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
 router.delete('/buildings/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const unitsSold = await query(`SELECT COUNT(*) as cnt FROM units WHERE building_id = $1 AND status NOT IN ('available', 'blocked')`, [req.params.id]);
-    if (parseInt(unitsSold.rows[0].cnt) > 0) return res.status(400).json({ success: false, error: 'Cannot delete building with reserved/sold units' });
-    const result = await query('DELETE FROM buildings WHERE id = $1 RETURNING code, project_location_id', [req.params.id]);
-    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Building not found' });
-    // Phase 8: the building's location rows are real rows — remove them with
-    // the building (floor children cascade from project_locations.parent_id).
-    if (result.rows[0].project_location_id != null) {
-      await query('DELETE FROM project_locations WHERE id = $1', [result.rows[0].project_location_id]);
-    }
+    const out = await auditedMutation(req, { action: 'delete', module: 'sales', entityType: 'building' }, async (q) => {
+      const unitsSold = await q(`SELECT COUNT(*) as cnt FROM units WHERE building_id = $1 AND status NOT IN ('available', 'blocked')`, [req.params.id]);
+      if (parseInt(unitsSold.rows[0].cnt) > 0) return { skipAudit: true, blocked: true };
+      const result = await q('DELETE FROM buildings WHERE id = $1 RETURNING *', [req.params.id]);
+      if (result.rows.length === 0) return { skipAudit: true };
+      // Phase 8: the building's location rows are real rows — remove them with
+      // the building (floor children cascade from project_locations.parent_id).
+      if (result.rows[0].project_location_id != null) {
+        await q('DELETE FROM project_locations WHERE id = $1', [result.rows[0].project_location_id]);
+      }
+      return { data: result.rows[0], entityId: result.rows[0].id, projectId: result.rows[0].project_id, before: result.rows[0], description: `Deleted building ${result.rows[0].code}` };
+    });
+    if (out.blocked) return res.status(400).json({ success: false, error: 'Cannot delete building with reserved/sold units' });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Building not found' });
     res.json({ success: true, message: 'Building deleted' });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -235,14 +246,17 @@ router.post('/buildings/:buildingId/units', authenticate, authorize(), async (re
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
     const pricePerM2 = value.price && value.area ? (value.price / value.area) : null;
-    const result = await query(
-      `INSERT INTO units (building_id, code, type, area, bedrooms, bathrooms, floor_no, finishing_type, price, price_per_m2, view, facing, features, delivery_date)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14) RETURNING *`,
-      [req.params.buildingId, value.code, value.type, value.area, value.bedrooms, value.bathrooms,
-       value.floor_no, value.finishing_type, value.price, pricePerM2, value.view, value.facing,
-       JSON.stringify(value.features), value.delivery_date]
-    );
-    res.status(201).json({ success: true, data: result.rows[0] });
+    const out = await auditedMutation(req, { action: 'create', module: 'sales', entityType: 'unit' }, async (q) => {
+      const result = await q(
+        `INSERT INTO units (building_id, code, type, area, bedrooms, bathrooms, floor_no, finishing_type, price, price_per_m2, view, facing, features, delivery_date)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14) RETURNING *`,
+        [req.params.buildingId, value.code, value.type, value.area, value.bedrooms, value.bathrooms,
+         value.floor_no, value.finishing_type, value.price, pricePerM2, value.view, value.facing,
+         JSON.stringify(value.features), value.delivery_date]
+      );
+      return { data: result.rows[0], entityId: result.rows[0].id, after: result.rows[0], amount: value.price ?? undefined, description: `Created unit ${value.code}` };
+    });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) {
     if (error.code === '23505') return res.status(409).json({ success: false, error: 'Unit code already exists in this building' });
     res.status(500).json({ success: false, error: error.message });
@@ -325,9 +339,14 @@ router.put('/units/:id', authenticate, authorize(), async (req, res) => {
       else { sets.push(`${k} = $${idx++}`); params.push(v); }
     }
     params.push(req.params.id);
-    const result = await query(`UPDATE units SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
-    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Unit not found' });
-    res.json({ success: true, data: result.rows[0] });
+    const out = await auditedMutation(req, { action: 'update', module: 'sales', entityType: 'unit' }, async (q) => {
+      const before = (await q('SELECT * FROM units WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true };
+      const result = await q(`UPDATE units SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
+      return { data: result.rows[0], entityId: before.id, before, after: result.rows[0], amount: result.rows[0].price == null ? undefined : Number(result.rows[0].price), description: `Updated unit ${before.code}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Unit not found' });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -401,12 +420,15 @@ router.post('/units/:id/status', authenticate, authorize(), async (req, res) => 
 
 router.delete('/units/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const existing = await query('SELECT * FROM units WHERE id = $1', [req.params.id]);
-    if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Unit not found' });
-    if (!['available', 'blocked'].includes(existing.rows[0].status)) {
-      return res.status(400).json({ success: false, error: 'Cannot delete a reserved/sold unit' });
-    }
-    await query('DELETE FROM units WHERE id = $1', [req.params.id]);
+    const out = await auditedMutation(req, { action: 'delete', module: 'sales', entityType: 'unit' }, async (q) => {
+      const existing = await q('SELECT * FROM units WHERE id = $1 FOR UPDATE', [req.params.id]);
+      if (existing.rows.length === 0) return { skipAudit: true, missing: true };
+      if (!['available', 'blocked'].includes(existing.rows[0].status)) return { skipAudit: true, blocked: true };
+      await q('DELETE FROM units WHERE id = $1', [req.params.id]);
+      return { data: existing.rows[0], entityId: existing.rows[0].id, before: existing.rows[0], description: `Deleted unit ${existing.rows[0].code}` };
+    });
+    if (out.missing) return res.status(404).json({ success: false, error: 'Unit not found' });
+    if (out.blocked) return res.status(400).json({ success: false, error: 'Cannot delete a reserved/sold unit' });
     res.json({ success: true, message: 'Unit deleted' });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

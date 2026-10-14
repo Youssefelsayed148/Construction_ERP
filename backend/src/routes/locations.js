@@ -6,6 +6,7 @@ const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { isReferenceViolation, recordInUse } = require('../utils/references');
 const { logActivity, fireEvent } = require('../utils/activity');
+const { auditedMutation } = require('../utils/auditedMutation');
 
 // Full CRUD over the project location tree: site/building/zone/floor/area/
 // room — the allowed type set comes from location_types (seeded per the
@@ -86,19 +87,21 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     const typeId = await typeIdForCode(value.location_type_code);
     if (typeId == null) return res.status(400).json({ success: false, error: `Unknown location type: ${value.location_type_code}` });
 
-    const r = await query(
-      `INSERT INTO project_locations (project_id, parent_id, location_type_id, code, name, name_en, name_ar, sort_order)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [authorizedProjectId(req, value), parentId, typeId, value.code, value.name, value.name_en || value.name, value.name_ar || value.name_en || value.name, value.sort_order]
-    );
-
-    await fireEvent({
-      eventType: 'location.created', entityType: 'project_location', entityId: r.rows[0].id,
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      payload: { project_id: authorizedProjectId(req, value), location_type_code: value.location_type_code },
+    const created = await auditedMutation(req, { action: 'create', module: 'locations', entityType: 'project_location' }, async (q) => {
+      const r = await q(
+        `INSERT INTO project_locations (project_id, parent_id, location_type_id, code, name, name_en, name_ar, sort_order)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+        [authorizedProjectId(req, value), parentId, typeId, value.code, value.name, value.name_en || value.name, value.name_ar || value.name_en || value.name, value.sort_order]
+      );
+      await fireEvent({
+        eventType: 'location.created', entityType: 'project_location', entityId: r.rows[0].id,
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        payload: { project_id: authorizedProjectId(req, value), location_type_code: value.location_type_code },
+      }, { query: q });
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], description: `Created location ${r.rows[0].code}` };
     });
 
-    res.status(201).json({ success: true, data: r.rows[0] });
+    res.status(201).json({ success: true, data: created.data });
   } catch (e) {
     if (e.message && e.message.includes('unique')) return res.status(409).json({ success: false, error: 'A location with this code already exists at that level' });
     res.status(500).json({ success: false, error: e.message });
@@ -127,21 +130,29 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
     const sets = []; const p = []; let i = 1;
     for (const [k, v] of Object.entries(value)) { if (v !== undefined) { sets.push(`${k} = $${i++}`); p.push(v); } }
     p.push(req.params.id);
-    const r = await query(`UPDATE project_locations SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`, p);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Location not found' });
-    res.json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'update', module: 'locations', entityType: 'project_location' }, async (q) => {
+      const before = (await q('SELECT * FROM project_locations WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true };
+      const r = await q(`UPDATE project_locations SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`, p);
+      return { data: r.rows[0], entityId: before.id, projectId: before.project_id, before, after: r.rows[0], description: `Updated location ${before.code}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Location not found' });
+    res.json({ success: true, data: out.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 // DELETE /api/locations/:id — refuses when children exist (real rows, not counts).
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const children = await query('SELECT COUNT(*) AS c FROM project_locations WHERE parent_id = $1', [req.params.id]);
-    if (Number(children.rows[0]?.c) > 0) {
-      return res.status(409).json({ success: false, error: 'Location has child locations — delete or move them first' });
-    }
-    const r = await query('DELETE FROM project_locations WHERE id = $1 RETURNING id', [req.params.id]);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Location not found' });
+    const out = await auditedMutation(req, { action: 'delete', module: 'locations', entityType: 'project_location' }, async (q) => {
+      const children = await q('SELECT COUNT(*) AS c FROM project_locations WHERE parent_id = $1', [req.params.id]);
+      if (Number(children.rows[0]?.c) > 0) return { skipAudit: true, hasChildren: true };
+      const r = await q('DELETE FROM project_locations WHERE id = $1 RETURNING *', [req.params.id]);
+      if (r.rows.length === 0) return { skipAudit: true };
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, before: r.rows[0], description: `Deleted location ${r.rows[0].code}` };
+    });
+    if (out.hasChildren) return res.status(409).json({ success: false, error: 'Location has child locations — delete or move them first' });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Location not found' });
     res.json({ success: true, message: 'Deleted' });
   } catch (e) {
     if (isReferenceViolation(e)) return recordInUse(res, 'Location');   // BOQ allocations point at it

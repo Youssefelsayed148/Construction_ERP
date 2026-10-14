@@ -5,6 +5,7 @@ const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
+const { auditedMutation } = require('../utils/auditedMutation');
 
 // Maintenance Reminders (linked to assets)
 router.get('/', authenticate, authorize(), async (req, res) => {
@@ -89,8 +90,12 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
 
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const r = await query('DELETE FROM maintenance_reminders WHERE id = $1 RETURNING id', [req.params.id]);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Reminder not found' });
+    const out = await auditedMutation(req, { action: 'delete', module: 'maintenance', entityType: 'maintenance_reminder' }, async (q) => {
+      const r = await q('DELETE FROM maintenance_reminders WHERE id = $1 RETURNING *', [req.params.id]);
+      if (r.rows.length === 0) return { skipAudit: true };
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, before: r.rows[0], description: `Deleted maintenance reminder ${r.rows[0].title}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Reminder not found' });
     res.json({ success: true, message: 'Deleted' });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

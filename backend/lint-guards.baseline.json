@@ -17,9 +17,6 @@
     "routes/handover.js": 2,
     "routes/hr.js": 5,
     "routes/hse.js": 9,
-    "routes/locations.js": 3,
-    "routes/maintenance.js": 1,
-    "routes/materials.js": 1,
     "routes/notifications.js": 2,
     "routes/portal.js": 10,
     "routes/projects.js": 7,
@@ -28,8 +25,6 @@
     "routes/reports.js": 2,
     "routes/schedule.js": 6,
     "routes/site.js": 4,
-    "routes/units.js": 5,
-    "routes/v1.js": 2,
-    "routes/workorders.js": 5
+    "routes/v1.js": 2
   }
 }
