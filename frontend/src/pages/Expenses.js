@@ -311,7 +311,7 @@ function ExpenseModal({ expense, locale, t, projects, onClose, onSave }) {
                 <input className="form-input" value={form.description} onChange={e => handleChange('description', e.target.value)} required />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'المبلغ (ج.م)' : 'Amount (EGP)'} *</label>
                   <input className="form-input" type="number" step="0.01" min="0" value={form.amount} onChange={e => handleChange('amount', e.target.value)} required />
@@ -322,7 +322,7 @@ function ExpenseModal({ expense, locale, t, projects, onClose, onSave }) {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'المشروع (اختياري)' : 'Project (optional)'}</label>
                   <select className="form-select" value={form.project_id} onChange={e => handleChange('project_id', e.target.value)}>

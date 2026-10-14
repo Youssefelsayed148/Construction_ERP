@@ -59,7 +59,7 @@ function GanttList({ activities }) {
         const width = s != null && f != null ? Math.max(1, ((f - s) / span) * 100) : 1;
         const crit = a.cpm?.critical;
         return (
-          <div key={a.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 220px) 1fr 76px 64px', gap: 8, alignItems: 'center', fontSize: 13 }}>
+          <div key={a.id} className="responsive-grid responsive-grid--schedule-row" style={{ gap: 8, alignItems: 'center', fontSize: 13 }}>
             <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {a.is_milestone ? <Flag size={12} style={{ color: crit ? 'var(--color-danger, #e5534b)' : 'var(--color-accent)', marginRight: 4 }} /> : null}
               {a.activity_code} {a.name}
@@ -197,11 +197,11 @@ export function ActivitiesTab({ projectId, locale, t }) {
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: 16, display: 'grid', gap: 10, maxWidth: 560 }}>
           <input className="input" required placeholder={locale === 'ar' ? 'اسم النشاط' : 'Activity name'} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="responsive-grid responsive-grid--two" style={{ gap: 10 }}>
             <input className="input" type="date" title="Planned start" value={form.planned_start} onChange={e => setForm({ ...form, planned_start: e.target.value })} />
             <input className="input" type="date" title="Planned finish" value={form.planned_finish} onChange={e => setForm({ ...form, planned_finish: e.target.value })} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="responsive-grid responsive-grid--two" style={{ gap: 10 }}>
             <WorkPackageSelect projectId={projectId} value={form.work_package_id} onChange={(v) => setForm({ ...form, work_package_id: v })} />
             <input className="input" type="number" min="0" placeholder={locale === 'ar' ? 'المدة (أيام)' : 'Duration (days)'} value={form.original_duration} onChange={e => setForm({ ...form, original_duration: e.target.value })} />
           </div>
@@ -232,7 +232,7 @@ export function ActivitiesTab({ projectId, locale, t }) {
         <div className="card" role="dialog" aria-label={t('schedule.resourceAssignments')} style={{ marginTop: 16, display: 'grid', gap: 10 }}>
           <h3>{assignmentActivity.activity_code} ? {t('schedule.resourceAssignments')}</h3>
           {assignmentError && <p role="alert" className="alert alert-danger">{assignmentError}</p>}
-          <form onSubmit={submitAssignment} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 8 }}>
+          <form onSubmit={submitAssignment} className="responsive-grid responsive-grid--auto-170" style={{ gap: 8 }}>
             <label>{t('schedule.resource')}<select className="input" required value={assignmentForm.resource} onChange={(event) => setAssignmentForm({ ...assignmentForm, resource: event.target.value })}>
               <option value="">{t('schedule.selectResource')}</option>{resources.map((resource) => <option key={resource.resource_type + ':' + resource.resource_id} value={resource.resource_type + ':' + resource.resource_id}>{resource.name} ({t(resource.resource_type === 'employee' ? 'schedule.employee' : 'schedule.equipment')})</option>)}
             </select></label>

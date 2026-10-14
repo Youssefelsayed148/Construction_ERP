@@ -278,7 +278,7 @@ function AssetModal({ asset, locale, t, projects, onClose, onSave }) {
                 </div>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">English Name *</label>
                   <input className="form-input" value={form.name_en} onChange={e => handleChange('name_en', e.target.value)} required />
@@ -289,7 +289,7 @@ function AssetModal({ asset, locale, t, projects, onClose, onSave }) {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{t('common.category')} *</label>
                   <select className="form-select" value={form.category} onChange={e => handleChange('category', e.target.value)} required>
@@ -309,7 +309,7 @@ function AssetModal({ asset, locale, t, projects, onClose, onSave }) {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'الشركة المصنعة' : 'Manufacturer'}</label>
                   <input className="form-input" value={form.manufacturer} onChange={e => handleChange('manufacturer', e.target.value)} />
@@ -324,7 +324,7 @@ function AssetModal({ asset, locale, t, projects, onClose, onSave }) {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'تاريخ الشراء' : 'Purchase Date'}</label>
                   <input className="form-input" type="date" value={form.purchase_date} onChange={e => handleChange('purchase_date', e.target.value)} />
@@ -335,7 +335,7 @@ function AssetModal({ asset, locale, t, projects, onClose, onSave }) {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'سعر الساعة' : 'Hourly Rate'}</label>
                   <input className="form-input" type="number" step="0.01" value={form.hourly_rate} onChange={e => handleChange('hourly_rate', e.target.value)} />

@@ -157,7 +157,7 @@ function SiteWorkspace() {
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+      <div className="responsive-grid responsive-grid--auto-280" style={{ gap: 16 }}>
         <Section icon={ClipboardList} label={t.activities} count={data.activities.count}>
           {data.activities.items.length === 0
             ? <em>{locale === 'ar' ? 'لا توجد أنشطة اليوم.' : 'No activities scheduled today.'}</em>

@@ -66,7 +66,7 @@ export default function ProcurementReview() {
         {['rfq', 'technical-evaluation', 'commercial-comparison', 'award-recommendation'].map((kind) =>
           <button key={kind} className="btn btn-secondary btn-sm" onClick={() => download(kind)}>{kind.replaceAll('-', ' ')} PDF</button>)}
       </div>
-      {comparison.rows.length ? <div style={{ overflowX: 'auto' }}><table className="table"><thead><tr>{COLUMNS.map(([, title]) => <th key={title}>{title}</th>)}</tr></thead>
+      {comparison.rows.length ? <div className="table-container"><table className="table"><thead><tr>{COLUMNS.map(([, title]) => <th key={title}>{title}</th>)}</tr></thead>
         <tbody>{comparison.rows.map((row) => <tr key={row.quotation_id}>{COLUMNS.map(([key]) => <td key={key}>{cell(row[key])}</td>)}</tr>)}</tbody></table></div>
         : <p>No quotations have been submitted for this RFQ.</p>}
       {comparison.recommendation && <div className="alert alert-info">Recommended: {comparison.recommendation.supplier_name} — {cell(comparison.recommendation.reason)}</div>}

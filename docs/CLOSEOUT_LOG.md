@@ -1451,3 +1451,11 @@ Commands and observed results:
 The fresh local Docker Desktop Postgres container is `erp-closeout-pg16-20261014`, loopback-only and volume-free. No `.env.docker`, `.staging-users.json`, production DB, pilot DB, paid service, or external provider was accessed. The existing normal-shell Docker pipe denial remains a host permission quirk; elevated local Docker CLI access was used. PWA Lighthouse score and local Arabic font packaging are unverified. Current global responsive audit count is 110 inline `gridTemplateColumns` occurrences and 64 `<table>` tags; these and Phase 7 exit requirements remain open.
 
 Final verification correction: `git diff --check` and `git diff --cached --check` both exited 0. Commit `7487787` (`Phase 7.2: queue site reports offline`) contains this implementation and its evidence. The audit report artifact was excluded.
+
+## 2026-10-14 — Phase 7.2 responsive layout follow-up
+
+Replaced all 110 page-level inline `gridTemplateColumns` declarations with responsive classes and breakpoints; `rg --no-heading -o gridTemplateColumns frontend/src/pages` returned `0`. Babel parser/traverse audit output: `tables=72 unwrapped=0`; this includes the previously uncontained My Actions and Procurement Comparison tables. Site Management scope now enforces 44px buttons and 14px control text.
+
+Verification: `npm run test:ci` PASS, 29 suites / 117 tests; `npm run i18n:check` PASS; `npm run build` reported `Compiled successfully`; `npm run lint:guards` printed `lint-guards: ok`; `git diff --check` exited 0. Full Playwright after grid/table changes: 36 passed / 50 skipped (the 50 backend/pilot/screenshot cases remain gated). The offline report journey passed 1/1 desktop and 1/1 mobile after final touch sizing. Previously completed backend gates remain 53/1,002 mock and 67/608 real PG; no backend code changed in this layout-only slice.
+
+Phase 7 remains open: font files are absent locally, Lighthouse has not been run, and mobile journeys are not yet present for every major screen and portal.

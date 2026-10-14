@@ -540,7 +540,7 @@ function EditProjectModal({ project, locale, t, onClose, onSave, clients, manage
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">English Name *</label>
                   <input className="form-input" value={form.name_en} onChange={e => handleChange('name_en', e.target.value)} required />
@@ -551,7 +551,7 @@ function EditProjectModal({ project, locale, t, onClose, onSave, clients, manage
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'العنوان' : 'Address'}</label>
                   <input className="form-input" value={form.address} onChange={e => handleChange('address', e.target.value)} />
@@ -562,7 +562,7 @@ function EditProjectModal({ project, locale, t, onClose, onSave, clients, manage
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'نوع المشروع' : 'Project Type'}</label>
                   <select className="form-select" value={form.project_type} onChange={e => handleChange('project_type', e.target.value)}>
@@ -581,7 +581,7 @@ function EditProjectModal({ project, locale, t, onClose, onSave, clients, manage
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'العميل' : 'Client'}</label>
                   <select className="form-select" value={form.client_id} onChange={e => handleChange('client_id', e.target.value)}>
@@ -610,7 +610,7 @@ function EditProjectModal({ project, locale, t, onClose, onSave, clients, manage
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'قيمة العقد' : 'Contract Value'} (EGP)</label>
                   <input className="form-input" type="number" min="0" value={form.contract_value} onChange={e => handleChange('contract_value', e.target.value)} />
@@ -621,7 +621,7 @@ function EditProjectModal({ project, locale, t, onClose, onSave, clients, manage
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'تاريخ البدء' : 'Start Date'}</label>
                   <input className="form-input" type="date" value={form.start_date} onChange={e => handleChange('start_date', e.target.value)} />
@@ -691,7 +691,7 @@ function PhaseModal({ phase, locale, t, projectId, onClose, onSave }) {
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">English Name *</label>
                   <input className="form-input" value={form.name_en} onChange={e => handleChange('name_en', e.target.value)} required />
@@ -702,7 +702,7 @@ function PhaseModal({ phase, locale, t, projectId, onClose, onSave }) {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'الحالة' : 'Status'}</label>
                   <select className="form-select" value={form.status} onChange={e => handleChange('status', e.target.value)}>
@@ -717,7 +717,7 @@ function PhaseModal({ phase, locale, t, projectId, onClose, onSave }) {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'تاريخ البدء' : 'Start Date'}</label>
                   <input className="form-input" type="date" value={form.start_date} onChange={e => handleChange('start_date', e.target.value)} />
@@ -857,7 +857,7 @@ function MilestoneModal({ milestone, locale, t, projectId, onClose, onSave }) {
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">English Title *</label>
                   <input className="form-input" value={form.title_en} onChange={e => handleChange('title_en', e.target.value)} required />
@@ -873,7 +873,7 @@ function MilestoneModal({ milestone, locale, t, projectId, onClose, onSave }) {
                 <textarea className="form-textarea" value={form.description} onChange={e => handleChange('description', e.target.value)} />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'التاريخ المستهدف' : 'Target Date'} *</label>
                   <input className="form-input" type="date" value={form.target_date} onChange={e => handleChange('target_date', e.target.value)} required />

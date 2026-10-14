@@ -389,7 +389,7 @@ function InvoiceModal({ invoice, locale, t, projects, clients, onClose, onSave }
                 </select>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'المبلغ (ج.م)' : 'Amount (EGP)'} *</label>
                   <input className="form-input" type="number" step="0.01" min="0" value={form.amount} onChange={e => handleChange('amount', e.target.value)} required />
@@ -492,7 +492,7 @@ function InvoiceDetailModal({ invoice, locale, t, onClose, onPaymentSaved }) {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px', fontSize: '13px' }}>
+          <div className="responsive-grid responsive-grid--two" style={{ gap: '12px', marginBottom: '20px', fontSize: '13px' }}>
             <div>
               <span style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'المشروع:' : 'Project:'}</span>{' '}
               <strong>{locale === 'ar' ? (invoice.project_name_ar || invoice.project_code) : (invoice.project_name_en || invoice.project_code)}</strong>
@@ -665,7 +665,7 @@ function PaymentForm({ invoice, locale, t, onClose, onSaved }) {
       </div>
       <form onSubmit={handleSubmit}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div className="responsive-grid responsive-grid--two" style={{ gap: '12px' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">{locale === 'ar' ? 'المبلغ' : 'Amount'} *</label>
               <input className="form-input" type="number" step="0.01" min="0.01" value={form.amount} onChange={e => handleChange('amount', e.target.value)} required />
@@ -675,7 +675,7 @@ function PaymentForm({ invoice, locale, t, onClose, onSaved }) {
               <input className="form-input" type="date" value={form.payment_date} onChange={e => handleChange('payment_date', e.target.value)} required />
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div className="responsive-grid responsive-grid--two" style={{ gap: '12px' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">{locale === 'ar' ? 'طريقة الدفع' : 'Payment Method'}</label>
               <select className="form-select" value={form.payment_method} onChange={e => handleChange('payment_method', e.target.value)}>

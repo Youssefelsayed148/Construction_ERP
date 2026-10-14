@@ -609,7 +609,7 @@ function ApprovalDetailModal({ detail, tab, locale, t, moduleLabel, statusLabel,
                     : 'The underlying record could not be loaded for this request type.'}
                 </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 40%) 1fr', gap: '6px 12px', fontSize: '13px' }}>
+                <div className="responsive-grid responsive-grid--two-minmax" style={{ gap: '6px 12px', fontSize: '13px' }}>
                   {fields
                     ? fields.map(f => (
                         <React.Fragment key={f.k}>

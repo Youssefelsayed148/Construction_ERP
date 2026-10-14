@@ -73,3 +73,5 @@ The application now has a versioned app-shell cache and user-controlled service-
 ## Phase 7 continuation — offline queue (2026-10-14)
 
 The former open queue gap is now implemented and verified by desktop/mobile offline-reconnect browser journeys plus full backend mock, full real-Postgres, frontend, i18n, guard and build gates; see the latest Phase 7.2 log/progress entries. Remaining Phase 7 carryover: local IBM Plex Arabic fonts, Lighthouse score, app-wide responsive class conversion (110 inline grid declarations), all-table `.table-container` pass (64 table tags), and additional major-screen/portal mobile journeys.
+
+Phase 7 responsive follow-up (2026-10-14): the previous app-wide inline-grid and table-wrapper carryover is closed. All 110 inline page grid declarations were replaced (zero remain); all 72 JSX tables are wrapped (AST scan: zero unwrapped). The Phase 7 open list now consists of local IBM Plex Arabic font assets, measured Lighthouse score, and broader per-screen/per-portal mobile viewport journeys.

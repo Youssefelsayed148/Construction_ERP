@@ -363,7 +363,7 @@ function RoleDashboardSection({ dash, ar }) {
         <h3 className="card-title" style={{ fontSize: 14, marginBottom: 10 }}>
           {ar ? 'لوحة دوري' : 'My role dashboard'} ({dash.role})
         </h3>
-        <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
+        <div className="stats-grid responsive-grid responsive-grid--auto-160">
           {widgets.map((wgt) => {
             const entries = Object.entries(wgt.data || {});
             const headline = entries[0];

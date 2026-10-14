@@ -472,7 +472,7 @@ export function WOMaterialFormModal({ wo, items, warehouses, locale, t, onClose,
                   ))}
                 </select>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'الكمية المخطط' : 'Planned Qty'}</label>
                   <input className="form-input" type="number" step="0.01" min="0" value={form.planned_quantity} onChange={e => handleChange('planned_quantity', e.target.value)} />
@@ -482,7 +482,7 @@ export function WOMaterialFormModal({ wo, items, warehouses, locale, t, onClose,
                   <input className="form-input" type="number" step="0.01" min="0" value={form.actual_quantity} onChange={e => handleChange('actual_quantity', e.target.value)} />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--one" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'المستودع' : 'Warehouse'}</label>
                   <select className="form-select" value={form.warehouse_id} onChange={e => handleChange('warehouse_id', e.target.value)}>
@@ -629,7 +629,7 @@ function WOLaborFormModal({ wo, locale, t, onClose, onSave }) {
                   ))}
                 </select>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'عدد العمال' : 'Worker Count'} *</label>
                   <input className="form-input" type="number" min="0" value={form.worker_count} onChange={e => handleChange('worker_count', e.target.value)} required />
@@ -793,7 +793,7 @@ function WOEquipmentFormModal({ wo, equipment, locale, t, onClose, onSave }) {
                   ))}
                 </select>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'الساعات' : 'Hours'} *</label>
                   <input className="form-input" type="number" step="0.5" min="0" value={form.hours} onChange={e => handleChange('hours', e.target.value)} required />
@@ -999,7 +999,7 @@ function WOCompletionFormModal({ wo, boqItems, locale, t, onClose, onSave }) {
                   ))}
                 </select>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'الكمية المنجزة' : 'Quantity Completed'} *</label>
                   <input className="form-input" type="number" step="0.01" min="0" value={form.quantity_completed} onChange={e => handleChange('quantity_completed', e.target.value)} required />
@@ -1087,7 +1087,7 @@ function WorkOrderModal({ wo, projectId, phases, boqSections, users, locale, t, 
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">English Title *</label>
                   <input className="form-input" value={form.title_en} onChange={e => handleChange('title_en', e.target.value)} required />
@@ -1097,7 +1097,7 @@ function WorkOrderModal({ wo, projectId, phases, boqSections, users, locale, t, 
                   <input className="form-input" value={form.title_ar} onChange={e => handleChange('title_ar', e.target.value)} required />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'المرحلة' : 'Phase'}</label>
                   <select className="form-select" value={form.phase_id} onChange={e => handleChange('phase_id', e.target.value)}>
@@ -1117,7 +1117,7 @@ function WorkOrderModal({ wo, projectId, phases, boqSections, users, locale, t, 
                   </select>
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'تاريخ البدء المخطط' : 'Planned Start'}</label>
                   <input className="form-input" type="date" value={form.planned_start_date} onChange={e => handleChange('planned_start_date', e.target.value)} />

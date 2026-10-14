@@ -275,7 +275,7 @@ function ClientModal({ client, locale, t, onClose, onSave }) {
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div className="modal-form" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">English Name *</label>
                   <input className="form-input" value={form.name_en} onChange={e => handleChange('name_en', e.target.value)} required />
@@ -286,7 +286,7 @@ function ClientModal({ client, locale, t, onClose, onSave }) {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'نوع العميل' : 'Client Type'}</label>
                   <select className="form-select" value={form.client_type} onChange={e => handleChange('client_type', e.target.value)}>
@@ -309,7 +309,7 @@ function ClientModal({ client, locale, t, onClose, onSave }) {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'الشخص المسؤول' : 'Contact Person'}</label>
                   <input className="form-input" value={form.contact_person} onChange={e => handleChange('contact_person', e.target.value)} />
@@ -320,7 +320,7 @@ function ClientModal({ client, locale, t, onClose, onSave }) {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">Email</label>
                   <input className="form-input" type="email" value={form.email} onChange={e => handleChange('email', e.target.value)} />
@@ -331,7 +331,7 @@ function ClientModal({ client, locale, t, onClose, onSave }) {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'شروط الدفع' : 'Payment Terms'}</label>
                   <input className="form-input" value={form.payment_terms} onChange={e => handleChange('payment_terms', e.target.value)} />

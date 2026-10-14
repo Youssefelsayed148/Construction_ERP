@@ -121,3 +121,7 @@ Implemented a user/project-scoped IndexedDB queue for daily reports, staged phot
 Verification: backend mock 53 suites / 1,002 tests; real PG 67 suites / 608 tests on loopback disposable DB `construction_erp_test`; frontend CI 29 suites / 117 tests; `i18n:check ok`; production build compiled; `lint-guards: ok`; full existing Playwright 34 passed / 50 skipped; focused offline journey passed 1/1 desktop and 1/1 mobile; `git diff --check` pending final staging review. Lighthouse score and bundled IBM Plex Arabic remain unverified/open. Continue Phase 7.2 responsive/table work and then Phases 8–11.
 
 Commit recorded: `7487787` (`Phase 7.2: queue site reports offline`) on `closeout/batch-a-to-6`. The pre-existing `docs/CODEX_AUDIT_REPORT.md` remains untracked, untouched and excluded.
+
+## 2026-10-14 continuation — Phase 7 responsive utilities and tables
+
+Replaced all 110 inline `gridTemplateColumns` declarations in `frontend/src/pages` with responsive utility classes (source scan: zero remain). Wrapped all 72 JSX `<table>` elements under `frontend/src` in `.table-container`; Babel AST scan found zero unwrapped tables. Site Management buttons/icon actions now have 44px minimum targets and site form controls have 14px text. Existing E2E suite after conversion: 36 passed / 50 skipped; site offline journey passed desktop/mobile. Frontend CI 29 suites / 117 tests, i18n check, build, backend lint guards and `git diff --check` passed. Phase 7 still open for IBM Plex Arabic local assets, Lighthouse score, and mobile journeys for every major screen/portal.

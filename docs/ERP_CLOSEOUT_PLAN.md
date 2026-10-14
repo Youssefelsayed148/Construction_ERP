@@ -353,9 +353,9 @@ Exit gate: every spec screen reachable from navigation; no `prompt()` left; empt
 - [ ] Bundle fonts locally (IBM Plex Arabic) so the app works offline; adjust nginx CSP.
 
 7.2 Responsive
-- [ ] Replace the 97 inline `gridTemplateColumns` with responsive CSS classes/utilities.
-- [ ] Wrap every `<table>` (about 71 across 27 files) in `.table-container`; priority: HSE, QHSE, DocControl.
-- [ ] Touch targets: raise `btn-sm` and icon buttons on site screens to 44px; minimum 14px text on forms.
+- [x] Replace the 110 inline `gridTemplateColumns` occurrences under `frontend/src/pages` with responsive CSS classes/utilities (verified zero remain, 2026-10-14).
+- [x] Wrap every `<table>` in `frontend/src` in `.table-container` (72 tables, zero unwrapped by JSX AST scan, 2026-10-14).
+- [x] Touch targets: raise buttons and icon buttons on Site Management screens to 44px; minimum 14px text on forms.
 - [ ] Mobile viewport Playwright test per major screen and per portal.
 
 7.3 i18n and RTL

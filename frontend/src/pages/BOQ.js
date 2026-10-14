@@ -459,7 +459,7 @@ function SectionModal({ section, sections, projectId, locale, t, onClose, onSave
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">English Name *</label>
                   <input className="form-input" value={form.name_en} onChange={e => handleChange('name_en', e.target.value)} required />
@@ -469,7 +469,7 @@ function SectionModal({ section, sections, projectId, locale, t, onClose, onSave
                   <input className="form-input" value={form.name_ar} onChange={e => handleChange('name_ar', e.target.value)} required />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'القسم الأب' : 'Parent Section'}</label>
                   <select className="form-select" value={form.parent_id} onChange={e => handleChange('parent_id', e.target.value)}>
@@ -568,7 +568,7 @@ function ItemModal({ item, sections, defaultSectionId, projectId, masterItems, i
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'القسم' : 'Section'} *</label>
                   <select className="form-select" value={form.section_id} onChange={e => handleChange('section_id', e.target.value)} required>
@@ -587,7 +587,7 @@ function ItemModal({ item, sections, defaultSectionId, projectId, masterItems, i
                   </select>
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">English Description *</label>
                   <input className="form-input" value={form.description_en} onChange={e => handleChange('description_en', e.target.value)} required />
@@ -597,7 +597,7 @@ function ItemModal({ item, sections, defaultSectionId, projectId, masterItems, i
                   <input className="form-input" value={form.description_ar} onChange={e => handleChange('description_ar', e.target.value)} required />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{t('common.unit')}</label>
                   <select className="form-select" value={form.unit} onChange={e => handleChange('unit', e.target.value)}>

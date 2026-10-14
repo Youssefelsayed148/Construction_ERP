@@ -245,7 +245,7 @@ function BuildingPanel({ building, locale, t, onBulk, onAddUnit, onChanged }) {
           {locale === 'ar' ? 'لا توجد وحدات.' : 'No units.'}
         </p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '12px' }}>
+        <div className="responsive-grid responsive-grid--auto-210" style={{ gap: '12px' }}>
           {filtered.map(u => (
             <div key={u.id} style={{
               border: '1px solid var(--color-surface-raised)',
@@ -318,7 +318,7 @@ function BuildingModal({ projectId, locale, t, onClose, onSave }) {
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--one-two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'الكود' : 'Code'} *</label>
                   <input className="form-input" value={form.code} onChange={e => handleChange('code', e.target.value)} placeholder="B1" required />
@@ -328,7 +328,7 @@ function BuildingModal({ projectId, locale, t, onClose, onSave }) {
                   <input className="form-input" value={form.name} onChange={e => handleChange('name', e.target.value)} required />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'الطوابق' : 'Floors'}</label>
                   <input className="form-input" type="number" min="1" value={form.floors} onChange={e => handleChange('floors', e.target.value)} />
@@ -399,7 +399,7 @@ function BulkUnitsModal({ building, locale, t, onClose, onSave }) {
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--four" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'الطوابق' : 'Floors'} *</label>
                   <input className="form-input" type="number" min="1" value={form.floors} onChange={e => handleChange('floors', e.target.value)} required />
@@ -422,7 +422,7 @@ function BulkUnitsModal({ building, locale, t, onClose, onSave }) {
                   ? `سيتم إنشاء ${count} وحدة (مثال: ${exampleCode})`
                   : `Will create ${count} units (e.g. ${exampleCode})`}
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'النوع' : 'Type'}</label>
                   <select className="form-select" value={form.type} onChange={e => handleChange('type', e.target.value)}>
@@ -436,7 +436,7 @@ function BulkUnitsModal({ building, locale, t, onClose, onSave }) {
                   </select>
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--four" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'المساحة م²' : 'Area m²'}</label>
                   <input className="form-input" type="number" min="0" value={form.area} onChange={e => handleChange('area', e.target.value)} />
@@ -506,7 +506,7 @@ function UnitModal({ building, locale, t, onClose, onSave }) {
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'الكود' : 'Code'} *</label>
                   <input className="form-input" value={form.code} onChange={e => handleChange('code', e.target.value)} placeholder="101" required />
@@ -522,7 +522,7 @@ function UnitModal({ building, locale, t, onClose, onSave }) {
                   <input className="form-input" type="number" value={form.floor_no} onChange={e => handleChange('floor_no', e.target.value)} />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--four" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'المساحة م²' : 'Area m²'}</label>
                   <input className="form-input" type="number" min="0" value={form.area} onChange={e => handleChange('area', e.target.value)} />
@@ -540,7 +540,7 @@ function UnitModal({ building, locale, t, onClose, onSave }) {
                   <input className="form-input" type="number" min="0" value={form.price} onChange={e => handleChange('price', e.target.value)} />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'التشطيب' : 'Finishing'}</label>
                   <select className="form-select" value={form.finishing_type} onChange={e => handleChange('finishing_type', e.target.value)}>

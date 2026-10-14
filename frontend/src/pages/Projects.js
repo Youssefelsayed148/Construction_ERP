@@ -196,7 +196,7 @@ function Projects() {
           </p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+        <div className="responsive-grid responsive-grid--auto-340" style={{ gap: '20px' }}>
           {projects.map(p => (
             <div
               key={p.id}

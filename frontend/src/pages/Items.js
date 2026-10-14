@@ -323,7 +323,7 @@ function ItemModal({ item, locale, t, onClose, onSave }) {
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div className="modal-form" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'الكود' : 'Code'}</label>
                   <input
@@ -340,7 +340,7 @@ function ItemModal({ item, locale, t, onClose, onSave }) {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'الفئة الرئيسية' : 'Category'}</label>
                   <select className="form-select" value={form.category} onChange={e => handleChange('category', e.target.value)}>
@@ -361,7 +361,7 @@ function ItemModal({ item, locale, t, onClose, onSave }) {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">English Name *</label>
                   <input className="form-input" value={form.name_en} onChange={e => handleChange('name_en', e.target.value)} required />

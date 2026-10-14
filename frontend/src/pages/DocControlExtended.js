@@ -350,7 +350,7 @@ export function CorrespondenceTab({ projectId, locale, t }) {
       </div>
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: '16px', display: 'grid', gap: '10px', maxWidth: 560 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="responsive-grid responsive-grid--two" style={{ gap: 10 }}>
             <select className="input" value={form.corr_type} onChange={e => setForm({ ...form, corr_type: e.target.value })}>
               {Object.entries(CORR_TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>

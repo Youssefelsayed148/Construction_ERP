@@ -356,7 +356,7 @@ export default function Handover() {
             <label>{t('handover.warrantyIssuer')}<input className="input" required value={warrantyForm.issuer} onChange={(event) => setWarrantyForm({ ...warrantyForm, issuer: event.target.value })} /></label>
             <label>{t('handover.asset')}<select className="input" value={warrantyForm.asset_id} onChange={(event) => setWarrantyForm({ ...warrantyForm, asset_id: event.target.value })}><option value="">{t('handover.noAsset')}</option>{assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.asset_code} · {asset.name}</option>)}</select></label>
             <label>{t('handover.coverage')}<textarea className="input" value={warrantyForm.coverage_description} onChange={(event) => setWarrantyForm({ ...warrantyForm, coverage_description: event.target.value })} /></label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div className="responsive-grid responsive-grid--two" style={{ gap: 8 }}>
               <label>{t('handover.startDate')}<input className="input" type="date" required value={warrantyForm.start_date} onChange={(event) => setWarrantyForm({ ...warrantyForm, start_date: event.target.value })} /></label>
               <label>{t('handover.endDate')}<input className="input" type="date" min={warrantyForm.start_date || undefined} required value={warrantyForm.end_date} onChange={(event) => setWarrantyForm({ ...warrantyForm, end_date: event.target.value })} /></label>
             </div>
@@ -376,7 +376,7 @@ export default function Handover() {
         <label>{t('handover.assetName')}<input className="input" required value={assetForm.name} onChange={(event) => setAssetForm({ ...assetForm, name: event.target.value })} /></label>
         <label>{t('handover.model')}<input className="input" value={assetForm.model} onChange={(event) => setAssetForm({ ...assetForm, model: event.target.value })} /></label>
         <label>{t('handover.serialNumber')}<input className="input" value={assetForm.serial_no} onChange={(event) => setAssetForm({ ...assetForm, serial_no: event.target.value })} /></label>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+        <div className="responsive-grid responsive-grid--three" style={{ gap: 8 }}>
           <label>{t('handover.commissioningDate')}<input className="input" type="date" value={assetForm.commissioning_date} onChange={(event) => setAssetForm({ ...assetForm, commissioning_date: event.target.value })} /></label>
           <label>{t('handover.startDate')}<input className="input" type="date" value={assetForm.warranty_start} onChange={(event) => setAssetForm({ ...assetForm, warranty_start: event.target.value })} /></label>
           <label>{t('handover.endDate')}<input className="input" type="date" value={assetForm.warranty_end} onChange={(event) => setAssetForm({ ...assetForm, warranty_end: event.target.value })} /></label>

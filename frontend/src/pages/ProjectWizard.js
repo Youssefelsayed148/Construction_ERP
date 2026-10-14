@@ -179,7 +179,7 @@ function ProjectWizard() {
         {/* Step 1 — basic info */}
         {step === 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
               <div className="form-group">
                 <label className="form-label">{L('English Name', 'الاسم بالإنجليزية')}</label>
                 <input className="form-input" value={form.name_en} onChange={e => set('name_en', e.target.value)} />
@@ -189,7 +189,7 @@ function ProjectWizard() {
                 <input className="form-input" value={form.name_ar} onChange={e => set('name_ar', e.target.value)} required />
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+            <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
               <div className="form-group">
                 <label className="form-label">{L('Project Number', 'رقم المشروع')}</label>
                 <input className="form-input" value={form.project_number} onChange={e => set('project_number', e.target.value)} placeholder="auto" />
@@ -208,7 +208,7 @@ function ProjectWizard() {
                 </select>
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
               <div className="form-group">
                 <label className="form-label">{L('Country', 'الدولة')}</label>
                 <input className="form-input" value={form.country} onChange={e => set('country', e.target.value)} />
@@ -222,7 +222,7 @@ function ProjectWizard() {
               <label className="form-label">{L('Address', 'العنوان')}</label>
               <input className="form-input" value={form.address} onChange={e => set('address', e.target.value)} />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
+            <div className="responsive-grid responsive-grid--four" style={{ gap: '16px' }}>
               <div className="form-group">
                 <label className="form-label">GPS Lat</label>
                 <input className="form-input" type="number" step="any" value={form.gps_latitude} onChange={e => set('gps_latitude', e.target.value)} />
@@ -250,7 +250,7 @@ function ProjectWizard() {
                 {TAX_PROFILES.map(tp => <option key={tp.value} value={tp.value}>{L(tp.en, tp.ar)}</option>)}
               </select>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+            <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
               <div className="form-group">
                 <label className="form-label">{L('Original Contract Value', 'قيمة العقد الأصلية')}</label>
                 <input className="form-input" type="number" min="0" value={form.contract_value} onChange={e => set('contract_value', e.target.value)} />
@@ -267,7 +267,7 @@ function ProjectWizard() {
                 </select>
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+            <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
               <div className="form-group">
                 <label className="form-label">{L('Start Date', 'تاريخ البدء')}</label>
                 <input className="form-input" type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)} />
@@ -280,7 +280,7 @@ function ProjectWizard() {
                 <label className="form-label">{L('Tax / retention handled in steps 6-7', 'يُكمل في الخطوات ٦-٧')}</label>
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
+            <div className="responsive-grid responsive-grid--four" style={{ gap: '16px' }}>
               <div className="form-group">
                 <label className="form-label">{L('DLP (months)', 'فترة الصيانة (شهور)')}</label>
                 <input className="form-input" type="number" min="0" value={form.dlp_period_months} onChange={e => set('dlp_period_months', e.target.value)} />
@@ -298,7 +298,7 @@ function ProjectWizard() {
                 <input className="form-input" type="number" min="0" value={form.retention_cap_amount} onChange={e => set('retention_cap_amount', e.target.value)} />
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
               <div className="form-group">
                 <label className="form-label">{L('Advance Payment %', 'نسبة الدفعة المقدمة %')}</label>
                 <input className="form-input" type="number" min="0" max="100" value={form.advance_payment_percentage} onChange={e => set('advance_payment_percentage', e.target.value)} />
@@ -397,7 +397,7 @@ function ProjectWizard() {
             <p style={{ color: 'var(--color-text-secondary)' }}>
               {L('Optional — can be empty. Consultants/clients get portal access per participant.', 'اختياري — يمكن أن يبقى فارغاً.')}
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: '12px', alignItems: 'end' }}>
+            <div className="responsive-grid responsive-grid--two-one-auto" style={{ gap: '12px', alignItems: 'end' }}>
               <div className="form-group">
                 <label className="form-label">{L('Organization (client directory)', 'المؤسسة (دليل العملاء)')}</label>
                 <select id="participant-org" className="form-select" defaultValue="">

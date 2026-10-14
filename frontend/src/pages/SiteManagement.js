@@ -81,7 +81,7 @@ function SiteManagement() {
   ];
 
   return (
-    <div className="page-container">
+    <div className="page-container site-management">
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
         <button className="btn" onClick={() => navigate(`/projects/${id}`)}>
           <ArrowLeft size={16} />

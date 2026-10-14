@@ -276,7 +276,7 @@ function EmployeeModal({ employee, locale, t, onClose, onSave }) {
                   <input className="form-input" value={employee.code} disabled />
                 </div>
               )}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">English Name *</label>
                   <input className="form-input" value={form.name_en} onChange={e => handleChange('name_en', e.target.value)} required />
@@ -286,7 +286,7 @@ function EmployeeModal({ employee, locale, t, onClose, onSave }) {
                   <input className="form-input" value={form.name_ar} onChange={e => handleChange('name_ar', e.target.value)} required />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'القسم' : 'Department'}</label>
                   <input className="form-input" value={form.department} onChange={e => handleChange('department', e.target.value)} />
@@ -302,7 +302,7 @@ function EmployeeModal({ employee, locale, t, onClose, onSave }) {
                   {locale === 'ar' ? 'مدير قسم' : 'Department Manager'}
                 </label>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'البريد الإلكتروني' : 'Email'}</label>
                   <input className="form-input" type="email" value={form.email} onChange={e => handleChange('email', e.target.value)} />
@@ -312,7 +312,7 @@ function EmployeeModal({ employee, locale, t, onClose, onSave }) {
                   <input className="form-input" value={form.phone} onChange={e => handleChange('phone', e.target.value)} />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'الراتب الأساسي' : 'Basic Salary'}</label>
                   <input className="form-input" type="number" step="0.01" value={form.salary} onChange={e => handleChange('salary', e.target.value)} />
@@ -493,7 +493,7 @@ function AttendanceModal({ locale, t, date, onClose, onSave }) {
                   ))}
                 </select>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'التاريخ' : 'Date'}</label>
                   <input className="form-input" type="date" value={form.date} onChange={e => handleChange('date', e.target.value)} required />
@@ -507,7 +507,7 @@ function AttendanceModal({ locale, t, date, onClose, onSave }) {
                   </select>
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'وقت الحضور' : 'Check In'}</label>
                   <input className="form-input" type="time" value={form.check_in} onChange={e => handleChange('check_in', e.target.value)} />
@@ -717,7 +717,7 @@ function LaborerModal({ laborer, locale, t, onClose, onSave }) {
                 <label className="form-label">{locale === 'ar' ? 'الاسم الكامل' : 'Full Name'} *</label>
                 <input className="form-input" value={form.full_name} onChange={e => handleChange('full_name', e.target.value)} required />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'المهارة' : 'Skill Category'}</label>
                   <select className="form-select" value={form.skill_category} onChange={e => handleChange('skill_category', e.target.value)}>
@@ -892,7 +892,7 @@ function LaborPaymentModal({ locale, t, onClose, onSave }) {
                   ))}
                 </select>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'المشروع' : 'Project ID'}</label>
                   <input className="form-input" value={form.project_id} onChange={e => handleChange('project_id', e.target.value)} />

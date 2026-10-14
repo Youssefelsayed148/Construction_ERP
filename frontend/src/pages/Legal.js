@@ -291,7 +291,7 @@ function LegalModal({ document, locale, t, onClose, onSave }) {
                 <input className="form-input" value={form.title} onChange={e => handleChange('title', e.target.value)} required />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'نوع المستند' : 'Document Type'}</label>
                   <select className="form-select" value={form.document_type} onChange={e => handleChange('document_type', e.target.value)}>

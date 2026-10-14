@@ -279,7 +279,7 @@ function SupplierModal({ supplier, locale, t, onClose, onSave }) {
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div className="modal-form" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">English Name *</label>
                   <input className="form-input" value={form.name_en} onChange={e => handleChange('name_en', e.target.value)} required />
@@ -290,7 +290,7 @@ function SupplierModal({ supplier, locale, t, onClose, onSave }) {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'الشخص المسؤول' : 'Contact Person'}</label>
                   <input className="form-input" value={form.contact_person} onChange={e => handleChange('contact_person', e.target.value)} />
@@ -301,7 +301,7 @@ function SupplierModal({ supplier, locale, t, onClose, onSave }) {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">Email</label>
                   <input className="form-input" type="email" value={form.email} onChange={e => handleChange('email', e.target.value)} />
@@ -314,7 +314,7 @@ function SupplierModal({ supplier, locale, t, onClose, onSave }) {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'العنوان' : 'Address'}</label>
                   <input className="form-input" value={form.address} onChange={e => handleChange('address', e.target.value)} />
@@ -335,7 +335,7 @@ function SupplierModal({ supplier, locale, t, onClose, onSave }) {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'الرقم الضريبي' : 'Tax ID'}</label>
                   <input className="form-input" value={form.tax_id} onChange={e => handleChange('tax_id', e.target.value)} />
@@ -472,7 +472,7 @@ function SuppliedMaterials({ supplierId, locale }) {
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: '8px', alignItems: 'end' }}>
+          <div className="responsive-grid responsive-grid--five-mixed" style={{ gap: '8px', alignItems: 'end' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">{locale === 'ar' ? 'إضافة مادة' : 'Add Material'}</label>
               <select className="form-select" value={form.material_id} onChange={e => setForm(f => ({ ...f, material_id: e.target.value }))}>

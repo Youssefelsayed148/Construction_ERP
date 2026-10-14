@@ -148,14 +148,14 @@ function PermitsTab({ projectId, locale, t }) {
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: '16px', display: 'grid', gap: '10px' }}>
           <input className="input" required placeholder={locale === 'ar' ? 'العنوان' : 'Title'} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div className="responsive-grid responsive-grid--two" style={{ gap: '10px' }}>
             <select className="input" value={form.permit_type} onChange={e => setForm({ ...form, permit_type: e.target.value })}>
               {Object.entries(PERMIT_TYPE_LABELS[locale] || PERMIT_TYPE_LABELS.en).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
             <input className="input" placeholder={locale === 'ar' ? 'الشروط' : 'Conditions'} value={form.conditions} onChange={e => setForm({ ...form, conditions: e.target.value })} />
           </div>
           <textarea className="input" placeholder={locale === 'ar' ? 'الوصف' : 'Description'} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div className="responsive-grid responsive-grid--two" style={{ gap: '10px' }}>
             <input className="input" type="date" title="Valid from" value={form.valid_from} onChange={e => setForm({ ...form, valid_from: e.target.value })} />
             <input className="input" type="date" title="Valid to" value={form.valid_to} onChange={e => setForm({ ...form, valid_to: e.target.value })} />
           </div>
@@ -251,7 +251,7 @@ function IncidentsTab({ projectId, locale, t }) {
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: '16px', display: 'grid', gap: '10px' }}>
           <textarea className="input" required placeholder={locale === 'ar' ? 'الوصف' : 'Description'} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+          <div className="responsive-grid responsive-grid--three" style={{ gap: '10px' }}>
             <select className="input" value={form.incident_category} onChange={e => setForm({ ...form, incident_category: e.target.value })}>
               <option value="injury">Injury</option><option value="environmental">Environmental</option>
               <option value="property">Property</option><option value="vehicle">Vehicle</option><option value="other">Other</option>
@@ -261,7 +261,7 @@ function IncidentsTab({ projectId, locale, t }) {
             </select>
             <input className="input" placeholder={locale === 'ar' ? 'المتضرر' : 'Injured party'} value={form.injured_party} onChange={e => setForm({ ...form, injured_party: e.target.value })} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', alignItems: 'center' }}>
+          <div className="responsive-grid responsive-grid--two" style={{ gap: '10px', alignItems: 'center' }}>
             <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}>
               <input type="checkbox" checked={form.is_lti} onChange={e => setForm({ ...form, is_lti: e.target.checked })} />
               {locale === 'ar' ? 'حادث فقدان وقت (LTI)' : 'Lost-time injury (LTI)'}
@@ -337,7 +337,7 @@ function NearMissesTab({ projectId, locale, t }) {
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: '16px', display: 'grid', gap: '10px' }}>
           <textarea className="input" required placeholder={locale === 'ar' ? 'الوصف' : 'Description'} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div className="responsive-grid responsive-grid--two" style={{ gap: '10px' }}>
             <input className="input" placeholder={locale === 'ar' ? 'التصنيف' : 'Category'} value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} />
             <select className="input" value={form.severity} onChange={e => setForm({ ...form, severity: e.target.value })}>
               <option value="minor">Minor</option><option value="major">Major</option><option value="critical">Critical</option>
@@ -425,7 +425,7 @@ function JsaTab({ projectId, locale, t }) {
           <input className="input" required placeholder={locale === 'ar' ? 'العنوان' : 'Title'} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
           <input className="input" placeholder={locale === 'ar' ? 'النشاط' : 'Activity'} value={form.activity} onChange={e => setForm({ ...form, activity: e.target.value })} />
           {kind === 'risk-assessments' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div className="responsive-grid responsive-grid--two" style={{ gap: '10px' }}>
               <select className="input" value={form.likelihood} onChange={e => setForm({ ...form, likelihood: e.target.value })}>
                 <option value="low">Likelihood: Low</option><option value="medium">Likelihood: Medium</option><option value="high">Likelihood: High</option>
               </select>

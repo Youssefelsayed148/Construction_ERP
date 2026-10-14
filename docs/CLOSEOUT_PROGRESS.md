@@ -625,3 +625,11 @@ Verification: backend mock `npm test -- --runInBand`: 53 suites / 1,002 tests; r
 Not complete: Lighthouse/PWA score, local IBM Plex Arabic assets, replacement of all 110 inline `gridTemplateColumns` occurrences and wrapping all 64 tables in `.table-container`, and mobile journeys for every major screen/portal. Phase 7 remains open. Slice awaits explicit-path commit.
 
 Phase 7.2 offline queue commit: `7487787` (`Phase 7.2: queue site reports offline`) on `closeout/batch-a-to-6`. The user's audit report artifact remains unstaged.
+
+### Phase 7.2 — app-wide responsive grids and tables (2026-10-14)
+
+Converted 110 inline `gridTemplateColumns` declarations in frontend page files to named responsive classes; source scan now returns zero. Added responsive breakpoints for two-to-five-column layouts, asymmetric form/sidebar/schedule layouts, and existing auto-fit grids. Wrapped all 72 JSX tables across `frontend/src` in `.table-container`; AST scan reports zero unwrapped, including HSE, QHSE, and document control. Site Management’s button and icon targets have a 44px minimum, and its form controls have 14px text.
+
+Verification after the layout conversion: frontend CI 29 suites / 117 tests; `i18n:check ok`; production build compiled; backend `lint-guards: ok`; `git diff --check` exited 0; full Playwright 36 passed / 50 skipped. Desktop and mobile offline daily-report journeys each passed 1/1 after the final Site Management sizing change. Real PG/backend gates remain valid from the immediately preceding Phase 7 queue slice because this slice changes only frontend layout and docs; they passed 67 suites / 608 tests and 53 suites / 1,002 tests respectively.
+
+Remaining Phase 7 items: locally bundle licensed IBM Plex Arabic fonts; run Lighthouse and record an actual PWA score; extend mobile viewport coverage to every major screen and portal. Do not mark Phase 7 complete until those items and its exit gate are satisfied.

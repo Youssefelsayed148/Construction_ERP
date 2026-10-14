@@ -140,7 +140,7 @@ export function ItpTab({ projectId, locale, t }) {
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: '16px', display: 'grid', gap: '10px' }}>
           <input className="input" required placeholder={locale === 'ar' ? 'العنوان' : 'Title'} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div className="responsive-grid responsive-grid--two" style={{ gap: '10px' }}>
             <input className="input" placeholder={locale === 'ar' ? 'التخصص' : 'Discipline'} value={form.discipline} onChange={e => setForm({ ...form, discipline: e.target.value })} />
             <WorkPackageSelect projectId={projectId} value={form.work_package_id} onChange={(v) => setForm({ ...form, work_package_id: v })} />
           </div>
@@ -392,7 +392,7 @@ export function PunchTab({ projectId, locale, t }) {
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: '16px', display: 'grid', gap: '10px' }}>
           <textarea className="input" required placeholder={locale === 'ar' ? 'الوصف' : 'Description'} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+          <div className="responsive-grid responsive-grid--three" style={{ gap: '10px' }}>
             <input className="input" placeholder={locale === 'ar' ? 'التخصص' : 'Discipline'} value={form.discipline} onChange={e => setForm({ ...form, discipline: e.target.value })} />
             <select className="input" value={form.severity} onChange={e => setForm({ ...form, severity: e.target.value })}>
               <option value="minor">Minor</option><option value="major">Major</option><option value="critical">Critical</option>
@@ -503,7 +503,7 @@ export function CapaTab({ projectId, locale, t }) {
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: '16px', display: 'grid', gap: '10px' }}>
           <textarea className="input" required placeholder={locale === 'ar' ? 'الوصف' : 'Description'} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div className="responsive-grid responsive-grid--two" style={{ gap: '10px' }}>
             <input className="input" placeholder={locale === 'ar' ? 'الدور المسؤول' : 'Assigned role'} value={form.assigned_role} onChange={e => setForm({ ...form, assigned_role: e.target.value })} />
             <input className="input" type="date" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} />
           </div>
@@ -677,11 +677,11 @@ export function CalibrationTab({ projectId, locale, t }) {
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: '16px', display: 'grid', gap: '10px' }}>
           <input className="input" required placeholder={locale === 'ar' ? 'اسم الجهاز' : 'Instrument name'} value={form.instrument_name} onChange={e => setForm({ ...form, instrument_name: e.target.value })} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div className="responsive-grid responsive-grid--two" style={{ gap: '10px' }}>
             <input className="input" placeholder="Serial no." value={form.serial_no} onChange={e => setForm({ ...form, serial_no: e.target.value })} />
             <input className="input" type="date" value={form.next_calibration_date} onChange={e => setForm({ ...form, next_calibration_date: e.target.value })} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div className="responsive-grid responsive-grid--two" style={{ gap: '10px' }}>
             <input className="input" placeholder={locale === 'ar' ? 'مرجع الشهادة' : 'Certificate ref'} value={form.certificate_ref} onChange={e => setForm({ ...form, certificate_ref: e.target.value })} />
             <select className="input" value={form.result} onChange={e => setForm({ ...form, result: e.target.value })}>
               <option value="pass">Pass</option><option value="fail">Fail</option>

@@ -55,3 +55,7 @@ Commit recorded: `2f31c01` (`Phase 7.2: require idempotent daily reports`). The 
 IndexedDB now stores report drafts, local photo blobs and quantity measurements scoped to owner and project. Sync uses capped exponential retry and the same idempotency key; conflicts/failures stay visible, and users can retry or remove. Desktop and mobile Playwright airplane-mode journeys each passed and confirmed one upload/report POST after reconnect. Backend mock 53/1,002; real PG 67/608; frontend 29/117; i18n and production build passed; full Playwright 34 passed / 50 skipped. Global responsive conversion still has 110 inline grid-template declarations and 64 table tags; local Arabic font assets and Lighthouse are open.
 
 Phase 7.2 offline site-report queue committed as `7487787` (`Phase 7.2: queue site reports offline`). Remaining Phase 7 work is font packaging, Lighthouse, app-wide responsive/table conversion and broader mobile coverage.
+
+## 2026-10-14 continuation — Phase 7 responsive utilities
+
+App-wide page grid declarations were converted to responsive classes (110 to 0). All 72 JSX tables now sit in `.table-container` (AST check: 0 unwrapped). Site Management buttons are 44px minimum and form controls 14px. Post-change Playwright: 36 passed / 50 skipped, including offline flow on desktop/mobile; frontend 29/117, i18n and build passed. Phase 7 remains open for bundled IBM Plex Arabic, Lighthouse evidence, and broader route/portal mobile coverage.

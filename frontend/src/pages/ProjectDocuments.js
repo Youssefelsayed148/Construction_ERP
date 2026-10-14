@@ -312,7 +312,7 @@ function UploadDocModal({ projectId, categories, locale, t, onClose, onSave }) {
                 <label className="form-label">{locale === 'ar' ? 'العنوان' : 'Title'} *</label>
                 <input className="form-input" value={form.title} onChange={e => handleChange('title', e.target.value)} required />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'الفئة' : 'Category'}</label>
                   <select className="form-select" value={form.category_id} onChange={e => handleChange('category_id', e.target.value)}>
@@ -327,7 +327,7 @@ function UploadDocModal({ projectId, categories, locale, t, onClose, onSave }) {
                   </select>
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <label className="form-group">{t('documentControl.register.controlledType')}
                   <select className="form-select" value={form.doc_type} onChange={e => handleChange('doc_type', e.target.value)}>
                     {['drawing', 'specification', 'contract', 'report', 'method_statement', 'as_built', 'o_m', 'other'].map(type => <option key={type} value={type}>{t(`documentControl.register.types.${type}`)}</option>)}
@@ -639,7 +639,7 @@ function RfiModal({ projectId, locale, t, onClose, onSave }) {
                 <label className="form-label">{locale === 'ar' ? 'السؤال' : 'Question'}</label>
                 <textarea className="form-textarea" value={form.question} onChange={e => handleChange('question', e.target.value)} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'الفئة' : 'Category'}</label>
                   <input className="form-input" value={form.category} onChange={e => handleChange('category', e.target.value)} />
@@ -668,7 +668,7 @@ function RfiModal({ projectId, locale, t, onClose, onSave }) {
                 <label className="form-label">{t('documentControl.rfiImpacts.workPackage')}</label>
                 <WorkPackageSelect projectId={projectId} value={form.work_package_id} onChange={(value) => handleChange('work_package_id', value)} className="form-select" />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group"><label className="form-label">{t('documentControl.rfiImpacts.cost')}</label><input className="form-input" type="number" step="0.01" value={form.cost_impact} onChange={e => handleChange('cost_impact', e.target.value)} /></div>
                 <div className="form-group"><label className="form-label">{t('documentControl.rfiImpacts.schedule')}</label><input className="form-input" type="number" step="1" value={form.schedule_impact_days} onChange={e => handleChange('schedule_impact_days', e.target.value)} /></div>
               </div>
@@ -870,7 +870,7 @@ function SubmittalModal({ projectId, locale, t, onClose, onSave }) {
                 <label className="form-label">{locale === 'ar' ? 'العنوان' : 'Title'} *</label>
                 <input className="form-input" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} required />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'النوع' : 'Type'}</label>
                   <select className="form-select" value={form.submittal_type} onChange={e => setForm(f => ({ ...f, submittal_type: e.target.value }))}>

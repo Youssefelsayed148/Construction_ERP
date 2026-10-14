@@ -265,7 +265,7 @@ function TestModal({ projectId, locale, t, onClose, onSave }) {
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'نوع الاختبار' : 'Test Type'} *</label>
                   <input className="form-input" value={form.test_type} onChange={e => handleChange('test_type', e.target.value)}
@@ -276,7 +276,7 @@ function TestModal({ projectId, locale, t, onClose, onSave }) {
                   <input className="form-input" type="date" value={form.test_date} onChange={e => handleChange('test_date', e.target.value)} />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'النتيجة' : 'Result'}</label>
                   <select className="form-select" value={form.result} onChange={e => handleChange('result', e.target.value)}>
@@ -543,7 +543,7 @@ function InspectionsTab({ projectId, locale, t, onChanged }) {
                   <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>{insp.inspector_name || ''}</span>
                 </div>
                 {items.length > 0 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '4px', marginTop: '12px', fontSize: '13px' }}>
+                  <div className="responsive-grid responsive-grid--auto-260" style={{ gap: '4px', marginTop: '12px', fontSize: '13px' }}>
                     {items.map((it, i) => (
                       <div key={i} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                         {it.ok ? <CheckCircle size={13} style={{ color: 'var(--color-success)', flexShrink: 0 }} /> : <X size={13} style={{ color: 'var(--color-danger, #e5534b)', flexShrink: 0 }} />}
@@ -595,7 +595,7 @@ function InspectionModal({ projectId, locale, t, onClose, onSave }) {
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'التاريخ' : 'Date'}</label>
                   <input className="form-input" type="date" value={form.inspection_date} onChange={e => setForm(f => ({ ...f, inspection_date: e.target.value }))} />
@@ -761,7 +761,7 @@ function IncidentModal({ projectId, locale, t, onClose, onSave }) {
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'التاريخ' : 'Date'}</label>
                   <input className="form-input" type="date" value={form.incident_date} onChange={e => handleChange('incident_date', e.target.value)} />
@@ -782,7 +782,7 @@ function IncidentModal({ projectId, locale, t, onClose, onSave }) {
                 <label className="form-label">{t('common.description')} *</label>
                 <textarea className="form-textarea" value={form.description} onChange={e => handleChange('description', e.target.value)} required />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'المصاب (إن وجد)' : 'Injured Party (if any)'}</label>
                   <input className="form-input" value={form.injured_party} onChange={e => handleChange('injured_party', e.target.value)} />

@@ -127,7 +127,7 @@ export default function LocationDashboard() {
 
       {error && <div style={{ color: '#b91c1c', marginBottom: 12 }}>{error}</div>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 20 }}>
+      <div className="responsive-grid responsive-grid--sidebar" style={{ gap: 20 }}>
         {/* Location tree */}
         <div className="card" style={{ alignSelf: 'start' }}>
           <div className="card-header"><span className="card-title">{L.select}</span></div>

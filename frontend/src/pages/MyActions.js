@@ -157,7 +157,7 @@ export default function MyActions() {
         <div className="card">
           <div className="card-header"><span className="card-title">{L[bucket]}</span></div>
           {items.length === 0 && <div style={{ padding: 16 }}>{L.empty}</div>}
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <tbody>
               {items.map((item) => (
                 <tr key={item.id} style={{ borderTop: '1px solid var(--color-border, #e5e7eb)' }}>
@@ -191,7 +191,7 @@ export default function MyActions() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
 
