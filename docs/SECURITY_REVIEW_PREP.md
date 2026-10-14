@@ -17,7 +17,7 @@ finding to the current implementation, tests, and current command output:
 
 ## Evidence available for reviewer
 
-- Real-PostgreSQL suite on fresh Docker PG16: 67 suites / 618 tests passed on
+- Final real-PostgreSQL suite on fresh Docker PG16: 67 suites / 621 tests passed on
   2026-10-14; focused security-related tests are listed in the PG suite output and
   `docs/CLOSEOUT_LOG.md`.
 - Backend mock suite: 53 suites / 1,005 tests passed.
