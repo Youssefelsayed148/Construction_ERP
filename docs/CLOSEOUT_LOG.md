@@ -1645,4 +1645,4 @@ Verification: PortalDashboard suite PASS (11/11); i18n check passed; parity pass
 
 Client, subcontractor, and supplier dashboard setup notes now include stable note_key/setup_action_keys for translation. Existing English note/setup_actions fields remain in the API as a compatibility fallback. PortalDashboard uses catalog entries when keys are present. This covers the zero-assignment setup states only; user-facing API errors and broader server content remain open.
 
-Verification: backend client/consultant/portal suites PASS (3 suites / 40 tests); frontend PortalDashboard suite PASS (11/11); i18n check passed; parity passed (35 namespaces / 1,223 English keys). No migrations or data changes.
+Verification: backend client/consultant/portal suites PASS (3 suites / 40 tests); frontend PortalDashboard suite PASS (11/11); i18n check passed; parity passed (35 namespaces / 1,223 English keys). No migrations or data changes. Implementation commit: d0df760.
