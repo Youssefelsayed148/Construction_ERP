@@ -1576,3 +1576,11 @@ Approval API status/stage now project from the linked workflow for pending, my-r
 Verification on loopback-only disposable Docker Desktop PostgreSQL 16 (`construction_erp_test`, `127.0.0.1:55441`): focused approval PG suite 9/9; full PG suite 67 suites / 618 tests; backend mocks 53 suites / 1,004 tests; lint guards passed; changed JS syntax and `git diff --check` passed. The read-only approval parity check initially reported two unlinked test rows; the existing idempotent `migrateLegacyApprovals` helper created their missing twins, and parity then passed for all 55 rows. No migration was added.
 
 Open: no real-data two-week parity hold has occurred. Same-record re-submission after completed workflow remains unavailable while dual writes are off because migration 0013's pending-only index is still present. The additive-only migration rule does not authorize replacing that index; document a migration decision, then perform the restored-real-data preflight and two-week hold before cutover. Approval-retirement plan item stays open. Implementation commit: db10c5e.
+
+## 2026-10-14 - Phase 11 reconciliation coverage expansion
+
+Expanded `reconcile-database.js` with read-only advance recovery/restoration, project-cost source existence, invoice credit/allocation, journal line/header balance, PO delivered/accepted quantity, and owned sequence-vs-max checks. Existing stock, project-cost posting, payment allocation, retention, scope, and approval checks remain. Removed implicit `.env` loading from the verifier.
+
+Verification: reconciliation unit suite 3/3; full backend mock suite 53 suites / 1,005 tests; `lint:guards: ok`; changed JS `node --check` and `git diff --check` passed. Executed the SQL on loopback-only disposable PostgreSQL 16. The retained test database returned nonzero findings (active workflow steps 16; stock projection 64; project-cost journal links 59; missing project-cost sources 16; AP/AR document links 84; PO delivery/GRN quantities 174). Other listed checks were zero. Because this database contains persistent test fixtures and is not a restored real-data copy, these counts only prove query execution and are not a go/no-go reconciliation report. No records were repaired or deleted.
+
+The checklist expansion is complete; restored-copy dry run and discrepancy resolution remain open. Implementation commit: pending.

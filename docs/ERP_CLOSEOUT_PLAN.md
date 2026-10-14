@@ -510,7 +510,7 @@ Exit gate (phase): all L0-L11 exits met.
 
 ## Phase 11: Rollout, reconciliation and go/no-go
 
-- [ ] Expand `reconcile-database.js` from 8 checks to cover: stock ledger vs projection, project_costs vs source documents, invoice/payment/allocation balances, PO delivered vs GRN, retention and advance ledgers, journal balance, orphaned approvals, sequence vs max id.
+- [x] Expand `reconcile-database.js` from 8 checks to cover stock ledger vs projection, project_costs vs ledger entries/source documents, invoice/payment/allocation balances, PO delivery and accepted quantities vs delivery/GRN lines, retention and advance ledgers, journal balance, orphaned/duplicate approvals, and owned sequence vs max id. SQL was executed read-only against disposable test data; the restored-real-data acceptance remains open below.
 - [ ] Dry-run migration on a copy of real data; fix findings; keep the report.
 - [ ] Spec 25 rollout: per-project feature flags and dual-validation cutover; rollback runbook.
 - [ ] Backups, restore drill, monitoring and alerting (errors, job failures, outbox lag).

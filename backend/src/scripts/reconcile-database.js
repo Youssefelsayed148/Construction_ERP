@@ -1,6 +1,5 @@
 'use strict';
 
-require('dotenv').config();
 const { query, pool } = require('../config/database');
 
 // Read-only staging checks. Each query returns the number of violations, so
@@ -19,7 +18,8 @@ const CHECKS = Object.freeze([
     sql: `SELECT COUNT(*)::int AS violations FROM (
       SELECT i.id FROM invoices i
       JOIN payment_allocations a ON a.invoice_id = i.id AND a.target_type = 'client_invoice' AND a.voided_at IS NULL
-      GROUP BY i.id, i.amount HAVING SUM(a.amount) > i.amount
+      GROUP BY i.id, i.amount, i.credited_amount
+      HAVING SUM(a.amount) + COALESCE(i.credited_amount, 0) > i.amount
     ) violations`,
   },
   {
@@ -29,6 +29,15 @@ const CHECKS = Object.freeze([
       GROUP BY project_id, party_type
       HAVING SUM(CASE WHEN direction = 'released' THEN amount ELSE 0 END)
            > SUM(CASE WHEN direction = 'held' THEN amount ELSE 0 END)
+    ) violations`,
+  },
+  {
+    name: 'advance recovery ledger remains nonnegative after void restorations',
+    sql: `SELECT COUNT(*)::int AS violations FROM (
+      SELECT project_id, party_type FROM advance_ledger
+       GROUP BY project_id, party_type
+      HAVING SUM(CASE WHEN direction = 'recovered' THEN amount ELSE 0 END)
+           < SUM(CASE WHEN direction = 'restored' THEN amount ELSE 0 END)
     ) violations`,
   },
   {
@@ -116,6 +125,15 @@ const CHECKS = Object.freeze([
       ) violations`,
   },
   {
+    name: 'project cost rows retain their source documents',
+    sql: `SELECT COUNT(*)::int AS violations FROM project_costs pc
+      WHERE (pc.source_type = 'grn' AND NOT EXISTS (SELECT 1 FROM goods_receipt_notes d WHERE d.id = pc.source_id))
+         OR (pc.source_type = 'supplier_invoice' AND NOT EXISTS (SELECT 1 FROM supplier_invoices d WHERE d.id = pc.source_id))
+         OR (pc.source_type = 'supplier_return' AND NOT EXISTS (SELECT 1 FROM supplier_returns d WHERE d.id = pc.source_id))
+         OR (pc.source_type = 'expense' AND NOT EXISTS (SELECT 1 FROM expenses d WHERE d.id = pc.source_id))
+         OR (pc.source_type = 'payroll_allocation' AND NOT EXISTS (SELECT 1 FROM payroll_cost_allocations d WHERE d.id = pc.source_id))`,
+  },
+  {
     name: 'AP and AR money moves stay tied to live documents',
     sql: `SELECT COUNT(*)::int AS violations FROM journal_entries je
       WHERE je.reference_type IN ('client_invoice', 'client_payment', 'supplier_payment', 'client_invoice_void', 'client_credit_note', 'client_credit_note_void')
@@ -127,6 +145,39 @@ const CHECKS = Object.freeze([
         )`,
   },
   {
+    name: 'journal entry lines balance and match the header total',
+    sql: `SELECT COUNT(*)::int AS violations
+      FROM journal_entries je
+      LEFT JOIN (
+        SELECT journal_entry_id, COUNT(*)::int AS line_count,
+               SUM(debit) AS debit_total, SUM(credit) AS credit_total
+          FROM journal_entry_lines GROUP BY journal_entry_id
+      ) lines ON lines.journal_entry_id = je.id
+      WHERE COALESCE(lines.line_count, 0) < 2
+         OR COALESCE(lines.debit_total, 0) <> COALESCE(lines.credit_total, 0)
+         OR COALESCE(lines.debit_total, 0) <> COALESCE(je.total_amount, 0)`,
+  },
+  {
+    name: 'PO delivered and accepted quantities reconcile with delivery and GRN lines',
+    sql: `SELECT COUNT(*)::int AS violations FROM (
+      SELECT pol.id
+        FROM purchase_order_lines pol
+        LEFT JOIN (
+          SELECT purchase_order_line_id, SUM(quantity) AS quantity
+            FROM delivery_lines WHERE purchase_order_line_id IS NOT NULL
+           GROUP BY purchase_order_line_id
+        ) delivered ON delivered.purchase_order_line_id = pol.id
+        LEFT JOIN (
+          SELECT gl.purchase_order_line_id, SUM(gl.quantity) AS quantity
+            FROM grn_lines gl JOIN goods_receipt_notes grn ON grn.id = gl.grn_id
+           WHERE gl.purchase_order_line_id IS NOT NULL AND grn.status = 'posted'
+           GROUP BY gl.purchase_order_line_id
+        ) accepted ON accepted.purchase_order_line_id = pol.id
+       WHERE COALESCE(pol.delivered_quantity, 0) <> COALESCE(delivered.quantity, 0)
+          OR COALESCE(pol.accepted_quantity, 0) <> COALESCE(accepted.quantity, 0)
+    ) violations`,
+  },
+  {
     name: 'approvals mirror their workflow instances',
     sql: `SELECT (SELECT COUNT(*)::int FROM approval_requests ar
               WHERE NOT EXISTS (SELECT 1 FROM workflow_instances wi WHERE wi.legacy_approval_id = ar.id))
@@ -135,12 +186,43 @@ const CHECKS = Object.freeze([
               WHERE wi.legacy_approval_id IS NOT NULL GROUP BY wi.legacy_approval_id HAVING COUNT(*) > 1
             ) dupes) AS violations`,
   },
+  {
+    name: 'owned integer sequences are not behind their table ids',
+    run: async (q) => {
+      const columns = (await q(
+        `SELECT c.table_schema, c.table_name, c.column_name
+           FROM information_schema.columns c
+           JOIN information_schema.tables t
+             ON t.table_schema = c.table_schema AND t.table_name = c.table_name
+          WHERE c.table_schema = 'public' AND t.table_type = 'BASE TABLE'
+            AND (c.column_default LIKE 'nextval(%' OR c.is_identity = 'YES')
+          ORDER BY c.table_name, c.column_name`
+      )).rows;
+      let violations = 0;
+      for (const { table_schema, table_name, column_name } of columns) {
+        const relation = `${quoteIdentifier(table_schema)}.${quoteIdentifier(table_name)}`;
+        const column = quoteIdentifier(column_name);
+        const state = (await q(
+          `SELECT MAX(${column}) AS max_id,
+                  pg_sequence_last_value(pg_get_serial_sequence($1, $2)::regclass) AS last_value
+             FROM ${relation}`,
+          [`${table_schema}.${table_name}`, column_name]
+        )).rows[0] || {};
+        if (state.max_id != null && (state.last_value == null || Number(state.last_value) < Number(state.max_id))) violations += 1;
+      }
+      return { rows: [{ violations }] };
+    },
+  },
 ]);
+
+function quoteIdentifier(value) {
+  return `"${String(value).replace(/"/g, '""')}"`;
+}
 
 async function runReconciliation(q = query) {
   const results = [];
   for (const check of CHECKS) {
-    const result = await q(check.sql);
+    const result = check.run ? await check.run(q) : await q(check.sql);
     const violations = Number(result.rows?.[0]?.violations || 0);
     results.push({ name: check.name, violations, ok: violations === 0 });
   }
