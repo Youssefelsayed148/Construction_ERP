@@ -7,6 +7,7 @@ const Joi = require('joi');
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditedTransaction } = require('../utils/auditedTransaction');
+const { auditedMutation } = require('../utils/auditedMutation');
 const { dateOnly } = require('../utils/validation');
 const { normalizeDateFields } = require('../utils/dateOnly');
 
@@ -75,16 +76,25 @@ router.put('/quality-tests/:id', authenticate, authorize(), async (req, res) => 
       else { sets.push(`${k} = $${idx++}`); params.push(v); }
     }
     params.push(req.params.id);
-    const result = await query(`UPDATE quality_tests SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
-    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Test not found' });
-    res.json({ success: true, data: result.rows[0] });
+    const out = await auditedMutation(req, { action: 'update', module: 'qhse', entityType: 'quality_test' }, async (q) => {
+      const before = (await q('SELECT * FROM quality_tests WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true };
+      const result = await q(`UPDATE quality_tests SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
+      return { data: result.rows[0], entityId: before.id, projectId: before.project_id, before, after: result.rows[0], oldStatus: before.result, newStatus: result.rows[0].result, description: `Updated quality test #${before.id}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Test not found' });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
 router.delete('/quality-tests/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const result = await query('DELETE FROM quality_tests WHERE id = $1 RETURNING test_type', [req.params.id]);
-    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Test not found' });
+    const out = await auditedMutation(req, { action: 'delete', module: 'qhse', entityType: 'quality_test' }, async (q) => {
+      const result = await q('DELETE FROM quality_tests WHERE id = $1 RETURNING *', [req.params.id]);
+      if (result.rows.length === 0) return { skipAudit: true };
+      return { data: result.rows[0], entityId: result.rows[0].id, projectId: result.rows[0].project_id, before: result.rows[0], description: `Deleted quality test #${result.rows[0].id}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Test not found' });
     res.json({ success: true, message: 'Test deleted' });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -181,10 +191,6 @@ router.post('/ncrs/:id/status', authenticate, authorize(), async (req, res) => {
 
 router.put('/ncrs/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const existing = await query('SELECT status FROM ncrs WHERE id = $1', [req.params.id]);
-    if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'NCR not found' });
-    if (existing.rows[0].status === 'closed') return res.status(400).json({ success: false, error: 'Closed NCRs are read-only' });
-
     const schema = Joi.object({
       description: Joi.string(),
       severity: Joi.string().valid('minor', 'major', 'critical'),
@@ -198,8 +204,16 @@ router.put('/ncrs/:id', authenticate, authorize(), async (req, res) => {
       if (v !== undefined) { sets.push(`${k} = $${idx++}`); params.push(v); }
     }
     params.push(req.params.id);
-    const result = await query(`UPDATE ncrs SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
-    res.json({ success: true, data: result.rows[0] });
+    const out = await auditedMutation(req, { action: 'update', module: 'qhse', entityType: 'ncr' }, async (q) => {
+      const before = (await q('SELECT * FROM ncrs WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true, missing: true };
+      if (before.status === 'closed') return { skipAudit: true, closed: true };
+      const result = await q(`UPDATE ncrs SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
+      return { data: result.rows[0], entityId: before.id, projectId: before.project_id, before, after: result.rows[0], oldStatus: before.status, newStatus: result.rows[0].status, description: `Updated NCR ${before.ncr_number || before.id}` };
+    });
+    if (out.missing) return res.status(404).json({ success: false, error: 'NCR not found' });
+    if (out.closed) return res.status(400).json({ success: false, error: 'Closed NCRs are read-only' });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -261,9 +275,14 @@ router.put('/inspections/:id', authenticate, authorize(), async (req, res) => {
       else { sets.push(`${k} = $${idx++}`); params.push(v); }
     }
     params.push(req.params.id);
-    const result = await query(`UPDATE safety_inspections SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
-    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Inspection not found' });
-    res.json({ success: true, data: result.rows[0] });
+    const out = await auditedMutation(req, { action: 'update', module: 'qhse', entityType: 'safety_inspection' }, async (q) => {
+      const before = (await q('SELECT * FROM safety_inspections WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true };
+      const result = await q(`UPDATE safety_inspections SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
+      return { data: result.rows[0], entityId: before.id, projectId: before.project_id, before, after: result.rows[0], oldStatus: before.status, newStatus: result.rows[0].status, description: `Updated inspection #${before.id}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Inspection not found' });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -326,9 +345,14 @@ router.put('/incidents/:id', authenticate, authorize(), async (req, res) => {
       if (v !== undefined) { sets.push(`${k} = $${idx++}`); params.push(v); }
     }
     params.push(req.params.id);
-    const result = await query(`UPDATE incidents SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
-    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Incident not found' });
-    res.json({ success: true, data: result.rows[0] });
+    const out = await auditedMutation(req, { action: 'update', module: 'qhse', entityType: 'incident' }, async (q) => {
+      const before = (await q('SELECT * FROM incidents WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true };
+      const result = await q(`UPDATE incidents SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
+      return { data: result.rows[0], entityId: before.id, projectId: before.project_id, before, after: result.rows[0], oldStatus: before.status, newStatus: result.rows[0].status, description: `Updated incident #${before.id}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Incident not found' });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -457,15 +481,18 @@ router.post('/itps/:id/points', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const r = await query(
-      `INSERT INTO itp_points (itp_id, seq, title, point_type, required_documents, responsible_party,
-         responsible_user_id, consultant_responsibility, acceptance_criteria, checklist_template_id)
-       VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7,$8,$9,$10) RETURNING *`,
-      [req.params.id, value.seq, value.title, value.point_type, JSON.stringify(value.required_documents),
-       value.responsible_party || null, value.responsible_user_id || null,
-       value.consultant_responsibility || null, value.acceptance_criteria || null, value.checklist_template_id || null]
-    );
-    res.status(201).json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'create', module: 'qhse', entityType: 'itp_point' }, async (q) => {
+      const r = await q(
+        `INSERT INTO itp_points (itp_id, seq, title, point_type, required_documents, responsible_party,
+           responsible_user_id, consultant_responsibility, acceptance_criteria, checklist_template_id)
+         VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7,$8,$9,$10) RETURNING *`,
+        [req.params.id, value.seq, value.title, value.point_type, JSON.stringify(value.required_documents),
+         value.responsible_party || null, value.responsible_user_id || null,
+         value.consultant_responsibility || null, value.acceptance_criteria || null, value.checklist_template_id || null]
+      );
+      return { data: r.rows[0], entityId: r.rows[0].id, after: r.rows[0], description: `Added ITP point "${value.title}" to ITP #${req.params.id}` };
+    });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -494,9 +521,14 @@ router.put('/itps/:id', authenticate, authorize(), async (req, res) => {
     }
     sets.push(`updated_at = NOW()`);
     params.push(req.params.id);
-    const r = await query(`UPDATE itps SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'ITP not found' });
-    res.json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'update', module: 'qhse', entityType: 'itp' }, async (q) => {
+      const before = (await q('SELECT * FROM itps WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true };
+      const r = await q(`UPDATE itps SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
+      return { data: r.rows[0], entityId: before.id, projectId: before.project_id, before, after: r.rows[0], oldStatus: before.status, newStatus: r.rows[0].status, description: `Updated ITP #${before.id}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'ITP not found' });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -709,12 +741,15 @@ router.post('/checklists/instances', authenticate, authorize(), async (req, res)
       items = typeof t.items === 'string' ? JSON.parse(t.items) : (t.items || []);
       templateTitle = t.name;
     }
-    const r = await query(
-      `INSERT INTO checklist_instances (template_id, context_type, context_id, project_id, title, items, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7) RETURNING *`,
-      [value.template_id || null, value.context_type, value.context_id || null, authorizedProjectId(req, value),
-       value.title || templateTitle, JSON.stringify(items.map((it) => ({ ...it, ok: false, note: '' }))), req.user.id]);
-    res.status(201).json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'create', module: 'qhse', entityType: 'checklist_instance' }, async (q) => {
+      const r = await q(
+        `INSERT INTO checklist_instances (template_id, context_type, context_id, project_id, title, items, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7) RETURNING *`,
+        [value.template_id || null, value.context_type, value.context_id || null, authorizedProjectId(req, value),
+         value.title || templateTitle, JSON.stringify(items.map((it) => ({ ...it, ok: false, note: '' }))), req.user.id]);
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], description: `Created checklist instance ${value.title || templateTitle || ''}`.trim() };
+    });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -741,15 +776,19 @@ router.put('/checklists/instances/:id', authenticate, authorize(), async (req, r
     }).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const existing = (await query('SELECT * FROM checklist_instances WHERE id = $1', [req.params.id])).rows[0];
-    if (!existing) return res.status(404).json({ success: false, error: 'Checklist instance not found' });
-    const current = typeof existing.items === 'string' ? JSON.parse(existing.items) : (existing.items || []);
-    const updated = (value.items || current).map((it) => ({ ok: false, note: '', ...it }));
-    const r = await query(
-      `UPDATE checklist_instances SET items = $1::jsonb,
-         completed_at = $2, completed_by = $3 WHERE id = $4 RETURNING *`,
-      [JSON.stringify(updated), value.complete ? new Date() : (existing.completed_at || null), value.complete ? req.user.id : existing.completed_by, req.params.id]);
-    res.json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'update', module: 'qhse', entityType: 'checklist_instance' }, async (q) => {
+      const existing = (await q('SELECT * FROM checklist_instances WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!existing) return { skipAudit: true };
+      const current = typeof existing.items === 'string' ? JSON.parse(existing.items) : (existing.items || []);
+      const updated = (value.items || current).map((it) => ({ ok: false, note: '', ...it }));
+      const r = await q(
+        `UPDATE checklist_instances SET items = $1::jsonb,
+           completed_at = $2, completed_by = $3 WHERE id = $4 RETURNING *`,
+        [JSON.stringify(updated), value.complete ? new Date() : (existing.completed_at || null), value.complete ? req.user.id : existing.completed_by, req.params.id]);
+      return { data: r.rows[0], entityId: existing.id, projectId: existing.project_id, before: existing, after: r.rows[0], action: value.complete ? 'complete' : 'update', description: `${value.complete ? 'Completed' : 'Updated'} checklist instance #${existing.id}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Checklist instance not found' });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -831,20 +870,25 @@ router.post('/actions/:id/status', authenticate, authorize(), async (req, res) =
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     const table = CAPA_TABLES[value.kind];
-    const existing = (await query(`SELECT * FROM ${table} WHERE id = $1`, [req.params.id])).rows[0];
-    if (!existing) return res.status(404).json({ success: false, error: `${value.kind} action not found` });
-    if (!CAPA_TRANSITIONS[existing.status] || !CAPA_TRANSITIONS[existing.status].includes(value.status)) {
-      return res.status(400).json({ success: false, error: `Cannot transition from '${existing.status}' to '${value.status}'` });
-    }
-    let r;
-    if (value.status === 'completed') {
-      r = await query(`UPDATE ${table} SET status = 'completed', completed_at = NOW(), completed_by = $1 WHERE id = $2 RETURNING *`, [req.user.id, req.params.id]);
-    } else if (value.status === 'verified') {
-      r = await query(`UPDATE ${table} SET status = 'verified', verified_by = $1, verified_at = NOW(), verification_notes = COALESCE($2, verification_notes) WHERE id = $3 RETURNING *`, [req.user.id, value.notes, req.params.id]);
-    } else {
-      r = await query(`UPDATE ${table} SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`, [value.status, req.params.id]);
-    }
-    res.json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'status', module: 'qhse', entityType: value.kind === 'preventive' ? 'preventive_action' : 'corrective_action' }, async (q) => {
+      const existing = (await q(`SELECT * FROM ${table} WHERE id = $1 FOR UPDATE`, [req.params.id])).rows[0];
+      if (!existing) return { skipAudit: true, missing: true };
+      if (!CAPA_TRANSITIONS[existing.status] || !CAPA_TRANSITIONS[existing.status].includes(value.status)) {
+        return { skipAudit: true, badTransition: existing.status };
+      }
+      let r;
+      if (value.status === 'completed') {
+        r = await q(`UPDATE ${table} SET status = 'completed', completed_at = NOW(), completed_by = $1 WHERE id = $2 RETURNING *`, [req.user.id, req.params.id]);
+      } else if (value.status === 'verified') {
+        r = await q(`UPDATE ${table} SET status = 'verified', verified_by = $1, verified_at = NOW(), verification_notes = COALESCE($2, verification_notes) WHERE id = $3 RETURNING *`, [req.user.id, value.notes, req.params.id]);
+      } else {
+        r = await q(`UPDATE ${table} SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`, [value.status, req.params.id]);
+      }
+      return { data: r.rows[0], entityId: existing.id, projectId: existing.project_id, before: existing, after: r.rows[0], oldStatus: existing.status, newStatus: value.status, description: `${value.kind} action #${existing.id}: ${existing.status} -> ${value.status}` };
+    });
+    if (out.missing) return res.status(404).json({ success: false, error: `${value.kind} action not found` });
+    if (out.badTransition) return res.status(400).json({ success: false, error: `Cannot transition from '${out.badTransition}' to '${value.status}'` });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -918,17 +962,22 @@ router.post('/mock-ups/:id/status', authenticate, authorize(), async (req, res) 
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const existing = (await query('SELECT * FROM mock_ups WHERE id = $1', [req.params.id])).rows[0];
-    if (!existing) return res.status(404).json({ success: false, error: 'Mock-up not found' });
-    if (!MOCK_UP_TRANSITIONS[existing.status] || !MOCK_UP_TRANSITIONS[existing.status].includes(value.status)) {
-      return res.status(400).json({ success: false, error: `Cannot transition from '${existing.status}' to '${value.status}'` });
-    }
-    const r = value.status === 'approved'
-      ? await query(`UPDATE mock_ups SET status = $1, remarks = COALESCE($2, remarks), approved_by = $3, approved_at = NOW(), updated_at = NOW() WHERE id = $4 RETURNING *`,
-          [value.status, value.remarks, req.user.id, req.params.id])
-      : await query(`UPDATE mock_ups SET status = $1, remarks = COALESCE($2, remarks), updated_at = NOW() WHERE id = $3 RETURNING *`,
-          [value.status, value.remarks, req.params.id]);
-    res.json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'status', module: 'qhse', entityType: 'mock_up' }, async (q) => {
+      const existing = (await q('SELECT * FROM mock_ups WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!existing) return { skipAudit: true, missing: true };
+      if (!MOCK_UP_TRANSITIONS[existing.status] || !MOCK_UP_TRANSITIONS[existing.status].includes(value.status)) {
+        return { skipAudit: true, badTransition: existing.status };
+      }
+      const r = value.status === 'approved'
+        ? await q(`UPDATE mock_ups SET status = $1, remarks = COALESCE($2, remarks), approved_by = $3, approved_at = NOW(), updated_at = NOW() WHERE id = $4 RETURNING *`,
+            [value.status, value.remarks, req.user.id, req.params.id])
+        : await q(`UPDATE mock_ups SET status = $1, remarks = COALESCE($2, remarks), updated_at = NOW() WHERE id = $3 RETURNING *`,
+            [value.status, value.remarks, req.params.id]);
+      return { data: r.rows[0], entityId: existing.id, projectId: existing.project_id, before: existing, after: r.rows[0], oldStatus: existing.status, newStatus: value.status, description: `Mock-up #${existing.id}: ${existing.status} -> ${value.status}` };
+    });
+    if (out.missing) return res.status(404).json({ success: false, error: 'Mock-up not found' });
+    if (out.badTransition) return res.status(400).json({ success: false, error: `Cannot transition from '${out.badTransition}' to '${value.status}'` });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -1360,29 +1409,37 @@ router.put('/mirs/:id', authenticate, authorize(), async (req, res) => {
       else { sets.push(`${k} = $${idx++}`); params.push(v); }
     }
     params.push(req.params.id);
-    const r = await query(`UPDATE material_inspection_requests SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'MIR not found' });
-    res.json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'update', module: 'qhse', entityType: 'material_inspection_request' }, async (q) => {
+      const before = (await q('SELECT * FROM material_inspection_requests WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true };
+      const r = await q(`UPDATE material_inspection_requests SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
+      return { data: r.rows[0], entityId: before.id, projectId: before.project_id, before, after: r.rows[0], oldStatus: before.status, newStatus: r.rows[0].status, description: `Updated MIR #${before.id}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'MIR not found' });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
 // Sync a MIR into the Phase 6 'mir' template (idempotent per MIR).
 router.post('/mirs/:id/workflow', authenticate, authorize(), async (req, res) => {
   try {
-    const mir = (await query('SELECT * FROM material_inspection_requests WHERE id = $1', [req.params.id])).rows[0];
-    if (!mir) return res.status(404).json({ success: false, error: 'MIR not found' });
-    if (mir.workflow_instance_id) {
-      return res.json({ success: true, data: { workflow_instance_id: mir.workflow_instance_id, existing: true } });
-    }
-    const workflow = await workflowEngine.startWorkflow('mir', 'mir', mir.id, {
-      project_id: mir.project_id || null, requester_id: req.user.id,
-      mir_number: mir.mir_number, module_name: 'mir',
+    const out = await auditedMutation(req, { action: 'start_workflow', module: 'qhse', entityType: 'material_inspection_request' }, async (q) => {
+      const mir = (await q('SELECT * FROM material_inspection_requests WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!mir) return { skipAudit: true, missing: true };
+      if (mir.workflow_instance_id) return { skipAudit: true, existing: mir.workflow_instance_id };
+      const workflow = await workflowEngine.startWorkflow('mir', 'mir', mir.id, {
+        project_id: mir.project_id || null, requester_id: req.user.id,
+        mir_number: mir.mir_number, module_name: 'mir',
+      }, { query: q });
+      await workflowEngine.syncExternalState(workflow.instance.id, 'delivery', {
+        userId: req.user.id, userName: req.user.name, role: req.user.role,
+      }, { comment: 'MIR raised from delivery', query: q });
+      await q('UPDATE material_inspection_requests SET workflow_instance_id = $1 WHERE id = $2', [workflow.instance.id, mir.id]);
+      return { data: { workflow_instance_id: workflow.instance.id, existing: false }, entityId: mir.id, projectId: mir.project_id, before: mir, after: { ...mir, workflow_instance_id: workflow.instance.id }, description: `Started workflow for MIR ${mir.mir_number || mir.id}` };
     });
-    await workflowEngine.syncExternalState(workflow.instance.id, 'delivery', {
-      userId: req.user.id, userName: req.user.name, role: req.user.role,
-    }, { comment: 'MIR raised from delivery' });
-    await query('UPDATE material_inspection_requests SET workflow_instance_id = $1 WHERE id = $2', [workflow.instance.id, mir.id]);
-    res.status(201).json({ success: true, data: { workflow_instance_id: workflow.instance.id, existing: false } });
+    if (out.missing) return res.status(404).json({ success: false, error: 'MIR not found' });
+    if (out.existing) return res.json({ success: true, data: { workflow_instance_id: out.existing, existing: true } });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -1396,14 +1453,19 @@ router.post('/mirs/:id/workflow/decision', authenticate, authorize(), async (req
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const mir = (await query('SELECT * FROM material_inspection_requests WHERE id = $1', [req.params.id])).rows[0];
-    if (!mir) return res.status(404).json({ success: false, error: 'MIR not found' });
-    if (!mir.workflow_instance_id) return res.status(400).json({ success: false, error: 'MIR has no workflow instance — POST /mirs/:id/workflow first' });
-    const stepKey = value.result === 'accepted' ? 'grn_eligibility'
-      : (value.result === 'rejected' ? 'accepted_rejected_quarantine' : 'accepted_rejected_quarantine');
-    await workflowEngine.syncExternalState(mir.workflow_instance_id, stepKey, {
-      userId: req.user.id, userName: req.user.name, role: req.user.role,
-    }, { comment: value.comment || `MIR ${value.result}`, terminal: true });
+    const out = await auditedMutation(req, { action: 'decide', module: 'qhse', entityType: 'material_inspection_request' }, async (q) => {
+      const mir = (await q('SELECT * FROM material_inspection_requests WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!mir) return { skipAudit: true, missing: true };
+      if (!mir.workflow_instance_id) return { skipAudit: true, noWorkflow: true };
+      const stepKey = value.result === 'accepted' ? 'grn_eligibility'
+        : (value.result === 'rejected' ? 'accepted_rejected_quarantine' : 'accepted_rejected_quarantine');
+      await workflowEngine.syncExternalState(mir.workflow_instance_id, stepKey, {
+        userId: req.user.id, userName: req.user.name, role: req.user.role,
+      }, { comment: value.comment || `MIR ${value.result}`, terminal: true, query: q });
+      return { data: true, entityId: mir.id, projectId: mir.project_id, before: mir, after: mir, newStatus: value.result, description: `MIR ${mir.mir_number || mir.id} workflow decision: ${value.result}` };
+    });
+    if (out.missing) return res.status(404).json({ success: false, error: 'MIR not found' });
+    if (out.noWorkflow) return res.status(400).json({ success: false, error: 'MIR has no workflow instance — POST /mirs/:id/workflow first' });
     res.json({ success: true });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

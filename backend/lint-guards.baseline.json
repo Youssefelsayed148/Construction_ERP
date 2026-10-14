@@ -17,7 +17,7 @@
     "routes/handover.js": 2,
     "routes/notifications.js": 2,
     "routes/portal.js": 10,
-    "routes/qhse.js": 16,
+    "routes/qhse.js": 2,
     "routes/reports.js": 2,
     "routes/v1.js": 2
   }
