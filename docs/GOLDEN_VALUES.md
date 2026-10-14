@@ -80,6 +80,17 @@ invoices and pays for 40:
 This test is a procurement-chain slice, not the full tender-to-warranty Phase 9
 journey. It does not assert the provisional residential values above.
 
+## Verified residential API fixture slice
+
+`golden-chain.pg.test.js` now provisions the residential template through the
+project-provisioning service, then creates a project-scoped 120 m³ C35 BOQ line,
+a recipe at 1.0 m³ per output m³ with 2% waste, a location allocation, and one
+schedule activity. On disposable PostgreSQL 16, it verified 96 unit locations,
+gross recipe demand of 120.0000 m³, net requirement of 122.4000 m³, and BOQ value
+120 × 4,200 = **504,000 EGP**. This is a focused API-foundation test. It does not
+exercise tendering, contracting, purchasing, site/QHSE, client valuation, or
+handover/warranty transitions.
+
 ## Required follow-up
 
 1. Attach a project-specific C35 recipe and schedule to the seeded residential
