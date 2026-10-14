@@ -16,15 +16,15 @@ const enabled = process.env.TEST_PG === '1';
 const describePg = enabled ? describe : describe.skip;
 
 describePg('B5 API contract: OpenAPI spec vs the live /api/v1', () => {
-  let app; let server; let base; let db; let owner; let spec;
+  let app; let server; let base; let db; let owner; let metricsReader; let spec;
   const tag = String(Date.now()).slice(-7);
 
-  const call = async (method, path, body, withAuth = true) => {
+  const call = async (method, path, body, withAuth = true, token = owner.token) => {
     const res = await fetch(`${base}${path}`, {
       method,
       headers: {
         'Content-Type': 'application/json',
-        ...(withAuth ? { Authorization: `Bearer ${owner.token}` } : {}),
+        ...(withAuth ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
@@ -47,6 +47,10 @@ describePg('B5 API contract: OpenAPI spec vs the live /api/v1', () => {
     )).rows[0];
     await db.query("INSERT INTO user_project_roles (user_id, project_id, role_id) SELECT $1, NULL, id FROM roles WHERE key = 'owner'", [row.id]);
     owner = { token: tokens.signSession({ userId: row.id, tokenVersion: row.token_version }) };
+    const reader = (await db.query(
+      "INSERT INTO users (name, email, password, role) VALUES ('metrics-reader', $1, 'x', 'site_engineer') RETURNING id, token_version", [`b5-metrics-${tag}@test.io`]
+    )).rows[0];
+    metricsReader = { token: tokens.signSession({ userId: reader.id, tokenVersion: reader.token_version }) };
     const served = await call('GET', '/api/v1/openapi.json', undefined, false);
     spec = served.body;
   });
@@ -54,6 +58,7 @@ describePg('B5 API contract: OpenAPI spec vs the live /api/v1', () => {
   afterAll(async () => {
     await db.query('DELETE FROM user_project_roles WHERE user_id = (SELECT id FROM users WHERE email = $1)', [`b5-${tag}@test.io`]);
     await db.query('UPDATE users SET is_active = false WHERE email = $1', [`b5-${tag}@test.io`]);
+    await db.query('UPDATE users SET is_active = false WHERE email = $1', [`b5-metrics-${tag}@test.io`]);
     await new Promise((resolve) => server.close(resolve));
     await db.pool.end();
   });
@@ -97,6 +102,30 @@ describePg('B5 API contract: OpenAPI spec vs the live /api/v1', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data.status).toBe('healthy');
+  });
+
+  test('owner metrics expose queue and notification delivery health without payload data', async () => {
+    const res = await call('GET', '/api/v1/ops/metrics');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toMatchObject({
+      status: expect.stringMatching(/^(healthy|degraded)$/),
+      sampled_at: expect.any(String),
+      outbox: {
+        total: expect.any(Number), pending: expect.any(Number), dispatching: expect.any(Number),
+        delivered: expect.any(Number), dead: expect.any(Number),
+      },
+      failed_sweeps: expect.any(Number),
+      notification_deliveries: expect.any(Object),
+    });
+    expect(JSON.stringify(res.body.data)).not.toContain('last_error');
+    expect(JSON.stringify(res.body.data)).not.toContain('payload');
+  });
+
+  test('project role cannot read platform-wide metrics', async () => {
+    const res = await call('GET', '/api/v1/ops/metrics', undefined, true, metricsReader.token);
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('forbidden');
   });
 
   test('an unauthenticated call is the structured 401 envelope, not an HTML error', async () => {

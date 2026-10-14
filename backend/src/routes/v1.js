@@ -36,7 +36,7 @@ const webhookService = require('../services/webhookService');
 const apiResources = require('../services/apiResources');
 const assistantService = require('../services/assistantService');
 const policy = require('../services/policy');
-const { healthCheck, transaction } = require('../config/database');
+const { healthCheck, query, transaction } = require('../config/database');
 const buildOpenApi = require('../utils/openapi');
 
 // Internal router modules, mounted in server.js (see route-inventory comments).
@@ -623,6 +623,35 @@ function buildV1Router() {
   // --- Everything below requires a token ---
   router.use(v1.authenticateV1);
   router.use(v1.rateLimitAuthenticated);
+
+  // Platform-wide operator metrics. This endpoint is intentionally global and
+  // owner/admin-only; it reports counts and queue age, never document payloads
+  // or provider error text.
+  api.get('/ops/metrics', authorize('owner', 'admin'), async (req, res, next) => {
+    try {
+      const outbox = await require('../services/outboxDispatcher').stats(query);
+      const deliveryRows = (await query(
+        `SELECT status, COUNT(*)::int AS count
+           FROM notification_deliveries
+          GROUP BY status ORDER BY status`
+      )).rows;
+      const notificationDeliveries = Object.fromEntries(deliveryRows.map((row) => [row.status, row.count]));
+      const failedDeliveries = Number(notificationDeliveries.failed || 0) + Number(notificationDeliveries.undelivered || 0);
+      const status = Number(outbox.dead || 0) > 0 || Number(outbox.sweep_failures || 0) > 0 || failedDeliveries > 0
+        ? 'degraded' : 'healthy';
+      res.json({ success: true, data: {
+        status,
+        sampled_at: new Date().toISOString(),
+        outbox: {
+          total: Number(outbox.total || 0), pending: Number(outbox.pending || 0),
+          dispatching: Number(outbox.dispatching || 0), delivered: Number(outbox.delivered || 0),
+          dead: Number(outbox.dead || 0), oldest_pending_next_retry: outbox.oldest_pending_next_retry,
+        },
+        failed_sweeps: Number(outbox.sweep_failures || 0),
+        notification_deliveries: notificationDeliveries,
+      } });
+    } catch (error) { next(error); }
+  });
 
   // --- Webhook management (owner/admin only) ---
   const webhookSchema = Joi.object({
