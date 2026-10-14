@@ -26,7 +26,7 @@ describe('consultant portal observation form', () => {
     window.localStorage.setItem('token', 'test-token');
     container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container);
   });
-  afterEach(() => { act(() => root.unmount()); container.remove(); global.fetch = previousFetch; window.localStorage.clear(); });
+  afterEach(() => { act(() => root.unmount()); container.remove(); global.fetch = previousFetch; window.localStorage.clear(); document.documentElement.lang = 'en'; });
 
   const fill = async (selector, value) => act(async () => {
     const node = container.querySelector(selector);
@@ -40,10 +40,13 @@ describe('consultant portal observation form', () => {
       latest_drawings: { items: [{ id: 9, title: 'Drawing A', status: 'pending_approval' }], count: 1 },
       rfis: { items: [], count: 0, empty_key: 'portals.dashboard.empty.rfis', empty_label: 'No RFIs open' },
       wir_pending: { items: [{ id: 10, wir_number: 'WIR-0010' }], count: 1 },
+      observations: { items: [{ id: 11, title_en: 'English title', title_ar: 'عنوان عربي', due_date: '2026-10-20', status: 'approved' }], count: 1 },
+      payment_applications: { items: [{ id: 12, title_en: 'Payment', title_ar: 'دفعة', net_certificate: 1500 }], count: 1 },
       summary: { active: true },
       note: 'fallback note', note_key: 'portals.dashboard.notes.noClientAccount',
       setup_actions: ['fallback setup'], setup_action_keys: ['portals.dashboard.setup.assignClient'],
     } }) }));
+    document.documentElement.lang = 'ar';
     await act(async () => { root.render(<PortalDashboard kind="consultant" />); });
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
 
@@ -54,6 +57,9 @@ describe('consultant portal observation form', () => {
     expect(container.textContent).toContain('common.yes');
     expect(container.textContent).toContain('portals.dashboard.empty.rfis');
     expect(container.textContent).toContain('WIR-0010');
+    expect(container.textContent).toContain('عنوان عربي');
+    expect(container.textContent).not.toContain('2026-10-20');
+    expect(container.textContent).toContain('ج.م.');
     expect(container.textContent).toContain('portals.dashboard.notes.noClientAccount');
     expect(container.textContent).toContain('portals.dashboard.setup.assignClient');
     expect(container.textContent).not.toContain('Latest Drawings');

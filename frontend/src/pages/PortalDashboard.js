@@ -5,7 +5,7 @@ import { openProtectedFile } from '../components/ProtectedMedia';
 import DocumentUpload from '../components/DocumentUpload';
 import { useLocale } from '../hooks/useLocale';
 import { translatePriority, translateStatus } from '../i18n/enums';
-import { formatNumber } from '../utils/formatters';
+import { formatCurrency, formatDate, formatNumber, localizedName } from '../utils/formatters';
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
 
@@ -85,10 +85,12 @@ function Widget({ name, value }) {
 function Record({ value }) {
   const { t } = useLocale();
   if (value == null || typeof value !== 'object') return <div className="portal-record">{valueText(value, t)}</div>;
-  const title = value.title || value.name || value.subject || value.number || value.order_number || value.contract_number || value.invoice_number || value.rfq_number || value.rfi_number || value.submittal_number || value.wir_number || value.mir_number || value.certificate_number || value.observation_number || value.ncr_number || t('portals.dashboard.recordNumber', { id: value.id });
+  const title = localizedName(value, undefined, ['title', 'name', 'subject']) || value.number || value.order_number || value.contract_number || value.invoice_number || value.rfq_number || value.rfi_number || value.submittal_number || value.wir_number || value.mir_number || value.certificate_number || value.observation_number || value.ncr_number || t('portals.dashboard.recordNumber', { id: value.id });
   const status = value.status ? translateStatus(t, value.status) : translatePriority(t, value.priority);
-  const detail = value.amount ?? value.total_amount ?? value.net_certificate ?? value.deadline ?? value.due_date;
-  return <div className="portal-record"><span>{value.file_url ? <a href="#open-file" onClick={e => { e.preventDefault(); openProtectedFile(value.file_url).catch(error => window.alert(error.message)); }}>{title}</a> : title}</span><span>{detail != null ? valueText(detail, t) : ''} {status ? <small className="badge badge-secondary">{status}</small> : null}</span></div>;
+  const amount = value.amount ?? value.total_amount ?? value.net_certificate;
+  const date = value.deadline ?? value.due_date;
+  const detail = amount != null ? formatCurrency(amount) : date != null ? formatDate(date) : null;
+  return <div className="portal-record"><span>{value.file_url ? <a href="#open-file" onClick={e => { e.preventDefault(); openProtectedFile(value.file_url).catch(error => window.alert(error.message)); }}>{title}</a> : title}</span><span>{detail != null ? detail : ''} {status ? <small className="badge badge-secondary">{status}</small> : null}</span></div>;
 }
 
 function ConsultantReviews({ rows = [], onDone }) {
