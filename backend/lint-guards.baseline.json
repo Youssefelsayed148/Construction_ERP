@@ -29,7 +29,6 @@
     "routes/reports.js": 2,
     "routes/schedule.js": 6,
     "routes/site.js": 4,
-    "routes/subcontractors.js": 6,
     "routes/units.js": 5,
     "routes/v1.js": 2,
     "routes/workorders.js": 5

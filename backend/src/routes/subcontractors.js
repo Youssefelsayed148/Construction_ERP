@@ -6,6 +6,7 @@ const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
+const { auditedMutation } = require('../utils/auditedMutation');
 
 // -- Subcontractors --
 router.get('/', authenticate, authorize(), async (req, res) => {
@@ -43,14 +44,17 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    if (!value.code) value.code = await nextNumber(query, { table: 'subcontractors', column: 'code', prefix: 'SUB', pad: 4 });
+    const created = await auditedMutation(req, { action: 'create', module: 'subcontractors', entityType: 'subcontractor' }, async (q) => {
+    if (!value.code) value.code = await nextNumber(q, { table: 'subcontractors', column: 'code', prefix: 'SUB', pad: 4 });
 
-    const r = await query(
+    const r = await q(
       `INSERT INTO subcontractors (code, name, name_ar, name_en, license_no, classification, specialties, insurance_amount, insurance_expiry, contact_person, phone, email, address, bank_name, bank_account, is_active)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
       [value.code, value.name_ar, value.name_ar, value.name_en || value.name_ar, value.license_no, value.classification, value.specialties, value.insurance_amount, value.insurance_expiry, value.contact_person, value.phone, value.email, value.address, value.bank_name, value.bank_account, value.is_active !== undefined ? value.is_active : true]
     );
-    res.status(201).json({ success: true, data: r.rows[0] });
+    return { data: r.rows[0], entityId: r.rows[0].id, after: r.rows[0], description: `Created subcontractor ${r.rows[0].code}` };
+    });
+    res.status(201).json({ success: true, data: created.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -71,9 +75,14 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
     const sets = []; const p = []; let i = 1;
     for (const [k, v] of Object.entries(value)) { if (v !== undefined) { sets.push(`${k} = $${i++}`); p.push(v); } }
     p.push(req.params.id);
-    const r = await query(`UPDATE subcontractors SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`, p);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Subcontractor not found' });
-    res.json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'update', module: 'subcontractors', entityType: 'subcontractor' }, async (q) => {
+      const before = (await q('SELECT * FROM subcontractors WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true };
+      const r = await q(`UPDATE subcontractors SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`, p);
+      return { data: r.rows[0], entityId: before.id, before, after: r.rows[0], description: `Updated subcontractor ${before.code}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Subcontractor not found' });
+    res.json({ success: true, data: out.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -152,11 +161,14 @@ router.post('/verifications', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const r = await query(
-      `INSERT INTO sub_work_verifications (sub_contract_id, boq_item_id, period_from, period_to, quantity_claimed, quantity_verified, notes) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [value.sub_contract_id, value.boq_item_id, value.period_from, value.period_to, value.quantity_claimed, value.quantity_verified, value.notes]
-    );
-    res.status(201).json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'create', module: 'subcontractors', entityType: 'sub_work_verification' }, async (q) => {
+      const r = await q(
+        `INSERT INTO sub_work_verifications (sub_contract_id, boq_item_id, period_from, period_to, quantity_claimed, quantity_verified, notes) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+        [value.sub_contract_id, value.boq_item_id, value.period_from, value.period_to, value.quantity_claimed, value.quantity_verified, value.notes]
+      );
+      return { data: r.rows[0], entityId: r.rows[0].id, after: r.rows[0], description: `Created work verification for subcontract ${value.sub_contract_id}` };
+    });
+    res.status(201).json({ success: true, data: out.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -165,12 +177,17 @@ router.put('/verifications/:id', authenticate, authorize(), async (req, res) => 
     const { status } = req.body;
     if (!['approved', 'rejected'].includes(status)) return res.status(400).json({ success: false, error: 'Invalid status' });
 
-    const r = await query(
-      `UPDATE sub_work_verifications SET status = $1, verified_by = $2, updated_at = NOW() WHERE id = $3 RETURNING *`,
-      [status, req.user.id, req.params.id]
-    );
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Verification not found' });
-    res.json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'update', module: 'subcontractors', entityType: 'sub_work_verification' }, async (q) => {
+      const before = (await q('SELECT * FROM sub_work_verifications WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true };
+      const r = await q(
+        `UPDATE sub_work_verifications SET status = $1, verified_by = $2, updated_at = NOW() WHERE id = $3 RETURNING *`,
+        [status, req.user.id, req.params.id]
+      );
+      return { data: r.rows[0], entityId: before.id, before, after: r.rows[0], oldStatus: before.status, newStatus: status, description: `Work verification ${status}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Verification not found' });
+    res.json({ success: true, data: out.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -199,14 +216,16 @@ router.post('/certificates', authenticate, authorize(), async (req, res) => {
 
     const net_payable = value.work_value - value.retention_deduction - value.previous_paid - value.penalties - value.materials_deducted;
 
-    const cert_number = await nextNumber(query, { table: 'sub_payment_certificates', column: 'certificate_number', prefix: 'PC', pad: 4 });
-
-    const r = await query(
-      `INSERT INTO sub_payment_certificates (certificate_number, sub_contract_id, period_from, period_to, work_value, retention_deduction, previous_paid, penalties, materials_deducted, net_payable, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
-      [cert_number, value.sub_contract_id, value.period_from, value.period_to, value.work_value, value.retention_deduction, value.previous_paid, value.penalties, value.materials_deducted, net_payable, value.notes]
-    );
-    res.status(201).json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'create', module: 'subcontractors', entityType: 'sub_payment_certificate' }, async (q) => {
+      const cert_number = await nextNumber(q, { table: 'sub_payment_certificates', column: 'certificate_number', prefix: 'PC', pad: 4 });
+      const r = await q(
+        `INSERT INTO sub_payment_certificates (certificate_number, sub_contract_id, period_from, period_to, work_value, retention_deduction, previous_paid, penalties, materials_deducted, net_payable, notes)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+        [cert_number, value.sub_contract_id, value.period_from, value.period_to, value.work_value, value.retention_deduction, value.previous_paid, value.penalties, value.materials_deducted, net_payable, value.notes]
+      );
+      return { data: r.rows[0], entityId: r.rows[0].id, after: r.rows[0], amount: net_payable, description: `Created subcontractor certificate ${cert_number}` };
+    });
+    res.status(201).json({ success: true, data: out.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -216,15 +235,16 @@ router.put('/certificates/:id', authenticate, authorize(), async (req, res) => {
     if (!['certified', 'paid'].includes(status)) return res.status(400).json({ success: false, error: 'Invalid status' });
 
     // The status change and the payment event (which books the project cost) commit together.
-    const r = await transaction(async (client) => {
-      const q = client.query.bind(client);
+    const r = await auditedMutation(req, { action: 'update', module: 'subcontractors', entityType: 'sub_payment_certificate' }, async (q) => {
+      const before = (await q('SELECT * FROM sub_payment_certificates WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true };
       const updated = await q(
         `UPDATE sub_payment_certificates SET status = $1, certified_by = COALESCE(certified_by, $2), paid_at = CASE WHEN $4::boolean THEN NOW() ELSE paid_at END, updated_at = NOW() WHERE id = $3 RETURNING *`,
         // $4 is separate from $1: using one parameter as both the status and the 'paid' comparison made PostgreSQL deduce
         // two types for it, so this update failed on every call (found by the A2.5 tests).
         [status, req.user.id, req.params.id, status === 'paid']
       );
-      if (updated.rows.length > 0 && status === 'paid') {
+      if (status === 'paid') {
         await fireEvent({
           eventType: 'sub_payment.paid',
           entityType: 'sub_payment_certificate',
@@ -233,11 +253,11 @@ router.put('/certificates/:id', authenticate, authorize(), async (req, res) => {
           payload: { sub_contract_id: updated.rows[0].sub_contract_id, amount: updated.rows[0].net_payable, project_id: updated.rows[0].project_id }
         }, { query: q });
       }
-      return updated;
+      return { data: updated.rows[0], entityId: before.id, before, after: updated.rows[0], oldStatus: before.status, newStatus: status, amount: Number(updated.rows[0].net_payable), description: `Subcontractor certificate ${before.certificate_number} ${status}` };
     });
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Certificate not found' });
+    if (!r.data) return res.status(404).json({ success: false, error: 'Certificate not found' });
 
-    res.json({ success: true, data: r.rows[0] });
+    res.json({ success: true, data: r.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
