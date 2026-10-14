@@ -2,6 +2,12 @@
 
 const policy = require('./policy');
 const { canExternalViewDocument } = require('./documentVisibility');
+// Canonical external roles from migration 0031 must retain portal restrictions;
+// their generic docs grants never make draft internal files publicly accessible.
+const EXTERNAL_MEDIA_ROLES = new Set([...policy.EXTERNAL_ROLES,
+  'client_executive', 'client_reviewer', 'pmc_manager', 'consultant_coordinator',
+  'consultant_reviewer', 'subcontractor_manager', 'subcontractor_site_engineer', 'supplier_sales', 'testing_lab',
+]);
 
 async function canAccessMedia(q, user, fileName, preview = null, policyEvaluator = policy.evaluate) {
   if (!user || !/^[a-zA-Z0-9_.-]+$/.test(fileName) || fileName === '.' || fileName === '..') return false;
@@ -9,11 +15,9 @@ async function canAccessMedia(q, user, fileName, preview = null, policyEvaluator
   const owner = (await q('SELECT uploaded_by FROM uploaded_files WHERE file_name = $1', [fileName])).rows[0];
   if (!preview && owner && Number(owner.uploaded_by) === Number(user.id)) return true;
 
-  const internal = policy.INTERNAL_ROLES.has(user.role);
-  const external = policy.EXTERNAL_ROLES.has(user.role);
-  if (!internal && !external) return false;
+  const external = EXTERNAL_MEDIA_ROLES.has(user.role);
 
-  if (internal) {
+  if (!external) {
     const documents = (await q('SELECT project_id FROM project_documents WHERE file_url = $1', [fileUrl])).rows;
     for (const doc of documents) {
       const access = preview
