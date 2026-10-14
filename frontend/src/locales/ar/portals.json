@@ -240,6 +240,23 @@
   "dashboard": {
     "title": "لوحة المعلومات",
     "noRecords": "لا توجد سجلات",
+    "scopeDescription": "سجلات المشروعات المباشرة ضمن مؤسستك والتكليفات المسندة إليك.",
+    "allProjects": "كل المشروعات",
+    "projectOption": "المشروع {{id}}",
+    "exitPreview": "إنهاء معاينة العميل",
+    "refresh": "تحديث",
+    "portfolio": "محفظة المشروعات",
+    "titles": {
+      "consultant": "بوابة الاستشاري",
+      "client": "بوابة العميل",
+      "subcontractor": "بوابة مقاول الباطن",
+      "supplier": "بوابة المورد"
+    },
+    "extraTitles": {
+      "reviews": "مراجعاتي",
+      "actionCenter": "مركز الإجراءات",
+      "submissions": "إرسالياتي"
+    },
     "widgets": {
       "latest_drawings": "أحدث المخططات",
       "approvals": "الموافقات",

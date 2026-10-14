@@ -10,10 +10,10 @@ import { formatNumber } from '../utils/formatters';
 const API_BASE_URL = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
 
 const CONFIG = {
-  consultant: { title: 'Consultant Portal', endpoint: '/api/consultant/dashboard', extra: '/api/consultant/reviews', extraTitle: 'My Reviews', icon: ClipboardCheck },
-  client: { title: 'Client Portal', endpoint: '/api/client-portal/dashboard', extra: '/api/client-portal/action-center', extraTitle: 'Action Center', icon: Building2 },
-  subcontractor: { title: 'Subcontractor Portal', endpoint: '/api/portal/subcontractor/dashboard', extra: '/api/portal/subcontractor/submissions', extraTitle: 'My submissions', icon: FolderKanban },
-  supplier: { title: 'Supplier Portal', endpoint: '/api/portal/supplier/dashboard', icon: Truck },
+  consultant: { endpoint: '/api/consultant/dashboard', extra: '/api/consultant/reviews', extraTitleKey: 'reviews', icon: ClipboardCheck },
+  client: { endpoint: '/api/client-portal/dashboard', extra: '/api/client-portal/action-center', extraTitleKey: 'actionCenter', icon: Building2 },
+  subcontractor: { endpoint: '/api/portal/subcontractor/dashboard', extra: '/api/portal/subcontractor/submissions', extraTitleKey: 'submissions', icon: FolderKanban },
+  supplier: { endpoint: '/api/portal/supplier/dashboard', icon: Truck },
 };
 
 async function request(path, options = {}) {
@@ -637,21 +637,21 @@ export default function PortalDashboard({ kind }) {
   return (
     <div className="page-container portal-page">
       <header className="portal-header">
-        <div><h1><Icon size={25} /> {config.title}</h1><p>Live project records scoped to your organization and assignments.</p></div>
+        <div><h1><Icon size={25} /> {t(`portals.dashboard.titles.${kind}`)}</h1><p>{t('portals.dashboard.scopeDescription')}</p></div>
         <div className="portal-toolbar">
-          {projectIds.length > 1 && <select className="form-control" value={projectId} onChange={e => setProjectId(e.target.value)}><option value="">All projects</option>{projectIds.map(id => <option key={id} value={id}>Project {id}</option>)}</select>}
+          {projectIds.length > 1 && <select className="form-control" value={projectId} onChange={e => setProjectId(e.target.value)}><option value="">{t('portals.dashboard.allProjects')}</option>{projectIds.map(id => <option key={id} value={id}>{t('portals.dashboard.projectOption', { id })}</option>)}</select>}
           {canPreview && (previewToken
-            ? <button className="btn btn-secondary btn-sm" onClick={stopPreview}>Exit client preview</button>
+            ? <button className="btn btn-secondary btn-sm" onClick={stopPreview}>{t('portals.dashboard.exitPreview')}</button>
             : <><select className="form-control" aria-label={t('portals.previewProject')} value={previewProjectId} onChange={(event) => setPreviewProjectId(event.target.value)}><option value="">{t('portals.selectPreviewProject')}</option>{(extra?.portfolio?.items || []).map((item) => <option key={item.id} value={item.id}>{item.name || item.project_name || t('portals.clientActions.project', { id: item.id })}</option>)}</select><button className="btn btn-secondary btn-sm" disabled={!previewProjectId} onClick={() => startPreview().catch(e => setError(e.message))}>{t('portals.previewAsClient')}</button></>)}
-          <button className="btn btn-secondary btn-sm" onClick={load}><RefreshCw size={14} /> Refresh</button>
+          <button className="btn btn-secondary btn-sm" onClick={load}><RefreshCw size={14} /> {t('portals.dashboard.refresh')}</button>
         </div>
       </header>
       {error && <div className="alert alert-danger">{error}</div>}
-      {loading && <div className="card"><div className="card-body">Loading portal…</div></div>}
+      {loading && <div className="card"><div className="card-body">{t('common.loading')}</div></div>}
       {!loading && data && <>
         {data.note && <div className="alert alert-info">{data.note}</div>}
         {data.setup_actions?.map(action => <div className="alert alert-info" key={action}>{action}</div>)}
-        {extra?.portfolio?.is_portfolio && <><h2 className="portal-section-title">Portfolio</h2><div className="portal-grid"><Widget name="Projects" value={extra.portfolio.items} /></div></>}
+        {extra?.portfolio?.is_portfolio && <><h2 className="portal-section-title">{t('portals.dashboard.portfolio')}</h2><div className="portal-grid"><Widget name="Projects" value={extra.portfolio.items} /></div></>}
         <QuickActions kind={kind} data={data} onDone={load} />
         <div className="portal-grid">{Object.entries(data).filter(([key]) => !['note', 'setup_actions', 'project_ids', 'supplier_ids', 'visibility', 'preview'].includes(key)).map(([key, value]) => kind === 'supplier' && key === 'expiring_documents'
           ? <SupplierComplianceAlerts key={key} value={value} />
@@ -660,13 +660,13 @@ export default function PortalDashboard({ kind }) {
             : kind === 'supplier' && key === 'inspections'
               ? <FormalInspectionRegister key={key} value={value} kind="mir" />
               : <Widget key={key} name={key} value={value} />)}</div>
-        {extra?.secondary != null && <><h2 className="portal-section-title">{config.extraTitle}</h2><div className="portal-grid">{kind === 'consultant'
+        {extra?.secondary != null && <><h2 className="portal-section-title">{t(`portals.dashboard.extraTitles.${config.extraTitleKey}`)}</h2><div className="portal-grid">{kind === 'consultant'
           ? <ConsultantReviews rows={extra.secondary} onDone={load} />
           : kind === 'client'
             ? <ClientActions data={extra.secondary} onDone={load} readOnly={Boolean(data.preview?.read_only)} />
             : kind === 'subcontractor'
               ? <SubcontractorSubmissionRegister value={extra.secondary} />
-            : <Widget name={config.extraTitle} value={extra.secondary} />}</div></>}
+            : <Widget name={config.extraTitleKey} value={extra.secondary} />}</div></>}
       </>}
     </div>
   );

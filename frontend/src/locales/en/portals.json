@@ -3,6 +3,23 @@
   "dashboard": {
     "title": "Dashboard",
     "noRecords": "No records",
+    "scopeDescription": "Live project records scoped to your organization and assignments.",
+    "allProjects": "All projects",
+    "projectOption": "Project {{id}}",
+    "exitPreview": "Exit client preview",
+    "refresh": "Refresh",
+    "portfolio": "Portfolio",
+    "titles": {
+      "consultant": "Consultant Portal",
+      "client": "Client Portal",
+      "subcontractor": "Subcontractor Portal",
+      "supplier": "Supplier Portal"
+    },
+    "extraTitles": {
+      "reviews": "My Reviews",
+      "actionCenter": "Action Center",
+      "submissions": "My submissions"
+    },
     "widgets": {
       "latest_drawings": "Latest drawings",
       "approvals": "Approvals",

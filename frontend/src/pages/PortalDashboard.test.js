@@ -45,6 +45,8 @@ describe('consultant portal observation form', () => {
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
 
     expect(container.textContent).toContain('portals.dashboard.widgets.latest_drawings');
+    expect(container.textContent).toContain('portals.dashboard.titles.consultant');
+    expect(container.textContent).toContain('portals.dashboard.scopeDescription');
     expect(container.textContent).toContain('enums.status.pendingApproval');
     expect(container.textContent).toContain('common.yes');
     expect(container.textContent).toContain('portals.dashboard.empty.rfis');
