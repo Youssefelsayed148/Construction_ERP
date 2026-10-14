@@ -253,7 +253,7 @@ Verification: backend mocks PASS (53 suites / 1,005 tests); portal/consultant se
 
 Localized the four portal titles and the dashboard scope description, project selector, preview exit, refresh/loading copy, portfolio heading, and secondary section headings. Existing routes and API calls are unchanged. This is an additional PortalDashboard caller migration; L4C remains open for remaining dynamic fields, user-facing server errors, and full Arabic review.
 
-Verification: PortalDashboard suite PASS (11/11); i18n check passed; parity passed (35 namespaces / 1,216 English keys); git diff --check passed. No backend or migration changes. Implementation commit: 0b59ba5. Implementation commit: 0dda70b. Implementation commit: 0f19c8a.
+Verification: PortalDashboard suite PASS (11/11); i18n check passed; parity passed (35 namespaces / 1,216 English keys); git diff --check passed. No backend or migration changes. Implementation commit: 0f19c8a.
 
 
 ## 2026-10-14 - Phase 10 portal setup messages
@@ -267,7 +267,7 @@ Verification: backend client/consultant/portal suites PASS (3 suites / 40 tests)
 
 Portal record cards now display domain-specific document numbers exposed by APIs (RFI, submittal, WIR, MIR, certificate, observation, and NCR) before using a localized generic record-number fallback. Added EN/AR labels for dashboard summary fields surfaced by consultant progress widgets.
 
-Verification: PortalDashboard suite PASS (11/11); i18n check passed; parity passed (35 namespaces / 1,231 English keys); git diff --check passed. No backend or migration changes.
+Verification: PortalDashboard suite PASS (11/11); i18n check passed; parity passed (35 namespaces / 1,231 English keys); git diff --check passed. No backend or migration changes. Implementation commit: 0dda70b.
 
 
 ## 2026-10-14 - Phase 10 L4B procurement comparison localization
@@ -288,7 +288,7 @@ Verification: ProjectOperations component suite PASS (2/2), including Arabic-fir
 
 Portal record cards now use localizedName for title/name/subject fields, format due/deadline dates with the active locale, and format certificate/payment amounts as localized EGP. Machine identifiers and user-authored text remain unchanged. This adds formatter call-site coverage; the broader L4C portal/API error audit remains open.
 
-Verification: PortalDashboard and formatter suites PASS (2 suites / 16 tests), including Arabic-first title, localized date, and EGP currency checks; i18n check passed; parity passed (35 namespaces / 1,283 English keys); git diff --check passed. No backend or migration changes.
+Verification: PortalDashboard and formatter suites PASS (2 suites / 16 tests), including Arabic-first title, localized date, and EGP currency checks; i18n check passed; parity passed (35 namespaces / 1,283 English keys); git diff --check passed. No backend or migration changes. Implementation commit: 0b59ba5.
 
 
 ## 2026-10-14 - Phase 7/10 continuation batch gates
