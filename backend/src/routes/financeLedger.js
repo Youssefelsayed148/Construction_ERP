@@ -38,7 +38,9 @@ router.post('/valuations', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     authorizeProjectPayload(req, value);
-    const invoice = await finance.createClientValuation(query, { ...value, created_by: req.user.id, actor_name: req.user.name });
+    const invoice = await transaction(client => finance.createClientValuation(client.query.bind(client), {
+      ...value, created_by: req.user.id, actor_name: req.user.name,
+    }));
     res.status(201).json({ success: true, data: invoice });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });

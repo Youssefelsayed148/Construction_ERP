@@ -1,5 +1,29 @@
 # R2 scorecard — 2026-10-15
 
+## Current R2b.5 checkpoint
+
+**306/601 endpoints runtime verified** (304 audit+rollback, 2 historical audit-only sweep exceptions), **289 pending**, **6 exempt**. R2 exit incomplete; R3 not started. The 289 remaining entries lack fixtures; no substantive waiver is claimed.
+
+| Ticket | Before | After |
+|---|---|---|
+| R2b.3 labour DELETE (`fd00c4e`) | Unsafe source-cost/event deletes; missing paired error key; 7 failures / 2 passes including scoped fixture permission omission | Typed 409 for costed/posted/queued payment; unposted before-snapshot audit + project scope; focused 2/32 PASS |
+| R2b.4 QHSE duplicates (`e0d51a3`) | 2 duplicate-registration failures / 2 survivor passes | Only first audited handlers remain; focused survivors + registry 2/53 PASS |
+| R2b.5 finance-ledger/v1 | Valid-fixture 2 valuation rollback leaks / 59 passes; 30 endpoints pending | Route transaction fixes both aliases; 30 fixtures, 61 tests PASS; pending 319 -> 289 |
+
+STOP: mock checkpoint passes 60 suites / 1,054 tests but requested floor is 60/1,056+. Two fewer tests are the permission-isolation test.each(allRoutes) cases for the deleted unreachable QHSE registrations. This is an explained count change, not a failing test, and is not counted as meeting the numerical floor. Add independent mock route-uniqueness regressions or obtain acceptance of the adjusted floor before resuming. Full PG first checkpoint: 2 failures / 1,294 passes (temporary role not cleaned up; dashboard SQL oracle omitted issued credits). Test cleanup/oracle corrected; focused affected suites PASS 4/91. No R3 exit claim.
+
+| Final checkpoint gate | Output | Requested baseline comparison |
+|---|---|---|
+| Backend mock | PASS 60 suites / 1,054 tests | Numerical floor 1,056+ NOT met; explained -2 duplicate registrations |
+| Real PG | PASS 76 suites / 1,296 tests | 74/1,223 -> +2 suites/+73 tests (labour +9, QHSE +4, registry +60); all 306 fixtures |
+| Frontend | PASS 32/131 | unchanged |
+| i18n check/parity | PASS 35 namespaces / 1,288 English keys | +1 paired labour error |
+| lint:guards | PASS | no baseline changes |
+| CI production build | PASS, compiled successfully | exit 0 |
+| Fresh golden reconciliation | PASS 16/16, zero violations | seed/reconcile exit 0 |
+
+Final full PG: 126 migrations, erp-r02-gate-20261015022512 removed. Fresh golden: 126 migrations, erp-r02-gate-20261015022249 removed. NOT verified: remaining 289 mutation fixtures, R2 exit, all R3 work/performance evidence. No product decision waiting.
+
 ## Latest resume stop - 2026-10-15
 
 Superseded by explicit owner authorization for elevated local Docker. Current baseline PASS 74/1,223, 126 migrations, exact container removed. R2b.3 labour-payment protection: initial regression 7 failed / 2 passed (one scoped fixture permission corrected), final focused 2 suites / 32 tests PASS; guards PASS unchanged; mock PASS 60/1,056; i18n PASS 35/1,288. Costed or queued/posted payments return typed 409; unposted delete retains before-snapshot audit and project scope. Coverage unchanged 276/601, pending 319, exempt 6. Full exit gates pending; R3 not started.

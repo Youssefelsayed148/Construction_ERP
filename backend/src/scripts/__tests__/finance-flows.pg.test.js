@@ -269,7 +269,8 @@ describePg('finance flows (real PostgreSQL, real app)', () => {
     const totalAr = Object.values(dashboard.ar_aging).reduce((s, v) => s + num(v), 0);
     expect(money(totalAr)).toBe(money(dashboard.total_ar_outstanding));
     const arSql = `SELECT COALESCE(SUM(o), 0) s FROM (
-          SELECT (CASE WHEN COALESCE(i.net_amount, 0) > 0 THEN i.net_amount ELSE i.amount END) - COALESCE(a.s, 0) AS o
+          SELECT (CASE WHEN COALESCE(i.net_amount, 0) > 0 THEN i.net_amount ELSE i.amount END)
+                 - COALESCE(i.credited_amount, 0) - COALESCE(a.s, 0) AS o
             FROM invoices i
             LEFT JOIN (SELECT invoice_id, SUM(amount) s FROM payment_allocations
                         WHERE target_type = 'client_invoice' AND voided_at IS NULL GROUP BY invoice_id) a ON a.invoice_id = i.id

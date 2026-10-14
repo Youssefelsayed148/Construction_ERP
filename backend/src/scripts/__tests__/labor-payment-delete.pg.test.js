@@ -5,7 +5,7 @@ const tokens = require('../../services/tokens');
 const describePg = process.env.TEST_PG === '1' ? describe : describe.skip;
 
 describePg('R2b labour-payment delete protection (real PostgreSQL)', () => {
-  let db; let server; let base; let token; let project; let laborer; let owner;
+  let db; let server; let base; let token; let project; let laborer; let owner; let scopedRole;
   const tag = `${Date.now()}-${process.pid}`;
   const one = async (sql, params) => (await db.query(sql, params)).rows[0];
   const payment = () => one('INSERT INTO labor_payments (project_id, laborer_id, days_worked, daily_rate, total_amount) VALUES ($1, $2, 2, 100, 200) RETURNING *', [project.id, laborer.id]);
@@ -32,6 +32,12 @@ describePg('R2b labour-payment delete protection (real PostgreSQL)', () => {
     laborer = await one("INSERT INTO daily_laborers (full_name) VALUES ('lp-delete') RETURNING id");
   });
   afterAll(async () => {
+    // Later suites enumerate every role and expect supported production roles.
+    if (scopedRole) {
+      await db.query('DELETE FROM user_project_roles WHERE role_id = $1', [scopedRole.id]);
+      await db.query('DELETE FROM role_permissions WHERE role_id = $1', [scopedRole.id]);
+      await db.query('DELETE FROM roles WHERE id = $1', [scopedRole.id]);
+    }
     await new Promise(resolve => server.close(resolve));
     await db.pool.end();
   });
@@ -67,6 +73,7 @@ describePg('R2b labour-payment delete protection (real PostgreSQL)', () => {
 
   test('project-scoped delete grant permits its project and denies another project', async () => {
     const role = await one('INSERT INTO roles (key, name, is_system) VALUES ($1, $1, false) RETURNING id', [`lp_${tag}`]);
+    scopedRole = role;
     await db.query("INSERT INTO permissions (module, action) VALUES ('hr', 'delete') ON CONFLICT (module, action) DO NOTHING");
     await db.query("INSERT INTO role_permissions (role_id, permission_id) SELECT $1, id FROM permissions WHERE module = 'hr' AND action = 'delete'", [role.id]);
     const user = await one("INSERT INTO users (name, email, password, role) VALUES ('lp-scoped', $1, 'unused', 'engineer') RETURNING id, token_version", [`lp-scoped-${tag}@test.invalid`]);
