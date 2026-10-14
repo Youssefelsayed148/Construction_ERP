@@ -104,3 +104,8 @@ Expanded the real-PG seeded-defect suite from two to six invariants: payment all
 ## 2026-10-14 continuation - clean demo reconciliation baseline
 
 On a fresh volume-free Docker PostgreSQL 16 database, the full 126-migration chain and idempotent golden demo seed completed. Read-only runReconciliation returned ok=true with zero violations for all 16 checks. The NOT VALID constraint data-cleaning report returned an empty list. The exact disposable container and process-only generated DB/JWT credentials were removed. This is clean seeded-demo evidence only, not the required restored-real-data acceptance; production remains NO-GO.
+## 2026-10-14 continuation - Phase 11 seeded defects cover reconciliation matrix
+
+Expanded `reconcile-defects.pg.test.js` to 14 real-PG cases covering 15 of the 16 reconciliation checks. They seed payment and invoice allocation overages, client/supplier cross-project allocations, cross-project warehouse transfers, missing workflow steps, missing cost source/ledger links, orphan money-movement journal references, unbalanced journal lines, PO delivery-line mismatch, retention/advance imbalance, stock projection mismatch, and approval mirror gaps. Every case compares violation deltas against baseline and rolls back its transaction. Owned-sequence drift remains covered by the existing unit test because setval is not transactionally rollbackable.
+
+Fresh full PG gate: 68 suites / 635 tests PASS after 126 migrations. The full backend mocks 54/1,013, lint guards, frontend CI 31/128, i18n check/parity 35 namespaces / 1,283 keys, production build, and Pixel 7 sweep 36/36 passed in the current batch. Restored-real-data reconciliation remains open.

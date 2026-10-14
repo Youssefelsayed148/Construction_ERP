@@ -865,3 +865,6 @@ Expanded defect coverage to six checks: payment amount, invoice balance, cross-p
 ## 2026-10-14 - clean seeded-demo reconciliation baseline
 
 Fresh disposable Docker PostgreSQL 16: all 126 migrations applied; golden demo fixture seeded (96 units, EGP 504,000 C35 BOQ, 122.4 m3 net demand); read-only reconciliation returned 0 violations across all 16 checks; data-cleaning report returned []. The exact container and process-only generated credentials were removed. This verifies the clean demo baseline only; restored pilot/real-data reconciliation remains open and the GO criterion stays NO-GO.
+## 2026-10-14 - Phase 11 reconciliation matrix test coverage
+
+Expanded seeded-defect PG coverage to 14 test cases that exercise 15/16 reconciliation checks; owned-sequence drift remains covered by a unit test because rewinding a live DB sequence cannot be rolled back safely. Defect cases compare each check's violation delta and run in rollback-only transactions. Fresh full PG gate passed 68 suites / 635 tests after all 126 migrations. Other batch gates passed: backend 54/1,013; lint guards; frontend 31/128; i18n check/parity 35 namespaces / 1,283 keys; build; Pixel 7 route sweep 36/36. Real-data restored-copy gate remains open.
