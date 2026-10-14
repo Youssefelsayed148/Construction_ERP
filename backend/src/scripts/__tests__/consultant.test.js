@@ -340,6 +340,7 @@ describe('consultant dashboard (zero-safe widgets)', () => {
     expect(dash.overall_progress.percent).toBe(0);
     expect(dash.todays_inspections.count).toBe(0);
     expect(dash.todays_inspections.empty_label).toBe('No inspections scheduled today');
+    expect(dash.todays_inspections.empty_key).toBe('portals.dashboard.empty.todays_inspections');
     expect(dash.rfis_awaiting_response.count).toBe(0);
     expect(dash.rfis_awaiting_response.empty_label).toBe('No RFIs require your response');
     expect(dash.submittals_awaiting_review.count).toBe(0);

@@ -216,6 +216,15 @@ async function subcontractorDashboard(q, userId, { now = new Date() } = {}) {
     .filter((v) => v.sub_contract_id != null && contractIds.includes(toNum(v.sub_contract_id)));
   dashboard.variations = { items: variations.map((v) => ({ id: toNum(v.id), project_id: toNum(v.project_id), sub_contract_id: toNum(v.sub_contract_id), title: v.title, status: v.status })), count: variations.length, empty_label: 'No variations yet' };
 
+  return addDashboardEmptyKeys(dashboard);
+}
+
+function addDashboardEmptyKeys(dashboard) {
+  for (const [name, widget] of Object.entries(dashboard)) {
+    if (widget && typeof widget === 'object' && typeof widget.empty_label === 'string') {
+      widget.empty_key = `portals.dashboard.empty.${name}`;
+    }
+  }
   return dashboard;
 }
 
@@ -392,7 +401,7 @@ async function supplierDashboard(q, userId, { now = new Date() } = {}) {
     empty_label: 'No compliance documents expiring within 90 days',
   };
 
-  return dashboard;
+  return addDashboardEmptyKeys(dashboard);
 }
 
 async function assertSubcontractorProject(q, userId, projectId) {

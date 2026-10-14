@@ -758,3 +758,10 @@ Implementation commit: documentation only; no schema migration or application be
 ## Continuation frontend gates (2026-10-14)
 
 After the Phase 7 route and Phase 10 portal slices: `npm run test:ci -- --silent` PASS (29 suites / 124 tests); `npm run build` PASS (Compiled successfully); `npm run i18n:check` PASS; `npm run i18n:parity` PASS (35 namespaces / 1,146 English keys).
+
+
+## 2026-10-14 - Phase 10 portal dashboard empty-state contract
+
+Subcontractor, supplier, and consultant dashboard services now add a namespaced empty_key beside the existing English empty_label. The PortalDashboard resolves that key through EN/AR catalogs and uses the legacy text only as fallback, so older API clients remain compatible. Added catalog labels for all current backend widget names and empty states, with service and frontend regression coverage. This is partial Phase 10 L4C/L7 progress; other English setup notes, values, and controls remain open.
+
+Verification: backend mocks PASS (53 suites / 1,005 tests); portal/consultant service tests PASS (30/30); lint guards passed; changed JS syntax and git diff --check passed. Frontend CI PASS (29 suites / 124 tests); PortalDashboard focused suite PASS (11/11); production build compiled; i18n check passed; parity passed (35 namespaces / 1,203 English keys). No migration or database change.

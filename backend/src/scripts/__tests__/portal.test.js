@@ -164,6 +164,7 @@ describe('subcontractor portal', () => {
     expect(dash.packages.length).toBe(1);
     expect(dash.packages[0].contract_value).toBe(300000);
     expect(dash.todays_work.empty_label).toBe('No work assigned today');
+    expect(dash.todays_work.empty_key).toBe('portals.dashboard.empty.todays_work');
     expect(dash.latest_drawings.empty_label).toBe('No approved drawings yet');
     expect(dash.inspections_needed.empty_label).toBe('No inspections needed');
     expect(dash.observations.empty_label).toBe('No consultant observations open');
@@ -335,6 +336,7 @@ describe('supplier portal', () => {
   test('dashboard fills from the supplier\u2019s own records only', async () => {
     const dash = await engine.supplierDashboard(q, SUPPLIER_A.id);
     expect(dash.open_rfqs.count).toBe(1);
+    expect(dash.open_rfqs.empty_key).toBe('portals.dashboard.empty.open_rfqs');
     expect(dash.open_rfqs.items[0].my_quoted_price).toBe(100000);
     expect(dash.awarded_pos.count).toBe(1);
     expect(dash.awarded_pos.items[0].order_number).toBe('PO-0010');

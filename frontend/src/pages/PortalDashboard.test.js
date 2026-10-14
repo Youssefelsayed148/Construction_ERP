@@ -38,6 +38,7 @@ describe('consultant portal observation form', () => {
   test('uses catalog labels for portal widgets and shared enum translation for record status', async () => {
     global.fetch = jest.fn(async (url) => ({ ok: true, json: async () => ({ success: true, data: String(url).includes('/reviews') ? [] : {
       latest_drawings: { items: [{ id: 9, title: 'Drawing A', status: 'pending_approval' }], count: 1 },
+      rfis: { items: [], count: 0, empty_key: 'portals.dashboard.empty.rfis', empty_label: 'No RFIs open' },
       summary: { active: true },
     } }) }));
     await act(async () => { root.render(<PortalDashboard kind="consultant" />); });
@@ -46,6 +47,7 @@ describe('consultant portal observation form', () => {
     expect(container.textContent).toContain('portals.dashboard.widgets.latest_drawings');
     expect(container.textContent).toContain('enums.status.pendingApproval');
     expect(container.textContent).toContain('common.yes');
+    expect(container.textContent).toContain('portals.dashboard.empty.rfis');
     expect(container.textContent).not.toContain('Latest Drawings');
     expect(container.textContent).not.toContain('Pending Approval');
     expect(container.textContent).not.toContain('Yes');

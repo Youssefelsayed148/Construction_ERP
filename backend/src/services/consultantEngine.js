@@ -802,6 +802,15 @@ async function consultantDashboard(q, user, { project_id = null, now = new Date(
     .filter((v) => v.visit_date && new Date(v.visit_date) >= new Date(today)));
   dashboard.upcoming_visits = { items: visits.slice(0, 5).map((v) => ({ id: v.id, visit_date: v.visit_date, visitor_name: v.visitor_name, visit_type: v.visit_type || 'inspection' })), count: visits.length, empty_label: 'No upcoming visits' };
 
+  return addDashboardEmptyKeys(dashboard);
+}
+
+function addDashboardEmptyKeys(dashboard) {
+  for (const [name, widget] of Object.entries(dashboard)) {
+    if (widget && typeof widget === 'object' && typeof widget.empty_label === 'string') {
+      widget.empty_key = `portals.dashboard.empty.${name}`;
+    }
+  }
   return dashboard;
 }
 

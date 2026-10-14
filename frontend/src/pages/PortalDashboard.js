@@ -32,7 +32,11 @@ async function request(path, options = {}) {
   return body.data;
 }
 
-const dashboardLabel = (t, group, value) => t(`portals.dashboard.${group}.${value}`, { defaultValue: String(value ?? '') });
+const dashboardLabel = (t, group, value) => {
+  const raw = String(value ?? '');
+  const key = raw.replace(/([a-z0-9])([A-Z])/g, '$1_$2').replace(/[\s-]+/g, '_').toLowerCase();
+  return t(`portals.dashboard.${group}.${key}`, { defaultValue: raw });
+};
 
 function valueText(value, t) {
   if (value == null || value === '') return '—';
@@ -63,7 +67,7 @@ function Widget({ name, value }) {
       <section className="card portal-widget">
         <div className="card-header">{title} <span className="badge badge-info">{value.count ?? items.length}</span></div>
         <div className="card-body">
-          {items.length ? items.slice(0, 6).map((item, i) => <Record key={item?.id ?? i} value={item} />) : <em>{value.empty_label || t('portals.dashboard.noRecords')}</em>}
+          {items.length ? items.slice(0, 6).map((item, i) => <Record key={item?.id ?? i} value={item} />) : <em>{value.empty_key ? t(value.empty_key, { defaultValue: value.empty_label || t('portals.dashboard.noRecords') }) : value.empty_label || t('portals.dashboard.noRecords')}</em>}
         </div>
       </section>
     );
