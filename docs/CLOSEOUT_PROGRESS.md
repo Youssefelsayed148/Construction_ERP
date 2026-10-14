@@ -871,3 +871,8 @@ Expanded seeded-defect PG coverage to 14 test cases that exercise 15/16 reconcil
 ## 2026-10-14 - synthetic golden-demo restore rehearsal
 
 Fresh disposable PostgreSQL 16: 126 migrations and the golden seed; custom-format dump restored to a second empty DB. Source/restore counts matched (96 units, 1 BOQ item, 122.4000 m3 net demand). Restored reconciliation: 16 checks, 0 violations; data-cleaning report: []. The Docker container and process-only credentials were removed. This does not replace the pilot/real-data restore and rollback rehearsal, which remains open.
+## 2026-10-14 - Phase 10 font and PDF renderer spike
+
+Bundled IBM Plex Sans and IBM Plex Sans Arabic under OFL-1.1, added an offline same-origin browser font check, and completed a six-pair EN/AR PDFKit-versus-Chromium spike for invoices, payment certificates, and a multi-page WIR register. Rasterized PDFs were visually inspected; Arabic PDFKit shaping is broken in these samples, while Chromium renders connected RTL Arabic and mixed-direction identifiers. `docs/i18n/PDF_SPIKE.md` records evidence and selects Chromium. Updated the Arabic review pack, L8 spike checkbox, and CI catalog parity gate. Phase 10 remains incomplete pending production renderer integration, export call-site migration, CSV localization, remaining L0-L11 work, and native Arabic review.
+
+Verification: font Playwright 1/1; screenshot baseline 32/32; full Playwright 74 passed / 86 skipped; frontend CI 31 suites / 128 tests; backend mock 54 suites / 1,013 tests; fresh Docker PG16 68 suites / 635 tests after 126 migrations; i18n check and parity 35 namespaces / 1,283 keys; build compiled. Production remains NO-GO.

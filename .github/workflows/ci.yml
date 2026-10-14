@@ -83,6 +83,9 @@ jobs:
       - name: Localization baseline (inline branches / hard-coded English may only go down)
         run: npm run i18n:check
         working-directory: frontend
+      - name: Localization catalog parity
+        run: npm run i18n:parity
+        working-directory: frontend
       - name: Frontend unit tests
         run: npm run test:ci
         working-directory: frontend

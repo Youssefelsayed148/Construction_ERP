@@ -1,39 +1,172 @@
-﻿# Arabic construction terminology and export review pack
+# Arabic construction terminology and export review pack
 
-Status: **pending native Egyptian construction-domain reviewer**. This file inventories the full current EN/AR UI catalog (35 namespaces; current parity is recorded in `docs/CLOSEOUT_LOG.md`). It is a review worksheet, not a sign-off. Reviewers must add missing terms found in screens, server content, and exports, and confirm every construction term used in context.
+Status: **pending native Egyptian construction-domain reviewer and Arabic role UAT**. Generated on 2026-10-14 from the current final glossary and the paired catalogs. This is a review worksheet, not a sign-off.
 
 ## Review checklist
 
 - [ ] Confirm Arabic terminology for construction, procurement, contracts, QS, finance, QA/QC, HSE, planning, handover, and warranty in Egyptian usage.
 - [ ] Check abbreviations and mixed Arabic/Latin text: C35, BOQ, RFQ, PR, PO, GRN, MIR, WIR, NCR, EGP, dates, email addresses, URLs, and document numbers.
-- [ ] Inspect Arabic and English screenshots at desktop and mobile sizes for shell, dashboard, project workspace, procurement, site/QHSE, portals, large tables, and dialogs.
-- [ ] Render and inspect representative Arabic PDFs/exports for glyph shaping, bidi order, page order, numbers/codes, alignment, multi-page output, and filenames.
-- [ ] Record catalog key, current EN/AR, proposed Arabic, screen/export context, reviewer, and approval date for every correction.
+- [ ] Inspect EN/AR screenshots at desktop and mobile sizes; baseline images are in [docs/i18n/baseline/screenshots/](i18n/baseline/screenshots/).
+- [ ] Review the representative Arabic PDF screenshots and PDFs listed in [PDF_SPIKE.md](i18n/PDF_SPIKE.md). This is a renderer spike, not final production export sign-off.
+- [ ] Record each proposed correction in the term table with its screen/export context, reviewer, and date.
 - [ ] Re-run `npm run i18n:check` and `npm run i18n:parity` after accepted terminology edits.
 
-## Screenshots and exports to capture
+## Representative rendered PDF evidence
 
-| Surface | English evidence | Arabic evidence | Reviewer result / defect ID |
+| Sample | Arabic Chromium PDF and rendered PNG | Arabic PDFKit comparison |
+|---|---|---|
+| Invoice | [PDF](i18n/pdf-spike/invoice-ar-chromium.pdf) · [PNG](i18n/pdf-spike/invoice-ar-chromium-pdf-page-1.png) | [PDF](i18n/pdf-spike/invoice-ar-pdfkit.pdf) · [PNG](i18n/pdf-spike/invoice-ar-pdfkit-page-1.png) |
+| Payment certificate | [PDF](i18n/pdf-spike/certificate-ar-chromium.pdf) · [PNG](i18n/pdf-spike/certificate-ar-chromium-pdf-page-1.png) | [PDF](i18n/pdf-spike/certificate-ar-pdfkit.pdf) · [PNG](i18n/pdf-spike/certificate-ar-pdfkit-page-1.png) |
+| WIR register page 1 | [PNG](i18n/pdf-spike/register-ar-chromium-pdf-page-1.png) | [PNG](i18n/pdf-spike/register-ar-pdfkit-page-1.png) |
+| WIR register page 2 | [PNG](i18n/pdf-spike/register-ar-chromium-pdf-page-2.png) | [PNG](i18n/pdf-spike/register-ar-pdfkit-page-2.png) |
+
+## Construction and finance terminology review
+
+Generated from the full glossary (97 entries). “Where used” follows the glossary section and names the likely module; add specific screens/exports during review. Leave the correction cell empty until the native reviewer proposes a change.
+
+| Arabic term | English term | Where used | Reviewer corrections |
 |---|---|---|---|
-| Login and application shell | Pending | Pending | |
-| Dashboard and alerts | Pending | Pending | |
-| Residential project overview and BOQ | Pending | Pending | |
-| Procurement comparison and PO | Pending | Pending | |
-| Site daily report and quantity entry | Pending | Pending | |
-| QA/QC, WIR, NCR and consultant observations | Pending | Pending | |
-| Schedule and progress reports | Pending | Pending | |
-| Client portal | Pending | Pending | |
-| Consultant portal | Pending | Pending | |
-| Subcontractor portal | Pending | Pending | |
-| Supplier portal | Pending | Pending | |
-| Handover and warranty register | Pending | Pending | |
-| Arabic CSV export | Pending | Pending | |
-| Arabic invoice/certificate PDF | Pending | Pending | |
-| Arabic procurement and QA/QC PDF | Pending | Pending | |
+| جدول الكميات | Bill of Quantities (BOQ) | Documents and site records | |
+| طلب استيضاح | Request for Information (RFI) | Documents and site records | |
+| مستند للاعتماد | Submittal | Documents and site records | |
+| طلب فحص أعمال | Work Inspection Request (WIR) | Documents and site records | |
+| طلب فحص مواد | Material Inspection Request (MIR) | Documents and site records | |
+| تقرير عدم مطابقة | Non-Conformance Report (NCR) | Documents and site records | |
+| خطة الفحص والاختبار | Inspection and Test Plan (ITP) | Documents and site records | |
+| تحليل سلامة الوظيفة | Job Safety Analysis (JSA) | Documents and site records | |
+| تصريح عمل | Permit to Work | Documents and site records | |
+| حادث وشيك | Near miss | Documents and site records | |
+| حادث | Incident | Documents and site records | |
+| محاضرة سلامة قبل العمل | Toolbox talk | Documents and site records | |
+| إجراء تصحيحي ووقائي | Corrective and preventive action (CAPA) | Documents and site records | |
+| قائمة الملاحظات النهائية | Punch list / snag | Documents and site records | |
+| نموذج تنفيذي | Mock-up | Documents and site records | |
+| معايرة | Calibration | Documents and site records | |
+| تقرير يومي | Daily report | Documents and site records | |
+| تعليمات موقع | Site instruction | Documents and site records | |
+| ملاحظة | Observation | Documents and site records | |
+| مراسلة إرسال مستندات | Transmittal | Documents and site records | |
+| مراسلات | Correspondence | Documents and site records | |
+| رسم / مواصفات | Drawing / Specification | Documents and site records | |
+| رسومات التنفيذ الفعلي | As-built | Documents and site records | |
+| التسليم | Handover | Documents and site records | |
+| فترة ضمان العيوب | Defects Liability Period (DLP) | Documents and site records | |
+| مطالبة ضمان | Warranty claim | Documents and site records | |
+| دليل التشغيل والصيانة | O&M manual | Documents and site records | |
+| طلب شراء | Purchase Requisition (PR) | Procurement, inventory, commercial, finance | |
+| طلب عروض أسعار | Request for Quotation (RFQ) | Procurement, inventory, commercial, finance | |
+| عرض سعر | Quotation | Procurement, inventory, commercial, finance | |
+| مقارنة العروض | Bid comparison | Procurement, inventory, commercial, finance | |
+| توصية الترسية | Award recommendation | Procurement, inventory, commercial, finance | |
+| أمر شراء | Purchase Order (PO) | Procurement, inventory, commercial, finance | |
+| توريد | Delivery | Procurement, inventory, commercial, finance | |
+| إذن استلام بضاعة | Goods Receipt Note (GRN) | Procurement, inventory, commercial, finance | |
+| مرتجع مورد | Supplier return | Procurement, inventory, commercial, finance | |
+| المطابقة الثلاثية | Three-way match | Procurement, inventory, commercial, finance | |
+| مخزن / مخزون | Warehouse / Stock | Procurement, inventory, commercial, finance | |
+| حجز | Reservation | Procurement, inventory, commercial, finance | |
+| إعادة الطلب / التوريد التلقائي | Reorder / replenishment | Procurement, inventory, commercial, finance | |
+| أمر تغيير | Variation order | Procurement, inventory, commercial, finance | |
+| استقطاع الضمان (محتجز الضمان) | Retention | Procurement, inventory, commercial, finance | |
+| دفعة مقدمة | Advance payment | Procurement, inventory, commercial, finance | |
+| مستخلص | Payment certificate | Procurement, inventory, commercial, finance | |
+| تقييم الأعمال | Valuation | Procurement, inventory, commercial, finance | |
+| فاتورة | Invoice | Procurement, inventory, commercial, finance | |
+| الإفراج عن محتجز الضمان | Retention release | Procurement, inventory, commercial, finance | |
+| الموازنة / التوقعات | Budget / Forecast | Procurement, inventory, commercial, finance | |
+| التكلفة المقدرة عند الإنجاز | Estimate at completion (EAC) | Procurement, inventory, commercial, finance | |
+| التزام | Commitment | Procurement, inventory, commercial, finance | |
+| كود التكلفة | Cost code | Procurement, inventory, commercial, finance | |
+| قيد يومية | Journal entry | Procurement, inventory, commercial, finance | |
+| ضريبة (القيمة المضافة) | Tax (VAT) | Procurement, inventory, commercial, finance | |
+| مشروع | Project | Projects, planning, organisation | |
+| مرحلة / معلم رئيسي | Phase / Milestone | Projects, planning, organisation | |
+| حزمة أعمال | Work package | Projects, planning, organisation | |
+| هيكل تجزئة العمل | WBS | Projects, planning, organisation | |
+| الجدول الزمني / نشاط | Schedule / Activity | Projects, planning, organisation | |
+| المسار الحرج | Critical path (CPM) | Projects, planning, organisation | |
+| خط الأساس | Baseline | Projects, planning, organisation | |
+| الجدول قصير المدى | Look-ahead | Projects, planning, organisation | |
+| منحنى S | S-curve | Projects, planning, organisation | |
+| نسبة الإنجاز | Progress | Projects, planning, organisation | |
+| موقع / منطقة / دور | Location / Zone / Floor | Projects, planning, organisation | |
+| عميل / مالك | Client | Projects, planning, organisation | |
+| استشاري | Consultant | Projects, planning, organisation | |
+| مقاول من الباطن | Subcontractor | Projects, planning, organisation | |
+| مورد | Supplier | Projects, planning, organisation | |
+| مهندس موقع | Site engineer | Projects, planning, organisation | |
+| مدير مشروع | Project manager | Projects, planning, organisation | |
+| مهندس حصر كميات | Quantity surveyor | Projects, planning, organisation | |
+| أمين مخزن | Storekeeper | Projects, planning, organisation | |
+| مراقب مستندات | Document controller | Projects, planning, organisation | |
+| المالك | Owner | Projects, planning, organisation | |
+| إرسال | Submit | Workflow actions | |
+| اعتماد | Approve | Workflow actions | |
+| رفض | Reject | Workflow actions | |
+| for revision إعادة للتعديل | Return | Workflow actions | |
+| إسناد | Assign | Workflow actions | |
+| مراجعة | Review | Workflow actions | |
+| إغلاق | Close | Workflow actions | |
+| إعادة فتح | Reopen | Workflow actions | |
+| إلغاء | Cancel | Workflow actions | |
+| إبطال | Void | Workflow actions | |
+| إصدار. | Issue | Workflow actions | |
+| مسودة | draft | Statuses (excerpt; the full set lives in `enums.status.*`) | |
+| قيد الانتظار | pending | Statuses (excerpt; the full set lives in `enums.status.*`) | |
+| بانتظار الاعتماد | pending_approval | Statuses (excerpt; the full set lives in `enums.status.*`) | |
+| معتمد | approved | Statuses (excerpt; the full set lives in `enums.status.*`) | |
+| مرفوض | rejected | Statuses (excerpt; the full set lives in `enums.status.*`) | |
+| قيد التنفيذ | in_progress | Statuses (excerpt; the full set lives in `enums.status.*`) | |
+| مكتمل | completed | Statuses (excerpt; the full set lives in `enums.status.*`) | |
+| مغلق | closed | Statuses (excerpt; the full set lives in `enums.status.*`) | |
+| ملغي | cancelled | Statuses (excerpt; the full set lives in `enums.status.*`) | |
+| معلق | on_hold | Statuses (excerpt; the full set lives in `enums.status.*`) | |
+| متأخر | overdue | Statuses (excerpt; the full set lives in `enums.status.*`) | |
+| مفتوح. | open | Statuses (excerpt; the full set lives in `enums.status.*`) | |
 
-## Complete current catalog inventory
+## Per-screen pass/fail worksheet
 
-Use this paired catalog inventory as the starting glossary. Rows include all catalog leaves, including interface copy and system terms; filter by domain while reviewing and append visible terms absent from the catalogs.
+The current English mobile route smoke passed for each listed route. Arabic text correctness is **not verified** by that smoke. “Screenshot pair” means a current EN/AR baseline image exists; screenshots are evidence for review, not a reviewer pass.
+
+| Route | Screen | EN route smoke | Current EN/AR screenshot pair | Arabic content result | Reviewer correction / defect |
+|---|---|---|---|---|---|
+| /login | Login | PASS (EN route render / mobile overflow only) | Yes; linked below where applicable | NOT VERIFIED | |
+| (shell) | Layout, Sidebar | PASS (EN route render / mobile overflow only) | No | NOT VERIFIED | |
+| /dashboard | Dashboard | PASS (EN route render / mobile overflow only) | Yes; linked below where applicable | NOT VERIFIED | |
+| /consultant-portal, /client-portal, /subcontractor-portal, /supplier-portal | PortalDashboard | PASS (EN route render / mobile overflow only) | No | NOT VERIFIED | |
+| /inventory | Items | PASS (EN route render / mobile overflow only) | No | NOT VERIFIED | |
+| /procurement/comparison | ProcurementReview | PASS (EN route render / mobile overflow only) | Yes; linked below where applicable | NOT VERIFIED | |
+| /suppliers, /clients | Suppliers, Clients | PASS (EN route render / mobile overflow only) | No | NOT VERIFIED | |
+| /legal, /approvals, /my-actions | Legal, Approvals, MyActions | PASS (EN route render / mobile overflow only) | No | NOT VERIFIED | |
+| /expenses, /invoices | Expenses, Invoices | PASS (EN route render / mobile overflow only) | No | NOT VERIFIED | |
+| /assets, /hr, /hr/payroll | Assets, HR, Payroll | PASS (EN route render / mobile overflow only) | No | NOT VERIFIED | |
+| /projects, /projects/new | Projects, ProjectWizard | PASS (EN route render / mobile overflow only) | No | NOT VERIFIED | |
+| /projects/:id | ProjectDetail | PASS (EN route render / mobile overflow only) | No | NOT VERIFIED | |
+| /projects/:id/boq | BOQ | PASS (EN route render / mobile overflow only) | No | NOT VERIFIED | |
+| /projects/:id/work-orders | WorkOrders | PASS (EN route render / mobile overflow only) | No | NOT VERIFIED | |
+| /projects/:id/site, /site-workspace | SiteManagement, SiteWorkspace | PASS (EN route render / mobile overflow only) | No | NOT VERIFIED | |
+| /projects/:id/operations | ProjectOperations | PASS (EN route render / mobile overflow only) | No | NOT VERIFIED | |
+| /projects/:id/locations | LocationDashboard | PASS (EN route render / mobile overflow only) | No | NOT VERIFIED | |
+| /projects/:id/qhse | QHSE, QHSEExtended | PASS (EN route render / mobile overflow only) | No | NOT VERIFIED | |
+| /projects/:id/hse | HSE | PASS (EN route render / mobile overflow only) | No | NOT VERIFIED | |
+| /projects/:id/schedule | Schedule | PASS (EN route render / mobile overflow only) | No | NOT VERIFIED | |
+| /projects/:id/reports | Reports | PASS (EN route render / mobile overflow only) | No | NOT VERIFIED | |
+| /projects/:id/handover | Handover | PASS (EN route render / mobile overflow only) | No | NOT VERIFIED | |
+| /projects/:id/documents | ProjectDocuments, DocControlExtended | PASS (EN route render / mobile overflow only) | No | NOT VERIFIED | |
+| /projects/:id/units | UnitsSales | PASS (EN route render / mobile overflow only) | No | NOT VERIFIED | |
+| /agent-activity | AgentActivity | PASS (EN route render / mobile overflow only) | Yes; linked below where applicable | NOT VERIFIED | |
+| /settings | placeholder | PASS (EN route render / mobile overflow only) | No | NOT VERIFIED | |
+
+## Reviewer sign-off
+
+- Native Egyptian construction-domain reviewer: **pending**
+- Arabic role-based UAT: **pending owner**
+- Arabic terminology corrections: **none recorded yet; review pending**
+- Full production Arabic PDF/CSV export review: **pending; current PDF files are spike samples**
+
+## Current paired catalog inventory
+
+Generated from 35 EN/AR namespaces. The reviewer should add corrections in the term table above and confirm contextual usage on the screens below.
 
 ### actions
 
@@ -412,8 +545,8 @@ Use this paired catalog inventory as the starting glossary. Rows include all cat
 | `enums.status.delivered` | Delivered | تم التسليم |
 | `enums.status.draft` | Draft | مسودة |
 | `enums.status.expired` | Expired | منتهي |
-| `enums.status.inactive` | Inactive | غير نشط |
 | `enums.status.inProgress` | In progress | قيد التنفيذ |
+| `enums.status.inactive` | Inactive | غير نشط |
 | `enums.status.issued` | Issued | صادر |
 | `enums.status.onHold` | On hold | معلق |
 | `enums.status.open` | Open | مفتوح |
@@ -534,17 +667,17 @@ Use this paired catalog inventory as the starting glossary. Rows include all cat
 | `finance.accountMappingPurposes.vat_output` | Output VAT payable | ضريبة القيمة المضافة المستحقة |
 | `finance.accountMappings.account` | Chart account | حساب دليل الحسابات |
 | `finance.accountMappings.confirmAction` | Confirm mapping | تأكيد الربط |
+| `finance.accountMappings.confirmError` | Could not confirm this account mapping. | تعذر تأكيد ربط الحساب. |
 | `finance.accountMappings.confirmed` | Mapping confirmation recorded. | تم تسجيل تأكيد الربط. |
 | `finance.accountMappings.confirmedStatus` | Owner confirmed | مؤكد من المالك |
-| `finance.accountMappings.confirmError` | Could not confirm this account mapping. | تعذر تأكيد ربط الحساب. |
 | `finance.accountMappings.denied` | Only finance administrators can manage account mappings. | إدارة روابط الحسابات متاحة لمسؤولي المالية فقط. |
 | `finance.accountMappings.key` | Mapping key | مفتاح الربط |
 | `finance.accountMappings.loadError` | Could not load account mappings. | تعذر تحميل روابط الحسابات. |
 | `finance.accountMappings.loading` | Loading account mappings… | جارٍ تحميل روابط الحسابات… |
 | `finance.accountMappings.provisionalNotice` | All mappings are provisional until the finance owner confirms the correct chart accounts. Mapping changes clear the confirmation and remain provisional. | جميع عمليات الربط مؤقتة حتى يؤكد مسؤول المالية الحسابات الصحيحة. يؤدي تغيير الربط إلى إلغاء التأكيد وإعادته إلى الحالة المؤقتة. |
 | `finance.accountMappings.purpose` | Posting purpose | الغرض المحاسبي |
-| `finance.accountMappings.saved` | Mapping saved and returned to provisional status. | تم حفظ الربط وإعادته إلى الحالة المؤقتة. |
 | `finance.accountMappings.saveError` | Could not save this account mapping. | تعذر حفظ ربط الحساب. |
+| `finance.accountMappings.saved` | Mapping saved and returned to provisional status. | تم حفظ الربط وإعادته إلى الحالة المؤقتة. |
 | `finance.accountMappings.selectAccount` | Chart account for {key} | حساب دليل الحسابات للمفتاح {key} |
 | `finance.accountMappings.status` | Confirmation | حالة التأكيد |
 | `finance.accountMappings.title` | Chart of accounts mappings | ربط الحسابات بدليل الحسابات |
@@ -565,9 +698,9 @@ Use this paired catalog inventory as the starting glossary. Rows include all cat
 | `finance.workbench.applications` | Payment applications | طلبات المستخلصات |
 | `finance.workbench.approve` | Approve | اعتماد |
 | `finance.workbench.approved` | Approved | معتمد |
-| `finance.workbench.batches` | Payment batches | دفعات الموردين |
 | `finance.workbench.batchHelp` | Use a supplier invoice ID and amount from the approved accounts payable record. | استخدم معرّف فاتورة المورد ومبلغها من سجل الحسابات الدائنة المعتمد. |
 | `finance.workbench.batchScope` | Payment batches require a company-wide finance grant. | تتطلب دفعات الموردين صلاحية مالية على مستوى الشركة. |
+| `finance.workbench.batches` | Payment batches | دفعات الموردين |
 | `finance.workbench.budgets` | Budget versions | إصدارات الميزانية |
 | `finance.workbench.certificates` | Payment certificates | شهادات الدفع |
 | `finance.workbench.certified` | Application certified. | تم اعتماد طلب المستخلص. |
@@ -614,8 +747,8 @@ Use this paired catalog inventory as the starting glossary. Rows include all cat
 | `finance.workbench.retentionReleases` | Retention release history | سجل صرف الاستقطاعات |
 | `finance.workbench.saved` | Changes saved. | تم حفظ التغييرات. |
 | `finance.workbench.selectInvoice` | Select an invoice | اختر فاتورة |
-| `finance.workbench.started` | Approval started. | بدأ مسار الاعتماد. |
 | `finance.workbench.startWorkflow` | Start approval | بدء الاعتماد |
+| `finance.workbench.started` | Approval started. | بدأ مسار الاعتماد. |
 | `finance.workbench.subcontractor` | Subcontractor | مقاول الباطن |
 | `finance.workbench.submit` | Submit | إرسال |
 | `finance.workbench.submitted` | Submitted for approval | مرسل للاعتماد |
@@ -630,8 +763,8 @@ Use this paired catalog inventory as the starting glossary. Rows include all cat
 | `finance.workbench.title` | Project finance records | سجلات مالية المشروع |
 | `finance.workbench.version` | Version | الإصدار |
 | `finance.workbench.void` | Void release | إلغاء الصرف |
-| `finance.workbench.voided` | Voided | ملغى |
 | `finance.workbench.voidReason` | Reason to void a release | سبب إلغاء عملية الصرف |
+| `finance.workbench.voided` | Voided | ملغى |
 
 ### handover
 
@@ -662,8 +795,8 @@ Use this paired catalog inventory as the starting glossary. Rows include all cat
 | `handover.newAsset` | New project asset | ??? ???? ??????? |
 | `handover.newWarranty` | New warranty | ???? ???? |
 | `handover.noAsset` | No asset linked | ?? ???? ??? ????? |
-| `handover.notes` | Notes | ??????? |
 | `handover.noWarranties` | No warranties registered. | ?? ???? ?????? ?????. |
+| `handover.notes` | Notes | ??????? |
 | `handover.reactivateWarranty` | Reactivate | ????? ??????? |
 | `handover.serialNumber` | Serial number | ????? ???????? |
 | `handover.startDate` | Coverage starts | ????? ??????? |
@@ -704,9 +837,9 @@ Use this paired catalog inventory as the starting glossary. Rows include all cat
 | `inventory.empty` | No items yet. | لا توجد أصناف بعد. |
 | `inventory.lowStock` | Low stock | مخزون منخفض |
 | `inventory.record.deleteConfirm` | Delete | حذف |
-| `inventory.record.deletedBadge` | Deleted | محذوفة |
 | `inventory.record.deleteMessage` | {name} will be hidden from lists and pickers. Existing orders and stock history keep it, and you can restore it later. | سيتم إخفاء {name} من القوائم وقوائم الاختيار. تحتفظ بها الطلبات وسجل المخزون الحالي ويمكنك استعادتها لاحقًا. |
 | `inventory.record.deleteTitle` | Delete item | حذف المادة |
+| `inventory.record.deletedBadge` | Deleted | محذوفة |
 | `inventory.record.restore` | Restore | استعادة |
 | `inventory.record.showDeleted` | Show deleted items | عرض المواد المحذوفة |
 | `inventory.title` | Inventory | المخزون |
@@ -975,8 +1108,8 @@ Use this paired catalog inventory as the starting glossary. Rows include all cat
 | `portals.quickActions.invoiceNumber` | Invoice number | رقم الفاتورة |
 | `portals.quickActions.loadError` | The selected record could not be loaded. Refresh and try again. | تعذر تحميل السجل المحدد. حدّث الصفحة وحاول مجدداً. |
 | `portals.quickActions.message` | Clarification | الاستفسار |
-| `portals.quickActions.proposedDate` | Proposed delivery date | موعد التوريد المقترح |
 | `portals.quickActions.proposeDelivery` | Propose delivery | اقتراح موعد التوريد |
+| `portals.quickActions.proposedDate` | Proposed delivery date | موعد التوريد المقترح |
 | `portals.quickActions.quantity` | Invoice quantity | كمية الفاتورة |
 | `portals.quickActions.quoteRfq` | Submit quotation | تقديم عرض سعر |
 | `portals.quickActions.record` | Record | السجل |
@@ -1029,8 +1162,8 @@ Use this paired catalog inventory as the starting glossary. Rows include all cat
 | `portals.review.approveWithComments` | Approve with comments | اعتماد مع ملاحظات |
 | `portals.review.empty` | No reviews are waiting for you. | لا توجد مراجعات بانتظارك. |
 | `portals.review.recommendApprove` | Recommend approval | التوصية بالاعتماد |
-| `portals.review.recommendationActions` | Commercial recommendation actions | إجراءات التوصية التجارية |
 | `portals.review.recommendReject` | Recommend rejection | التوصية بالرفض |
+| `portals.review.recommendationActions` | Commercial recommendation actions | إجراءات التوصية التجارية |
 | `portals.review.reinspect` | Request reinspection | طلب إعادة الفحص |
 | `portals.review.reject` | Reject | رفض |
 | `portals.review.rfiCostImpact` | Estimated cost {{amount}} | ??????? ??????? {{amount}} |
@@ -1118,9 +1251,9 @@ Use this paired catalog inventory as the starting glossary. Rows include all cat
 | `procurement.fields.commercial_score` | Commercial score | التقييم التجاري |
 | `procurement.fields.committedSpend` | Committed spend | الالتزامات |
 | `procurement.fields.compliant` | Compliant | مطابق |
-| `procurement.fields.delivery_terms` | Delivery terms | شروط التسليم |
 | `procurement.fields.deliveryDate` | Delivery date | تاريخ التسليم |
 | `procurement.fields.deliveryTerms` | Delivery terms | شروط التسليم |
+| `procurement.fields.delivery_terms` | Delivery terms | شروط التسليم |
 | `procurement.fields.description` | Description | الوصف |
 | `procurement.fields.deviations` | Deviations | الاستثناءات |
 | `procurement.fields.dueDate` | Due date | تاريخ الاستحقاق |
@@ -1131,8 +1264,8 @@ Use this paired catalog inventory as the starting glossary. Rows include all cat
 | `procurement.fields.invoiceId` | Supplier invoice ID | معرف فاتورة المورد |
 | `procurement.fields.invoiceNumber` | Supplier invoice number | رقم فاتورة المورد |
 | `procurement.fields.justification` | Justification | المبررات |
-| `procurement.fields.lead_time_days` | Lead time (days) | مدة التوريد (أيام) |
 | `procurement.fields.leadTime` | Lead time (days) | مدة التوريد (أيام) |
+| `procurement.fields.lead_time_days` | Lead time (days) | مدة التوريد (أيام) |
 | `procurement.fields.line` | Line ID | معرف البند |
 | `procurement.fields.lotNumber` | Lot number | رقم التشغيلة |
 | `procurement.fields.matchStatus` | Three-way match | المطابقة الثلاثية |
@@ -1140,10 +1273,10 @@ Use this paired catalog inventory as the starting glossary. Rows include all cat
 | `procurement.fields.materialId` | Material ID | معرف المادة |
 | `procurement.fields.onTime` | On time (%) | التسليم في الموعد (%) |
 | `procurement.fields.orderLine` | Purchase order line | بند أمر الشراء |
-| `procurement.fields.payment_terms` | Payment terms | شروط الدفع |
 | `procurement.fields.paymentDate` | Payment date | تاريخ الدفع |
 | `procurement.fields.paymentMethod` | Payment method | طريقة الدفع |
 | `procurement.fields.paymentTerms` | Payment terms | شروط الدفع |
+| `procurement.fields.payment_terms` | Payment terms | شروط الدفع |
 | `procurement.fields.priority` | Priority | الأولوية |
 | `procurement.fields.purchaseOrder` | Purchase order | أمر الشراء |
 | `procurement.fields.purchaseOrders` | Orders | أوامر الشراء |
@@ -1156,13 +1289,13 @@ Use this paired catalog inventory as the starting glossary. Rows include all cat
 | `procurement.fields.rfqLine` | Request line | بند الطلب |
 | `procurement.fields.selectedQuote` | Selected quote | العرض المحدد |
 | `procurement.fields.supplier_name` | Supplier | المورد |
-| `procurement.fields.tax_amount` | Tax | الضريبة |
 | `procurement.fields.taxAmount` | Tax amount | قيمة الضريبة |
+| `procurement.fields.tax_amount` | Tax | الضريبة |
 | `procurement.fields.technical_score` | Technical score | التقييم الفني |
 | `procurement.fields.title` | Title | العنوان |
 | `procurement.fields.total_price` | Total price | السعر الإجمالي |
-| `procurement.fields.unit_price` | Unit price | سعر الوحدة |
 | `procurement.fields.unitPrice` | Unit price | سعر الوحدة |
+| `procurement.fields.unit_price` | Unit price | سعر الوحدة |
 | `procurement.fields.warehouse` | Warehouse | المخزن |
 | `procurement.fields.warranty_months` | Warranty (months) | الضمان (أشهر) |
 | `procurement.messages.apReviewHelp` | Use the supplier invoice ID returned when an invoice is recorded. Approval follows the configured ledger mapping. | استخدم معرف فاتورة المورد الذي يظهر بعد تسجيلها. يعتمد الاعتماد على ربط الحسابات المُعد. |
@@ -1241,6 +1374,15 @@ Use this paired catalog inventory as the starting glossary. Rows include all cat
 | `procurement.workspace.title` | Project procurement | مشتريات المشروع |
 | `procurement.workspace.vendorPerformance` | Vendor performance | أداء الموردين |
 
+### projectWizard
+
+| Catalog key | English | Arabic |
+|---|---|---|
+| `projectWizard.steps.basics` | Basics | البيانات الأساسية |
+| `projectWizard.steps.review` | Review | المراجعة |
+| `projectWizard.steps.team` | Team | الفريق |
+| `projectWizard.title` | New project setup | إعداد مشروع جديد |
+
 ### projects
 
 | Catalog key | English | Arabic |
@@ -1274,8 +1416,8 @@ Use this paired catalog inventory as the starting glossary. Rows include all cat
 | `projects.operations.fields.boqItem` | BOQ item | بند جدول الكميات |
 | `projects.operations.fields.certificate` | Certificate | المستخلص |
 | `projects.operations.fields.certified` | Certified | المعتمد |
-| `projects.operations.fields.issued` | Issued | المصروف |
 | `projects.operations.fields.issueDate` | Issued | تاريخ الإصدار |
+| `projects.operations.fields.issued` | Issued | المصروف |
 | `projects.operations.fields.location` | Location | الموقع |
 | `projects.operations.fields.material` | Material | المادة |
 | `projects.operations.fields.needDate` | Need date | تاريخ الحاجة |
@@ -1318,15 +1460,6 @@ Use this paired catalog inventory as the starting glossary. Rows include all cat
 | `projects.workPackage.loadFailed` | Work packages could not be loaded. | تعذّر تحميل حزم العمل. |
 | `projects.workPackage.loading` | Loading work packages... | جارٍ تحميل حزم العمل... |
 | `projects.workPackage.none` | No work package | بدون حزمة عمل |
-
-### projectWizard
-
-| Catalog key | English | Arabic |
-|---|---|---|
-| `projectWizard.steps.basics` | Basics | البيانات الأساسية |
-| `projectWizard.steps.review` | Review | المراجعة |
-| `projectWizard.steps.team` | Team | الفريق |
-| `projectWizard.title` | New project setup | إعداد مشروع جديد |
 
 ### qhse
 
@@ -1383,6 +1516,7 @@ Use this paired catalog inventory as the starting glossary. Rows include all cat
 | `schedule.actualProgress` | Actual progress | التقدم الفعلي |
 | `schedule.addAssignment` | Add assignment | ????? ????? |
 | `schedule.allocationPercent` | Allocation (%) | ???? ??????? |
+| `schedule.assignResources` | Assign resources | ????? ??????? |
 | `schedule.assignedFrom` | Assigned from | ????? ??????? |
 | `schedule.assignedTo` | Assigned to | ????? ??????? |
 | `schedule.assignmentNotes` | Assignment notes | ??????? ??????? |
@@ -1391,7 +1525,6 @@ Use this paired catalog inventory as the starting glossary. Rows include all cat
 | `schedule.assignmentStatuses.cancelled` | Cancelled | ???? |
 | `schedule.assignmentStatuses.completed` | Completed | ????? |
 | `schedule.assignmentStatuses.planned` | Planned | ???? |
-| `schedule.assignResources` | Assign resources | ????? ??????? |
 | `schedule.budgetAtCompletion` | Budget at completion | الميزانية عند الإكمال |
 | `schedule.budgetAtCompletionHelp` | Enter the approved activity budget. This value is captured in the next baseline and supports financial SPI and CPI. | أدخل ميزانية النشاط المعتمدة. تُحفظ هذه القيمة في خط الأساس التالي وتدعم مؤشري أداء الجدول والتكلفة. |
 | `schedule.budgetSaveFailed` | The activity budget could not be saved. | تعذر حفظ ميزانية النشاط. |
@@ -1477,9 +1610,9 @@ Use this paired catalog inventory as the starting glossary. Rows include all cat
 |---|---|---|
 | `suppliers.empty` | No suppliers yet. | لا يوجد موردون بعد. |
 | `suppliers.record.deleteConfirm` | Delete | حذف |
-| `suppliers.record.deletedBadge` | Deleted | محذوف |
 | `suppliers.record.deleteMessage` | {name} will be hidden from lists and pickers. Existing orders, deliveries and invoices keep it, and you can restore it later. | سيتم إخفاء {name} من القوائم وقوائم الاختيار. تحتفظ به الطلبات والتسليمات والفواتير الحالية ويمكنك استعادته لاحقًا. |
 | `suppliers.record.deleteTitle` | Delete supplier | حذف المورد |
+| `suppliers.record.deletedBadge` | Deleted | محذوف |
 | `suppliers.record.restore` | Restore | استعادة |
 | `suppliers.record.showDeleted` | Show deleted suppliers | عرض الموردين المحذوفين |
 | `suppliers.title` | Suppliers | الموردين |
@@ -1494,10 +1627,3 @@ Use this paired catalog inventory as the starting glossary. Rows include all cat
 | `workorders.cancel.title` | Cancel work order | إلغاء أمر العمل |
 | `workorders.empty` | No work orders yet. | لا توجد أوامر عمل بعد. |
 | `workorders.title` | Work orders | أوامر العمل |
-
-## Sign-off
-
-- Native reviewer: **pending**
-- Date: **pending**
-- Arabic PDF visual review: **pending**
-- Known system-wide untranslated strings: **not established**

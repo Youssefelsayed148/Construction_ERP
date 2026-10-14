@@ -476,7 +476,7 @@ L7 API errors, notifications and server content
 L8 Reports, CSV and PDF
 - [ ] Locale on report/export requests; EN/AR labels for catalog names, packs, columns, metadata, sections, empty states.
 - [ ] CSV headers localized, UTF-8 BOM preserved.
-- [ ] Spike first (decide before building): pdfkit with an Arabic font and shaping/bidi layer versus HTML-to-PDF with headless Chromium. The backend uses pdfkit, which as far as I know does not do RTL shaping by itself.
+- [x] Spike first (decide before building): pdfkit with an Arabic font and shaping/bidi layer versus HTML-to-PDF with headless Chromium. Decision and reproducible sample evidence: `docs/i18n/PDF_SPIKE.md`; choose HTML-to-PDF with headless Chromium.
 - [ ] Embed a licensed Arabic-capable font; Arabic shaping and RTL-aware alignment; handle mixed Arabic/Latin content such as document numbers; mirror table alignment.
 - [ ] Localize procurement, QA/QC, HSE, handover and project documents; translate statuses inside exported rows; safe, predictable filenames separate from display names.
 - PDF checks: connected glyphs, correct text order, readable numbers and codes, header/cell/footer alignment, multi-page font and direction, English PDFs unchanged.

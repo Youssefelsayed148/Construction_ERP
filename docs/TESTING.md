@@ -121,3 +121,20 @@ npm run test:e2e
 ```
 
 `test:e2e` invokes the frontend-local Playwright CLI. The browser cache is `frontend/.playwright-browsers/`; do not commit it. `npm run test:e2e -- --list` lists discovered cases without launching a browser. Real-backend tests still require the isolated seeded test DB and `E2E_BACKEND=1` setup documented above; screenshot baseline cases remain on-demand.
+
+## Phase 10 localization checks
+
+Run from the repository root or pass the frontend prefix:
+
+```powershell
+npm --prefix frontend run i18n:check
+npm --prefix frontend run i18n:parity
+npm --prefix frontend run i18n:inventory
+npm --prefix frontend run i18n:review-pack
+npm --prefix frontend run i18n:pdf-spike
+npm --prefix frontend run test:ci
+npm --prefix frontend run build
+npm --prefix frontend run test:e2e -- --reporter=line
+```
+
+The PDF spike uses local fixtures and the installed Playwright Chromium browser; it does not call external services. Its generated comparison artifacts and renderer decision are documented in `docs/i18n/PDF_SPIKE.md`. The production Arabic PDF and CSV call sites remain a separate Phase 10 implementation gate. Playwright skips seeded real-backend journeys unless a throwaway backend and `E2E_BACKEND=1` are configured.
