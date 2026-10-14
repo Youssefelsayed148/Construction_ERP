@@ -8,7 +8,7 @@ const path = require('path');
 const exemptions = require('./mutation-audit-exemptions.json');
 const MUTATION = /\b(?:INSERT\s+INTO|UPDATE\s+[\w."${}]+[\s\S]*?\bSET|DELETE\s+FROM)\b/i;
 const AUDIT_SQL = /\bINSERT\s+INTO\s+(?:activity_log|audit_events)\b/i;
-const AUDITS = new Set(['auditedTransaction', 'logActivity', 'writeAuditEvent', 'recordAuditEvent', 'auditProc', 'auditFin']);
+const AUDITS = new Set(['auditedTransaction', 'auditedMutation', 'logActivity', 'writeAuditEvent', 'recordAuditEvent', 'auditProc', 'auditFin']);
 const WRITES = new Set(['fireEvent', 'nextNumber', 'bumpCounter']);
 const POLICY = /^(?:authenticate|authorize|authorizeProjectPayload|authorizedProjectId|extractProject|evaluate|resolveProject|loadAccess)/;
 

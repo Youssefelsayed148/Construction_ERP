@@ -31,4 +31,7 @@ describe('R2 mutation-without-audit guard', () => {
     const source = "const api = express.Router(); api.patch('/rows', async () => query(`UPDATE rows SET n = ${n}`));";
     expect(mutationAuditViolations(source)).toHaveLength(1);
   });
+  test('auditedMutation counts as the transactional audit wrapper', () => {
+    expect(mutationAuditViolations(route("await auditedMutation(req, meta, q => q('UPDATE rows SET n = 1'));"))).toEqual([]);
+  });
 });

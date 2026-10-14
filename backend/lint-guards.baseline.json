@@ -10,7 +10,6 @@
   "mutation-without-audit": {
     "routes/actions.js": 4,
     "routes/approvals.js": 2,
-    "routes/boq.js": 6,
     "routes/commercial.js": 8,
     "routes/consultant.js": 2,
     "routes/doccontrol.js": 3,
@@ -22,7 +21,6 @@
     "routes/maintenance.js": 1,
     "routes/materials.js": 1,
     "routes/notifications.js": 2,
-    "routes/payroll.js": 1,
     "routes/portal.js": 10,
     "routes/procurement.js": 11,
     "routes/projects.js": 7,
