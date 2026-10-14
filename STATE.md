@@ -660,3 +660,5 @@ R2.3/guard done 6bec651; next subcontractors
 R2.3/subcontractors done 7070656; next procurement award
 R2.3/procurement done aeb94f0; next materials
 R2.3/materials+units+locations+maintenance+workorders done cdedf5f; next projects
+R2.3/projects+site+quantities+schedule done 4dbc352; next hr
+Observation (owner decision, not changed): DELETE /api/hr/labor-payments/:id physically deletes a payment whose project cost was booked by the labor_payment.created event; no reversing cost event exists. R2 only adds a before-snapshot audit.

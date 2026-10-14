@@ -7,6 +7,7 @@ const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
+const { auditedMutation } = require('../utils/auditedMutation');
 
 // -- Employees --
 router.get('/employees', authenticate, authorize(), async (req, res) => {
@@ -89,8 +90,12 @@ router.put('/employees/:id', authenticate, authorize('owner', 'admin'), async (r
 
 router.delete('/employees/:id', authenticate, authorize('owner', 'admin'), async (req, res) => {
   try {
-    const r = await query('DELETE FROM employees WHERE id = $1 RETURNING code', [req.params.id]);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Employee not found' });
+    const out = await auditedMutation(req, { action: 'delete', module: 'hr', entityType: 'employee' }, async (q) => {
+      const r = await q('DELETE FROM employees WHERE id = $1 RETURNING *', [req.params.id]);
+      if (r.rows.length === 0) return { skipAudit: true };
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, before: r.rows[0], description: `Deleted employee ${r.rows[0].code}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Employee not found' });
     res.json({ success: true, message: 'Deleted' });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -119,14 +124,17 @@ router.post('/attendance', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const existing = await query('SELECT id FROM attendance WHERE employee_id = $1 AND date = $2', [value.employee_id, value.date]);
-    if (existing.rows.length > 0) return res.status(400).json({ success: false, error: 'Attendance already recorded for this date' });
-
-    const r = await query(
-      `INSERT INTO attendance (employee_id, date, status, check_in, check_out, notes) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [value.employee_id, value.date, value.status, value.check_in, value.check_out, value.notes]
-    );
-    res.status(201).json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'create', module: 'hr', entityType: 'attendance' }, async (q) => {
+      const existing = await q('SELECT id FROM attendance WHERE employee_id = $1 AND date = $2', [value.employee_id, value.date]);
+      if (existing.rows.length > 0) return { skipAudit: true, duplicate: true };
+      const r = await q(
+        `INSERT INTO attendance (employee_id, date, status, check_in, check_out, notes) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+        [value.employee_id, value.date, value.status, value.check_in, value.check_out, value.notes]
+      );
+      return { data: r.rows[0], entityId: r.rows[0].id, after: r.rows[0], description: `Recorded attendance for employee ${value.employee_id} on ${value.date}: ${value.status}` };
+    });
+    if (out.duplicate) return res.status(400).json({ success: false, error: 'Attendance already recorded for this date' });
+    res.status(201).json({ success: true, data: out.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -153,11 +161,14 @@ router.post('/leaves', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const r = await query(
-      `INSERT INTO leave_requests (employee_id, leave_type, start_date, end_date, reason) VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [value.employee_id, value.leave_type, value.start_date, value.end_date, value.reason]
-    );
-    res.status(201).json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'create', module: 'hr', entityType: 'leave_request' }, async (q) => {
+      const r = await q(
+        `INSERT INTO leave_requests (employee_id, leave_type, start_date, end_date, reason) VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+        [value.employee_id, value.leave_type, value.start_date, value.end_date, value.reason]
+      );
+      return { data: r.rows[0], entityId: r.rows[0].id, after: r.rows[0], description: `Leave requested for employee ${value.employee_id}: ${value.start_date} to ${value.end_date}` };
+    });
+    res.status(201).json({ success: true, data: out.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -251,8 +262,12 @@ router.put('/laborers/:id', authenticate, authorize(), async (req, res) => {
 
 router.delete('/laborers/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const r = await query('DELETE FROM daily_laborers WHERE id = $1 RETURNING code', [req.params.id]);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Laborer not found' });
+    const out = await auditedMutation(req, { action: 'delete', module: 'hr', entityType: 'daily_laborer' }, async (q) => {
+      const r = await q('DELETE FROM daily_laborers WHERE id = $1 RETURNING *', [req.params.id]);
+      if (r.rows.length === 0) return { skipAudit: true };
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, before: r.rows[0], description: `Deleted laborer ${r.rows[0].code}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Laborer not found' });
     res.json({ success: true, message: 'Deleted' });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -310,8 +325,12 @@ router.post('/labor-payments', authenticate, authorize(), async (req, res) => {
 
 router.delete('/labor-payments/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const r = await query('DELETE FROM labor_payments WHERE id = $1 RETURNING id', [req.params.id]);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Payment not found' });
+    const out = await auditedMutation(req, { action: 'delete', module: 'hr', entityType: 'labor_payment' }, async (q) => {
+      const r = await q('DELETE FROM labor_payments WHERE id = $1 RETURNING *', [req.params.id]);
+      if (r.rows.length === 0) return { skipAudit: true };
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, before: r.rows[0], amount: Number(r.rows[0].total_amount), description: `Deleted labor payment ${r.rows[0].id}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Payment not found' });
     res.json({ success: true, message: 'Deleted' });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

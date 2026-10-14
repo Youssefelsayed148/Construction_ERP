@@ -15,8 +15,6 @@
     "routes/doccontrol.js": 3,
     "routes/documents.js": 1,
     "routes/handover.js": 2,
-    "routes/hr.js": 5,
-    "routes/hse.js": 9,
     "routes/notifications.js": 2,
     "routes/portal.js": 10,
     "routes/qhse.js": 16,

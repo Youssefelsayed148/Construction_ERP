@@ -17,6 +17,7 @@ const Joi = require('joi');
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditedTransaction } = require('../utils/auditedTransaction');
+const { auditedMutation } = require('../utils/auditedMutation');
 const hseEngine = require('../services/hseEngine');
 const { renderDocument } = require('../utils/procurementPdf');
 
@@ -110,9 +111,14 @@ router.put('/incidents/:id', authenticate, authorize(), async (req, res) => {
     }
     sets.push(`updated_at = NOW()`);
     params.push(req.params.id);
-    const r = await query(`UPDATE incidents SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Incident not found' });
-    res.json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'update', module: 'hse', entityType: 'incident' }, async (q) => {
+      const before = (await q('SELECT * FROM incidents WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true };
+      const r = await q(`UPDATE incidents SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
+      return { data: r.rows[0], entityId: before.id, projectId: before.project_id, before, after: r.rows[0], description: `Updated incident #${before.id}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Incident not found' });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -122,15 +128,20 @@ router.post('/incidents/:id/status', authenticate, authorize(), async (req, res)
     const schema = Joi.object({ status: Joi.string().valid('investigating', 'closed').required() });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const existing = (await query('SELECT * FROM incidents WHERE id = $1', [req.params.id])).rows[0];
-    if (!existing) return res.status(404).json({ success: false, error: 'Incident not found' });
-    if (!INCIDENT_TRANSITIONS[existing.status] || !INCIDENT_TRANSITIONS[existing.status].includes(value.status)) {
-      return res.status(400).json({ success: false, error: `Cannot transition from '${existing.status}' to '${value.status}'` });
-    }
-    const r = value.status === 'closed'
-      ? await query(`UPDATE incidents SET status = 'closed', closed_at = NOW(), closed_by = $1, updated_at = NOW() WHERE id = $2 RETURNING *`, [req.user.id, req.params.id])
-      : await query(`UPDATE incidents SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`, [value.status, req.params.id]);
-    res.json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'status', module: 'hse', entityType: 'incident' }, async (q) => {
+      const existing = (await q('SELECT * FROM incidents WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!existing) return { skipAudit: true, missing: true };
+      if (!INCIDENT_TRANSITIONS[existing.status] || !INCIDENT_TRANSITIONS[existing.status].includes(value.status)) {
+        return { skipAudit: true, badTransition: existing.status };
+      }
+      const r = value.status === 'closed'
+        ? await q(`UPDATE incidents SET status = 'closed', closed_at = NOW(), closed_by = $1, updated_at = NOW() WHERE id = $2 RETURNING *`, [req.user.id, req.params.id])
+        : await q(`UPDATE incidents SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`, [value.status, req.params.id]);
+      return { data: r.rows[0], entityId: existing.id, projectId: existing.project_id, before: existing, after: r.rows[0], oldStatus: existing.status, newStatus: value.status, description: `Incident #${existing.id}: ${existing.status} -> ${value.status}` };
+    });
+    if (out.missing) return res.status(404).json({ success: false, error: 'Incident not found' });
+    if (out.badTransition) return res.status(400).json({ success: false, error: `Cannot transition from '${out.badTransition}' to '${value.status}'` });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -213,9 +224,14 @@ router.put('/inspections/:id', authenticate, authorize(), async (req, res) => {
       else { sets.push(`${k} = $${idx++}`); params.push(v); }
     }
     params.push(req.params.id);
-    const r = await query(`UPDATE hse_inspections SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Inspection not found' });
-    res.json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'update', module: 'hse', entityType: 'hse_inspection' }, async (q) => {
+      const before = (await q('SELECT * FROM hse_inspections WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true };
+      const r = await q(`UPDATE hse_inspections SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
+      return { data: r.rows[0], entityId: before.id, projectId: before.project_id, before, after: r.rows[0], oldStatus: before.status, newStatus: r.rows[0].status, description: `Updated HSE inspection #${before.id}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Inspection not found' });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -381,14 +397,19 @@ router.post('/jsas/:id/status', authenticate, authorize(), async (req, res) => {
     const schema = Joi.object({ status: Joi.string().valid('reviewed', 'approved', 'superseded').required() });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const existing = (await query('SELECT status FROM jsas WHERE id = $1', [req.params.id])).rows[0];
-    if (!existing) return res.status(404).json({ success: false, error: 'JSA not found' });
-    if (!JSA_TRANSITIONS[existing.status] || !JSA_TRANSITIONS[existing.status].includes(value.status)) {
-      return res.status(400).json({ success: false, error: `Cannot transition from '${existing.status}' to '${value.status}'` });
-    }
-    const r = await query(`UPDATE jsas SET status = $1, reviewed_by = $2, reviewed_at = NOW(), updated_at = NOW() WHERE id = $3 RETURNING *`,
-      [value.status, req.user.id, req.params.id]);
-    res.json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'status', module: 'hse', entityType: 'jsa' }, async (q) => {
+      const existing = (await q('SELECT * FROM jsas WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!existing) return { skipAudit: true, missing: true };
+      if (!JSA_TRANSITIONS[existing.status] || !JSA_TRANSITIONS[existing.status].includes(value.status)) {
+        return { skipAudit: true, badTransition: existing.status };
+      }
+      const r = await q(`UPDATE jsas SET status = $1, reviewed_by = $2, reviewed_at = NOW(), updated_at = NOW() WHERE id = $3 RETURNING *`,
+        [value.status, req.user.id, req.params.id]);
+      return { data: r.rows[0], entityId: existing.id, projectId: existing.project_id, before: existing, after: r.rows[0], oldStatus: existing.status, newStatus: value.status, description: `JSA #${existing.id}: ${existing.status} -> ${value.status}` };
+    });
+    if (out.missing) return res.status(404).json({ success: false, error: 'JSA not found' });
+    if (out.badTransition) return res.status(400).json({ success: false, error: `Cannot transition from '${out.badTransition}' to '${value.status}'` });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -513,12 +534,15 @@ router.post('/inductions', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     authorizeProjectPayload(req, value);
-    const r = await query(
-      `INSERT INTO inductions (project_id, person_name, organization_id, induction_date, induction_type, trainer, valid_until, notes, created_by)
-       VALUES ($1,$2,$3,COALESCE($4, CURRENT_DATE),$5,$6,$7,$8,$9) RETURNING *`,
-      [authorizedProjectId(req, value), value.person_name, value.organization_id || null, value.induction_date || null,
-       value.induction_type, value.trainer || null, value.valid_until || null, value.notes || null, req.user.id]);
-    res.status(201).json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'create', module: 'hse', entityType: 'induction' }, async (q) => {
+      const r = await q(
+        `INSERT INTO inductions (project_id, person_name, organization_id, induction_date, induction_type, trainer, valid_until, notes, created_by)
+         VALUES ($1,$2,$3,COALESCE($4, CURRENT_DATE),$5,$6,$7,$8,$9) RETURNING *`,
+        [authorizedProjectId(req, value), value.person_name, value.organization_id || null, value.induction_date || null,
+         value.induction_type, value.trainer || null, value.valid_until || null, value.notes || null, req.user.id]);
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], description: `Recorded induction for ${value.person_name}` };
+    });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -611,9 +635,14 @@ router.post('/near-misses/:id/status', authenticate, authorize(), async (req, re
     const schema = Joi.object({ status: Joi.string().valid('open', 'closed').required() });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const r = await query(`UPDATE near_misses SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`, [value.status, req.params.id]);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Near miss not found' });
-    res.json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'status', module: 'hse', entityType: 'near_miss' }, async (q) => {
+      const before = (await q('SELECT * FROM near_misses WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true };
+      const r = await q(`UPDATE near_misses SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`, [value.status, req.params.id]);
+      return { data: r.rows[0], entityId: before.id, projectId: before.project_id, before, after: r.rows[0], oldStatus: before.status, newStatus: value.status, description: `Near miss #${before.id}: ${before.status} -> ${value.status}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Near miss not found' });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -659,12 +688,15 @@ router.post('/ppe-records', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     authorizeProjectPayload(req, value);
-    const r = await query(
-      `INSERT INTO ppe_records (project_id, person_name, organization_id, item, quantity, size, issued_by, notes, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-      [authorizedProjectId(req, value), value.person_name, value.organization_id || null, value.item, value.quantity,
-       value.size || null, value.issued_by || null, value.notes || null, req.user.id]);
-    res.status(201).json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'create', module: 'hse', entityType: 'ppe_record' }, async (q) => {
+      const r = await q(
+        `INSERT INTO ppe_records (project_id, person_name, organization_id, item, quantity, size, issued_by, notes, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+        [authorizedProjectId(req, value), value.person_name, value.organization_id || null, value.item, value.quantity,
+         value.size || null, value.issued_by || null, value.notes || null, req.user.id]);
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], description: `Issued PPE ${value.item} x${value.quantity} to ${value.person_name}` };
+    });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -695,12 +727,15 @@ router.post('/equipment-inspections', authenticate, authorize(), async (req, res
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     authorizeProjectPayload(req, value);
-    const r = await query(
-      `INSERT INTO equipment_inspections (project_id, asset_id, equipment_name, inspection_date, inspector, result, defects, next_inspection_date, created_by)
-       VALUES ($1,$2,$3,COALESCE($4, CURRENT_DATE),$5,$6,$7,$8,$9) RETURNING *`,
-      [authorizedProjectId(req, value), value.asset_id || null, value.equipment_name, value.inspection_date || null,
-       value.inspector || null, value.result, value.defects || null, value.next_inspection_date || null, req.user.id]);
-    res.status(201).json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'create', module: 'hse', entityType: 'equipment_inspection' }, async (q) => {
+      const r = await q(
+        `INSERT INTO equipment_inspections (project_id, asset_id, equipment_name, inspection_date, inspector, result, defects, next_inspection_date, created_by)
+         VALUES ($1,$2,$3,COALESCE($4, CURRENT_DATE),$5,$6,$7,$8,$9) RETURNING *`,
+        [authorizedProjectId(req, value), value.asset_id || null, value.equipment_name, value.inspection_date || null,
+         value.inspector || null, value.result, value.defects || null, value.next_inspection_date || null, req.user.id]);
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], description: `Equipment inspection: ${value.equipment_name} ${value.result}` };
+    });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -729,12 +764,15 @@ router.post('/emergency-drills', authenticate, authorize(), async (req, res) => 
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     authorizeProjectPayload(req, value);
-    const r = await query(
-      `INSERT INTO emergency_drills (project_id, drill_type, drill_date, participants_count, findings, improvements, conducted_by, created_by)
-       VALUES ($1,$2,COALESCE($3, CURRENT_DATE),$4,$5,$6,$7,$8) RETURNING *`,
-      [authorizedProjectId(req, value), value.drill_type, value.drill_date || null, value.participants_count,
-       value.findings || null, value.improvements || null, value.conducted_by || null, req.user.id]);
-    res.status(201).json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'create', module: 'hse', entityType: 'emergency_drill' }, async (q) => {
+      const r = await q(
+        `INSERT INTO emergency_drills (project_id, drill_type, drill_date, participants_count, findings, improvements, conducted_by, created_by)
+         VALUES ($1,$2,COALESCE($3, CURRENT_DATE),$4,$5,$6,$7,$8) RETURNING *`,
+        [authorizedProjectId(req, value), value.drill_type, value.drill_date || null, value.participants_count,
+         value.findings || null, value.improvements || null, value.conducted_by || null, req.user.id]);
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], description: `Recorded emergency drill: ${value.drill_type}` };
+    });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
