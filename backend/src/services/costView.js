@@ -42,4 +42,9 @@ async function rows(q, projectId) {
   )).rows;
 }
 
-module.exports = { projectTotal, portfolioTotal, byCode, byType, rows };
+// Deletion guards need source existence, including zero-valued cost rows.
+async function hasSourceCost(q, sourceType, sourceId) {
+  return (await q('SELECT EXISTS (SELECT 1 FROM project_costs WHERE source_type = $1 AND source_id = $2) AS found', [sourceType, sourceId])).rows[0].found;
+}
+
+module.exports = { projectTotal, portfolioTotal, byCode, byType, rows, hasSourceCost };

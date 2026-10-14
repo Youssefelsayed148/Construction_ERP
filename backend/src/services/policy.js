@@ -295,6 +295,7 @@ function effectiveAction(req, mountModule) {
 // bypassed by guessing another project's record id. Every table name below is
 // a constant owned by the server; request input is used only as a parameter.
 const RECORD_SCOPE_RULES = Object.freeze({
+  hr: [[/^\/labor-payments\/:id(?:\/|$)/, 'labor_payments']],
   assets: [
     [/^\/:id$/, 'SELECT current_project_id AS project_id FROM assets WHERE id = $1'],
   ],

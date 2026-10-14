@@ -4,7 +4,9 @@ const { group } = require('./util');
 
 const employee = ctx => ctx.api('POST', '/api/hr/employees', { name_ar: `موظف ${ctx.n()}`, name_en: 'r02 employee', salary: 1000 });
 const laborer = ctx => ctx.api('POST', '/api/hr/laborers', { full_name: `عامل ${ctx.n()}`, daily_rate: 100 });
-const laborPayment = async ctx => ctx.api('POST', '/api/hr/labor-payments', { project_id: ctx.pid, laborer_id: (await laborer(ctx)).id, payment_date: '2026-10-14', days_worked: 1, daily_rate: 100 });
+// Deletion exercises a legacy/unposted payment; API creation queues its cost
+// posting atomically and must therefore refuse deletion.
+const laborPayment = async ctx => ctx.one('INSERT INTO labor_payments (project_id, laborer_id, days_worked, daily_rate, total_amount) VALUES ($1, $2, 1, 100, 100) RETURNING *', [ctx.pid, (await laborer(ctx)).id]);
 let day = 0;
 const date = () => `2031-${String(1 + (day % 12)).padStart(2, '0')}-${String(1 + (Math.floor(day++ / 12) % 28)).padStart(2, '0')}`;
 

@@ -8,6 +8,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 const { auditedMutation } = require('../utils/auditedMutation');
+const { hasSourceCost } = require('../services/costView');
 
 // -- Employees --
 router.get('/employees', authenticate, authorize(), async (req, res) => {
@@ -326,13 +327,27 @@ router.post('/labor-payments', authenticate, authorize(), async (req, res) => {
 router.delete('/labor-payments/:id', authenticate, authorize(), async (req, res) => {
   try {
     const out = await auditedMutation(req, { action: 'delete', module: 'hr', entityType: 'labor_payment' }, async (q) => {
+      const before = (await q('SELECT * FROM labor_payments WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true };
+      // A queued event can still accrue its payload after deletion. Treat every
+      // durable posting event (including retry/dead states) as posted as well.
+      const posted = await hasSourceCost(q, 'labor_payment', before.id) || (await q(`SELECT
+        EXISTS (SELECT 1 FROM event_outbox WHERE event_type = 'labor_payment.created' AND entity_id = $1)
+        AS posted`, [before.id])).rows[0].posted;
+      if (posted) throw Object.assign(new Error('Costed or posted labor payments cannot be deleted'), {
+        status: 409, error_code: 'labor_payment_posted', error_key: 'errors.labor_payment_posted', error_params: {},
+      });
       const r = await q('DELETE FROM labor_payments WHERE id = $1 RETURNING *', [req.params.id]);
       if (r.rows.length === 0) return { skipAudit: true };
       return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, before: r.rows[0], amount: Number(r.rows[0].total_amount), description: `Deleted labor payment ${r.rows[0].id}` };
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Payment not found' });
     res.json({ success: true, message: 'Deleted' });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) {
+    res.status(e.status || 500).json({ success: false, error: e.message,
+      ...(e.error_code ? { error_code: e.error_code, error_key: e.error_key, error_params: e.error_params || {} } : {}),
+    });
+  }
 });
 
 module.exports = router;

@@ -1,5 +1,11 @@
 # R2 scorecard — 2026-10-15
 
+## Latest resume stop - 2026-10-15
+
+Superseded by explicit owner authorization for elevated local Docker. Current baseline PASS 74/1,223, 126 migrations, exact container removed. R2b.3 labour-payment protection: initial regression 7 failed / 2 passed (one scoped fixture permission corrected), final focused 2 suites / 32 tests PASS; guards PASS unchanged; mock PASS 60/1,056; i18n PASS 35/1,288. Costed or queued/posted payments return typed 409; unposted delete retains before-snapshot audit and project scope. Coverage unchanged 276/601, pending 319, exempt 6. Full exit gates pending; R3 not started.
+
+Tracked PG baseline invocation exited 1 before migrations/tests: Docker Desktop engine pipe access denied. No new runtime verification or implementation commit. Prior accumulated coverage remains 276/601 verified, 319 pending, 6 exempt; these counts were not rerun this session. Labour-payment protection, duplicate QHSE removal and remaining fixtures are still pending. All current exit gates NOT RUN. R2 incomplete; R3 NOT started. Next action: restore Docker access and rerun the existing tracked baseline. Details in STATE.md and CLOSEOUT_LOG.md.
+
 ## Current R2b evidence
 
 R2b.2 completes task B's transactional changes where the handler boundary permits them. Four new registry fixtures pass success audits and forced-failure rollback. Current accumulated coverage is **276 of 601 endpoints**: 274 audit+rollback; 2 historical documented sweep exceptions assert audit only. Pending is 319, exemptions 6. All 319 remaining entries in pending.json are unverified because task C has not been reached before this context checkpoint; no remaining entry is waived.

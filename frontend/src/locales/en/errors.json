@@ -1,4 +1,5 @@
 {
+  "labor_payment_posted": "Costed or posted labor payments cannot be deleted.",
   "projectIdMismatch": "The supplied project identifiers do not match.",
   "invalidProjectId": "Enter a valid project identifier.",
   "authenticationUnavailable": "Authentication is temporarily unavailable. Please try again shortly.",

@@ -1054,3 +1054,11 @@ Inventory-only commit 35a6bb9: docs/R2_AUDIT_INVENTORY.md only; no runtime fix o
 - R2.2 DONE (89ec15f): mutation-without-audit guard (now zero baseline), registry PG test, throwaway-PG helper.
 - R2.3 fixes DONE for every endpoint the inventory classed unaudited (see docs/R2_SCORECARD.md for commits). NOT DONE: runtime fixtures for 323 audited/delegate endpoints; 4 audited-not-in-transaction endpoints.
 - R2.4 gates run (interim): all green except the pre-existing time-of-day failure `event-integrity` (see scorecard). R2 not closed.
+
+## 2026-10-15 - R2b resume Docker stop
+
+Pre-flight HEAD 94b9815 on closeout/batch-a-to-6; preserved existing unstaged STATE.md and excluded untracked reports. Tracked PG baseline exited 1 before migration/test execution: Docker Desktop engine pipe access denied. No container created; exact-name cleanup also denied. No implementation or new commit. Prior counts, not rerun: 276/601 verified, 319 pending, 6 exempt. Labour-payment protection, QHSE consolidation and remaining fixtures pending; R3 not started. Restore authorized Docker engine access and rerun baseline before failing-first work. All current gates NOT RUN. See STATE.md for exact blocker/next action.
+
+## 2026-10-15 - R2b.3 labour-payment deletion protection
+
+Owner-authorized elevated docker version succeeded (server 28.3.2), superseding the Docker stop. Current tracked PG baseline PASS 74/1,223, 126 migrations, erp-r02-gate-20261015021031 removed. R2b.3 typed 409 protects costed or durable queued/posted labour payments, central cost reader, project record scope, paired error keys. Unposted hard deletes keep before snapshots; registry uses a legacy unposted payment. Initial regression 7 failed / 2 passed (including one scoped fixture missing its explicit permission); fixed and final focused runs 2 suites / 32 tests PASS. Guards unchanged PASS; mock 60/1,056 PASS; i18n 35/1,288 PASS. Full batch gates pending, 276/601 verified / 319 pending / 6 exempt. Next QHSE duplicates, then audit families. No R3.
