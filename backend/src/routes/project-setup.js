@@ -3,9 +3,9 @@
 //   follows the HTTP verb, project scope comes from :id. Writes are audited; every error carries error_code.
 const express = require('express');
 const Joi = require('joi');
-const { query, transaction } = require('../config/database');
+const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
-const { logActivity } = require('../utils/activity');
+const { auditedTransaction } = require('../utils/auditedTransaction');
 const setup = require('../services/projectSetupService');
 
 const router = express.Router();
@@ -32,7 +32,7 @@ function validated(schema, body, res) {
   return value;
 }
 
-const audit = (req, description, entityType, entityId) => logActivity({
+const auditEvent = (req, description, entityType, entityId) => ({
   userId: req.user.id, userName: req.user.name, userRole: req.user.role,
   action: req.method === 'DELETE' ? 'delete' : req.method === 'POST' ? 'create' : 'update',
   module: 'projects', description, entityId, entityType,
@@ -47,8 +47,8 @@ router.put('/:id/settings', authenticate, authorize(), async (req, res) => {
   try {
     const value = validated(Joi.object({ settings: Joi.object().min(1).required() }), req.body, res);
     if (!value) return;
-    const data = await transaction((client) => setup.putSettings(client.query.bind(client), req.params.id, value.settings, req.user.id));
-    await audit(req, `Updated project settings (${Object.keys(value.settings).join(', ')})`, 'project_settings', Number(req.params.id));
+    const data = await auditedTransaction(q => setup.putSettings(q, req.params.id, value.settings, req.user.id),
+      () => auditEvent(req, `Updated project settings (${Object.keys(value.settings).join(', ')})`, 'project_settings', Number(req.params.id)));
     res.json({ success: true, data });
   } catch (e) { return fail(res, e); }
 });
@@ -69,8 +69,8 @@ router.post('/:id/calendars', authenticate, authorize(), async (req, res) => {
   try {
     const value = validated(Joi.object({ ...calendarBody, name: calendarBody.name.required() }), req.body, res);
     if (!value) return;
-    const data = await transaction((client) => setup.createCalendar(client.query.bind(client), req.params.id, value, req.user.id));
-    await audit(req, `Created calendar "${data.name}"`, 'project_calendar', data.id);
+    const data = await auditedTransaction(q => setup.createCalendar(q, req.params.id, value, req.user.id),
+      row => auditEvent(req, `Created calendar "${row.name}"`, 'project_calendar', row.id));
     res.status(201).json({ success: true, data });
   } catch (e) { return fail(res, e); }
 });
@@ -79,16 +79,16 @@ router.put('/:id/calendars/:calendarId', authenticate, authorize(), async (req, 
   try {
     const value = validated(Joi.object(calendarBody).min(1), req.body, res);
     if (!value) return;
-    const data = await transaction((client) => setup.updateCalendar(client.query.bind(client), req.params.id, req.params.calendarId, value));
-    await audit(req, `Updated calendar "${data.name}"`, 'project_calendar', data.id);
+    const data = await auditedTransaction(q => setup.updateCalendar(q, req.params.id, req.params.calendarId, value),
+      row => auditEvent(req, `Updated calendar "${row.name}"`, 'project_calendar', row.id));
     res.json({ success: true, data });
   } catch (e) { return fail(res, e); }
 });
 
 router.delete('/:id/calendars/:calendarId', authenticate, authorize(), async (req, res) => {
   try {
-    const data = await transaction((client) => setup.deleteCalendar(client.query.bind(client), req.params.id, req.params.calendarId));
-    await audit(req, `Deleted calendar "${data.name}"`, 'project_calendar', data.id);
+    const data = await auditedTransaction(q => setup.deleteCalendar(q, req.params.id, req.params.calendarId),
+      row => auditEvent(req, `Deleted calendar "${row.name}"`, 'project_calendar', row.id));
     res.json({ success: true, data });
   } catch (e) { return fail(res, e); }
 });
@@ -109,8 +109,8 @@ router.post('/:id/wbs', authenticate, authorize(), async (req, res) => {
       ...wbsBody, code: wbsBody.code.required(), name: wbsBody.name.required(), parent_id: Joi.number().integer().allow(null),
     }), req.body, res);
     if (!value) return;
-    const data = await setup.createWbsNode(query, req.params.id, value);
-    await audit(req, `Created WBS node ${data.code}`, 'wbs_node', data.id);
+    const data = await auditedTransaction(q => setup.createWbsNode(q, req.params.id, value),
+      row => auditEvent(req, `Created WBS node ${row.code}`, 'wbs_node', row.id));
     res.status(201).json({ success: true, data });
   } catch (e) { return fail(res, e); }
 });
@@ -119,16 +119,16 @@ router.put('/:id/wbs/:nodeId', authenticate, authorize(), async (req, res) => {
   try {
     const value = validated(Joi.object(wbsBody).min(1), req.body, res);
     if (!value) return;
-    const data = await setup.updateWbsNode(query, req.params.id, req.params.nodeId, value);
-    await audit(req, `Updated WBS node ${data.code}`, 'wbs_node', data.id);
+    const data = await auditedTransaction(q => setup.updateWbsNode(q, req.params.id, req.params.nodeId, value),
+      row => auditEvent(req, `Updated WBS node ${row.code}`, 'wbs_node', row.id));
     res.json({ success: true, data });
   } catch (e) { return fail(res, e); }
 });
 
 router.delete('/:id/wbs/:nodeId', authenticate, authorize(), async (req, res) => {
   try {
-    const data = await setup.deleteWbsNode(query, req.params.id, req.params.nodeId);
-    await audit(req, `Deleted WBS node ${data.code}`, 'wbs_node', data.id);
+    const data = await auditedTransaction(q => setup.deleteWbsNode(q, req.params.id, req.params.nodeId),
+      row => auditEvent(req, `Deleted WBS node ${row.code}`, 'wbs_node', row.id));
     res.json({ success: true, data });
   } catch (e) { return fail(res, e); }
 });
@@ -151,8 +151,8 @@ router.post('/:id/work-packages', authenticate, authorize(), async (req, res) =>
   try {
     const value = validated(Joi.object({ ...packageBody, code: packageBody.code.required(), name: packageBody.name.required() }), req.body, res);
     if (!value) return;
-    const data = await setup.createWorkPackage(query, req.params.id, value);
-    await audit(req, `Created work package ${data.code}`, 'work_package', data.id);
+    const data = await auditedTransaction(q => setup.createWorkPackage(q, req.params.id, value),
+      row => auditEvent(req, `Created work package ${row.code}`, 'work_package', row.id));
     res.status(201).json({ success: true, data });
   } catch (e) { return fail(res, e); }
 });
@@ -161,16 +161,16 @@ router.put('/:id/work-packages/:workPackageId', authenticate, authorize(), async
   try {
     const value = validated(Joi.object(packageBody).min(1), req.body, res);
     if (!value) return;
-    const data = await setup.updateWorkPackage(query, req.params.id, req.params.workPackageId, value);
-    await audit(req, `Updated work package ${data.code}`, 'work_package', data.id);
+    const data = await auditedTransaction(q => setup.updateWorkPackage(q, req.params.id, req.params.workPackageId, value),
+      row => auditEvent(req, `Updated work package ${row.code}`, 'work_package', row.id));
     res.json({ success: true, data });
   } catch (e) { return fail(res, e); }
 });
 
 router.delete('/:id/work-packages/:workPackageId', authenticate, authorize(), async (req, res) => {
   try {
-    const data = await setup.deleteWorkPackage(query, req.params.id, req.params.workPackageId);
-    await audit(req, `Deleted work package ${data.code}`, 'work_package', data.id);
+    const data = await auditedTransaction(q => setup.deleteWorkPackage(q, req.params.id, req.params.workPackageId),
+      row => auditEvent(req, `Deleted work package ${row.code}`, 'work_package', row.id));
     res.json({ success: true, data });
   } catch (e) { return fail(res, e); }
 });

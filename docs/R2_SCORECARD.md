@@ -2,6 +2,28 @@
 
 ## Session 4 current checkpoint
 
+**378/601 verified** (376 audit+rollback, 2 historical audit-only sweep exceptions), **217 pending**, **6 exempt**. No new waiver; R2 exit incomplete and R3 not started. All project/setup endpoints now have fixtures; remaining order is commercial, docs/documents, organizations, invoices, then the rest.
+
+| Ticket | Before | After | Commit |
+|---|---|---|---|
+| R2b.6 mock QHSE uniqueness | Accepted 60/1,054; duplicate negative controls reject shadow handlers | PASS 60/1,056 with 2 independent regressions | a23afab |
+| R2b.7 inventory/warehouses, 47 fixtures | 34 rollback failures / 61 passes with stronger delete checks (32 failures with old xmin-only scan) | PASS focused inventory 4 suites / 126 tests; pending 289 -> 242 | 80d7ebd |
+| R2b.8 projects/setup/site, 25 fixtures | 20 setup rollback failures + 1 broken transition, 84 passes | PASS focused projects/setup 2 suites / 114 tests; pending 242 -> 217 | R2b.8 (this commit) |
+
+| Final session 4 gate | Baseline | Current command result |
+|---|---|---|
+| Backend mock | 60/1,054+ accepted | PASS 60/1,056 (+2 uniqueness regressions) |
+| Real PG | 76/1,296+ | PASS 76/1,440 (+144 tests: 72 fixtures, audit + rollback) |
+| Frontend | 32/131 | PASS 32/131 |
+| i18n check/parity | 35 namespaces / 1,287 keys | PASS 35/1,288 (unchanged this session) |
+| lint:guards | ok | PASS, ratchet unchanged |
+| CI build | ok | Compiled successfully, exit 0 |
+| Fresh golden reconciliation | 16/16 | PASS 16/16, zero violations; seed/reconcile exit 0 |
+
+Final PG: 126 existing migrations, exact erp-r02-gate-20261015024123 removed. All 378 registered endpoints rechecked; 376 rollback-verified with xmin + exact table counts, 2 historical audit-only sweep exceptions. Fresh golden: 126 migrations, erp-r02-gate-20261015024210 removed. NOT verified: 217 remaining mutation endpoints, R2 exit, all R3 performance work. No pending entry waived, no product decision waiting. Stop at requested context checkpoint after ticket commit; next commercial, docs/documents, organizations, invoices, remaining families.
+
+### Earlier session 4 checkpoints
+
 R2b.7: **353/601 verified** (351 audit+rollback, 2 historical audit-only sweep exceptions), **242 pending**, **6 exempt**. Inventory/warehouses adds 47 fixture endpoints; all happy paths audited. Before: 32 rollback failures with xmin-only scan; improved exact before/after table counts exposes two pure-DELETE leaks, yielding 34 failures / 61 passes. After inventory transaction fix: focused registry plus existing inventory integrations PASS 4/126; lint ratchet unchanged. No warehouse runtime fix necessary. Full baseline PASS 76/1,296; end-of-batch gates not yet rerun. R2 exit incomplete, no waivers, no R3.
 
 Owner accepted the explained old mock count adjustment; prior numerical-floor stop is superseded. R2b.6 adds two independent mock uniqueness regressions with duplicate-registration negative controls: mock PASS 60/1,056 (+2 from accepted 60/1,054). Coverage remains 306/601 verified, 289 pending, 6 exempt. Full PG baseline running; inventory/warehouses next. No R3.

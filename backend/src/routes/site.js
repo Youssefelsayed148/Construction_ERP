@@ -319,7 +319,7 @@ router.post('/:projectId/instructions/:id/:action(acknowledge|implement|close)',
         );
       await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'site', description: `Instruction ${existing.rows[0].instruction_number} → ${newStatus}`, entityId: req.params.id, entityType: 'engineer_instruction' }, { query: q });
       return updated;
-    });
+    }, () => null); // The attributed audit above already uses the work client.
 
     // Phase 7 wiring: a lifecycle event per transition; the spawned action
     // item is completed when the instruction is acknowledged/implemented so
