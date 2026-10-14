@@ -75,7 +75,7 @@ describePg('5.5 commercial and finance (real PostgreSQL, real app)', () => {
     cc2 = (await one("INSERT INTO cost_codes (code, name, type) VALUES ($1, 'c55 two', 'labor') RETURNING id", [`C55-2-${tag}`])).id;
     contractA = (await one("INSERT INTO client_contracts (contract_number, project_id, client_id, original_value, revised_value, retention_percent) VALUES ($1, $2, $3, 1000000, 1000000, 10) RETURNING id", [`CC-55-${tag}`, pA, client1])).id;
     const sub = (await one("INSERT INTO subcontractors (name, name_en, name_ar) VALUES ($1, $1, $1) RETURNING id", [`c55-sub-${tag}`])).id;
-    subContractA = (await one("INSERT INTO sub_contracts (contract_number, project_id, subcontractor_id, contract_value, retention_percent, status) VALUES ($1, $2, $3, 500000, 5, 'active') RETURNING id", [`SC-55-${tag}`, pA, sub])).id;
+    subContractA = (await one("INSERT INTO sub_contracts (contract_number, project_id, subcontractor_id, contract_value, retention_percent, advance_amount, status) VALUES ($1, $2, $3, 500000, 5, 10000, 'active') RETURNING id", [`SC-55-${tag}`, pA, sub])).id;
     await makeUser('owner', 'owner');
     await makeUser('cm', 'staff', 'commercial_manager');
     await makeUser('cmA', 'staff', 'commercial_manager', pA);
@@ -213,7 +213,46 @@ describePg('5.5 commercial and finance (real PostgreSQL, real app)', () => {
   });
 
   // --------------------------------------------------------------------------------------------------
+  test('client contract defaults use the business rule, explicit retention overrides it, advance amount derives from contract percent', async () => {
+    const saved = (await one("SELECT rule_value FROM business_rules WHERE rule_key = 'retention_percent'")).rule_value;
+    await db.query("UPDATE business_rules SET rule_value = '{\"value\": 6}'::jsonb WHERE rule_key = 'retention_percent'");
+    try {
+      const configured = await call('POST', '/api/commercial/contracts', users.owner, {
+        project_id: pA, client_id: client1, original_value: 200000, advance_percent: 10,
+      });
+      if (configured.status !== 201) throw new Error(JSON.stringify(configured.body));
+      expect(Number(configured.body.data.retention_percent)).toBe(6);
+      expect(Number(configured.body.data.advance_amount)).toBe(20000);
+      const overridden = await call('POST', '/api/commercial/contracts', users.owner, {
+        project_id: pA, client_id: client1, original_value: 200000, retention_percent: 4,
+        advance_percent: 10, advance_amount: 12000,
+      });
+      expect(overridden.status).toBe(201);
+      expect(Number(overridden.body.data.retention_percent)).toBe(4);
+      expect(Number(overridden.body.data.advance_amount)).toBe(12000);
+      const subcontractorId = (await one('SELECT subcontractor_id FROM sub_contracts WHERE id = $1', [subContractA])).subcontractor_id;
+      const subcontract = await call('POST', '/api/subcontractors/contracts', users.owner, {
+        project_id: pA, subcontractor_id: subcontractorId, contract_value: 50000, advance_percent: 10,
+      });
+      expect(subcontract.status).toBe(201);
+      expect(Number(subcontract.body.data.advance_amount)).toBe(5000);
+      const audit = await one("SELECT action, module, entity_type FROM activity_log WHERE entity_id = $1 ORDER BY id DESC LIMIT 1", [subcontract.body.data.id]);
+      expect(audit).toMatchObject({ action: 'create', module: 'commercial', entity_type: 'sub_contract' });
+    } finally {
+      await db.query('UPDATE business_rules SET rule_value = $1::jsonb WHERE rule_key = $2', [JSON.stringify(saved), 'retention_percent']);
+    }
+  });
+
+  // --------------------------------------------------------------------------------------------------
   test('5. payment application -> certificate (contract retention) -> the seeded payment_certificate workflow', async () => {
+    await db.query('UPDATE projects SET retention_cap_amount = 12000 WHERE id = $1', [pA]);
+    await db.query('UPDATE client_contracts SET advance_amount = 5000 WHERE id = $1', [contractA]);
+    await db.query(
+      `INSERT INTO project_settings (project_id, setting_key, setting_value, updated_by)
+       VALUES ($1, 'advance.recovery_percent', '20'::jsonb, $2)
+       ON CONFLICT (project_id, setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_by = EXCLUDED.updated_by`,
+      [pA, users.owner.id]
+    );
     const app1 = await call('POST', '/api/commercial/payment-applications', users.qs, { party_type: 'client', project_id: pA, client_contract_id: contractA, claimed_work: 100000, claimed_variations: 20000, claimed_materials: 10000, period_from: '2026-03-01', period_to: '2026-03-31' });
     expect(app1.status).toBe(201);
     const id = app1.body.data.id;
@@ -223,21 +262,43 @@ describePg('5.5 commercial and finance (real PostgreSQL, real app)', () => {
     expect((await call('POST', `/api/commercial/payment-applications/${id}/submit`, users.qs)).body.data.status).toBe('submitted');
     expect((await call('POST', `/api/commercial/payment-applications/${id}/submit`, users.qs)).body.error_code).toBe('payment_application_not_draft');
     expect((await call('POST', `/api/commercial/payment-applications/${id}/certify`, users.owner, { certified_work: 100001 })).body.error_code).toBe('certified_exceeds_claimed');
-    const out = await call('POST', `/api/commercial/payment-applications/${id}/certify`, users.owner, { certified_work: 90000, certified_variations: 20000, certified_materials: 5000, other_deductions: 1000, tax_pct: 10 });
+    const out = await call('POST', `/api/commercial/payment-applications/${id}/certify`, users.owner, { certified_work: 90000, certified_variations: 20000, certified_materials: 5000, advance_recovery: 3000, other_deductions: 1000, tax_pct: 10 });
     expect(out.status).toBe(200);
     const cert = out.body.data.certificate;
-    // gross = work + materials + variations = 115000; retention 10% = 11500; net before tax = 115000 - 11500 - 1000 = 102500; tax 10% = 10250
+    // Gross=115000; retention=11500 under the 12000 cap; automatic recovery=23000 is capped by the 5000 advance, then manually overridden to 3000.
     expect(cert).toMatchObject({ status: 'draft', party_type: 'client', project_id: pA });
-    expect([Number(cert.gross_certified), Number(cert.retention_held), Number(cert.tax_amount), Number(cert.net_certificate), Number(cert.cumulative_certified)]).toEqual([115000, 11500, 10250, 112750, 115000]);
+    expect([Number(cert.gross_certified), Number(cert.retention_held), Number(cert.advance_recovery), Number(cert.tax_amount), Number(cert.net_certificate), Number(cert.cumulative_certified)]).toEqual([115000, 11500, 3000, 9950, 109450, 115000]);
+    expect(Number(out.body.data.advance_recovery_calculated)).toBe(5000);
+    expect(out.body.data.advance_recovery_overridden).toBe(true);
+    const overrideAudit = await one('SELECT description FROM activity_log WHERE entity_type = $1 AND entity_id = $2 ORDER BY id DESC LIMIT 1', ['payment_application', id]);
+    expect(overrideAudit.description).toContain('advance recovery overridden to 3000.00 (calculated 5000.00)');
     expect(out.body.data.application).toMatchObject({ status: 'certified', certificate_id: cert.id });
     const second = await call('POST', '/api/commercial/payment-applications', users.qs, { party_type: 'client', project_id: pA, client_contract_id: contractA, claimed_work: 40000 });
     await call('POST', `/api/commercial/payment-applications/${second.body.data.id}/submit`, users.qs);
     const rejected = await call('POST', `/api/commercial/payment-applications/${second.body.data.id}/reject`, users.owner, { reason: 'measurement not agreed' });
     expect(rejected.body.data.status).toBe('rejected');
+    const capped = await call('POST', '/api/commercial/payment-applications', users.qs, { party_type: 'client', project_id: pA, client_contract_id: contractA, claimed_work: 40000 });
+    await call('POST', `/api/commercial/payment-applications/${capped.body.data.id}/submit`, users.qs);
+    const cappedCertificate = await call('POST', `/api/commercial/payment-applications/${capped.body.data.id}/certify`, users.owner, { certified_work: 40000 });
+    expect(cappedCertificate.status).toBe(200);
+    expect(Number(cappedCertificate.body.data.advance_recovery_calculated)).toBe(2000);
+    expect(cappedCertificate.body.data.advance_recovery_overridden).toBe(false);
+    expect(Number(cappedCertificate.body.data.certificate.retention_held)).toBe(500);
+    expect(Number(cappedCertificate.body.data.certificate.advance_recovery)).toBe(2000);
+    const overrideAfterCap = await call('POST', '/api/commercial/payment-applications', users.qs, { party_type: 'client', project_id: pA, client_contract_id: contractA, claimed_work: 100 });
+    await call('POST', `/api/commercial/payment-applications/${overrideAfterCap.body.data.id}/submit`, users.qs);
+    const overCap = await call('POST', `/api/commercial/payment-applications/${overrideAfterCap.body.data.id}/certify`, users.owner, { certified_work: 100, advance_recovery: 0.01 });
+    expect(overCap.body.error_code).toBe('advance_recovery_exceeds_balance');
     const thirdRes = await call('POST', '/api/commercial/payment-applications', users.qs, { party_type: 'subcontractor', project_id: pA, sub_contract_id: subContractA, claimed_work: 50000 });
     expect([thirdRes.status, thirdRes.body.error]).toEqual([201, undefined]);
     const third = thirdRes.body.data;
     expect((await call('POST', `/api/commercial/payment-applications/${third.id}/withdraw`, users.cm)).body.data.status).toBe('withdrawn');
+    const subcontractApp = await call('POST', '/api/commercial/payment-applications', users.qs, { party_type: 'subcontractor', project_id: pA, sub_contract_id: subContractA, claimed_work: 50000 });
+    await call('POST', `/api/commercial/payment-applications/${subcontractApp.body.data.id}/submit`, users.qs);
+    const subcontractCertificate = await call('POST', `/api/commercial/payment-applications/${subcontractApp.body.data.id}/certify`, users.owner, { certified_work: 50000 });
+    expect(subcontractCertificate.status).toBe(200);
+    expect(Number(subcontractCertificate.body.data.certificate.retention_held)).toBe(2500);
+    expect(Number(subcontractCertificate.body.data.certificate.advance_recovery)).toBe(10000);
 
     // the certificate workflow: start records the requester's own step, then each step is decided; the last makes it certified
     const started = await call('POST', `/api/commercial/payment-certificates/${cert.id}/start`, users.owner);

@@ -236,27 +236,70 @@ async function submitApplication(q, id, user) {
 // Certify (or certify less than claimed): creates the DRAFT payment certificate with the engine's certificate math
 // (retention at the contract's percentage; advance recovery and other deductions are recorded as given and post
 // nowhere yet: the chart accounts wait for the owner, see the PR). The certificate then runs the workflow.
-async function certifyApplication(q, id, user, { certified_work, certified_variations = 0, certified_materials = 0, advance_recovery = 0, other_deductions = 0, tax_pct = 0, review_notes = null }) {
+async function certifyApplication(q, id, user, { certified_work, certified_variations = 0, certified_materials = 0, advance_recovery, other_deductions = 0, tax_pct = 0, review_notes = null }) {
   const app = (await q('SELECT * FROM payment_applications WHERE id = $1 FOR UPDATE', [toInt(id)])).rows[0];
   if (!app) throw missing('payment_application_not_found', `Payment application #${id} not found`, { id });
   if (app.status !== 'submitted') throw conflict('payment_application_not_submitted', `Application ${app.application_number} is ${app.status}: only a submitted one can be certified`, { id: app.id, status: app.status });
   const contract = app.party_type === 'client'
-    ? (await q('SELECT retention_percent FROM client_contracts WHERE id = $1', [app.client_contract_id])).rows[0]
-    : (await q('SELECT retention_percent FROM sub_contracts WHERE id = $1', [app.sub_contract_id])).rows[0];
+    ? (await q('SELECT retention_percent, advance_amount FROM client_contracts WHERE id = $1', [app.client_contract_id])).rows[0]
+    : (await q('SELECT retention_percent, advance_amount FROM sub_contracts WHERE id = $1', [app.sub_contract_id])).rows[0];
   const work = toNum(certified_work); const variations = toNum(certified_variations); const materials = toNum(certified_materials);
   if (work > toNum(app.claimed_work) + 1e-9 || variations > toNum(app.claimed_variations) + 1e-9 || materials > toNum(app.claimed_materials) + 1e-9) {
     throw bad('certified_exceeds_claimed', 'The certified amount cannot exceed what was claimed', { id: app.id });
   }
-  const grossWork = engine.round2(work + materials);
-  const retention = engine.round2((grossWork + variations) * toNum(contract && contract.retention_percent) / 100);
-  const net = engine.computeCertificateNet({ grossCurrentWork: grossWork, approvedVariationsPeriod: variations, retention, advanceRecovery: advance_recovery, otherDeductions: other_deductions, taxPct: tax_pct });
-  if (!(net.net_certificate > 0)) throw bad('certificate_net_non_positive', 'The net certificate must be greater than zero', {});
+  const gross = (await q(
+    'SELECT ROUND($1::numeric + $2::numeric, 2) AS gross_work, ROUND($1::numeric + $2::numeric + $3::numeric, 2) AS gross_certified',
+    [certified_work, certified_materials, certified_variations]
+  )).rows[0];
+  const grossWork = gross.gross_work;
+  const grossCertified = gross.gross_certified;
+  const project = (await q('SELECT retention_cap_amount FROM projects WHERE id = $1', [app.project_id])).rows[0] || {};
   const prior = (await q(
-    `SELECT COALESCE(MAX(cumulative_certified), 0) AS m FROM payment_certificates
-      WHERE project_id = $1 AND party_type = $2 AND status NOT IN ('cancelled', 'void', 'rejected')
+    `SELECT COALESCE(MAX(cumulative_certified), 0) AS cumulative_certified,
+            COALESCE(SUM(retention_held), 0) AS retention_held_total,
+            COALESCE(SUM(advance_recovery), 0) AS advance_recovered_total
+       FROM payment_certificates WHERE project_id = $1 AND party_type = $2
+        AND status NOT IN ('cancelled', 'void', 'rejected')
         AND ((party_type = 'client' AND client_contract_id = $3) OR (party_type = 'subcontractor' AND sub_contract_id = $4))`,
     [app.project_id, app.party_type, app.client_contract_id, app.sub_contract_id])).rows[0];
-  const previous = engine.round2(prior.m);
+  const setting = (await q("SELECT setting_value FROM project_settings WHERE project_id = $1 AND setting_key = 'advance.recovery_percent'", [app.project_id])).rows[0];
+  const settingValue = setting && setting.setting_value;
+  const recoveryPercent = Number(settingValue && typeof settingValue === 'object' ? settingValue.value : settingValue);
+  const configuredRecoveryPercent = Number.isFinite(recoveryPercent) && recoveryPercent >= 0 && recoveryPercent <= 100 ? recoveryPercent : 0;
+  const cappedValues = (await q(
+    `WITH inputs AS (
+       SELECT $1::numeric AS gross, $2::numeric AS retention_pct, $3::numeric AS retention_cap,
+              $4::numeric AS retention_held, $5::numeric AS advance_cap,
+              $6::numeric AS recovery_pct, $7::numeric AS advance_recovered
+     ), amounts AS (
+       SELECT *, ROUND(gross * retention_pct / 100, 2) AS calculated_retention,
+              ROUND(gross * recovery_pct / 100, 2) AS calculated_advance
+         FROM inputs
+     )
+     SELECT CASE WHEN retention_cap IS NULL THEN calculated_retention
+                 ELSE LEAST(calculated_retention, GREATEST(retention_cap - retention_held, 0)) END AS retention,
+            CASE WHEN advance_cap IS NULL THEN 0::numeric
+                 ELSE LEAST(calculated_advance, GREATEST(advance_cap - advance_recovered, 0)) END AS calculated_advance_recovery,
+            CASE WHEN advance_cap IS NULL THEN NULL::numeric
+                 ELSE GREATEST(advance_cap - advance_recovered, 0) END AS advance_remaining
+       FROM amounts`,
+    [grossCertified, contract && contract.retention_percent || 0, project.retention_cap_amount,
+      prior.retention_held_total, contract && contract.advance_amount, configuredRecoveryPercent, prior.advance_recovered_total]
+  )).rows[0];
+  const retention = cappedValues.retention;
+  const calculatedAdvanceRecovery = cappedValues.calculated_advance_recovery;
+  const advanceRecoveryOverridden = advance_recovery !== undefined;
+  const advanceRecovery = advanceRecoveryOverridden ? advance_recovery : calculatedAdvanceRecovery;
+  if (cappedValues.advance_remaining != null && (await q(
+    'SELECT $1::numeric > $2::numeric AS exceeds', [advanceRecovery, cappedValues.advance_remaining]
+  )).rows[0].exceeds) {
+    throw bad('advance_recovery_exceeds_balance', 'Advance recovery cannot exceed the unrecovered contract advance', {
+      requested: advanceRecovery, remaining_advance: cappedValues.advance_remaining,
+    });
+  }
+  const net = engine.computeCertificateNet({ grossCurrentWork: grossWork, approvedVariationsPeriod: variations, retention, advanceRecovery, otherDeductions: other_deductions, taxPct: tax_pct });
+  if (!(net.net_certificate > 0)) throw bad('certificate_net_non_positive', 'The net certificate must be greater than zero', {});
+  const previous = engine.round2(prior.cumulative_certified);
   const number = await numbering.nextNumber(q, { table: 'payment_certificates', column: 'certificate_number', prefix: 'PC', pad: 4 });
   const cert = (await q(
     `INSERT INTO payment_certificates (certificate_number, party_type, project_id, client_contract_id, sub_contract_id, period_from, period_to,
@@ -264,13 +307,13 @@ async function certifyApplication(q, id, user, { certified_work, certified_varia
        net_certificate, previous_cumulative, cumulative_certified, status, created_by, notes)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,'draft',$19,$20) RETURNING *`,
     [number, app.party_type, app.project_id, app.client_contract_id, app.sub_contract_id, app.period_from, app.period_to,
-      grossWork, variations, net.gross_certified, retention, toNum(advance_recovery), toNum(other_deductions), toNum(tax_pct), net.tax_amount,
+      grossWork, variations, net.gross_certified, retention, advanceRecovery, toNum(other_deductions), toNum(tax_pct), net.tax_amount,
       net.net_certificate, previous, engine.round2(previous + net.gross_certified), user.id, `From payment application ${app.application_number}`])).rows[0];
   const updated = (await q(
     `UPDATE payment_applications SET status = 'certified', certified_work = $2, certified_variations = $3, certified_materials = $4,
             reviewed_by = $5, reviewed_at = NOW(), review_notes = $6, certificate_id = $7, updated_at = NOW() WHERE id = $1 RETURNING *`,
     [app.id, work, variations, materials, user.id, review_notes, cert.id])).rows[0];
-  return { application: updated, certificate: cert };
+  return { application: updated, certificate: cert, advance_recovery_calculated: calculatedAdvanceRecovery, advance_recovery_overridden: advanceRecoveryOverridden };
 }
 
 async function rejectApplication(q, id, user, notes) {

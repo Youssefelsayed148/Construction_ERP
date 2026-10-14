@@ -152,3 +152,20 @@ Definition: cash contribution represents recorded cash movement only; it is not 
 The schedule KPI endpoint now enables SPI by default when a valid current project baseline exists and calculates planned value from the saved baseline dates/quantities, matched to current activity progress. Projects without a current baseline retain the existing explicit `earned_value_enabled` opt-in and current-schedule SPI behavior. The response identifies `spi_source` as `current_baseline`, `current_schedule`, or null. Real-Postgres regression confirms a live schedule change does not change baseline SPI.
 
 Verification: focused planning mock `npm test -- --runInBand src/scripts/__tests__/planning.test.js` PASS 12/12; real PG `TEST_PG=1 npm run test:pg -- --silent src/scripts/__tests__/schedule-progress-assignments.pg.test.js` PASS 4/4 on disposable PG16 `construction_erp_test`; baseline KPI route returns SPI 1 from baseline PV=50/EV=50 while current schedule would produce 0.5. Initial focused PG attempt exposed incorrect test setup (it changed existing progress-history fixture values and called a router path without the repeated schedule mount); fixture and path were corrected, and rerun passed. CPI still has no activity-level actual-cost source, so SPI alone does not complete the Phase 8 earned-value task. Resource loading remains open.
+
+## 2026-10-14 continuation — Phase 8 capped retention and advance recovery
+
+Implemented contract-level advance amounts and automatic certificate recovery caps. Client and subcontract contract creation now derive advance amount from the contract advance percentage unless a value is supplied. Retention uses an explicit contract override or the active business rule (fallback 10%). Payment certificate retention is constrained by the project retention cap and prior held retention; default advance recovery follows the project `advance.recovery_percent` setting (fallback 0%), capped by the remaining contract advance. An explicit recovery override is also capped and recorded in the same audit transaction. Subcontract creation now checks project access and writes its audit row with the contract in one transaction.
+
+Migration `0061_subcontract_advance_caps.sql` adds `advance_percent` and `advance_amount` to `sub_contracts`; existing subcontract rows start at zero advance amount and require finance configuration before recovery can occur. The migration was applied only to disposable Docker Desktop PostgreSQL 16 database `construction_erp_test` on loopback port 55441. Normal Docker pipe access was denied; the user-requested elevated local Docker CLI confirmed server 28.3.2 and the known throwaway container. No pilot/production database or credential files were accessed.
+
+Command evidence:
+- Backend mock `npm test -- --runInBand --silent`: PASS, 53 suites / 1,003 tests.
+- Full real PostgreSQL `TEST_PG=1 npm run test:pg -- --silent`: PASS, 67 suites / 611 tests.
+- Focused `commercial-5-5.pg.test.js`: PASS, 18 / 18, including contract defaults, capped recoveries, manual override audit, and denial after cap.
+- Frontend `npm run test:ci -- --silent`: PASS, 29 suites / 117 tests.
+- Frontend `npm run build`: `Compiled successfully`.
+- Frontend `npm run i18n:check`: `i18n:check ok`; parity: 35 namespaces / 1,086 English keys.
+- Backend `npm run lint:guards`: `lint-guards: ok`; syntax checks, locale JSON parse, and `git diff --check` passed.
+
+Phase 8 remains open for cost-code EAC, certified-quantity valuation, CPI/resource loading, legacy approval retirement, and duplicate transition/payment-certificate surfaces. Phases 7 and 9–11 remain open; production GO criteria remain pending.

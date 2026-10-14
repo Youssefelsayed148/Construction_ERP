@@ -95,21 +95,35 @@ router.post('/contracts', authenticate, authorize(), async (req, res) => {
       boq_item_id: Joi.number().integer().optional().allow(null), scope: Joi.string().allow(''),
       contract_value: Joi.number().min(0).default(0), start_date: Joi.date().iso().allow(null),
       end_date: Joi.date().iso().allow(null), retention_percent: Joi.number().min(0).max(100),
+      advance_percent: Joi.number().min(0).max(100).default(0), advance_amount: Joi.number().min(0).precision(2).allow(null),
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const contract_number = await nextNumber(query, { table: 'sub_contracts', column: 'contract_number', prefix: 'SC', pad: 4 });
+    if (!req.accessScope?.companyWide && !req.accessScope?.projectIds?.includes(value.project_id)) {
+      return res.status(403).json({ success: false, error: 'Insufficient permissions', code: 'project_scope_denied' });
+    }
 
-    const businessRules = await query("SELECT rule_value FROM business_rules WHERE rule_key = 'retention_percent' AND is_active = true");
-    const defaultRetention = businessRules.rows[0]?.rule_value?.value || 10;
-    const retentionPercent = value.retention_percent ?? defaultRetention;
-
-    const r = await query(
-      `INSERT INTO sub_contracts (contract_number, project_id, subcontractor_id, boq_item_id, scope, contract_value, start_date, end_date, retention_percent)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-      [contract_number, value.project_id, value.subcontractor_id, value.boq_item_id, value.scope, value.contract_value, value.start_date, value.end_date, retentionPercent]
-    );
+    const r = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const contract_number = await nextNumber(q, { table: 'sub_contracts', column: 'contract_number', prefix: 'SC', pad: 4 });
+      const businessRules = await q("SELECT rule_value FROM business_rules WHERE rule_key = 'retention_percent' AND is_active = true");
+      const ruleValue = businessRules.rows[0]?.rule_value;
+      const configuredRetention = Number(ruleValue && typeof ruleValue === 'object' ? ruleValue.value : ruleValue);
+      const defaultRetention = Number.isFinite(configuredRetention) && configuredRetention >= 0 && configuredRetention <= 100 ? configuredRetention : 10;
+      const retentionPercent = value.retention_percent ?? defaultRetention;
+      const created = await q(
+        `INSERT INTO sub_contracts (contract_number, project_id, subcontractor_id, boq_item_id, scope, contract_value, start_date, end_date, retention_percent, advance_percent, advance_amount)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,COALESCE($11, ROUND($6::numeric * $10::numeric / 100, 2))) RETURNING *`,
+        [contract_number, value.project_id, value.subcontractor_id, value.boq_item_id, value.scope, value.contract_value, value.start_date, value.end_date, retentionPercent, value.advance_percent, value.advance_amount ?? null]
+      );
+      await logActivity({
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        action: 'create', module: 'commercial', description: `Created subcontract ${contract_number}`,
+        entityId: created.rows[0].id, entityType: 'sub_contract', amount: created.rows[0].contract_value,
+      }, { query: q });
+      return created;
+    });
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

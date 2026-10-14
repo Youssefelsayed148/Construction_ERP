@@ -1488,3 +1488,18 @@ The `/api/schedule/schedule/kpis` route now looks up the current baseline for th
 Verification: `npm test -- --runInBand src/scripts/__tests__/planning.test.js` — PASS 12/12; `TEST_PG=1 npm run test:pg -- --silent src/scripts/__tests__/schedule-progress-assignments.pg.test.js` — PASS 4/4 on the throwaway PG16 database. The real route regression asserts SPI 1.0 from baseline PV=50 and EV=50, whereas the changed current plan would yield 0.5. `git diff --check` and backend lint guards are recorded before commit.
 
 Still open: CPI has no activity-level actual-cost source in the existing schema; resource loading is separate; baseline SPI and these two items do not complete the Phase 8 earned-value plan task.
+
+## 2026-10-14 — Phase 8 capped retention and advance recovery
+
+Added advance amount fields/derivation for client and subcontract contracts and active-business-rule retention defaults with per-contract override. Certificate retention is bounded by project cap remaining; automatic advance recovery uses the project setting and is bounded by contract advance remaining. Manual overrides beyond the remaining balance return typed `advance_recovery_exceeds_balance`; valid manual values are written to the same transaction's activity audit description. Subcontract contract creation now enforces project scope and atomically writes the contract plus audit record. Additive migration `0061_subcontract_advance_caps.sql` adds the subcontract advance fields; old subcontract rows receive 0 and must be configured by finance before recovery.
+
+Commands/results on local throwaway Docker Desktop PostgreSQL 16 (`construction_erp_test`, `127.0.0.1:55441`):
+- `npm test -- --runInBand --silent` — PASS, 53 suites / 1,003 tests.
+- `TEST_PG=1 npm run test:pg -- --silent` — PASS, 67 suites / 611 tests.
+- `TEST_PG=1 npm run test:pg -- --silent src/scripts/__tests__/commercial-5-5.pg.test.js` — PASS, 18/18.
+- `npm run test:ci -- --silent` — PASS, 29 suites / 117 tests.
+- `npm run build` — `Compiled successfully`.
+- `npm run i18n:check` — `i18n:check ok`; `npm run i18n:parity` — 35 namespaces / 1,086 English keys.
+- `npm run lint:guards` (backend) — `lint-guards: ok`; syntax checks, locale JSON parsing, and `git diff --check` passed.
+
+Docker Desktop server version 28.3.2 and loopback-only disposable container were confirmed using the user-requested local Docker CLI path. Production/pilot databases and `.env.docker`/`.staging-users.json` were not accessed. Finance must confirm contract defaults before production. Phase 8 remains incomplete; Phase 7 and Phases 9–11 remain open.

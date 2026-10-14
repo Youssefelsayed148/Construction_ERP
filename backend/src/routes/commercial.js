@@ -33,8 +33,9 @@ router.post('/contracts', authenticate, authorize(), async (req, res) => {
       client_id: Joi.number().integer().optional().allow(null),
       title: Joi.string().optional().allow('', null),
       original_value: Joi.number().min(0).required(),
-      retention_percent: Joi.number().min(0).max(100).default(10),
+      retention_percent: Joi.number().min(0).max(100).optional().allow(null),
       advance_percent: Joi.number().min(0).max(100).default(0),
+      advance_amount: money.optional().allow(null),
       contract_date: Joi.date().iso().optional().allow(null),
       start_date: Joi.date().iso().optional().allow(null),
       end_date: Joi.date().iso().optional().allow(null),
@@ -55,13 +56,21 @@ router.post('/contracts', authenticate, authorize(), async (req, res) => {
     const created = await transaction(async (client) => {
       const r = await client.query(
         `INSERT INTO client_contracts
-           (contract_number, project_id, client_id, title, original_value, revised_value,
-            retention_percent, advance_percent, contract_date, start_date, end_date, notes, created_by)
-         VALUES ($1,$2,$3,$4,$5,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+         (contract_number, project_id, client_id, title, original_value, revised_value,
+            retention_percent, advance_percent, advance_amount, contract_date, start_date, end_date, notes, created_by)
+         VALUES ($1,$2,$3,$4,$5,$5,$6,$7,COALESCE($8, ROUND($5::numeric * $7::numeric / 100, 2)),$9,$10,$11,$12,$13) RETURNING *`,
         [contractNumber, value.project_id, value.client_id || null, value.title || null, value.original_value,
-         value.retention_percent, value.advance_percent, value.contract_date || null,
+         value.retention_percent ?? null, value.advance_percent, value.advance_amount ?? null, value.contract_date || null,
          value.start_date || null, value.end_date || null, value.notes || null, req.user.id]
       );
+      if (value.retention_percent == null) {
+        const rule = (await client.query("SELECT rule_value FROM business_rules WHERE rule_key = 'retention_percent' AND is_active = true")).rows[0];
+        const ruleValue = rule && rule.rule_value;
+        const configured = Number(ruleValue && typeof ruleValue === 'object' ? ruleValue.value : ruleValue);
+        const retentionPercent = Number.isFinite(configured) && configured >= 0 && configured <= 100 ? configured : 10;
+        await client.query('UPDATE client_contracts SET retention_percent = $1 WHERE id = $2', [retentionPercent, r.rows[0].id]);
+        r.rows[0].retention_percent = retentionPercent;
+      }
       const contract = r.rows[0];
       let sort = 0;
       for (const line of value.lines) {
@@ -391,7 +400,7 @@ router.post('/payment-applications/:id/certify', authenticate, authorize(), asyn
     }), req, res);
     if (!value) return;
     const out = await atomicAudited(req, (q) => records.certifyApplication(q, intId(req), req.user, value),
-      (certified) => ['approve', `Payment application ${certified.application.application_number} certified as ${certified.certificate.certificate_number}`, 'payment_application', certified.application.id]);
+      (certified) => ['approve', `Payment application ${certified.application.application_number} certified as ${certified.certificate.certificate_number}${certified.advance_recovery_overridden ? `; advance recovery overridden to ${certified.certificate.advance_recovery} (calculated ${certified.advance_recovery_calculated})` : '; advance recovery derived from project rule and capped by contract advance'}`, 'payment_application', certified.application.id]);
     res.json({ success: true, data: out });
   } catch (e) { return fail(res, e); }
 });

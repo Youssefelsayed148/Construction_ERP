@@ -33,5 +33,6 @@
   "grn_not_found": "The goods receipt could not be found.",
   "supplier_invoice_duplicate": "This supplier has already submitted that invoice number.",
   "supplier_invoice_not_approvable": "This supplier invoice cannot be approved in its current state.",
-  "invoice_match_failed": "The invoice does not match the purchase order and accepted receipt quantities."
+  "invoice_match_failed": "The invoice does not match the purchase order and accepted receipt quantities.",
+  "advance_recovery_exceeds_balance": "Advance recovery cannot exceed the unrecovered contract advance."
 }
