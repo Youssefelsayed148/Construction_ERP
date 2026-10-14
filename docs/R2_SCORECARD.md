@@ -1,6 +1,10 @@
 # R2 scorecard — 2026-10-15
 
-## Current R2b.5 checkpoint
+## Session 4 current checkpoint
+
+Owner accepted the explained old mock count adjustment; prior numerical-floor stop is superseded. R2b.6 adds two independent mock uniqueness regressions with duplicate-registration negative controls: mock PASS 60/1,056 (+2 from accepted 60/1,054). Coverage remains 306/601 verified, 289 pending, 6 exempt. Full PG baseline running; inventory/warehouses next. No R3.
+
+## Historical R2b.5 checkpoint
 
 **306/601 endpoints runtime verified** (304 audit+rollback, 2 historical audit-only sweep exceptions), **289 pending**, **6 exempt**. R2 exit incomplete; R3 not started. The 289 remaining entries lack fixtures; no substantive waiver is claimed.
 

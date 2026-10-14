@@ -17,6 +17,20 @@ const path = require('path');
 
 const ROUTES_DIR = path.join(__dirname, '..', '..', 'routes');
 
+describe('QHSE mutation registrations stay unique', () => {
+  const source = fs.readFileSync(path.join(ROUTES_DIR, 'qhse.js'), 'utf8');
+  const assertSinglePut = (text, routePath) => {
+    const paths = [...text.matchAll(/^\s*router\.put\(['"]([^'"]+)['"]/gm)].map(match => match[1]);
+    expect(paths.filter(candidate => candidate === routePath)).toHaveLength(1);
+  };
+  test.each(['/ncrs/:id', '/quality-tests/:id'])('PUT %s cannot gain a shadowed handler', routePath => {
+    // Negative control reproduces the old duplicate-registration failure without
+    // restoring committed dead code or depending on database fixtures.
+    expect(() => assertSinglePut(`${source}\nrouter.put('${routePath}', unreachable);`, routePath)).toThrow();
+    assertSinglePut(source, routePath);
+  });
+});
+
 const ROUTE_FILES = [
   { file: 'legal.js', expectedRouteCount: 5 },
   { file: 'assets.js', expectedRouteCount: 10 },
