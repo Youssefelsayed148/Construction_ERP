@@ -40,6 +40,8 @@ describe('consultant portal observation form', () => {
       latest_drawings: { items: [{ id: 9, title: 'Drawing A', status: 'pending_approval' }], count: 1 },
       rfis: { items: [], count: 0, empty_key: 'portals.dashboard.empty.rfis', empty_label: 'No RFIs open' },
       summary: { active: true },
+      note: 'fallback note', note_key: 'portals.dashboard.notes.noClientAccount',
+      setup_actions: ['fallback setup'], setup_action_keys: ['portals.dashboard.setup.assignClient'],
     } }) }));
     await act(async () => { root.render(<PortalDashboard kind="consultant" />); });
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
@@ -50,6 +52,8 @@ describe('consultant portal observation form', () => {
     expect(container.textContent).toContain('enums.status.pendingApproval');
     expect(container.textContent).toContain('common.yes');
     expect(container.textContent).toContain('portals.dashboard.empty.rfis');
+    expect(container.textContent).toContain('portals.dashboard.notes.noClientAccount');
+    expect(container.textContent).toContain('portals.dashboard.setup.assignClient');
     expect(container.textContent).not.toContain('Latest Drawings');
     expect(container.textContent).not.toContain('Pending Approval');
     expect(container.textContent).not.toContain('Yes');

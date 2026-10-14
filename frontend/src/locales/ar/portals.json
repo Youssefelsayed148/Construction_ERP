@@ -257,6 +257,17 @@
       "actionCenter": "مركز الإجراءات",
       "submissions": "إرسالياتي"
     },
+    "setup": {
+      "noAwardedPackages": "لا توجد حزم أعمال ممنوحة لحسابك بعد",
+      "supplierProject": "حساب المورد غير مرتبط بأي مشروع بعد",
+      "assignClient": "عيّن عميلاً لمعاينة هذه البوابة"
+    },
+    "notes": {
+      "noSubcontractPackage": "لا توجد حزمة مقاول باطن مسندة إلى مؤسستك بعد.",
+      "noSupplierAssignment": "لا يوجد تكليف مورد نشط لحسابك.",
+      "noClientAccount": "لا يوجد عميل مسند إلى حسابك بعد.",
+      "noClientProject": "لا يوجد عميل مسند إلى هذا المشروع بعد."
+    },
     "widgets": {
       "latest_drawings": "أحدث المخططات",
       "approvals": "الموافقات",

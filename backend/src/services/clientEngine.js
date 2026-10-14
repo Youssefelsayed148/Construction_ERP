@@ -217,12 +217,14 @@ async function clientDashboard(q, user, { project_id = null, preview_project_id 
   if (scoped.length === 0) {
     return {
       setup_actions: ['Assign a client to preview this portal'],
+      setup_action_keys: ['portals.dashboard.setup.assignClient'],
       projects: [], portfolio: { items: [] },
       note: 'No client is assigned to your account yet.',
+      note_key: 'portals.dashboard.notes.noClientAccount',
     };
   }
 
-  const dashboard = { projects, project_ids: scoped, setup_actions: [] };
+  const dashboard = { projects, project_ids: scoped, setup_actions: [], setup_action_keys: [] };
   if (preview_project_id != null) {
     const participants = await safeAll(q, 'SELECT * FROM project_participants WHERE project_id = $1', [preview_project_id]);
     const nowMs = now.getTime();
@@ -232,7 +234,9 @@ async function clientDashboard(q, user, { project_id = null, preview_project_id 
         && (p.active_to == null || new Date(p.active_to).getTime() >= nowMs));
     if (!hasClient) {
       dashboard.setup_actions.push('Assign a client to preview this portal');
+      dashboard.setup_action_keys.push('portals.dashboard.setup.assignClient');
       dashboard.note = 'No client is assigned to this project yet.';
+      dashboard.note_key = 'portals.dashboard.notes.noClientProject';
     }
   }
   const forProjects = (rows) => rows.filter((r) => scoped.includes(toNum(r.project_id)));

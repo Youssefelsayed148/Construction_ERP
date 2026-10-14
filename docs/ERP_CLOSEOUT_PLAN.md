@@ -441,7 +441,7 @@ L3 Application shell
 L4 English-only expansion screens
 - [ ] 4A Project Operations (ProjectOperations.js): title, tabs, table headings, commercial/financial metrics, empty states, procurement stage names, statuses, Arabic-first material and project names.
 - [ ] 4B Procurement Comparison (ProcurementReview.js): nav entry, RFQ form, comparison columns, booleans, document buttons, recommendation and empty states, request/download errors.
-- [ ] 4C Portals (PortalDashboard.js), all four variants (consultant, client, subcontractor, supplier): titles, widgets, fields, empty states, booleans, quick actions, all 39 prompts (replaced by real forms in Phase 6), preview controls, Action Center, My Reviews, dynamic API field names such as `open_rfqs`, backend setup notes. Portal dashboard widget/field catalog labels, enum statuses, localized booleans, locale-formatted numbers, keyed empty states, and shell/preview labels have partial coverage. APIs preserve empty_label and add empty_key for compatibility; this item remains open.
+- [ ] 4C Portals (PortalDashboard.js), all four variants (consultant, client, subcontractor, supplier): titles, widgets, fields, empty states, booleans, quick actions, all 39 prompts (replaced by real forms in Phase 6), preview controls, Action Center, My Reviews, dynamic API field names such as `open_rfqs`, backend setup notes. Portal dashboard widget/field catalog labels, enum statuses, localized booleans, locale-formatted numbers, keyed empty states, shell/preview labels, and keyed zero-assignment setup messages have partial coverage. APIs preserve empty_label and add empty_key for compatibility; this item remains open.
 - Exit: these routes have no hard-coded user-facing English except approved acronyms and user data.
 
 L5 Partially localized modules
@@ -466,7 +466,7 @@ L6 Dynamic values and formatting helpers
 L7 API errors, notifications and server content
 - [ ] Error contract: add `error_code` and `error_params` next to the existing `error` string (about 482 responses use `{ success:false, error:"text" }`; changing `error` into an object breaks callers). Frontend maps `errors.inspectionNotFound` from the code. Keep the English string for logs and old clients.
 - [ ] Compatibility layer for older endpoints during migration; map Joi validation errors to stable codes.
-- [ ] System notification and action titles stored as key + params (+ optional rendered snapshot where history requires it); dashboard and portal contracts use keys, not English titles.
+- [ ] System notification and action titles stored as key + params (+ optional rendered snapshot where history requires it); dashboard and portal contracts use keys, not English titles. Portal empty/setup messages now add stable keys while retaining legacy English fields; full notification/action migration remains open.
 - [ ] Pass locale through `Accept-Language` or an explicit parameter where the server must render content (no handling exists today).
 - [ ] Database-stored text: `roles.name`, seeded workflow/notification/document templates and report catalog titles need EN/AR values.
 - [ ] Decide handling for native date/number inputs (they follow the browser locale); bundle the Arabic font locally for offline use.

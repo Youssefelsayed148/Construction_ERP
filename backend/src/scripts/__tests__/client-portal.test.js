@@ -105,6 +105,8 @@ describe('scoped client auth', () => {
   test('a user with no client organization sees zero projects — setup path, never an error', async () => {
     const dash = await engine.clientDashboard(q, { id: 999, name: 'Ghost', role: 'client' });
     expect(dash.setup_actions).toContain('Assign a client to preview this portal');
+    expect(dash.note_key).toBe('portals.dashboard.notes.noClientAccount');
+    expect(dash.setup_action_keys).toEqual(['portals.dashboard.setup.assignClient']);
     expect(dash.projects.length).toBe(0);
   });
 });
@@ -198,6 +200,7 @@ describe('no client assigned', () => {
     const dash = await engine.clientDashboard(q, { id: 999, role: 'client' });
     expect(dash.setup_actions.length).toBeGreaterThan(0);
     expect(dash.note).toMatch(/No client is assigned/);
+    expect(dash.note_key).toBe('portals.dashboard.notes.noClientAccount');
   });
 });
 

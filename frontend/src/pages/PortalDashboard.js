@@ -649,8 +649,8 @@ export default function PortalDashboard({ kind }) {
       {error && <div className="alert alert-danger">{error}</div>}
       {loading && <div className="card"><div className="card-body">{t('common.loading')}</div></div>}
       {!loading && data && <>
-        {data.note && <div className="alert alert-info">{data.note}</div>}
-        {data.setup_actions?.map(action => <div className="alert alert-info" key={action}>{action}</div>)}
+        {data.note && <div className="alert alert-info">{data.note_key ? t(data.note_key, { defaultValue: data.note }) : data.note}</div>}
+        {data.setup_actions?.map((action, index) => <div className="alert alert-info" key={action}>{data.setup_action_keys?.[index] ? t(data.setup_action_keys[index], { defaultValue: action }) : action}</div>)}
         {extra?.portfolio?.is_portfolio && <><h2 className="portal-section-title">{t('portals.dashboard.portfolio')}</h2><div className="portal-grid"><Widget name="Projects" value={extra.portfolio.items} /></div></>}
         <QuickActions kind={kind} data={data} onDone={load} />
         <div className="portal-grid">{Object.entries(data).filter(([key]) => !['note', 'setup_actions', 'project_ids', 'supplier_ids', 'visibility', 'preview'].includes(key)).map(([key, value]) => kind === 'supplier' && key === 'expiring_documents'

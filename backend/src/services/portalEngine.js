@@ -118,7 +118,9 @@ async function subcontractorDashboard(q, userId, { now = new Date() } = {}) {
     return {
       packages: [], project_ids: [],
       setup_actions: ['You have no awarded packages on your account yet'],
+      setup_action_keys: ['portals.dashboard.setup.noAwardedPackages'],
       note: 'No subcontract package is assigned to your organization yet.',
+      note_key: 'portals.dashboard.notes.noSubcontractPackage',
     };
   }
 
@@ -320,7 +322,9 @@ async function supplierDashboard(q, userId, { now = new Date() } = {}) {
   if (scope.supplierIds.length === 0) {
     return {
       setup_actions: ['Your supplier account is not linked to any project yet'],
+      setup_action_keys: ['portals.dashboard.setup.supplierProject'],
       note: 'No supplier assignment is active for your account.',
+      note_key: 'portals.dashboard.notes.noSupplierAssignment',
     };
   }
   const dashboard = { supplier_ids: scope.supplierIds, project_ids: scope.projectIds };

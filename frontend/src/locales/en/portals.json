@@ -20,6 +20,17 @@
       "actionCenter": "Action Center",
       "submissions": "My submissions"
     },
+    "setup": {
+      "noAwardedPackages": "You have no awarded packages on your account yet",
+      "supplierProject": "Your supplier account is not linked to any project yet",
+      "assignClient": "Assign a client to preview this portal"
+    },
+    "notes": {
+      "noSubcontractPackage": "No subcontract package is assigned to your organization yet.",
+      "noSupplierAssignment": "No supplier assignment is active for your account.",
+      "noClientAccount": "No client is assigned to your account yet.",
+      "noClientProject": "No client is assigned to this project yet."
+    },
     "widgets": {
       "latest_drawings": "Latest drawings",
       "approvals": "Approvals",

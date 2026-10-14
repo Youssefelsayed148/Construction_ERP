@@ -254,3 +254,10 @@ Verification: backend mocks PASS (53 suites / 1,005 tests); portal/consultant se
 Localized the four portal titles and the dashboard scope description, project selector, preview exit, refresh/loading copy, portfolio heading, and secondary section headings. Existing routes and API calls are unchanged. This is an additional PortalDashboard caller migration; L4C remains open for remaining dynamic fields, user-facing server errors, and full Arabic review.
 
 Verification: PortalDashboard suite PASS (11/11); i18n check passed; parity passed (35 namespaces / 1,216 English keys); git diff --check passed. No backend or migration changes. Implementation commit: 0f19c8a.
+
+
+## 2026-10-14 - Phase 10 portal setup messages
+
+Client, subcontractor, and supplier dashboard setup notes now include stable note_key/setup_action_keys for translation. Existing English note/setup_actions fields remain in the API as a compatibility fallback. PortalDashboard uses catalog entries when keys are present. This covers the zero-assignment setup states only; user-facing API errors and broader server content remain open.
+
+Verification: backend client/consultant/portal suites PASS (3 suites / 40 tests); frontend PortalDashboard suite PASS (11/11); i18n check passed; parity passed (35 namespaces / 1,223 English keys). No migrations or data changes.

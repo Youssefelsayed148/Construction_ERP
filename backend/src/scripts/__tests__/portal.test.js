@@ -156,6 +156,8 @@ describe('subcontractor portal', () => {
     const dash = await engine.subcontractorDashboard(q, 999);
     expect(dash.packages).toEqual([]);
     expect(dash.setup_actions.length).toBeGreaterThan(0);
+    expect(dash.note_key).toBe('portals.dashboard.notes.noSubcontractPackage');
+    expect(dash.setup_action_keys).toEqual(['portals.dashboard.setup.noAwardedPackages']);
   });
 
   test('one project, zero records → every widget empty-labeled', async () => {
@@ -331,6 +333,8 @@ describe('supplier portal', () => {
   test('no assigned supplier org → setup actions, not an error', async () => {
     const dash = await engine.supplierDashboard(q, 999);
     expect(dash.setup_actions.length).toBeGreaterThan(0);
+    expect(dash.note_key).toBe('portals.dashboard.notes.noSupplierAssignment');
+    expect(dash.setup_action_keys).toEqual(['portals.dashboard.setup.supplierProject']);
   });
 
   test('dashboard fills from the supplier\u2019s own records only', async () => {
