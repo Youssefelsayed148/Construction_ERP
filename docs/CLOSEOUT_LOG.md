@@ -1549,3 +1549,22 @@ Verification: real PostgreSQL `event-integrity.pg.test.js` passed 30/30, includi
 Phase 8 reminder tier task is closed. Remaining Phase 8 work: CPI/resource-loaded planning, legacy approval retirement, and duplicate transition/payment-certificate surfaces. Phase 7 and Phases 9–11 remain open.
 
 Reminder-tier implementation commit: `3ae651e` (`Phase 8: honor client receivable reminder rules`). Focused PostgreSQL verification passed 30/30 after correction of the overlong test fixture.
+
+## 2026-10-14 - Phase 8 baseline financial EVM and resource-load planning
+
+Changes: additive migration `0064_schedule_activity_bac.sql` adds explicit, non-negative activity BAC. Baseline snapshots capture BAC and milestone status. The schedule KPI endpoint uses financial PV/EV/SPI when every non-milestone baseline activity has BAC and planned dates; legacy/incomplete snapshots retain quantity SPI, and CPI is explicitly unavailable until the required baseline inputs and positive actual cost exist. CPI actual cost comes from `services/costView.projectTotal`. Added a transactional, audited activity-BAC update route and a daily resource-load endpoint scoped to the authorized project; added a permission-visible editor and EN/AR KPI/resource labels, statuses, and typed errors.
+
+Command evidence:
+
+- `docker version --format '{{.Server.Version}}'` / `docker ps`: `28.3.2`; disposable loopback PostgreSQL container `erp-closeout-pg16-20261014`, `127.0.0.1:55441->5432`.
+- `npm run migrate` (`backend`, test DB only): `[migrate] 0064_schedule_activity_bac.sql ...` then `[migrate] all migrations completed (1 applied, 125 already applied)`.
+- `TEST_PG=1 npm run test:pg -- --runTestsByPath src/scripts/__tests__/schedule-progress-assignments.pg.test.js --silent`: PASS, 6/6. Covers financial baseline PV/EV/SPI/CPI against project_costs, transactional audit presence, baseline BAC snapshot, invalid BAC, project-scope denial, daily resource load, and invalid ranges.
+- `TEST_PG=1 npm run test:pg -- --silent`: PASS, 67 suites / 616 tests.
+- `npm test -- --runInBand --silent`: PASS, 53 suites / 1,003 tests.
+- `npm run lint:guards`: `lint-guards: ok`.
+- `npm run test:ci -- --silent` (`frontend`): PASS, 29 suites / 120 tests. Focused Schedule component test: PASS, 4/4, including budget permission visibility.
+- `npm run i18n:check`: `i18n:check ok`; `npm run i18n:parity`: `i18n parity ok: 35 namespaces, 1123 English keys`.
+- `npm run build` (`frontend`): `Compiled successfully`.
+- `node --check` on changed backend JS, EN/AR locale JSON parse, and `git diff --check`: PASS.
+
+Phase 8 earned-value/resource-load plan item is closed based on these checks. Phase 8 remains open for the approval-system hold and duplicate commercial surfaces; no claim is made that Phase 8 exit golden values, Phase 9-11, PWA Lighthouse, or human acceptance is complete. Implementation commit: pending.

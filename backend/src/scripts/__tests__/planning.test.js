@@ -160,12 +160,14 @@ describe('schedule KPIs', () => {
   });
 
   test('CPI needs cost data and the EVM opt-in', async () => {
-    const acts = [{ id: 1, planned_start: '2026-03-01', planned_finish: '2026-03-11', percent_complete: 50, planned_quantity: 100 }];
+    const acts = [{ id: 1, planned_start: '2026-03-01', planned_finish: '2026-03-11', percent_complete: 50, planned_quantity: 100, budgeted_cost: 100 }];
     const enabled = { earned_value_enabled: true };
     // EV = 50% × 100 units, AC = 100 → CPI 0.5; no cost data → null; EVM off → null
-    expect(engine.cpi(enabled, acts, { 1: 100 })).toBe(0.5);
-    expect(engine.cpi(enabled, acts, {})).toBe(null);
-    expect(engine.cpi({ earned_value_enabled: false }, acts, { 1: 100 })).toBe(null);
+    expect(engine.cpi(enabled, acts, 100, new Date('2026-03-06'))).toBe(0.5);
+    expect(engine.cpi(enabled, acts, 0, new Date('2026-03-06'))).toBe(null);
+    expect(engine.cpi({ earned_value_enabled: false }, acts, 100, new Date('2026-03-06'))).toBe(null);
+    expect(engine.earnedValue([{ ...acts[0], budgeted_cost: null }], new Date('2026-03-06'))).toBe(null);
+    expect(engine.earnedValue([{ ...acts[0], planned_finish: null }], new Date('2026-03-06'))).toBe(null);
   });
 });
 

@@ -7,7 +7,9 @@ import WorkPackageSelect from '../components/project/WorkPackageSelect';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
-import { ArrowLeft, Plus, CalendarRange, AlertTriangle, TrendingDown, Download, Flag, Zap, History, Users } from 'lucide-react';
+import { authService } from '../services/api';
+import { hasProjectPermission } from '../utils/projectNav';
+import { ArrowLeft, Plus, CalendarRange, AlertTriangle, TrendingDown, Download, Flag, Zap, History, Users, DollarSign } from 'lucide-react';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
@@ -17,7 +19,11 @@ const headers = () => {
 };
 
 const fetchApi = (url, options) => fetch(url, { headers: headers(), ...options }).then(r => {
-  if (!r.ok) return r.json().then(e => { throw new Error(e.error || e.error_code || 'Request failed'); });
+  if (!r.ok) return r.json().then(e => {
+    const error = new Error(e.error || e.error_code || 'Request failed');
+    error.error_code = e.error_code || e.error;
+    throw error;
+  });
   return r.json();
 });
 
@@ -86,6 +92,7 @@ function leftPct(a, min, span) {
 }
 
 export function ActivitiesTab({ projectId, locale, t }) {
+  const canEditBudget = hasProjectPermission(authService.getCurrentUser(), 'schedule', 'edit', projectId);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -100,6 +107,10 @@ export function ActivitiesTab({ projectId, locale, t }) {
   const [assignments, setAssignments] = useState([]);
   const [assignmentForm, setAssignmentForm] = useState({ resource: '', assigned_from: '', assigned_to: '', allocation_percent: 100, notes: '' });
   const [assignmentError, setAssignmentError] = useState('');
+  const [budgetActivity, setBudgetActivity] = useState(null);
+  const [budgetCost, setBudgetCost] = useState('');
+  const [budgetError, setBudgetError] = useState('');
+  const [savingBudget, setSavingBudget] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -124,6 +135,25 @@ export function ActivitiesTab({ projectId, locale, t }) {
       setForm({ name: '', work_package_id: null, planned_start: '', planned_finish: '', original_duration: 0, is_milestone: false });
       load();
     } catch (err) { alert(err.message); }
+  };
+
+  const openBudget = (activity) => {
+    setBudgetActivity(activity);
+    setBudgetCost(activity.budgeted_cost == null ? '' : String(activity.budgeted_cost));
+    setBudgetError('');
+  };
+
+  const submitBudget = async (event) => {
+    event.preventDefault();
+    setSavingBudget(true); setBudgetError('');
+    try {
+      await fetchApi(`${API_URL}/schedule/activities/${budgetActivity.id}/budgeted-cost`, {
+        method: 'PUT', body: JSON.stringify({ budgeted_cost: budgetCost === '' ? null : Number(budgetCost) }),
+      });
+      setBudgetActivity(null);
+      await load();
+    } catch (error) { setBudgetError(t(`errors.${error.error_code}`, { defaultValue: t('schedule.budgetSaveFailed') })); }
+    finally { setSavingBudget(false); }
   };
 
   const openProgress = async (activity) => {
@@ -248,6 +278,17 @@ export function ActivitiesTab({ projectId, locale, t }) {
           <button className="btn" style={{ justifySelf: 'start' }} onClick={() => setAssignmentActivity(null)}>{t('common.cancel')}</button>
         </div>
       )}
+      {budgetActivity && (
+        <div className="card" role="dialog" aria-label={t('schedule.activityBudget')} style={{ marginTop: 16, display: 'grid', gap: 10, maxWidth: 560 }}>
+          <h3>{budgetActivity.activity_code} — {t('schedule.activityBudget')}</h3>
+          {budgetError && <p role="alert" className="alert alert-danger">{budgetError}</p>}
+          <form onSubmit={submitBudget} style={{ display: 'grid', gap: 8 }}>
+            <label>{t('schedule.budgetAtCompletion')}<input className="input" type="number" min="0" step="0.01" value={budgetCost} onChange={(event) => setBudgetCost(event.target.value)} /></label>
+            <small>{t('schedule.budgetAtCompletionHelp')}</small>
+            <div><button className="btn btn-primary" type="submit" disabled={savingBudget}>{savingBudget ? t('common.loading') : t('common.save')}</button> <button className="btn" type="button" disabled={savingBudget} onClick={() => setBudgetActivity(null)}>{t('common.cancel')}</button></div>
+          </form>
+        </div>
+      )}
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><span className="spinner" /></div>
       ) : rows.length === 0 ? (
@@ -259,7 +300,7 @@ export function ActivitiesTab({ projectId, locale, t }) {
             <thead><tr>
               <th>Code</th><th>{locale === 'ar' ? 'النشاط' : 'Activity'}</th><th>{locale === 'ar' ? 'البداية' : 'Start'}</th>
               <th>{locale === 'ar' ? 'النهاية' : 'Finish'}</th><th>{locale === 'ar' ? 'المدة' : 'Dur.'}</th>
-              <th>{locale === 'ar' ? 'الإنجاز' : '% Complete'}</th><th>{locale === 'ar' ? 'حرج' : 'Critical'}</th><th>{t('common.actions')}</th>
+              <th>{locale === 'ar' ? 'الإنجاز' : '% Complete'}</th><th>{locale === 'ar' ? 'حرج' : 'Critical'}</th><th>{t('schedule.budgetAtCompletion')}</th><th>{t('common.actions')}</th>
             </tr></thead>
             <tbody>
               {rows.map(a => (
@@ -271,7 +312,8 @@ export function ActivitiesTab({ projectId, locale, t }) {
                   <td>{a.original_duration}</td>
                   <td>{a.percent_complete || 0}%</td>
                   <td>{a.cpm?.critical ? <span className="badge badge-danger">Critical</span> : '-'}</td>
-                  <td style={{ display: 'flex', gap: 6 }}><button className="btn" style={{ padding: '4px 10px' }} onClick={() => openProgress(a)}><History size={14} />{t('schedule.updateProgress')}</button> <button className="btn" style={{ padding: '4px 10px' }} onClick={() => openAssignments(a)}><Users size={14} />{t('schedule.assignResources')}</button></td>
+                  <td>{a.budgeted_cost ?? '—'}</td>
+                  <td style={{ display: 'flex', gap: 6 }}><button className="btn" style={{ padding: '4px 10px' }} onClick={() => openProgress(a)}><History size={14} />{t('schedule.updateProgress')}</button> {canEditBudget && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => openBudget(a)}><DollarSign size={14} />{t('schedule.activityBudget')}</button>} <button className="btn" style={{ padding: '4px 10px' }} onClick={() => openAssignments(a)}><Users size={14} />{t('schedule.assignResources')}</button></td>
                 </tr>
               ))}
             </tbody>
@@ -282,24 +324,26 @@ export function ActivitiesTab({ projectId, locale, t }) {
   );
 }
 
-function ViewsTab({ projectId, locale }) {
+function ViewsTab({ projectId, locale, t }) {
   const [cpm, setCpm] = useState(null);
   const [lookahead, setLookahead] = useState({ rows: [], weeks: 2 });
   const [delayed, setDelayed] = useState([]);
   const [kpis, setKpis] = useState(null);
   const [scurve, setScurve] = useState([]);
   const [alerts, setAlerts] = useState([]);
+  const [resourceLoad, setResourceLoad] = useState({ loading: true, error: false, rows: [] });
 
   useEffect(() => {
     (async () => {
       try {
-        const [c, l, d, k, sc, al] = await Promise.all([
+        const [c, l, d, k, sc, al, rl] = await Promise.all([
           fetchApi(`${API_URL}/schedule/schedule/cpm?project_id=${projectId}`),
           fetchApi(`${API_URL}/schedule/schedule/lookahead?project_id=${projectId}&weeks=2`),
           fetchApi(`${API_URL}/schedule/schedule/delayed?project_id=${projectId}`),
           fetchApi(`${API_URL}/schedule/schedule/kpis?project_id=${projectId}`),
           fetchApi(`${API_URL}/schedule/schedule/s-curve?project_id=${projectId}`),
           fetchApi(`${API_URL}/schedule/schedule/alerts?project_id=${projectId}`),
+          fetchApi(`${API_URL}/schedule/resource-load?project_id=${projectId}`),
         ]);
         if (c.success) setCpm(c.data);
         if (l.success) setLookahead({ rows: l.data || [], weeks: l.window_weeks || 2 });
@@ -307,7 +351,8 @@ function ViewsTab({ projectId, locale }) {
         if (k.success) setKpis(k.data);
         if (sc.success) setScurve(sc.data || []);
         if (al.success) setAlerts(al.data || []);
-      } catch (e) { console.error(e); }
+        if (rl.success) setResourceLoad({ loading: false, error: false, rows: rl.data || [] });
+      } catch (e) { console.error(e); setResourceLoad({ loading: false, error: true, rows: [] }); }
     })();
   }, [projectId]);
 
@@ -315,13 +360,24 @@ function ViewsTab({ projectId, locale }) {
     <div style={{ display: 'grid', gap: 20 }}>
       {kpis && (
         <div className="stats-grid">
-          <div className="stat-card"><div className="stat-label">Planned progress</div><div className="stat-value">{kpis.project.planned_progress}%</div></div>
-          <div className="stat-card"><div className="stat-label">Actual progress</div><div className="stat-value">{kpis.project.actual_progress}%</div></div>
-          <div className="stat-card"><div className="stat-label">Schedule variance</div>
+          <div className="stat-card"><div className="stat-label">{t('schedule.plannedProgress')}</div><div className="stat-value">{kpis.project.planned_progress}%</div></div>
+          <div className="stat-card"><div className="stat-label">{t('schedule.actualProgress')}</div><div className="stat-value">{kpis.project.actual_progress}%</div></div>
+          <div className="stat-card"><div className="stat-label">{t('schedule.scheduleVariance')}</div>
             <div className="stat-value" style={{ color: kpis.project.schedule_variance_percent < 0 ? 'var(--color-danger, #e5534b)' : 'var(--color-success)' }}>{kpis.project.schedule_variance_percent}%</div></div>
           <div className="stat-card"><div className="stat-label">SPI</div><div className="stat-value">{kpis.spi ?? '—'}</div></div>
+          <div className="stat-card"><div className="stat-label">{t('schedule.cpi')}</div><div className="stat-value">{kpis.project.cpi ?? '—'}</div>{kpis.project.cpi == null && <small>{t(`schedule.cpiStatus.${kpis.cpi_status}`)}</small>}</div>
+          {kpis.project.bac != null && <div className="stat-card"><div className="stat-label">{t('schedule.budgetAtCompletion')}</div><div className="stat-value">{Number(kpis.project.bac).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US')}</div></div>}
         </div>
       )}
+      <section className="card" aria-labelledby="schedule-resource-load-title">
+        <h3 id="schedule-resource-load-title">{t('schedule.resourceLoad')}</h3>
+        {resourceLoad.loading ? <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}><span className="spinner" /></div>
+          : resourceLoad.error ? <p role="alert">{t('schedule.resourceLoadFailed')}</p>
+            : resourceLoad.rows.length === 0 ? <p>{t('schedule.noResourceLoad')}</p>
+              : <div className="table-container"><table className="table"><thead><tr><th>{t('schedule.loadDate')}</th><th>{t('schedule.resource')}</th><th>{t('schedule.dailyAllocation')}</th><th>{t('schedule.activities')}</th></tr></thead><tbody>
+                {resourceLoad.rows.map((row) => <tr key={`${row.load_date}:${row.resource_type}:${row.employee_id || row.asset_register_id}`}><td>{fmtDate(row.load_date)}</td><td>{row.resource_name || '—'}</td><td>{row.allocation_percent}%</td><td>{(row.activities || []).map((activity) => activity.activity_code || activity.name).join(', ')}</td></tr>)}
+              </tbody></table></div>}
+      </section>
       {alerts.length > 0 && (
         <div className="card" style={{ padding: 12 }}>
           <h3 style={{ fontSize: 14, marginBottom: 8 }}><AlertTriangle size={14} /> {locale === 'ar' ? 'تنبيهات الجدولة' : 'Schedule alerts'}</h3>
@@ -465,7 +521,7 @@ export default function Schedule() {
         ))}
       </div>
       {tab === 'activities' && <ActivitiesTab projectId={id} locale={locale} t={t} />}
-      {tab === 'views' && <ViewsTab projectId={id} locale={locale} />}
+      {tab === 'views' && <ViewsTab projectId={id} locale={locale} t={t} />}
       {tab === 'baselines' && <BaselinesTab projectId={id} locale={locale} t={t} />}
     </div>
   );

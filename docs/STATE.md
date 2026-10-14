@@ -61,3 +61,11 @@ Phase 7.2 offline site-report queue committed as `7487787` (`Phase 7.2: queue si
 App-wide page grid declarations were converted to responsive classes (110 to 0). All 72 JSX tables now sit in `.table-container` (AST check: 0 unwrapped). Site Management buttons are 44px minimum and form controls 14px. Post-change Playwright: 36 passed / 50 skipped, including offline flow on desktop/mobile; frontend 29/117, i18n and build passed. Phase 7 remains open for bundled IBM Plex Arabic, Lighthouse evidence, and broader route/portal mobile coverage.
 
 Responsive grid/table slice committed as `7fd068a` (`Phase 7.2: make page grids responsive`).
+
+## 2026-10-14 continuation - Phase 8 baseline BAC, financial EVM, resource loading
+
+Implemented and verified the Phase 8 earned-value/resource-load plan item. Migration 0064 adds activity BAC; baseline snapshots capture BAC and milestone status. Financial SPI/CPI use explicit baseline BAC and the central project cost view. Legacy baselines without complete BAC retain quantity SPI and expose CPI as unavailable. Added transactional audit for BAC changes, project-scoped daily resource-load output for employees/assets, and an EN/AR permission-visible schedule editor and analytics table.
+
+Verification: Docker Desktop Engine 28.3.2; only disposable loopback PostgreSQL container `erp-closeout-pg16-20261014` and test database `construction_erp_test` used. Migration output: 1 applied, 125 already applied. Focused schedule PG 6/6; full PG 67/616; backend mocks 53/1,003; lint guards passed; frontend CI 29/120; focused Schedule component 4/4; i18n check/parity passed (35 namespaces / 1,123 English keys); build compiled; changed JS syntax, EN/AR JSON parse, `git diff --check` passed. Exact commands/output summary recorded in `docs/CLOSEOUT_LOG.md`.
+
+Current open Phase 8 items: legacy approvals dual-write hold/retirement and duplicate transition/payment-certificate surfaces. Phase 7 PWA/Lighthouse, Phases 9-11, and all human/production-evidence gates remain open. `docs/CODEX_AUDIT_REPORT.md` remains an untracked user artifact and is not part of this slice. Implementation commit: pending.

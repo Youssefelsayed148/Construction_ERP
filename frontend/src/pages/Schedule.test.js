@@ -19,6 +19,7 @@ describe('schedule progress and resource assignment forms', () => {
       return { ok: true, json: async () => ({ success: true, data: [] }) };
     });
     window.localStorage.setItem('token', 'test-token');
+    window.localStorage.setItem('user', JSON.stringify({ policy_permissions: [{ module: 'schedule', action: 'edit', project_id: 7 }] }));
     container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container);
   });
   afterEach(() => { act(() => root.unmount()); container.remove(); global.fetch = previousFetch; window.localStorage.clear(); });
@@ -62,5 +63,25 @@ describe('schedule progress and resource assignment forms', () => {
     await flush();
     const [, options] = global.fetch.mock.calls.find(([url, request]) => request.method === 'POST' && String(url).endsWith('/assignments'));
     expect(JSON.parse(options.body)).toMatchObject({ employee_id: 9, assigned_from: '2026-07-11', assigned_to: '2026-07-15', allocation_percent: 75 });
+  });
+
+  test('edits activity BAC and sends a non-negative value to the scoped endpoint', async () => {
+    await render();
+    const budgetButton = [...container.querySelectorAll('button')].find((button) => button.textContent.includes('schedule.activityBudget'));
+    expect(budgetButton).toBeTruthy();
+    await act(async () => { budgetButton.click(); });
+    const form = container.querySelector('[role="dialog"] form');
+    await setValue(form.querySelector('input[type="number"]'), '1200.5');
+    await act(async () => { form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
+    await flush();
+    const [url, options] = global.fetch.mock.calls.find(([requestUrl, request]) => request.method === 'PUT' && String(requestUrl).endsWith('/budgeted-cost'));
+    expect(url).toContain('/schedule/activities/5/budgeted-cost');
+    expect(JSON.parse(options.body)).toEqual({ budgeted_cost: 1200.5 });
+  });
+
+  test('hides the budget editor without schedule edit permission', async () => {
+    window.localStorage.setItem('user', JSON.stringify({ policy_permissions: [] }));
+    await render();
+    expect([...container.querySelectorAll('button')].some((button) => button.textContent.includes('schedule.activityBudget'))).toBe(false);
   });
 });

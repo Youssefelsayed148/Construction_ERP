@@ -691,3 +691,11 @@ Verification: real PostgreSQL `event-integrity.pg.test.js` passed 30/30, includi
 Phase 8 reminder tier task is closed. Remaining Phase 8 work: CPI/resource-loaded planning, legacy approval retirement, and duplicate transition/payment-certificate surfaces. Phase 7 and Phases 9–11 remain open.
 
 Reminder-tier implementation commit: `3ae651e` (`Phase 8: honor client receivable reminder rules`). Focused PostgreSQL verification passed 30/30 after correction of the overlong test fixture.
+
+### Phase 8 - baseline BAC, financial SPI/CPI, and daily resource load (2026-10-14)
+
+Schedule activities now accept a non-negative `budgeted_cost` (BAC). Capturing a baseline snapshots BAC and milestone status so later edits do not rewrite baseline values. Financial PV/EV/SPI use those immutable snapshot budgets; CPI uses actual cost from the shared `costView.projectTotal` source. Existing baselines with no complete BAC keep quantity-based SPI and expose CPI as unavailable with an explicit reason. Added the scoped daily planned/active employee and asset resource-load API and analytics table, plus an RBAC-visible activity budget editor. Mutations are audited in their transaction.
+
+Verification on disposable Docker Desktop PostgreSQL 16 (`erp-closeout-pg16-20261014`, database `construction_erp_test`, loopback port 55441): Docker Engine 28.3.2; migration 0064 applied (1 applied, 125 already applied); focused schedule PG suite 6/6; full PG suite 67 suites / 616 tests; backend mocks 53 suites / 1,003 tests; backend lint guards passed; frontend CI 29 suites / 120 tests; Schedule component test 4/4; i18n check passed, parity 35 namespaces / 1,123 English keys; production build compiled; changed JS syntax, EN/AR locale JSON parsing, and `git diff --check` passed. The focused PG suite was rerun after the full suite and again passed 6/6 with the final baseline-capture and audit assertions.
+
+The Phase 8 earned-value/resource-load checkbox is closed. Phase 8 remains open for legacy approval retirement and duplicate transition/payment-certificate surfaces. Phase 7 and Phases 9-11 remain open. Lighthouse/PWA, Playwright for this schedule slice, golden-project parity, Arabic PDF inspection, rollout rehearsal, and human reviews were not run by this slice.

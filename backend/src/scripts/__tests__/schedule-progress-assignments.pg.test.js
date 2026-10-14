@@ -7,7 +7,7 @@ const describePg = enabled ? describe : describe.skip;
 
 describePg('schedule progress history and resource assignments (real PostgreSQL)', () => {
   const tag = String(Date.now()).slice(-7);
-  const created = { projects: [], users: [], organizations: [], participants: [], employees: [], activities: [], assets: [], assignments: [] };
+  const created = { projects: [], users: [], organizations: [], participants: [], employees: [], activities: [], assets: [], assignments: [], costs: [] };
   let app; let server; let base; let owner; let scopedOwner; let project; let otherProject; let employee; let otherEmployee; let asset;
 
   const row = async (sql, params) => (await db.query(sql, params)).rows[0];
@@ -55,6 +55,7 @@ describePg('schedule progress history and resource assignments (real PostgreSQL)
 
   afterAll(async () => {
     if (created.assignments.length) await db.query('DELETE FROM schedule_activity_assignments WHERE id = ANY($1::int[])', [created.assignments]);
+    if (created.costs.length) await db.query('DELETE FROM project_costs WHERE id = ANY($1::int[])', [created.costs]);
     if (created.activities.length) await db.query('DELETE FROM schedule_progress_updates WHERE schedule_activity_id = ANY($1::int[])', [created.activities]);
     if (created.activities.length) await db.query('DELETE FROM schedule_activities WHERE id = ANY($1::int[])', [created.activities]);
     if (created.assets.length) await db.query('DELETE FROM asset_register WHERE id = ANY($1::int[])', [created.assets]);
@@ -89,17 +90,54 @@ describePg('schedule progress history and resource assignments (real PostgreSQL)
     await db.query('UPDATE schedule_activities SET percent_complete = 50 WHERE id = $1', [created.activities[0]]);
     await db.query('UPDATE schedule_activities SET percent_complete = 0 WHERE id = $1', [created.activities[1]]);
     const baseline = [
-      { id: created.activities[0], planned_start: '2026-03-01', planned_finish: '2026-03-11', planned_quantity: 100 },
-      { id: created.activities[1], planned_start: '2026-03-06', planned_finish: '2026-03-16', planned_quantity: 100 },
+      { id: created.activities[0], planned_start: '2026-03-01', planned_finish: '2026-03-11', planned_quantity: 100, budgeted_cost: 1000, is_milestone: false },
+      { id: created.activities[1], planned_start: '2026-03-06', planned_finish: '2026-03-16', planned_quantity: 100, budgeted_cost: 3000, is_milestone: false },
     ];
+    const cost = await row("INSERT INTO project_costs (project_id,source_type,source_id,amount,transaction_date,description) VALUES ($1,$2,$3,250,'2026-03-06','Schedule EVM test') RETURNING id", [project, `schedule_evm_${tag}`, Number(tag)]);
+    created.costs.push(cost.id);
     await db.query('INSERT INTO baselines (project_id,name,data,is_current,created_by) VALUES ($1,$2,$3::jsonb,true,$4)',
       [project, `KPI baseline ${tag}`, JSON.stringify(baseline), owner.userId || null]);
 
     const response = await call('GET', `/api/schedule/schedule/kpis?project_id=${project}&data_date=2026-03-06`);
     expect(response.status).toBe(200);
     expect(response.body.data.spi_source).toBe('current_baseline');
-    // Baseline PV is 50 units and EV is also 50; the changed live plan would yield 0.5.
+    // Baseline financial PV is $500 and EV is $500; the changed live plan would yield 0.5.
     expect(response.body.data.spi).toBe(1);
+    expect(response.body.data).toMatchObject({ spi_basis: 'financial', cpi_source: 'project_cost_view', cpi_status: 'ready' });
+    expect(response.body.data.project).toMatchObject({ bac: 4000, planned_value: 500, earned_value: 500, actual_cost: 250, cpi: 2 });
+  });
+
+  test('sets activity BAC with project scope and rejects invalid values', async () => {
+    const activityId = created.activities[0];
+    const saved = await call('PUT', `/api/schedule/activities/${activityId}/budgeted-cost`, { budgeted_cost: 1234.5 });
+    expect(saved.status).toBe(200);
+    expect(Number(saved.body.data.budgeted_cost)).toBe(1234.5);
+    const audit = await row("SELECT action, module, entity_type FROM activity_log WHERE entity_id = $1 AND module = 'schedule' ORDER BY id DESC LIMIT 1", [activityId]);
+    expect(audit).toMatchObject({ action: 'update', module: 'schedule', entity_type: 'schedule_activity' });
+    const invalid = await call('PUT', `/api/schedule/activities/${activityId}/budgeted-cost`, { budgeted_cost: -1 });
+    expect(invalid.status).toBe(400);
+    expect(invalid.body.error_code).toBe('invalid_activity_budgeted_cost');
+    expect((await callAs(scopedOwner, 'PUT', `/api/schedule/activities/${created.activities[2]}/budgeted-cost`, { budgeted_cost: 10 })).status).toBe(403);
+    const baseline = await call('POST', '/api/schedule/baselines', { project_id: project, name: `Budget snapshot ${tag}` });
+    expect(baseline.status).toBe(201);
+    expect(baseline.body.data.data.find((activity) => activity.id === activityId).budgeted_cost).toBe('1234.50');
+  });
+
+  test('returns project-scoped daily employee load', async () => {
+    const assignment = await call('POST', `/api/schedule/activities/${created.activities[0]}/assignments`, {
+      employee_id: employee, assigned_from: '2026-09-03', assigned_to: '2026-09-05', allocation_percent: 40,
+    });
+    expect(assignment.status).toBe(201);
+    created.assignments.push(assignment.body.data.id);
+    const response = await call('GET', `/api/schedule/resource-load?project_id=${project}&from=2026-09-03&to=2026-09-05`);
+    expect(response.status).toBe(200);
+    expect(response.body.data).toHaveLength(3);
+    expect(response.body.data[0]).toMatchObject({ resource_name: 'Project employee', allocation_percent: '40.00', employee_id: employee });
+    expect(response.body.data[0].activities[0]).toMatchObject({ activity_code: `SC-A-${tag}` });
+    expect((await callAs(scopedOwner, 'GET', `/api/schedule/resource-load?project_id=${otherProject}&from=2026-09-03&to=2026-09-05`)).status).toBe(403);
+    const range = await call('GET', `/api/schedule/resource-load?project_id=${project}&from=2026-01-01&to=2026-05-01`);
+    expect(range.status).toBe(400);
+    expect(range.body.error_code).toBe('invalid_resource_load_range');
   });
 
   test('accepts project team and project asset assignments, rejects overlaps and foreign resources', async () => {

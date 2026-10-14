@@ -1,6 +1,9 @@
 {
   "title": "Schedule",
   "activities": "Activities",
+  "plannedProgress": "Planned progress",
+  "actualProgress": "Actual progress",
+  "scheduleVariance": "Schedule variance",
   "criticalPath": "Critical path",
   "updateProgress": "Update progress",
   "progressHistory": "Progress history",
@@ -30,6 +33,23 @@
   "resourceOverlap": "This resource is already assigned to another activity during these dates.",
   "resourceProjectMismatch": "Choose a resource assigned to this project for the full assignment period.",
   "invalidAssignment": "Check the resource and assignment dates.",
+  "activityBudget": "Activity budget",
+  "budgetAtCompletion": "Budget at completion",
+  "budgetAtCompletionHelp": "Enter the approved activity budget. This value is captured in the next baseline and supports financial SPI and CPI.",
+  "cpi": "Cost performance index (CPI)",
+  "cpiStatus": {
+    "ready": "Calculated from baseline activity budgets and project actual cost.",
+    "baseline_required": "Capture a current schedule baseline to calculate CPI.",
+    "activity_budgets_required": "Set a budget for every work activity, then capture a new baseline.",
+    "actual_cost_required": "Project actual cost must be greater than zero to calculate CPI."
+  },
+  "resourceLoad": "Resource load",
+  "resourceLoadFailed": "Resource loading could not be retrieved.",
+  "noResourceLoad": "No planned or active resource assignments in this date range.",
+  "loadDate": "Date",
+  "dailyAllocation": "Daily allocation",
+  "budgetSaveFailed": "The activity budget could not be saved.",
+  "activities": "Activities",
   "assignmentStatuses": {
     "planned": "Planned",
     "active": "Active",

@@ -194,16 +194,30 @@ function spi(project, activities, dataDate = new Date()) {
   return pv > 0 ? Math.round((ev / pv) * 1000) / 1000 : (ev > 0 ? null : 0);
 }
 
-// CPI = EV/AC — needs cost data per activity; provided with cost data.
-function cpi(project, activities, costsByActivity) {
-  if (!project || project.earned_value_enabled !== true) return null;
-  let ev = 0, ac = 0;
-  for (const a of activities) {
-    const weight = toNum(a.planned_quantity) || 1;
-    ev += (toNum(a.percent_complete) / 100) * weight;
-    ac += toNum((costsByActivity || {})[a.id]);
+// Financial PV/EV use an explicit baseline BAC for each non-milestone activity.
+// Missing BAC is not inferred from BOQ sell rates or quantities.
+function earnedValue(activities, dataDate = new Date()) {
+  const work = (activities || []).filter((activity) => !activity.is_milestone);
+  if (!work.length || work.some((activity) => activity.budgeted_cost == null
+    || !Number.isFinite(Number(activity.budgeted_cost)) || Number(activity.budgeted_cost) < 0
+    || !toDate(activity.planned_start) || !toDate(activity.planned_finish))) return null;
+  let bac = 0; let pv = 0; let ev = 0;
+  for (const activity of work) {
+    const amount = toNum(activity.budgeted_cost);
+    bac += amount;
+    pv += amount * plannedProgress(activity, dataDate) / 100;
+    ev += amount * toNum(activity.percent_complete) / 100;
   }
-  return ac > 0 ? Math.round((ev / ac) * 1000) / 1000 : null;
+  if (bac <= 0) return null;
+  return { bac: Math.round(bac * 100) / 100, pv: Math.round(pv * 100) / 100, ev: Math.round(ev * 100) / 100 };
+}
+
+// CPI = financial EV / actual cost from the shared project cost view.
+function cpi(project, activities, actualCost, dataDate = new Date()) {
+  if (!project || project.earned_value_enabled !== true) return null;
+  const values = earnedValue(activities, dataDate);
+  const actual = toNum(actualCost);
+  return values && actual > 0 ? Math.round((values.ev / actual) * 1000) / 1000 : null;
 }
 
 // S-curve: planned vs actual cumulative points over the project window.
@@ -424,6 +438,7 @@ module.exports = {
   computeSchedule,
   plannedProgress,
   scheduleVariancePercent,
+  earnedValue,
   spi,
   cpi,
   sCurve,

@@ -16,6 +16,7 @@ const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const engine = require('../services/schedulingEngine');
+const costView = require('../services/costView');
 const { dateOnly } = require('../utils/validation');
 const { normalizeDateFields } = require('../utils/dateOnly');
 
@@ -31,6 +32,50 @@ function currentLocalDate() {
   const now = new Date(); const pad = (value) => String(value).padStart(2, '0');
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
+
+function isoDay(value) {
+  return value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
+}
+
+// Daily resource loading for planned/active schedule assignments.
+router.get('/resource-load', authenticate, authorize(), async (req, res) => {
+  try {
+    const schema = Joi.object({
+      project_id: Joi.number().integer().positive().required(),
+      from: Joi.date().iso().optional(),
+      to: Joi.date().iso().optional(),
+    });
+    const { error, value } = schema.validate(req.query);
+    if (error) return scheduleFailure(res, 400, 'invalid_resource_load_range');
+    if (!scheduleProjectAllowed(req, value.project_id)) return scheduleFailure(res, 403, 'schedule_project_scope_denied');
+    const from = value.from ? isoDay(value.from) : currentLocalDate();
+    const to = value.to ? isoDay(value.to) : isoDay(new Date(new Date(`${from}T12:00:00`).getTime() + 13 * 86400000));
+    const dayCount = Math.floor((new Date(`${to}T12:00:00`).getTime() - new Date(`${from}T12:00:00`).getTime()) / 86400000);
+    if (dayCount < 0 || dayCount > 90) return scheduleFailure(res, 400, 'invalid_resource_load_range');
+    const rows = (await query(
+      `WITH days AS (
+         SELECT generate_series($2::date, $3::date, interval '1 day')::date AS load_date
+       )
+       SELECT d.load_date, a.employee_id, a.asset_register_id,
+              COALESCE(e.name_en, e.name_ar, ar.name) AS resource_name,
+              CASE WHEN a.employee_id IS NOT NULL THEN 'employee' ELSE 'asset' END AS resource_type,
+              SUM(a.allocation_percent)::numeric(7,2) AS allocation_percent,
+              JSON_AGG(JSON_BUILD_OBJECT('activity_id', sa.id, 'activity_code', sa.activity_code, 'name', sa.name)
+                ORDER BY sa.planned_start NULLS LAST, sa.id) AS activities
+         FROM days d
+         JOIN schedule_activity_assignments a ON d.load_date BETWEEN a.assigned_from AND a.assigned_to
+         JOIN schedule_activities sa ON sa.id = a.schedule_activity_id AND sa.project_id = a.project_id
+         LEFT JOIN employees e ON e.id = a.employee_id
+         LEFT JOIN asset_register ar ON ar.id = a.asset_register_id
+        WHERE a.project_id = $1 AND a.status IN ('planned', 'active')
+        GROUP BY d.load_date, a.employee_id, a.asset_register_id, e.name_en, e.name_ar, ar.name
+        ORDER BY d.load_date, resource_type, resource_name`, [value.project_id, from, to]
+    )).rows;
+    res.json({ success: true, data: rows, from, to });
+  } catch (error) {
+    return scheduleFailure(res, 500, 'schedule_resource_load_failed');
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Calendars
@@ -173,6 +218,7 @@ router.post('/activities', authenticate, authorize(), async (req, res) => {
       planned_finish: Joi.date().iso().allow(null).optional(),
       original_duration: Joi.number().integer().min(0).default(0),
       planned_quantity: Joi.number().allow(null).optional(),
+      budgeted_cost: Joi.number().min(0).precision(2).allow(null).optional(),
       progress_source: Joi.string().valid('manual', 'quantity').default('manual'),
       is_milestone: Joi.boolean().default(false),
       notes: Joi.string().allow('', null).optional(),
@@ -192,19 +238,41 @@ router.post('/activities', authenticate, authorize(), async (req, res) => {
         `INSERT INTO schedule_activities (project_id, activity_code, name, wbs_path, work_package, work_package_id, phase_id,
            project_location_id, boq_item_id, boq_location_allocation_id, calendar_id, responsible_organization_id,
            responsible_user_id, subcontractor_organization_id, planned_start, planned_finish, original_duration,
-           planned_quantity, progress_source, is_milestone, notes, created_by)
-         VALUES ($1,$2,$3,$4,$5,$22,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING *`,
-        [value.project_id, code, value.name, value.wbs_path || null, wp.text, value.phase_id || null,
+           planned_quantity, budgeted_cost, progress_source, is_milestone, notes, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING *`,
+        [value.project_id, code, value.name, value.wbs_path || null, wp.text, wp.id, value.phase_id || null,
          value.project_location_id || null, value.boq_item_id || null, value.boq_location_allocation_id || null,
          value.calendar_id || null, value.responsible_organization_id || null, value.responsible_user_id || null,
          value.subcontractor_organization_id || null, value.planned_start || null, value.planned_finish || null,
          value.is_milestone ? 0 : value.original_duration, value.planned_quantity || null,
-         value.progress_source, value.is_milestone, value.notes || null, req.user.id, wp.id]);
+         value.budgeted_cost ?? null, value.progress_source, value.is_milestone, value.notes || null, req.user.id]);
       await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'schedule', description: `Created activity ${code}: ${value.name}`, entityId: inserted.rows[0].id, entityType: 'schedule_activity' }, { query: q });
       return inserted;
     });
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+// Set the activity BAC independently so the change has its own authorization,
+// project-scope check, and transactional audit entry.
+router.put('/activities/:id/budgeted-cost', authenticate, authorize('owner', 'admin', 'project_manager', 'planning'), async (req, res) => {
+  try {
+    const schema = Joi.object({ budgeted_cost: Joi.number().min(0).precision(2).allow(null).required() });
+    const { error, value } = schema.validate(req.body);
+    if (error) return scheduleFailure(res, 400, 'invalid_activity_budgeted_cost');
+    const updated = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const activity = (await q('SELECT id, project_id, activity_code FROM schedule_activities WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!activity) throw Object.assign(new Error('Activity not found'), { statusCode: 404, error_code: 'schedule_activity_not_found' });
+      if (!scheduleProjectAllowed(req, activity.project_id)) throw Object.assign(new Error('Project access denied'), { statusCode: 403, error_code: 'schedule_project_scope_denied' });
+      const row = (await q('UPDATE schedule_activities SET budgeted_cost = $1, updated_at = NOW() WHERE id = $2 RETURNING *', [value.budgeted_cost, activity.id])).rows[0];
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'schedule', description: `Set budget at completion for activity ${activity.activity_code || activity.id}`, entityId: activity.id, entityType: 'schedule_activity' }, { query: q });
+      return row;
+    });
+    res.json({ success: true, data: updated });
+  } catch (error) {
+    return scheduleFailure(res, error.statusCode || 500, error.error_code || 'schedule_activity_budget_update_failed');
+  }
 });
 
 router.put('/activities/:id', authenticate, authorize(), async (req, res) => {
@@ -539,9 +607,10 @@ router.get('/schedule/kpis', authenticate, authorize(), async (req, res) => {
     if (!project_id) return res.status(400).json({ success: false, error: 'project_id is required' });
     const project = (await query('SELECT id, earned_value_enabled FROM projects WHERE id = $1', [project_id])).rows[0];
     if (!project) return res.status(404).json({ success: false, error: 'Project not found' });
+    if (!scheduleProjectAllowed(req, project.id)) return scheduleFailure(res, 403, 'schedule_project_scope_denied');
     const acts = (await query('SELECT * FROM schedule_activities WHERE project_id = $1', [project_id])).rows;
     const dataDate = data_date ? new Date(data_date) : new Date();
-    const perActivity = acts.map((a) => ({
+    let perActivity = acts.map((a) => ({
       id: a.id, activity_code: a.activity_code, name: a.name,
       planned_progress: engine.plannedProgress(a, dataDate),
       actual_progress: engine.toNum(a.percent_complete),
@@ -574,16 +643,50 @@ router.get('/schedule/kpis', authenticate, authorize(), async (req, res) => {
     }
     const baselineAvailable = Array.isArray(baselineActivities);
     const spiProject = baselineAvailable ? { ...project, earned_value_enabled: true } : project;
-    const spi = engine.spi(spiProject, baselineAvailable ? baselineActivities : acts, dataDate);
+    const baselineEvm = baselineAvailable ? engine.earnedValue(baselineActivities, dataDate) : null;
+    const baselineSpi = baselineAvailable
+      ? (baselineEvm && baselineEvm.pv > 0 ? Math.round((baselineEvm.ev / baselineEvm.pv) * 1000) / 1000 : null)
+      : null;
+    const spi = baselineAvailable && baselineEvm ? baselineSpi : engine.spi(spiProject, baselineAvailable ? baselineActivities : acts, dataDate);
+    const actualCost = baselineEvm ? await costView.projectTotal(query, project_id) : null;
+    const cpi = baselineEvm ? engine.cpi(spiProject, baselineActivities, actualCost, dataDate) : null;
+    if (baselineEvm) {
+      const byId = new Map(baselineActivities.map((activity) => [String(activity.id), activity]));
+      perActivity = perActivity.map((row) => {
+        const activity = byId.get(String(row.id));
+        const budgetedCost = activity && !activity.is_milestone ? engine.toNum(activity.budgeted_cost) : 0;
+        return {
+          ...row,
+          budgeted_cost: budgetedCost,
+          planned_value: Math.round(budgetedCost * row.planned_progress) / 100,
+          earned_value: Math.round(budgetedCost * row.actual_progress) / 100,
+        };
+      });
+    }
     res.json({
       success: true,
       data: {
-        per_activity: perActivity, project: overall, spi,
+        per_activity: perActivity,
+        project: {
+          ...overall,
+          bac: baselineEvm?.bac ?? null,
+          planned_value: baselineEvm?.pv ?? null,
+          earned_value: baselineEvm?.ev ?? null,
+          actual_cost: actualCost,
+          cpi,
+        },
+        spi,
+        spi_basis: baselineEvm ? 'financial' : baselineAvailable ? 'quantity' : project.earned_value_enabled ? 'quantity' : null,
         spi_source: baselineAvailable ? 'current_baseline' : project.earned_value_enabled ? 'current_schedule' : null,
+        cpi_source: baselineEvm ? 'project_cost_view' : null,
+        cpi_status: cpi != null ? 'ready' : !baselineAvailable ? 'baseline_required' : !baselineEvm ? 'activity_budgets_required' : 'actual_cost_required',
+        cpi_note: cpi != null ? undefined : baselineAvailable
+          ? baselineEvm ? 'Actual cost must be greater than zero to calculate CPI' : 'Capture budgeted cost for every non-milestone activity in the baseline to calculate CPI'
+          : 'A current baseline with activity budgets is required to calculate CPI',
         spi_note: spi == null ? 'Earned-value management is not enabled for this project' : undefined,
       },
     });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { console.error('schedule.kpis.failed', error); scheduleFailure(res, 500, 'schedule_kpis_failed'); }
 });
 
 router.get('/schedule/s-curve', authenticate, authorize(), async (req, res) => {
@@ -640,6 +743,8 @@ router.post('/schedule/milestones/:id/link', authenticate, authorize(), async (r
 router.get('/baselines', authenticate, authorize(), async (req, res) => {
   try {
     const { project_id } = req.query;
+    if (!project_id) return scheduleFailure(res, 400, 'invalid_project_id');
+    if (!scheduleProjectAllowed(req, project_id)) return scheduleFailure(res, 403, 'schedule_project_scope_denied');
     let conditions = []; let params = []; let idx = 1;
     if (project_id) { conditions.push(`b.project_id = $${idx++}`); params.push(project_id); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -656,10 +761,12 @@ router.post('/baselines', authenticate, authorize(), async (req, res) => {
     const schema = Joi.object({ project_id: Joi.number().integer().required(), name: Joi.string().required() });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (!scheduleProjectAllowed(req, value.project_id)) return scheduleFailure(res, 403, 'schedule_project_scope_denied');
     const acts = (await query('SELECT * FROM schedule_activities WHERE project_id = $1', [value.project_id])).rows;
     const snapshot = acts.map((a) => ({
       id: a.id, activity_code: a.activity_code, name: a.name, planned_start: a.planned_start,
       planned_finish: a.planned_finish, original_duration: a.original_duration, planned_quantity: a.planned_quantity,
+      budgeted_cost: a.budgeted_cost, is_milestone: a.is_milestone,
     }));
     const r = await transaction(async (client) => {
       const q = client.query.bind(client);
