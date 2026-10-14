@@ -25,7 +25,7 @@ const pending = fs.existsSync(pendingPath) ? JSON.parse(fs.readFileSync(pendingP
 const describePg = process.env.TEST_PG === '1' ? describe : describe.skip;
 const ONLY = process.env.R2_ONLY ? new RegExp(process.env.R2_ONLY) : null;
 // Infrastructure tables written outside the business transaction by design.
-const INFRA_TABLES = new Set(['v1_rate_limits', 'rate_limits', 'user_sessions', 'refresh_tokens', 'event_outbox_attempts']);
+const INFRA_TABLES = new Set(['idempotency_keys', 'v1_rate_limits', 'rate_limits', 'user_sessions', 'refresh_tokens', 'event_outbox_attempts']);
 
 function enumerateMutations(app) {
   const routes = new Set();
@@ -54,10 +54,10 @@ describePg('R2 every mounted mutation has a successful audited payload', () => {
   let seq = 0;
   const one = async (sql, params) => (await db.query(sql, params)).rows[0];
   const counts = (id) => one('SELECT (SELECT count(*)::int FROM activity_log WHERE user_id = $1) AS activity, (SELECT count(*)::int FROM audit_events WHERE user_id = $1 OR actor_id = $1) AS policy', [id]);
-  const send = async (method, url, body, bearer) => {
+  const send = async (method, url, body, bearer, extraHeaders = {}) => {
     const response = await fetch(new URL(url, base), {
       method,
-      headers: { Authorization: `Bearer ${bearer}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${bearer}`, 'Content-Type': 'application/json', ...extraHeaders },
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: AbortSignal.timeout(20000),
     });
@@ -68,8 +68,8 @@ describePg('R2 every mounted mutation has a successful audited payload', () => {
   // Fixture helpers: create prerequisites through the API as owner (valid by construction).
   const ctx = () => {
     const n = () => `${tag}-${++seq}`;
-    const api = async (method, url, body, expected = [200, 201]) => {
-      const r = await send(method, url, body, token);
+    const api = async (method, url, body, expected = [200, 201], headers = {}) => {
+      const r = await send(method, url, body, token, headers);
       if (!expected.includes(r.status)) throw new Error(`prerequisite ${method} ${url} -> ${r.status} ${r.text.slice(0, 160)}`);
       return r.json?.data ?? r.json;
     };
@@ -131,7 +131,7 @@ describePg('R2 every mounted mutation has a successful audited payload', () => {
     expect(enumerateMutations(app)).toContain(key);
     const payload = await registry[key](ctx());
     const before = await counts(owner.id);
-    const r = await send(key.split(' ')[0], payload.path, payload.body, token);
+    const r = await send(key.split(' ')[0], payload.path, payload.body, token, payload.headers);
     if (r.status !== payload.status) throw new Error(`R2 fixture error ${key}: status=${r.status} expected ${payload.status} ${r.text.slice(0, 200)}`);
     const after = await counts(owner.id);
     const delta = { activity: after.activity - before.activity, audit_events: after.policy - before.policy };
@@ -143,7 +143,7 @@ describePg('R2 every mounted mutation has a successful audited payload', () => {
     const payload = await registry[key](ctx());
     if (payload.nonAtomic) { console.log(`R2 rollback skipped ${key}: documented non-atomic exception - ${payload.nonAtomic}`); return; }
     const { xid } = await one('SELECT txid_current()::text AS xid');
-    const r = await send(key.split(' ')[0], payload.path, payload.body, failToken);
+    const r = await send(key.split(' ')[0], payload.path, payload.body, failToken, payload.headers);
     const { rows } = await db.query(`
       SELECT c.relname, (xpath('/row/n/text()', query_to_xml(format('SELECT count(*) AS n FROM %I.%I WHERE xmin::text::bigint > %s', n.nspname, c.relname, $1::bigint), false, true, '')))[1]::text::int AS n
       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace

@@ -5,6 +5,7 @@ const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
+const { auditedMutation } = require('../utils/auditedMutation');
 const provisioning = require('../services/projectProvisioning');
 
 const PROJECT_TYPES = ['residential', 'commercial', 'industrial', 'infrastructure', 'mixed'];
@@ -220,11 +221,11 @@ const legacyCreate = async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    if (!value.code) {
-      value.code = await nextNumber(query, { table: 'projects', column: 'code', prefix: 'PRJ', pad: 4 });
-    }
-
     const result = await transaction(async (client) => {
+      // The number is drawn on the transaction client so a rolled-back create does not burn a counter.
+      if (!value.code) {
+        value.code = await nextNumber(client.query.bind(client), { table: 'projects', column: 'code', prefix: 'PRJ', pad: 4 });
+      }
       const project = await client.query(
         `INSERT INTO projects (code, name, name_ar, name_en, address, city, project_type, client_id, project_manager_id, contract_value, budget, start_date, expected_completion, status)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
@@ -288,12 +289,15 @@ router.post('/:id/phases', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const r = await query(
-      `INSERT INTO project_phases (project_id, code, name, name_ar, name_en, sort_order, start_date, end_date, budget)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-      [req.params.id, value.code || `PH-${value.sort_order}`, value.name_ar, value.name_ar, value.name_en || value.name_ar, value.sort_order, value.start_date, value.end_date, value.budget]
-    );
-    res.status(201).json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'create', module: 'projects', entityType: 'project_phase' }, async (q) => {
+      const r = await q(
+        `INSERT INTO project_phases (project_id, code, name, name_ar, name_en, sort_order, start_date, end_date, budget)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+        [req.params.id, value.code || `PH-${value.sort_order}`, value.name_ar, value.name_ar, value.name_en || value.name_ar, value.sort_order, value.start_date, value.end_date, value.budget]
+      );
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], amount: Number(r.rows[0].budget), description: `Created phase ${r.rows[0].code}` };
+    });
+    res.status(201).json({ success: true, data: out.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -313,14 +317,19 @@ router.put('/:projectId/phases/:phaseId', authenticate, authorize(), async (req,
       if (v !== undefined) { sets.push(`${k} = $${i++}`); p.push(v); }
     }
     p.push(req.params.phaseId, req.params.projectId);
-    const outcome = await transaction(async (client) => {
-      const q = client.query.bind(client);
+    const outcome = await auditedMutation(req, { action: 'update', module: 'projects', entityType: 'project_phase' }, async (q) => {
+      const before = (await q('SELECT * FROM project_phases WHERE id = $1 AND project_id = $2 FOR UPDATE', [req.params.phaseId, req.params.projectId])).rows[0];
+      if (!before) return { skipAudit: true, notFound: true };
       const updated = await q(`UPDATE project_phases SET ${sets.join(', ')} WHERE id = $${i} AND project_id = $${i + 1} RETURNING *`, p);
-      if (updated.rows.length === 0) return { notFound: true };
-      if (value.completion_percentage !== undefined) {
-        await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'override_progress', module: 'projects', description: `Manual progress override on phase ${updated.rows[0].code || updated.rows[0].id} of project #${req.params.projectId}`, entityId: req.params.phaseId, entityType: 'project_phase' }, { query: q });
-      }
-      return { row: updated.rows[0] };
+      // Every phase change is audited; a manual completion override keeps its distinct action.
+      const override = value.completion_percentage !== undefined;
+      return {
+        row: updated.rows[0], entityId: before.id, projectId: before.project_id, before, after: updated.rows[0],
+        oldStatus: before.status, newStatus: updated.rows[0].status, action: override ? 'override_progress' : 'update',
+        description: override
+          ? `Manual progress override on phase ${updated.rows[0].code || updated.rows[0].id} of project #${req.params.projectId}`
+          : `Updated phase ${updated.rows[0].code || updated.rows[0].id} of project #${req.params.projectId}`,
+      };
     });
     if (outcome.notFound) return res.status(404).json({ success: false, error: 'Phase not found' });
     res.json({ success: true, data: outcome.row });
@@ -328,9 +337,15 @@ router.put('/:projectId/phases/:phaseId', authenticate, authorize(), async (req,
 });
 
 router.delete('/:projectId/phases/:phaseId', authenticate, authorize(), async (req, res) => {
-  const r = await query('DELETE FROM project_phases WHERE id = $1 AND project_id = $2', [req.params.phaseId, req.params.projectId]);
-  if (r.rowCount === 0) return res.status(404).json({ success: false, error: 'Phase not found' });
-  res.json({ success: true, message: 'Deleted' });
+  try {
+    const out = await auditedMutation(req, { action: 'delete', module: 'projects', entityType: 'project_phase' }, async (q) => {
+      const r = await q('DELETE FROM project_phases WHERE id = $1 AND project_id = $2 RETURNING *', [req.params.phaseId, req.params.projectId]);
+      if (r.rowCount === 0) return { skipAudit: true };
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, before: r.rows[0], description: `Deleted phase ${r.rows[0].code}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Phase not found' });
+    res.json({ success: true, message: 'Deleted' });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 // -- Team --
@@ -342,18 +357,27 @@ router.post('/:id/team', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const existing = await query('SELECT id FROM project_team WHERE project_id = $1 AND employee_id = $2', [req.params.id, value.employee_id]);
-    if (existing.rows.length > 0) return res.status(400).json({ success: false, error: 'Employee already in team' });
-
-    const r = await query('INSERT INTO project_team (project_id, employee_id, role) VALUES ($1,$2,$3) RETURNING *', [req.params.id, value.employee_id, value.role]);
-    res.status(201).json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'assign', module: 'projects', entityType: 'project_team' }, async (q) => {
+      const existing = await q('SELECT id FROM project_team WHERE project_id = $1 AND employee_id = $2', [req.params.id, value.employee_id]);
+      if (existing.rows.length > 0) return { skipAudit: true, duplicate: true };
+      const r = await q('INSERT INTO project_team (project_id, employee_id, role) VALUES ($1,$2,$3) RETURNING *', [req.params.id, value.employee_id, value.role]);
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], description: `Added employee ${value.employee_id} to project #${req.params.id} as ${value.role}` };
+    });
+    if (out.duplicate) return res.status(400).json({ success: false, error: 'Employee already in team' });
+    res.status(201).json({ success: true, data: out.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 router.delete('/:projectId/team/:teamId', authenticate, authorize(), async (req, res) => {
-  const r = await query('DELETE FROM project_team WHERE id = $1 AND project_id = $2', [req.params.teamId, req.params.projectId]);
-  if (r.rowCount === 0) return res.status(404).json({ success: false, error: 'Team member not found' });
-  res.json({ success: true, message: 'Removed' });
+  try {
+    const out = await auditedMutation(req, { action: 'unassign', module: 'projects', entityType: 'project_team' }, async (q) => {
+      const r = await q('DELETE FROM project_team WHERE id = $1 AND project_id = $2 RETURNING *', [req.params.teamId, req.params.projectId]);
+      if (r.rowCount === 0) return { skipAudit: true };
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, before: r.rows[0], description: `Removed employee ${r.rows[0].employee_id} from project #${req.params.projectId}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Team member not found' });
+    res.json({ success: true, message: 'Removed' });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 // -- Milestones --
@@ -366,12 +390,15 @@ router.post('/:id/milestones', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const r = await query(
-      `INSERT INTO project_milestones (project_id, title, title_ar, title_en, target_date, achieved_date)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [req.params.id, value.title_ar, value.title_ar, value.title_en || value.title_ar, value.target_date, value.achieved_date]
-    );
-    res.status(201).json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'create', module: 'projects', entityType: 'project_milestone' }, async (q) => {
+      const r = await q(
+        `INSERT INTO project_milestones (project_id, title, title_ar, title_en, target_date, achieved_date)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+        [req.params.id, value.title_ar, value.title_ar, value.title_en || value.title_ar, value.target_date, value.achieved_date]
+      );
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], description: `Created milestone ${value.title_ar}` };
+    });
+    res.status(201).json({ success: true, data: out.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -390,16 +417,27 @@ router.put('/:projectId/milestones/:milestoneId', authenticate, authorize(), asy
       if (v !== undefined) { sets.push(`${k} = $${i++}`); p.push(v); }
     }
     p.push(req.params.milestoneId, req.params.projectId);
-    const r = await query(`UPDATE project_milestones SET ${sets.join(', ')} WHERE id = $${i} AND project_id = $${i + 1} RETURNING *`, p);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Milestone not found' });
-    res.json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'update', module: 'projects', entityType: 'project_milestone' }, async (q) => {
+      const before = (await q('SELECT * FROM project_milestones WHERE id = $1 AND project_id = $2 FOR UPDATE', [req.params.milestoneId, req.params.projectId])).rows[0];
+      if (!before) return { skipAudit: true };
+      const r = await q(`UPDATE project_milestones SET ${sets.join(', ')} WHERE id = $${i} AND project_id = $${i + 1} RETURNING *`, p);
+      return { data: r.rows[0], entityId: before.id, projectId: before.project_id, before, after: r.rows[0], oldStatus: before.status, newStatus: r.rows[0].status, description: `Updated milestone ${before.title}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Milestone not found' });
+    res.json({ success: true, data: out.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 router.delete('/:projectId/milestones/:milestoneId', authenticate, authorize(), async (req, res) => {
-  const r = await query('DELETE FROM project_milestones WHERE id = $1 AND project_id = $2', [req.params.milestoneId, req.params.projectId]);
-  if (r.rowCount === 0) return res.status(404).json({ success: false, error: 'Milestone not found' });
-  res.json({ success: true, message: 'Deleted' });
+  try {
+    const out = await auditedMutation(req, { action: 'delete', module: 'projects', entityType: 'project_milestone' }, async (q) => {
+      const r = await q('DELETE FROM project_milestones WHERE id = $1 AND project_id = $2 RETURNING *', [req.params.milestoneId, req.params.projectId]);
+      if (r.rowCount === 0) return { skipAudit: true };
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, before: r.rows[0], description: `Deleted milestone ${r.rows[0].title}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Milestone not found' });
+    res.json({ success: true, message: 'Deleted' });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 module.exports = router;

@@ -16,6 +16,7 @@ const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
+const { auditedMutation } = require('../utils/auditedMutation');
 const engine = require('../services/schedulingEngine');
 const costView = require('../services/costView');
 const { dateOnly } = require('../utils/validation');
@@ -105,11 +106,14 @@ router.post('/calendars', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     authorizeProjectPayload(req, value);
-    const r = await query(
-      `INSERT INTO calendars (project_id, name, is_default, work_days, exceptions, created_by)
-       VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6) RETURNING *`,
-      [authorizedProjectId(req, value), value.name, value.is_default, JSON.stringify(value.work_days), JSON.stringify(value.exceptions), req.user.id]);
-    res.status(201).json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'create', module: 'schedule', entityType: 'calendar' }, async (q) => {
+      const r = await q(
+        `INSERT INTO calendars (project_id, name, is_default, work_days, exceptions, created_by)
+         VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6) RETURNING *`,
+        [authorizedProjectId(req, value), value.name, value.is_default, JSON.stringify(value.work_days), JSON.stringify(value.exceptions), req.user.id]);
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], description: `Created calendar ${value.name}` };
+    });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -231,12 +235,13 @@ router.post('/activities', authenticate, authorize(), async (req, res) => {
     const wp = await projectSetup.resolveOrRespond(query, res, authorizedProjectId(req, value), value);
     if (!wp) return;
     // Auto code when absent.
-    let code = value.activity_code || null;
-    if (!code) {
-      code = await nextNumber(query, { table: 'schedule_activities', column: 'activity_code', prefix: 'A', sep: '', pad: 4, where: { project_id: authorizedProjectId(req, value) } });
-    }
     const r = await transaction(async (client) => {
       const q = client.query.bind(client);
+      // Drawn on the transaction client: a rolled-back create does not burn an activity number.
+      let code = value.activity_code || null;
+      if (!code) {
+        code = await nextNumber(q, { table: 'schedule_activities', column: 'activity_code', prefix: 'A', sep: '', pad: 4, where: { project_id: authorizedProjectId(req, value) } });
+      }
       const inserted = await q(
         `INSERT INTO schedule_activities (project_id, activity_code, name, wbs_path, work_package, work_package_id, phase_id,
            project_location_id, boq_item_id, boq_location_allocation_id, calendar_id, responsible_organization_id,
@@ -311,15 +316,21 @@ router.put('/activities/:id', authenticate, authorize(), async (req, res) => {
     }
     sets.push('updated_at = NOW()');
     params.push(req.params.id);
-    const r = await query(`UPDATE schedule_activities SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Activity not found' });
-    // Date/quantity changes recompute demand (Phase 9 event hook, already routed). A failed enqueue is an error.
-    const { fireEvent } = require('../utils/activity');
-    await fireEvent({
-      eventType: 'schedule.activity.changed', entityType: 'schedule_activity', entityId: parseInt(req.params.id, 10),
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      payload: { project_id: r.rows[0].project_id, percent_complete: r.rows[0].percent_complete },
+    const audited = await auditedMutation(req, { action: 'update', module: 'schedule', entityType: 'schedule_activity' }, async (q) => {
+      const before = (await q('SELECT * FROM schedule_activities WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true, rows: [] };
+      const updated = await q(`UPDATE schedule_activities SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
+      // Date/quantity changes recompute demand (Phase 9 event hook, already routed). A failed enqueue is an error.
+      const { fireEvent } = require('../utils/activity');
+      await fireEvent({
+        eventType: 'schedule.activity.changed', entityType: 'schedule_activity', entityId: parseInt(req.params.id, 10),
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        payload: { project_id: updated.rows[0].project_id, percent_complete: updated.rows[0].percent_complete },
+      }, { query: q });
+      return { rows: updated.rows, entityId: before.id, projectId: before.project_id, before, after: updated.rows[0], oldStatus: before.status, newStatus: updated.rows[0].status, description: `Updated activity ${before.activity_code || before.id}` };
     });
+    const r = { rows: audited.rows };
+    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Activity not found' });
     // Phase 3.5: a schedule change recomputes the project's derived (duration-weighted) progress.
     try {
       const progressEngine = require('../services/progressEngine');
@@ -331,8 +342,12 @@ router.put('/activities/:id', authenticate, authorize(), async (req, res) => {
 
 router.delete('/activities/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const r = await query('DELETE FROM schedule_activities WHERE id = $1 RETURNING activity_code, project_id', [req.params.id]);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Activity not found' });
+    const out = await auditedMutation(req, { action: 'delete', module: 'schedule', entityType: 'schedule_activity' }, async (q) => {
+      const r = await q('DELETE FROM schedule_activities WHERE id = $1 RETURNING *', [req.params.id]);
+      if (r.rows.length === 0) return { skipAudit: true };
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, before: r.rows[0], description: `Deleted activity ${r.rows[0].activity_code || r.rows[0].id}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Activity not found' });
     res.json({ success: true, message: 'Activity deleted' });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -544,18 +559,25 @@ router.post('/relationships', authenticate, authorize(), async (req, res) => {
     if (value.predecessor_id === value.successor_id) {
       return res.status(400).json({ success: false, error: 'An activity cannot depend on itself' });
     }
-    const r = await query(
-      `INSERT INTO activity_relationships (project_id, predecessor_id, successor_id, relationship_type, lag_days, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [authorizedProjectId(req, value), value.predecessor_id, value.successor_id, value.relationship_type, value.lag_days, req.user.id]);
-    res.status(201).json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'create', module: 'schedule', entityType: 'activity_relationship' }, async (q) => {
+      const r = await q(
+        `INSERT INTO activity_relationships (project_id, predecessor_id, successor_id, relationship_type, lag_days, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+        [authorizedProjectId(req, value), value.predecessor_id, value.successor_id, value.relationship_type, value.lag_days, req.user.id]);
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], description: `Linked activity ${value.predecessor_id} -> ${value.successor_id} (${value.relationship_type})` };
+    });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
 router.delete('/relationships/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const r = await query('DELETE FROM activity_relationships WHERE id = $1 RETURNING id', [req.params.id]);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Relationship not found' });
+    const out = await auditedMutation(req, { action: 'delete', module: 'schedule', entityType: 'activity_relationship' }, async (q) => {
+      const r = await q('DELETE FROM activity_relationships WHERE id = $1 RETURNING *', [req.params.id]);
+      if (r.rows.length === 0) return { skipAudit: true };
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, before: r.rows[0], description: `Removed relationship ${r.rows[0].predecessor_id} -> ${r.rows[0].successor_id}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Relationship not found' });
     res.json({ success: true, message: 'Relationship deleted' });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -732,11 +754,16 @@ router.post('/schedule/milestones/:id/link', authenticate, authorize(), async (r
     const schema = Joi.object({ schedule_activity_id: Joi.number().integer().required() });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const r = await query(
-      `UPDATE project_milestones SET schedule_activity_id = $1 WHERE id = $2 RETURNING *`,
-      [value.schedule_activity_id, req.params.id]);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Milestone not found' });
-    res.json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'link', module: 'schedule', entityType: 'project_milestone' }, async (q) => {
+      const before = (await q('SELECT * FROM project_milestones WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true };
+      const r = await q(
+        `UPDATE project_milestones SET schedule_activity_id = $1 WHERE id = $2 RETURNING *`,
+        [value.schedule_activity_id, req.params.id]);
+      return { data: r.rows[0], entityId: before.id, projectId: before.project_id, before, after: r.rows[0], description: `Linked milestone ${before.title} to activity #${value.schedule_activity_id}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Milestone not found' });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 

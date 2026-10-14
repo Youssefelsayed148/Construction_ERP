@@ -5,6 +5,7 @@ const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
+const { auditedMutation } = require('../utils/auditedMutation');
 const engine = require('../services/quantityEngine');
 const materialDemand = require('../services/materialDemand');
 const progressEngine = require('../services/progressEngine');
@@ -79,25 +80,30 @@ router.post('/allocations', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const alloc = await getOrCreateAllocation(query, value.boq_item_id, value.project_location_id);
-    const r = await query(
-      `UPDATE boq_location_allocations
-       SET planned_quantity = $1, approved_design_quantity = $2, unit_cost = $3,
-           activity_type = COALESCE($4, activity_type), updated_at = NOW()
-       WHERE id = $5 RETURNING *`,
-      [value.planned_quantity, value.approved_design_quantity, value.unit_cost, value.activity_type || null, alloc.id]
-    );
+    const out = await auditedMutation(req, { action: 'set_allocation', module: 'quantities', entityType: 'boq_location_allocation' }, async (q) => {
+      const alloc = await getOrCreateAllocation(q, value.boq_item_id, value.project_location_id);
+      const before = (await q('SELECT * FROM boq_location_allocations WHERE id = $1 FOR UPDATE', [alloc.id])).rows[0];
+      const r = await q(
+        `UPDATE boq_location_allocations
+         SET planned_quantity = $1, approved_design_quantity = $2, unit_cost = $3,
+             activity_type = COALESCE($4, activity_type), updated_at = NOW()
+         WHERE id = $5 RETURNING *`,
+        [value.planned_quantity, value.approved_design_quantity, value.unit_cost, value.activity_type || null, alloc.id]
+      );
+      // The durable event is part of the same transaction as the change.
+      await fireEvent({
+        eventType: 'allocation.quantity_changed', entityType: 'boq_location_allocation', entityId: alloc.id,
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        payload: { boq_item_id: value.boq_item_id, project_location_id: value.project_location_id, planned_quantity: value.planned_quantity },
+      }, { query: q });
+      return { data: r.rows[0], entityId: alloc.id, before, after: r.rows[0], description: `Set allocation planned quantity ${value.planned_quantity} (BOQ item ${value.boq_item_id}, location ${value.project_location_id})` };
+    });
+    const r = { rows: [out.data] };
 
     // Phase 9 — planned quantity drives material demand: re-derive the
-    // allocation's material_requirements immediately, and fire the durable
-    // event so the catch-up path (and later, schedule-linked dates) sees it.
-    await materialDemand.recomputeAllocation(query, alloc.id, {}).catch((e) =>
+    // allocation's material_requirements (derived data; idempotent, after commit).
+    await materialDemand.recomputeAllocation(query, r.rows[0].id, {}).catch((e) =>
       console.error('[MATERIAL_DEMAND] allocation recompute failed:', e.message));
-    await fireEvent({
-      eventType: 'allocation.quantity_changed', entityType: 'boq_location_allocation', entityId: alloc.id,
-      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-      payload: { boq_item_id: value.boq_item_id, project_location_id: value.project_location_id, planned_quantity: value.planned_quantity },
-    });
 
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
@@ -123,19 +129,27 @@ router.put('/allocations/:id', authenticate, authorize(), async (req, res) => {
     const sets = []; const p = []; let i = 1;
     for (const [k, v] of Object.entries(value)) { if (v !== undefined) { sets.push(`${k} = $${i++}`); p.push(v); } }
     p.push(req.params.id);
-    const r = await query(`UPDATE boq_location_allocations SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`, p);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Allocation not found' });
+    const out = await auditedMutation(req, { action: 'update', module: 'quantities', entityType: 'boq_location_allocation' }, async (q) => {
+      const before = (await q('SELECT * FROM boq_location_allocations WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true };
+      const updated = await q(`UPDATE boq_location_allocations SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`, p);
+      if (value.planned_quantity !== undefined) {
+        await fireEvent({
+          eventType: 'allocation.quantity_changed', entityType: 'boq_location_allocation', entityId: updated.rows[0].id,
+          userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+          payload: { boq_item_id: updated.rows[0].boq_item_id, planned_quantity: value.planned_quantity },
+        }, { query: q });
+      }
+      return { data: updated.rows[0], entityId: before.id, before, after: updated.rows[0], description: `Updated allocation #${before.id}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Allocation not found' });
+    const r = { rows: [out.data] };
 
     // Phase 9 — only a planned_quantity change moves demand, but the
-    // recompute is idempotent and cheap; keep summaries convergent.
+    // recompute is idempotent and cheap; keep summaries convergent (derived data, after commit).
     if (value.planned_quantity !== undefined) {
       await materialDemand.recomputeAllocation(query, r.rows[0].id, {}).catch((e) =>
         console.error('[MATERIAL_DEMAND] allocation recompute failed:', e.message));
-      await fireEvent({
-        eventType: 'allocation.quantity_changed', entityType: 'boq_location_allocation', entityId: r.rows[0].id,
-        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-        payload: { boq_item_id: r.rows[0].boq_item_id, planned_quantity: value.planned_quantity },
-      });
     }
     res.json({ success: true, data: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
@@ -219,16 +233,19 @@ router.post('/measurements/:id/review', authenticate, authorize(), async (req, r
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 
-    const existing = (await query('SELECT * FROM quantity_measurements WHERE id = $1', [req.params.id])).rows[0];
-    if (!existing) return res.status(404).json({ success: false, error: 'Measurement not found' });
-
-    const r = await query(
-      `UPDATE quantity_measurements SET approval_state = $1, reviewed_by = $2, updated_at = NOW() WHERE id = $3 RETURNING *`,
-      [value.state, req.user.id, req.params.id]
-    );
-    // The review is a measurement change: allocations, activities and derived progress follow.
-    await progressEngine.onMeasurementsChanged(query, { boqItemId: existing.boq_item_id, projectId: existing.project_id });
-    res.json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'review', module: 'quantities', entityType: 'quantity_measurement' }, async (q) => {
+      const existing = (await q('SELECT * FROM quantity_measurements WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!existing) return { skipAudit: true };
+      const r = await q(
+        `UPDATE quantity_measurements SET approval_state = $1, reviewed_by = $2, updated_at = NOW() WHERE id = $3 RETURNING *`,
+        [value.state, req.user.id, req.params.id]
+      );
+      // The review is a measurement change: allocations, activities and derived progress follow.
+      await progressEngine.onMeasurementsChanged(q, { boqItemId: existing.boq_item_id, projectId: existing.project_id });
+      return { data: r.rows[0], entityId: existing.id, projectId: existing.project_id, before: existing, after: r.rows[0], oldStatus: existing.approval_state, newStatus: value.state, description: `Measurement #${existing.id} ${value.state}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Measurement not found' });
+    res.json({ success: true, data: out.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 

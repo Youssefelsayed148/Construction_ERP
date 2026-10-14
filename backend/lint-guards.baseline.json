@@ -19,12 +19,8 @@
     "routes/hse.js": 9,
     "routes/notifications.js": 2,
     "routes/portal.js": 10,
-    "routes/projects.js": 7,
     "routes/qhse.js": 16,
-    "routes/quantities.js": 3,
     "routes/reports.js": 2,
-    "routes/schedule.js": 6,
-    "routes/site.js": 4,
     "routes/v1.js": 2
   }
 }

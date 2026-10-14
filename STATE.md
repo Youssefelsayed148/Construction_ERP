@@ -659,3 +659,4 @@ R2.3/payroll done 7ac7abe; next subcontractors
 R2.3/guard done 6bec651; next subcontractors
 R2.3/subcontractors done 7070656; next procurement award
 R2.3/procurement done aeb94f0; next materials
+R2.3/materials+units+locations+maintenance+workorders done cdedf5f; next projects

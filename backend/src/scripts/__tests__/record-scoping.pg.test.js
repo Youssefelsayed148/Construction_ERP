@@ -88,7 +88,9 @@ describePg('record scoping across surfaces (real PostgreSQL, real app)', () => {
       await db.query('DELETE FROM project_phases WHERE id = $1', [ids[`phase${k}`]]);
       await db.query('DELETE FROM invoices WHERE id = $1', [ids[`inv${k}`]]);
     }
-    await db.query('DELETE FROM projects WHERE id = ANY($1)', [[ids.pA, ids.pB]]);
+    // R2: the suite's mutations are now audited with a project reference and audit_events is append-only, so the
+    // test projects stay (closed) like the deactivated users; the throwaway database is discarded after the run.
+    await db.query("UPDATE projects SET status = 'closed' WHERE id = ANY($1)", [[ids.pA, ids.pB]]);
     await new Promise((resolve) => server.close(resolve));
     await db.pool.end();
   });

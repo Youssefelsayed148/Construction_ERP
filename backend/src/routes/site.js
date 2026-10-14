@@ -7,6 +7,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { idempotency, requireIdempotencyKey } = require('../middleware/v1');
 const { logActivity, fireEvent } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
+const { auditedMutation } = require('../utils/auditedMutation');
 const quantityEngine = require('../services/quantityEngine');
 const progressEngine = require('../services/progressEngine');
 const actionService = require('../services/actionService');
@@ -140,10 +141,12 @@ router.put('/:projectId/site-reports/:id', authenticate, authorize(), async (req
     params.push(req.params.id, req.params.projectId);
     // Fields and measurements change together. Resending measurements REPLACES the report's pending ones; once a
     // reviewer has acted on any of them the report's quantities are fixed (409).
-    const result = await transaction(async (client) => {
-      const q = client.query.bind(client);
+    const audited = await auditedMutation(req, { action: 'update', module: 'site', entityType: 'site_daily_report' }, async (q) => {
+      const before = (await q('SELECT * FROM site_daily_reports WHERE id = $1 AND project_id = $2 FOR UPDATE', [req.params.id, req.params.projectId])).rows[0];
+      if (!before) return { skipAudit: true, rows: [] };
       const updated = await q(`UPDATE site_daily_reports SET ${sets.join(', ')} WHERE id = $${idx++} AND project_id = $${idx} RETURNING *`, params);
-      if (updated.rows.length === 0 || measurements === undefined) return updated;
+      const done = () => ({ rows: updated.rows, entityId: before.id, projectId: before.project_id, before, after: updated.rows[0], description: `Updated daily report ${before.report_date || before.id}` });
+      if (updated.rows.length === 0 || measurements === undefined) return done();
       const existing = (await q("SELECT id, boq_item_id, approval_state FROM quantity_measurements WHERE source_type = 'daily_report' AND source_id = $1 FOR UPDATE", [updated.rows[0].id])).rows;
       if (existing.some((m) => m.approval_state !== 'pending')) {
         const err = new Error('A reviewer has already acted on this report\'s measurements: they can no longer be replaced');
@@ -156,10 +159,10 @@ router.put('/:projectId/site-reports/:id', authenticate, authorize(), async (req
       for (const boqItemId of new Set(existing.map((m) => m.boq_item_id))) {
         await progressEngine.onMeasurementsChanged(q, { boqItemId, projectId: updated.rows[0].project_id });
       }
-      return updated;
+      return done();
     });
-    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Report not found' });
-    res.json({ success: true, data: result.rows[0] });
+    if (audited.rows.length === 0) return res.status(404).json({ success: false, error: 'Report not found' });
+    res.json({ success: true, data: audited.rows[0] });
   } catch (error) {
     if (error.error_code) return res.status(error.status || 400).json({ success: false, error: error.message, error_code: error.error_code, error_params: error.error_params || {} });
     res.status(500).json({ success: false, error: error.message });
@@ -211,7 +214,7 @@ router.post('/:projectId/instructions', authenticate, authorize(), async (req, r
       );
       await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'site', description: `Issued instruction ${instructionNumber}: ${value.title}`, entityId: inserted.rows[0].id, entityType: 'engineer_instruction' }, { query: q });
       return { instruction: inserted.rows[0], instructionNumber };
-    });
+    }, () => null); // the activity row is written inside the work, on the same client
     const { instruction, instructionNumber } = result;
 
     // Phase 7 wiring: the issued instruction becomes an action item in the
@@ -265,8 +268,16 @@ router.put('/:projectId/instructions/:id', authenticate, authorize(), async (req
       if (v !== undefined) { sets.push(`${k} = $${idx++}`); params.push(v); }
     }
     params.push(req.params.id);
-    const result = await query(`UPDATE engineer_instructions SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
-    res.json({ success: true, data: result.rows[0] });
+    const out = await auditedMutation(req, { action: 'update', module: 'site', entityType: 'engineer_instruction' }, async (q) => {
+      const before = (await q('SELECT * FROM engineer_instructions WHERE id = $1 AND project_id = $2 FOR UPDATE', [req.params.id, req.params.projectId])).rows[0];
+      if (!before) return { skipAudit: true };
+      if (before.status === 'closed') return { skipAudit: true, closed: true };
+      const result = await q(`UPDATE engineer_instructions SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
+      return { data: result.rows[0], entityId: before.id, projectId: before.project_id, before, after: result.rows[0], description: `Updated instruction ${before.instruction_number || before.id}` };
+    });
+    if (out.closed) return res.status(400).json({ success: false, error: 'Closed instructions are read-only' });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Instruction not found' });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -400,16 +411,25 @@ router.put('/:projectId/site-visits/:id', authenticate, authorize(), async (req,
       else { sets.push(`${k} = $${idx++}`); params.push(v); }
     }
     params.push(req.params.id, req.params.projectId);
-    const result = await query(`UPDATE site_visits SET ${sets.join(', ')} WHERE id = $${idx++} AND project_id = $${idx} RETURNING *`, params);
-    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Visit not found' });
-    res.json({ success: true, data: result.rows[0] });
+    const out = await auditedMutation(req, { action: 'update', module: 'site', entityType: 'site_visit' }, async (q) => {
+      const before = (await q('SELECT * FROM site_visits WHERE id = $1 AND project_id = $2 FOR UPDATE', [req.params.id, req.params.projectId])).rows[0];
+      if (!before) return { skipAudit: true };
+      const result = await q(`UPDATE site_visits SET ${sets.join(', ')} WHERE id = $${idx++} AND project_id = $${idx} RETURNING *`, params);
+      return { data: result.rows[0], entityId: before.id, projectId: before.project_id, before, after: result.rows[0], description: `Updated site visit by ${before.visitor_name}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Visit not found' });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
 router.delete('/:projectId/site-visits/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const result = await query('DELETE FROM site_visits WHERE id = $1 AND project_id = $2 RETURNING visitor_name', [req.params.id, req.params.projectId]);
-    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Visit not found' });
+    const out = await auditedMutation(req, { action: 'delete', module: 'site', entityType: 'site_visit' }, async (q) => {
+      const result = await q('DELETE FROM site_visits WHERE id = $1 AND project_id = $2 RETURNING *', [req.params.id, req.params.projectId]);
+      if (result.rows.length === 0) return { skipAudit: true };
+      return { data: result.rows[0], entityId: result.rows[0].id, projectId: result.rows[0].project_id, before: result.rows[0], description: `Deleted site visit by ${result.rows[0].visitor_name}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Visit not found' });
     res.json({ success: true, message: 'Visit deleted' });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
