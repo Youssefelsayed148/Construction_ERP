@@ -182,7 +182,10 @@ describePg('MCP / v1 agent safety (real PostgreSQL, real app)', () => {
       const logged = await one("SELECT response_summary FROM agent_tool_calls WHERE user_id = $1 AND tool = 'list_invoices' ORDER BY id DESC LIMIT 1", [users.eng.id]);
       expect(logged.response_summary).toBeTruthy();
       expect(logged.response_summary).not.toMatch(/"amount"/);
-      expect(logged.response_summary).not.toMatch(/777/);
+      // The summary may be truncated JSON. Match a complete scalar value,
+      // not an identifier substring: timestamp-based document numbers can
+      // legitimately contain the fixture amount's digits.
+      expect(logged.response_summary).not.toMatch(/:\s*(?:777(?:\.0+)?|"777(?:\.0+)?")(?=\s*[,}])/);
     });
   });
 

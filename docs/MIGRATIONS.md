@@ -1,5 +1,7 @@
 # Migrations
 
+Current source inventory (2026-10-14): highest version `0064_schedule_activity_bac.sql`; next migration must be `0065`. Fresh disposable PostgreSQL runner output: 126 applied / 0 already applied. `0030` stays unused. Earlier dated entries below are historical snapshots, not the current maximum.
+
 Runner: `npm run migrate` (backend). It records every migration in `schema_migrations` (version, kind, checksum, applied_at) and holds a Postgres advisory lock so only one replica migrates at a time.
 
 - **Legacy** (`setupDb.js`, `migrate-N.js`, frozen list in `run-all-migrations.js`): each script runs in one transaction, is skipped once recorded, and re-runs once if its file changes (they are idempotent). Do not add to this list.
@@ -19,4 +21,4 @@ Numbering note: versioned migration `0030` is absent in the observed history. Tr
 
 As of 2026-10-14, migration `0061_subcontract_advance_caps.sql` is the highest source migration. It has been applied only to the disposable local Postgres 16 database used for closeout testing; it is not evidence that any shared or production database is migrated.
 
-As of 2026-10-14, migration `0062_forecast_etc_basis.sql` is the highest source migration. Migration 0061 and 0062 were applied only to disposable local PostgreSQL 16 `construction_erp_test` for closeout verification; no shared or production database was migrated.
+At the earlier 0062 implementation checkpoint, migration `0062_forecast_etc_basis.sql` was the highest source migration; the current maximum is `0064_schedule_activity_bac.sql`. Migrations 0061-0064 have now been applied only to disposable local PostgreSQL 16 test databases for closeout verification; no shared or production database was migrated.

@@ -384,7 +384,7 @@ Exit gate: commercial and finance numbers on the demo project match hand-calcula
 Spec 28 ("Osiris Residential Towers") is missing; the current seed is one "Nile Residential Tower" project.
 
 - [ ] Seed: full organization set, users per role, project from the residential template, BOQ with C35 concrete and a recipe, schedule, suppliers, items and stock.
-- [ ] Golden scenario (spec 26 / 28): tender -> contract -> project setup -> BOQ and locations -> material requirement from recipe -> replenishment -> PR -> RFQ -> award -> PO -> delivery -> MIR -> GRN -> supplier invoice -> payment -> site daily report and quantities -> WIR/NCR -> consultant observation -> variation -> client valuation -> invoice -> payment -> handover -> warranty claim.
+- [ ] Golden scenario (spec 26 / 28): contract -> project setup -> BOQ and locations -> material requirement from recipe -> replenishment -> PR -> RFQ -> award -> PO -> delivery -> MIR -> GRN -> supplier invoice -> payment -> site daily report and quantities -> WIR/NCR -> consultant observation -> variation -> client valuation -> invoice -> payment -> handover -> warranty claim. Owner decision 2026-10-14: begin with a signed client contract; tender/bid is deferred to a later version.
 - [ ] Assert at every step: stock, cost, progress, approvals, notifications, audit trail.
 - [ ] Run the golden scenario as a Playwright journey (UI) and as an API test (fast).
 
@@ -393,6 +393,8 @@ Exit gate: golden journey green in CI on every merge to main.
 ---
 
 ## Phase 10: System-wide localization (EN/AR)
+
+Owner decision 2026-10-14: REV-019/020, L5-L11 and remediation R6 are deferred past closeout. Their unchecked work remains explicitly open; this deferral is not evidence of completion. No L5-L11 work is part of R0/R1.
 
 Source: docs/system_language_fix.md (its "Corrections and additions" section overrides the summary below where they differ). This is a localization program, not a page-by-page Arabic patch. Database and API values stay stable and untranslated; everything shown to the user is translated.
 

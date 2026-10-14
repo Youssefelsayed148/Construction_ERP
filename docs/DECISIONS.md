@@ -33,3 +33,11 @@ The current Phase 8 plan defines EAC as `actual cost + estimate to complete (ETC
 ## 2026-10-14 — Phase 9 residential golden-fixture assumptions
 
 The referenced spec 28 is absent from the repository and `docs/legacy`; `docs/ERP_CLOSEOUT_PLAN.md` and the residential template migration are the available scope sources. The template has two towers × 12 floors × four units (96 units). Until the owner supplies or approves a different fixture, `docs/GOLDEN_VALUES.md` uses the existing pilot material quantities/rates (BOQ 1,376,500 EGP), a 1,500,000 EGP budget, a 1,600,000 EGP base contract, a 100,000 EGP approved variation, 20% advance, 10% retention and recovery, and no tax or returns. These figures are a calculation proposal, not approved finance policy and not yet asserted by an end-to-end scenario. They must not be represented as a Phase 9 exit or used for production posting without finance review.
+
+## 2026-10-14 - Remediation scope decisions (owner locked)
+
+- Tender/bid module is deferred to a later version. ConERP starts with a signed client contract; Phase 9 and the golden scenario begin at contract.
+- Redux Toolkit/react-redux auth are removed in favor of React AuthContext, retaining session storage keys, logout and policy payloads. No Socket.io is introduced.
+- Root STATE.md is the single state authority. Former docs/STATE.md history is preserved in root's Archived history section; docs/STATE.md is a three-line pointer.
+- Localization and accessibility REV-019/020, Phase 10 L5-L11 and remediation R6 are deferred past closeout. Known open items include incomplete module/server/export translation, Arabic PDFs, RTL/accessibility labels and contrast, native Arabic review and localization UAT. Deferral does not mark any of these complete.
+- Remediation overall covers R0-R5; this session covers R0/R1. No R2 work is authorized in this session.

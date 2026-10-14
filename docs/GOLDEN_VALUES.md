@@ -1,5 +1,7 @@
 # Golden values — Osiris Residential Towers (provisional)
 
+Golden journey starts at a signed client **contract**, then project setup, BOQ/locations, procurement, site/quality, valuation, handover and warranty. Tender/bid is deferred to a later version by owner decision 2026-10-14; it is excluded from this closeout scenario.
+
 Status: **repeatable residential fixture verified; commercial journey remains
 provisional**. Spec 28 is not present in the repository or `docs/legacy`; the
 assumptions below are explicit so API/UI journeys can use one deterministic model.
