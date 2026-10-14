@@ -715,3 +715,11 @@ Expanded the read-only reconciler to check advance recovery/void-restoration dir
 Verification: reconciliation unit tests 3/3; backend mocks 53 suites / 1,005 tests; lint guards passed; changed JS syntax and `git diff --check` passed. Read-only SQL executed successfully on Docker Desktop PostgreSQL 16 disposable `construction_erp_test` (`127.0.0.1:55441`). That database contains retained test fixtures and returned nonzero findings: active workflow/pending-step 16, stock projection 64, cost/journal link 59, cost source document 16, AP/AR live-document linkage 84, and PO delivery/GRN quantities 174. Allocation caps, retention/advance balances, project scope, journal balance, approvals, and sequence checks returned zero. These are explicitly not treated as acceptance failures or a restored-real-data result.
 
 Coverage expansion is complete. Phase 11's restored-real-data dry run, discrepancy remediation, and retained report remain open; the backup-confirmed CLI was not run. No migrations or data repairs were made. Implementation commit: 75b6f36.
+
+### Phase 10 L6 - shared locale formatting and name helpers (2026-10-14)
+
+Added locale-aware shared currency, number, date, date-time, and percent formatters plus `localizedName`. Helpers use explicit locales when provided; otherwise they follow the document `lang`, with Arabic using `ar-EG`, Arabic EGP rendered as `ج.م.`, and configurable number digits through `numberingSystem`. Existing API/database machine values remain unchanged; enum translation helpers remain the rendering mechanism. This slice implements the helper foundation only; caller migration and system-wide Arabic review remain open.
+
+Verification: formatter suite 5/5; frontend CI 29 suites / 123 tests; `i18n:check` and `i18n:parity` passed (35 namespaces / 1,123 English keys); production build compiled successfully. No backend or migration changes.
+
+L6 shared formatter/name-helper items are closed. API-value rendering audit, broader page call-site migration, dynamic status coverage, PDFs, RTL review, and Phase 10 exit remain open. Implementation commit: pending.

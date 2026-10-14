@@ -457,10 +457,10 @@ L5 Partially localized modules
 - Exit: no expansion module renders raw English enums or English-only controls in Arabic mode.
 
 L6 Dynamic values and formatting helpers
-- [ ] Shared helpers: `translateStatus/Role/Priority/Severity/EntityType/WorkflowAction`, `localizedName(record, locale, fields)`, `formatDate/DateTime/Number/Currency/Percent`.
+- [x] Shared helpers: `translateStatus/Role/Priority/Severity/EntityType/WorkflowAction`, `localizedName(record, locale, fields)`, `formatDate/DateTime/Number/Currency/Percent`. Shared formatting follows the document `lang` when no locale is supplied; helpers also accept explicit locales.
 - [ ] Send API values unchanged (`pending_approval`) and render through `enums.status.pendingApproval`; never `replaceAll('_', ' ')` as a translation.
-- [ ] Name order: Arabic = `name_ar`, neutral, `name_en`; English = `name_en`, neutral, `name_ar`. Same for descriptions, titles, project and material names.
-- [ ] Remove hard-coded `en-US` from shared formatters; `ar-EG` for Arabic; configurable Arabic-digit behavior; EGP / ج.م by locale.
+- [x] Name order helper: Arabic = `name_ar`, neutral, `name_en`; English = `name_en`, neutral, `name_ar`. Callers still need migration to this helper for descriptions, titles, project and material names.
+- [x] Shared formatters no longer force `en-US`: use the document locale or explicit `ar-EG`, support a `numberingSystem` option, and render EGP / ج.م by locale.
 - Exit: statuses and system values translate consistently; number and date formats follow the language.
 
 L7 API errors, notifications and server content

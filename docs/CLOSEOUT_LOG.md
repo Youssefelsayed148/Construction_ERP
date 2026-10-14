@@ -1584,3 +1584,9 @@ Expanded `reconcile-database.js` with read-only advance recovery/restoration, pr
 Verification: reconciliation unit suite 3/3; full backend mock suite 53 suites / 1,005 tests; `lint:guards: ok`; changed JS `node --check` and `git diff --check` passed. Executed the SQL on loopback-only disposable PostgreSQL 16. The retained test database returned nonzero findings (active workflow steps 16; stock projection 64; project-cost journal links 59; missing project-cost sources 16; AP/AR document links 84; PO delivery/GRN quantities 174). Other listed checks were zero. Because this database contains persistent test fixtures and is not a restored real-data copy, these counts only prove query execution and are not a go/no-go reconciliation report. No records were repaired or deleted.
 
 The checklist expansion is complete; restored-copy dry run and discrepancy resolution remain open. Implementation commit: 75b6f36.
+
+## 2026-10-14 - Phase 10 L6 shared localization helpers
+
+Shared formatters now support locale-aware currency, number, date, date-time, and percent output; `localizedName` follows Arabic-first or English-first field preference with neutral/other-language fallback. Locale defaults from the live document `lang` or an explicit locale, Arabic EGP uses `ج.م.`, and number digits can be selected by `numberingSystem`. Existing enum helpers supply localized status/role/priority/severity/entity/workflow labels. No component call-site migration was included in this slice.
+
+Verification: formatter tests 5/5; frontend CI 29 suites / 123 tests; i18n check passed; parity passed for 35 namespaces / 1,123 English keys; production build compiled. Phase 10 remains open for call-site migration, API error messages, Arabic PDFs, RTL/a11y review, and role-based E2E. Implementation commit: pending.
