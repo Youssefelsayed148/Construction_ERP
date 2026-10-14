@@ -1449,3 +1449,5 @@ Commands and observed results:
 - `git diff --check`: run before commit.
 
 The fresh local Docker Desktop Postgres container is `erp-closeout-pg16-20261014`, loopback-only and volume-free. No `.env.docker`, `.staging-users.json`, production DB, pilot DB, paid service, or external provider was accessed. The existing normal-shell Docker pipe denial remains a host permission quirk; elevated local Docker CLI access was used. PWA Lighthouse score and local Arabic font packaging are unverified. Current global responsive audit count is 110 inline `gridTemplateColumns` occurrences and 64 `<table>` tags; these and Phase 7 exit requirements remain open.
+
+Final verification correction: `git diff --check` and `git diff --cached --check` both exited 0. Commit `7487787` (`Phase 7.2: queue site reports offline`) contains this implementation and its evidence. The audit report artifact was excluded.

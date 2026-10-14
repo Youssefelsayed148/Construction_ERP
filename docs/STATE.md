@@ -53,3 +53,5 @@ Commit recorded: `2f31c01` (`Phase 7.2: require idempotent daily reports`). The 
 ## 2026-10-14 continuation — Phase 7 offline daily-report queue
 
 IndexedDB now stores report drafts, local photo blobs and quantity measurements scoped to owner and project. Sync uses capped exponential retry and the same idempotency key; conflicts/failures stay visible, and users can retry or remove. Desktop and mobile Playwright airplane-mode journeys each passed and confirmed one upload/report POST after reconnect. Backend mock 53/1,002; real PG 67/608; frontend 29/117; i18n and production build passed; full Playwright 34 passed / 50 skipped. Global responsive conversion still has 110 inline grid-template declarations and 64 table tags; local Arabic font assets and Lighthouse are open.
+
+Phase 7.2 offline site-report queue committed as `7487787` (`Phase 7.2: queue site reports offline`). Remaining Phase 7 work is font packaging, Lighthouse, app-wide responsive/table conversion and broader mobile coverage.
