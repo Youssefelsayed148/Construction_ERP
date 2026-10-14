@@ -9,6 +9,7 @@
     "exitPreview": "Exit client preview",
     "refresh": "Refresh",
     "portfolio": "Portfolio",
+    "recordNumber": "Record #{{id}}",
     "titles": {
       "consultant": "Consultant Portal",
       "client": "Client Portal",
@@ -76,6 +77,14 @@
     "fields": {
       "count": "Count",
       "total": "Total",
+      "planned_quantity": "Planned quantity",
+      "executed_quantity": "Executed quantity",
+      "percent": "Percent",
+      "planned": "Planned",
+      "achieved": "Achieved",
+      "work_orders_planned": "Work orders planned",
+      "started": "Started",
+      "approved": "Approved",
       "pending": "Pending",
       "approved": "Approved",
       "overdue": "Overdue",

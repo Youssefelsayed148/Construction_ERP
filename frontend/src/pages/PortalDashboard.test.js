@@ -39,6 +39,7 @@ describe('consultant portal observation form', () => {
     global.fetch = jest.fn(async (url) => ({ ok: true, json: async () => ({ success: true, data: String(url).includes('/reviews') ? [] : {
       latest_drawings: { items: [{ id: 9, title: 'Drawing A', status: 'pending_approval' }], count: 1 },
       rfis: { items: [], count: 0, empty_key: 'portals.dashboard.empty.rfis', empty_label: 'No RFIs open' },
+      wir_pending: { items: [{ id: 10, wir_number: 'WIR-0010' }], count: 1 },
       summary: { active: true },
       note: 'fallback note', note_key: 'portals.dashboard.notes.noClientAccount',
       setup_actions: ['fallback setup'], setup_action_keys: ['portals.dashboard.setup.assignClient'],
@@ -52,6 +53,7 @@ describe('consultant portal observation form', () => {
     expect(container.textContent).toContain('enums.status.pendingApproval');
     expect(container.textContent).toContain('common.yes');
     expect(container.textContent).toContain('portals.dashboard.empty.rfis');
+    expect(container.textContent).toContain('WIR-0010');
     expect(container.textContent).toContain('portals.dashboard.notes.noClientAccount');
     expect(container.textContent).toContain('portals.dashboard.setup.assignClient');
     expect(container.textContent).not.toContain('Latest Drawings');

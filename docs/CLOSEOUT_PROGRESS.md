@@ -779,3 +779,10 @@ Verification: PortalDashboard suite PASS (11/11); i18n check passed; parity pass
 Client, subcontractor, and supplier dashboard setup notes now include stable note_key/setup_action_keys for translation. Existing English note/setup_actions fields remain in the API as a compatibility fallback. PortalDashboard uses catalog entries when keys are present. This covers the zero-assignment setup states only; user-facing API errors and broader server content remain open.
 
 Verification: backend client/consultant/portal suites PASS (3 suites / 40 tests); frontend PortalDashboard suite PASS (11/11); i18n check passed; parity passed (35 namespaces / 1,223 English keys). No migrations or data changes. Implementation commit: d0df760.
+
+
+## 2026-10-14 - Phase 10 portal record identifiers
+
+Portal record cards now display domain-specific document numbers exposed by APIs (RFI, submittal, WIR, MIR, certificate, observation, and NCR) before using a localized generic record-number fallback. Added EN/AR labels for dashboard summary fields surfaced by consultant progress widgets.
+
+Verification: PortalDashboard suite PASS (11/11); i18n check passed; parity passed (35 namespaces / 1,231 English keys); git diff --check passed. No backend or migration changes.

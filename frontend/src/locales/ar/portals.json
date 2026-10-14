@@ -246,6 +246,7 @@
     "exitPreview": "إنهاء معاينة العميل",
     "refresh": "تحديث",
     "portfolio": "محفظة المشروعات",
+    "recordNumber": "السجل رقم {{id}}",
     "titles": {
       "consultant": "بوابة الاستشاري",
       "client": "بوابة العميل",
@@ -313,6 +314,13 @@
     "fields": {
       "count": "العدد",
       "total": "الإجمالي",
+      "planned_quantity": "الكمية المخططة",
+      "executed_quantity": "الكمية المنفذة",
+      "percent": "النسبة المئوية",
+      "planned": "المخطط",
+      "achieved": "المتحقق",
+      "work_orders_planned": "أوامر العمل المخططة",
+      "started": "بدأ",
       "pending": "قيد الانتظار",
       "approved": "معتمد",
       "overdue": "متأخر",
