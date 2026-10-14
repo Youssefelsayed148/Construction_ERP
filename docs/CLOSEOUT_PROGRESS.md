@@ -799,4 +799,4 @@ Verification: ProcurementReview component tests PASS (2/2), covering translated 
 
 Localized Project Operations headings, tabs, controls, table fields, empty/loading/error states, retention and finance metrics. Statuses use the shared enum translator; quantities use the locale-aware number formatter; material, warehouse, and project names use Arabic-first field fallback. The embedded ProcurementWorkspace already uses the procurement catalog. Load errors display a generic translated message instead of raw server/database text.
 
-Verification: ProjectOperations component suite PASS (2/2), including Arabic-first warehouse/project names and generic load error; i18n check passed; parity passed (35 namespaces / 1,283 English keys); git diff --check passed. Full frontend build and suite rerun at batch close.
+Verification: ProjectOperations component suite PASS (2/2), including Arabic-first warehouse/project names and generic load error; i18n check passed; parity passed (35 namespaces / 1,283 English keys); git diff --check passed. Full frontend build and suite rerun at batch close. Implementation commit: dd01f60.
