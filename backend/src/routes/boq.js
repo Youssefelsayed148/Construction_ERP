@@ -6,7 +6,7 @@ const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
-const { logActivity } = require('../utils/activity');
+const { auditedMutation } = require('../utils/auditedMutation');
 const { isReferenceViolation, recordInUse } = require('../utils/references');
 
 const BOQ_ITEM_TYPES = ['material', 'labor', 'equipment', 'subcontract'];
@@ -29,13 +29,16 @@ router.post('/sections', authenticate, authorize(), async (req, res) => {
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     authorizeProjectPayload(req, value);
 
-    if (!value.code) value.code = await nextNumber(query, { table: 'boq_sections', column: 'code', prefix: 'SEC', pad: 3, where: { project_id: authorizedProjectId(req, value) } });
-
-    const r = await query(
-      `INSERT INTO boq_sections (project_id, code, name, name_ar, name_en, parent_id, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [authorizedProjectId(req, value), value.code, value.name_ar, value.name_ar, value.name_en || value.name_ar, value.parent_id, value.sort_order]
-    );
-    res.status(201).json({ success: true, data: r.rows[0] });
+    const projectId = authorizedProjectId(req, value);
+    const row = await auditedMutation(req, { action: 'create', module: 'boq', entityType: 'boq_section' }, async (q) => {
+      const code = value.code || await nextNumber(q, { table: 'boq_sections', column: 'code', prefix: 'SEC', pad: 3, where: { project_id: projectId } });
+      const r = await q(
+        `INSERT INTO boq_sections (project_id, code, name, name_ar, name_en, parent_id, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+        [projectId, code, value.name_ar, value.name_ar, value.name_en || value.name_ar, value.parent_id, value.sort_order]
+      );
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId, after: r.rows[0], description: `Created BOQ section ${r.rows[0].code}` };
+    });
+    res.status(201).json({ success: true, data: row.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -48,9 +51,14 @@ router.put('/sections/:id', authenticate, authorize(), async (req, res) => {
     const sets = []; const p = []; let i = 1;
     for (const [k, v] of Object.entries(value)) { if (v !== undefined) { sets.push(`${k} = $${i++}`); p.push(v); } }
     p.push(req.params.id);
-    const r = await query(`UPDATE boq_sections SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`, p);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Section not found' });
-    res.json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'update', module: 'boq', entityType: 'boq_section' }, async (q) => {
+      const before = (await q('SELECT * FROM boq_sections WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true };
+      const r = await q(`UPDATE boq_sections SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`, p);
+      return { data: r.rows[0], entityId: before.id, projectId: before.project_id, before, after: r.rows[0], description: `Updated BOQ section ${before.code}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Section not found' });
+    res.json({ success: true, data: out.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -58,8 +66,12 @@ router.put('/sections/:id', authenticate, authorize(), async (req, res) => {
 // cannot be removed; the foreign keys are RESTRICT. Only an unreferenced entry made by mistake can go.
 router.delete('/sections/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const r = await query('DELETE FROM boq_sections WHERE id = $1 RETURNING id', [req.params.id]);
-    if (r.rowCount === 0) return res.status(404).json({ success: false, error: 'Section not found' });
+    const out = await auditedMutation(req, { action: 'delete', module: 'boq', entityType: 'boq_section' }, async (q) => {
+      const r = await q('DELETE FROM boq_sections WHERE id = $1 RETURNING *', [req.params.id]);
+      if (r.rowCount === 0) return { skipAudit: true };
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, before: r.rows[0], description: `Deleted BOQ section ${r.rows[0].code}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Section not found' });
     res.json({ success: true, message: 'Deleted' });
   } catch (e) {
     if (isReferenceViolation(e)) return recordInUse(res, 'BOQ section');
@@ -113,16 +125,19 @@ router.post('/items', authenticate, authorize(), async (req, res) => {
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     authorizeProjectPayload(req, value);
 
-    const wp = await projectSetup.resolveOrRespond(query, res, authorizedProjectId(req, value), { work_package_id: value.work_package_id });
+    const projectId = authorizedProjectId(req, value);
+    const wp = await projectSetup.resolveOrRespond(query, res, projectId, { work_package_id: value.work_package_id });
     if (!wp) return;
-    if (!value.code) value.code = await nextNumber(query, { table: 'boq_items', column: 'code', prefix: 'BOQ', pad: 4, where: { project_id: authorizedProjectId(req, value) } });
-
-    const r = await query(
-      `INSERT INTO boq_items (project_id, section_id, code, description, description_ar, description_en, unit, quantity, unit_rate, item_master_id, type, work_package_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
-      [authorizedProjectId(req, value), value.section_id, value.code, value.description_ar, value.description_ar, value.description_en || value.description_ar, value.unit, value.quantity, value.unit_rate, value.item_master_id, value.type, wp.id]
-    );
-    res.status(201).json({ success: true, data: r.rows[0] });
+    const row = await auditedMutation(req, { action: 'create', module: 'boq', entityType: 'boq_item' }, async (q) => {
+      const code = value.code || await nextNumber(q, { table: 'boq_items', column: 'code', prefix: 'BOQ', pad: 4, where: { project_id: projectId } });
+      const r = await q(
+        `INSERT INTO boq_items (project_id, section_id, code, description, description_ar, description_en, unit, quantity, unit_rate, item_master_id, type, work_package_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+        [projectId, value.section_id, code, value.description_ar, value.description_ar, value.description_en || value.description_ar, value.unit, value.quantity, value.unit_rate, value.item_master_id, value.type, wp.id]
+      );
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId, after: r.rows[0], amount: Number(r.rows[0].quantity) * Number(r.rows[0].unit_rate), description: `Created BOQ item ${r.rows[0].code}` };
+    });
+    res.status(201).json({ success: true, data: row.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -141,16 +156,25 @@ router.put('/items/:id', authenticate, authorize(), async (req, res) => {
     const sets = []; const p = []; let i = 1;
     for (const [k, v] of Object.entries(value)) { if (v !== undefined) { sets.push(`${k} = $${i++}`); p.push(v); } }
     p.push(req.params.id);
-    const r = await query(`UPDATE boq_items SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`, p);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'BOQ item not found' });
-    res.json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'update', module: 'boq', entityType: 'boq_item' }, async (q) => {
+      const before = (await q('SELECT * FROM boq_items WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true };
+      const r = await q(`UPDATE boq_items SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`, p);
+      return { data: r.rows[0], entityId: before.id, projectId: before.project_id, before, after: r.rows[0], amount: Number(r.rows[0].quantity) * Number(r.rows[0].unit_rate), description: `Updated BOQ item ${before.code}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'BOQ item not found' });
+    res.json({ success: true, data: out.data });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 router.delete('/items/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const r = await query('DELETE FROM boq_items WHERE id = $1 RETURNING id', [req.params.id]);
-    if (r.rowCount === 0) return res.status(404).json({ success: false, error: 'Item not found' });
+    const out = await auditedMutation(req, { action: 'delete', module: 'boq', entityType: 'boq_item' }, async (q) => {
+      const r = await q('DELETE FROM boq_items WHERE id = $1 RETURNING *', [req.params.id]);
+      if (r.rowCount === 0) return { skipAudit: true };
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, before: r.rows[0], description: `Deleted BOQ item ${r.rows[0].code}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Item not found' });
     res.json({ success: true, message: 'Deleted' });
   } catch (e) {
     if (isReferenceViolation(e)) return recordInUse(res, 'BOQ item');

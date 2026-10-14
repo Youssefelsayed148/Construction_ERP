@@ -5,9 +5,10 @@
 param(
   [string[]]$Suite = @(),
   [switch]$All,
-  [string]$Filter = '^(FAIL|PASS) |Test Suites:|Tests:|R2 mutation registry|R2 (missing fixture|fixture error|no audit row|rollback leak)'
+  [string]$Filter = '^(FAIL|PASS) |Test Suites:|Tests:|^\s+R2 (mutation registry|fixture error|no audit row|rollback leak)'
 )
 $ErrorActionPreference = 'Stop'
+$Suite = @($Suite | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 if (-not $All -and $Suite.Count -eq 0) { throw 'Pass -Suite <path> or -All.' }
 $backend = Resolve-Path (Join-Path $PSScriptRoot '..')
 $stamp = Get-Date -Format 'yyyyMMddHHmmss'

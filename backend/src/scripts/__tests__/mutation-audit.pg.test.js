@@ -25,7 +25,7 @@ const pending = fs.existsSync(pendingPath) ? JSON.parse(fs.readFileSync(pendingP
 const describePg = process.env.TEST_PG === '1' ? describe : describe.skip;
 const ONLY = process.env.R2_ONLY ? new RegExp(process.env.R2_ONLY) : null;
 // Infrastructure tables written outside the business transaction by design.
-const INFRA_TABLES = new Set(['rate_limits', 'user_sessions', 'refresh_tokens', 'event_outbox_attempts']);
+const INFRA_TABLES = new Set(['v1_rate_limits', 'rate_limits', 'user_sessions', 'refresh_tokens', 'event_outbox_attempts']);
 
 function enumerateMutations(app) {
   const routes = new Set();
