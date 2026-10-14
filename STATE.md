@@ -1,5 +1,22 @@
 # Closeout state
 
+## Current R2b position — 2026-10-15
+
+- Owner clarified: existing migrations may initialize throwaway databases; migration-file changes remain forbidden. Previous migration-initialization stop below is superseded.
+- R2b.1 task A complete: pre-due fixture returns CURRENT_DATE from the invoice INSERT and passes it as sweep `now`. Regression fakes JS clock +0/+23/+25 hours while keeping socket timers real. Before: 1 failed / 31 passed (pre-due +25h); after: 1 suite / 32 tests PASS. Both tracked PG runs applied 126 existing migrations and removed their exact erp-r02-gate containers.
+- First runner invocation failed before migrations because NODE_OPTIONS used Windows backslashes; normalized the existing preload path to forward slashes. No script generated or changed, no secrets files read. The existing no-dotenv preload blocks dotenv configuration.
+- Coverage unchanged: 272 / 601 verified in prior-session registry evidence; 323 pending / 6 exempt. Next task B: transactional state/audit in agent decision, MCP, preview, OAuth; document unavoidable handler transaction boundaries. No R3.
+- Documentation and task A prepared for the authorized R2b.1 commit; prior sandbox Git metadata denial requires an approved writable execution context. Prior checkpoint details below are historical.
+
+## R2b resume — 2026-10-15
+
+- Pre-flight: branch `closeout/batch-a-to-6`, HEAD `db86f49`; git status has only the two excluded untracked audit/review reports. Read current R2 scorecard: 272 verified / 323 pending / 6 exempt of 601.
+- Clarification pending: the request says "no migrations" but requires `backend/scripts/r02-pg-gate.ps1`, which runs existing migrations on each fresh throwaway database. May existing migrations initialize these databases while all migration-file changes remain forbidden? PG runner execution is pending this answer; no migration executed or changed in R2b.
+- Owner decisions accepted: activity_log OR audit_events; refuse costed/posted labour-payment deletes with typed 409 and paired keys; remove unreachable QHSE PUT duplicates; retain listed hard deletes. No R3.
+- Stop condition: required failing-first PG reproduction cannot run until the migration-initialization conflict is resolved. Evidence: the tracked gate contains `$mig = npm.cmd run migrate`; PG global setup also requires every existing migration applied. No runner, Docker container, migration, runtime fix or exit gate executed. Test preparation was reverted before checkpoint; implementation is unchanged.
+- Next action: resolve whether existing migrations may initialize `erp-r02-*` throwaway databases, then run the pre-due regression with a fake JS clock crossing the database-date boundary, capture its failure, and pass database CURRENT_DATE as the sweep's explicit `now`. Continue B, then C in the requested order. Current verification remains prior-session 272 / 601, pending 323, exemptions 6.
+- Checkpoint commit blocked: explicit-path `git add` and `git commit` both returned `fatal: Unable to create 'D:/The Osiris Labs/Construction_ERP/.git/index.lock': Permission denied`. Per the resume instruction, recorded the declined commands and changed approach to an unstaged documentation checkpoint; no retry/escalation or runtime script generation. `git diff --check` passed before the commit attempt. Four documentation files are modified; no commit was created. Next action also requires writable Git metadata for the authorized slice commits.
+
 Updated: 2026-10-14 (Africa/Cairo). Root STATE.md is the single current authority; historical statements below are archived and do not override this section.
 
 ## Current remediation scope and position

@@ -1,5 +1,15 @@
 # Closeout log
 
+## 2026-10-15 — R2b.1 task A
+
+`backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/event-integrity.pg.test.js -Filter 'Test Suites:|Tests:|^\s+●'`, existing no-dotenv preload via NODE_OPTIONS. Before: 1 failed / 31 passed (pre-due JS clock +25h). After database-date fixture fix: 1 suite / 32 tests PASS. Each fresh throwaway PG16 run applied 126 existing migrations, exact container removed. Initial preload invocation failed (MODULE_NOT_FOUND, backslashes parsed by Node); corrected env path separators without generating/patching scripts. Owner authorized existing initialization migrations; no migration-file change. Full exit gates not yet run.
+
+## 2026-10-15 — R2b migration initialization checkpoint
+
+Commands: `git status --short` (2 excluded untracked reports); `git log -5 --oneline` (HEAD db86f49); `git branch --show-current` (closeout/batch-a-to-6). Read STATE.md, R2_SCORECARD.md, AGENTS.md, closeout plan, tracked PG gate, PG setup and affected source. Exact blocker: `backend/scripts/r02-pg-gate.ps1` executes `npm.cmd run migrate`, whereas the resume request says "no migrations". Asked whether existing migrations may initialize fresh throwaway databases; question recorded in STATE.md. No PG command attempted, no denial or escalation, no containers or migration changes. No tests/exit gates run; tentative regression preparation reverted. Documentation-only checkpoint, prior-session coverage 272 / 601, pending 323, exempt 6. Resume with task A failing-first reproduction after clarification. No R3.
+
+`git diff --check`: exit 0. `git add -- STATE.md docs/R2_SCORECARD.md docs/CLOSEOUT_PROGRESS.md docs/CLOSEOUT_LOG.md` and requested `git commit` attempt: exit 128 each, `.git/index.lock`: Permission denied. No commit created. Per instruction, recorded failure and changed approach to unstaged documentation; no retry/escalation.
+
 One entry per PR: date, PR, what changed, tests added, open questions. Newest last. Source of truth for scope is `docs/ERP_CLOSEOUT_PLAN.md`.
 
 ## Before this log (backfilled from the PR list)

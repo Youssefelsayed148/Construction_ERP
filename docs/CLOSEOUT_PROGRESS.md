@@ -1,5 +1,15 @@
 # Closeout progress (append-only)
 
+## 2026-10-15 — R2b.1 database-date regression
+
+Migration initialization clarified by owner (existing migrations on throwaway DBs only). Task A failing-first PG: 1 failed / 31 passed, failing pre-due +25h. Fix uses CURRENT_DATE returned with invoice insertion as explicit sweep `now`; rerun 1 suite / 32 tests PASS. Fake clock offsets +0/+23/+25h verified; socket timers real. Registry remains 272 verified / 323 pending / 6 exempt; next B. No R3.
+
+## 2026-10-15 — R2b pre-flight checkpoint
+
+Pre-flight branch/HEAD matched `closeout/batch-a-to-6` / `db86f49`; two excluded untracked reports preserved. R2b stopped before PG reproduction because "no migrations" conflicts with the mandated tracked runner's fresh-database migration initialization. Clarification recorded in STATE.md. No runtime changes, containers, migrations, new fixture verification or exit gates. Prior-session coverage remains 272 verified / 323 pending / 6 exempt of 601; not rerun. Four resume owner decisions accepted; implementations pending. Resume task A after clarification; no R3.
+
+Checkpoint staging/commit failed: `.git/index.lock`: Permission denied. Changed approach to unstaged docs, without retry, as requested. `git diff --check` passed; no commit created.
+
 Resume point for a new session. Authority: docs/ERP_CLOSEOUT_PLAN.md and docs/system_language_fix.md (corrections section). Parts: A = close Phase 3, B = Phase 4, C = Phase 5, D = Phase 6. Checkpoints CP1..CP8 stop and wait for "go".
 
 Stack so far: #1-#35 (Phases 0-3 and earlier slices, see docs/CLOSEOUT_LOG.md). Baseline confirmed 2026-10-04: mock 970, real-PG 261 (31 suites), 85 migrations fresh and repeatable, lint:guards empty baseline, frontend i18n:check + 72 unit tests + build green.

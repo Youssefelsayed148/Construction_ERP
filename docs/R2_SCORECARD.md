@@ -1,5 +1,25 @@
 # R2 scorecard — 2026-10-15
 
+## Current R2b evidence
+
+Owner permits existing migrations for fresh throwaway initialization, with no migration-file changes. R2b.1 fixes the pre-due fixture's clock source: CURRENT_DATE returned by the invoice INSERT supplies the sweep's explicit `now`. JS clocks +0/+23/+25 hours are exercised. Before: pre-due +25h fails (1 failed / 31 passed); after: 1 PG suite / 32 tests PASS. 126 existing migrations applied per run, exact containers removed. Registry coverage remains prior-session 272 / 601, pending 323, exempt 6; full R2b exit gates are not yet run. Historical initialization blocker below is superseded.
+
+## R2b checkpoint — migration initialization clarification
+
+Pre-flight confirmed branch `closeout/batch-a-to-6`, HEAD `db86f49`, and only the two excluded untracked reports. R2b is blocked before its first failing-first PG run: the request forbids migrations, while the required tracked PG runner executes `npm.cmd run migrate` to initialize each fresh database. Question recorded in STATE.md: are existing migrations allowed solely for throwaway initialization, with no migration-file changes? No migrations or containers were run; no implementation changes retained; no new runtime verification claimed.
+
+| Measure | Before R2b (prior-session evidence) | R2b checkpoint |
+|---|---:|---:|
+| Verified endpoints of 601 | 272 | 272 (not rerun) |
+| Pending fixtures | 323 | 323 |
+| Exempt endpoints | 6 | 6 |
+| New fixture verifications | 0 | 0 |
+| Requested exit gates executed | 0 | 0 |
+
+The four OWNER DECISIONS in the resume request are accepted and supersede the historical waiting items below: audit definition, costed/posted labour-payment deletion refusal, removal of unreachable QHSE PUT duplicates, and preservation of listed hard deletes. Their required implementations remain pending. R3 not started.
+
+Checkpoint commit was not created: explicit staging and commit commands failed creating `.git/index.lock` (Permission denied). Recorded without retry; four documentation files remain unstaged. Whitespace check passed; application tests and exit gates remain unrun.
+
 Scope: R2 (audit-trail completeness) only; no R3 work. Status: **R2.2 and R2.3 fixes done for every route the inventory classed unaudited; R2.4 gates run and green except one pre-existing time-of-day failure; runtime verification covers 272 of 601 endpoints. 323 endpoints are still source-audited only and are NOT counted as verified.**
 
 ## Per family (runtime evidence from the registry run against the pre-fix code at 35a6bb9)

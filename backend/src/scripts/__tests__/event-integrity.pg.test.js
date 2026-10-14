@@ -125,7 +125,7 @@ describePg('A2.5 events: names, routes, atomicity (real PostgreSQL, real app)', 
     } finally { spy.mockRestore(); }
   });
 
-  test('pre-due seven-day tier uses client-specific reminder rules before project defaults', async () => {
+  test.each([0, 23, 25])('pre-due seven-day tier uses client-specific reminder rules before project defaults (JS clock +%ih)', async (hours) => {
     const w = await world();
     await db.query('INSERT INTO business_rules (rule_key, rule_value) VALUES ($1,$2) ON CONFLICT (rule_key) DO UPDATE SET rule_value = EXCLUDED.rule_value, is_active = true',
       [`receivable_reminder_config:project:${w.project.id}`, JSON.stringify({ escalation_roles: { due_soon: ['finance_manager'] } })]);
@@ -133,9 +133,15 @@ describePg('A2.5 events: names, routes, atomicity (real PostgreSQL, real app)', 
       [`receivable_reminder_config:client:${w.client.id}`, JSON.stringify({ escalation_roles: { due_soon: ['owner'] } })]);
     const invoice = await one(
       `INSERT INTO invoices (invoice_number, project_id, client_id, amount, status, issue_date, due_date, created_by)
-       VALUES ($1, $2, $3, 1000, 'issued', CURRENT_DATE, CURRENT_DATE + 6, $4) RETURNING *`, [`EV-PRE-${tag}-${seq}`, w.project.id, w.client.id, owner.id]);
-    await finance.runReceivableReminderSweep(db.query, {});
-    await finance.runReceivableReminderSweep(db.query, {});
+       VALUES ($1, $2, $3, 1000, 'issued', CURRENT_DATE, CURRENT_DATE + 6, $4) RETURNING *, CURRENT_DATE AS fixture_today`, [`EV-PRE-${tag}-${seq}`, w.project.id, w.client.id, owner.id]);
+    // Move only the JS clock across a database date boundary; socket timers stay real.
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'clearImmediate', 'setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', 'performance', 'hrtime', 'queueMicrotask'] });
+    jest.setSystemTime(new Date(new Date(invoice.issue_date).getTime() + hours * 3600000));
+    try {
+      // Use the same database date that created the invoice, including across midnight.
+      await finance.runReceivableReminderSweep(db.query, { now: invoice.fixture_today });
+      await finance.runReceivableReminderSweep(db.query, { now: invoice.fixture_today });
+    } finally { jest.useRealTimers(); }
     const events = await all("SELECT * FROM event_outbox WHERE event_type = 'invoice.due' AND entity_id = $1", [invoice.id]);
     expect(events).toHaveLength(1);
     expect(events[0].payload).toMatchObject({ stage: 'due_soon', days_until_due: 6, roles: ['owner'] });
