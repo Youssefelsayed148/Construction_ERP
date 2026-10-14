@@ -1,5 +1,16 @@
 {
   "title": "الشؤون التجارية",
   "variations": "أوامر التغيير",
-  "budget": "الموازنة"
+  "budget": "الموازنة",
+  "fields": {
+    "original_contract": "قيمة العقد الأصلية",
+    "approved_variations": "التغييرات المعتمدة",
+    "revised_contract": "قيمة العقد المعدلة",
+    "current_budget": "الميزانية الحالية",
+    "committed_cost": "التكلفة المرتبطة",
+    "actual_cost": "التكلفة الفعلية",
+    "eac": "التكلفة المقدرة عند الإكمال",
+    "forecast_profit": "الربح المتوقع",
+    "cash_contribution": "صافي المساهمة النقدية"
+  }
 }

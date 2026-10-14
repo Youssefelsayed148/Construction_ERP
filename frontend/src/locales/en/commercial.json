@@ -1,5 +1,16 @@
 {
   "title": "Commercial",
   "variations": "Variations",
-  "budget": "Budget"
+  "budget": "Budget",
+  "fields": {
+    "original_contract": "Original contract",
+    "approved_variations": "Approved variations",
+    "revised_contract": "Revised contract",
+    "current_budget": "Current budget",
+    "committed_cost": "Committed cost",
+    "actual_cost": "Actual cost",
+    "eac": "Estimate at completion (EAC)",
+    "forecast_profit": "Forecast profit",
+    "cash_contribution": "Cash contribution"
+  }
 }

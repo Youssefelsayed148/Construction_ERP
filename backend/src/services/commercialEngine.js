@@ -211,6 +211,16 @@ async function projectCommercial(q, projectId) {
   const committed = committedCost(commitments);
   const actual = await actualCost(q, projectId);
   const accrued = accruedCost(committed, actual);
+  // Cash contribution is a cash-basis operational figure: live AR receipts
+  // less live AP payments recorded against this project. Keep aggregation and
+  // subtraction in PostgreSQL so DECIMAL values are not added as JS floats.
+  const cash = (await q(
+    `SELECT COALESCE(SUM(amount) FILTER (WHERE direction = 'ar'), 0) AS cash_in,
+            COALESCE(SUM(amount) FILTER (WHERE direction = 'ap'), 0) AS cash_out,
+            COALESCE(SUM(CASE WHEN direction = 'ar' THEN amount WHEN direction = 'ap' THEN -amount ELSE 0 END), 0) AS cash_contribution
+       FROM payments WHERE project_id = $1 AND voided_at IS NULL`,
+    [projectId]
+  )).rows[0] || { cash_in: 0, cash_out: 0, cash_contribution: 0 };
   const approvedForecast = (await q(
     `SELECT v.id, COALESCE(SUM(l.forecast_amount), 0) AS total_forecast
        FROM forecast_versions v LEFT JOIN forecast_lines l ON l.forecast_version_id = v.id
@@ -235,6 +245,9 @@ async function projectCommercial(q, projectId) {
     current_budget: currentBudgetTotal,
     committed_cost: committed,
     actual_cost: actual,
+    cash_in: round2(cash.cash_in),
+    cash_out: round2(cash.cash_out),
+    cash_contribution: round2(cash.cash_contribution),
     accrued_cost: accrued,
     etc: etc,
     eac: eacValue,

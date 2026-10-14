@@ -55,6 +55,13 @@ class MockDb {
     // Row locks mean nothing to a single-connection mock.
     const norm = sql.replace(/\s+/g, ' ').trim().replace(/\s+FOR UPDATE(?:\s+OF\s+\w+)?\s*$/i, '');
     const upper = norm.toUpperCase();
+    if (/^SELECT COALESCE\(SUM\(AMOUNT\) FILTER \(WHERE DIRECTION = 'AR'\)/i.test(norm)) {
+      const projectId = params[0];
+      const rows = this.table('payments').rows.filter((r) => Number(r.project_id) === Number(projectId) && r.voided_at == null);
+      const cashIn = rows.filter((r) => r.direction === 'ar').reduce((sum, r) => sum + Number(r.amount || 0), 0);
+      const cashOut = rows.filter((r) => r.direction === 'ap').reduce((sum, r) => sum + Number(r.amount || 0), 0);
+      return { rows: [{ cash_in: cashIn.toFixed(2), cash_out: cashOut.toFixed(2), cash_contribution: (cashIn - cashOut).toFixed(2) }], rowCount: 1 };
+    }
     if (upper.includes('DOCUMENT_COUNTERS') && !upper.startsWith('CREATE')) return this.execDocumentCounter(upper, params);
     if (upper.includes('PG_ADVISORY_XACT_LOCK')) return { rows: [{}], rowCount: 1 };   // single-connection mock: nothing to wait for
     if (upper.startsWith('CREATE TABLE')) return this.execCreateTable(norm, params);

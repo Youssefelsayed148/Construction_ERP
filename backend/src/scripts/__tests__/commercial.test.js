@@ -68,6 +68,10 @@ async function buildFixture() {
   await q(`CREATE TABLE IF NOT EXISTS purchase_orders (
     id SERIAL PRIMARY KEY, order_number VARCHAR(50), supplier_id INTEGER, project_id INTEGER,
     quantity DECIMAL(15,3) DEFAULT 0, total_amount DECIMAL(15,2) DEFAULT 0, status VARCHAR(30) DEFAULT 'draft')`);
+  await q(`CREATE TABLE IF NOT EXISTS payments (
+    id SERIAL PRIMARY KEY, project_id INTEGER, amount DECIMAL(15,2), direction VARCHAR(10), voided_at TIMESTAMPTZ)`);
+  await q(`CREATE TABLE IF NOT EXISTS payments (
+    id SERIAL PRIMARY KEY, project_id INTEGER, amount DECIMAL(15,2), direction VARCHAR(10), voided_at TIMESTAMPTZ)`);
 
   await workflowMigration.ensureTables(q);
   await workflowMigration.seedTemplates(q);
@@ -192,6 +196,18 @@ describe('forecast margin scenarios (hand-calculated)', () => {
     expect(r.eac).toBe(80000);
     expect(r.forecast_profit).toBe(20000);
     expect(r.forecast_margin_percent).toBe(20);
+  });
+
+  test('cash contribution is project-scoped AR receipts less live AP payments', async () => {
+    await q('INSERT INTO payments (project_id, amount, direction, voided_at) VALUES ($1,$2,$3,$4)', [2, 100.10, 'ar', null]);
+    await q('INSERT INTO payments (project_id, amount, direction, voided_at) VALUES ($1,$2,$3,$4)', [2, 40.05, 'ap', null]);
+    await q('INSERT INTO payments (project_id, amount, direction, voided_at) VALUES ($1,$2,$3,$4)', [2, 25, 'ap', new Date()]);
+    await q('INSERT INTO payments (project_id, amount, direction, voided_at) VALUES ($1,$2,$3,$4)', [1, 900, 'ar', null]);
+
+    const result = await engine.projectCommercial(q, 2);
+    expect(result.cash_in).toBe(100.1);
+    expect(result.cash_out).toBe(40.05);
+    expect(result.cash_contribution).toBe(60.05);
   });
 
   test('scenario B — one client variation (+10,000) incorporated through the workflow', async () => {

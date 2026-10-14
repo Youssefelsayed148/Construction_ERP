@@ -635,3 +635,11 @@ Verification after the layout conversion: frontend CI 29 suites / 117 tests; `i1
 Remaining Phase 7 items: locally bundle licensed IBM Plex Arabic fonts; run Lighthouse and record an actual PWA score; extend mobile viewport coverage to every major screen and portal. Do not mark Phase 7 complete until those items and its exit gate are satisfied.
 
 Responsive layout/table commit: `7fd068a` (`Phase 7.2: make page grids responsive`) on `closeout/batch-a-to-6`.
+
+### Phase 8 — project cash contribution (2026-10-14)
+
+The commercial engine now returns `cash_in`, `cash_out`, and `cash_contribution` for live project payments (`AR - AP`, excluding voided rows and restricted by `project_id`). The aggregation/subtraction is performed in SQL over DECIMAL. The Project Operations commercial cards now use paired `commercial.fields.*` English/Arabic keys for all displayed commercial figures, including cash contribution.
+
+Verification output: backend mock `npm test -- --runInBand --silent` PASS 53 suites / 1,003 tests; real PG `TEST_PG=1 npm run test:pg -- --silent` PASS 67 suites / 609 tests; focused `commercial-5-5.pg.test.js` PASS 17/17; frontend `npm run test:ci -- --silent` PASS 29 suites / 117 tests; `i18n:check ok`; `i18n parity ok: 35 namespaces, 1085 English keys`; frontend production build `Compiled successfully`; backend `lint-guards: ok`; locale JSON parse and `git diff --check` passed. The DB was the disposable PostgreSQL 16 container `erp-closeout-pg16-20261014`, loopback port 55441, database `construction_erp_test`. Docker Desktop reported server version 28.3.2 through the authorized CLI path.
+
+Phase 8 is still open: per-cost-code ForecastVersion EAC logic, recovery caps, certified-quantity valuation, baseline-driven SPI/CPI, resource loading, legacy approval retirement, and duplicate surfaces remain. This metric is a cash-basis operational indicator and excludes voided or unrecorded cash activity; it is not accrual profit or a reconciled cash flow statement.

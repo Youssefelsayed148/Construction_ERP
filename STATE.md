@@ -127,3 +127,22 @@ Commit recorded: `7487787` (`Phase 7.2: queue site reports offline`) on `closeou
 Replaced all 110 inline `gridTemplateColumns` declarations in `frontend/src/pages` with responsive utility classes (source scan: zero remain). Wrapped all 72 JSX `<table>` elements under `frontend/src` in `.table-container`; Babel AST scan found zero unwrapped tables. Site Management buttons/icon actions now have 44px minimum targets and site form controls have 14px text. Existing E2E suite after conversion: 36 passed / 50 skipped; site offline journey passed desktop/mobile. Frontend CI 29 suites / 117 tests, i18n check, build, backend lint guards and `git diff --check` passed. Phase 7 still open for IBM Plex Arabic local assets, Lighthouse score, and mobile journeys for every major screen/portal.
 
 Commit recorded: `7fd068a` (`Phase 7.2: make page grids responsive`) on `closeout/batch-a-to-6`.
+
+## 2026-10-14 continuation — Phase 8 cash contribution slice
+
+Implemented project commercial cash contribution as the cash-basis sum of non-voided AR payments less non-voided AP payments, scoped by project. The commercial endpoint now returns `cash_in`, `cash_out`, and `cash_contribution`; Project Operations displays the contribution card with EN/AR catalog keys. PostgreSQL does the DECIMAL aggregation and subtraction. This closes only the cash-contribution part of Phase 8's combined EAC/cash task; Phase 8 remains open.
+
+Docker Desktop verification: normal sandbox access still returned `Access is denied` on `dockerDesktopLinuxEngine`; the authorized Docker CLI retry returned server version `28.3.2` and confirmed `erp-closeout-pg16-20261014` running with loopback mapping `127.0.0.1:55441`. Tests used only `construction_erp_test` on that disposable Postgres 16 container, environment-only test configuration, and no persistent migration changes.
+
+Current command evidence:
+- `npm test -- --runInBand --silent`: PASS, 53 suites / 1,003 tests.
+- `TEST_PG=1 npm run test:pg -- --silent` on disposable PG16: PASS, 67 suites / 609 tests.
+- Focused `commercial-5-5.pg.test.js`: PASS, 17/17 tests.
+- `npm run test:ci -- --silent`: PASS, 29 suites / 117 tests.
+- `npm run i18n:check`: `i18n:check ok`.
+- `npm run i18n:parity`: `i18n parity ok: 35 namespaces, 1085 English keys`.
+- `npm run build`: `Compiled successfully`.
+- `npm run lint:guards`: `lint-guards: ok`.
+- Locale JSON parsing and `git diff --check`: passed.
+
+Definition: cash contribution represents recorded cash movement only; it is not forecast profit, accrual margin, or ledger-reconciled cash flow. It excludes voided payments and any cash movement not recorded in `payments`. No schema migration was needed. Next Phase 8 work is to fix per-cost-code forecast ETC/EAC with a hand-calculated golden case, then capped contract recovery/retention and certified-quantity valuation. Phases 7, 9, 10, and 11 remain open; production is NO-GO pending their gates and human-only signoffs.

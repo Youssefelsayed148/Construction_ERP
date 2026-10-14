@@ -4,6 +4,7 @@ import { ArrowLeft, Boxes, ClipboardList, DollarSign, Percent, RefreshCw, Shoppi
 import { formatCurrency, formatDate } from '../utils/formatters';
 import ProcurementWorkspace from '../components/project/ProcurementWorkspace';
 import ProjectFinanceWorkbench from '../components/project/ProjectFinanceWorkbench';
+import { useLocale } from '../hooks/useLocale';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 const tokenHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
@@ -116,14 +117,16 @@ function Inventory({ rows, navigate }) {
 }
 
 function Commercial({ data }) {
+  const { t } = useLocale();
   if (!data) return <Empty />;
   const metrics = [
-    ['Original contract', data.original_contract_value], ['Approved variations', data.approved_variations],
-    ['Revised contract', data.revised_contract_value], ['Current budget', data.current_budget],
-    ['Committed cost', data.committed_cost], ['Actual cost', data.actual_cost],
-    ['EAC', data.eac], ['Forecast profit', data.forecast_profit],
+    ['original_contract', data.original_contract_value], ['approved_variations', data.approved_variations],
+    ['revised_contract', data.revised_contract_value], ['current_budget', data.current_budget],
+    ['committed_cost', data.committed_cost], ['actual_cost', data.actual_cost],
+    ['eac', data.eac], ['forecast_profit', data.forecast_profit],
+    ['cash_contribution', data.cash_contribution],
   ];
-  return <div className="stats-grid">{metrics.map(([label, value]) => <div className="stat-card" key={label}><div className="stat-label">{label}</div><div className="stat-value">{formatCurrency(value || 0)}</div></div>)}</div>;
+  return <div className="stats-grid">{metrics.map(([key, value]) => <div className="stat-card" key={key}><div className="stat-label">{t(`commercial.fields.${key}`)}</div><div className="stat-value">{formatCurrency(value || 0)}</div></div>)}</div>;
 }
 
 function Valuations({ rows }) {

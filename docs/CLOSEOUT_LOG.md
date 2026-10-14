@@ -1461,3 +1461,22 @@ Verification: `npm run test:ci` PASS, 29 suites / 117 tests; `npm run i18n:check
 Phase 7 remains open: font files are absent locally, Lighthouse has not been run, and mobile journeys are not yet present for every major screen and portal.
 
 Responsive layout/table commit: `7fd068a` (`Phase 7.2: make page grids responsive`). The audit report artifact was excluded; explicit-path staging showed 35 files in this slice.
+
+## 2026-10-14 — Phase 8 project cash contribution slice
+
+Implementation: `commercialEngine.projectCommercial` aggregates non-voided payment amounts for its project with SQL `SUM`: direction `ar` is cash in, direction `ap` is cash out, and the contribution expression sums AR positive/AP negative. It returns all three values. Project Operations adds a localized cash contribution metric and moves the existing eight commercial metric labels to paired `commercial.fields.*` keys. The real-PG regression covers AR, AP, void exclusion, another project, and the authenticated commercial endpoint. No migration was required.
+
+Docker Desktop: unprivileged `docker info --format '{{.ServerVersion}}'` returned pipe `Access is denied`; the user-authorized elevated local CLI retry returned `28.3.2`. Inspecting only the known throwaway container confirmed it running at loopback `127.0.0.1:55441`. No production or pilot container was used.
+
+Gate commands and results:
+- `npm test -- --runInBand --silent` — PASS, 53 suites / 1,003 tests.
+- `TEST_PG=1 npm run test:pg -- --silent` — PASS, 67 suites / 609 tests on throwaway Postgres 16 `construction_erp_test`.
+- `TEST_PG=1 npm run test:pg -- --silent src/scripts/__tests__/commercial-5-5.pg.test.js` — PASS, 17/17.
+- `npm run test:ci -- --silent` — PASS, 29 suites / 117 tests.
+- `npm run i18n:check` — `i18n:check ok`.
+- `npm run i18n:parity` — `i18n parity ok: 35 namespaces, 1085 English keys`.
+- `npm run build` — `Compiled successfully`.
+- `npm run lint:guards` — `lint-guards: ok`.
+- JSON parse and `git diff --check` — exit 0.
+
+This completes only the cash-contribution subtask. The indicator is the recorded payment cash basis (AR minus AP), excludes voided/unrecorded transactions, and is not accrual profit or a ledger-reconciled statement. Remaining Phase 8 items and all pending Phase 7/9/10/11 exit work remain open. No production GO decision is implied.

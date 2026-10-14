@@ -345,6 +345,29 @@ describePg('5.5 commercial and finance (real PostgreSQL, real app)', () => {
     expect((await call('GET', `/api/commercial/project/${pA}/forecast-versions`, users.cm)).body.data).toHaveLength(2);
   });
 
+  test('commercial cash contribution counts scoped, non-voided AR and AP payments', async () => {
+    const reference = `c55-cash-${tag}`;
+    try {
+      await db.query(
+        `INSERT INTO payments (project_id, client_id, supplier_id, amount, payment_date, direction, reference_number, voided_at, voided_by, void_reason)
+         VALUES ($1, $2, NULL, 100.10, CURRENT_DATE, 'ar', $3, NULL, NULL, NULL),
+                ($1, NULL, $4, 40.05, CURRENT_DATE, 'ap', $3, NULL, NULL, NULL),
+                ($1, NULL, $4, 25.00, CURRENT_DATE, 'ap', $3, NOW(), $6, 'test void'),
+                ($5, $2, NULL, 900.00, CURRENT_DATE, 'ar', $3, NULL, NULL, NULL)`,
+        [pA, client1, reference, supplier1, pB, users.owner.id]
+      );
+      const result = await engine.projectCommercial(db.query, pA);
+      expect(result.cash_in).toBe(100.1);
+      expect(result.cash_out).toBe(40.05);
+      expect(result.cash_contribution).toBe(60.05);
+      const response = await call('GET', `/api/commercial/project/${pA}/commercial`, users.cm);
+      expect(response.status).toBe(200);
+      expect(response.body.data.cash_contribution).toBe(60.05);
+    } finally {
+      await db.query('DELETE FROM payments WHERE reference_number = $1', [reference]);
+    }
+  });
+
   // --------------------------------------------------------------------------------------------------
   test('8. commitment adjustment: reason, range, history; the committed cost follows', async () => {
     const po = await tx((q) => svc.createPurchaseOrder(q, { supplier_id: supplier1, project_id: pA, taxes: 0, freight: 0, approved_charges: 0, lines: [{ material_id: null, description: `c55 ${tag}`, quantity: 10, unit: 'ea', unit_rate: 1000 }], created_by: users.owner.id }));
