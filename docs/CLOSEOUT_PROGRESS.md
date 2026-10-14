@@ -743,4 +743,4 @@ Verification: `npx playwright test e2e/mobile-route-sweep.spec.js --project=mobi
 
 Portal dashboard boolean values now use common.yes/common.no and numeric values use the shared locale-aware formatNumber helper. The empty value remains a typographic dash. This closes only boolean and metric-number rendering for this caller; Phase 10 L4C remains open for titles, controls, remaining dynamic fields, empty states, and broader translation audit.
 
-Verification: frontend PortalDashboard and formatter suites PASS (2 suites / 16 tests); git diff --check passed. No catalog, backend, or migration changes.
+Verification: frontend PortalDashboard and formatter suites PASS (2 suites / 16 tests); git diff --check passed. No catalog, backend, or migration changes. Implementation commit: b93dc27.
