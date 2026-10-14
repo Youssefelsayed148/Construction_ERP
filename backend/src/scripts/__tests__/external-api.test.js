@@ -460,6 +460,14 @@ describe('webhook matching + signing', () => {
       .rejects.toMatchObject({ error_code: 'webhook_url_rejected' });
   });
 
+  test('R0.6 rejects the complete 2002::/16 6to4 range including embedded loopback', async () => {
+    for (const address of ['2002:7f00:1::1', '2002:0808:0808::1', '2002::', '2002:ffff:ffff:ffff:ffff:ffff:ffff:ffff']) {
+      await expect(webhookService.resolveWebhookTarget('https://target.example/hook', {
+        lookup: async () => [{ address, family: 6 }],
+      })).rejects.toMatchObject({ error_code: 'webhook_url_rejected' });
+    }
+  });
+
   test('registration rejects private DNS answers and delivery rechecks DNS before opening a socket', async () => {
     resetStub();
     const privateLookup = async () => [{ address: '192.168.1.20', family: 4 }];

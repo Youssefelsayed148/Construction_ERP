@@ -116,6 +116,9 @@ function isBlockedAddress(address) {
   // Accept only global-unicast 2000::/3. This rejects unspecified, loopback,
   // link-local, unique-local, multicast and IPv4-compatible addresses.
   if ((value >> 125n) !== 1n) return true;
+  // 6to4 can tunnel an embedded private IPv4 address through a global IPv6
+  // target. Reject the entire transition prefix, including public embeddings.
+  if ((value >> 112n) === 0x2002n) return true;
   const documentation = parseIpv6('2001:db8::');
   return (value >> 96n) === (documentation >> 96n);
 }

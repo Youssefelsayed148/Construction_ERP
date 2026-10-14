@@ -13,6 +13,16 @@ describe('typed tokens', () => {
     expect(tokens.verify(refresh, ['refresh']).kind).toBe('refresh');
   });
 
+  test('R0.6 correctly signed session JWT without exp is rejected', () => {
+    const key = require('crypto').createHmac('sha256', process.env.JWT_SECRET)
+      .update('construction-erp/token/session').digest('hex');
+    const token = jwt.sign({ kind: 'session', userId: 7, tv: 2 }, key, {
+      issuer: tokens.ISSUER, audience: tokens.KINDS.session.audience,
+    });
+    expect(jwt.decode(token).exp).toBeUndefined();
+    expect(() => tokens.verify(token, ['session'])).toThrow('expiration');
+  });
+
   test('a token cannot claim another kind: the signature is checked with that kind\'s key', () => {
     const forged = jwt.sign({ userId: 1, kind: 'session' }, tokens.sign('v1', {}) && 'wrong-key', {
       issuer: tokens.ISSUER, audience: tokens.KINDS.session.audience, expiresIn: 60,

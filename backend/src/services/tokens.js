@@ -61,6 +61,7 @@ function verify(rawToken, acceptedKinds) {
   const claims = jwt.verify(rawToken, secretFor(kind), {
     algorithms: ['HS256'], issuer: ISSUER, audience: KINDS[kind].audience,
   });
+  if (!Number.isFinite(claims.exp)) throw new jwt.JsonWebTokenError('token expiration is required');
   if (claims.kind !== kind) throw new Error('token kind mismatch');
   return claims;
 }

@@ -962,3 +962,11 @@ Changed mediaAccess.js; added media-role-matrix.pg.test.js. Fresh volume-free er
 Before: npm.cmd test -- --runInBand src/scripts/__tests__/auth-infrastructure.test.js failed 3 pool outage/timeout cases (expected 503, received 401), while malformed/expired JWT 401 checks passed. Fix: JWT validation errors remain 401; failures outside JWT validation return typed authentication_unavailable 503 with Retry-After=5, empty error_params and paired errors.authenticationUnavailable key. Raw infrastructure messages are not exposed. Existing account/revocation and preview checks unchanged.
 
 After: same suite passes all 5 cases; combined infrastructure/tokens/permission-isolation suites PASS, 3 suites / 368 tests. Frontend i18n:check PASS, parity PASS 35 namespaces / 1,285 English keys. Changed auth.js and two errors catalogs; new auth-infrastructure.test.js. Full R0 exit gates remain due. Commit message: R0.5: return retryable 503 for authentication infrastructure failures.
+
+## 2026-10-14 - R0.6 block 6to4 SSRF and require JWT expiration
+
+Before: tokens/external-api focused suites failed 2 regressions: resolveWebhookTarget accepted 2002:7f00:1::1; correctly signed typed session JWT without exp did not throw. Commands: npm.cmd test -- --runInBand src/scripts/__tests__/tokens.test.js src/scripts/__tests__/external-api.test.js; 2 failed / 52 passed tests.
+
+Fix: block all 2002::/16, including public IPv4 embeddings, in the webhook address guard. Require a finite exp claim after signature verification, using JsonWebTokenError so R0.5 still maps JWT failures to 401. After: same regressions pass; tokens/external-api/auth-infrastructure suites PASS, 3 suites / 59 tests. No external DNS/HTTP performed; webhook lookup tests use stubs.
+
+Reported unchanged risk: webhookService.js still derives its encryption master from WEBHOOK_ENCRYPTION_KEY || JWT_SECRET. If the dedicated encryption key is absent, JWT-secret rotation can orphan previously encrypted webhook secrets. No key value was read, no credentials rotated, and fallback behavior was not changed. Changed webhookService.js, tokens.js and their two existing test files. Commit message: R0.6: block 6to4 webhooks and require JWT expiration.
