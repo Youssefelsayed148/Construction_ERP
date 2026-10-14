@@ -720,7 +720,7 @@ Coverage expansion is complete. Phase 11's restored-real-data dry run, discrepan
 
 Added locale-aware shared currency, number, date, date-time, and percent formatters plus `localizedName`. Helpers use explicit locales when provided; otherwise they follow the document `lang`, with Arabic using `ar-EG`, Arabic EGP rendered as `ج.م.`, and configurable number digits through `numberingSystem`. Existing API/database machine values remain unchanged; enum translation helpers remain the rendering mechanism. This slice implements the helper foundation only; caller migration and system-wide Arabic review remain open.
 
-Verification: formatter suite 5/5; frontend CI 29 suites / 123 tests; `i18n:check` and `i18n:parity` passed (35 namespaces / 1,123 English keys); production build compiled successfully. No backend or migration changes. Implementation commit: 0f19c8a.
+Verification: formatter suite 5/5; frontend CI 29 suites / 123 tests; `i18n:check` and `i18n:parity` passed (35 namespaces / 1,123 English keys); production build compiled successfully. No backend or migration changes. Implementation commit: 0dda70b. Implementation commit: 0f19c8a.
 
 L6 shared formatter/name-helper items are closed. API-value rendering audit, broader page call-site migration, dynamic status coverage, PDFs, RTL review, and Phase 10 exit remain open. Implementation commit: 39e0b6e.
 
