@@ -101,3 +101,6 @@ Updated full gates: fresh disposable PostgreSQL 16 full chain 126 migrations; PG
 ## 2026-10-14 continuation - expanded Phase 11 reconciliation defect coverage
 
 Expanded the real-PG seeded-defect suite from two to six invariants: payment allocation total, invoice allocation balance, cross-project payment allocation, retention releases, advance restorations, and stock-ledger projection. Each test compares the check result before and after inserting its fixture, so pre-existing database residue does not mask or create a false positive. Full PG suite passed 68 suites / 627 tests after this correction. The restored-real-data clean report remains outstanding.
+## 2026-10-14 continuation - clean demo reconciliation baseline
+
+On a fresh volume-free Docker PostgreSQL 16 database, the full 126-migration chain and idempotent golden demo seed completed. Read-only runReconciliation returned ok=true with zero violations for all 16 checks. The NOT VALID constraint data-cleaning report returned an empty list. The exact disposable container and process-only generated DB/JWT credentials were removed. This is clean seeded-demo evidence only, not the required restored-real-data acceptance; production remains NO-GO.

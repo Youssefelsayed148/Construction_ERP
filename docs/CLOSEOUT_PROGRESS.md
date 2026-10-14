@@ -862,3 +862,6 @@ Batch gates PASS: fresh Docker PostgreSQL 16, all 126 migrations; real PG 68 sui
 ## 2026-10-14 - Phase 11 reconciliation seeded-defect expansion
 
 Expanded defect coverage to six checks: payment amount, invoice balance, cross-project client allocation, retention balance, advance balance, and stock ledger/projection. Tests compare violation-count deltas against their baseline because the rest of the full PG suite leaves known unrelated reconciliation residue. Fresh disposable PostgreSQL full suite passed 68 suites / 627 tests. Other batch gates remain PASS: backend mocks 54/1,013; guards; frontend 31/128; i18n check/parity; build; and mobile route sweep 36/36. Restored real-data reconciliation is still not available.
+## 2026-10-14 - clean seeded-demo reconciliation baseline
+
+Fresh disposable Docker PostgreSQL 16: all 126 migrations applied; golden demo fixture seeded (96 units, EGP 504,000 C35 BOQ, 122.4 m3 net demand); read-only reconciliation returned 0 violations across all 16 checks; data-cleaning report returned []. The exact container and process-only generated credentials were removed. This verifies the clean demo baseline only; restored pilot/real-data reconciliation remains open and the GO criterion stays NO-GO.
