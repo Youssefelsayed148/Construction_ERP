@@ -1,10 +1,10 @@
 # Golden values — Osiris Residential Towers (provisional)
 
-Status: **calculation baseline only; not an executed Phase 9 scenario**. Spec 28 is
-not present in the repository or `docs/legacy`; the assumptions below are explicit
-so the seed and API/UI journeys can use one deterministic model. The missing
-construction and finance owners must review the commercial assumptions before
-these figures are used for pilot or production accounting.
+Status: **repeatable residential fixture verified; commercial journey remains
+provisional**. Spec 28 is not present in the repository or `docs/legacy`; the
+assumptions below are explicit so API/UI journeys can use one deterministic model.
+The missing construction and finance owners must review the commercial assumptions
+before these figures are used for pilot or production accounting.
 
 ## Project and quantity basis
 
@@ -91,14 +91,24 @@ gross recipe demand of 120.0000 m³, net requirement of 122.4000 m³, and BOQ va
 exercise tendering, contracting, purchasing, site/QHSE, client valuation, or
 handover/warranty transitions.
 
+## Repeatable fixture CLI
+
+The fixture is seeded with `npm run seed:golden-demo`. It uses the residential
+template, all 96 unit locations, and one 1.25 m3 allocation per unit. Recomputing
+all allocations yields 120.0000 m3 gross and 122.4000 m3 net after 2% waste. The
+CLI was run twice on a fresh disposable PostgreSQL 16 database; both runs returned
+the same project, BOQ, recipe and schedule identifiers and did not duplicate
+locations, allocations, or requirements. It accepts only a loopback database with
+`APP_ENV=test|staging`, a test/staging database name, a valid port, and
+process-provided DB credentials. It does not load dotenv files or create user
+passwords.
+
 ## Required follow-up
 
-1. Attach a project-specific C35 recipe and schedule to the seeded residential
-   project; then derive its material requirements from the recipe.
-2. Implement and assert the whole Phase 9 API journey, including progress,
-   approvals, notifications, audit rows, stock, cost, and balanced journals at
-   each transition.
-3. Implement a browser journey that uses the same fixture and expected values.
-4. Replace or approve the budget, contract, variation, retention, advance, and
+1. Implement and assert the whole Phase 9 API journey, including tendering,
+   progress, approvals, notifications, audit rows, stock, cost, and balanced
+   journals at each transition.
+2. Implement a browser journey that uses the same fixture and expected values.
+3. Replace or approve the budget, contract, variation, retention, advance, and
    recovery assumptions with owner/finance decisions. Until then, all values in
    the commercial table are **provisional and unverified against runtime output**.

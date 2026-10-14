@@ -90,3 +90,22 @@ Start it again with the same `up --build -d` command. Do not use `down -v` for t
 - Pilot project: `PILOT-PTP-001`.
 
 Passwords and database/JWT credentials are intentionally not listed in this document or in command output.
+
+## Residential golden-demo fixture
+
+For a separate disposable test database or the local staging database, run
+`npm --prefix backend run seed:golden-demo` after migrations have been applied.
+The script reads only the current process's `DB_HOST`, `DB_PORT`, `DB_NAME`,
+`DB_USER`, `DB_PASSWORD`, and `APP_ENV`; it does not load `.env`, `.env.docker`,
+or another dotenv file. Set the values through the operator's approved local
+credential handling. It requires a loopback host, valid port, `APP_ENV=test` or
+`staging`, and a database name with a test/stage/staging segment. It creates or
+updates only the reserved `OSIRIS-GOLD-*` supplier/BOQ/recipe records and the
+`OSIRIS-RES-TOWERS-001` demo project data. Do not point it at production or a
+database containing real project records.
+
+The fixture is idempotent and provisions 96 units, a 120 m3 C35 BOQ line at EGP
+4,200/m3, 96 location allocations, and 122.4 m3 of recipe demand after 2% waste.
+Its supplier price is fictional fixture data. These values validate the demo
+chain only; the separate commercial assumptions in `GOLDEN_VALUES.md` remain
+unapproved.

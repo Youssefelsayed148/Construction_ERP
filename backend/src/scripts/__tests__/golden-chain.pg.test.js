@@ -248,79 +248,25 @@ describePg('golden chain: requirement -> PR -> PO -> GRN -> invoice -> payment -
   });
 
   test('Phase 9 residential fixture provisions 96 units and derives C35 demand from its recipe', async () => {
-    const provisioning = require('../../services/projectProvisioning');
-    const materialDemand = require('../../services/materialDemand');
-    const code = `OSIRIS-GOLD-${tag}-${seq + 1}`.slice(0, 50);
-    const seeded = await db.transaction(async (client) => {
-      const { project } = await provisioning.provisionProject({
-        code,
-        name_en: 'Osiris Residential Towers',
-        name_ar: 'Ø£Ø¨Ø±Ø§Ø¬ Ø£ÙˆØ³ÙŠØ±ÙŠØ³ Ø§Ù„Ø³ÙƒÙ†ÙŠØ©',
-        project_type: 'residential',
-        status: 'planning',
-        budget: 1500000,
-        contract_value: 1600000,
-      }, { client, templateKey: 'residential_tower' });
-      const unit = (await client.query(
-        "SELECT id FROM project_locations WHERE project_id = $1 AND code = 'T-A-F01-U1'", [project.id]
-      )).rows[0];
-      const unitCount = (await client.query(
-        `SELECT COUNT(*)::int AS count FROM project_locations pl
-          JOIN location_types lt ON lt.id = pl.location_type_id
-         WHERE pl.project_id = $1 AND lt.code = 'unit'`, [project.id]
-      )).rows[0].count;
-      const section = (await client.query(
-        `INSERT INTO boq_sections (project_id, code, name, name_en, name_ar)
-         VALUES ($1, $2, 'Structure', 'Structure', 'Ø§Ù„Ù‡ÙŠÙƒÙ„') RETURNING id`, [project.id, `${code}-BOQ`]
-      )).rows[0];
-      const c35 = (await client.query('SELECT id FROM item_master WHERE code = $1', ['RM-CONC-C35'])).rows[0];
-      const boq = (await client.query(
-        `INSERT INTO boq_items (project_id, section_id, code, description, description_en, description_ar,
-           unit, quantity, unit_rate, item_master_id, type)
-         VALUES ($1, $2, $3, 'C35 structural concrete', 'C35 structural concrete', 'Ø®Ø±Ø³Ø§Ù†Ø© Ø¥Ù†Ø´Ø§Ø¦ÙŠØ© C35',
-           'm3', 120, 4200, $4, 'material') RETURNING id`,
-        [project.id, section.id, `${code}-C35`, c35.id]
-      )).rows[0];
-      const recipe = (await client.query(
-        `INSERT INTO material_recipes
-           (project_id, boq_item_id, code, name, name_en, name_ar, output_description, output_unit)
-         VALUES ($1, $2, $3, 'C35 concrete mix', 'C35 concrete mix', 'Ø®Ù„Ø·Ø© Ø®Ø±Ø³Ø§Ù†Ø© C35',
-           '1 m3 concrete', 'm3') RETURNING id`, [project.id, boq.id, `${code}-RECIPE`]
-      )).rows[0];
-      const line = (await client.query(
-        `INSERT INTO recipe_lines (recipe_id, material_id, factor_per_unit, wastage_pct, unit)
-         VALUES ($1, $2, 1, 2, 'm3') RETURNING id`, [recipe.id, c35.id]
-      )).rows[0];
-      const allocation = (await client.query(
-        `INSERT INTO boq_location_allocations (boq_item_id, project_location_id, planned_quantity, unit_cost, activity_type)
-         VALUES ($1, $2, 120, 4200, 'concrete_pour') RETURNING id`, [boq.id, unit.id]
-      )).rows[0];
-      const schedule = (await client.query(
-        `INSERT INTO schedule_activities (project_id, activity_code, name, project_location_id, boq_item_id,
-           planned_quantity, planned_start, planned_finish, original_duration)
-         VALUES ($1, $2, 'Tower A C35 pours', $3, $4, 120, CURRENT_DATE, CURRENT_DATE + 30, 30) RETURNING id`,
-        [project.id, `${code}-ACT`, unit.id, boq.id]
-      )).rows[0];
-      const q = (sql, params) => client.query(sql, params);
-      const demand = await materialDemand.recomputeAllocation(q, allocation.id);
-      const requirement = (await client.query(
-        'SELECT gross_requirement, net_requirement, recipe_id, recipe_line_id FROM material_requirements WHERE source_id = $1',
-        [allocation.id]
-      )).rows[0];
-      return { projectId: project.id, unitCount, boqId: boq.id, scheduleId: schedule.id, recipe, line, demand, requirement };
+    const seed = require('../seed-golden-demo');
+    const first = await db.transaction((client) => seed.seedGoldenDemo(client));
+    const second = await db.transaction((client) => seed.seedGoldenDemo(client));
+    expect(first).toMatchObject({
+      unitCount: 96, boqTotal: 504000, grossRequirement: 120, netRequirement: 122.4,
     });
-
-    expect(seeded.unitCount).toBe(96);
-    expect(seeded.demand.rows).toBe(1);
-    expect(seeded.requirement).toMatchObject({
-      gross_requirement: '120.0000',
-      net_requirement: '122.4000',
-      recipe_id: seeded.recipe.id,
-      recipe_line_id: seeded.line.id,
+    expect(second).toMatchObject({
+      projectId: first.projectId, boqItemId: first.boqItemId,
+      recipeId: first.recipeId, scheduleActivityId: first.scheduleActivityId,
     });
+    expect(await one('SELECT COUNT(*)::int AS count FROM project_locations pl JOIN location_types lt ON lt.id = pl.location_type_id WHERE pl.project_id = $1 AND lt.code = $2',
+      [first.projectId, 'unit'])).toMatchObject({ count: 96 });
+    expect(await one('SELECT COUNT(*)::int AS count FROM boq_location_allocations WHERE boq_item_id = $1',
+      [first.boqItemId])).toMatchObject({ count: 96 });
+    expect(num((await one('SELECT SUM(net_requirement) AS total FROM material_requirements WHERE boq_item_id = $1',
+      [first.boqItemId])).total)).toBe(122.4);
+    expect(await one('SELECT COUNT(*)::int AS count FROM material_requirements WHERE boq_item_id = $1',
+      [first.boqItemId])).toMatchObject({ count: 96 });
     expect(await one('SELECT COUNT(*)::int AS count FROM schedule_activities WHERE id = $1 AND project_id = $2',
-      [seeded.scheduleId, seeded.projectId])).toMatchObject({ count: 1 });
-    expect(num((await one('SELECT quantity * unit_rate AS total FROM boq_items WHERE id = $1', [seeded.boqId])).total))
-      .toBe(504000);
+      [first.scheduleActivityId, first.projectId])).toMatchObject({ count: 1 });
   });
 });

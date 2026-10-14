@@ -12,6 +12,7 @@
     "staging:env": "node src/scripts/generate-staging-env.js",
     "seed:staging": "node src/scripts/seed-staging.js",
     "seed:pilot-data": "node src/scripts/seed-pilot-data.js",
+    "seed:golden-demo": "node src/scripts/seed-golden-demo.js",
     "smoke:staging": "node src/scripts/smoke-staging.js",
     "backup:rehearse": "node src/scripts/backup-restore-rehearsal.js",
     "dev": "nodemon server.js",
