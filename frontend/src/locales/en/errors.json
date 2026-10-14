@@ -1,4 +1,5 @@
 {
+  "apiRouteNotFound": "API route not found",
   "requestFailed": "The request could not be completed.",
   "networkError": "Cannot reach the server. Check your connection.",
   "unauthorized": "Please sign in to continue.",

@@ -109,6 +109,14 @@ app.use('/api/mcp', require('./src/routes/mcp'));
 // Phase 27 — admin Agent Activity surface
 app.use('/api/agent', require('./src/routes/agents'));
 
+app.use('/api', (req, res) => {
+  res.status(404).json({
+    success: false, error: 'API route not found',
+    error_code: 'api_route_not_found', error_key: 'errors.apiRouteNotFound', error_params: {},
+    request_id: req.requestId,
+  });
+});
+
 app.use((err, req, res, next) => {
   const requestedStatus = Number(err.status || err.statusCode);
   const status = Number.isInteger(requestedStatus) && requestedStatus >= 400 && requestedStatus <= 599
