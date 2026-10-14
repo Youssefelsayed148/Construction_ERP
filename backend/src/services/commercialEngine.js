@@ -227,7 +227,7 @@ async function projectCommercial(q, projectId) {
   const approvedForecast = (await q(
     `SELECT v.id, v.forecast_basis, COALESCE(SUM(l.forecast_amount), 0) AS total_forecast
        FROM forecast_versions v LEFT JOIN forecast_lines l ON l.forecast_version_id = v.id
-      WHERE v.project_id = $1 AND v.status = 'approved' GROUP BY v.id`, [projectId]
+      WHERE v.project_id = $1 AND v.status = 'approved' GROUP BY v.id, v.forecast_basis`, [projectId]
   )).rows[0] || null;
   const etc = approvedForecast
     ? (approvedForecast.forecast_basis === 'etc'

@@ -1,6 +1,7 @@
 const { query } = require('../config/database');
 const policy = require('../services/policy');
 const tokens = require('../services/tokens');
+const projectReadScope = require('../services/projectReadScope');
 
 const READ_ONLY_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const EXTERNAL_PORTAL_PATHS = {
@@ -186,6 +187,16 @@ const authorize = (...roles) => {
       res.json = (payload) => originalJson(filterScopedPayload(payload, decision.scoped_project_ids));
     }
 
+    const module = policy.effectiveModule(req, policy.moduleFromRequest(req));
+    if (['GET', 'HEAD'].includes(req.method) && !policy.ORGANIZATION_MODULES.has(module)) {
+      try {
+        const { rawQuery } = require('../config/database');
+        const scoped = await projectReadScope.scopedQuery(req, rawQuery || query);
+        return projectReadScope.storage.run({ query: scoped }, next);
+      } catch (error) {
+        return next(error); // Fail closed; the central typed error handler responds.
+      }
+    }
     next();
   };
   // Exposed for tooling/tests: the coarse role list the call site declared.

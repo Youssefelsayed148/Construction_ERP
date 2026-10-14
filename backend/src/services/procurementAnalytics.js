@@ -146,7 +146,7 @@ async function vendorPerformance(q, { from = null, to = null, supplier_id = null
     `SELECT t.supplier_id, AVG(t.days) AS avg_lead_days FROM (
        SELECT po.supplier_id, (MIN(d.delivery_date) - po.issued_at::date) AS days
          FROM purchase_orders po JOIN deliveries d ON d.purchase_order_id = po.id
-        WHERE ${b.conds.join(' AND ')} GROUP BY po.id, po.supplier_id) t GROUP BY t.supplier_id`, b.params)).rows;
+        WHERE ${b.conds.join(' AND ')} GROUP BY po.id, po.supplier_id, po.issued_at) t GROUP BY t.supplier_id`, b.params)).rows;
 
   // inspection outcome
   b = base('mir.created_at');

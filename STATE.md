@@ -4,25 +4,29 @@ Updated: 2026-10-14 (Africa/Cairo). Root STATE.md is the single current authorit
 
 ## Current remediation scope and position
 
-- Branch closeout/batch-a-to-6. R0.1-R0.8 are committed with reproducing tests and focused verification; R0.9 documentation alignment and full R0 exit gates are complete. R1.1 and R1.2 remain pending. Do not start R2.
+- Branch closeout/batch-a-to-6. R0.1-R0.9 and R1.1-R1.2 implementation and exit gates are complete. R1.1 inventory-only commit is 940c41e; implementation is 60b735a. R1.2 is the final scoped-aggregate slice. Do not start R2.
 - Earlier Docker access and missing-node_modules stops are superseded 2026-10-14: owner completed npm ci, elevated local Docker works, and tests execute. Only new erp-r01- throwaway containers on loopback ports are authorized.
 - Highest migration is `0064`; next is `0065`. `0030` remains unused. Current fresh test migrations: 126 applied / 0 already applied (63 legacy + 63 versioned).
-- Where work stopped: R0 exit is green; next is R1.1 project-id inventory-only commit before any R1 implementation.
+- Resume position: R0/R1 exit is green, including fresh golden-data reconciliation; await a separate instruction for R2. No deployment or push.
 - Older implementation slices in Phases 5.6-5.8, 7-11 are present; whole phase acceptance is incomplete. Independent review findings and human UAT/finance confirmation remain open. Production stays NO-GO.
 
 ## Current command evidence
 
 | Gate | Latest current result |
 |---|---|
-| Backend mock: npm.cmd test -- --runInBand | PASS, 57 suites / 1,034 tests |
-| Real PG: TEST_PG=1 npm.cmd run test:pg | PASS, 70 suites / 644 tests |
+| Backend mock: npm.cmd test -- --runInBand | PASS, 59 suites / 1,048 tests |
+| Real PG: TEST_PG=1 npm.cmd run test:pg | PASS, 72 suites / 656 tests |
 | Backend lint:guards | PASS, lint-guards: ok |
 | Frontend test:ci | PASS, 32 suites / 131 tests |
-| Frontend i18n:check / parity | PASS, 35 namespaces / 1,285 English keys |
+| Frontend i18n:check / parity | PASS, 35 namespaces / 1,287 English keys |
 | CI=true frontend build | PASS, Compiled successfully, exit 0 |
 | Focused Playwright login/shell + locale | PASS, 16 passed / 8 existing skips |
+| RECONCILIATION_BACKUP_CONFIRMED=true node src/scripts/reconcile-database.js | PASS, 16 checks / 0 discrepancies, fresh migrated and golden-seeded throwaway PG16 |
+| R1.2 owner/scoped discovery | PASS, 238 parameterless GETs / 0 unexplained identical bodies / 0 server errors; 16 documented reference/zero responses |
 
 The original six-gate pre-change baseline was not completed before earlier stop conditions; expected comparison counts are the request/review baseline, not a claim that this session ran all six before fixes. Current increases are identified regression tests. Exact ticket commands, corrections and output summaries are in docs/CLOSEOUT_LOG.md.
+
+Final mock/guard rerun initially hit sandbox spawnSync git EPERM in the tracked-launcher census; elevated local rerun passed 59/1,048 and lint-guards: ok. PostgreSQL full gate passed 72/656; golden reconciliation ran on a separate freshly migrated container. Each exact erp-r01-remediation-20261014 container was removed. No migration added; highest/next remain 0064/0065. Final scorecard: docs/R0_R1_SCORECARD.md.
 
 ## Locked owner decisions and open limits
 

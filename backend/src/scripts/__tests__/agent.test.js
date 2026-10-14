@@ -27,6 +27,14 @@ jest.mock('../../config/database', () => ({
   healthCheck: jest.fn().mockResolvedValue({ status: 'healthy' }),
 }));
 
+// This suite's SQL stub models agent authorization/remount parity, not SQL
+// relations. Real CTE read isolation is exercised by aggregate-scope.pg and
+// the dedicated scoped-query tests; keep the agent stub's existing dialect.
+jest.mock('../../services/projectReadScope', () => ({
+  storage: { run: (_scope, next) => next() },
+  scopedQuery: async (_req, q) => q,
+}));
+
 const { query, transaction } = require('../../config/database');
 const jwt = require('jsonwebtoken');
 const express = require('express');

@@ -1,4 +1,5 @@
 const { Pool } = require('pg');
+const { storage: projectReadScope } = require('../services/projectReadScope');
 
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
@@ -22,7 +23,7 @@ pool.on('error', (err) => {
   console.error('PostgreSQL connection error:', err);
 });
 
-const query = async (text, params) => {
+const rawQuery = async (text, params) => {
   try {
     const result = await pool.query(text, params);
     return result;
@@ -30,6 +31,11 @@ const query = async (text, params) => {
     console.error('Database query error:', error);
     throw error;
   }
+};
+
+const query = (text, params) => {
+  const scope = projectReadScope.getStore();
+  return scope ? scope.query(text, params) : rawQuery(text, params);
 };
 
 const transaction = async (callback) => {
@@ -56,4 +62,4 @@ const healthCheck = async () => {
   }
 };
 
-module.exports = { pool, query, transaction, healthCheck };
+module.exports = { pool, query, rawQuery, transaction, healthCheck };

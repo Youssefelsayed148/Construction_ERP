@@ -63,6 +63,7 @@ const READ_MODELS = {
   deliveries: {
     module: 'inventory', table: 'deliveries',
     select: 'SELECT * FROM deliveries', idColumn: 'id', projectColumn: 'project_id',
+    projectExpression: '(SELECT po.project_id FROM purchase_orders po WHERE po.id = deliveries.purchase_order_id)',
   },
   mirs: {
     module: 'inventory', table: 'material_inspection_requests',
@@ -71,6 +72,7 @@ const READ_MODELS = {
   grns: {
     module: 'inventory', table: 'goods_receipt_notes',
     select: 'SELECT * FROM goods_receipt_notes', idColumn: 'id', projectColumn: 'project_id',
+    projectExpression: '(SELECT po.project_id FROM purchase_orders po WHERE po.id = goods_receipt_notes.purchase_order_id)',
   },
   organizations: {
     module: 'organizations', table: 'organizations',
@@ -92,7 +94,7 @@ async function listFamily(family, req, res) {
   const model = READ_MODELS[family];
   const access = await listAccess(req, model.module);
   if (!access.allowed) return res.status(403).json({ success: false, error: 'Insufficient permissions' });
-  const filtered = applyProjectFilter(model.select, [], access.projectFilter, model.projectColumn);
+  const filtered = applyProjectFilter(model.select, [], access.projectFilter, model.projectExpression || model.projectColumn);
   const rows = (await query(`${filtered.sql} ORDER BY ${model.idColumn} DESC`, filtered.params)).rows;
   return res.json({ success: true, data: rows });
 }
@@ -108,9 +110,15 @@ async function getFamilyRecord(family, req, res) {
   if (!moduleAccess.allowed) return res.status(403).json({ success: false, error: 'Insufficient permissions' });
   const row = (await query(`SELECT * FROM ${model.table} WHERE ${model.idColumn} = $1`, [id])).rows[0];
   if (!row) return res.status(404).json({ success: false, error: `${family} #${id} not found` });
-  if (model.projectColumn && row[model.projectColumn] != null) {
+  const projectId = model.projectExpression
+    ? (await query(`SELECT ${model.projectExpression} AS project_id FROM ${model.table} WHERE ${model.idColumn} = $1`, [id])).rows[0]?.project_id
+    : row[model.projectColumn];
+  if (model.projectColumn && projectId == null && moduleAccess.projectFilter != null) {
+    return res.status(403).json({ success: false, error: 'Insufficient permissions' });
+  }
+  if (model.projectColumn && projectId != null) {
     const decision = await policy.evaluate({
-      user: req.user, module: model.module, action: 'view', projectId: row[model.projectColumn],
+      user: req.user, module: model.module, action: 'view', projectId,
     });
     if (!decision.allowed) {
       return res.status(403).json({ success: false, error: 'Insufficient permissions' });

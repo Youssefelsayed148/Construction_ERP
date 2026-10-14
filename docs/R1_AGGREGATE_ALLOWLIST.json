@@ -1,0 +1,18 @@
+{
+  "/api/items/categories": { "kind": "reference", "reason": "Shared item-category vocabulary; no project records or totals." },
+  "/api/suppliers/specialties": { "kind": "reference", "reason": "Shared supplier-specialty vocabulary; no project records or totals." },
+  "/api/expenses/categories": { "kind": "reference", "reason": "Shared expense-category enum; no project records or totals." },
+  "/api/assets/categories": { "kind": "reference", "reason": "Shared asset-category vocabulary; no project records or totals." },
+  "/api/hr/laborers/skills": { "kind": "reference", "reason": "Shared labor-skill vocabulary; no employee/project records or totals." },
+  "/api/projects/templates": { "kind": "reference", "reason": "Shared project-setup blueprint definitions behind existing projects.view permission; not instantiated project data." },
+  "/api/v1/materials/categories": { "kind": "reference", "reason": "Remounted shared material-category vocabulary; no project records or totals." },
+  "/api/sales/summary": { "kind": "zero", "reason": "The golden fixture uses project locations rather than sales units; both scoped SQL summaries are zero. Only zero business values qualify." },
+  "/api/consultant/dashboard": { "kind": "zero", "reason": "Internal fixture actors have no consultant organization assignments; only zero setup payload qualifies." },
+  "/api/client-portal/portfolio": { "kind": "zero", "reason": "Internal fixture actors have no client organization assignments; only zero setup payload qualifies." },
+  "/api/client-portal/dashboard": { "kind": "zero", "reason": "Internal fixture actors have no client organization assignments; only zero setup payload qualifies." },
+  "/api/client-portal/action-center": { "kind": "zero", "reason": "Internal fixture actors have no client organization assignments; only zero setup payload qualifies." },
+  "/api/portal/subcontractor/dashboard": { "kind": "zero", "reason": "Internal fixture actors have no subcontractor organization assignments; only zero setup payload qualifies." },
+  "/api/portal/subcontractor/submissions": { "kind": "zero", "reason": "Internal fixture actors have no subcontractor organization assignments; only zero setup payload qualifies." },
+  "/api/portal/supplier/dashboard": { "kind": "zero", "reason": "Internal fixture actors have no supplier organization assignments; only zero setup payload qualifies." },
+  "/api/v1/subcontracts/subcontractor/submissions": { "kind": "zero", "reason": "Remounted subcontractor zero-assignment payload; only zero business values qualify." }
+}
