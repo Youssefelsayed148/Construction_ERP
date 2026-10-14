@@ -6,6 +6,7 @@ const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
+const { auditedMutation } = require('../utils/auditedMutation');
 const { typedFail, typedBody } = require('../utils/typedRoute');
 const engine = require('../services/consultantEngine');
 
@@ -144,10 +145,13 @@ router.post('/observations/:id/comments', authenticate, authorize(), async (req,
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const comment = await engine.addObservationComment(query, {
-      observation_id: parseInt(req.params.id, 10), user: req.user, ...value,
+    const out = await auditedMutation(req, { action: 'comment', module: 'consultant', entityType: 'observation' }, async (q) => {
+      const comment = await engine.addObservationComment(q, {
+        observation_id: parseInt(req.params.id, 10), user: req.user, ...value,
+      });
+      return { data: comment, entityId: parseInt(req.params.id, 10), after: comment, description: `Added ${value.comment_type} on observation #${req.params.id}` };
     });
-    res.status(201).json({ success: true, data: comment });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 
@@ -220,11 +224,12 @@ router.post('/rfis/:id/response', authenticate, authorize(), async (req, res) =>
 
 router.post('/rfis/:id/close', authenticate, authorize(), async (req, res) => {
   try {
-    const row = await transaction(async (client) => {
-      await client.query('SELECT id FROM project_rfis WHERE id = $1 FOR UPDATE', [parseInt(req.params.id, 10)]);
-      return engine.closeRfi(client.query.bind(client), parseInt(req.params.id, 10), req.user);
+    const out = await auditedMutation(req, { action: 'close', module: 'consultant', entityType: 'project_rfi' }, async (q) => {
+      const before = (await q('SELECT * FROM project_rfis WHERE id = $1 FOR UPDATE', [parseInt(req.params.id, 10)])).rows[0];
+      const row = await engine.closeRfi(q, parseInt(req.params.id, 10), req.user);
+      return { data: row, entityId: parseInt(req.params.id, 10), projectId: before && before.project_id, before, after: row, oldStatus: before && before.status, newStatus: row && row.status, description: `Closed RFI ${before ? before.rfi_number : req.params.id}` };
     });
-    res.json({ success: true, data: row });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 

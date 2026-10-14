@@ -8,16 +8,6 @@
   "post-commit-audit": {},
   "direct-project-id": {},
   "mutation-without-audit": {
-    "routes/actions.js": 4,
-    "routes/approvals.js": 2,
-    "routes/commercial.js": 8,
-    "routes/consultant.js": 2,
-    "routes/doccontrol.js": 3,
-    "routes/documents.js": 1,
-    "routes/handover.js": 2,
-    "routes/notifications.js": 2,
-    "routes/qhse.js": 2,
-    "routes/reports.js": 2,
-    "routes/v1.js": 2
+    "routes/approvals.js": 2
   }
 }

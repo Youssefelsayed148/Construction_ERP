@@ -6,6 +6,7 @@ const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
+const { auditedChange } = require('../utils/auditedMutation');
 const engine = require('../services/commercialEngine');
 const { atomic, typedFail, typedBody } = require('../utils/typedRoute');
 
@@ -142,9 +143,11 @@ router.post('/variations', authenticate, authorize(), async (req, res) => {
 
 router.post('/variations/:id/start', authenticate, authorize(), async (req, res) => {
   try {
-    const instance = await transaction((client) => engine.startVariationWorkflow(
-      client.query.bind(client), parseInt(req.params.id, 10), req.user
-    ));
+    const variationId = parseInt(req.params.id, 10);
+    const instance = await auditedChange(req, { action: 'start_workflow', module: 'commercial', entityType: 'variation' }, {
+      table: 'variations', id: variationId, run: (q) => engine.startVariationWorkflow(q, variationId, req.user),
+      describe: (row) => `Started approval workflow for variation ${row ? row.variation_number : variationId}`,
+    });
     res.json({ success: true, data: instance });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -154,17 +157,22 @@ router.post('/variations/:id/decide', authenticate, authorize(), async (req, res
     const schema = Joi.object({ decision: Joi.string().valid('approve', 'reject').required(), comment: Joi.string().allow('', null), approved_amount: Joi.number().min(0).precision(2) });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const result = await transaction(async (client) => {
-      const q = client.query.bind(client);
-      const decided = await engine.decideVariation(q, parseInt(req.params.id, 10), req.user, value.decision, value.comment, { approved_amount: value.approved_amount ?? null });
-      if (value.decision === 'approve') {
-        await fireEvent({
-          eventType: 'variation.approved', entityType: 'variation', entityId: parseInt(req.params.id, 10),
-          userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-          payload: { variation_id: parseInt(req.params.id, 10), status: decided.status },
-        }, { query: q });
-      }
-      return decided;
+    const variationId = parseInt(req.params.id, 10);
+    const result = await auditedChange(req, { action: 'decide', module: 'commercial', entityType: 'variation' }, {
+      table: 'variations', id: variationId,
+      describe: (row) => `Variation ${row ? row.variation_number : variationId}: ${value.decision}`,
+      amountOf: (row) => (row && row.approved_amount != null ? Number(row.approved_amount) : undefined),
+      run: async (q) => {
+        const decided = await engine.decideVariation(q, variationId, req.user, value.decision, value.comment, { approved_amount: value.approved_amount ?? null });
+        if (value.decision === 'approve') {
+          await fireEvent({
+            eventType: 'variation.approved', entityType: 'variation', entityId: variationId,
+            userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+            payload: { variation_id: variationId, status: decided.status },
+          }, { query: q });
+        }
+        return decided;
+      },
     });
     res.json({ success: true, data: result });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
@@ -258,7 +266,7 @@ router.put('/parties/:id', authenticate, authorize(), async (req, res) => {
   try {
     const value = typedBody(partySchema.fork(['party_role'], (s) => s.optional()).keys({ organization_id: Joi.forbidden() }), req, res);
     if (!value) return;
-    res.json({ success: true, data: await atomic((q) => records.updateParty(q, intId(req), value)) });
+    res.json({ success: true, data: await auditedChange(req, { action: 'update', module: 'commercial', entityType: 'contract_party' }, { table: 'contract_parties', id: intId(req), run: (q) => records.updateParty(q, intId(req), value), describe: (row) => `Updated contract party #${intId(req)}` }) });
   } catch (e) { return fail(res, e); }
 });
 
@@ -292,7 +300,7 @@ router.put('/guarantees/:id', authenticate, authorize(), async (req, res) => {
     authorizeProjectPayload(req, value);
     if (value.issued_on) value.issued_on = isoDay(value.issued_on);
     if (value.expires_on) value.expires_on = isoDay(value.expires_on);
-    res.json({ success: true, data: await atomic((q) => records.updateGuarantee(q, intId(req), value)) });
+    res.json({ success: true, data: await auditedChange(req, { action: 'update', module: 'commercial', entityType: 'guarantee' }, { table: 'guarantees', id: intId(req), run: (q) => records.updateGuarantee(q, intId(req), value), describe: (row) => `Updated guarantee #${intId(req)}` }) });
   } catch (e) { return fail(res, e); }
 });
 router.post('/guarantees/:id/close', authenticate, authorize(), async (req, res) => {
@@ -335,7 +343,7 @@ router.put('/insurances/:id', authenticate, authorize(), async (req, res) => {
     authorizeProjectPayload(req, value);
     if (value.start_date) value.start_date = isoDay(value.start_date);
     if (value.expiry_date) value.expiry_date = isoDay(value.expiry_date);
-    res.json({ success: true, data: await atomic((q) => records.updateInsurance(q, intId(req), value)) });
+    res.json({ success: true, data: await auditedChange(req, { action: 'update', module: 'commercial', entityType: 'insurance' }, { table: 'insurances', id: intId(req), run: (q) => records.updateInsurance(q, intId(req), value), describe: (row) => `Updated insurance #${intId(req)}` }) });
   } catch (e) { return fail(res, e); }
 });
 router.post('/insurances/:id/cancel', authenticate, authorize(), async (req, res) => {
@@ -427,11 +435,11 @@ router.post('/payment-applications/:id/reject', authenticate, authorize(), async
   try {
     const value = typedBody(Joi.object({ reason: Joi.string().required() }), req, res);
     if (!value) return;
-    res.json({ success: true, data: await atomic((q) => records.rejectApplication(q, intId(req), req.user, value.reason)) });
+    res.json({ success: true, data: await auditedChange(req, { action: 'reject', module: 'commercial', entityType: 'payment_application' }, { table: 'payment_applications', id: intId(req), run: (q) => records.rejectApplication(q, intId(req), req.user, value.reason), describe: (row) => `Rejected payment application #${intId(req)}` }) });
   } catch (e) { return fail(res, e); }
 });
 router.post('/payment-applications/:id/withdraw', authenticate, authorize(), async (req, res) => {
-  try { res.json({ success: true, data: await atomic((q) => records.withdrawApplication(q, intId(req), req.user)) }); } catch (e) { return fail(res, e); }
+  try { res.json({ success: true, data: await auditedChange(req, { action: 'withdraw', module: 'commercial', entityType: 'payment_application' }, { table: 'payment_applications', id: intId(req), run: (q) => records.withdrawApplication(q, intId(req), req.user), describe: (row) => `Withdrew payment application #${intId(req)}` }) }); } catch (e) { return fail(res, e); }
 });
 router.get('/payment-certificates', authenticate, authorize(), async (req, res) => {
   try {
@@ -489,7 +497,7 @@ router.put('/budget-versions/:id', authenticate, authorize(), async (req, res) =
   try {
     const value = typedBody(Joi.object({ name: Joi.string(), notes: Joi.string().allow('', null), lines: lineSchema('amount') }), req, res);
     if (!value) return;
-    res.json({ success: true, data: await atomic((q) => budgeting.updateBudgetVersion(q, intId(req), value)) });
+    res.json({ success: true, data: await auditedChange(req, { action: 'update', module: 'commercial', entityType: 'budget_version' }, { table: 'budget_versions', id: intId(req), run: (q) => budgeting.updateBudgetVersion(q, intId(req), value), describe: (row) => `Updated budget version #${intId(req)}` }) });
   } catch (e) { return fail(res, e); }
 });
 router.post('/budget-versions/:id/submit', authenticate, authorize(), async (req, res) => {

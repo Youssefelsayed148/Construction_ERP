@@ -12,6 +12,7 @@ const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
+const { auditedMutation } = require('../utils/auditedMutation');
 const { REPORTS, REPORT_PACKS, parseListQuery, toCsv, visibleColumns, csvField } = require('../utils/reporting');
 const { renderDocument } = require('../utils/procurementPdf');
 const sweepLeader = require('../services/sweepLeader');
@@ -198,8 +199,12 @@ router.post('/saved-views', authenticate, authorize(), async (req, res) => {
 
 router.delete('/saved-views/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const r = await query('DELETE FROM saved_views WHERE id = $1 AND user_id = $2 RETURNING id', [req.params.id, req.user.id]);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Saved view not found' });
+    const out = await auditedMutation(req, { action: 'delete', module: 'reports', entityType: 'saved_view' }, async (q) => {
+      const r = await q('DELETE FROM saved_views WHERE id = $1 AND user_id = $2 RETURNING *', [req.params.id, req.user.id]);
+      if (r.rows.length === 0) return { skipAudit: true };
+      return { data: r.rows[0], entityId: r.rows[0].id, before: r.rows[0], description: `Deleted saved view #${r.rows[0].id}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Saved view not found' });
     res.json({ success: true, message: 'Saved view deleted' });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -251,8 +256,12 @@ router.post('/scheduled', authenticate, authorize(), async (req, res) => {
 
 router.delete('/scheduled/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const r = await query('DELETE FROM scheduled_reports WHERE id = $1 AND created_by = $2 RETURNING id', [req.params.id, req.user.id]);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Scheduled report not found' });
+    const out = await auditedMutation(req, { action: 'delete', module: 'reports', entityType: 'scheduled_report' }, async (q) => {
+      const r = await q('DELETE FROM scheduled_reports WHERE id = $1 AND created_by = $2 RETURNING *', [req.params.id, req.user.id]);
+      if (r.rows.length === 0) return { skipAudit: true };
+      return { data: r.rows[0], entityId: r.rows[0].id, before: r.rows[0], description: `Removed scheduled report #${r.rows[0].id}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Scheduled report not found' });
     res.json({ success: true, message: 'Scheduled report removed' });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

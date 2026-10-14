@@ -37,6 +37,7 @@ const apiResources = require('../services/apiResources');
 const assistantService = require('../services/assistantService');
 const policy = require('../services/policy');
 const { healthCheck, query, transaction } = require('../config/database');
+const { auditedMutation } = require('../utils/auditedMutation');
 const buildOpenApi = require('../utils/openapi');
 
 // Internal router modules, mounted in server.js (see route-inventory comments).
@@ -747,8 +748,15 @@ function buildV1Router() {
   });
   api.delete('/webhooks/:id', authorize('owner', 'admin'), async (req, res, next) => {
     try {
-      const deleted = await webhookService.deleteWebhook(parseInt(req.params.id, 10));
-      if (!deleted) { const err = new Error('Webhook not found'); err.status = 404; return next(err); }
+      const out = await auditedMutation(req, { action: 'delete', module: 'integrations', entityType: 'webhook' }, async (q) => {
+        const row = (await q('SELECT * FROM webhooks WHERE id = $1 FOR UPDATE', [parseInt(req.params.id, 10)])).rows[0];
+        const deleted = row ? await webhookService.deleteWebhook(parseInt(req.params.id, 10), q) : false;
+        if (!deleted) return { skipAudit: true };
+        // The snapshot never carries signing-secret material.
+        const before = Object.fromEntries(Object.entries(row).filter(([key]) => !/secret/i.test(key)));
+        return { data: true, entityId: row.id, projectId: row.project_id, before, description: `Deleted webhook #${row.id}` };
+      });
+      if (!out.data) { const err = new Error('Webhook not found'); err.status = 404; return next(err); }
       res.json({ success: true, data: { deleted: true } });
     } catch (e) { next(e); }
   });
@@ -760,8 +768,19 @@ function buildV1Router() {
   });
   api.post('/webhooks/deliveries/:deliveryId/redrive', authorize('owner', 'admin'), async (req, res, next) => {
     try {
-      const result = await webhookService.redriveDelivery(parseInt(req.params.deliveryId, 10));
-      if (!result) { const err = new Error('Delivery not found or not in a redrivable state'); err.status = 404; return next(err); }
+      // The audited transaction covers the state change (re-queue); the outbound delivery attempt, which calls an
+      // external endpoint, runs after commit so a network call never holds the transaction open.
+      const deliveryId = parseInt(req.params.deliveryId, 10);
+      const queued = await auditedMutation(req, { action: 'redrive', module: 'integrations', entityType: 'webhook_delivery' }, async (q) => {
+        const before = (await q('SELECT * FROM webhook_deliveries WHERE id = $1 FOR UPDATE', [deliveryId])).rows[0];
+        const d = (await q(
+          "UPDATE webhook_deliveries SET status = 'pending', attempt_count = 0, next_attempt_at = NOW(), last_error = NULL WHERE id = $1 AND status IN ('dead_letter', 'retrying') RETURNING *", [deliveryId]
+        )).rows[0];
+        if (!d) return { skipAudit: true };
+        return { data: d, entityId: d.id, before, after: d, oldStatus: before && before.status, newStatus: d.status, description: `Re-queued webhook delivery #${d.id}` };
+      });
+      if (!queued.data) { const err = new Error('Delivery not found or not in a redrivable state'); err.status = 404; return next(err); }
+      const result = await webhookService.attemptDelivery(deliveryId);
       res.json({ success: true, data: result });
     } catch (e) { next(e); }
   });

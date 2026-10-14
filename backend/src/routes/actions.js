@@ -5,6 +5,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const actionService = require('../services/actionService');
 const Joi = require('joi');
 const { auditedTransaction } = require('../utils/auditedTransaction');
+const { auditedMutation, auditedChange } = require('../utils/auditedMutation');
 const { typedFail } = require('../utils/typedRoute');
 const { EXTERNAL_ROLES } = require('../services/policy');
 
@@ -60,19 +61,23 @@ router.post('/', authenticate, authorize(), async (req, res) => {
   try {
     const { source_type, source_id, project_id, location_id, title, description,
       assigned_user_id, assigned_role, assigned_organization_id, priority, due_date } = req.body;
-    const item = await actionService.createActionItem({
-      source_type: source_type || 'manual',
-      source_id,
-      project_id,
-      location_id,
-      title,
-      description,
-      assigned_user_id,
-      assigned_role,
-      assigned_organization_id,
-      priority,
-      due_date: due_date ? new Date(due_date) : null,
-      created_by: req.user.id,
+    const item = await auditedChange(req, { action: 'create', module: 'actions', entityType: 'action_item' }, {
+      table: 'action_items',
+      run: (q) => actionService.createActionItem({
+        source_type: source_type || 'manual',
+        source_id,
+        project_id,
+        location_id,
+        title,
+        description,
+        assigned_user_id,
+        assigned_role,
+        assigned_organization_id,
+        priority,
+        due_date: due_date ? new Date(due_date) : null,
+        created_by: req.user.id,
+      }, { query: q }),
+      describe: (row) => `Created action item "${title}"`,
     });
     res.status(201).json({ success: true, data: item });
   } catch (e) {
@@ -83,7 +88,11 @@ router.post('/', authenticate, authorize(), async (req, res) => {
 // POST /api/actions/:id/acknowledge — stops the escalation ladder rung 1.
 router.post('/:id/acknowledge', authenticate, authorize(), async (req, res) => {
   try {
-    const r = await actionService.acknowledge(parseInt(req.params.id, 10), req.user.id);
+    const itemId = parseInt(req.params.id, 10);
+    const r = await auditedChange(req, { action: 'acknowledge', module: 'actions', entityType: 'action_item' }, {
+      table: 'action_items', id: itemId, run: (q) => actionService.acknowledge(itemId, req.user.id, { query: q }),
+      describe: (row) => `Acknowledged action item #${itemId}`,
+    });
     if (!r.ok) return res.status(r.statusCode).json({ success: false, error: r.error });
     res.json({ success: true });
   } catch (e) {
@@ -94,7 +103,11 @@ router.post('/:id/acknowledge', authenticate, authorize(), async (req, res) => {
 // POST /api/actions/:id/complete
 router.post('/:id/complete', authenticate, authorize(), async (req, res) => {
   try {
-    const r = await actionService.complete(parseInt(req.params.id, 10), req.user.id);
+    const itemId = parseInt(req.params.id, 10);
+    const r = await auditedChange(req, { action: 'complete', module: 'actions', entityType: 'action_item' }, {
+      table: 'action_items', id: itemId, run: (q) => actionService.complete(itemId, req.user.id, { query: q }),
+      describe: (row) => `Completed action item #${itemId}`,
+    });
     if (!r.ok) return res.status(r.statusCode).json({ success: false, error: r.error });
     res.json({ success: true, data: r.item });
   } catch (e) {
@@ -107,7 +120,11 @@ router.post('/:id/delegate', authenticate, authorize(), async (req, res) => {
   try {
     const toUserId = parseInt(req.body.to_user_id, 10);
     if (!toUserId) return res.status(400).json({ success: false, error: 'to_user_id is required' });
-    const r = await actionService.delegate(parseInt(req.params.id, 10), req.user.id, toUserId, { comment: req.body.comment });
+    const itemId = parseInt(req.params.id, 10);
+    const r = await auditedChange(req, { action: 'delegate', module: 'actions', entityType: 'action_item' }, {
+      table: 'action_items', id: itemId, run: (q) => actionService.delegate(itemId, req.user.id, toUserId, { comment: req.body.comment, query: q }),
+      describe: (row) => `Delegated action item #${itemId} to user ${toUserId}`,
+    });
     if (!r.ok) return res.status(r.statusCode).json({ success: false, error: r.error });
     res.json({ success: true });
   } catch (e) {

@@ -55,10 +55,12 @@ describePg('R2 every mounted mutation has a successful audited payload', () => {
   const one = async (sql, params) => (await db.query(sql, params)).rows[0];
   const counts = (id) => one('SELECT (SELECT count(*)::int FROM activity_log WHERE user_id = $1) AS activity, (SELECT count(*)::int FROM audit_events WHERE user_id = $1 OR actor_id = $1) AS policy', [id]);
   const send = async (method, url, body, bearer, extraHeaders = {}) => {
+    // A FormData body (file upload routes) sets its own multipart boundary header.
+    const multipart = typeof FormData !== 'undefined' && body instanceof FormData;
     const response = await fetch(new URL(url, base), {
       method,
-      headers: { Authorization: `Bearer ${bearer}`, 'Content-Type': 'application/json', ...extraHeaders },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers: { Authorization: `Bearer ${bearer}`, ...(multipart ? {} : { 'Content-Type': 'application/json' }), ...extraHeaders },
+      body: body === undefined ? undefined : (multipart ? body : JSON.stringify(body)),
       signal: AbortSignal.timeout(20000),
     });
     const text = await response.text();

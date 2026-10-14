@@ -7,6 +7,7 @@ const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
+const { auditedMutation } = require('../utils/auditedMutation');
 const { dateOnly } = require('../utils/validation');
 const { normalizeDateFields } = require('../utils/dateOnly');
 
@@ -36,8 +37,11 @@ router.post('/categories', authenticate, authorize(), async (req, res) => {
     const schema = Joi.object({ name: Joi.string().required(), parent_id: Joi.number().integer().allow(null).optional() });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const result = await query('INSERT INTO document_categories (name, parent_id) VALUES ($1,$2) RETURNING *', [value.name, value.parent_id]);
-    res.status(201).json({ success: true, data: result.rows[0] });
+    const out = await auditedMutation(req, { action: 'create', module: 'doccontrol', entityType: 'document_category' }, async (q) => {
+      const result = await q('INSERT INTO document_categories (name, parent_id) VALUES ($1,$2) RETURNING *', [value.name, value.parent_id]);
+      return { data: result.rows[0], entityId: result.rows[0].id, after: result.rows[0], description: `Created document category ${value.name}` };
+    });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -351,13 +355,18 @@ router.post('/rfis/:id/respond', authenticate, authorize(), async (req, res) => 
 
 router.post('/rfis/:id/close', authenticate, authorize(), async (req, res) => {
   try {
-    const result = await query(
+    const closed = await auditedMutation(req, { action: 'close', module: 'doccontrol', entityType: 'project_rfi' }, async (q) => {
+    const before = (await q('SELECT * FROM project_rfis WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+    const result = await q(
       `UPDATE project_rfis SET status = 'closed', updated_at = NOW() WHERE id = $1 AND status = 'answered' RETURNING *`,
       [req.params.id]
     );
-    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'RFI not found or not answered yet' });
-    await fireEvent({ eventType: 'rfi.closed', entityType: 'project_rfi', entityId: parseInt(req.params.id, 10), userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: result.rows[0].project_id, rfi_number: result.rows[0].rfi_number, status: 'closed' } });
-    res.json({ success: true, data: result.rows[0] });
+    if (result.rows.length === 0) return { skipAudit: true, rows: [] };
+    await fireEvent({ eventType: 'rfi.closed', entityType: 'project_rfi', entityId: parseInt(req.params.id, 10), userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: result.rows[0].project_id, rfi_number: result.rows[0].rfi_number, status: 'closed' } }, { query: q });
+    return { rows: result.rows, entityId: result.rows[0].id, projectId: result.rows[0].project_id, before, after: result.rows[0], oldStatus: before && before.status, newStatus: 'closed', description: `Closed RFI ${result.rows[0].rfi_number}` };
+    });
+    if (closed.rows.length === 0) return res.status(404).json({ success: false, error: 'RFI not found or not answered yet' });
+    res.json({ success: true, data: closed.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -859,7 +868,6 @@ router.put('/numbering/:project_id', authenticate, authorize(), async (req, res)
     }).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    await doccontrolEngine.loadSettings(query, req.params.project_id); // ensure the row exists
     const sets = []; const params = []; let idx = 1;
     for (const [k, v] of Object.entries(value)) {
       if (v === undefined) continue;
@@ -867,8 +875,13 @@ router.put('/numbering/:project_id', authenticate, authorize(), async (req, res)
     }
     sets.push(`updated_at = NOW()`);
     params.push(req.params.project_id);
-    const r = await query(`UPDATE project_numbering_settings SET ${sets.join(', ')} WHERE project_id = $${idx} RETURNING *`, params);
-    res.json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'update', module: 'doccontrol', entityType: 'project_numbering_settings' }, async (q) => {
+      await doccontrolEngine.loadSettings(q, req.params.project_id); // ensure the row exists (in the same transaction)
+      const before = (await q('SELECT * FROM project_numbering_settings WHERE project_id = $1 FOR UPDATE', [req.params.project_id])).rows[0];
+      const r = await q(`UPDATE project_numbering_settings SET ${sets.join(', ')} WHERE project_id = $${idx} RETURNING *`, params);
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, before, after: r.rows[0], description: `Updated document numbering for project #${req.params.project_id}` };
+    });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 

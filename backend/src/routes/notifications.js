@@ -4,6 +4,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const notificationService = require('../services/notificationService');
 const { transaction } = require('../config/database');
 const { logActivity } = require('../utils/activity');
+const { auditedMutation } = require('../utils/auditedMutation');
 const Joi = require('joi');
 const { typedFail } = require('../utils/typedRoute');
 
@@ -26,8 +27,12 @@ router.get('/', authenticate, authorize(), async (req, res) => {
 // POST /api/notifications/:id/read
 router.post('/:id/read', authenticate, authorize(), async (req, res) => {
   try {
-    const r = await notificationService.markRead(parseInt(req.params.id, 10), req.user.id);
-    res.json({ success: r.ok });
+    const r = await auditedMutation(req, { action: 'read', module: 'notifications', entityType: 'notification' }, async (q) => {
+      const result = await notificationService.markRead(parseInt(req.params.id, 10), req.user.id, { query: q });
+      if (!result.updated) return { data: result, skipAudit: true };
+      return { data: result, entityId: parseInt(req.params.id, 10), after: { status: 'read' }, newStatus: 'read', description: `Marked notification #${req.params.id} read` };
+    });
+    res.json({ success: r.data.ok });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }
@@ -81,8 +86,11 @@ router.put('/preferences', authenticate, authorize(), async (req, res) => {
       enabled: Joi.boolean().default(true),
     }).unknown(false).validate(req.body);
     if (error) return res.status(400).json({ success: false, error_code: 'invalid_notification_preference' });
-    const r = await notificationService.setPreference(req.user.id, value.event_type, value.channel, value.enabled);
-    res.json({ success: r.ok });
+    const r = await auditedMutation(req, { action: 'update', module: 'notifications', entityType: 'notification_preference' }, async (q) => {
+      const result = await notificationService.setPreference(req.user.id, value.event_type, value.channel, value.enabled, { query: q });
+      return { data: result, entityId: req.user.id, after: value, description: `Notification preference ${value.event_type}/${value.channel} ${value.enabled ? 'on' : 'off'}` };
+    });
+    res.json({ success: r.data.ok });
   } catch (error) {
     return typedFail(res, error, 'NOTIFICATION_PREFERENCE_UPDATE', req);
   }

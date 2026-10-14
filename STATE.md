@@ -664,3 +664,7 @@ R2.3/projects+site+quantities+schedule done 4dbc352; next hr
 Observation (owner decision, not changed): DELETE /api/hr/labor-payments/:id physically deletes a payment whose project cost was booked by the labor_payment.created event; no reversing cost event exists. R2 only adds a before-snapshot audit.
 R2.3/hr+hse done 8e8d83f; next qhse
 R2.3/qhse done cf383ee; next portal
+R2.3/portal done 30970a6; next commercial
+Observation (owner decision, not changed): backend/src/routes/qhse.js registers PUT /ncrs/:id and PUT /quality-tests/:id twice; Express only reaches the first, so the later "widened" handlers (NCR location/root-cause/CAPA fields, quality-test ITP links) are unreachable dead code. Both copies now audit; consolidation is an owner/product decision.
+Defect found by the R2 registry and fixed: POST /api/projects/:projectId/instructions returned 500 on every call (auditedTransaction called without eventForResult).
+Approval PUT /:id/approve and /:id/reject keep 2 baseline entries: advanceApproval injects logActivity into the workflow engine, which the static guard cannot see; runtime registry verification is still pending for them.

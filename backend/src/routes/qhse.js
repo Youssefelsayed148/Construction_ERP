@@ -1111,10 +1111,6 @@ router.get('/punch-items/pdf', authenticate, authorize(), async (req, res) => {
 
 router.put('/ncrs/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const existing = (await query('SELECT status FROM ncrs WHERE id = $1', [req.params.id])).rows[0];
-    if (!existing) return res.status(404).json({ success: false, error: 'NCR not found' });
-    if (existing.status === 'closed') return res.status(400).json({ success: false, error: 'Closed NCRs are read-only' });
-
     const schema = Joi.object({
       description: Joi.string(),
       severity: Joi.string().valid('minor', 'major', 'critical'),
@@ -1142,8 +1138,16 @@ router.put('/ncrs/:id', authenticate, authorize(), async (req, res) => {
       sets.push(`${k} = $${idx++}`); params.push(v);
     }
     params.push(req.params.id);
-    const result = await query(`UPDATE ncrs SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
-    res.json({ success: true, data: result.rows[0] });
+    const out = await auditedMutation(req, { action: 'update', module: 'qhse', entityType: 'ncr' }, async (q) => {
+      const before = (await q('SELECT * FROM ncrs WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true, missing: true };
+      if (before.status === 'closed') return { skipAudit: true, closed: true };
+      const result = await q(`UPDATE ncrs SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
+      return { data: result.rows[0], entityId: before.id, projectId: before.project_id, before, after: result.rows[0], oldStatus: before.status, newStatus: result.rows[0].status, description: `Updated NCR ${before.ncr_number || before.id}` };
+    });
+    if (out.missing) return res.status(404).json({ success: false, error: 'NCR not found' });
+    if (out.closed) return res.status(400).json({ success: false, error: 'Closed NCRs are read-only' });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -1208,9 +1212,14 @@ router.put('/quality-tests/:id', authenticate, authorize(), async (req, res) => 
       else { sets.push(`${k} = $${idx++}`); params.push(v); }
     }
     params.push(req.params.id);
-    const r = await query(`UPDATE quality_tests SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Test not found' });
-    res.json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'update', module: 'qhse', entityType: 'quality_test' }, async (q) => {
+      const before = (await q('SELECT * FROM quality_tests WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true };
+      const r = await q(`UPDATE quality_tests SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
+      return { data: r.rows[0], entityId: before.id, projectId: before.project_id, before, after: r.rows[0], oldStatus: before.result, newStatus: r.rows[0].result, description: `Updated quality test #${before.id}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Test not found' });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 

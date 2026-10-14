@@ -17,6 +17,7 @@ const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
+const { auditedMutation } = require('../utils/auditedMutation');
 const engine = require('../services/handoverEngine');
 const { renderDocument } = require('../utils/procurementPdf');
 const { nextNumber } = require('../services/numbering');
@@ -112,10 +113,13 @@ router.post('/package/:projectId/items', authenticate, authorize(), async (req, 
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const r = await query(
-      `INSERT INTO handover_package_items (project_id, item_type, title, required, notes, status) VALUES ($1,$2,$3,$4,$5,'pending') RETURNING *`,
-      [req.params.projectId, value.item_type, value.title, value.required, value.notes || null]);
-    res.status(201).json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'create', module: 'handover', entityType: 'handover_package_item' }, async (q) => {
+      const r = await q(
+        `INSERT INTO handover_package_items (project_id, item_type, title, required, notes, status) VALUES ($1,$2,$3,$4,$5,'pending') RETURNING *`,
+        [req.params.projectId, value.item_type, value.title, value.required, value.notes || null]);
+      return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], description: `Added handover package item "${value.title}"` };
+    });
+    res.status(201).json({ success: true, data: out.data });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -165,11 +169,16 @@ router.post('/package/items/:id/verify', authenticate, authorize('owner', 'admin
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const r = await query(
-      `UPDATE handover_package_items SET status = $1, verified_by = $2, verified_at = NOW(), notes = COALESCE($3, notes) WHERE id = $4 RETURNING *`,
-      [value.status, req.user.id, value.notes || null, req.params.id]);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Package item not found' });
-    res.json({ success: true, data: r.rows[0] });
+    const out = await auditedMutation(req, { action: 'verify', module: 'handover', entityType: 'handover_package_item' }, async (q) => {
+      const before = (await q('SELECT * FROM handover_package_items WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!before) return { skipAudit: true };
+      const r = await q(
+        `UPDATE handover_package_items SET status = $1, verified_by = $2, verified_at = NOW(), notes = COALESCE($3, notes) WHERE id = $4 RETURNING *`,
+        [value.status, req.user.id, value.notes || null, req.params.id]);
+      return { data: r.rows[0], entityId: before.id, projectId: before.project_id, before, after: r.rows[0], oldStatus: before.status, newStatus: value.status, description: `Handover item "${before.title}" ${value.status}` };
+    });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Package item not found' });
+    res.json({ success: true, data: out.data });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
 

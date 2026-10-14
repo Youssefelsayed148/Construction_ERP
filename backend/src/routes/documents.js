@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { transaction } = require('../config/database');
+const { auditedMutation } = require('../utils/auditedMutation');
 const { authenticate, authorize } = require('../middleware/auth');
 const { MAX_UPLOAD_BYTES, ALLOWED_EXTENSIONS, validateUploadFile } = require('../utils/uploadValidation');
 
@@ -47,10 +48,14 @@ router.post('/upload', authenticate, authorize(), (req, res) => {
       file_size_bytes: f.size,
     }));
     try {
-      await transaction(async (client) => {
+      await auditedMutation(req, { action: 'upload', module: 'documents', entityType: 'uploaded_file' }, async (q) => {
         for (const file of req.files) {
-          await client.query('INSERT INTO uploaded_files (file_name, uploaded_by) VALUES ($1, $2)', [file.filename, req.user.id]);
+          await q('INSERT INTO uploaded_files (file_name, uploaded_by) VALUES ($1, $2)', [file.filename, req.user.id]);
         }
+        return {
+          data: files, entityId: null, after: { files: req.files.map((f) => ({ file_name: f.filename, original_name: f.originalname, size: f.size })) },
+          description: `Uploaded ${req.files.length} file(s): ${req.files.map((f) => f.originalname).join(', ').slice(0, 200)}`,
+        };
       });
     } catch (error) {
       await Promise.all(req.files.map((file) => fs.promises.unlink(file.path).catch(() => {})));
