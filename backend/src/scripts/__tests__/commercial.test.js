@@ -153,7 +153,7 @@ describe('commercial formulas (pure)', () => {
   });
 
   test('EAC = Actual + Accrued + ETC; Margin = Profit / Revenue × 100', () => {
-    expect(engine.eac(50000, 0, 50000)).toBe(100000);
+    expect(engine.eac(50000, 50000)).toBe(100000);
     expect(engine.forecastProfit(100000, 100000)).toBe(0);
     expect(engine.forecastMarginPct(20000, 100000)).toBe(20);
     expect(engine.forecastMarginPct(0, 0)).toBe(0);
@@ -190,9 +190,9 @@ describe('forecast margin scenarios (hand-calculated)', () => {
     expect(r.actual_cost).toBe(20000);
     // Accrued = max(30000 − 20000, 0) = 10000
     expect(r.accrued_cost).toBe(10000);
-    // ETC = max(80000 − 30000, 0) = 50000
-    expect(r.etc).toBe(50000);
-    // EAC = 20000 + 10000 + 50000 = 80000
+    // ETC = remaining commitment (10,000) + uncommitted budget (50,000).
+    expect(r.etc).toBe(60000);
+    // EAC = actual (20,000) + ETC (60,000) = 80,000.
     expect(r.eac).toBe(80000);
     expect(r.forecast_profit).toBe(20000);
     expect(r.forecast_margin_percent).toBe(20);
@@ -252,9 +252,9 @@ describe('forecast margin scenarios (hand-calculated)', () => {
     expect(r.current_budget).toBe(85000);
     // Commitments: PO 30000 + revised subcontract 55000 = 85000.
     expect(r.committed_cost).toBe(85000);
-    // Accrued = max(85000 − 20000, 0) = 65000; ETC = max(85000 − 85000, 0) = 0.
-    expect(r.etc).toBe(0);
-    // EAC = 20000 + 65000 + 0 = 85000 → profit = 110000 − 85000 = 25000.
+    // ETC is the outstanding commitment (65,000); no budget remains uncommitted.
+    expect(r.etc).toBe(65000);
+    // EAC = actual (20,000) + ETC (65,000) = 85,000.
     expect(r.eac).toBe(85000);
     expect(r.forecast_profit).toBe(25000);
     expect(r.forecast_margin_percent).toBe(22.73);

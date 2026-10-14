@@ -15,7 +15,7 @@
     "startWorkflow": "Start approval", "approve": "Approve", "empty": "No records are available for this project.",
     "projectDataUnavailable": "This project finance list could not be loaded.",
     "newBudget": "New budget version", "costCodeId": "Cost code ID (optional)", "amount": "Amount",
-    "newForecast": "New forecast version", "forecastAtCompletion": "Forecast at completion", "budgets": "Budget versions",
+    "newForecast": "New forecast version", "forecastAtCompletion": "Forecast at completion", "estimateToComplete": "Estimate to complete (ETC)", "addLine": "Add cost code", "removeLine": "Remove line", "budgets": "Budget versions",
     "forecasts": "Forecast versions", "version": "Version", "submitted": "Submitted for approval", "approved": "Approved",
     "newCreditNote": "New credit note", "invoice": "Invoice", "selectInvoice": "Select an invoice", "reason": "Reason",
     "creditNotes": "Credit notes", "issue": "Issue credit note", "newBatch": "New supplier payment batch",

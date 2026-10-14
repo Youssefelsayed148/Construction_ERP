@@ -390,19 +390,25 @@ describePg('5.5 commercial and finance (real PostgreSQL, real app)', () => {
     const f1 = await call('POST', '/api/commercial/forecast-versions', users.cm, { project_id: pA, name: 'Q1', as_of_date: '2026-03-31', lines: [{ cost_code_id: cc1, forecast_amount: 800000 }, { cost_code_id: cc2, forecast_amount: 250000 }] });
     expect(f1.status).toBe(201);
     expect([f1.body.data.total_forecast, f1.body.data.total_actual_to_date]).toEqual([1050000, 12345.67]);
+    expect(f1.body.data.forecast_basis).toBe('etc');
     expect(f1.body.data.lines.find((l) => l.cost_code_id === cc1).actual_to_date).toBe('12345.67');
     expect((await call('POST', `/api/commercial/forecast-versions/${f1.body.data.id}/approve`, users.cm)).body.error_code).toBe('maker_checker_violation');
     expect((await call('POST', `/api/commercial/forecast-versions/${f1.body.data.id}/approve`, users.coo)).body.data.status).toBe('approved');
     const forecasted = await engine.projectCommercial(db.query, pA);
     expect(forecasted.approved_forecast_version_id).toBe(f1.body.data.id);
     expect(forecasted.approved_forecast_total).toBe(1050000);
-    expect(forecasted.etc).toBeCloseTo(Math.max(1050000 - forecasted.actual_cost - forecasted.accrued_cost, 0), 2);
-    expect(forecasted.eac).toBeCloseTo(forecasted.actual_cost + forecasted.accrued_cost + forecasted.etc, 2);
+    expect(forecasted.approved_forecast_basis).toBe('etc');
+    expect(forecasted.etc).toBe(1050000);
+    expect(forecasted.eac).toBeCloseTo(forecasted.actual_cost + 1050000, 2);
     expect((await call('POST', `/api/commercial/forecast-versions/${f1.body.data.id}/approve`, users.coo)).body.error_code).toBe('forecast_version_not_draft');
     const f2 = (await call('POST', '/api/commercial/forecast-versions', users.cm, { project_id: pA, name: 'Q2', lines: [{ cost_code_id: cc1, forecast_amount: 820000 }] })).body.data;
+    await db.query("UPDATE forecast_versions SET forecast_basis = 'eac' WHERE id = $1", [f2.id]);
     await call('POST', `/api/commercial/forecast-versions/${f2.id}/approve`, users.coo);
     expect((await all('SELECT version_no, status FROM forecast_versions WHERE project_id = $1 ORDER BY version_no', [pA])).map((r) => [r.version_no, r.status])).toEqual([[1, 'superseded'], [2, 'approved']]);
-    expect((await engine.projectCommercial(db.query, pA)).approved_forecast_version_id).toBe(f2.id);
+    const legacyForecasted = await engine.projectCommercial(db.query, pA);
+    expect(legacyForecasted.approved_forecast_version_id).toBe(f2.id);
+    expect(legacyForecasted.approved_forecast_basis).toBe('eac');
+    expect(legacyForecasted.eac).toBeCloseTo(legacyForecasted.actual_cost + legacyForecasted.accrued_cost + Math.max(820000 - legacyForecasted.actual_cost - legacyForecasted.accrued_cost, 0), 2);
     expect((await call('GET', `/api/commercial/project/${pA}/forecast-versions`, users.cm)).body.data).toHaveLength(2);
   });
 

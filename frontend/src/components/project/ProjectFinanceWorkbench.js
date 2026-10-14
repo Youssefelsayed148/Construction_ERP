@@ -33,7 +33,8 @@ export default function ProjectFinanceWorkbench({ projectId, invoices = [] }) {
   const [notice, setNotice] = useState('');
   const [application, setApplication] = useState({ party_type: 'client', contract_id: '', claimed_work: '', claimed_variations: '', claimed_materials: '' });
   const [budget, setBudget] = useState({ name: '', cost_code_id: '', amount: '' });
-  const [forecast, setForecast] = useState({ name: '', cost_code_id: '', forecast_amount: '' });
+  const [forecastName, setForecastName] = useState('');
+  const [forecastLines, setForecastLines] = useState([{ cost_code_id: '', forecast_amount: '' }]);
   const [creditNote, setCreditNote] = useState({ party_type: 'client', invoice_id: '', supplier_invoice_id: '', amount: '', reason: '' });
   const [batch, setBatch] = useState({ supplier_invoice_id: '', amount: '', currency: 'EGP', payment_date: '' });
   const [retentionRelease, setRetentionRelease] = useState({ party_type: 'client', amount: '' });
@@ -98,8 +99,8 @@ export default function ProjectFinanceWorkbench({ projectId, invoices = [] }) {
   const createForecast = (event) => {
     event.preventDefault();
     run('forecast:create', '/commercial/forecast-versions', 'POST', {
-      project_id: Number(projectId), name: forecast.name,
-      lines: [{ cost_code_id: numberValue(forecast.cost_code_id), forecast_amount: Number(forecast.forecast_amount) }],
+      project_id: Number(projectId), name: forecastName,
+      lines: forecastLines.map((line) => ({ cost_code_id: numberValue(line.cost_code_id), forecast_amount: Number(line.forecast_amount) })),
     }, 'created');
   };
 
@@ -189,9 +190,13 @@ export default function ProjectFinanceWorkbench({ projectId, invoices = [] }) {
           <button className="btn btn-primary">{t('finance.workbench.create')}</button>
         </form>
         <form className="card form-grid" onSubmit={createForecast}><h3>{t('finance.workbench.newForecast')}</h3>
-          <label>{t('common.name')}<input required value={forecast.name} onChange={(event) => setForecast({ ...forecast, name: event.target.value })} /></label>
-          <label>{t('finance.workbench.costCodeId')}<input type="number" min="1" value={forecast.cost_code_id} onChange={(event) => setForecast({ ...forecast, cost_code_id: event.target.value })} /></label>
-          <label>{t('finance.workbench.forecastAtCompletion')}<input required type="number" min="0" step="0.01" value={forecast.forecast_amount} onChange={(event) => setForecast({ ...forecast, forecast_amount: event.target.value })} /></label>
+          <label>{t('common.name')}<input required value={forecastName} onChange={(event) => setForecastName(event.target.value)} /></label>
+          {forecastLines.map((line, index) => <div className="finance-forecast-line" key={index}>
+            <label>{t('finance.workbench.costCodeId')}<input type="number" min="1" value={line.cost_code_id} onChange={(event) => setForecastLines((rows) => rows.map((row, i) => i === index ? { ...row, cost_code_id: event.target.value } : row))} /></label>
+            <label>{t('finance.workbench.estimateToComplete')}<input required type="number" min="0" step="0.01" value={line.forecast_amount} onChange={(event) => setForecastLines((rows) => rows.map((row, i) => i === index ? { ...row, forecast_amount: event.target.value } : row))} /></label>
+            {forecastLines.length > 1 && <button type="button" className="btn" onClick={() => setForecastLines((rows) => rows.filter((_, i) => i !== index))}>{t('finance.workbench.removeLine')}</button>}
+          </div>)}
+          <button type="button" className="btn" onClick={() => setForecastLines((rows) => [...rows, { cost_code_id: '', forecast_amount: '' }])}>{t('finance.workbench.addLine')}</button>
           <button className="btn btn-primary">{t('finance.workbench.create')}</button>
         </form>
         <VersionTable title={t('finance.workbench.budgets')} rows={data.budgets} valueKey="total" t={t}

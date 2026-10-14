@@ -661,3 +661,9 @@ This slice does not close Phase 8. Cost-code EAC, certified-quantity valuation, 
 ### Phase 7 — mobile route sweep (2026-10-14)
 
 Added a narrow viewport smoke sweep for 17 major internal/portal routes. API calls are stubbed with empty deterministic responses; each route is checked for body visibility and page-level horizontal overflow. Playwright `npx playwright test e2e/mobile-route-sweep.spec.js --project=mobile-chromium --reporter=line`: PASS, 17/17. Sandbox launch initially returned `spawn EPERM`; elevated local Playwright execution passed. Phase 7 remains open for route-specific mobile workflows, offline fonts and Lighthouse evidence.
+
+### Phase 8 — forecast ETC/EAC basis (2026-10-14)
+
+New forecast versions treat line `forecast_amount` as per-cost-code ETC; commercial EAC is actual plus ETC. ETC defaults to remaining net commitments plus budget not yet committed. Migration 0062 preserves pre-existing ForecastVersions on the legacy EAC basis and API-created versions explicitly use ETC. The workbench now accepts multiple cost-code inputs in one forecast. The older Phase 13 formula note has been updated to explain this transition.
+
+Verification: migration 0062 applied to disposable Docker Desktop PostgreSQL 16 (`construction_erp_test`); backend mocks 53/1,003; commercial real-PG 18/18 including ETC-basis and legacy EAC-basis regressions; frontend CI 29/118; Project Finance Workbench focused test 2/2; production build compiled; locale checks/parity 35 namespaces / 1,089 English keys; syntax/guard checks passed. Finance owner signoff remains required for the changed forecast basis. Phase 8 remains open for certified quantity valuation, CPI/resource loading and other listed items.

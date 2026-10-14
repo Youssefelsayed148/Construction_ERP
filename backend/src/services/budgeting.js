@@ -155,7 +155,7 @@ async function createForecastVersion(q, { project_id, name, as_of_date = null, n
   await assertCostCodes(q, lines);
   const actual = new Map((await costView.byCode(q, project_id)).map((r) => [r.cost_code_id == null ? 'none' : String(r.cost_code_id), r.amount]));
   const versionNo = await nextVersionNo(q, 'forecast_versions', project_id);
-  const v = (await q('INSERT INTO forecast_versions (project_id, version_no, name, as_of_date, notes, created_by) VALUES ($1,$2,$3,COALESCE($4::date, CURRENT_DATE),$5,$6) RETURNING id',
+  const v = (await q("INSERT INTO forecast_versions (project_id, version_no, name, as_of_date, notes, created_by, forecast_basis) VALUES ($1,$2,$3,COALESCE($4::date, CURRENT_DATE),$5,$6,'etc') RETURNING id",
     [project_id, versionNo, name, as_of_date, notes, userId])).rows[0];
   for (const l of lines) {
     await q('INSERT INTO forecast_lines (forecast_version_id, cost_code_id, forecast_amount, actual_to_date, notes) VALUES ($1,$2,$3,$4,$5)',

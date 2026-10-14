@@ -1509,3 +1509,19 @@ Docker Desktop server version 28.3.2 and loopback-only disposable container were
 Added `frontend/e2e/mobile-route-sweep.spec.js` for the login, dashboard, projects, project detail/operations/site/QHSE/HSE/schedule/BOQ, invoices, procurement comparison, approvals, and consultant/client/subcontractor/supplier portals. It uses test-only auth state and mocked empty API responses, then checks the route renders and document width fits the viewport.
 
 `npx playwright test e2e/mobile-route-sweep.spec.js --project=mobile-chromium --reporter=line` — PASS, 17 tests. The unprivileged launch first failed with `spawn EPERM`; the authorized local Playwright runner passed. This test does not satisfy full major-screen journey coverage by itself. IBM Plex Arabic local font packaging and Lighthouse remain open.
+
+## 2026-10-14 — Phase 8 forecast ETC and EAC basis
+
+The current closeout plan specifies EAC = actual + ETC, with ETC supplied by a per-cost-code ForecastVersion or remaining-commitment rules. New ForecastVersions now carry `forecast_basis='etc'`; each line is ETC for its cost code. The no-forecast fallback combines outstanding commitment and remaining uncommitted current budget. The API response exposes `approved_forecast_basis`. Finance workbench forecast form supports multiple cost-code lines. Existing versions are preserved with `forecast_basis='eac'` by migration `0062_forecast_etc_basis.sql`, and the engine continues the old total-EAC calculation for those versions.
+
+Verification:
+- `npm run migrate` on disposable Postgres 16 — migration 0062 applied; 123 prior migrations recorded.
+- `npm test -- --runInBand --silent` (backend) — PASS, 53 suites / 1,003 tests.
+- `TEST_PG=1 npm run test:pg -- --silent src/scripts/__tests__/commercial-5-5.pg.test.js` — PASS, 18/18 (current ETC hand calculation and explicit legacy EAC compatibility).
+- `npm run test:ci -- --silent` (frontend) — PASS, 29 suites / 118 tests.
+- `npm test -- --watchAll=false --runInBand --silent src/components/project/ProjectFinanceWorkbench.test.js` — PASS, 2/2.
+- `npm run build` — `Compiled successfully`.
+- `npm run i18n:check` / `npm run i18n:parity` — pass; parity 35 namespaces / 1,089 English keys.
+- `npm run lint:guards` (backend), `node --check` for changed JS, and `git diff --check` — pass.
+
+This resolves the formula mismatch for new forecasts while preserving legacy approvals. Finance owner signoff is still required before production. Remaining Phase 8 work and Phases 7, 9, 10, and 11 are not complete.

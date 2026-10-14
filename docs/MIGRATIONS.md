@@ -18,3 +18,5 @@ Numbering note: versioned migration `0030` is absent in the observed history. Tr
 3. `npm run migrate` against the copy, then `npm run data-cleaning-report` (backend). It lists the rows that stop any NOT VALID constraint from being validated, for every CHECK and foreign key in the database, and never fixes them. Exit code 2 means offenders exist. After fixing rows by hand, `ALTER TABLE ... VALIDATE CONSTRAINT ...`.
 
 As of 2026-10-14, migration `0061_subcontract_advance_caps.sql` is the highest source migration. It has been applied only to the disposable local Postgres 16 database used for closeout testing; it is not evidence that any shared or production database is migrated.
+
+As of 2026-10-14, migration `0062_forecast_etc_basis.sql` is the highest source migration. Migration 0061 and 0062 were applied only to disposable local PostgreSQL 16 `construction_erp_test` for closeout verification; no shared or production database was migrated.

@@ -15,7 +15,7 @@
     "startWorkflow": "بدء الاعتماد", "approve": "اعتماد", "empty": "لا توجد سجلات لهذا المشروع.",
     "projectDataUnavailable": "تعذر تحميل قائمة السجلات المالية للمشروع.",
     "newBudget": "إصدار ميزانية جديد", "costCodeId": "معرّف بند التكلفة (اختياري)", "amount": "المبلغ",
-    "newForecast": "إصدار توقع جديد", "forecastAtCompletion": "التكلفة المتوقعة عند الإتمام", "budgets": "إصدارات الميزانية",
+    "newForecast": "إصدار توقع جديد", "forecastAtCompletion": "التكلفة المتوقعة عند الإتمام", "estimateToComplete": "التكلفة المقدرة لإكمال العمل (ETC)", "addLine": "إضافة بند تكلفة", "removeLine": "حذف البند", "budgets": "إصدارات الميزانية",
     "forecasts": "إصدارات التوقعات", "version": "الإصدار", "submitted": "مرسل للاعتماد", "approved": "معتمد",
     "newCreditNote": "إشعار دائن جديد", "invoice": "الفاتورة", "selectInvoice": "اختر فاتورة", "reason": "السبب",
     "creditNotes": "الإشعارات الدائنة", "issue": "إصدار الإشعار الدائن", "newBatch": "دفعة موردين جديدة",
