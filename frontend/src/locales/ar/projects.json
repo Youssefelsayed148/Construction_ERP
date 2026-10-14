@@ -39,6 +39,56 @@
       "units": "الوحدات والمبيعات"
     }
   },
+  "operations": {
+    "title": "عمليات المشروع",
+    "description": "المواد والمخزون والمشتريات والرقابة التجارية والمالية في مساحة عمل مرتبطة بالمشروع.",
+    "project": "المشروع",
+    "refresh": "تحديث",
+    "modules": "وحدات عمليات المشروع",
+    "noRecords": "لا توجد سجلات لهذا المشروع بعد.",
+    "loadError": "تعذر تحميل قسم المشروع. حدّث الصفحة وحاول مرة أخرى.",
+    "warehouse": "مخزن",
+    "projectWarehouse": "مخزن المشروع",
+    "openInventory": "فتح المخزون",
+    "tabs": {
+      "materials": "تخطيط المواد",
+      "inventory": "المخزون",
+      "procurement": "المشتريات",
+      "commercial": "التجارة والعقود",
+      "valuations": "المستخلصات",
+      "retention": "الاستقطاع المحتجز",
+      "finance": "المالية"
+    },
+    "fields": {
+      "material": "المادة",
+      "location": "الموقع",
+      "boqItem": "بند جدول الكميات",
+      "required": "المطلوب",
+      "issued": "المصروف",
+      "remaining": "المتبقي",
+      "needDate": "تاريخ الحاجة",
+      "certificate": "المستخلص",
+      "periodWork": "أعمال الفترة",
+      "certified": "المعتمد",
+      "retention": "الاستقطاع المحتجز",
+      "netAmount": "صافي المبلغ",
+      "status": "الحالة",
+      "issueDate": "تاريخ الإصدار"
+    },
+    "metrics": {
+      "held": "المحتجز",
+      "released": "المفرج عنه",
+      "balance": "الرصيد",
+      "contractValue": "قيمة العقد",
+      "invoiced": "المفوتر",
+      "cashCollected": "المحصل نقداً",
+      "outstanding": "المستحق",
+      "cashExpenses": "المصروفات النقدية",
+      "forecastRevenue": "الإيرادات المتوقعة",
+      "eac": "التكلفة المتوقعة عند الإكمال",
+      "forecastProfit": "الربح المتوقع"
+    }
+  },
   "workPackage": {
     "label": "حزمة العمل",
     "none": "بدون حزمة عمل",

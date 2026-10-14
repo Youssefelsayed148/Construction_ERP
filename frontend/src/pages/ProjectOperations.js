@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Boxes, ClipboardList, DollarSign, Percent, RefreshCw, ShoppingCart } from 'lucide-react';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatCurrency, formatDate, formatNumber, localizedName } from '../utils/formatters';
+import { translateStatus } from '../i18n/enums';
 import ProcurementWorkspace from '../components/project/ProcurementWorkspace';
 import ProjectFinanceWorkbench from '../components/project/ProjectFinanceWorkbench';
 import { useLocale } from '../hooks/useLocale';
@@ -17,23 +18,20 @@ async function get(path) {
 }
 
 const TABS = [
-  ['materials', 'Material planning', Boxes],
-  ['inventory', 'Inventory', Boxes],
-  ['procurement', 'Procurement', ShoppingCart],
-  ['commercial', 'Commercial', ClipboardList],
-  ['valuations', 'Valuations', ClipboardList],
-  ['retention', 'Retention', Percent],
-  ['finance', 'Finance', DollarSign],
+  ['materials', Boxes], ['inventory', Boxes], ['procurement', ShoppingCart],
+  ['commercial', ClipboardList], ['valuations', ClipboardList], ['retention', Percent], ['finance', DollarSign],
 ];
 
 const EMPTY = { materials: [], inventory: [], procurement: {}, commercial: null, valuations: [], retention: null, finance: null };
 
 function Status({ value }) {
-  return <span className="badge badge-info">{value || '—'}</span>;
+  const { t } = useLocale();
+  return <span className="badge badge-info">{value ? translateStatus(t, value) : '\u2014'}</span>;
 }
 
-function Empty({ children = 'No records for this project yet.' }) {
-  return <div className="card" style={{ color: 'var(--color-text-secondary)', textAlign: 'center', padding: 28 }}>{children}</div>;
+function Empty() {
+  const { t } = useLocale();
+  return <div className="card" style={{ color: 'var(--color-text-secondary)', textAlign: 'center', padding: 28 }}>{t('projects.operations.noRecords')}</div>;
 }
 
 function ProjectOperations() {
@@ -43,6 +41,7 @@ function ProjectOperations() {
   const [data, setData] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(true);
+  const { t } = useLocale();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -56,11 +55,11 @@ function ProjectOperations() {
       finance: get(`/finance/project/${id}`),
     };
     const entries = await Promise.all(Object.entries(requests).map(async ([key, promise]) => {
-      try { return [key, await promise, null]; } catch (error) { return [key, null, error.message]; }
+      try { return [key, await promise, false]; } catch { return [key, null, true]; }
     }));
     const next = { ...EMPTY }; const nextErrors = {};
     for (const [key, value, error] of entries) {
-      if (error) nextErrors[key] = error;
+      if (error) nextErrors[key] = true;
       else next[key] = value;
     }
     setData(next); setErrors(nextErrors); setLoading(false);
@@ -72,24 +71,24 @@ function ProjectOperations() {
     <div className="page-container project-operations">
       <div className="page-header operations-header">
         <div>
-          <button className="btn" onClick={() => navigate(`/projects/${id}`)}><ArrowLeft size={16} /> Project</button>
-          <h1 style={{ marginTop: 12 }}>Project operations</h1>
-          <p style={{ color: 'var(--color-text-secondary)' }}>Materials, stock, procurement, commercial control and finance in one project-scoped workspace.</p>
+          <button className="btn" onClick={() => navigate(`/projects/${id}`)}><ArrowLeft size={16} /> {t('projects.operations.project')}</button>
+          <h1 style={{ marginTop: 12 }}>{t('projects.operations.title')}</h1>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('projects.operations.description')}</p>
         </div>
-        <button className="btn" onClick={load} disabled={loading}><RefreshCw size={16} /> Refresh</button>
+        <button className="btn" onClick={load} disabled={loading}><RefreshCw size={16} /> {t('projects.operations.refresh')}</button>
       </div>
 
-      <div className="operations-tabs" role="tablist" aria-label="Project operations modules">
-        {TABS.map(([key, label, Icon]) => (
+      <div className="operations-tabs" role="tablist" aria-label={t('projects.operations.modules')}>
+        {TABS.map(([key, Icon]) => (
           <button key={key} role="tab" aria-selected={active === key}
             className={`btn ${active === key ? 'btn-primary' : ''}`} onClick={() => setActive(key)}>
-            <Icon size={16} /> {label}
+            <Icon size={16} /> {t(`projects.operations.tabs.${key}`)}
           </button>
         ))}
       </div>
 
-      {errors[active] && <div className="alert alert-danger">{errors[active]}</div>}
-      {loading ? <div className="card" style={{ padding: 40, textAlign: 'center' }}><span className="spinner" /></div> : (
+      {errors[active] && <div className="alert alert-danger" role="alert">{t('projects.operations.loadError')}</div>}
+      {loading ? <div className="card" style={{ padding: 40, textAlign: 'center' }}><span className="spinner" /><span className="sr-only">{t('common.loading')}</span></div> : (
         <>
           {active === 'materials' && <Materials rows={data.materials || []} />}
           {active === 'inventory' && <Inventory rows={data.inventory || []} navigate={navigate} />}
@@ -105,15 +104,17 @@ function ProjectOperations() {
 }
 
 function Materials({ rows }) {
+  const { t } = useLocale();
   if (!rows.length) return <Empty />;
-  return <div className="table-container"><table className="table"><thead><tr><th>Material</th><th>Location</th><th>BOQ item</th><th>Required</th><th>Issued</th><th>Remaining</th><th>Need date</th></tr></thead><tbody>
-    {rows.map((row) => <tr key={row.id}><td>{row.material_code} — {row.material_name_en || row.material_name_ar}</td><td>{row.location_name || '—'}</td><td>{row.boq_item_code || row.boq_item_description || '—'}</td><td>{row.required_quantity ?? row.planned_quantity ?? '—'}</td><td>{row.issued_quantity ?? 0}</td><td>{row.remaining_quantity ?? row.net_requirement ?? '—'}</td><td>{formatDate(row.source_activity_date)}</td></tr>)}
+  return <div className="table-container"><table className="table"><thead><tr>{['material', 'location', 'boqItem', 'required', 'issued', 'remaining', 'needDate'].map((key) => <th key={key}>{t(`projects.operations.fields.${key}`)}</th>)}</tr></thead><tbody>
+    {rows.map((row) => <tr key={row.id}><td>{row.material_code} — {localizedName(row, undefined, 'material_name')}</td><td>{row.location_name || '\u2014'}</td><td>{row.boq_item_code || row.boq_item_description || '\u2014'}</td><td>{formatNumber(row.required_quantity ?? row.planned_quantity ?? 0)}</td><td>{formatNumber(row.issued_quantity ?? 0)}</td><td>{formatNumber(row.remaining_quantity ?? row.net_requirement ?? 0)}</td><td>{formatDate(row.source_activity_date)}</td></tr>)}
   </tbody></table></div>;
 }
 
 function Inventory({ rows, navigate }) {
+  const { t } = useLocale();
   if (!rows.length) return <Empty />;
-  return <div className="operations-grid">{rows.map((row) => <div className="card" key={row.id}><h3>{row.name}</h3><p>{row.type || row.warehouse_type || 'Warehouse'}</p><p style={{ color: 'var(--color-text-secondary)' }}>{row.project_name || 'Project warehouse'}</p><button className="btn" onClick={() => navigate('/inventory')}>Open inventory</button></div>)}</div>;
+  return <div className="operations-grid">{rows.map((row) => <div className="card" key={row.id}><h3>{localizedName(row, undefined, 'name')}</h3><p>{row.type || row.warehouse_type || t('projects.operations.warehouse')}</p><p style={{ color: 'var(--color-text-secondary)' }}>{localizedName(row, undefined, 'project_name') || t('projects.operations.projectWarehouse')}</p><button className="btn" onClick={() => navigate('/inventory')}>{t('projects.operations.openInventory')}</button></div>)}</div>;
 }
 
 function Commercial({ data }) {
@@ -130,27 +131,30 @@ function Commercial({ data }) {
 }
 
 function Valuations({ rows }) {
+  const { t } = useLocale();
   if (!rows.length) return <Empty />;
-  return <div className="table-container"><table className="table"><thead><tr><th>Certificate</th><th>Period work</th><th>Certified</th><th>Retention</th><th>Net amount</th><th>Status</th><th>Issued</th></tr></thead><tbody>
+  return <div className="table-container"><table className="table"><thead><tr>{['certificate', 'periodWork', 'certified', 'retention', 'netAmount', 'status', 'issueDate'].map((key) => <th key={key}>{t(`projects.operations.fields.${key}`)}</th>)}</tr></thead><tbody>
     {rows.map((row) => <tr key={row.id}><td>{row.invoice_number || `#${row.id}`}</td><td>{formatCurrency(row.gross_current_work || 0)}</td><td>{formatCurrency(row.certified_gross ?? row.amount ?? 0)}</td><td>{formatCurrency(row.retention_amount || 0)}</td><td>{formatCurrency(row.net_amount ?? row.amount ?? 0)}</td><td><Status value={row.status} /></td><td>{formatDate(row.issue_date)}</td></tr>)}
   </tbody></table></div>;
 }
 
 function Retention({ data }) {
+  const { t } = useLocale();
   if (!data) return <Empty />;
-  const metrics = [['Held', data.held], ['Released', data.released], ['Balance', data.balance]];
-  return <div className="stats-grid">{metrics.map(([label, value]) => <div className="stat-card" key={label}><div className="stat-label">{label}</div><div className="stat-value">{formatCurrency(value || 0)}</div></div>)}</div>;
+  const metrics = [['held', data.held], ['released', data.released], ['balance', data.balance]];
+  return <div className="stats-grid">{metrics.map(([key, value]) => <div className="stat-card" key={key}><div className="stat-label">{t(`projects.operations.metrics.${key}`)}</div><div className="stat-value">{formatCurrency(value || 0)}</div></div>)}</div>;
 }
 
 function Finance({ data, projectId, invoices }) {
+  const { t } = useLocale();
   if (!data) return <Empty />;
   const metrics = [
-    ['Contract value', data.contract_value], ['Invoiced', data.total_invoiced], ['Cash collected', data.total_paid],
-    ['Outstanding', data.outstanding_balance], ['Cash expenses', data.total_expenses], ['Forecast revenue', data.forecast_revenue],
-    ['EAC', data.eac], ['Forecast profit', data.profit],
+    ['contractValue', data.contract_value], ['invoiced', data.total_invoiced], ['cashCollected', data.total_paid],
+    ['outstanding', data.outstanding_balance], ['cashExpenses', data.total_expenses], ['forecastRevenue', data.forecast_revenue],
+    ['eac', data.eac], ['forecastProfit', data.profit],
   ];
   return <>
-    <div className="stats-grid">{metrics.map(([label, value]) => <div className="stat-card" key={label}><div className="stat-label">{label}</div><div className="stat-value">{formatCurrency(value || 0)}</div></div>)}</div>
+    <div className="stats-grid">{metrics.map(([key, value]) => <div className="stat-card" key={key}><div className="stat-label">{t(`projects.operations.metrics.${key}`)}</div><div className="stat-value">{formatCurrency(value || 0)}</div></div>)}</div>
     <ProjectFinanceWorkbench projectId={projectId} invoices={invoices} />
   </>;
 }

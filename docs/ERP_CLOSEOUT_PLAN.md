@@ -439,7 +439,7 @@ L3 Application shell
 - Exit: shell has no unconditional English in Arabic mode.
 
 L4 English-only expansion screens
-- [ ] 4A Project Operations (ProjectOperations.js): title, tabs, table headings, commercial/financial metrics, empty states, procurement stage names, statuses, Arabic-first material and project names.
+- [x] 4A Project Operations (ProjectOperations.js): title, tabs, table headings, commercial/financial metrics, empty states, procurement stage names, statuses, Arabic-first material and project names. All caller labels were moved to the projects.operations catalog; procurement stages use the existing procurement workspace catalog.
 - [x] 4B Procurement Comparison (ProcurementReview.js): nav entry, RFQ form, comparison columns, booleans, document buttons, recommendation and empty states, request/download errors. Localized via the procurement catalog; focused tests cover render and generic load/download errors.
 - [ ] 4C Portals (PortalDashboard.js), all four variants (consultant, client, subcontractor, supplier): titles, widgets, fields, empty states, booleans, quick actions, all 39 prompts (replaced by real forms in Phase 6), preview controls, Action Center, My Reviews, dynamic API field names such as `open_rfqs`, backend setup notes. Portal dashboard widget/field catalog labels, enum statuses, localized booleans, locale-formatted numbers, keyed empty states, shell/preview labels, and keyed zero-assignment setup messages have partial coverage. APIs preserve empty_label and add empty_key for compatibility; this item remains open.
 - Exit: these routes have no hard-coded user-facing English except approved acronyms and user data.

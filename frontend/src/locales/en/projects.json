@@ -41,5 +41,55 @@
     "loading": "Loading work packages...",
     "loadFailed": "Work packages could not be loaded.",
     "empty": "This project has no work packages yet. Create them under Scope & Planning first."
+  },
+  "operations": {
+    "title": "Project operations",
+    "description": "Materials, stock, procurement, commercial control and finance in one project-scoped workspace.",
+    "project": "Project",
+    "refresh": "Refresh",
+    "modules": "Project operations modules",
+    "noRecords": "No records for this project yet.",
+    "loadError": "This project section could not be loaded. Refresh and try again.",
+    "warehouse": "Warehouse",
+    "projectWarehouse": "Project warehouse",
+    "openInventory": "Open inventory",
+    "tabs": {
+      "materials": "Material planning",
+      "inventory": "Inventory",
+      "procurement": "Procurement",
+      "commercial": "Commercial",
+      "valuations": "Valuations",
+      "retention": "Retention",
+      "finance": "Finance"
+    },
+    "fields": {
+      "material": "Material",
+      "location": "Location",
+      "boqItem": "BOQ item",
+      "required": "Required",
+      "issued": "Issued",
+      "remaining": "Remaining",
+      "needDate": "Need date",
+      "certificate": "Certificate",
+      "periodWork": "Period work",
+      "certified": "Certified",
+      "retention": "Retention",
+      "netAmount": "Net amount",
+      "status": "Status",
+      "issueDate": "Issued"
+    },
+    "metrics": {
+      "held": "Held",
+      "released": "Released",
+      "balance": "Balance",
+      "contractValue": "Contract value",
+      "invoiced": "Invoiced",
+      "cashCollected": "Cash collected",
+      "outstanding": "Outstanding",
+      "cashExpenses": "Cash expenses",
+      "forecastRevenue": "Forecast revenue",
+      "eac": "EAC",
+      "forecastProfit": "Forecast profit"
+    }
   }
 }
