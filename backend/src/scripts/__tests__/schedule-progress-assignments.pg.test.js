@@ -45,8 +45,8 @@ describePg('schedule progress history and resource assignments (real PostgreSQL)
     otherEmployee = (await row("INSERT INTO employees (code,name,name_en,status) VALUES ($1,$2,$2,'active') RETURNING id", [`SC-X-${tag}`, 'Other project employee'])).id;
     created.employees.push(employee, otherEmployee);
     await db.query('INSERT INTO project_participant_users (project_participant_id,employee_id) VALUES ($1,$2),($3,$4)', [participant, employee, otherParticipant, otherEmployee]);
-    const first = (await row("INSERT INTO schedule_activities (project_id,activity_code,name,created_by) VALUES ($1,$2,'Foundation',$3) RETURNING id", [project, `SC-A-${tag}`, globalUser.id])).id;
-    const second = (await row("INSERT INTO schedule_activities (project_id,activity_code,name,created_by) VALUES ($1,$2,'Structure',$3) RETURNING id", [project, `SC-B-${tag}`, globalUser.id])).id;
+    const first = (await row("INSERT INTO schedule_activities (project_id,activity_code,name,planned_start,planned_finish,original_duration,planned_quantity,created_by) VALUES ($1,$2,'Foundation','2026-03-01','2026-03-11',10,100,$3) RETURNING id", [project, `SC-A-${tag}`, globalUser.id])).id;
+    const second = (await row("INSERT INTO schedule_activities (project_id,activity_code,name,planned_start,planned_finish,original_duration,planned_quantity,created_by) VALUES ($1,$2,'Structure','2026-03-01','2026-03-11',10,100,$3) RETURNING id", [project, `SC-B-${tag}`, globalUser.id])).id;
     const foreign = (await row("INSERT INTO schedule_activities (project_id,activity_code,name,created_by) VALUES ($1,$2,'Foreign activity',$3) RETURNING id", [otherProject, `SC-X-${tag}`, globalUser.id])).id;
     created.activities.push(first, second, foreign);
     asset = (await row("INSERT INTO asset_register (project_id,asset_code,name,created_by) VALUES ($1,$2,'Tower crane',$3) RETURNING id", [project, `SC-AS-${tag}`, globalUser.id])).id;
@@ -80,6 +80,26 @@ describePg('schedule progress history and resource assignments (real PostgreSQL)
     expect(history.body.data).toHaveLength(2);
     expect(history.body.data[0]).toMatchObject({ previous_percent_complete: '25.00', percent_complete: '40.00', data_date: '2026-07-13', notes: 'Follow-up', created_by_name: `schedule-${tag}` });
     expect(history.body.data[1]).toMatchObject({ previous_percent_complete: '0.00', percent_complete: '25.00', data_date: '2026-07-06', notes: 'First measurement' });
+  });
+
+  test('uses the current baseline for SPI by default, even when the live plan changes', async () => {
+    await db.query("UPDATE projects SET earned_value_enabled = false WHERE id = $1", [project]);
+    await db.query("UPDATE schedule_activities SET planned_start = '2026-03-01', planned_finish = '2026-03-11' WHERE id = $1", [created.activities[0]]);
+    await db.query("UPDATE schedule_activities SET planned_start = '2026-03-01', planned_finish = '2026-03-11' WHERE id = $1", [created.activities[1]]);
+    await db.query('UPDATE schedule_activities SET percent_complete = 50 WHERE id = $1', [created.activities[0]]);
+    await db.query('UPDATE schedule_activities SET percent_complete = 0 WHERE id = $1', [created.activities[1]]);
+    const baseline = [
+      { id: created.activities[0], planned_start: '2026-03-01', planned_finish: '2026-03-11', planned_quantity: 100 },
+      { id: created.activities[1], planned_start: '2026-03-06', planned_finish: '2026-03-16', planned_quantity: 100 },
+    ];
+    await db.query('INSERT INTO baselines (project_id,name,data,is_current,created_by) VALUES ($1,$2,$3::jsonb,true,$4)',
+      [project, `KPI baseline ${tag}`, JSON.stringify(baseline), owner.userId || null]);
+
+    const response = await call('GET', `/api/schedule/schedule/kpis?project_id=${project}&data_date=2026-03-06`);
+    expect(response.status).toBe(200);
+    expect(response.body.data.spi_source).toBe('current_baseline');
+    // Baseline PV is 50 units and EV is also 50; the changed live plan would yield 0.5.
+    expect(response.body.data.spi).toBe(1);
   });
 
   test('accepts project team and project asset assignments, rejects overlaps and foreign resources', async () => {

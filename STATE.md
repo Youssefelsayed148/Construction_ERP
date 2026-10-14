@@ -146,3 +146,9 @@ Current command evidence:
 - Locale JSON parsing and `git diff --check`: passed.
 
 Definition: cash contribution represents recorded cash movement only; it is not forecast profit, accrual margin, or ledger-reconciled cash flow. It excludes voided payments and any cash movement not recorded in `payments`. No schema migration was needed. Next Phase 8 work is to fix per-cost-code forecast ETC/EAC with a hand-calculated golden case, then capped contract recovery/retention and certified-quantity valuation. Phases 7, 9, 10, and 11 remain open; production is NO-GO pending their gates and human-only signoffs.
+
+## 2026-10-14 continuation — Phase 8 baseline-driven SPI slice
+
+The schedule KPI endpoint now enables SPI by default when a valid current project baseline exists and calculates planned value from the saved baseline dates/quantities, matched to current activity progress. Projects without a current baseline retain the existing explicit `earned_value_enabled` opt-in and current-schedule SPI behavior. The response identifies `spi_source` as `current_baseline`, `current_schedule`, or null. Real-Postgres regression confirms a live schedule change does not change baseline SPI.
+
+Verification: focused planning mock `npm test -- --runInBand src/scripts/__tests__/planning.test.js` PASS 12/12; real PG `TEST_PG=1 npm run test:pg -- --silent src/scripts/__tests__/schedule-progress-assignments.pg.test.js` PASS 4/4 on disposable PG16 `construction_erp_test`; baseline KPI route returns SPI 1 from baseline PV=50/EV=50 while current schedule would produce 0.5. Initial focused PG attempt exposed incorrect test setup (it changed existing progress-history fixture values and called a router path without the repeated schedule mount); fixture and path were corrected, and rerun passed. CPI still has no activity-level actual-cost source, so SPI alone does not complete the Phase 8 earned-value task. Resource loading remains open.

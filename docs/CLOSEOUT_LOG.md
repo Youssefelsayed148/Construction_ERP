@@ -1480,3 +1480,11 @@ Gate commands and results:
 - JSON parse and `git diff --check` — exit 0.
 
 This completes only the cash-contribution subtask. The indicator is the recorded payment cash basis (AR minus AP), excludes voided/unrecorded transactions, and is not accrual profit or a ledger-reconciled statement. Remaining Phase 8 items and all pending Phase 7/9/10/11 exit work remain open. No production GO decision is implied.
+
+## 2026-10-14 — Phase 8 baseline-driven SPI slice
+
+The `/api/schedule/schedule/kpis` route now looks up the current baseline for the requested project. When its snapshot is valid, planned value comes from saved baseline start/finish dates and planned quantities while earned value uses current progress by activity ID; the KPI is enabled even if `projects.earned_value_enabled` is false. New response field `spi_source` distinguishes baseline and legacy opt-in calculations. The live schedule path remains for explicitly enabled projects without a current baseline. Invalid non-array/JSON snapshots do not activate baseline-derived SPI.
+
+Verification: `npm test -- --runInBand src/scripts/__tests__/planning.test.js` — PASS 12/12; `TEST_PG=1 npm run test:pg -- --silent src/scripts/__tests__/schedule-progress-assignments.pg.test.js` — PASS 4/4 on the throwaway PG16 database. The real route regression asserts SPI 1.0 from baseline PV=50 and EV=50, whereas the changed current plan would yield 0.5. `git diff --check` and backend lint guards are recorded before commit.
+
+Still open: CPI has no activity-level actual-cost source in the existing schema; resource loading is separate; baseline SPI and these two items do not complete the Phase 8 earned-value plan task.

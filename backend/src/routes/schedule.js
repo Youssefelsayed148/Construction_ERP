@@ -532,7 +532,7 @@ router.get('/schedule/delayed', authenticate, authorize(), async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-// SV% per activity + project aggregate; SPI/CPI only where EVM is enabled.
+// SV% per activity + project aggregate; a current baseline turns SPI on by default.
 router.get('/schedule/kpis', authenticate, authorize(), async (req, res) => {
   try {
     const { project_id, data_date } = req.query;
@@ -552,10 +552,36 @@ router.get('/schedule/kpis', authenticate, authorize(), async (req, res) => {
       actual_progress: acts.length ? Math.round((perActivity.reduce((s, x) => s + x.actual_progress, 0) / acts.length) * 10) / 10 : 0,
       schedule_variance_percent: acts.length ? Math.round((perActivity.reduce((s, x) => s + x.sv_percent, 0) / acts.length) * 10) / 10 : 0,
     };
-    const spi = engine.spi(project, acts, dataDate);
+    const baselineRow = (await query(
+      'SELECT data FROM baselines WHERE project_id = $1 AND is_current = true ORDER BY baseline_date DESC, id DESC LIMIT 1',
+      [project_id]
+    )).rows[0];
+    let baselineActivities = null;
+    if (baselineRow) {
+      try {
+        const baseline = typeof baselineRow.data === 'string' ? JSON.parse(baselineRow.data) : baselineRow.data;
+        if (Array.isArray(baseline)) {
+          const actualById = new Map(acts.map((activity) => [String(activity.id), activity]));
+          baselineActivities = baseline.map((activity) => ({
+            ...activity,
+            percent_complete: actualById.get(String(activity.id))?.percent_complete || 0,
+          }));
+        }
+      } catch (error) {
+        // A malformed legacy snapshot must not silently produce a misleading SPI.
+        console.error('[SCHEDULE] current baseline is not valid JSON', error.message);
+      }
+    }
+    const baselineAvailable = Array.isArray(baselineActivities);
+    const spiProject = baselineAvailable ? { ...project, earned_value_enabled: true } : project;
+    const spi = engine.spi(spiProject, baselineAvailable ? baselineActivities : acts, dataDate);
     res.json({
       success: true,
-      data: { per_activity: perActivity, project: overall, spi, spi_note: spi == null ? 'Earned-value management is not enabled for this project' : undefined },
+      data: {
+        per_activity: perActivity, project: overall, spi,
+        spi_source: baselineAvailable ? 'current_baseline' : project.earned_value_enabled ? 'current_schedule' : null,
+        spi_note: spi == null ? 'Earned-value management is not enabled for this project' : undefined,
+      },
     });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
