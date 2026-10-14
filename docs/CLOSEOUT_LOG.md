@@ -1674,3 +1674,10 @@ Verification: ProjectOperations component suite PASS (2/2), including Arabic-fir
 Portal record cards now use localizedName for title/name/subject fields, format due/deadline dates with the active locale, and format certificate/payment amounts as localized EGP. Machine identifiers and user-authored text remain unchanged. This adds formatter call-site coverage; the broader L4C portal/API error audit remains open.
 
 Verification: PortalDashboard and formatter suites PASS (2 suites / 16 tests), including Arabic-first title, localized date, and EGP currency checks; i18n check passed; parity passed (35 namespaces / 1,283 English keys); git diff --check passed. No backend or migration changes.
+
+
+## 2026-10-14 - Phase 7/10 continuation batch gates
+
+After the latest portal/project-operation localization changes: backend mock suite PASS (53 suites / 1,005 tests); backend lint guards PASS; frontend CI PASS (31 suites / 128 tests); frontend production build PASS (Compiled successfully); i18n check PASS; i18n parity PASS (35 namespaces / 1,283 English keys); mobile route sweep PASS (36/36 routes at Pixel 7, mocked APIs, no document-level horizontal overflow).
+
+This does not close the Phase 7 exit gate: no IBM Plex Arabic font file exists in the repository or installed frontend assets, and no Lighthouse package is available in the local dependencies. The nginx font policy is already same-origin. Next safe action is to obtain a properly licensed local font artifact, then rerun offline/Lighthouse evidence. Phase 8 approval retirement still requires an approved migration decision and restored-real-data parity; certificate-surface constraints are documented in docs/CERTIFICATE_SURFACE_RETIREMENT.md. Phase 9 golden demo/CI scenario and the broader Phase 10/11 review and real-data gates remain open.
