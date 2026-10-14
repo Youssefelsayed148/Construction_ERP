@@ -8,9 +8,9 @@
 const { authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const Joi = require('joi');
-const { query, transaction } = require('../config/database');
+const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
-const { logActivity } = require('../utils/activity');
+const { auditedTransaction } = require('../utils/auditedTransaction');
 const lots = require('../services/inventoryLots');
 const docs = require('../services/inventoryDocuments');
 const units = require('../services/unitConversions');
@@ -63,7 +63,7 @@ function scopeRows(req, rows) {
   return rows.filter((r) => r.project_id != null && ids.has(Number(r.project_id)));
 }
 
-const audit = (req, description, entityType, entityId, action) => logActivity({
+const auditEvent = (req, description, entityType, entityId, action) => ({
   userId: req.user.id, userName: req.user.name, userRole: req.user.role,
   action: action || (req.method === 'DELETE' ? 'delete' : req.method === 'POST' ? 'create' : 'update'),
   module: 'inventory', description, entityId, entityType,
@@ -113,8 +113,8 @@ router.post('/lots', authenticate, authorize(), async (req, res) => {
     }), req.body, res);
     if (!value) return;
     if (!(await warehouseInScope(req, res, value.warehouse_id))) return;
-    const lot = await transaction((client) => lots.createLot(client.query.bind(client), { ...value, created_by: req.user.id }));
-    await audit(req, `Created lot ${lot.lot_number}`, 'stock_lot', lot.id);
+    const lot = await auditedTransaction(q => lots.createLot(q, { ...value, created_by: req.user.id }),
+      row => auditEvent(req, `Created lot ${row.lot_number}`, 'stock_lot', row.id));
     res.status(201).json({ success: true, data: lot });
   } catch (e) { return fail(res, e); }
 });
@@ -123,8 +123,8 @@ router.put('/lots/:id/status', authenticate, authorize(), async (req, res) => {
   try {
     const value = validated(Joi.object({ status: Joi.string().required() }), req.body, res);
     if (!value) return;
-    const lot = await lots.setLotStatus(query, req.params.id, value.status);
-    await audit(req, `Lot ${lot.lot_number} set to ${lot.status}`, 'stock_lot', lot.id, 'update');
+    const lot = await auditedTransaction(q => lots.setLotStatus(q, req.params.id, value.status),
+      row => auditEvent(req, `Lot ${row.lot_number} set to ${row.status}`, 'stock_lot', row.id, 'update'));
     res.json({ success: true, data: lot });
   } catch (e) { return fail(res, e); }
 });
@@ -154,8 +154,8 @@ router.post('/conversions', authenticate, authorize(), async (req, res) => {
   try {
     const value = validated(Joi.object({ ...conversionBody, from_unit: conversionBody.from_unit.required(), to_unit: conversionBody.to_unit.required(), factor: conversionBody.factor.required() }), req.body, res);
     if (!value) return;
-    const row = await units.create(query, value, req.user.id);
-    await audit(req, `Unit conversion ${row.from_unit} -> ${row.to_unit} x${row.factor}`, 'unit_conversion', row.id);
+    const row = await auditedTransaction(q => units.create(q, value, req.user.id),
+      saved => auditEvent(req, `Unit conversion ${saved.from_unit} -> ${saved.to_unit} x${saved.factor}`, 'unit_conversion', saved.id));
     res.status(201).json({ success: true, data: row });
   } catch (e) { return fail(res, e); }
 });
@@ -164,16 +164,16 @@ router.put('/conversions/:id', authenticate, authorize(), async (req, res) => {
   try {
     const value = validated(Joi.object(conversionBody).min(1), req.body, res);
     if (!value) return;
-    const row = await units.update(query, req.params.id, value);
-    await audit(req, `Unit conversion #${row.id} updated`, 'unit_conversion', row.id);
+    const row = await auditedTransaction(q => units.update(q, req.params.id, value),
+      saved => auditEvent(req, `Unit conversion #${saved.id} updated`, 'unit_conversion', saved.id));
     res.json({ success: true, data: row });
   } catch (e) { return fail(res, e); }
 });
 
 router.delete('/conversions/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const row = await units.remove(query, req.params.id);
-    await audit(req, `Unit conversion #${row.id} removed`, 'unit_conversion', row.id);
+    const row = await auditedTransaction(q => units.remove(q, req.params.id),
+      saved => auditEvent(req, `Unit conversion #${saved.id} removed`, 'unit_conversion', saved.id));
     res.json({ success: true, data: row });
   } catch (e) { return fail(res, e); }
 });
@@ -208,8 +208,8 @@ function documentRoutes(plural, docType) {
       if (!value) return;
       authorizeProjectPayload(req, value);
       if (!(await warehouseInScope(req, res, value.warehouse_id))) return;
-      const doc = await transaction((client) => docs.createDraft(client.query.bind(client), { ...value, doc_type: docType, created_by: req.user.id }));
-      await audit(req, `Created ${docType} document ${doc.doc_number}`, 'inventory_document', doc.id);
+      const doc = await auditedTransaction(q => docs.createDraft(q, { ...value, doc_type: docType, created_by: req.user.id }),
+        row => auditEvent(req, `Created ${docType} document ${row.doc_number}`, 'inventory_document', row.id));
       res.status(201).json({ success: true, data: doc });
     } catch (e) { return fail(res, e); }
   });
@@ -222,16 +222,16 @@ function documentRoutes(plural, docType) {
       }).min(1), req.body, res);
       if (!value) return;
       authorizeProjectPayload(req, value);
-      const doc = await transaction((client) => docs.updateDraft(client.query.bind(client), req.params.id, docType, value));
-      await audit(req, `Updated ${docType} document ${doc.doc_number}`, 'inventory_document', doc.id);
+      const doc = await auditedTransaction(q => docs.updateDraft(q, req.params.id, docType, value),
+        row => auditEvent(req, `Updated ${docType} document ${row.doc_number}`, 'inventory_document', row.id));
       res.json({ success: true, data: doc });
     } catch (e) { return fail(res, e); }
   });
 
   router.post(`/${plural}/:id/post`, authenticate, authorize(), async (req, res) => {
     try {
-      const doc = await transaction((client) => docs.postDocument(client.query.bind(client), req.params.id, docType, req.user));
-      await audit(req, `Posted ${docType} document ${doc.doc_number}`, 'inventory_document', doc.id, 'post');
+      const doc = await auditedTransaction(q => docs.postDocument(q, req.params.id, docType, req.user),
+        row => auditEvent(req, `Posted ${docType} document ${row.doc_number}`, 'inventory_document', row.id, 'post'));
       res.json({ success: true, data: doc });
     } catch (e) { return fail(res, e); }
   });
@@ -240,8 +240,8 @@ function documentRoutes(plural, docType) {
     try {
       const value = validated(Joi.object({ reason: Joi.string().required() }), req.body, res);
       if (!value) return;
-      const doc = await transaction((client) => docs.voidDocument(client.query.bind(client), req.params.id, docType, req.user, value.reason));
-      await audit(req, `Voided ${docType} document ${doc.doc_number}: ${value.reason}`, 'inventory_document', doc.id, 'void');
+      const doc = await auditedTransaction(q => docs.voidDocument(q, req.params.id, docType, req.user, value.reason),
+        row => auditEvent(req, `Voided ${docType} document ${row.doc_number}: ${value.reason}`, 'inventory_document', row.id, 'void'));
       res.json({ success: true, data: doc });
     } catch (e) { return fail(res, e); }
   });

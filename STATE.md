@@ -2,6 +2,11 @@
 
 ## Session 4 current position - 2026-10-15
 
+- R2b.7 inventory/warehouses verified, commit pending: 47 new endpoint fixtures; verified 306 -> 353/601 (351 audit+rollback, 2 historical sweep exceptions), pending 289 -> 242, exempt 6. Pre-fix original registry: 32 rollback failures / 63 passes. Found xmin-only blind spot for pure DELETE; strengthened registry with exact table counts before/after alongside xmin. Stronger valid-fixture pre-fix: 34 rollback failures / 61 passes, including both conversion hard deletes. Minimal runtime fix uses existing auditedTransaction for lots, conversions and issue/return/adjustment writes. Hard deletes retained; no warehouse runtime change, all warehouse success/rollback fixtures pass.
+- Focused inventory registry + 3 existing inventory PG suites: PASS 4 suites / 126 tests; 126 migrations, erp-r02-gate-20261015023629 removed, exit 0. lint-guards PASS unchanged. Current full baseline before changes PASS 76/1,296, erp-r02-gate-20261015023130 removed; current end-of-batch full gates remain pending after next slice. Stronger registry will recheck prior coverage as well. Next projects/setup and remaining site fixtures; no R3.
+
+- R2b.6 committed `a23afab` with both requested trailers; STATE updated after commit. Proceed inventory/warehouses fixtures and failing-first audit atomicity verification.
+
 - Pre-flight: branch closeout/batch-a-to-6, HEAD 540af40; preserved the unstaged STATE/log checkpoint and two excluded untracked reports. Owner accepted the explained two-test reduction; the older numerical-floor stop below is superseded. No product decision waiting.
 - Elevated Docker version succeeds (28.3.2). Current full PG baseline is running through the tracked throwaway runner with existing no-dotenv preload. No runtime fix before baseline completion.
 - R2b.6 independent mock uniqueness regressions added for PUT /ncrs/:id and /quality-tests/:id. Each negative control injects a second registration into an in-memory source string and proves the assertion rejects it; current source passes without restoring committed dead handlers. Historical failing-first duplicate evidence is retained in R2b.4; no committed work redone. Current mock gate PASS 60 suites / 1,056 tests (+2 vs accepted 1,054 baseline). Verified endpoint count unchanged 306/601; pending 289; exempt 6. Commit pending, then inventory/warehouses.

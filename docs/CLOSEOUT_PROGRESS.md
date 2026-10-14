@@ -1078,3 +1078,7 @@ FINAL R2b.5 checkpoint: full PG rerun PASS 76 suites / 1,296 tests (+2 suites/+7
 ## 2026-10-15 - Session 4 R2b.6 mock uniqueness regressions
 
 Preserved unstaged STATE/log; pre-flight HEAD 540af40 and requested branch, excluded reports untracked/unstaged. Owner accepted the explained two-test count reduction, superseding that stop. Added independent mock QHSE PUT uniqueness assertions for both removed duplicates. In-memory duplicate negative controls fail the assertion as expected; current source passes. No dead route restored or committed work redone. Elevated mock PASS 60 suites / 1,056 tests (+2 vs accepted baseline). Elevated Docker available; current PG baseline running. Registry 306/601 / pending 289 / exempt 6 unchanged; next inventory/warehouses. No R3.
+
+## 2026-10-15 - R2b.7 inventory/warehouse atomic audits
+
+47 new fixtures: registry success/rollback plus existing inventory integration suites PASS 4/126. Verified 306 -> 353/601, pending 289 -> 242, exempt 6. Failing-first 32 rollback failures / 63 passes; xmin scan could not detect two pure hard-delete losses. Added exact before/after row counts; unchanged handlers now 34 rollback failures / 61 passes. Existing auditedTransaction now binds lots, conversion create/update/delete, and document create/line replacement/post/void to activity audit. Warehouse handlers already pass; no runtime change there. Hard deletes and posted-return immutability retained. Guard PASS unchanged. Full baseline PASS 76/1,296; full end-of-batch gates pending. Next projects/setup/site; R3 gated.

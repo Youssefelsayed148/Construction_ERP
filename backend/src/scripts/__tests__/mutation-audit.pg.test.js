@@ -54,6 +54,12 @@ describePg('R2 every mounted mutation has a successful audited payload', () => {
   let seq = 0;
   const one = async (sql, params) => (await db.query(sql, params)).rows[0];
   const counts = (id) => one('SELECT (SELECT count(*)::int FROM activity_log WHERE user_id = $1) AS activity, (SELECT count(*)::int FROM audit_events WHERE user_id = $1 OR actor_id = $1) AS policy', [id]);
+  // xmin cannot reveal a row that was physically deleted. Compare exact table
+  // counts too, so a failed audit must preserve hard-deleted parents/children.
+  const tableCounts = async () => (await db.query(`
+    SELECT c.relname, (xpath('/row/n/text()', query_to_xml(format('SELECT count(*) AS n FROM %I.%I', n.nspname, c.relname), false, true, '')))[1]::text::bigint AS n
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relkind = 'r'`)).rows;
   const send = async (method, url, body, bearer, extraHeaders = {}) => {
     // A FormData body (file upload routes) sets its own multipart boundary header.
     const multipart = typeof FormData !== 'undefined' && body instanceof FormData;
@@ -171,14 +177,24 @@ describePg('R2 every mounted mutation has a successful audited payload', () => {
   test.each(keys)('%s rolls back when the audit insert throws', async key => {
     const payload = await registry[key](ctx());
     if (payload.nonAtomic) { console.log(`R2 rollback skipped ${key}: documented non-atomic exception - ${payload.nonAtomic}`); return; }
+    const beforeRows = await tableCounts();
     const { xid } = await one('SELECT txid_current()::text AS xid');
     if (payload.actor) await db.query('INSERT INTO r02_fail_users (user_id) VALUES ($1) ON CONFLICT DO NOTHING', [payload.actor.userId]);
     const r = await send(key.split(' ')[0], payload.path, payload.body, payload.actor ? payload.actor.token : failToken, payload.headers);
     const { rows } = await db.query(`
-      SELECT c.relname, (xpath('/row/n/text()', query_to_xml(format('SELECT count(*) AS n FROM %I.%I WHERE xmin::text::bigint > %s', n.nspname, c.relname, $1::bigint), false, true, '')))[1]::text::int AS n
-      FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-      WHERE n.nspname = 'public' AND c.relkind = 'r'`, [xid]);
+      WITH snapshots AS MATERIALIZED (
+        SELECT c.relname, query_to_xml(format('SELECT count(*) AS total, count(*) FILTER (WHERE xmin::text::bigint > %s) AS n FROM %I.%I', $1::bigint, n.nspname, c.relname), false, true, '') AS snapshot
+        FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relkind = 'r'
+      ) SELECT relname, (xpath('/row/n/text()', snapshot))[1]::text::int AS n,
+        (xpath('/row/total/text()', snapshot))[1]::text::bigint AS total FROM snapshots`, [xid]);
     const leaked = rows.filter(row => row.n > 0 && !INFRA_TABLES.has(row.relname)).map(row => `${row.relname}:${row.n}`);
+    const afterRows = new Map(rows.map(row => [row.relname, BigInt(row.total)]));
+    for (const row of beforeRows) {
+      if (!INFRA_TABLES.has(row.relname) && BigInt(row.n) > (afterRows.get(row.relname) ?? 0n)) {
+        leaked.push(`${row.relname}:deleted=${BigInt(row.n) - (afterRows.get(row.relname) ?? 0n)}`);
+      }
+    }
     console.log(`R2 rollback ${key}: status=${r.status}; leaked=[${leaked.join(',')}]`);
     if (r.status < 400) throw new Error(`R2 rollback leak ${key}: status=${r.status}; success returned although the audit insert was forced to fail`);
     if (leaked.length) throw new Error(`R2 rollback leak ${key}: ${leaked.join(', ')}`);

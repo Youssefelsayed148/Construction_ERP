@@ -2,6 +2,8 @@
 
 ## Session 4 current checkpoint
 
+R2b.7: **353/601 verified** (351 audit+rollback, 2 historical audit-only sweep exceptions), **242 pending**, **6 exempt**. Inventory/warehouses adds 47 fixture endpoints; all happy paths audited. Before: 32 rollback failures with xmin-only scan; improved exact before/after table counts exposes two pure-DELETE leaks, yielding 34 failures / 61 passes. After inventory transaction fix: focused registry plus existing inventory integrations PASS 4/126; lint ratchet unchanged. No warehouse runtime fix necessary. Full baseline PASS 76/1,296; end-of-batch gates not yet rerun. R2 exit incomplete, no waivers, no R3.
+
 Owner accepted the explained old mock count adjustment; prior numerical-floor stop is superseded. R2b.6 adds two independent mock uniqueness regressions with duplicate-registration negative controls: mock PASS 60/1,056 (+2 from accepted 60/1,054). Coverage remains 306/601 verified, 289 pending, 6 exempt. Full PG baseline running; inventory/warehouses next. No R3.
 
 ## Historical R2b.5 checkpoint
