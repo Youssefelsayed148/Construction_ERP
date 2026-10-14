@@ -1747,6 +1747,32 @@ Created a custom-format PostgreSQL dump inside a fresh local Docker PostgreSQL 1
 Bundled IBM Plex Sans and IBM Plex Sans Arabic under OFL-1.1, added an offline same-origin browser font check, and completed a six-pair EN/AR PDFKit-versus-Chromium spike for invoices, payment certificates, and a multi-page WIR register. Rasterized PDFs were visually inspected; Arabic PDFKit shaping is broken in these samples, while Chromium renders connected RTL Arabic and mixed-direction identifiers. `docs/i18n/PDF_SPIKE.md` records evidence and selects Chromium. Updated the Arabic review pack, L8 spike checkbox, and CI catalog parity gate. Phase 10 remains incomplete pending production renderer integration, export call-site migration, CSV localization, remaining L0-L11 work, and native Arabic review.
 
 Verification: font Playwright 1/1; screenshot baseline 32/32; full Playwright 74 passed / 86 skipped; frontend CI 31 suites / 128 tests; backend mock 54 suites / 1,013 tests; fresh Docker PG16 68 suites / 635 tests after 126 migrations; i18n check and parity 35 namespaces / 1,283 keys; build compiled. Production remains NO-GO.
+## 2026-10-14 - R0/R1 pre-flight stop
+
+`git status --short`: only untracked docs/CODEX_AUDIT_REPORT.md and docs/REVIEW_REPORT_2026-10-14.md initially; both preserved and unstaged. `git branch --show-current`: closeout/batch-a-to-6. `git log -5 --oneline`: HEAD 43754e5 (preceded by 2878fe7, 9689e52, 91d5281, 1a294c3).
+
+`docker version` exited 1: client 28.3.2, context desktop-linux; engine output:
+
+```text
+error during connect: Get "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.51/version": open //./pipe/dockerDesktopLinuxEngine: Access is denied.
+```
+
+Stopped as explicitly required; no workaround, escalation, container creation, migrations, baseline gates, remediation tests, implementation or ticket commits. Restore engine access for this session and resume pre-flight. Historical gate counts are not current verification. Root STATE.md records the blocker; docs/R0_R1_SCORECARD.md records all gates NOT RUN and tickets NOT STARTED. Only stop documentation was changed; R2 remains out of scope.
+
+## 2026-10-14 - R0/R1 resumed pre-flight stop (current)
+
+Owner authorized elevated Docker use only for erp-r01- throwaway containers on loopback ports. Branch confirmed closeout/batch-a-to-6; HEAD 43754e5. Earlier stop edits and untracked audit/review reports preserved. Elevated docker run --pull=never with postgres:16 and 127.0.0.1:55461 succeeded. Random credentials stayed in process environment. Probe erp-r01-preflight-20261014 and both attempts at erp-r01-baseline-20261014 were removed using their exact names with docker rm --force (exit 0). No containers from this run remain.
+
+The first baseline attempt failed on Windows NODE_OPTIONS preload path parsing. Correcting that path exposed missing backend/node_modules/dotenv (MODULE_NOT_FOUND). No migrations ran. Independent backend command npm.cmd test -- --runInBand exited 1:
+
+```text
+'jest' is not recognized as an internal or external command,
+operable program or batch file.
+```
+
+Test-Path returned False for backend/node_modules/.bin/jest.cmd, backend/node_modules/dotenv/package.json, backend/node_modules/pg/package.json, and frontend/node_modules/.bin/react-scripts.cmd. This fails the required baseline (54 suites / 1,013 tests); the request requires stopping before implementation. PG, guards, frontend CI, i18n and build were not run after this stop. R0 and R1 remain NOT STARTED; no ticket commits. No dependency installation, external calls, credential-file reads or edits occurred. Review report fully read in bounded UTF-8 chunks; finish plan inspection before implementation. Temporary credential-free dotenv suppression preload removed at stop.
+
+Next action: restore local dependencies through an owner-approved offline source, or explicitly authorize registry access, then rerun complete pre-flight against a new erp-r01- PostgreSQL 16 container. Earlier Docker-denial stop is superseded; historical gate counts are not current verification. No product decisions arose. R2 remains out of scope. See docs/R0_R1_SCORECARD.md.
 
 ## 2026-10-14 - R0.10 proxy-addr remediation (Africa/Cairo)
 
@@ -1766,3 +1792,14 @@ Verification command outputs:
 - git diff --check: PASS.
 
 PG gate used only new volume-free erp-r01-r010-20261014, cached postgres:16 with --pull=never, loopback 127.0.0.1:55461. Random database/JWT credentials stayed in process environment; dotenv config was suppressed with a credential-free temporary preload. Exact container removed in finally; no production database, secrets files or other Docker resources accessed. Existing stopped-run documentation and untracked audit/review reports were preserved. R0.1-R0.9 and R1 remain unimplemented; this verifies R0.10 only. Commit message: R0.10: patch proxy-addr and verify trusted proxy IP handling.
+
+## 2026-10-14 - R0.1 environment-only launcher credentials
+
+Resolved earlier Docker/dependency stop headings are explicitly marked superseded 2026-10-14. Owner confirms npm ci completed; elevated Docker access is authorized for erp-r01- throwaway containers only. R0.1 is active/completed as recorded below; previous stop evidence remains historical.
+
+Reference discovery: rg searched launcher names across repository files, excluding audit/review reports, node_modules and logs. No launcher consumers found; docs/legacy/README.md explicitly marks legacy smoke scripts superseded by Jest/Playwright. Preserved all five scripts and removed their DB_PASSWORD assignments, including both legacy runner overrides and start_backend.ps1's empty override; values now inherit from the calling environment. No launcher was executed.
+
+Reproduction: npm.cmd test -- --runInBand src/scripts/__tests__/script-passwords.test.js failed 1 suite / 5 tests before edits, with Received true for password overrides in every named script; no credential values appeared in output. After fix, focused launcher/guard suites PASS, 2 suites / 13 tests. New lint guard uses git ls-files for tracked .bat/.cmd/.ps1/.sh scripts and rejects literal password assignments at a zero baseline, including with --update. Diagnostics print filenames/counts only. Fixture coverage includes shell, batch and PowerShell forms, process references, generated expressions and empty values. One initial new guard test rejected a generated expression; corrected the classification, then reran both suites green. npm.cmd run lint:guards: lint-guards: ok.
+
+Owner must rotate the historical exposed credential wherever it was used; see the single rotation line in root STATE.md.
+Scope: start_backend.bat, orchestrator.bat, launch_backend.ps1, docs/legacy/run_tests.ps1, start_backend.ps1, backend/src/scripts/lint-guards.js, new backend/src/scripts/__tests__/script-passwords.test.js, and closeout documentation. No migrations or runtime endpoint behavior changed. Full R0 exit gates remain due at batch exit. Commit message: R0.1: inherit launcher passwords and reject script literals.

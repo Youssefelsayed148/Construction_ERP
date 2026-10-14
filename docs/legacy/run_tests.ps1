@@ -1,11 +1,9 @@
 $ErrorActionPreference = "Stop"
 Set-Location "D:\The Osiris Labs\Construction_ERP\backend"
-$env:DB_PASSWORD = "NewStrongPassword123!"
 
 # Start the server in background
 $job = Start-Job -ScriptBlock {
     Set-Location "D:\The Osiris Labs\Construction_ERP\backend"
-    $env:DB_PASSWORD = "NewStrongPassword123!"
     node server.js 2>&1
 }
 

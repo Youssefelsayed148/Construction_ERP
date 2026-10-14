@@ -20,9 +20,39 @@
 // line or the next 3. The Phase 2.4 replacement list is the authority for what must go.
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 const srcDir = path.join(__dirname, '..');
 const baselinePath = path.join(__dirname, '..', '..', 'lint-guards.baseline.json');
+const repoDir = path.resolve(srcDir, '../..');
+
+function countLiteralPasswords(text) {
+  return text.split(/\r?\n/).filter((line) => {
+    // Environment references/expressions and empty values are safe. Never return
+    // the matched value: guard diagnostics must not expose credentials.
+    const assignment = line.match(/^\s*(?:\$env:|\$|(?:export|set)\s+"?)?([\w]*password[\w]*)\s*=\s*(.*?)\s*$/i);
+    if (!assignment) return false;
+    const raw = assignment[2];
+    const quoted = /^['"]/.test(raw);
+    const value = raw.replace(/^['"]|['"]\s*;?$/g, '').trim();
+    return value.length > 0 && !/[$%`]/.test(value)
+      && (quoted || /^[^\s()[\]]+;?$/.test(value));
+  }).length;
+}
+
+function scanScriptPasswords() {
+  const files = execFileSync('git', ['ls-files', '-z', '--', '*.bat', '*.cmd', '*.ps1', '*.sh'], {
+    cwd: repoDir, encoding: 'utf8', windowsHide: true,
+  }).split('\0').filter(Boolean);
+  const violations = {};
+  for (const file of files) {
+    const absolute = path.join(repoDir, file);
+    if (!fs.existsSync(absolute)) continue;
+    const count = countLiteralPasswords(fs.readFileSync(absolute, 'utf8'));
+    if (count) violations[file] = count;
+  }
+  return violations;
+}
 
 const SILENT_CATCH = /\.catch\(\s*\(\s*\w*\s*\)\s*=>\s*\{\s*\}\s*\)/g;
 // A COUNT(*)/MAX( query with a "+ 1" on the same line or within the next 3 lines.
@@ -153,6 +183,15 @@ function compare(current, baseline) {
 }
 
 function main() {
+  // This rule is never baselined: tracked script credentials always fail,
+  // including with --update. Output filenames and counts only.
+  const passwords = scanScriptPasswords();
+  if (Object.keys(passwords).length) {
+    for (const [file, count] of Object.entries(passwords)) {
+      console.error(`FAIL  script-password: ${file} has ${count} literal password assignment(s)`);
+    }
+    return 1;
+  }
   const current = scan();
   if (process.argv.includes('--update')) {
     fs.writeFileSync(baselinePath, `${JSON.stringify(current, null, 2)}\n`);
@@ -172,4 +211,4 @@ function main() {
 }
 
 if (require.main === module) process.exit(main());
-module.exports = { scan, compare, countCounterIncrements, countEventSwallows, countUnboundActivityAudits };
+module.exports = { scan, compare, countCounterIncrements, countEventSwallows, countUnboundActivityAudits, countLiteralPasswords, scanScriptPasswords };

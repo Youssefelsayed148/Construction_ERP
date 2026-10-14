@@ -1,0 +1,27 @@
+const fs = require('fs');
+const path = require('path');
+const { countLiteralPasswords, scanScriptPasswords } = require('../lint-guards');
+
+const repo = path.resolve(__dirname, '../../../..');
+const scripts = ['start_backend.bat', 'orchestrator.bat', 'launch_backend.ps1', 'docs/legacy/run_tests.ps1', 'start_backend.ps1'];
+
+describe('R0.1 launcher credentials', () => {
+  test('guard rejects literal batch, PowerShell and shell password assignments', () => {
+    expect(countLiteralPasswords('set DB_PASSWORD=fixture-only\n$env:POSTGRES_PASSWORD = "fixture-only"\nexport DB_PASSWORD=fixture-only')).toBe(3);
+    expect(countLiteralPasswords('set "DB_PASSWORD=fixture-only"\n$Password = \'fixture-only\'')).toBe(2);
+  });
+
+  test('guard allows process environment references, expressions, comments and empty values', () => {
+    expect(countLiteralPasswords('set DB_PASSWORD=%EXTERNAL_PASSWORD%\n$env:DB_PASSWORD = $env:EXTERNAL_PASSWORD\nexport DB_PASSWORD="$EXTERNAL_PASSWORD"\n$env:DB_PASSWORD = [Guid]::NewGuid()\n# DB_PASSWORD=fixture-only\nDB_PASSWORD=""')).toBe(0);
+  });
+
+  test('no tracked shell script contains a literal password assignment', () => {
+    expect(scanScriptPasswords()).toEqual({});
+  });
+  test.each(scripts)('%s preserves the process DB_PASSWORD instead of assigning a literal', (file) => {
+    const source = fs.readFileSync(path.join(repo, file), 'utf8');
+    // Assert a boolean so failing output never includes a credential.
+    const overwritesPassword = /(?:\$env:DB_PASSWORD\s*=|\bset\s+"?DB_PASSWORD\s*=)/i.test(source);
+    expect(overwritesPassword).toBe(false);
+  });
+});
