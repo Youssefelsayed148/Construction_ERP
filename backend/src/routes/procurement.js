@@ -8,6 +8,7 @@ const { logActivity, fireEvent } = require('../utils/activity');
 const svc = require('../services/procurementService');
 const pdf = require('../utils/procurementPdf');
 const { auditedTransaction } = require('../utils/auditedTransaction');
+const { auditedChange } = require('../utils/auditedMutation');
 const { typedFail: commonTypedFail } = require('../utils/typedRoute');
 const atomic = (fn) => transaction((client) => fn(client.query.bind(client)));
 
@@ -82,7 +83,11 @@ router.post('/pr', authenticate, authorize(), async (req, res) => {
 
 router.post('/pr/:id/submit', authenticate, authorize(), async (req, res) => {
   try {
-    const result = await atomic((q) => svc.submitPurchaseRequest(q, parseInt(req.params.id, 10), req.user));
+    const id = parseInt(req.params.id, 10);
+    const result = await auditedChange(req, { action: 'submit', module: 'procurement', entityType: 'purchase_request' }, {
+      table: 'purchase_requests', id, run: (q) => svc.submitPurchaseRequest(q, id, req.user),
+      describe: (row) => `Submitted purchase requisition ${row?.request_number || id}`,
+    });
     res.json({ success: true, data: result });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -95,13 +100,17 @@ router.post('/pr/:id/decide', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const result = await auditedTransaction(
-      (q) => svc.decideOnDocument(q, 'purchase_request', parseInt(req.params.id, 10), req.user, value.decision, value.comment,
+    const id = parseInt(req.params.id, 10);
+    // Every decision is audited; an over-budget override keeps its distinct action and reason.
+    const result = await auditedChange(req, { action: 'decide', module: 'procurement', entityType: 'purchase_request' }, {
+      table: 'purchase_requests', id,
+      run: (q) => svc.decideOnDocument(q, 'purchase_request', id, req.user, value.decision, value.comment,
         { overrideOverBudget: value.override_over_budget, overrideReason: value.override_reason }),
-      (row) => row.budget_override ? ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-        action: 'budget_override', module: 'procurement', description: `Over-budget override on requisition #${req.params.id}: ${row.budget_override.reason}`,
-        entityId: parseInt(req.params.id, 10), entityType: 'purchase_request' }) : null
-    );
+      actionOf: (data) => (data.budget_override ? 'budget_override' : value.decision),
+      describe: (row, data) => (data.budget_override
+        ? `Over-budget override on requisition #${id}: ${data.budget_override.reason}`
+        : `Requisition ${row?.request_number || id}: ${value.decision}`),
+    });
     res.json({ success: true, data: result });
   } catch (e) {
     res.status(e.status || 400).json({ success: false, error: e.message, ...(e.error_code ? { error_code: e.error_code, error_params: e.error_params || {} } : {}) });
@@ -130,7 +139,10 @@ router.post('/rfq', authenticate, authorize(), async (req, res) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     authorizeProjectPayload(req, value);
-    const rfq = await atomic((q) => svc.createRfq(q, { ...value, created_by: req.user.id }));
+    const rfq = await auditedChange(req, { action: 'create', module: 'procurement', entityType: 'rfq' }, {
+      table: 'rfqs', run: (q) => svc.createRfq(q, { ...value, created_by: req.user.id }),
+      describe: (row) => `Created RFQ ${row?.rfq_number || row?.id}`,
+    });
     res.status(201).json({ success: true, data: rfq });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -140,7 +152,11 @@ router.post('/rfq/:id/vendors', authenticate, authorize(), async (req, res) => {
     const schema = Joi.object({ supplier_ids: Joi.array().items(Joi.number().integer()).min(1).required() });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const vendors = await atomic((q) => svc.inviteVendors(q, parseInt(req.params.id, 10), value.supplier_ids));
+    const rfqId = parseInt(req.params.id, 10);
+    const vendors = await auditedChange(req, { action: 'invite_vendors', module: 'procurement', entityType: 'rfq' }, {
+      table: 'rfqs', id: rfqId, run: (q) => svc.inviteVendors(q, rfqId, value.supplier_ids),
+      describe: (row) => `Invited ${value.supplier_ids.length} vendor(s) to RFQ ${row?.rfq_number || rfqId}`,
+    });
     res.status(201).json({ success: true, data: vendors });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -169,7 +185,11 @@ router.post('/rfq/:id/quotations', authenticate, authorize(), async (req, res) =
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const quotation = await atomic((q) => svc.submitQuotation(q, { ...value, rfq_id: parseInt(req.params.id, 10), created_by: req.user.id }));
+    const quotation = await auditedChange(req, { action: 'create', module: 'procurement', entityType: 'supplier_quotation' }, {
+      table: 'supplier_quotations', run: (q) => svc.submitQuotation(q, { ...value, rfq_id: parseInt(req.params.id, 10), created_by: req.user.id }),
+      describe: (row) => `Recorded quotation ${row?.id} on RFQ #${req.params.id}`,
+      amountOf: (row) => (row?.total_price == null ? undefined : Number(row.total_price)),
+    });
     res.status(201).json({ success: true, data: quotation });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -213,7 +233,11 @@ router.post('/rfq/:id/award', authenticate, authorize('owner', 'admin'), async (
     const schema = Joi.object({ quotation_id: Joi.number().integer().required(), justification: Joi.string().allow('', null) });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
-    const quotation = await atomic((q) => awards.directAward(q, parseInt(req.params.id, 10), value.quotation_id, req.user, value.justification));
+    const rfqId = parseInt(req.params.id, 10);
+    const quotation = await auditedChange(req, { action: 'direct_award', module: 'procurement', entityType: 'rfq' }, {
+      table: 'rfqs', id: rfqId, run: (q) => awards.directAward(q, rfqId, value.quotation_id, req.user, value.justification),
+      describe: (row) => `Direct award on RFQ ${row?.rfq_number || rfqId} to quotation #${value.quotation_id}`,
+    });
     res.json({ success: true, data: quotation });
   } catch (e) { return typedFail(res, e); }
 });
@@ -485,7 +509,10 @@ router.post('/po/:id/decide', authenticate, authorize(), async (req, res) => {
     const schema = Joi.object({ decision: Joi.string().valid('approve', 'reject').required(), comment: Joi.string().allow('', null) });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const result = await atomic(async (q) => {
+    const poId = parseInt(req.params.id, 10);
+    const result = await auditedChange(req, { action: 'decide', module: 'procurement', entityType: 'purchase_order' }, { table: 'purchase_orders', id: poId,
+      describe: (row) => `Purchase order ${row?.order_number || poId}: ${value.decision}`,
+      run: async (q) => {
       const decided = await svc.decideOnDocument(q, 'purchase_order', parseInt(req.params.id, 10), req.user, value.decision, value.comment);
       if (decided.status === 'issued') {
         await fireEvent({
@@ -495,7 +522,7 @@ router.post('/po/:id/decide', authenticate, authorize(), async (req, res) => {
         }, { query: q });
       }
       return decided;
-    });
+    } });
     res.json({ success: true, data: result });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -523,16 +550,20 @@ router.post('/deliveries', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const delivery = await transaction((client) => svc.createDelivery(
-      client.query.bind(client), { ...value, received_by: req.user.id }
-    ));
+    const delivery = await auditedChange(req, { action: 'create', module: 'procurement', entityType: 'delivery' }, {
+      table: 'deliveries', run: (q) => svc.createDelivery(q, { ...value, received_by: req.user.id }),
+      describe: (row) => `Recorded delivery ${row?.delivery_number || row?.id} against PO #${value.purchase_order_id}`,
+    });
     res.status(201).json({ success: true, data: delivery });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
 
 router.post('/deliveries/:id/mir', authenticate, authorize(), async (req, res) => {
   try {
-    const mir = await atomic((q) => svc.createMir(q, { delivery_id: parseInt(req.params.id, 10), created_by: req.user.id }));
+    const mir = await auditedChange(req, { action: 'create', module: 'procurement', entityType: 'material_inspection_request' }, {
+      table: 'material_inspection_requests', run: (q) => svc.createMir(q, { delivery_id: parseInt(req.params.id, 10), created_by: req.user.id }),
+      describe: (row) => `Created MIR ${row?.mir_number || row?.id} for delivery #${req.params.id}`,
+    });
     res.status(201).json({ success: true, data: mir });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -546,8 +577,10 @@ router.post('/mir/:id/decide', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const mir = await transaction(async (client) => {
-      const q = client.query.bind(client);
+    const mirId = parseInt(req.params.id, 10);
+    const mir = await auditedChange(req, { action: 'decide', module: 'procurement', entityType: 'material_inspection_request' }, { table: 'material_inspection_requests', id: mirId,
+      describe: (row) => `MIR ${row?.mir_number || mirId}: ${value.decision}`,
+      run: async (q) => {
       const decided = await svc.decideMir(q, parseInt(req.params.id, 10), req.user, value.decision, { accepted: value.accepted, notes: value.notes });
       await fireEvent({
         eventType: value.decision === 'accept' ? 'mir.accepted' : 'mir.rejected',
@@ -556,7 +589,7 @@ router.post('/mir/:id/decide', authenticate, authorize(), async (req, res) => {
         payload: { mir_id: parseInt(req.params.id, 10), status: decided.status },
       }, { query: q });
       return decided;
-    });
+    } });
     res.json({ success: true, data: mir });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
@@ -621,7 +654,12 @@ router.post('/invoices', authenticate, authorize(), async (req, res) => {
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const result = await atomic((q) => svc.recordSupplierInvoice(q, { ...value, created_by: req.user.id }));
+    const result = await auditedChange(req, { action: 'create', module: 'procurement', entityType: 'supplier_invoice' }, {
+      table: 'supplier_invoices', run: (q) => svc.recordSupplierInvoice(q, { ...value, created_by: req.user.id }),
+      idOf: (d) => d?.invoice?.id,
+      describe: (row) => `Recorded supplier invoice ${row?.invoice_number || value.invoice_number}`,
+      amountOf: (row) => (row?.total_amount == null ? undefined : Number(row.total_amount)),
+    });
     res.status(201).json({ success: true, data: result });
   } catch (e) {
     // Phase 3.2: the unique constraint (supplier_id, invoice_number) is the database backstop; whether the
@@ -640,7 +678,12 @@ router.post('/invoices', authenticate, authorize(), async (req, res) => {
 // approval (nothing saved) with the key named in the error and in error_params (L7 error contract).
 router.post('/invoices/:id/approve', authenticate, authorize(), async (req, res) => {
   try {
-    const result = await atomic((q) => svc.approveSupplierInvoice(q, parseInt(req.params.id, 10), req.user));
+    const invoiceId = parseInt(req.params.id, 10);
+    const result = await auditedChange(req, { action: 'approve', module: 'procurement', entityType: 'supplier_invoice' }, {
+      table: 'supplier_invoices', id: invoiceId, run: (q) => svc.approveSupplierInvoice(q, invoiceId, req.user),
+      describe: (row) => `Approved supplier invoice ${row?.invoice_number || invoiceId}`,
+      amountOf: (row) => (row?.total_amount == null ? undefined : Number(row.total_amount)),
+    });
     res.json({ success: true, data: result });
   } catch (e) {
     if (e.status === 404) return res.status(404).json({ success: false, error: e.message });

@@ -29,4 +29,33 @@ async function auditedMutation(req, meta, work, opts = {}) {
   return out;
 }
 
-module.exports = { auditedMutation };
+// Snapshot one row by primary key; table names come from route source, never input.
+async function rowSnapshot(q, table, id) {
+  if (!/^[a-z_]+$/.test(table)) throw new Error('invalid snapshot table');
+  if (id == null) return null;
+  return (await q(`SELECT * FROM ${table} WHERE id = $1`, [id])).rows[0] || null;
+}
+
+// Wrap a service call that changes one row: snapshots the row before and after
+// the call (id from opts.id, else from the call's result), audits in the same
+// transaction and returns the call's result. describe(row, data) builds the text.
+async function auditedChange(req, meta, { table, id, run, describe, amountOf, idOf = (d) => d?.id, actionOf }, opts = {}) {
+  const out = await auditedMutation(req, meta, async (q) => {
+    const before = await rowSnapshot(q, table, id);
+    const data = await run(q);
+    const entityId = id ?? idOf(data) ?? null;
+    const after = await rowSnapshot(q, table, entityId);
+    const row = after || before;
+    return {
+      data, entityId, projectId: row?.project_id, action: actionOf ? actionOf(data) : undefined,
+      before: meta.action === 'create' ? undefined : before,
+      after: meta.action === 'delete' ? undefined : after,
+      oldStatus: before?.status, newStatus: after?.status,
+      amount: amountOf ? amountOf(row) : undefined,
+      description: describe(row, data),
+    };
+  }, opts);
+  return out.data;
+}
+
+module.exports = { auditedMutation, auditedChange, rowSnapshot };

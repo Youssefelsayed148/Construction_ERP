@@ -5,9 +5,11 @@
 param(
   [string[]]$Suite = @(),
   [switch]$All,
-  [string]$Filter = '^(FAIL|PASS) |Test Suites:|Tests:|^\s+R2 (mutation registry|fixture error|no audit row|rollback leak)'
+  [string]$Filter = '^(FAIL|PASS) |Test Suites:|Tests:|^\s+R2 (mutation registry|fixture error|no audit row|rollback leak)|^\s+● .*›'
 )
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 $Suite = @($Suite | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 if (-not $All -and $Suite.Count -eq 0) { throw 'Pass -Suite <path> or -All.' }
 $backend = Resolve-Path (Join-Path $PSScriptRoot '..')
@@ -35,7 +37,7 @@ try {
   $mig = npm.cmd run migrate 2>&1 | ForEach-Object { "$_" } | Out-String
   if ($LASTEXITCODE -ne 0) { Write-Output $mig.Substring([Math]::Max(0, $mig.Length - 1500)); throw 'migrate failed' }
   Write-Output ('migrations: ' + (($mig -split "`n" | Select-String -Pattern 'applied|Applied' | Select-Object -Last 1) -join ''))
-  $args2 = @('--config', 'jest.pg.config.js', '--runInBand', '--forceExit')
+  $args2 = @('--config', 'jest.pg.config.js', '--runInBand', '--forceExit', '--no-colors')
   if (-not $All) { $args2 += $Suite }
   $ErrorActionPreference = 'Continue'
   $out = & npx.cmd jest @args2 2>&1 | ForEach-Object { "$_" } | Out-String

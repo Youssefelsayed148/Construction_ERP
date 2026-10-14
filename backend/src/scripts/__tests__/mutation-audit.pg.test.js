@@ -86,7 +86,7 @@ describePg('R2 every mounted mutation has a successful audited payload', () => {
     };
     owner = await makeOwner('r02-audit-owner');
     failer = await makeOwner('r02-audit-failer');
-    project = await one("INSERT INTO projects (name, name_en, code, status) VALUES ($1, $1, $2, 'active') RETURNING id", [`r02-audit-${tag}`, `R02A-${tag}`]);
+    project = await one("INSERT INTO projects (name, name_en, code, status, budget, contract_value) VALUES ($1, $1, $2, 'active', 900000000, 900000000) RETURNING id", [`r02-audit-${tag}`, `R02A-${tag}`]);
     token = tokens.signSession({ userId: owner.id, tokenVersion: owner.token_version });
     failToken = tokens.signSession({ userId: failer.id, tokenVersion: failer.token_version });
     // Failure injection scoped to one user: any audit row for the failer raises.

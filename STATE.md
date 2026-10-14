@@ -657,3 +657,4 @@ R2.2 done (enforcement): lint rule mutation-without-audit (AST, per-file ratchet
 R2.3/boq done f8d738b; next payroll
 R2.3/payroll done 7ac7abe; next subcontractors
 R2.3/guard done 6bec651; next subcontractors
+R2.3/subcontractors done 7070656; next procurement award

@@ -22,7 +22,6 @@
     "routes/materials.js": 1,
     "routes/notifications.js": 2,
     "routes/portal.js": 10,
-    "routes/procurement.js": 11,
     "routes/projects.js": 7,
     "routes/qhse.js": 16,
     "routes/quantities.js": 3,
