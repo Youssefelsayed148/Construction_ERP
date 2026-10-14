@@ -1,4 +1,16 @@
 const { securityHeaders, requestId, sanitizeServerError, fixedWindowRateLimit, validateRuntimeConfig, validateCorsOrigins, parseTrustProxy } = require('../../middleware/security');
+const express = require('express');
+const proxyaddr = require('proxy-addr');
+
+function proxyRequest(trustProxy, forwardedFor) {
+  const app = express();
+  app.set('trust proxy', trustProxy);
+  const req = Object.create(app.request);
+  req.app = app;
+  req.socket = { remoteAddress: '203.0.113.7' };
+  req.headers = forwardedFor ? { 'x-forwarded-for': forwardedFor } : {};
+  return req;
+}
 
 function response() {
   return {
@@ -53,6 +65,35 @@ describe('production security middleware', () => {
     expect(parseTrustProxy('true')).toBe(true);
     expect(parseTrustProxy('2')).toBe(2);
     expect(() => parseTrustProxy('all')).toThrow('TRUST_PROXY');
+  });
+
+  test('one trusted hop uses the nearest forwarded client, ignoring spoofed earlier hops', () => {
+    const req = proxyRequest(parseTrustProxy('1'), '198.51.100.99, 198.51.100.23');
+    expect(req.ip).toBe('198.51.100.23');
+    expect(req.ips).toEqual(['198.51.100.23']);
+  });
+
+  test('with no trusted proxy spoofed X-Forwarded-For cannot change the rate-limit key', () => {
+    const limiter = fixedWindowRateLimit({ windowMs: 60000, limit: 1 });
+    const first = proxyRequest(parseTrustProxy(undefined));
+    const spoofed = proxyRequest(parseTrustProxy('false'), '198.51.100.99');
+    expect(first.ip).toBe('203.0.113.7');
+    expect(spoofed.ip).toBe(first.ip);
+    expect(spoofed.ips).toEqual([]);
+    const allowed = jest.fn();
+    limiter(first, response(), allowed);
+    expect(allowed).toHaveBeenCalledTimes(1);
+    const blocked = response();
+    const next = jest.fn();
+    limiter(spoofed, blocked, next);
+    expect(blocked.statusCode).toBe(429);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('GHSA-jqcg-44mw-7w3h: short IPv4-mapped IPv6 subnet does not trust arbitrary IPv4 peers', () => {
+    const req = proxyRequest(proxyaddr.compile('::ffff:10.0.0.0/8'), '198.51.100.99');
+    expect(req.ip).toBe('203.0.113.7');
+    expect(req.ips).toEqual([]);
   });
 
   test('CORS allowlist accepts exact origins and rejects wildcard/path/cleartext production origins', () => {

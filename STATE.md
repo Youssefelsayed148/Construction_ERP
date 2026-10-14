@@ -338,3 +338,22 @@ Phase 10 work in this continuation: refreshed the inventory snapshot from curren
 Current Phase 10 evidence and precise L0-L11 status are in `docs/i18n/STATUS.md`. The font-loading test passed 1/1; refreshed screenshot capture passed 32/32; full Playwright passed 74/86 with 86 seeded-backend tests skipped. Frontend CI passed 31 suites / 128 tests, backend mocks 54 / 1,013, PostgreSQL 68 / 635, migrations 126 applied / 0 already applied, parity 35 namespaces / 1,283 English keys, and the production build compiled. The PDF spike is evidence for the L8 renderer choice only; production renderer/call-site migration, CSV localization, L4-L7 and L9-L11 exits remain open. Production remains NO-GO.
 
 Next: implement the shared Chromium renderer in the backend and package the runtime/font assets, then migrate export call sites and continue L7/L4-L6/L9-L11 work. Do not report Phase 10 complete until every exit and the native Arabic review are evidenced.
+
+## 2026-10-14 - R0.10 proxy-addr remediation (Africa/Cairo)
+
+Targeted command in backend: npm.cmd update proxy-addr --ignore-scripts --no-audit --no-fund; exit 0, changed 1 package. Lockfile scope comparison against HEAD: PASS, only node_modules/proxy-addr changed (2.0.7 -> 2.0.8), satisfying Express ~2.0.7. Direct dependencies forwarded 0.2.0 and ipaddr.js 1.9.1 unchanged; package.json unchanged. Lock diff contains version, resolved URL, integrity and upstream funding metadata only. No audit fix or other installation command ran.
+
+npm.cmd audit --omit=dev: exit 0, found 0 vulnerabilities (0 critical). Advisory: https://github.com/advisories/GHSA-jqcg-44mw-7w3h; patched version 2.0.8, vulnerable IPv4-mapped IPv6 trust subnet matching. Offline reproducer loaded 2.0.7 source from the existing npm cache without installing or modifying the installed package: req.ip=198.51.100.99 (spoofed), assertion expected 203.0.113.7, exit 1. Same assertion with installed 2.0.8: req.ip=203.0.113.7, PASS, exit 0.
+
+Exposure assessment (source inspection, not deployment or incident verification): server.js sets trust proxy using parseTrustProxy(process.env.TRUST_PROXY). security.js defaults to false; only true, false and non-negative hop counts are accepted, rejecting CIDR strings. docker-compose.yml fixes TRUST_PROXY to 1 for the backend; generate-staging-env.js also generates 1. Frontend nginx appends its immediate peer to X-Forwarded-For, and Compose publishes only frontend port 8090 on loopback, with no published backend port. Thus the checked-in default/Compose configuration does NOT use the subnet configuration required by this advisory, despite carrying the affected runtime package. No credential configuration was read; actual deployed settings and historical exploitation are unverified. TRUST_PROXY=true or exposing the backend directly while trusting one hop can independently allow spoofing; those configurations were not changed in this narrowly scoped ticket.
+
+Added three tests in backend/src/scripts/__tests__/security.test.js using real Express req.ip/req.ips getters: nearest client behind one trusted hop (spoofed earlier entry ignored), no-proxy forwarded spoof retaining the same rate-limit key and returning 429 on the second request, and the advisory subnet regression.
+
+Verification command outputs:
+- npm.cmd test -- --runInBand src/scripts/__tests__/security.test.js: PASS, 1 suite / 10 tests.
+- npm.cmd test -- --runInBand: PASS, 54 suites / 1,016 tests (+3 tests from baseline 1,013).
+- npm.cmd run migrate: PASS, 126 applied / 0 already applied on fresh erp_r01_r010_test.
+- TEST_PG=1 npm.cmd run test:pg: PASS, 68 suites / 635 tests.
+- git diff --check: PASS.
+
+PG gate used only new volume-free erp-r01-r010-20261014, cached postgres:16 with --pull=never, loopback 127.0.0.1:55461. Random database/JWT credentials stayed in process environment; dotenv config was suppressed with a credential-free temporary preload. Exact container removed in finally; no production database, secrets files or other Docker resources accessed. Existing stopped-run documentation and untracked audit/review reports were preserved. R0.1-R0.9 and R1 remain unimplemented; this verifies R0.10 only. Commit message: R0.10: patch proxy-addr and verify trusted proxy IP handling.
