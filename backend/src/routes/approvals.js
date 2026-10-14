@@ -27,6 +27,51 @@ const MODULE_MANAGER_ROLES = {
 // Modules the legacy approval workflow handles.
 const APPROVAL_MODULES = [...Object.keys(MODULE_MANAGER_ROLES), ...DIRECT_TO_OWNER_MODULES];
 
+// Compatibility projection for the two-week approval parity hold. Stable
+// request metadata stays in approval_requests; live status and stage come from
+// workflow_instances so the API remains usable with the legacy status mirror off.
+const WORKFLOW_STATUS_SQL = "CASE WHEN wi.status = 'active' THEN 'pending' ELSE COALESCE(wi.status, ar.status) END";
+const WORKFLOW_APPROVAL_JOINS = `
+  LEFT JOIN workflow_instances wi ON wi.legacy_approval_id = ar.id
+  LEFT JOIN LATERAL (
+    SELECT wa.user_id, wa.comment, wa.created_at
+      FROM workflow_actions wa
+     WHERE wa.instance_id = wi.id AND wa.step_key = 'manager_review' AND wa.decision = 'approve'
+     ORDER BY wa.created_at DESC, wa.id DESC LIMIT 1
+  ) manager_action ON true
+  LEFT JOIN LATERAL (
+    SELECT wa.user_id, wa.comment, wa.created_at
+      FROM workflow_actions wa
+     WHERE wa.instance_id = wi.id AND wa.decision IN ('approve', 'reject')
+     ORDER BY wa.created_at DESC, wa.id DESC LIMIT 1
+  ) latest_decision ON true`;
+const WORKFLOW_APPROVAL_FIELDS = `
+  ${WORKFLOW_STATUS_SQL} AS workflow_status,
+  CASE WHEN wi.status = 'active' THEN wi.current_step_key ELSE ar.stage END AS workflow_stage,
+  wi.updated_at AS workflow_updated_at,
+  COALESCE(manager_action.user_id, ar.manager_id) AS workflow_manager_id,
+  COALESCE(manager_action.created_at, ar.manager_approved_at) AS workflow_manager_approved_at,
+  COALESCE(manager_action.comment, ar.manager_notes) AS workflow_manager_notes,
+  CASE WHEN wi.status IN ('approved', 'rejected') THEN latest_decision.user_id ELSE ar.approver_id END AS workflow_approver_id,
+  CASE WHEN wi.status IN ('approved', 'rejected') THEN latest_decision.comment ELSE ar.notes END AS workflow_notes`;
+
+function normalizeWorkflowApproval(row) {
+  if (!row) return row;
+  const normalized = {
+    ...row,
+    status: row.workflow_status || row.status,
+    stage: row.workflow_stage || row.stage,
+    updated_at: row.workflow_updated_at || row.updated_at,
+    manager_id: row.workflow_manager_id ?? row.manager_id,
+    manager_approved_at: row.workflow_manager_approved_at || row.manager_approved_at,
+    manager_notes: row.workflow_manager_notes ?? row.manager_notes,
+    approver_id: row.workflow_approver_id ?? row.approver_id,
+    notes: row.workflow_notes ?? row.notes,
+  };
+  for (const key of ['workflow_status', 'workflow_stage', 'workflow_updated_at', 'workflow_manager_id', 'workflow_manager_approved_at', 'workflow_manager_notes', 'workflow_approver_id', 'workflow_notes']) delete normalized[key];
+  return normalized;
+}
+
 // Structured summary of the underlying record, attached to each list row so the
 // client can render/localize it instead of the bare "expense #19" FK pointer.
 // Each `extract` returns { amount, category, text } — all optional; the client
@@ -125,6 +170,32 @@ router.post('/request', authenticate, authorize(), async (req, res) => {
     // uq_approval_requests_one_pending decides who wins a race; the loser reads the winner's row.
     const created = await transaction(async (client) => {
       const q = (text, params) => client.query(text, params);
+      const mirrorLegacyStatus = process.env.APPROVALS_LEGACY_DUAL_WRITE !== 'false';
+      if (!mirrorLegacyStatus) {
+        const active = await q(
+          `SELECT ar.* FROM workflow_instances wi
+             JOIN approval_requests ar ON ar.id = wi.legacy_approval_id
+            WHERE wi.template_key = 'legacy_module_approval' AND wi.status = 'active'
+              AND wi.entity_type = $1 AND wi.entity_id = $2 AND wi.context ->> 'request_type' = $3
+            ORDER BY wi.created_at DESC LIMIT 1`,
+          [module_name, request_id, request_type]
+        );
+        if (active.rows[0]) {
+          const workflow = (await q('SELECT current_step_key, updated_at FROM workflow_instances WHERE legacy_approval_id = $1', [active.rows[0].id])).rows[0];
+          return { existing: { ...active.rows[0], status: 'pending', stage: workflow.current_step_key, updated_at: workflow.updated_at } };
+        }
+        // The legacy partial unique index still reserves any row whose mirror says
+        // pending. Do not turn that schema conflict into a 500 or mutate history.
+        const retiredMirror = await q(
+          `SELECT ar.id FROM approval_requests ar
+             LEFT JOIN workflow_instances wi ON wi.legacy_approval_id = ar.id
+            WHERE ar.module_name = $1 AND ar.request_id = $2 AND ar.request_type = $3
+              AND ar.status = 'pending'
+            LIMIT 1`,
+          [module_name, request_id, request_type]
+        );
+        if (retiredMirror.rows[0]) return { resubmitBlocked: true };
+      }
       const inserted = await q(
         `INSERT INTO approval_requests (module_name, request_type, request_id, requester_id, notes, status, stage)
          VALUES ($1, $2, $3, $4, $5, 'pending', $6)
@@ -168,6 +239,13 @@ router.post('/request', authenticate, authorize(), async (req, res) => {
       }, { query: q });
       return { result: inserted };
     });
+    if (created.resubmitBlocked) {
+      return res.status(409).json({
+        success: false,
+        error_code: 'approval_resubmission_requires_legacy_mirror',
+        error: 'This request has a completed or unlinked legacy approval row. Re-submission is unavailable until the legacy pending-index retirement migration is approved and applied.',
+      });
+    }
     if (created.existing) {
       return res.json({ success: true, requires_approval: true, request: created.existing, message: 'Approval request already exists' });
     }
@@ -198,12 +276,14 @@ router.get('/pending', authenticate, authorize(
       .filter((mod) => grants.some((g) => policy.grantMatches(g.perm_module, g.perm_action, mod, 'approve')));
     if (seesAllPending) {
       result = await query(`
-        SELECT ar.*, u.name as requester_name, u.email as requester_email, m.name as manager_name
+        SELECT ar.*, ${WORKFLOW_APPROVAL_FIELDS},
+               u.name as requester_name, u.email as requester_email, m.name as manager_name
         FROM approval_requests ar
+        ${WORKFLOW_APPROVAL_JOINS}
         LEFT JOIN users u ON ar.requester_id = u.id
-        LEFT JOIN users m ON ar.manager_id = m.id
-        WHERE ar.status = 'pending' AND ar.stage IN ('manager_review', 'owner_review')
-        ORDER BY ar.updated_at DESC
+        LEFT JOIN users m ON m.id = COALESCE(manager_action.user_id, ar.manager_id)
+        WHERE ${WORKFLOW_STATUS_SQL} = 'pending' AND COALESCE(wi.current_step_key, ar.stage) IN ('manager_review', 'owner_review')
+        ORDER BY COALESCE(wi.updated_at, ar.updated_at) DESC
       `);
     } else {
       const modulesForRole = Object.entries(MODULE_MANAGER_ROLES)
@@ -211,15 +291,17 @@ router.get('/pending', authenticate, authorize(
         .map(([mod]) => mod);
 
       result = modulesForRole.length > 0 ? await query(`
-        SELECT ar.*, u.name as requester_name, u.email as requester_email, false::boolean as read_only
+        SELECT ar.*, ${WORKFLOW_APPROVAL_FIELDS},
+               u.name as requester_name, u.email as requester_email, false::boolean as read_only
         FROM approval_requests ar
+        ${WORKFLOW_APPROVAL_JOINS}
         LEFT JOIN users u ON ar.requester_id = u.id
-        WHERE ar.status = 'pending' AND ar.stage = 'manager_review' AND ar.module_name = ANY($1)
-        ORDER BY ar.created_at DESC
+        WHERE ${WORKFLOW_STATUS_SQL} = 'pending' AND COALESCE(wi.current_step_key, ar.stage) = 'manager_review' AND ar.module_name = ANY($1)
+        ORDER BY COALESCE(wi.updated_at, ar.updated_at) DESC
       `, [modulesForRole]) : { rows: [] };
     }
 
-    const enriched = await enrichApprovalRows(result.rows);
+    const enriched = await enrichApprovalRows(result.rows.map(normalizeWorkflowApproval));
     res.json({ success: true, count: enriched.length, requests: enriched });
   } catch (error) {
     console.error('Error fetching pending approvals:', error);
@@ -258,15 +340,21 @@ router.put('/:id/cancel', authenticate, authorize(), async (req, res) => {
       const q = client.query.bind(client);
       const existing = (await q('SELECT * FROM approval_requests WHERE id = $1 FOR UPDATE', [id])).rows[0];
       if (!existing) return { notFound: true };
+      const mirrorLegacyStatus = process.env.APPROVALS_LEGACY_DUAL_WRITE !== 'false';
       // Decision 4: only an owner or admin, or the original requester, may cancel.
       if (!CANCEL_ANY_ROLES.includes(role) && existing.requester_id !== userId) return { forbidden: true };
-      if (existing.status !== 'pending') return { conflict: existing.status };
-      const cancelled = (await q(
-        `UPDATE approval_requests
-            SET status = 'cancelled', cancelled_by = $2, cancelled_at = now(), cancel_reason = $3, updated_at = now()
-          WHERE id = $1 AND status = 'pending' RETURNING *`,
-        [id, userId, reason]
-      )).rows[0];
+      const workflow = (await q('SELECT status FROM workflow_instances WHERE legacy_approval_id = $1', [id])).rows[0];
+      const currentStatus = mirrorLegacyStatus || !workflow ? existing.status : workflow.status === 'active' ? 'pending' : workflow.status;
+      if (currentStatus !== 'pending') return { conflict: currentStatus };
+      let cancelled;
+      if (mirrorLegacyStatus || !workflow) {
+        cancelled = (await q(
+          `UPDATE approval_requests
+              SET status = 'cancelled', cancelled_by = $2, cancelled_at = now(), cancel_reason = $3, updated_at = now()
+            WHERE id = $1 AND status = 'pending' RETURNING *`,
+          [id, userId, reason]
+        )).rows[0];
+      } else cancelled = { ...existing, status: 'cancelled', cancelled_by: userId, cancelled_at: new Date(), cancel_reason: reason, updated_at: new Date() };
       // The workflow linked to this legacy approval (legacy_approval_id) stops with it, if one exists.
       const instances = (await q('SELECT id FROM workflow_instances WHERE legacy_approval_id = $1 AND status = $2', [id, 'active'])).rows;
       let workflowCancelled = 0;
@@ -303,8 +391,8 @@ router.get('/stale', authenticate, authorize('owner', 'admin'), async (req, res)
          FROM approval_requests ar
          LEFT JOIN users requester ON ar.requester_id = requester.id
          LEFT JOIN workflow_instances wi ON wi.legacy_approval_id = ar.id
-        WHERE ar.status = 'pending'
-          AND ar.created_at < now() - ($1 || ' days')::interval
+        WHERE ${WORKFLOW_STATUS_SQL} = 'pending'
+          AND COALESCE(wi.updated_at, ar.created_at) < now() - ($1 || ' days')::interval
         ORDER BY ar.created_at ASC
         LIMIT 500`,
       [String(olderThanDays)]
@@ -344,14 +432,16 @@ router.get('/my-requests', authenticate, authorize(), async (req, res) => {
   try {
     const { limit = 100 } = req.query;
     const result = await query(`
-      SELECT ar.*, approver.name as approver_name, approver.role as approver_role,
+      SELECT ar.*, ${WORKFLOW_APPROVAL_FIELDS},
+             approver.name as approver_name, approver.role as approver_role,
              manager.name as manager_name, manager.role as manager_role
       FROM approval_requests ar
-      LEFT JOIN users approver ON ar.approver_id = approver.id
-      LEFT JOIN users manager ON ar.manager_id = manager.id
-      WHERE ar.requester_id = $1 ORDER BY ar.created_at DESC LIMIT $2
+      ${WORKFLOW_APPROVAL_JOINS}
+      LEFT JOIN users approver ON approver.id = CASE WHEN wi.status IN ('approved', 'rejected') THEN latest_decision.user_id ELSE ar.approver_id END
+      LEFT JOIN users manager ON manager.id = COALESCE(manager_action.user_id, ar.manager_id)
+      WHERE ar.requester_id = $1 ORDER BY COALESCE(wi.updated_at, ar.created_at) DESC LIMIT $2
     `, [req.user.id, limit]);
-    const enriched = await enrichApprovalRows(result.rows);
+    const enriched = await enrichApprovalRows(result.rows.map(normalizeWorkflowApproval));
     res.json({ success: true, count: enriched.length, requests: enriched });
   } catch (error) {
     console.error('Error fetching my requests:', error);
@@ -363,23 +453,25 @@ router.get('/my-requests', authenticate, authorize(), async (req, res) => {
 router.get('/audit', authenticate, authorize('owner', 'admin'), async (req, res) => {
   try {
     const { limit = 100, module_name, status } = req.query;
-    let conditions = ['ar.status != \'pending\''];
+    let conditions = [`${WORKFLOW_STATUS_SQL} != 'pending'`];
     const params = [];
     let idx = 1;
     if (module_name && module_name !== 'all') { conditions.push(`ar.module_name = $${idx++}`); params.push(module_name); }
-    if (status && status !== 'all') { conditions.push(`ar.status = $${idx++}`); params.push(status); }
+    if (status && status !== 'all') { conditions.push(`${WORKFLOW_STATUS_SQL} = $${idx++}`); params.push(status); }
     params.push(limit);
     const result = await query(`
-      SELECT ar.*, requester.name as requester_name, requester.email as requester_email, requester.role as requester_role,
+      SELECT ar.*, ${WORKFLOW_APPROVAL_FIELDS},
+             requester.name as requester_name, requester.email as requester_email, requester.role as requester_role,
              approver.name as approver_name, approver.role as approver_role,
              manager.name as manager_name, manager.role as manager_role
       FROM approval_requests ar
+      ${WORKFLOW_APPROVAL_JOINS}
       LEFT JOIN users requester ON ar.requester_id = requester.id
-      LEFT JOIN users approver ON ar.approver_id = approver.id
-      LEFT JOIN users manager ON ar.manager_id = manager.id
-      WHERE ${conditions.join(' AND ')} ORDER BY ar.updated_at DESC LIMIT $${idx}
+      LEFT JOIN users approver ON approver.id = CASE WHEN wi.status IN ('approved', 'rejected') THEN latest_decision.user_id ELSE ar.approver_id END
+      LEFT JOIN users manager ON manager.id = COALESCE(manager_action.user_id, ar.manager_id)
+      WHERE ${conditions.join(' AND ')} ORDER BY COALESCE(wi.updated_at, ar.updated_at) DESC LIMIT $${idx}
     `, params);
-    const enriched = await enrichApprovalRows(result.rows);
+    const enriched = await enrichApprovalRows(result.rows.map(normalizeWorkflowApproval));
     res.json({ success: true, count: enriched.length, records: enriched });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -391,13 +483,17 @@ router.get('/check/:module/:requestId', authenticate, authorize(), async (req, r
   try {
     const { module, requestId } = req.params;
     const approval = await query(
-      `SELECT * FROM approval_requests WHERE module_name = $1 AND request_id = $2::integer ORDER BY created_at DESC LIMIT 1`,
+      `SELECT ar.*, ${WORKFLOW_APPROVAL_FIELDS}
+         FROM approval_requests ar ${WORKFLOW_APPROVAL_JOINS}
+        WHERE ar.module_name = $1 AND ar.request_id = $2::integer
+        ORDER BY COALESCE(wi.updated_at, ar.created_at) DESC LIMIT 1`,
       [module, requestId]
     );
-    if (approval.rows.length > 0 && approval.rows[0].status === 'approved') {
+    const current = normalizeWorkflowApproval(approval.rows[0]);
+    if (current && current.status === 'approved') {
       return res.json({ requires_approval: false, approved: true });
     }
-    res.json({ requires_approval: true, pending: approval.rows[0]?.status === 'pending' });
+    res.json({ requires_approval: true, pending: current?.status === 'pending' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -481,20 +577,21 @@ router.get('/:id/details', authenticate, authorize(), async (req, res) => {
   try {
     const { id } = req.params;
     const arRes = await query(`
-      SELECT ar.*,
+      SELECT ar.*, ${WORKFLOW_APPROVAL_FIELDS},
              requester.name AS requester_name, requester.email AS requester_email, requester.role AS requester_role,
              manager.name AS manager_name, manager.role AS manager_role,
              approver.name AS approver_name, approver.role AS approver_role
       FROM approval_requests ar
+      ${WORKFLOW_APPROVAL_JOINS}
       LEFT JOIN users requester ON ar.requester_id = requester.id
-      LEFT JOIN users manager ON ar.manager_id = manager.id
-      LEFT JOIN users approver ON ar.approver_id = approver.id
+      LEFT JOIN users manager ON manager.id = COALESCE(manager_action.user_id, ar.manager_id)
+      LEFT JOIN users approver ON approver.id = CASE WHEN wi.status IN ('approved', 'rejected') THEN latest_decision.user_id ELSE ar.approver_id END
       WHERE ar.id = $1
     `, [id]);
     if (arRes.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Request not found' });
     }
-    const ar = arRes.rows[0];
+    const ar = normalizeWorkflowApproval(arRes.rows[0]);
 
     if (ar.requester_id !== req.user.id && !PRIVILEGED_APPROVAL_ROLES.includes(req.user.role)) {
       return res.status(403).json({ success: false, error: 'Not authorized to view this request' });

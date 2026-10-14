@@ -234,11 +234,12 @@ router.get('/overview', authenticate, authorize(), async (req, res) => {
            WHERE status NOT IN ('completed', 'cancelled')
              AND next_due_date IS NOT NULL AND next_due_date <= CURRENT_DATE`),
 
-      q('approvals', `SELECT
-             COUNT(*) FILTER (WHERE status = 'pending')::int AS pending,
-             COUNT(*) FILTER (WHERE status = 'pending' AND stage = 'owner_review')::int AS awaiting_owner,
-             MIN(created_at) FILTER (WHERE status = 'pending') AS oldest_pending_at
-           FROM approval_requests`),
+        q('approvals', `SELECT
+               COUNT(*) FILTER (WHERE status = 'active')::int AS pending,
+               COUNT(*) FILTER (WHERE status = 'active' AND current_step_key = 'owner_review')::int AS awaiting_owner,
+               MIN(created_at) FILTER (WHERE status = 'active') AS oldest_pending_at
+            FROM workflow_instances
+           WHERE template_key = 'legacy_module_approval'`),
 
       q('directory', `SELECT
              (SELECT COUNT(*) FROM clients WHERE is_active = true)::int AS clients,

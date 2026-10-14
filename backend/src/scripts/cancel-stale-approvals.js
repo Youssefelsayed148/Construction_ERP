@@ -19,13 +19,14 @@ async function report(q, olderThanDays) {
   const rows = (await q(
     `SELECT ar.id, ar.module_name, ar.request_type, ar.request_id, ar.status, ar.created_at,
             requester.name AS requester_name, requester.role AS requester_role,
-            wi.id AS workflow_instance_id, wi.status AS workflow_status
+            wi.id AS workflow_instance_id, wi.status AS workflow_status,
+            CASE WHEN wi.status = 'active' THEN 'pending' ELSE COALESCE(wi.status, ar.status) END AS effective_status
        FROM approval_requests ar
        LEFT JOIN users requester ON ar.requester_id = requester.id
        LEFT JOIN workflow_instances wi ON wi.legacy_approval_id = ar.id
-      WHERE ar.status = 'pending'
-        AND ar.created_at < now() - ($1 || ' days')::interval
-      ORDER BY ar.created_at ASC`,
+      WHERE CASE WHEN wi.status = 'active' THEN 'pending' ELSE COALESCE(wi.status, ar.status) END = 'pending'
+        AND COALESCE(wi.updated_at, ar.created_at) < now() - ($1 || ' days')::interval
+      ORDER BY COALESCE(wi.updated_at, ar.created_at) ASC`,
     [String(olderThanDays)]
   )).rows;
   return rows;
@@ -35,14 +36,21 @@ async function cancelOne(q, { id, actor, reason }) {
   return database.transaction(async (client) => {
     const c = client.query.bind(client);
     const existing = (await c('SELECT * FROM approval_requests WHERE id = $1 FOR UPDATE', [id])).rows[0];
-    if (!existing || existing.status !== 'pending') return null;
-    const cancelled = (await c(
-      `UPDATE approval_requests
-          SET status = 'cancelled', cancelled_by = $2, cancelled_at = now(), cancel_reason = $3, updated_at = now()
-        WHERE id = $1 AND status = 'pending' RETURNING *`,
-      [id, actor.id, reason]
-    )).rows[0];
-    const instances = (await c('SELECT id FROM workflow_instances WHERE legacy_approval_id = $1 AND status = $2', [id, 'active'])).rows;
+    if (!existing) return null;
+    const mirrorLegacyStatus = process.env.APPROVALS_LEGACY_DUAL_WRITE !== 'false';
+    const linked = (await c('SELECT id, status FROM workflow_instances WHERE legacy_approval_id = $1 FOR UPDATE', [id])).rows;
+    const effectiveStatus = linked[0]?.status === 'active' ? 'pending' : linked[0]?.status || existing.status;
+    if (effectiveStatus !== 'pending') return null;
+    let cancelled = existing;
+    if (mirrorLegacyStatus || !linked.length) {
+      cancelled = (await c(
+        `UPDATE approval_requests
+            SET status = 'cancelled', cancelled_by = $2, cancelled_at = now(), cancel_reason = $3, updated_at = now()
+          WHERE id = $1 AND status = 'pending' RETURNING *`,
+        [id, actor.id, reason]
+      )).rows[0];
+    }
+    const instances = linked.filter((item) => item.status === 'active');
     const workflowEngine = require('../services/workflowEngine');
     let workflowCancelled = 0;
     for (const inst of instances) {

@@ -1568,3 +1568,11 @@ Command evidence:
 - `node --check` on changed backend JS, EN/AR locale JSON parse, and `git diff --check`: PASS.
 
 Phase 8 earned-value/resource-load plan item is closed based on these checks. Phase 8 remains open for the approval-system hold and duplicate commercial surfaces; no claim is made that Phase 8 exit golden values, Phase 9-11, PWA Lighthouse, or human acceptance is complete. Implementation commit: pending.
+
+## 2026-10-14 - Phase 8 legacy approval retirement preparation
+
+Approval API status/stage now project from the linked workflow for pending, my-requests, audit, check, detail, and stale reads; dashboard pending/owner counts and stale-cancel reporting also use workflow state. Decision mirroring is controlled by `APPROVALS_LEGACY_DUAL_WRITE` and remains on by default. The flag-off path preserves legacy history and returns typed 409 `approval_resubmission_requires_legacy_mirror` if the legacy pending index blocks re-submission. Added integration coverage for the two-stage workflow-only path and this blocker.
+
+Verification on loopback-only disposable Docker Desktop PostgreSQL 16 (`construction_erp_test`, `127.0.0.1:55441`): focused approval PG suite 9/9; full PG suite 67 suites / 618 tests; backend mocks 53 suites / 1,004 tests; lint guards passed; changed JS syntax and `git diff --check` passed. The read-only approval parity check initially reported two unlinked test rows; the existing idempotent `migrateLegacyApprovals` helper created their missing twins, and parity then passed for all 55 rows. No migration was added.
+
+Open: no real-data two-week parity hold has occurred. Same-record re-submission after completed workflow remains unavailable while dual writes are off because migration 0013's pending-only index is still present. The additive-only migration rule does not authorize replacing that index; document a migration decision, then perform the restored-real-data preflight and two-week hold before cutover. Approval-retirement plan item stays open. Implementation commit: pending.

@@ -384,6 +384,34 @@ describe('recordLegacyDecision response shapes', () => {
     ]);
   });
 
+  test('the parity-hold flag can disable legacy status mirrors while workflow decisions continue', async () => {
+    await q("INSERT INTO expenses (id, amount, status) VALUES ($1, $2, $3)", [912, 900, 'pending']);
+    await q(`INSERT INTO approval_requests (id, module_name, request_type, request_id, requester_id, status, stage)
+             VALUES ($1, 'expenses', 'expense', $2, 20, 'pending', 'manager_review')`, [912, 912]);
+    await engine.migrateLegacyApprovals(client);
+    const priorFlag = process.env.APPROVALS_LEGACY_DUAL_WRITE;
+    process.env.APPROVALS_LEGACY_DUAL_WRITE = 'false';
+    try {
+      const manager = await engine.recordLegacyDecision(
+        { approvalId: 912, userId: 30, userName: 'FM', role: 'finance_manager', notes: 'reviewed', action: 'approve' },
+        { client }
+      );
+      expect(manager.body.request).toMatchObject({ status: 'pending', stage: 'owner_review' });
+      expect((await q('SELECT status, stage FROM approval_requests WHERE id = $1', [912])).rows[0]).toMatchObject({ status: 'pending', stage: 'manager_review' });
+      const owner = await engine.recordLegacyDecision(
+        { approvalId: 912, userId: 31, userName: 'Owner', role: 'owner', notes: 'approved', action: 'approve' },
+        { client }
+      );
+      expect(owner.body.request.status).toBe('approved');
+      expect((await q('SELECT status FROM approval_requests WHERE id = $1', [912])).rows[0].status).toBe('pending');
+      const workflow = (await q('SELECT status, current_step_key FROM workflow_instances WHERE legacy_approval_id = $1', [912])).rows[0];
+      expect(workflow.status).toBe('approved');
+    } finally {
+      if (priorFlag == null) delete process.env.APPROVALS_LEGACY_DUAL_WRITE;
+      else process.env.APPROVALS_LEGACY_DUAL_WRITE = priorFlag;
+    }
+  });
+
   test('the legacy 404 and already-processed shapes are preserved', async () => {
     const missing = await engine.recordLegacyDecision({ approvalId: 99999, userId: 31, role: 'owner', action: 'approve' }, { client });
     expect(missing).toEqual({ statusCode: 404, body: { success: false, error: 'Request not found' } });

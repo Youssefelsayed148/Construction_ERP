@@ -756,21 +756,40 @@ async function recordLegacyDecision({ approvalId, userId, userName, role, notes,
     return { statusCode: result.statusCode, body: { success: false, error: result.error } };
   }
 
-  // Dual-write approval_requests to keep the legacy API response identical.
+  // The feature flag keeps the old status mirror reversible for the parity hold.
+  // New approval requests still retain their legacy metadata row for stable IDs
+  // and historical references; workflow_instances owns decision state.
+  const mirrorLegacyStatus = process.env.APPROVALS_LEGACY_DUAL_WRITE !== 'false';
+  const requestAtWorkflowState = (stage, status, actorId, decisionNotes, updatedAt) => ({
+    ...ar,
+    stage: stage || ar.stage,
+    status,
+    manager_id: result.outcome === 'forwarded' ? userId : ar.manager_id,
+    manager_approved_at: result.outcome === 'forwarded' ? updatedAt : ar.manager_approved_at,
+    manager_notes: result.outcome === 'forwarded' ? (notes || null) : ar.manager_notes,
+    approver_id: status === 'pending' ? ar.approver_id : actorId,
+    notes: status === 'pending' ? ar.notes : (decisionNotes || ar.notes || null),
+    updated_at: updatedAt,
+  });
+
+  // Dual-write approval_requests to keep the legacy API response identical
+  // while the two-week parity hold is active.
   // (Timestamps are bound params — portable across pg and the mock executor;
   // rows are read back explicitly since mock UPDATEs ignore RETURNING.)
   const now = new Date();
   let updated;
   if (action === 'approve') {
     if (result.outcome === 'forwarded') {
-      await client.query(
-        `UPDATE approval_requests
-         SET stage = 'owner_review', manager_id = $1, manager_approved_at = $4, manager_notes = $2, updated_at = $4
-         WHERE id = $3`,
-        [userId, notes || null, approvalId, now]
-      );
-      const back = await client.query('SELECT * FROM approval_requests WHERE id = $1', [approvalId]);
-      updated = back.rows[0];
+      if (mirrorLegacyStatus) {
+        await client.query(
+          `UPDATE approval_requests
+           SET stage = 'owner_review', manager_id = $1, manager_approved_at = $4, manager_notes = $2, updated_at = $4
+           WHERE id = $3`,
+          [userId, notes || null, approvalId, now]
+        );
+        const back = await client.query('SELECT * FROM approval_requests WHERE id = $1', [approvalId]);
+        updated = back.rows[0];
+      } else updated = requestAtWorkflowState('owner_review', 'pending', userId, notes, now);
       if (logFn) {
         await logFn({
           userId, userName, userRole: role, action: 'approve', module: ar.module_name,
@@ -781,14 +800,16 @@ async function recordLegacyDecision({ approvalId, userId, userName, role, notes,
       return { statusCode: 200, body: { success: true, stage: 'forwarded_to_owner', request: updated } };
     }
     // fully approved
-    await client.query(
-      `UPDATE approval_requests
-       SET status = 'approved', approver_id = $1, notes = $2, updated_at = $4
-       WHERE id = $3`,
-      [userId, notes || ar.notes || null, approvalId, now]
-    );
-    const back = await client.query('SELECT * FROM approval_requests WHERE id = $1', [approvalId]);
-    updated = back.rows[0];
+    if (mirrorLegacyStatus) {
+      await client.query(
+        `UPDATE approval_requests
+         SET status = 'approved', approver_id = $1, notes = $2, updated_at = $4
+         WHERE id = $3`,
+        [userId, notes || ar.notes || null, approvalId, now]
+      );
+      const back = await client.query('SELECT * FROM approval_requests WHERE id = $1', [approvalId]);
+      updated = back.rows[0];
+    } else updated = requestAtWorkflowState(ar.stage, 'approved', userId, notes, now);
     if (logFn) {
       await logFn({
         userId, userName, userRole: role, action: 'approve', module: ar.module_name,
@@ -800,14 +821,16 @@ async function recordLegacyDecision({ approvalId, userId, userName, role, notes,
   }
 
   // action === 'reject'
-  await client.query(
-    `UPDATE approval_requests
-     SET status = 'rejected', approver_id = $1, notes = $2, updated_at = $4
-     WHERE id = $3`,
-    [userId, notes || ar.notes || null, approvalId, now]
-  );
-  const back = await client.query('SELECT * FROM approval_requests WHERE id = $1', [approvalId]);
-  updated = back.rows[0];
+  if (mirrorLegacyStatus) {
+    await client.query(
+      `UPDATE approval_requests
+       SET status = 'rejected', approver_id = $1, notes = $2, updated_at = $4
+       WHERE id = $3`,
+      [userId, notes || ar.notes || null, approvalId, now]
+    );
+    const back = await client.query('SELECT * FROM approval_requests WHERE id = $1', [approvalId]);
+    updated = back.rows[0];
+  } else updated = requestAtWorkflowState(ar.stage, 'rejected', userId, notes, now);
   if (logFn) {
     await logFn({
       userId, userName, userRole: role, action: 'reject', module: ar.module_name,

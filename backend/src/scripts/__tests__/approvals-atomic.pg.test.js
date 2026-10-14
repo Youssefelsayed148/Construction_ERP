@@ -81,6 +81,65 @@ describePg('2.8 approvals (real PostgreSQL, real app)', () => {
     expect((await one('SELECT count(*)::int n FROM approval_requests WHERE module_name = $1', [`nothing-${tag}`])).n).toBe(0);
   });
 
+  test('approval API read endpoints project status and stage from the workflow', async () => {
+    const r = await request('workflow-read-projection');
+    const id = r.body.request.id;
+    const mine = await call(owner, 'GET', '/api/approvals/my-requests?limit=200');
+    expect(mine.status).toBe(200);
+    expect(mine.body.requests.find((item) => item.id === id)).toMatchObject({ status: 'pending', stage: 'manager_review' });
+    const pending = await call(manager, 'GET', '/api/approvals/pending');
+    expect(pending.status).toBe(200);
+    expect(pending.body.requests.some((item) => item.id === id)).toBe(true);
+    const details = await call(owner, 'GET', `/api/approvals/${id}/details`);
+    expect(details.status).toBe(200);
+    expect(details.body.request).toMatchObject({ id, status: 'pending', stage: 'manager_review' });
+
+    await call(manager, 'PUT', `/api/approvals/${id}/approve`, { notes: 'workflow manager review' });
+    const forwarded = await call(owner, 'GET', `/api/approvals/my-requests?limit=200`);
+    expect(forwarded.body.requests.find((item) => item.id === id)).toMatchObject({ status: 'pending', stage: 'owner_review', manager_notes: 'workflow manager review' });
+    const final = await call(owner, 'PUT', `/api/approvals/${id}/approve`, { notes: 'workflow owner approval' });
+    expect(final.status).toBe(200);
+    const checked = await call(owner, 'GET', `/api/approvals/check/expenses/${Number(tag) * 10 + made.length - 1}`);
+    expect(checked.body).toMatchObject({ requires_approval: false, approved: true });
+    const audit = await call(owner, 'GET', '/api/approvals/audit?status=approved&limit=200');
+    expect(audit.body.records.some((item) => item.id === id && item.status === 'approved')).toBe(true);
+  });
+
+  test('workflow remains authoritative when legacy decision-status mirroring is disabled', async () => {
+    const created = await call(manager, 'POST', '/api/approvals/request', {
+      module_name: 'expenses', request_type: 'workflow-only-read', request_id: Number(tag) * 10 + 777,
+    });
+    expect(created.status).toBe(200);
+    const id = created.body.request.id;
+    const priorFlag = process.env.APPROVALS_LEGACY_DUAL_WRITE;
+    process.env.APPROVALS_LEGACY_DUAL_WRITE = 'false';
+    try {
+      expect((await call(owner, 'PUT', `/api/approvals/${id}/approve`, { notes: 'workflow manager step' })).status).toBe(200);
+      const staleLegacy = await one('SELECT status, stage FROM approval_requests WHERE id = $1', [id]);
+      expect(staleLegacy).toMatchObject({ status: 'pending', stage: 'manager_review' });
+      const projected = await call(manager, 'GET', '/api/approvals/my-requests?limit=200');
+      expect(projected.body.requests.find((item) => item.id === id)).toMatchObject({ status: 'pending', stage: 'owner_review' });
+      expect((await call(owner, 'PUT', `/api/approvals/${id}/approve`, { notes: 'workflow final step' })).status).toBe(200);
+      const final = await call(manager, 'GET', '/api/approvals/my-requests?limit=200');
+      expect(final.body.requests.find((item) => item.id === id)).toMatchObject({ status: 'approved', notes: 'workflow final step' });
+      const check = await call(owner, 'GET', `/api/approvals/check/expenses/${Number(tag) * 10 + 777}`);
+      expect(check.body).toMatchObject({ requires_approval: false, approved: true });
+      const retry = await call(manager, 'POST', '/api/approvals/request', {
+        module_name: 'expenses', request_type: 'workflow-only-read', request_id: Number(tag) * 10 + 777,
+      });
+      expect(retry.status).toBe(409);
+      expect(retry.body.error_code).toBe('approval_resubmission_requires_legacy_mirror');
+    } finally {
+      if (priorFlag == null) delete process.env.APPROVALS_LEGACY_DUAL_WRITE;
+      else process.env.APPROVALS_LEGACY_DUAL_WRITE = priorFlag;
+      // Restore the disposable fixture's mirror so the parity check remains clean.
+      await db.query(
+        `UPDATE approval_requests SET status = 'approved', stage = 'owner_review', notes = 'workflow final step', updated_at = NOW()
+         WHERE id = $1`, [id]
+      );
+    }
+  });
+
   test('parallel approvals decide each stage exactly once and the legacy row matches the engine', async () => {
     const r = await request('race-approve');
     const id = r.body.request.id;
