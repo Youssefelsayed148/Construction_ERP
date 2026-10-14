@@ -868,3 +868,6 @@ Fresh disposable Docker PostgreSQL 16: all 126 migrations applied; golden demo f
 ## 2026-10-14 - Phase 11 reconciliation matrix test coverage
 
 Expanded seeded-defect PG coverage to 14 test cases that exercise 15/16 reconciliation checks; owned-sequence drift remains covered by a unit test because rewinding a live DB sequence cannot be rolled back safely. Defect cases compare each check's violation delta and run in rollback-only transactions. Fresh full PG gate passed 68 suites / 635 tests after all 126 migrations. Other batch gates passed: backend 54/1,013; lint guards; frontend 31/128; i18n check/parity 35 namespaces / 1,283 keys; build; Pixel 7 route sweep 36/36. Real-data restored-copy gate remains open.
+## 2026-10-14 - synthetic golden-demo restore rehearsal
+
+Fresh disposable PostgreSQL 16: 126 migrations and the golden seed; custom-format dump restored to a second empty DB. Source/restore counts matched (96 units, 1 BOQ item, 122.4000 m3 net demand). Restored reconciliation: 16 checks, 0 violations; data-cleaning report: []. The Docker container and process-only credentials were removed. This does not replace the pilot/real-data restore and rollback rehearsal, which remains open.
