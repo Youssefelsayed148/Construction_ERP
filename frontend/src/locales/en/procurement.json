@@ -1,6 +1,21 @@
 {
   "title": "Procurement",
-  "comparison": { "title": "Procurement comparison", "noQuotations": "No quotations received yet." },
+  "comparison": {
+    "title": "Procurement comparison",
+    "description": "Compare invited suppliers for one RFQ before making an award decision.",
+    "rfqId": "RFQ ID",
+    "compare": "Compare",
+    "noQuotations": "No quotations have been submitted for this RFQ.",
+    "loadError": "The quotation comparison could not be loaded. Check the RFQ and try again.",
+    "downloadError": "The comparison document could not be downloaded. Try again.",
+    "recommendation": "Recommended: {{supplier}} — {{reason}}",
+    "documents": {
+      "rfq": "RFQ PDF",
+      "technicalEvaluation": "Technical evaluation PDF",
+      "commercialComparison": "Commercial comparison PDF",
+      "awardRecommendation": "Award recommendation PDF"
+    }
+  },
   "rfq": "Request for quotation",
   "fields": {
     "title": "Title", "description": "Description", "material": "Material", "estimatedPrice": "Estimated unit price", "priority": "Priority",

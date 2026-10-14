@@ -268,3 +268,10 @@ Verification: backend client/consultant/portal suites PASS (3 suites / 40 tests)
 Portal record cards now display domain-specific document numbers exposed by APIs (RFI, submittal, WIR, MIR, certificate, observation, and NCR) before using a localized generic record-number fallback. Added EN/AR labels for dashboard summary fields surfaced by consultant progress widgets.
 
 Verification: PortalDashboard suite PASS (11/11); i18n check passed; parity passed (35 namespaces / 1,231 English keys); git diff --check passed. No backend or migration changes.
+
+
+## 2026-10-14 - Phase 10 L4B procurement comparison localization
+
+Localized the ProcurementReview title and description, RFQ input label, loading/compare actions, every comparison column, boolean values, document buttons, recommendation, and empty state. Load and download failures now show localized generic messages rather than raw server/network text. The sidebar entry already uses the translated navigation key.
+
+Verification: ProcurementReview component tests PASS (2/2), covering translated comparison data and generic load/download errors; i18n check passed; parity passed (35 namespaces / 1,241 English keys); git diff --check passed. The full production build is scheduled with the frontend batch gate.

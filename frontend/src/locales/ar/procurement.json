@@ -1,6 +1,21 @@
 {
   "title": "المشتريات",
-  "comparison": { "title": "مقارنة المشتريات", "noQuotations": "لم يتم استلام عروض أسعار بعد." },
+  "comparison": {
+    "title": "مقارنة المشتريات",
+    "description": "قارن الموردين المدعوين لطلب عرض سعر قبل اتخاذ قرار الترسية.",
+    "rfqId": "رقم طلب عرض السعر",
+    "compare": "مقارنة",
+    "noQuotations": "لم يتم تقديم عروض أسعار لهذا الطلب.",
+    "loadError": "تعذر تحميل مقارنة عروض الأسعار. تحقق من الطلب وحاول مرة أخرى.",
+    "downloadError": "تعذر تنزيل مستند المقارنة. حاول مرة أخرى.",
+    "recommendation": "المورد الموصى به: {{supplier}} — {{reason}}",
+    "documents": {
+      "rfq": "ملف طلب عرض السعر PDF",
+      "technicalEvaluation": "ملف التقييم الفني PDF",
+      "commercialComparison": "ملف المقارنة التجارية PDF",
+      "awardRecommendation": "ملف توصية الترسية PDF"
+    }
+  },
   "rfq": "طلب عرض سعر",
   "fields": {
     "title": "العنوان", "description": "الوصف", "material": "المادة", "estimatedPrice": "سعر الوحدة التقديري", "priority": "الأولوية",
