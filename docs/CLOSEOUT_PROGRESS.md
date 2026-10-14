@@ -578,31 +578,31 @@ Replaced the three sequential inspection-point prompts with one bilingual form t
 
 Verification: `Shell.i18n.test.js` passed 1 suite / 20 tests; `i18n:check ok`; frontend production build compiled successfully; `git diff --check` passed. No QHSEExtended or UnitsSales page-specific test exists in the current frontend test inventory.
 
-### Phase 6.2 — consultant and supplier portal forms
+### Phase 6.2 ï¿½ consultant and supplier portal forms
 
 Replaced the remaining portal prompts with record selectors and localized forms. RFQ/PO details load from portal endpoints; quotation and invoice line values are validated; client preview selects from the loaded portfolio. Current `frontend/src` prompt scan returns no matches.
 
 Verification: `PortalDashboard.test.js` passed 1 suite / 10 tests; `i18n:check ok`; frontend production build compiled successfully; `git diff --check` passed. Phase 6 route-to-screen and permission journey checks remain open.
 
-### Phase 6.2 — Arabic catalog encoding correction
+### Phase 6.2 ï¿½ Arabic catalog encoding correction
 
 Corrected the Arabic quick-action and client-preview catalog entries to valid UTF-8 Arabic. Rechecked JSON parsing and recursive EN/AR catalog parity.
 
 Verification: `npm run i18n:check` reported `i18n:check ok`; `git diff --check` passed.
 
-### Phase 6 — settings navigation reachability
+### Phase 6 ï¿½ settings navigation reachability
 
 Added a permission-filtered Settings navigation entry for owner/admin roles; the existing `/settings` route and server-side account-mapping authorization remain the enforcement points.
 
 Verification: `Layout.test.js` passed 1 suite / 2 tests, including owner Settings-link visibility; `i18n:check ok`; `git diff --check` passed. Full App route-to-screen and role-matrix inventory remains open.
 
-### Phase 7.1 — versioned app shell and safe updates
+### Phase 7.1 ï¿½ versioned app shell and safe updates
 
 Added a web manifest, SVG app icon, production service worker, versioned app-shell/static asset cache, offline navigation fallback, and an update banner that activates a waiting worker only after user action. API and uploaded-file paths are excluded from the cache. Removed the Google Fonts runtime import and narrowed nginx CSP to same-origin styles and fonts. The master plan's app-shell checkbox is complete.
 
 Verification: production build compiled; `node --check public/service-worker.js` exited 0; `i18n:check ok`; `git diff --check` passed. Not verified: installability/Lighthouse score or offline browser journey. The repo has no local IBM Plex font assets; bundling those fonts remains open. Offline write queue, idempotent server handling for site-report POSTs, conflict UI, responsive/table/touch work remain open.
 
-### Stop condition — Docker engine unavailable (2026-10-13)
+### Stop condition ï¿½ Docker engine unavailable (2026-10-13)
 
 Docker Desktop pipe access was denied by the required `docker info` check. The current idempotency implementation/test changes are held uncommitted pending real-Postgres verification. Backend mock test output: `external-api.test.js` PASS, 1 suite / 46 tests. Focused PG test and database migration/application were not run. Resume after engine access is restored.
 
@@ -729,4 +729,4 @@ L6 shared formatter/name-helper items are closed. API-value rendering audit, bro
 
 Portal dashboard widget and field labels now resolve through the bilingual portals.dashboard.* catalog instead of replacing underscores and title-casing arbitrary API values. Record status and priority use the shared enum translators, with the stored machine value preserved as fallback for unknown enums. Added EN/AR labels for common portal metrics and the empty state. This is a bounded caller migration; the system-wide API-value and dynamic-content audit remains open.
 
-Verification: frontend PortalDashboard suite PASS (11/11); npm run i18n:check PASS; npm run i18n:parity PASS (35 namespaces, 1,146 English keys). No backend changes or migrations. Implementation is ready for commit.
+Verification: frontend PortalDashboard suite PASS (11/11); npm run i18n:check PASS; npm run i18n:parity PASS (35 namespaces, 1,146 English keys). No backend changes or migrations. Implementation commit: 1740ed7.

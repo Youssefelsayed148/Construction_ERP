@@ -100,7 +100,7 @@ Replaced consultant and supplier portal prompt flows with localized forms. Recor
 
 Verification: `PortalDashboard.test.js` passed 1 suite / 10 tests; `i18n:check ok`; frontend production build compiled successfully; `git diff --check` passed. The pilot smoke remains unverified because automatic review rejected the script due to its reads of prohibited `.env.docker` and `.staging-users.json`.
 
-## Stop condition — 2026-10-13 — Docker engine unavailable
+## Stop condition ï¿½ 2026-10-13 ï¿½ Docker engine unavailable
 
 - Blocker: the required `docker info --format '{{.ServerVersion}}'` check failed with Docker Desktop pipe access denied.
 - Evidence: output was `error during connect: Get "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.51/info": open //./pipe/dockerDesktopLinuxEngine: Access is denied.` The accompanying `docker ps` check failed on the same pipe.
@@ -211,4 +211,4 @@ Reminder-tier implementation commit: `3ae651e` (`Phase 8: honor client receivabl
 
 Portal dashboard widget and field labels now resolve through the bilingual portals.dashboard.* catalog instead of replacing underscores and title-casing arbitrary API values. Record status and priority use the shared enum translators, with the stored machine value preserved as fallback for unknown enums. Added EN/AR labels for common portal metrics and the empty state. This is a bounded caller migration; the system-wide API-value and dynamic-content audit remains open.
 
-Verification: frontend PortalDashboard suite PASS (11/11); npm run i18n:check PASS; npm run i18n:parity PASS (35 namespaces, 1,146 English keys). No backend changes or migrations. Implementation is ready for commit.
+Verification: frontend PortalDashboard suite PASS (11/11); npm run i18n:check PASS; npm run i18n:parity PASS (35 namespaces, 1,146 English keys). No backend changes or migrations. Implementation commit: 1740ed7.

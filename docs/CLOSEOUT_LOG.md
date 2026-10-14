@@ -1412,7 +1412,7 @@ Added a manifest, SVG app icon, production service worker, versioned shell/stati
 
 Verification output: `npm run build` reported `Compiled successfully`; `node --check public/service-worker.js` exited 0; `npm run i18n:check` reported `i18n:check ok`; `git diff --check` exited 0. Lighthouse/PWA installation and an offline browser journey were not run. Local IBM Plex assets are absent from the repo and dependencies; local font packaging remains unverified/open, along with offline mutation queue/idempotency and responsive work.
 
-## 2026-10-13: stop — Docker engine unavailable for Phase 7 idempotency PG gate
+## 2026-10-13: stop ï¿½ Docker engine unavailable for Phase 7 idempotency PG gate
 
 Command: `docker info --format '{{.ServerVersion}}'`.
 
@@ -1596,4 +1596,4 @@ Verification: formatter tests 5/5; frontend CI 29 suites / 123 tests; i18n check
 
 Portal dashboard widget and field labels now resolve through the bilingual portals.dashboard.* catalog instead of replacing underscores and title-casing arbitrary API values. Record status and priority use the shared enum translators, with the stored machine value preserved as fallback for unknown enums. Added EN/AR labels for common portal metrics and the empty state. This is a bounded caller migration; the system-wide API-value and dynamic-content audit remains open.
 
-Verification: frontend PortalDashboard suite PASS (11/11); npm run i18n:check PASS; npm run i18n:parity PASS (35 namespaces, 1,146 English keys). No backend changes or migrations. Implementation is ready for commit.
+Verification: frontend PortalDashboard suite PASS (11/11); npm run i18n:check PASS; npm run i18n:parity PASS (35 namespaces, 1,146 English keys). No backend changes or migrations. Implementation commit: 1740ed7.
