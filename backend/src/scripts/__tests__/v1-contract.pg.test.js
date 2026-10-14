@@ -80,6 +80,8 @@ describePg('B5 API contract: OpenAPI spec vs the live /api/v1', () => {
         if (path === '/webhooks/deliveries/:deliveryId/redrive' && method === 'post' && res.status === 404) {
           // POST with id 1 may 404 — still a JSON envelope, checked below.
         }
+        // A documented document route (GET .../pdf) legitimately answers a PDF once the record exists.
+        if (res.contentType.includes('application/pdf') && path.endsWith('/pdf')) continue;
         if (!res.contentType.includes('application/json')) {
           unanswerable.push(`${method.toUpperCase()} ${path} → ${res.contentType}`);
           continue;

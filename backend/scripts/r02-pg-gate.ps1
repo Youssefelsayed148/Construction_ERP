@@ -5,13 +5,14 @@
 param(
   [string[]]$Suite = @(),
   [switch]$All,
+  [switch]$Reconcile,
   [string]$Filter = '^(FAIL|PASS) |Test Suites:|Tests:|^\s+R2 (mutation registry|fixture error|no audit row|rollback leak)|^\s+● .*›'
 )
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
 $Suite = @($Suite | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
-if (-not $All -and $Suite.Count -eq 0) { throw 'Pass -Suite <path> or -All.' }
+if (-not $All -and -not $Reconcile -and $Suite.Count -eq 0) { throw 'Pass -Suite <path>, -All or -Reconcile.' }
 $backend = Resolve-Path (Join-Path $PSScriptRoot '..')
 $stamp = Get-Date -Format 'yyyyMMddHHmmss'
 $name = "erp-r02-gate-$stamp"
@@ -37,6 +38,17 @@ try {
   $mig = npm.cmd run migrate 2>&1 | ForEach-Object { "$_" } | Out-String
   if ($LASTEXITCODE -ne 0) { Write-Output $mig.Substring([Math]::Max(0, $mig.Length - 1500)); throw 'migrate failed' }
   Write-Output ('migrations: ' + (($mig -split "`n" | Select-String -Pattern 'applied|Applied' | Select-Object -Last 1) -join ''))
+  if ($Reconcile) {
+    # Fresh seeded throwaway database -> golden reconciliation (read-only checks). Prints summary lines only.
+    $env:RECONCILIATION_BACKUP_CONFIRMED = 'true'
+    $seed = npm.cmd run seed:golden-demo 2>&1 | ForEach-Object { "$_" } | Out-String
+    Write-Output ('seed exit=' + $LASTEXITCODE)
+    $rec = node src/scripts/reconcile-database.js 2>&1 | ForEach-Object { "$_" } | Out-String
+    $exit = $LASTEXITCODE
+    ($rec -split "`r?`n") | Where-Object { $_ -match 'check|ok|violation|discrepan|FAIL|PASS|total' } | Select-Object -First 40 | ForEach-Object { Write-Output $_ }
+    Pop-Location
+    return
+  }
   $args2 = @('--config', 'jest.pg.config.js', '--runInBand', '--forceExit', '--no-colors')
   if (-not $All) { $args2 += $Suite }
   $ErrorActionPreference = 'Continue'

@@ -7,7 +7,5 @@
   "event-swallow": {},
   "post-commit-audit": {},
   "direct-project-id": {},
-  "mutation-without-audit": {
-    "routes/approvals.js": 2
-  }
+  "mutation-without-audit": {}
 }

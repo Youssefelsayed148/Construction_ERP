@@ -106,7 +106,9 @@ describePg('role matrix on internal, v1 and MCP (real PostgreSQL, real app)', ()
     await db.query('DELETE FROM clients WHERE id = $1', [ids.client]);
     // The owner's supplier-invoice approvals accrue project_costs rows on project A (Phase 3.1).
     await db.query('DELETE FROM project_costs WHERE project_id = $1', [ids.pA]);
-    await db.query('DELETE FROM projects WHERE id = $1', [ids.pA]);
+    // R2: audited mutations reference the project from the append-only audit_events trail, so the project is
+    // closed rather than deleted (the throwaway database is discarded after the run).
+    await db.query("UPDATE projects SET status = 'closed' WHERE id = $1", [ids.pA]);
     await new Promise((resolve) => server.close(resolve));
     await db.pool.end();
   });

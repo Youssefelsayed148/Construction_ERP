@@ -1,34 +1,70 @@
-# R2 scorecard â€” 2026-10-14
+# R2 scorecard — 2026-10-15
 
-R2 context checkpoint after R2.1. No R3 work. Stop required by the batch request's context discipline; resume with R2.2 enforcement before fixes. Prior batch evidence is in its own scorecard; this document reports only R2. Post-commit state/log/scorecard updates remain in the working tree for continuation.
+Scope: R2 (audit-trail completeness) only; no R3 work. Status: **R2.2 and R2.3 fixes done for every route the inventory classed unaudited; R2.4 gates run and green except one pre-existing time-of-day failure; runtime verification covers 272 of 601 endpoints. 323 endpoints are still source-audited only and are NOT counted as verified.**
 
-| Ticket/family | Finding | Failing test | Before | After | Commit |
+## Per family (runtime evidence from the registry run against the pre-fix code at 35a6bb9)
+
+"Before" = routes that returned success but wrote no `activity_log`/`audit_events` row, measured by running the committed fixtures against the R2.1 code in a throwaway worktree. "After" = same fixtures on the fixed code: audit row written and, with the audit insert forced to throw for that actor, no business table changed (xmin leak scan across all public tables).
+
+| Family | Finding | Failing test (before) | Before | After | Commit |
 |---|---|---|---|---|---|
-| R2.0 | UI/API project identity sanity | Static scan; no clear bug to reproduce | 69 production files / 360 call expressions | Zero duplicate query/body write candidates; indirect calls inspected | 855b648 |
-| R2.1 | REV-003 inventory | Inventory completeness check | Review heuristic; first document check rejected 3 regex alternation pipes | 601 live endpoints / 601 document rows / zero missing sources; Markdown corrected and check PASS | 35a6bb9 (inventory only) |
-| R2.2 | Audit enforcement | Not done | Existing missing-audit blind spot | Not done | â€” |
-| R2.3 families | REV-003 transactional auditing | Not done | Not reproduced in R2 yet | Not done | â€” |
-| R2.4 | Exit gates | Not run | Baselines below | Not done | â€” |
+| R2.2 enforcement | No guard; blind spots | n/a | lint rule absent | `mutation-without-audit` AST rule, 6 documented exemptions, registry PG test, throwaway-PG helper | 89ec15f |
+| boq | 6 handlers + v1 aliases unaudited | no audit row x12, rollback x12 | 12 | 0 | f8d738b |
+| payroll | PUT audited only when posting; DELETE unaudited | no audit row x2 (PUT status, DELETE) | 2 | 0 | 7ac7abe |
+| subcontractors | 7 handlers + v1 aliases | no audit row x10 | 10 | 0 | 7070656 |
+| procurement (RFQ, delivery, MIR, PO decision, invoices) | 11 handlers unaudited; PR decide audited only on budget override; invoice approve unaudited | no audit row x28 (incl. aliases) | 28 | 0 | aeb94f0 |
+| materials, units, locations, maintenance, workorders | recipe-line delete, building/unit/WO/location/maintenance writes | no audit row x38 | 38 | 0 | cdedf5f |
+| projects, site, quantities, schedule | phase PUT conditional; legacy project create + schedule-activity create burned numbers on rollback; **POST /projects/:id/instructions returned 500 on every call** | no audit row x48; rollback leak x5; fixture error x1 | 48 (+5, +1) | 0 | 4dbc352 |
+| hr, hse | 14 handlers | no audit row x14 | 14 | 0 | 8e8d83f |
+| qhse | 16 handlers + 2 shadowed duplicate PUTs | no audit row x14 | 14 | 0 | cf383ee |
+| portal | 12 handlers; RFI acknowledge's inner audit was swallowed | no audit row x11, rollback leak x1 | 12 | 0 | 30970a6 |
+| commercial (updates, workflow starts), actions, notifications, reports, consultant, doccontrol, handover, documents upload, webhook admin, approvals | remaining unaudited handlers; guard taught `auditedMutation`, `auditedChange`, `advanceApproval` | no audit row x16 + guard false positives | 16 | 0 | 0a30d7b + R2.4 commit |
 
-| Gate | Supplied baseline | R2 current command output |
+Totals on the 272 routes with fixtures: **before 174 wrote no audit row (170 classed "not audited" + 4 classed "audited" that were conditional), 174 failed the rollback test (incl. 5 audited-but-non-atomic), 1 fixture error (a broken endpoint); after 0 / 0 / 0** (545 registry tests: 272 audit + 272 rollback + 1 coverage). None of the 31 delegate routes that have fixtures failed: the source-read "delegates" claim held for them.
+
+## Gate table vs baselines
+
+| Gate | Baseline | R2 result (command output, 2026-10-15) |
 |---|---|---|
-| Backend mock | 59 suites / 1,048 tests | Pre-flight PASS 59 / 1,048 |
-| Real PG | 72 / 656 | Not run; pre-flight intentionally migrations only |
-| lint:guards | ok | Pre-flight PASS lint-guards: ok |
-| Frontend | 32 / 131 | Not run |
-| i18n parity | 35 namespaces / 1,287 keys | Not run |
-| Production build | Pass | Not run |
-| Golden reconciliation | 16 checks / zero discrepancies | Not run |
+| Backend mock (`npx jest`) | 59 / 1,048 | PASS 60 suites / 1,056 tests (+guard suite) |
+| Real PG (`r02-pg-gate.ps1 -All`, fresh PG16, 126 migrations) | 72 / 656 | 73 suites / 1,201 tests: 72 suites pass; **1 fails: `event-integrity` "pre-due seven-day tier" (`days_until_due` 5 vs 6)**. It fails identically on the pre-R2 commit 35a6bb9 (reproduced in a throwaway worktree): it compares a JS-local date with PG `CURRENT_DATE` and fails between 21:00 and 24:00 UTC. Not caused by R2 and not changed. |
+| `npm run lint:guards` | ok | ok; `mutation-without-audit` baseline is **empty** (was 127 handlers in 27 files at R2.2) |
+| Frontend `test:ci` | 32 / 131 | PASS 32 / 131 (no frontend change) |
+| `i18n:check` / `i18n:parity` | ok / 35 ns, 1,287 keys | ok / 35 namespaces, 1,287 keys |
+| Production build (`CI=true`) | pass | Compiled successfully |
+| Golden reconciliation (fresh seeded throwaway DB, `RECONCILIATION_BACKUP_CONFIRMED=true`) | 16 checks, 0 discrepancies | 16 `[OK]` checks, 0 violations, seed exit 0, reconcile exit 0 |
 
-| Routes by class | Before R2 fixes (source census) | After R2 fixes |
+## Class counts
+
+| Class | Before (R2.1 source census) | After R2 |
 |---|---:|---|
-| Audited in transaction | 238 | Not run |
-| Delegates to auditing service | 165 | Not run |
-| Incomplete/non-atomic audit | 7 | Not run |
-| Not audited / conditional omission | 185 | Not run |
-| Legitimately exempt | 6 | Unchanged |
-| Total endpoints, including v1 aliases | 601 | Not run |
+| Not audited / conditional omission | 185 | **0 by the static guard**; 171 of them runtime-verified (audit row + rollback); 14 (v1 aliases of verified handlers, agent decision, MCP, preview, OAuth token) not runtime-verified |
+| Audited in transaction | 238 | 67 runtime-verified; 168 not yet exercised |
+| Delegates to an auditing service | 165 | 31 runtime-verified (all wrote an audit row, all rolled back); 134 not yet exercised |
+| Audited, not in transaction | 7 | 2 documented exception (replenishment sweep, leader-locked multi-transaction job; audit asserted, rollback skipped by design); 1 fixed (portal RFI acknowledge); **4 untouched**: agent request decision, MCP call, preview start, OAuth token |
+| Legitimately exempt | 6 | 6 (documented in `mutation-audit-exemptions.json`) |
+| Total | 601 | 272 verified / 323 pending fixtures / 6 exempt |
 
-R2.3 families NOT DONE: boq, payroll, subcontractors, procurement award, materials, units, projects, workorders, maintenance, site, quantities, schedule, locations, hr, hse, qhse, doccontrol, handover, documents upload, portal, reports. Additional action/commercial/procurement/notification/webhook/MCP gaps in the live inventory must also be covered; the review's suggested list does not exempt them. No happy-path audit or rollback-injection assertion has run in R2. R2.2 guard/registry not started. All R2.4 gates remain unrun.
+## Defects found and fixed by the registry (beyond the audit gap)
 
-Pre-flight: branch closeout/batch-a-to-6, starting HEAD ea84663; only the two preserved audit/review reports untracked. Elevated local Docker created erp-r02-remediation-20261014 using postgres:16 --pull=never on 127.0.0.1:55462; random credentials in process env only. Fresh migrations 126 applied / 0 already applied; mock and guards match baseline; exact container removed. No installation, dependency, migration, frontend/runtime change or secrets-file access. Source classifications are not successful-call/rollback evidence. Owner decisions waiting: none currently blocks enforcement; preserve physical-delete behavior and record exact table retention questions during family work. Production remains NO-GO.
+- `POST /api/projects/:projectId/instructions` returned 500 on every call (`auditedTransaction` called without `eventForResult`).
+- Legacy `POST /api/projects` and `POST /api/schedule/activities` allocated their number outside the transaction (a rolled-back create burned a counter).
+- `POST /api/portal/subcontractor/rfis/:id/acknowledge` swallowed its inner audit.
+
+## NOT done / NOT verified
+
+- 323 endpoints have no registry fixture (listed in `backend/src/scripts/audit-fixtures/pending.json`, a list that may only shrink; the coverage test fails for any new unregistered route). They are source-audited by the lint guard but not runtime-verified. Largest groups: inventory (v1 + warehouses + adjustments/issues/returns/conversions), finance-ledger and v1 finance aliases, project-setup, organizations, docs/documents/transmittals/correspondence, remaining commercial (contracts, forecasts, payment certificates, commitments), users/auth, agent, v1 webhooks/oauth/reports, hse permits, qhse WIRs.
+- 4 audited-not-in-transaction endpoints (agent request decision, MCP call, user preview start, OAuth token) were not changed: they need a per-endpoint decision on whether the side effects can share a transaction.
+- Plan: R2.4 says "only when ALL families are done". The gates above were run as an interim exit; the pending list must reach zero before R2 can be called complete.
+- Duplicate shadowed handlers in `qhse.js` (PUT `/ncrs/:id`, PUT `/quality-tests/:id`): the second copy is unreachable; both copies now audit. Consolidation is a product decision.
+
+## Owner decisions waiting
+
+1. Audit definition: success counts if `activity_log` OR `audit_events` gains a row (the `auditedTransaction` convention writes `activity_log` only; `audit_events` carries snapshots). Requiring both everywhere would double-write. Overrule if you want both.
+2. `DELETE /api/hr/labor-payments/:id` is a hard delete whose project cost (booked by `labor_payment.created`) is not reversed. R2 only adds a before-snapshot audit.
+3. Hard deletes now audited with a before snapshot, none converted to soft delete (no migration in this batch): boq sections/items, payroll periods, employees, laborers, labor payments, locations, buildings/units, phases, milestones, team members, site visits, schedule activities/relationships, quality tests, recipe lines, saved views, scheduled reports, webhooks.
+4. The replenishment sweep's separate completion audit is retained as a documented non-atomic exception.
+5. The two shadowed QHSE PUT handlers (above).
+6. Test hygiene changed with the audit trail: `audit_events` is append-only and references projects, so `record-scoping` and `role-matrix` now close (not delete) their test projects.
+
+Production remains NO-GO.

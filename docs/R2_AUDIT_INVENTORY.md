@@ -6,12 +6,12 @@ Classification is source inspection, not happy-path/rollback verification. R2.2 
 
 | Before class | Endpoint count | After R2 fixes |
 |---|---:|---|
-| audited-in-transaction | 238 | Not run |
-| delegates to an auditing service | 165 | Not run |
-| audited-not-in-transaction (includes partial/optional coverage) | 7 | Not run |
-| not audited (includes conditional omissions) | 185 | Not run |
+| audited-in-transaction | 238 | 67 runtime-verified by the R2.2 registry; 168 not yet exercised (source-audited) |
+| delegates to an auditing service | 165 | 31 runtime-verified (audit row + rollback); 134 not yet exercised |
+| audited-not-in-transaction (includes partial/optional coverage) | 7 | 1 fixed; 2 documented exception (replenishment sweep); 4 untouched (agent decision, MCP, preview, OAuth token) |
+| not audited (includes conditional omissions) | 185 | 0 by the static guard; 171 runtime-verified, 14 aliases/other not exercised |
 | legitimately exempt | 6 | Unchanged |
-| Total | 601 | Not run |
+| Total | 601 | 272 runtime-verified, 323 pending fixtures, 6 exempt (see docs/R2_SCORECARD.md) |
 
 Evidence conventions: route file/line identifies the handler; audit locations identify the reachable write helper. â€œneeds transactionâ€ includes existing transactional mutations and unresolved mutation/delegate work, not merely handlers lacking a transaction. â€œhard deleteâ€ means any reachable physical SQL DELETE, including replacement child rows; it does not claim the primary entity is deleted. No hard delete is silently converted or exempted from audit.
 
