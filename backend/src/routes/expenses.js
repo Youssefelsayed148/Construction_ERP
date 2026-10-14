@@ -32,9 +32,9 @@ router.get('/', authenticate, authorize(), async (req, res) => {
   try {
     const { category, status, project_id, limit = 100, offset = 0 } = req.query;
     let conditions = []; let params = []; let idx = 1;
-    if (category && EXPENSE_CATEGORIES.includes(category)) { conditions.push(`category = $${idx++}`); params.push(category); }
-    if (status) { conditions.push(`status = $${idx++}`); params.push(status); }
-    if (project_id) { conditions.push(`project_id = $${idx++}`); params.push(parseInt(project_id)); }
+    if (category && EXPENSE_CATEGORIES.includes(category)) { conditions.push(`e.category = $${idx++}`); params.push(category); }
+    if (status) { conditions.push(`e.status = $${idx++}`); params.push(status); }
+    if (project_id) { conditions.push(`e.project_id = $${idx++}`); params.push(parseInt(project_id)); }
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const dataResult = await query(`SELECT e.*, u.name as created_by_name, p.name_ar as project_name_ar, p.name_en as project_name_en, p.code as project_code FROM expenses e LEFT JOIN users u ON e.created_by = u.id LEFT JOIN projects p ON e.project_id = p.id ${where} ORDER BY e.date DESC, e.created_at DESC LIMIT $${idx++} OFFSET $${idx}`, [...params, parseInt(limit), parseInt(offset)]);
     res.json({ success: true, data: dataResult.rows });

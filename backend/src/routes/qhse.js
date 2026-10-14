@@ -935,7 +935,8 @@ router.get('/calibration-records', authenticate, authorize(), async (req, res) =
     const r = await query(
       `SELECT cr.*, a.name as asset_name, u.name as created_by_name,
               (cr.next_calibration_date IS NOT NULL AND cr.next_calibration_date < CURRENT_DATE) as calibration_overdue
-       FROM calibration_records cr LEFT JOIN users u ON cr.created_by = u.id
+       FROM calibration_records cr LEFT JOIN assets a ON cr.asset_id = a.id
+       LEFT JOIN users u ON cr.created_by = u.id
        ${where} ORDER BY cr.calibration_date DESC, cr.id DESC`, params);
     res.json({ success: true, data: r.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
@@ -1314,7 +1315,8 @@ router.get('/mirs', authenticate, authorize(), async (req, res) => {
     if (status) { conditions.push(`m.status = $${idx++}`); params.push(status); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const r = await query(
-      `SELECT m.*, s.name as supplier_name, u.name as created_by_name, d.id as delivery_id
+      `SELECT m.*, s.name_en as supplier_name, s.name_en as supplier_name_en,
+              s.name_ar as supplier_name_ar, u.name as created_by_name, d.id as delivery_id
        FROM material_inspection_requests m
        LEFT JOIN suppliers s ON m.supplier_id = s.id
        LEFT JOIN users u ON m.created_by = u.id

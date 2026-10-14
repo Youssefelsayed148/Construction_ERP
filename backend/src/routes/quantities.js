@@ -149,10 +149,10 @@ router.get('/measurements', authenticate, authorize(), async (req, res) => {
   try {
     const { project_id, location_id, boq_item_id, state } = req.query;
     let conds = []; const p = []; let i = 1;
-    if (project_id) { conds.push(`project_id = $${i++}`); p.push(parseInt(project_id)); }
-    if (location_id) { conds.push(`project_location_id = $${i++}`); p.push(parseInt(location_id)); }
-    if (boq_item_id) { conds.push(`boq_item_id = $${i++}`); p.push(parseInt(boq_item_id)); }
-    if (state && APPROVAL_STATES.includes(state)) { conds.push(`approval_state = $${i++}`); p.push(state); }
+    if (project_id) { conds.push(`qm.project_id = $${i++}`); p.push(parseInt(project_id)); }
+    if (location_id) { conds.push(`qm.project_location_id = $${i++}`); p.push(parseInt(location_id)); }
+    if (boq_item_id) { conds.push(`qm.boq_item_id = $${i++}`); p.push(parseInt(boq_item_id)); }
+    if (state && APPROVAL_STATES.includes(state)) { conds.push(`qm.approval_state = $${i++}`); p.push(state); }
     const where = conds.length ? ' WHERE ' + conds.join(' AND ') : '';
     const r = await query(
       `SELECT qm.*, pl.name AS location_name, pl.code AS location_code,

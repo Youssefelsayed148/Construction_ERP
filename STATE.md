@@ -402,3 +402,13 @@ Reproduction: npm.cmd test -- --runInBand src/scripts/__tests__/script-passwords
 Owner action required: rotate "NewStrongPassword123!" anywhere it was ever used; history was not rewritten and no credential was rotated here.
 
 Scope: start_backend.bat, orchestrator.bat, launch_backend.ps1, docs/legacy/run_tests.ps1, start_backend.ps1, backend/src/scripts/lint-guards.js, new backend/src/scripts/__tests__/script-passwords.test.js, and closeout documentation. No migrations or runtime endpoint behavior changed. Full R0 exit gates remain due at batch exit. Commit message: R0.1: inherit launcher passwords and reject script literals.
+
+## 2026-10-14 - R0.2 GET route SQL and dispatch repairs
+
+Before: fresh throwaway PG16, 126 migrations; npm.cmd run test:pg -- src/scripts/__tests__/get-routes.pg.test.js failed all seven confirmed endpoint cases (HTTP 500). Generic enumeration initially needed support for a root-mounted nested router; corrected fixture enumeration. First broader sweep then found 448 unique GET routes / 8 server failures: reservation ambiguity, invalid fixture dates, and v1 materials recipes/requirements, invoices retention and document search shadowed by record routes. Date inputs were corrected to 2026-10-14; the real additional failures were fixed in this ticket, with no allow-list.
+
+Fixes: warehouse detail GET registered after named collections; warehouse reservation filters qualified with sr; missing calibration assets join added; MIR supplier fields use name_en/name_ar while preserving supplier_name; quantities filters qualified with qm; expense/maintenance filters qualified; v1 family registration puts literal paths before parameter paths, preserving relative order within each specificity group.
+
+After: same PG suite PASS, 1 suite / 8 tests; seven confirmed endpoints each HTTP 200; generic owner sweep 448 GET routes / 0 server failures, using seeded project_id, status=active and limit=5. Record paths use a deliberately absent numeric record id; external/MCP authorization responses may be 4xx, so this sweep demonstrates no server errors rather than successful domain workflows. No exceptions or allow-list. Focused existing external-api/procurement/location-quantity mocks PASS, 3 suites / 71 tests. npm.cmd run lint:guards: lint-guards: ok; git diff --check PASS. Container erp-r01-remediation-20261014 removed (exit 0); database/JWT credentials stayed in process env, dotenv suppressed. No external adapters called.
+
+Modified: warehouses.js, qhse.js, quantities.js, expenses.js, maintenance.js, v1.js; new get-routes.pg.test.js. No migration. Full R0 batch gates remain due. Commit message: R0.2: repair GET queries and literal route dispatch.

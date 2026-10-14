@@ -859,7 +859,11 @@ function buildV1Router() {
 // skip scope enforcement (full parity).
 function registerFamilies(router) {
   for (const [key, ops] of Object.entries(FAMILY_MAP)) {
-    for (const [routerName, method, internalPath, v1Path] of ops) {
+    // Literal paths must precede record parameters: otherwise /:id consumes
+    // named collections such as /recipes, /retention and /search.
+    const ordered = [...ops].sort((a, b) =>
+      (a[3].match(/:/g) || []).length - (b[3].match(/:/g) || []).length);
+    for (const [routerName, method, internalPath, v1Path] of ordered) {
       const handler = remount(routerName, method, internalPath);
       const m = method.toLowerCase();
       router[m](

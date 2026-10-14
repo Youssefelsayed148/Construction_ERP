@@ -62,23 +62,6 @@ router.get('/', authenticate, authorize(), async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.get('/:id', authenticate, authorize(), async (req, res) => {
-  try {
-    const wh = await query('SELECT * FROM warehouses WHERE id = $1', [req.params.id]);
-    if (wh.rows.length === 0) return res.status(404).json({ success: false, error: 'Warehouse not found' });
-
-    // Derived projection — physical/reserved/quarantined/available come from
-    // the ledger via the engine; the stored columns are never hand-edited.
-    const stock = await query(
-      `SELECT ws.*, im.code as item_code, im.name_en, im.name_ar, im.unit
-       FROM warehouse_stock ws LEFT JOIN item_master im ON ws.item_id = im.id WHERE ws.warehouse_id = $1`,
-      [req.params.id]
-    );
-
-    res.json({ success: true, data: { ...wh.rows[0], stock: stock.rows } });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
-});
-
 // ---------------------------------------------------------------------------
 // Stock movements — the only way stock changes
 // ---------------------------------------------------------------------------
@@ -357,10 +340,10 @@ router.put('/transfers/:id/complete', authenticate, authorize(), async (req, res
 router.get('/reservations', authenticate, authorize(), async (req, res) => {
   try {
     let conds = []; const p = []; let i = 1;
-    if (req.query.material_id) { conds.push(`material_id = $${i++}`); p.push(parseInt(req.query.material_id, 10)); }
-    if (req.query.project_id) { conds.push(`project_id = $${i++}`); p.push(parseInt(req.query.project_id, 10)); }
-    if (req.query.warehouse_id) { conds.push(`warehouse_id = $${i++}`); p.push(parseInt(req.query.warehouse_id, 10)); }
-    if (req.query.status) { conds.push(`status = $${i++}`); p.push(req.query.status); }
+    if (req.query.material_id) { conds.push(`sr.material_id = $${i++}`); p.push(parseInt(req.query.material_id, 10)); }
+    if (req.query.project_id) { conds.push(`sr.project_id = $${i++}`); p.push(parseInt(req.query.project_id, 10)); }
+    if (req.query.warehouse_id) { conds.push(`sr.warehouse_id = $${i++}`); p.push(parseInt(req.query.warehouse_id, 10)); }
+    if (req.query.status) { conds.push(`sr.status = $${i++}`); p.push(req.query.status); }
     const rows = (await query(
       `SELECT sr.*, im.code AS material_code, im.name_en AS material_name_en, p.name AS project_name
        FROM stock_reservations sr
@@ -423,6 +406,24 @@ router.post('/reservations/:id/release', authenticate, authorize(), async (req, 
     }));
     res.json({ success: true, data: reservation });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+});
+
+// Register the catch-all warehouse detail route after named collection routes.
+router.get('/:id', authenticate, authorize(), async (req, res) => {
+  try {
+    const wh = await query('SELECT * FROM warehouses WHERE id = $1', [req.params.id]);
+    if (wh.rows.length === 0) return res.status(404).json({ success: false, error: 'Warehouse not found' });
+
+    // Derived projection — physical/reserved/quarantined/available come from
+    // the ledger via the engine; the stored columns are never hand-edited.
+    const stock = await query(
+      `SELECT ws.*, im.code as item_code, im.name_en, im.name_ar, im.unit
+       FROM warehouse_stock ws LEFT JOIN item_master im ON ws.item_id = im.id WHERE ws.warehouse_id = $1`,
+      [req.params.id]
+    );
+
+    res.json({ success: true, data: { ...wh.rows[0], stock: stock.rows } });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 module.exports = router;
