@@ -657,3 +657,7 @@ Added client and subcontract advance amounts, derived from contract value and ad
 Verification on disposable Docker Desktop PostgreSQL 16 (`construction_erp_test`, loopback 127.0.0.1:55441): full PG 67 suites / 611 tests; focused commercial PG 18/18; backend mocks 53/1,003; frontend CI 29/117; production build compiled; i18n check passed; i18n parity 35 namespaces / 1,086 English keys; backend lint guards passed; syntax, locale JSON, and whitespace checks passed. The normal Docker pipe was denied; elevated local Docker CLI reported server 28.3.2. No pilot/production DB or credential files were accessed.
 
 This slice does not close Phase 8. Cost-code EAC, certified-quantity valuation, CPI/resource loading, legacy approvals, and duplicate payment surfaces remain open. Phase 7 and Phases 9–11 remain open.
+
+### Phase 7 — mobile route sweep (2026-10-14)
+
+Added a narrow viewport smoke sweep for 17 major internal/portal routes. API calls are stubbed with empty deterministic responses; each route is checked for body visibility and page-level horizontal overflow. Playwright `npx playwright test e2e/mobile-route-sweep.spec.js --project=mobile-chromium --reporter=line`: PASS, 17/17. Sandbox launch initially returned `spawn EPERM`; elevated local Playwright execution passed. Phase 7 remains open for route-specific mobile workflows, offline fonts and Lighthouse evidence.

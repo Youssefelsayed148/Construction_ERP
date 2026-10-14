@@ -169,3 +169,7 @@ Command evidence:
 - Backend `npm run lint:guards`: `lint-guards: ok`; syntax checks, locale JSON parse, and `git diff --check` passed.
 
 Phase 8 remains open for cost-code EAC, certified-quantity valuation, CPI/resource loading, legacy approval retirement, and duplicate transition/payment-certificate surfaces. Phases 7 and 9–11 remain open; production GO criteria remain pending.
+
+## 2026-10-14 continuation — Phase 7 mobile route sweep
+
+Added an API-mocked Playwright sweep for primary internal screens and all four external portals at the configured Pixel 7 viewport. The journey sets isolated test auth state, uses empty API responses, and checks every route renders with no page-level horizontal overflow. `npx playwright test e2e/mobile-route-sweep.spec.js --project=mobile-chromium --reporter=line` passed 17/17. The initial sandbox launch returned `spawn EPERM`; the local Playwright command passed through the authorized elevated runner. This is route smoke coverage, not a real-user workflow or full Phase 7 exit gate. Lighthouse and local IBM Plex Arabic assets remain open.

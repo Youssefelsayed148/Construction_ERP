@@ -1503,3 +1503,9 @@ Commands/results on local throwaway Docker Desktop PostgreSQL 16 (`construction_
 - `npm run lint:guards` (backend) — `lint-guards: ok`; syntax checks, locale JSON parsing, and `git diff --check` passed.
 
 Docker Desktop server version 28.3.2 and loopback-only disposable container were confirmed using the user-requested local Docker CLI path. Production/pilot databases and `.env.docker`/`.staging-users.json` were not accessed. Finance must confirm contract defaults before production. Phase 8 remains incomplete; Phase 7 and Phases 9–11 remain open.
+
+## 2026-10-14 — Phase 7 mobile route smoke sweep
+
+Added `frontend/e2e/mobile-route-sweep.spec.js` for the login, dashboard, projects, project detail/operations/site/QHSE/HSE/schedule/BOQ, invoices, procurement comparison, approvals, and consultant/client/subcontractor/supplier portals. It uses test-only auth state and mocked empty API responses, then checks the route renders and document width fits the viewport.
+
+`npx playwright test e2e/mobile-route-sweep.spec.js --project=mobile-chromium --reporter=line` — PASS, 17 tests. The unprivileged launch first failed with `spawn EPERM`; the authorized local Playwright runner passed. This test does not satisfy full major-screen journey coverage by itself. IBM Plex Arabic local font packaging and Lighthouse remain open.
