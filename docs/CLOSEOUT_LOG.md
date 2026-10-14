@@ -266,7 +266,7 @@ The backend stack (#17, #18) and the frontend stack (#19 on #6-#9) are merged in
 - Routes (internal API + /api/v1, typed errors with error_code/error_params); budget, forecast and commitment reads need `see_internal_cost` (decision 8: the Quantity Surveyor does not hold it); lifecycle verbs are their own actions (submit, approve, void, issue_financial_document, record_payment); record scope rules for every new `:id` route; payment batches are company-level and refuse a project-bound seat (`company_scope_required`). Reconcile script covers the new ledger kinds.
 - Tests: `commercial-5-5.pg.test.js` (14, real PostgreSQL). Shown failing against the previous code (12 of 14 fail without the implementation), then green.
 - Not done in 5.5, honestly: retention, advance recovery and other deductions are stored on the certificate but post nowhere: chart accounts and mapping keys are PROPOSED in the PR description and wait for the owner; `invoice_lines` and `payment_applications` have tables but invoice creation does not write lines yet; no MCP tools (the plan does not ask); no UI (Phase 6); bank accounts are the 5.1 `org_bank_accounts`.
-# 2026-10-13: autonomous closeout start — A1 in progress
+# 2026-10-13: autonomous closeout start Ã¢â‚¬â€ A1 in progress
 
 Branch: `closeout/batch-a-to-6`. A1 commit: `f364461`. Existing untracked `docs/CODEX_AUDIT_REPORT.md` was preserved.
 
@@ -896,7 +896,7 @@ Uploads volume: erp-closeout-pilot-20261013_uploads_data:/app/uploads
 migrate log: [migrate] all migrations completed (0 applied, 103 already applied)
 ```
 
-The first build exposed and fixed a stale bootstrap test, then local HTTP CORS validation required an explicit localhost-only setting for this HTTP pilot. The existing `construction_erp_db_data` volume was inspected and left untouched; the pilot uses the unique project name above. The compose healthy-empty-seed check passed; role seeding/smoke and backup/restore remain for B2–B5.
+The first build exposed and fixed a stale bootstrap test, then local HTTP CORS validation required an explicit localhost-only setting for this HTTP pilot. The existing `construction_erp_db_data` volume was inspected and left untouched; the pilot uses the unique project name above. The compose healthy-empty-seed check passed; role seeding/smoke and backup/restore remain for B2Ã¢â‚¬â€œB5.
 ## 2026-10-13: Batch B2 guarded staging users
 
 Added `backend/src/scripts/seed-staging.js`, the `seed:staging` command, and guard tests. It requires `APP_ENV=staging`, a staging/stage/test DB-name segment, and a local/Compose database host. It creates one account for each of the canonical 24 internal + 9 external roles, separate procurement officer (requester) and procurement manager (checker) accounts, a no-assignment account, an expired-assignment account, one pilot project, and supplier/client organization seats. Re-runs rotate passwords, increment token versions, and clear/rebuild all seeder-owned seats. Passwords are stored in ignored root `.staging-users.json`, never printed. The old root and backend `create_test_users.js` entrypoints now fail with the replacement command.
@@ -982,8 +982,8 @@ npm --prefix backend run smoke:staging
 [PASS] login: 33 canonical roles and 5 staging edge/workflow accounts
 [PASS] RBAC: no-assignment and expired-seat users receive 403; cross-project actor is scoped to its own project
 [PASS] EN/AR: Accept-Language en/ar requests both include bilingual project names
-[PASS] P2P: PR → RFQ → 2 quotations → comparison → award recommendation → separate checker/authority approval
-[PASS] P2P: approved PO → partial delivery → MIR/GRN → matched supplier invoice → payment allocation
+[PASS] P2P: PR Ã¢â€ â€™ RFQ Ã¢â€ â€™ 2 quotations Ã¢â€ â€™ comparison Ã¢â€ â€™ award recommendation Ã¢â€ â€™ separate checker/authority approval
+[PASS] P2P: approved PO Ã¢â€ â€™ partial delivery Ã¢â€ â€™ MIR/GRN Ã¢â€ â€™ matched supplier invoice Ã¢â€ â€™ payment allocation
 [PASS] media: uploaded PDF is readable by its uploader and denied outside project scope
 [PASS] reconcile: 0 unbalanced chain entries; out-of-scope project unchanged; project cost view updated
 [PASS] npm run reconcile
@@ -1112,7 +1112,7 @@ Login now returns unique effective module/action pairs. Sidebar visibility follo
 
 Added a desktop Playwright journey for project-scoped purchase request creation and submission. The test asserts the payload sent to the API mock and the submitted state rendered in the workspace. The focused command passed 1 test. The default sandbox process launch returned `spawn EPERM`; an elevated local retry of the same single test passed. Since the test mocks the API, this verifies frontend interaction only; the C2 API smoke assertions cover the backend project scoping checks.
 
-## 2026-10-13: Batch C3 follow-up — project tabs use scoped grants
+## 2026-10-13: Batch C3 follow-up Ã¢â‚¬â€ project tabs use scoped grants
 
 Removed the remaining role-key map and FULL fallback from project navigation. The login response preserves `project_id` on each effective module/action grant, project tabs evaluate those grants for the active project, and financial cards require the internal-cost visibility action. Unknown roles and empty grants fail closed. Focused frontend tests passed 3 suites / 26 tests. The project-page browser file passed 6/6 on desktop and mobile, including the scoped site engineer and Arabic RTL cases. `node --check src/routes/auth.js` and `git diff --check` passed. No full suite was run for this slice.
 
@@ -1126,7 +1126,7 @@ Focused evidence: live Playwright 4/4; denial Playwright 1/1; `ProcurementWorksp
 
 The first attempts found a local API origin mismatch, form selectors that assumed an explicit `type="submit"`, and role assumptions that did not match configured workflow resolvers. The harness and actor handoffs were corrected. The four final live runs each completed the full chain.
 
-Batch C is complete. D UAT execution requires human pilot users; E finance account mappings stay provisional until the finance owner confirms them. Continue with the UAT guide, provisional enablement, and Phase 5.6–6 work.
+Batch C is complete. D UAT execution requires human pilot users; E finance account mappings stay provisional until the finance owner confirms them. Continue with the UAT guide, provisional enablement, and Phase 5.6Ã¢â‚¬â€œ6 work.
 
 ## 2026-10-13: Batch D UAT preparation
 
@@ -1170,9 +1170,9 @@ Added the project Finance workbench for applications/certificates, budget and fo
 
 Migration `0045_retention_release_postings.sql` was applied to local staging and the isolated PostgreSQL test database. Focused PostgreSQL cases passed 2/2; Finance workbench component test passed 1/1. `i18n:check`, production build, backend syntax checks, and `git diff --check` passed. No full suite was run, per the user's test cadence. Finance mappings remain provisional pending finance-owner confirmation; human UAT remains outstanding.
 
-## 2026-10-13: Phase 5.6–6 code audit and execution plan
+## 2026-10-13: Phase 5.6Ã¢â‚¬â€œ6 code audit and execution plan
 
-Reviewed the Phase 5.6–6 checklist in `ERP_CLOSEOUT_PLAN.md` against current backend routes/migrations/services and frontend routes/components. `PLAN_5_6_TO_6.md` records evidence, stale source-plan entries, open work, acceptance criteria, focused checks, dependencies and external decisions. Key corrections: the incident merge migration/view, schedules, handover records, project setup APIs and procurement/finance workspaces are already present; remaining work is narrower and tied to missing formal workflows, registers and screens. The plan must be committed before phase implementation.
+Reviewed the Phase 5.6Ã¢â‚¬â€œ6 checklist in `ERP_CLOSEOUT_PLAN.md` against current backend routes/migrations/services and frontend routes/components. `PLAN_5_6_TO_6.md` records evidence, stale source-plan entries, open work, acceptance criteria, focused checks, dependencies and external decisions. Key corrections: the incident merge migration/view, schedules, handover records, project setup APIs and procurement/finance workspaces are already present; remaining work is narrower and tied to missing formal workflows, registers and screens. The plan must be committed before phase implementation.
 
 ## 2026-10-13: Phase 5.6.1 observation record completeness
 
@@ -1286,7 +1286,7 @@ Focused verification: `TransmittalsTab.test.js` passed 1/1; `doccontrol.test.js`
 
 ## 2026-10-13: Phase 5.7.3 schedule progress history and resource assignments
 
-Added migration `0056_schedule_progress_assignments.sql` for progress history and dated employee/asset assignments. The progress endpoint atomically records previous/current values, source, data date, notes and actor. Assignment endpoints require a project team employee active for the complete assignment period or an asset from the same project's asset register. Advisory locks serialize assignments to each resource while overlap checks reject conflicting planned/active windows. Assignment status follows planned → active → completed/cancelled. The schedule page now supports history review and bilingual progress/resource forms; date-only values are normalized consistently.
+Added migration `0056_schedule_progress_assignments.sql` for progress history and dated employee/asset assignments. The progress endpoint atomically records previous/current values, source, data date, notes and actor. Assignment endpoints require a project team employee active for the complete assignment period or an asset from the same project's asset register. Advisory locks serialize assignments to each resource while overlap checks reject conflicting planned/active windows. Assignment status follows planned Ã¢â€ â€™ active Ã¢â€ â€™ completed/cancelled. The schedule page now supports history review and bilingual progress/resource forms; date-only values are normalized consistently.
 
 Focused verification: migration 0056 applied to `construction_erp_closeout_test_20261013` (1 applied, 117 already applied); rerun reported 0 applied, 118 already applied. `schedule-progress-assignments.pg.test.js` passed 3/3; `planning.test.js` passed 12/12; `Schedule.test.js` passed 2/2; `i18n:check ok`; changed backend route/test syntax and `git diff --check` passed. `i18n:parity` has seven pre-existing `common.suppliers` misses in `ProcurementWorkspace.js`, no schedule-key misses. No full suite was run.
 
@@ -1302,14 +1302,14 @@ Migration `0058_agent_credentials_sessions_comments.sql` adds `api_tokens`, `age
 
 Focused command output: `npm run migrate` applied migration 0058 (1 applied, 119 already applied); rerun reported 0 applied, 120 already applied. `npm run test:pg -- --runTestsByPath src/scripts/__tests__/agent-platform-records.pg.test.js` passed 1 suite / 3 tests. The named test in `mcp-safety.pg.test.js` passed 1/1. `npm run lint:guards` reported `lint-guards: ok`; changed route/service/test `node --check` commands exited 0; `git diff --check` exited 0. No full test suite was run.
 
-## 2026-10-13: Phase 5.8.2 notification delivery tracking — verification stopped
+## 2026-10-13: Phase 5.8.2 notification delivery tracking Ã¢â‚¬â€ verification stopped
 
 Implemented local changes for migration 0059, durable per-channel delivery status, stable event/user/channel idempotency, preference suppression, safe provider placeholders without external sends, bounded retry handling, and user-owned status/retry endpoints with transactional retry audit. The focused PostgreSQL test file is `notification-delivery.pg.test.js`.
 
 Focused command output: `npm test -- --runInBand src/scripts/__tests__/action-engine.test.js --testNamePattern="notificationService|event dispatcher"` passed 1 suite / 11 tests (21 skipped). Changed-file `node --check` commands exited 0. `npm run lint:guards` reported `lint-guards: ok`; `git diff --check` exited 0. No full suite was run.
 
 
-## 2026-10-13: Phase 5.8.2 resumed — Postgres verification and closeout gates
+## 2026-10-13: Phase 5.8.2 resumed Ã¢â‚¬â€ Postgres verification and closeout gates
 
 Created a new local Postgres 16 container `erp-closeout-pg16-20261013201559` on loopback port 55471 and fresh test DBs with runtime-generated credentials. No `.env.docker` or `.staging-users.json` file was opened or printed for database setup. The initial migration run applied 121 migrations through 0059. The focused `notification-delivery.pg.test.js` first exposed a PostgreSQL conflict-target error because `notifications.delivery_id` is protected by a partial unique index. Updated the insert to specify `WHERE delivery_id IS NOT NULL`; the focused test then passed 3/3.
 
@@ -1412,7 +1412,7 @@ Added a manifest, SVG app icon, production service worker, versioned shell/stati
 
 Verification output: `npm run build` reported `Compiled successfully`; `node --check public/service-worker.js` exited 0; `npm run i18n:check` reported `i18n:check ok`; `git diff --check` exited 0. Lighthouse/PWA installation and an offline browser journey were not run. Local IBM Plex assets are absent from the repo and dependencies; local font packaging remains unverified/open, along with offline mutation queue/idempotency and responsive work.
 
-## 2026-10-13: stop � Docker engine unavailable for Phase 7 idempotency PG gate
+## 2026-10-13: stop Ã¯Â¿Â½ Docker engine unavailable for Phase 7 idempotency PG gate
 
 Command: `docker info --format '{{.ServerVersion}}'`.
 
@@ -1430,9 +1430,9 @@ Gate output: backend mock 53 suites / 1,001 tests; real PostgreSQL 67 suites / 6
 
 The Phase 7.2 code slice is ready for explicit-path commit. PWA offline browser journey, Lighthouse, IndexedDB mutation queue, responsive/table/touch work, and local Arabic font package remain unverified/open.
 
-Commit: `2f31c01` — `Phase 7.2: require idempotent daily reports` (explicit-path commit on `closeout/batch-a-to-6`). The only untracked file is the pre-existing user artifact `docs/CODEX_AUDIT_REPORT.md`, not staged or modified.
+Commit: `2f31c01` Ã¢â‚¬â€ `Phase 7.2: require idempotent daily reports` (explicit-path commit on `closeout/batch-a-to-6`). The only untracked file is the pre-existing user artifact `docs/CODEX_AUDIT_REPORT.md`, not staged or modified.
 
-## 2026-10-14 — Phase 7.2 IndexedDB site-report queue
+## 2026-10-14 Ã¢â‚¬â€ Phase 7.2 IndexedDB site-report queue
 
 Implementation: `frontend/src/services/siteReportQueue.js` provides an owner/project-filtered IndexedDB store, local staged photos and daily-report measurements, atomic claim/update/remove, network backoff, stale sync recovery, and replay through the same server idempotency key. `SiteManagement.js` now stages photos locally, lets site staff associate quantities to project locations and BOQ items, displays queue state, and supports retry/removal. Responsive form classes, 14px inputs and 44px queue action targets were added. `backend/src/middleware/v1.js` now releases an idempotency claim on client 4xx so corrected requests can retry; PostgreSQL and mock tests cover this.
 
@@ -1452,7 +1452,7 @@ The fresh local Docker Desktop Postgres container is `erp-closeout-pg16-20261014
 
 Final verification correction: `git diff --check` and `git diff --cached --check` both exited 0. Commit `7487787` (`Phase 7.2: queue site reports offline`) contains this implementation and its evidence. The audit report artifact was excluded.
 
-## 2026-10-14 — Phase 7.2 responsive layout follow-up
+## 2026-10-14 Ã¢â‚¬â€ Phase 7.2 responsive layout follow-up
 
 Replaced all 110 page-level inline `gridTemplateColumns` declarations with responsive classes and breakpoints; `rg --no-heading -o gridTemplateColumns frontend/src/pages` returned `0`. Babel parser/traverse audit output: `tables=72 unwrapped=0`; this includes the previously uncontained My Actions and Procurement Comparison tables. Site Management scope now enforces 44px buttons and 14px control text.
 
@@ -1462,91 +1462,91 @@ Phase 7 remains open: font files are absent locally, Lighthouse has not been run
 
 Responsive layout/table commit: `7fd068a` (`Phase 7.2: make page grids responsive`). The audit report artifact was excluded; explicit-path staging showed 35 files in this slice.
 
-## 2026-10-14 — Phase 8 project cash contribution slice
+## 2026-10-14 Ã¢â‚¬â€ Phase 8 project cash contribution slice
 
 Implementation: `commercialEngine.projectCommercial` aggregates non-voided payment amounts for its project with SQL `SUM`: direction `ar` is cash in, direction `ap` is cash out, and the contribution expression sums AR positive/AP negative. It returns all three values. Project Operations adds a localized cash contribution metric and moves the existing eight commercial metric labels to paired `commercial.fields.*` keys. The real-PG regression covers AR, AP, void exclusion, another project, and the authenticated commercial endpoint. No migration was required.
 
 Docker Desktop: unprivileged `docker info --format '{{.ServerVersion}}'` returned pipe `Access is denied`; the user-authorized elevated local CLI retry returned `28.3.2`. Inspecting only the known throwaway container confirmed it running at loopback `127.0.0.1:55441`. No production or pilot container was used.
 
 Gate commands and results:
-- `npm test -- --runInBand --silent` — PASS, 53 suites / 1,003 tests.
-- `TEST_PG=1 npm run test:pg -- --silent` — PASS, 67 suites / 609 tests on throwaway Postgres 16 `construction_erp_test`.
-- `TEST_PG=1 npm run test:pg -- --silent src/scripts/__tests__/commercial-5-5.pg.test.js` — PASS, 17/17.
-- `npm run test:ci -- --silent` — PASS, 29 suites / 117 tests.
-- `npm run i18n:check` — `i18n:check ok`.
-- `npm run i18n:parity` — `i18n parity ok: 35 namespaces, 1085 English keys`.
-- `npm run build` — `Compiled successfully`.
-- `npm run lint:guards` — `lint-guards: ok`.
-- JSON parse and `git diff --check` — exit 0.
+- `npm test -- --runInBand --silent` Ã¢â‚¬â€ PASS, 53 suites / 1,003 tests.
+- `TEST_PG=1 npm run test:pg -- --silent` Ã¢â‚¬â€ PASS, 67 suites / 609 tests on throwaway Postgres 16 `construction_erp_test`.
+- `TEST_PG=1 npm run test:pg -- --silent src/scripts/__tests__/commercial-5-5.pg.test.js` Ã¢â‚¬â€ PASS, 17/17.
+- `npm run test:ci -- --silent` Ã¢â‚¬â€ PASS, 29 suites / 117 tests.
+- `npm run i18n:check` Ã¢â‚¬â€ `i18n:check ok`.
+- `npm run i18n:parity` Ã¢â‚¬â€ `i18n parity ok: 35 namespaces, 1085 English keys`.
+- `npm run build` Ã¢â‚¬â€ `Compiled successfully`.
+- `npm run lint:guards` Ã¢â‚¬â€ `lint-guards: ok`.
+- JSON parse and `git diff --check` Ã¢â‚¬â€ exit 0.
 
 This completes only the cash-contribution subtask. The indicator is the recorded payment cash basis (AR minus AP), excludes voided/unrecorded transactions, and is not accrual profit or a ledger-reconciled statement. Remaining Phase 8 items and all pending Phase 7/9/10/11 exit work remain open. No production GO decision is implied.
 
-## 2026-10-14 — Phase 8 baseline-driven SPI slice
+## 2026-10-14 Ã¢â‚¬â€ Phase 8 baseline-driven SPI slice
 
 The `/api/schedule/schedule/kpis` route now looks up the current baseline for the requested project. When its snapshot is valid, planned value comes from saved baseline start/finish dates and planned quantities while earned value uses current progress by activity ID; the KPI is enabled even if `projects.earned_value_enabled` is false. New response field `spi_source` distinguishes baseline and legacy opt-in calculations. The live schedule path remains for explicitly enabled projects without a current baseline. Invalid non-array/JSON snapshots do not activate baseline-derived SPI.
 
-Verification: `npm test -- --runInBand src/scripts/__tests__/planning.test.js` — PASS 12/12; `TEST_PG=1 npm run test:pg -- --silent src/scripts/__tests__/schedule-progress-assignments.pg.test.js` — PASS 4/4 on the throwaway PG16 database. The real route regression asserts SPI 1.0 from baseline PV=50 and EV=50, whereas the changed current plan would yield 0.5. `git diff --check` and backend lint guards are recorded before commit.
+Verification: `npm test -- --runInBand src/scripts/__tests__/planning.test.js` Ã¢â‚¬â€ PASS 12/12; `TEST_PG=1 npm run test:pg -- --silent src/scripts/__tests__/schedule-progress-assignments.pg.test.js` Ã¢â‚¬â€ PASS 4/4 on the throwaway PG16 database. The real route regression asserts SPI 1.0 from baseline PV=50 and EV=50, whereas the changed current plan would yield 0.5. `git diff --check` and backend lint guards are recorded before commit.
 
 Still open: CPI has no activity-level actual-cost source in the existing schema; resource loading is separate; baseline SPI and these two items do not complete the Phase 8 earned-value plan task.
 
-## 2026-10-14 — Phase 8 capped retention and advance recovery
+## 2026-10-14 Ã¢â‚¬â€ Phase 8 capped retention and advance recovery
 
 Added advance amount fields/derivation for client and subcontract contracts and active-business-rule retention defaults with per-contract override. Certificate retention is bounded by project cap remaining; automatic advance recovery uses the project setting and is bounded by contract advance remaining. Manual overrides beyond the remaining balance return typed `advance_recovery_exceeds_balance`; valid manual values are written to the same transaction's activity audit description. Subcontract contract creation now enforces project scope and atomically writes the contract plus audit record. Additive migration `0061_subcontract_advance_caps.sql` adds the subcontract advance fields; old subcontract rows receive 0 and must be configured by finance before recovery.
 
 Commands/results on local throwaway Docker Desktop PostgreSQL 16 (`construction_erp_test`, `127.0.0.1:55441`):
-- `npm test -- --runInBand --silent` — PASS, 53 suites / 1,003 tests.
-- `TEST_PG=1 npm run test:pg -- --silent` — PASS, 67 suites / 611 tests.
-- `TEST_PG=1 npm run test:pg -- --silent src/scripts/__tests__/commercial-5-5.pg.test.js` — PASS, 18/18.
-- `npm run test:ci -- --silent` — PASS, 29 suites / 117 tests.
-- `npm run build` — `Compiled successfully`.
-- `npm run i18n:check` — `i18n:check ok`; `npm run i18n:parity` — 35 namespaces / 1,086 English keys.
-- `npm run lint:guards` (backend) — `lint-guards: ok`; syntax checks, locale JSON parsing, and `git diff --check` passed.
+- `npm test -- --runInBand --silent` Ã¢â‚¬â€ PASS, 53 suites / 1,003 tests.
+- `TEST_PG=1 npm run test:pg -- --silent` Ã¢â‚¬â€ PASS, 67 suites / 611 tests.
+- `TEST_PG=1 npm run test:pg -- --silent src/scripts/__tests__/commercial-5-5.pg.test.js` Ã¢â‚¬â€ PASS, 18/18.
+- `npm run test:ci -- --silent` Ã¢â‚¬â€ PASS, 29 suites / 117 tests.
+- `npm run build` Ã¢â‚¬â€ `Compiled successfully`.
+- `npm run i18n:check` Ã¢â‚¬â€ `i18n:check ok`; `npm run i18n:parity` Ã¢â‚¬â€ 35 namespaces / 1,086 English keys.
+- `npm run lint:guards` (backend) Ã¢â‚¬â€ `lint-guards: ok`; syntax checks, locale JSON parsing, and `git diff --check` passed.
 
-Docker Desktop server version 28.3.2 and loopback-only disposable container were confirmed using the user-requested local Docker CLI path. Production/pilot databases and `.env.docker`/`.staging-users.json` were not accessed. Finance must confirm contract defaults before production. Phase 8 remains incomplete; Phase 7 and Phases 9–11 remain open.
+Docker Desktop server version 28.3.2 and loopback-only disposable container were confirmed using the user-requested local Docker CLI path. Production/pilot databases and `.env.docker`/`.staging-users.json` were not accessed. Finance must confirm contract defaults before production. Phase 8 remains incomplete; Phase 7 and Phases 9Ã¢â‚¬â€œ11 remain open.
 
-## 2026-10-14 — Phase 7 mobile route smoke sweep
+## 2026-10-14 Ã¢â‚¬â€ Phase 7 mobile route smoke sweep
 
 Added `frontend/e2e/mobile-route-sweep.spec.js` for the login, dashboard, projects, project detail/operations/site/QHSE/HSE/schedule/BOQ, invoices, procurement comparison, approvals, and consultant/client/subcontractor/supplier portals. It uses test-only auth state and mocked empty API responses, then checks the route renders and document width fits the viewport.
 
-`npx playwright test e2e/mobile-route-sweep.spec.js --project=mobile-chromium --reporter=line` — PASS, 17 tests. The unprivileged launch first failed with `spawn EPERM`; the authorized local Playwright runner passed. This test does not satisfy full major-screen journey coverage by itself. IBM Plex Arabic local font packaging and Lighthouse remain open.
+`npx playwright test e2e/mobile-route-sweep.spec.js --project=mobile-chromium --reporter=line` Ã¢â‚¬â€ PASS, 17 tests. The unprivileged launch first failed with `spawn EPERM`; the authorized local Playwright runner passed. This test does not satisfy full major-screen journey coverage by itself. IBM Plex Arabic local font packaging and Lighthouse remain open.
 
-## 2026-10-14 — Phase 8 forecast ETC and EAC basis
+## 2026-10-14 Ã¢â‚¬â€ Phase 8 forecast ETC and EAC basis
 
 The current closeout plan specifies EAC = actual + ETC, with ETC supplied by a per-cost-code ForecastVersion or remaining-commitment rules. New ForecastVersions now carry `forecast_basis='etc'`; each line is ETC for its cost code. The no-forecast fallback combines outstanding commitment and remaining uncommitted current budget. The API response exposes `approved_forecast_basis`. Finance workbench forecast form supports multiple cost-code lines. Existing versions are preserved with `forecast_basis='eac'` by migration `0062_forecast_etc_basis.sql`, and the engine continues the old total-EAC calculation for those versions.
 
 Verification:
-- `npm run migrate` on disposable Postgres 16 — migration 0062 applied; 123 prior migrations recorded.
-- `npm test -- --runInBand --silent` (backend) — PASS, 53 suites / 1,003 tests.
-- `TEST_PG=1 npm run test:pg -- --silent src/scripts/__tests__/commercial-5-5.pg.test.js` — PASS, 18/18 (current ETC hand calculation and explicit legacy EAC compatibility).
-- `npm run test:ci -- --silent` (frontend) — PASS, 29 suites / 118 tests.
-- `npm test -- --watchAll=false --runInBand --silent src/components/project/ProjectFinanceWorkbench.test.js` — PASS, 2/2.
-- `npm run build` — `Compiled successfully`.
-- `npm run i18n:check` / `npm run i18n:parity` — pass; parity 35 namespaces / 1,089 English keys.
-- `npm run lint:guards` (backend), `node --check` for changed JS, and `git diff --check` — pass.
+- `npm run migrate` on disposable Postgres 16 Ã¢â‚¬â€ migration 0062 applied; 123 prior migrations recorded.
+- `npm test -- --runInBand --silent` (backend) Ã¢â‚¬â€ PASS, 53 suites / 1,003 tests.
+- `TEST_PG=1 npm run test:pg -- --silent src/scripts/__tests__/commercial-5-5.pg.test.js` Ã¢â‚¬â€ PASS, 18/18 (current ETC hand calculation and explicit legacy EAC compatibility).
+- `npm run test:ci -- --silent` (frontend) Ã¢â‚¬â€ PASS, 29 suites / 118 tests.
+- `npm test -- --watchAll=false --runInBand --silent src/components/project/ProjectFinanceWorkbench.test.js` Ã¢â‚¬â€ PASS, 2/2.
+- `npm run build` Ã¢â‚¬â€ `Compiled successfully`.
+- `npm run i18n:check` / `npm run i18n:parity` Ã¢â‚¬â€ pass; parity 35 namespaces / 1,089 English keys.
+- `npm run lint:guards` (backend), `node --check` for changed JS, and `git diff --check` Ã¢â‚¬â€ pass.
 
 This resolves the formula mismatch for new forecasts while preserving legacy approvals. Finance owner signoff is still required before production. Remaining Phase 8 work and Phases 7, 9, 10, and 11 are not complete.
 
 Commit references: `c8cc6fe` (`Phase 8: cap contract retention and advance recovery`), `96c344e` (`Phase 7: add mobile route sweep`), `0a2ee09` (`Phase 8: define forecast ETC basis per cost code`). All three commits exclude the pre-existing user artifact `docs/CODEX_AUDIT_REPORT.md`.
 
-## 2026-10-14 continuation — Phase 8 certified-quantity valuation
+## 2026-10-14 continuation Ã¢â‚¬â€ Phase 8 certified-quantity valuation
 
 Implemented quantity-backed valuation for both client and subcontractor payment applications. Each application line links to a certified `quantity_measurements` row and snapshots its unique matching contract-line rate. Row locks and active-application reservations prevent duplicate claims; certification records the accepted quantity and computes `gross_current_work` from the line snapshots. Partially certified remainder can be claimed later. Rejected and withdrawn applications release their reservations by lifecycle status. Manual legacy applications remain supported. Migration `0063_payment_application_quantity_valuation.sql` adds the valuation basis and line table; no legacy amounts were rewritten.
 
 Verification on disposable Docker Desktop PostgreSQL 16 (`construction_erp_test`, loopback `127.0.0.1:55441`): `npm run migrate` applied migration 0063 (1 applied, 124 already applied); focused commercial PG suite passed 19/19; full real-PG suite passed 67 suites / 612 tests; backend mocks passed 53 suites / 1,003 tests; backend lint guards passed; i18n check passed and parity reports 35 namespaces / 1,098 English keys; JS syntax, EN/AR JSON parsing, and `git diff --check` passed. First PG run caught certificate totals using the request's supplied money amount rather than the derived quantity amount; corrected and reran focused and full PG suites successfully.
 
-Phase 8 valuation checkbox is closed. Phase 8 remains open for reminder tiers, CPI/resource loading, legacy approval retirement, and duplicate transition/payment-certificate surfaces. Phases 7 and 9–11 remain open.
+Phase 8 valuation checkbox is closed. Phase 8 remains open for reminder tiers, CPI/resource loading, legacy approval retirement, and duplicate transition/payment-certificate surfaces. Phases 7 and 9Ã¢â‚¬â€œ11 remain open.
 
-Final follow-up after exposing quantity lines on application detail and rejecting manual work overrides for quantity-based certification: `TEST_PG=1 npm run test:pg -- --silent src/scripts/__tests__/commercial-5-5.pg.test.js` — PASS, 19/19; `npm run i18n:check` — PASS; `npm run i18n:parity` — PASS, 35 namespaces / 1,099 English keys; `node --check` on the commercial route/service/test and `git diff --check` — PASS. The full PG run (67 suites / 612 tests) preceded these final additive validation/read changes; the focused commercial PG suite was rerun after them.
+Final follow-up after exposing quantity lines on application detail and rejecting manual work overrides for quantity-based certification: `TEST_PG=1 npm run test:pg -- --silent src/scripts/__tests__/commercial-5-5.pg.test.js` Ã¢â‚¬â€ PASS, 19/19; `npm run i18n:check` Ã¢â‚¬â€ PASS; `npm run i18n:parity` Ã¢â‚¬â€ PASS, 35 namespaces / 1,099 English keys; `node --check` on the commercial route/service/test and `git diff --check` Ã¢â‚¬â€ PASS. The full PG run (67 suites / 612 tests) preceded these final additive validation/read changes; the focused commercial PG suite was rerun after them.
 
 Valuation implementation commit: `c2a68a5` (`Phase 8: derive valuation from certified quantities`). The pre-commit full PostgreSQL run passed 67 suites / 612 tests; the final focused commercial rerun after the last validation/read changes passed 19/19.
 
-## 2026-10-14 continuation — Phase 8 receivable reminder tiers
+## 2026-10-14 continuation Ã¢â‚¬â€ Phase 8 receivable reminder tiers
 
-Receivable reminders now apply active client-specific rules before project and company defaults, resolving configuration per invoice instead of once per sweep. An explicit disabled client rule suppresses reminders. The pre-due `due_soon` tier now fires once whenever an outstanding invoice is 1–7 days from its due date, so a missed scheduler day does not lose the seven-day reminder. The event payload includes `days_until_due`; existing due-today and overdue 7/14/30 tiers remain.
+Receivable reminders now apply active client-specific rules before project and company defaults, resolving configuration per invoice instead of once per sweep. An explicit disabled client rule suppresses reminders. The pre-due `due_soon` tier now fires once whenever an outstanding invoice is 1Ã¢â‚¬â€œ7 days from its due date, so a missed scheduler day does not lose the seven-day reminder. The event payload includes `days_until_due`; existing due-today and overdue 7/14/30 tiers remain.
 
 Verification: real PostgreSQL `event-integrity.pg.test.js` passed 30/30, including the six-day pre-due case, client-over-project role priority, once-only idempotency, and client disable. Backend mock suite passed 53 suites / 1,003 tests; `npm run lint:guards` passed; changed-file `node --check` and `git diff --check` passed. The first run found only a test invoice number exceeding the schema's 20-character limit; the fixture was shortened and the suite reran green. No migration was needed.
 
-Phase 8 reminder tier task is closed. Remaining Phase 8 work: CPI/resource-loaded planning, legacy approval retirement, and duplicate transition/payment-certificate surfaces. Phase 7 and Phases 9–11 remain open.
+Phase 8 reminder tier task is closed. Remaining Phase 8 work: CPI/resource-loaded planning, legacy approval retirement, and duplicate transition/payment-certificate surfaces. Phase 7 and Phases 9Ã¢â‚¬â€œ11 remain open.
 
 Reminder-tier implementation commit: `3ae651e` (`Phase 8: honor client receivable reminder rules`). Focused PostgreSQL verification passed 30/30 after correction of the overlong test fixture.
 
@@ -1587,7 +1587,7 @@ The checklist expansion is complete; restored-copy dry run and discrepancy resol
 
 ## 2026-10-14 - Phase 10 L6 shared localization helpers
 
-Shared formatters now support locale-aware currency, number, date, date-time, and percent output; `localizedName` follows Arabic-first or English-first field preference with neutral/other-language fallback. Locale defaults from the live document `lang` or an explicit locale, Arabic EGP uses `ج.م.`, and number digits can be selected by `numberingSystem`. Existing enum helpers supply localized status/role/priority/severity/entity/workflow labels. No component call-site migration was included in this slice.
+Shared formatters now support locale-aware currency, number, date, date-time, and percent output; `localizedName` follows Arabic-first or English-first field preference with neutral/other-language fallback. Locale defaults from the live document `lang` or an explicit locale, Arabic EGP uses `Ã˜Â¬.Ã™â€¦.`, and number digits can be selected by `numberingSystem`. Existing enum helpers supply localized status/role/priority/severity/entity/workflow labels. No component call-site migration was included in this slice.
 
 Verification: formatter tests 5/5; frontend CI 29 suites / 123 tests; i18n check passed; parity passed for 35 namespaces / 1,123 English keys; production build compiled. Phase 10 remains open for call-site migration, API error messages, Arabic PDFs, RTL/a11y review, and role-based E2E. Implementation commit: 39e0b6e.
 
@@ -1682,27 +1682,27 @@ After the latest portal/project-operation localization changes: backend mock sui
 
 This does not close the Phase 7 exit gate: no IBM Plex Arabic font file exists in the repository or installed frontend assets, and no Lighthouse package is available in the local dependencies. The nginx font policy is already same-origin. Next safe action is to obtain a properly licensed local font artifact, then rerun offline/Lighthouse evidence. Phase 8 approval retirement still requires an approved migration decision and restored-real-data parity; certificate-surface constraints are documented in docs/CERTIFICATE_SURFACE_RETIREMENT.md. Phase 9 golden demo/CI scenario and the broader Phase 10/11 review and real-data gates remain open.
 
-## 2026-10-14 continuation — fresh Docker Desktop baseline and Phase 9 values
+## 2026-10-14 continuation Ã¢â‚¬â€ fresh Docker Desktop baseline and Phase 9 values
 
-The local Docker Desktop server became available through elevated local access (Engine 28.3.2). On a newly created, uniquely named disposable PostgreSQL 16 container/database, the migration runner applied the complete current chain: 126 applied, 0 previously applied, migrations 0059–0064 included. Generated DB and JWT credentials remained in the PowerShell process environment; no `.env.docker` or `.staging-users.json` was read.
+The local Docker Desktop server became available through elevated local access (Engine 28.3.2). On a newly created, uniquely named disposable PostgreSQL 16 container/database, the migration runner applied the complete current chain: 126 applied, 0 previously applied, migrations 0059Ã¢â‚¬â€œ0064 included. Generated DB and JWT credentials remained in the PowerShell process environment; no `.env.docker` or `.staging-users.json` was read.
 
 Gate output: notification delivery PG 1 suite / 3 tests passed; full PG 67 suites / 618 tests passed; backend mock 53 suites / 1,005 tests passed; `npm run lint:guards` printed `lint-guards: ok`; frontend CI 31 suites / 128 tests passed; `i18n:check` passed; parity 35 namespaces / 1,283 English keys; production build compiled; Pixel 7 mobile route sweep 36/36 passed. The first focused PG invocation stopped before test execution because the isolated process lacked `JWT_SECRET`; rerun with a generated process-only JWT secret passed.
 
 Created `docs/GOLDEN_VALUES.md` with hand calculations for the current pilot BOQ and a provisional residential commercial model, and recorded the missing-spec assumptions in `docs/DECISIONS.md`. The golden API/UI journey has not been implemented; these values remain provisional and unverified against runtime. The staging pilot smoke was not run because its existing script reads `.env.docker` and `.staging-users.json`, prohibited by the closeout request. The pre-existing untracked `docs/CODEX_AUDIT_REPORT.md` remains untouched and unstaged.
 
-## 2026-10-14 continuation — Phase 9 residential C35 API fixture
+## 2026-10-14 continuation Ã¢â‚¬â€ Phase 9 residential C35 API fixture
 
-Added a real-PG fixture case to `golden-chain.pg.test.js`. It provisions the residential tower template through `projectProvisioning`, verifies 96 unit locations, adds a project-scoped 120 m³ C35 BOQ item at 4,200 EGP/m³, attaches a 1.0 factor / 2% wastage recipe, allocates the BOQ to a unit, and inserts a schedule activity. `materialDemand.recomputeAllocation` returned one requirement row; the database held gross 120.0000 m³ and net 122.4000 m³; BOQ extension was 504,000 EGP. Added these verified fixture figures to `docs/GOLDEN_VALUES.md`.
+Added a real-PG fixture case to `golden-chain.pg.test.js`. It provisions the residential tower template through `projectProvisioning`, verifies 96 unit locations, adds a project-scoped 120 mÃ‚Â³ C35 BOQ item at 4,200 EGP/mÃ‚Â³, attaches a 1.0 factor / 2% wastage recipe, allocates the BOQ to a unit, and inserts a schedule activity. `materialDemand.recomputeAllocation` returned one requirement row; the database held gross 120.0000 mÃ‚Â³ and net 122.4000 mÃ‚Â³; BOQ extension was 504,000 EGP. Added these verified fixture figures to `docs/GOLDEN_VALUES.md`.
 
 Verification: fresh disposable Docker Desktop PostgreSQL 16, all migrations applied; focused `npm run test:pg -- --silent src/scripts/__tests__/golden-chain.pg.test.js` PASS, 1 suite / 7 tests; `node --check` PASS; `git diff --check` PASS. Implementation commit: `05986f2` (`Phase 9: add residential C35 golden fixture test`). The entire tender-to-warranty journey and browser journey remain open; Phase 9 exit is not met.
 
-## 2026-10-14 continuation — Phase 11 operator metrics endpoint
+## 2026-10-14 continuation Ã¢â‚¬â€ Phase 11 operator metrics endpoint
 
 Added owner/admin-only `GET /api/v1/ops/metrics` with aggregate outbox counts, pending retry age, failed sweep count, and notification-delivery counts. The endpoint reports `degraded` on dead events, failed sweeps, failed or undelivered notifications; it returns no event payload, provider error text, or user/project identifiers. Added `docs/MONITORING.md` with endpoint scope, local checks, initial response steps, and explicit limits (no history, paging, or external provider configured). Public readiness endpoints remain separate.
 
 Verification: on a fresh disposable Docker Desktop PostgreSQL 16 database, `npm run test:pg -- --silent src/scripts/__tests__/v1-contract.pg.test.js` PASS, 1 suite / 8 tests, including owner access, site-engineer denial, and served route/OpenAPI coverage. Backend mocks PASS 53 suites / 1,005 tests; `npm run lint:guards` prints `lint-guards: ok`; `node --check` on route/test files and `git diff --check` passed. Implementation commit is recorded in the following documentation entry. Monitoring provider, historical retention, alert delivery, backup/restore, and production readiness remain open.
 
-## 2026-10-14 continuation — Phase 11 go/no-go and review handoffs
+## 2026-10-14 continuation Ã¢â‚¬â€ Phase 11 go/no-go and review handoffs
 
 Added `docs/GO_NOGO.md` with evidence and owner action for all seven criteria; the decision is NO-GO, with independent review, full golden journey, restored-copy reconciliation, runtime golden values, Arabic PDF/font review, real-environment restore/rollback rehearsal, and human UAT still open. Added `docs/SECURITY_REVIEW_PREP.md` for the independent Phase 1 reviewer and `docs/ARABIC_REVIEW_PACK.md` with the paired leaf inventory for all 35 EN/AR catalog namespaces plus screen/export review checklist. Human reviews remain pending. `npm audit` was not run because the closeout prohibits external sends and the command sends dependency metadata to a package registry.
 
@@ -1895,3 +1895,11 @@ Final gates, current command output: npm.cmd test -- --runInBand PASS 59 suites 
 Fresh reconciliation: authorized erp-r01-remediation-20261014 PG16 bound only to 127.0.0.1:55461, --pull=never; npm.cmd run migrate completed 126 applied / 0 already applied; npm.cmd run seed:golden-demo succeeded. RECONCILIATION_BACKUP_CONFIRMED=true node src/scripts/reconcile-database.js exit 0: all 16 [OK] checks reported 0 discrepancies, including allocation/project boundaries, stock/cost/journal/PO/workflow and sequences. Container removed in finally. This synthetic fresh-seed evidence does not establish restored-real-data readiness.
 
 R0/R1 implementation complete; final scorecard overwritten in docs/R0_R1_SCORECARD.md, root STATE current section updated while archives remain. No new plan checkbox ticks, no R2 work, deployment/push/PR/external adapters or history rewrite. User audit/review files remain untouched and untracked. Production remains NO-GO for the independent deferred findings and human finance/UAT decisions. Commit subject: R1.2: scope aggregate reads before calculating project totals.
+
+## 2026-10-14 - R2.0 UI/API project identity sanity
+
+Pre-flight fresh erp-r02-remediation-20261014 PG16 loopback 55462: 126 migrations applied, backend mock PASS 59 suites / 1,048 tests, lint-guards: ok; exact container removed. Static frontend scan 69 production JS/JSX files / 360 fetch-wrapper expressions / 39 inline project-bearing mutations / zero duplicate query-body write candidates. Inspected indirect URL/body variables, workbench request/run/send wrappers and URLSearchParams builders; no clear bug or owner ambiguity found in requested scope, so no frontend change/test/dependency. docs/R2_UI_PROJECT_ID_SCAN.md holds file/call/verdict list. Commit 855b648; next R2.1 inventory-only commit. No secrets, externals or R3 work.
+
+## 2026-10-14 - R2.1 live mutation audit inventory
+
+Inventory-only commit 35a6bb9: docs/R2_AUDIT_INVENTORY.md only; no runtime fix or enforcement staged. Live Express stack enumerated 601 unique non-GET/non-HEAD endpoints including normalized v1 aliases/factory handlers; all 601 source handlers located. AST service tracing plus manual wrapper/client checks classifies 238 audited-in-transaction, 165 delegates to auditing service, 7 incomplete/non-atomic, 185 not audited (including conditional omissions), 6 justified exemptions. Completeness check PASS 601 live keys / 601 document rows / zero missing sources. Initial document check exposed three route parameter alternations whose pipe characters broke Markdown columns; encoded as &#124;, rerun PASS. EOF formatting corrected before commit. These are source classifications, not happy-path/rollback evidence; runtime reproduction remains due in R2.2/family tests. Convention studied: auditedTransaction/activity/policy/finance audit helpers and invoices/commercial/finance-ledger/procurement/workflow client binding; before/after goes into existing audit_events, no schema change needed. Additional gaps beyond Appendix C are explicitly retained in inventory. Temporary source tracer/check/PG runners are credential-free under TEMP erp-r02-*; no listening server, database mutation or external request from inventory tool. Next R2.2 enforcement before any family fix; R3 not started.

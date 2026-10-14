@@ -14,6 +14,8 @@
 //                  a failed enqueue is an error, never a lost event)
 //   cost-view  project_costs read outside the cost accrual code and services/costView.js: totals come from the
 //              shared cost view so dashboards, costing and the commercial engine never disagree (closeout A2.4)
+//   mutation-without-audit  route SQL/known write helpers without a reachable business audit;
+//              AST-based, per-file ratchet. Six endpoint exemptions: mutation-audit-exemptions.json.
 //
 // The baseline is per file. A file may not exceed its recorded count, and a file
 // with no entry may not have any. A site is a COUNT(/MAX( line with "+ 1" in the same
@@ -21,6 +23,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const { mutationAuditViolations } = require('./mutation-audit-guard');
 
 const srcDir = path.join(__dirname, '..');
 const baselinePath = path.join(__dirname, '..', '..', 'lint-guards.baseline.json');
@@ -124,7 +127,8 @@ function walk(dir, out = []) {
 }
 
 function scan() {
-  const result = { 'silent-catch': {}, 'count-numbering': {}, 'counter-rmw': {}, 'catch-to-zero': {}, 'cost-view': {}, 'event-swallow': {}, 'post-commit-audit': {}, 'direct-project-id': {} };
+  const result = { 'silent-catch': {}, 'count-numbering': {}, 'counter-rmw': {}, 'catch-to-zero': {}, 'cost-view': {}, 'event-swallow': {}, 'post-commit-audit': {}, 'direct-project-id': {}, 'mutation-without-audit': {} };
+  const auditCache = new Map();
   for (const file of walk(srcDir)) {
     const rel = path.relative(srcDir, file).split(path.sep).join('/');
     if (isExcluded(rel)) continue;
@@ -134,6 +138,8 @@ function scan() {
       if (auditCalls) result['post-commit-audit'][rel] = auditCalls;
     }
     if (rel.startsWith('routes/')) {
+      const missingAudits = mutationAuditViolations(text, rel, { cache: auditCache, srcDir }).length;
+      if (missingAudits) result['mutation-without-audit'][rel] = missingAudits;
       const projectReads = (text.match(/\b(?:req\.body|value)\.project_id\b/g) || []).length;
       if (projectReads) result['direct-project-id'][rel] = projectReads;
       const unboundAuditCalls = countUnboundActivityAudits(text, rel);
@@ -201,13 +207,15 @@ function main() {
     }
     return 1; // Strict zero rule; --update cannot baseline these reads.
   }
-  if (process.argv.includes('--update')) {
+  const baseline = fs.existsSync(baselinePath) ? JSON.parse(fs.readFileSync(baselinePath, 'utf8')) : {};
+  const { failures, improvements } = compare(current, baseline);
+  // A rule's first baseline (category absent) may be written; afterwards --update refuses any increase.
+  const blocking = baseline['mutation-without-audit'] ? failures : failures.filter((m) => !m.startsWith('mutation-without-audit'));
+  if (process.argv.includes('--update') && !blocking.length) {
     fs.writeFileSync(baselinePath, `${JSON.stringify(current, null, 2)}\n`);
     console.log(`baseline written: ${baselinePath}`);
     return 0;
   }
-  const baseline = fs.existsSync(baselinePath) ? JSON.parse(fs.readFileSync(baselinePath, 'utf8')) : {};
-  const { failures, improvements } = compare(current, baseline);
   improvements.forEach((m) => console.log(`improved  ${m} (run with --update to lock it in)`));
   if (failures.length) {
     failures.forEach((m) => console.error(`FAIL  ${m}`));
