@@ -8,6 +8,8 @@ Tracked PG baseline invocation exited 1 before migrations/tests: Docker Desktop 
 
 ## Current R2b evidence
 
+R2b.4 QHSE duplicate removal: before 2 duplicate-registration failures / 2 survivor passes; after focused PG 2 suites / 53 tests PASS (survivors + QHSE audit success/rollback). Only unreachable second PUT handlers removed; live field validation, closed-NCR protection and snapshot audits retained. Coverage remains 276/601, pending 319, exempt 6. Full exit after remaining families still pending.
+
 R2b.2 completes task B's transactional changes where the handler boundary permits them. Four new registry fixtures pass success audits and forced-failure rollback. Current accumulated coverage is **276 of 601 endpoints**: 274 audit+rollback; 2 historical documented sweep exceptions assert audit only. Pending is 319, exemptions 6. All 319 remaining entries in pending.json are unverified because task C has not been reached before this context checkpoint; no remaining entry is waived.
 
 | R2b measure | Before | After |

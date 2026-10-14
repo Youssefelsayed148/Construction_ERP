@@ -1062,3 +1062,7 @@ Pre-flight HEAD 94b9815 on closeout/batch-a-to-6; preserved existing unstaged ST
 ## 2026-10-15 - R2b.3 labour-payment deletion protection
 
 Owner-authorized elevated docker version succeeded (server 28.3.2), superseding the Docker stop. Current tracked PG baseline PASS 74/1,223, 126 migrations, erp-r02-gate-20261015021031 removed. R2b.3 typed 409 protects costed or durable queued/posted labour payments, central cost reader, project record scope, paired error keys. Unposted hard deletes keep before snapshots; registry uses a legacy unposted payment. Initial regression 7 failed / 2 passed (including one scoped fixture missing its explicit permission); fixed and final focused runs 2 suites / 32 tests PASS. Guards unchanged PASS; mock 60/1,056 PASS; i18n 35/1,288 PASS. Full batch gates pending, 276/601 verified / 319 pending / 6 exempt. Next QHSE duplicates, then audit families. No R3.
+
+## 2026-10-15 - R2b.4 QHSE duplicate PUT removal
+
+Removed second unreachable PUT /ncrs/:id and /quality-tests/:id, preserving first handlers and audited transactions. Survivor test before: 2 duplicate-registration failures / 2 behavior passes. After removal, survivor + QHSE registry PASS 2 suites / 53 tests, 126 migrations, exact container removed. Unique registrations, before/after audit attribution, attachments, unsupported-field rejection and closed NCR protection verified. No new fields exposed. Coverage 276/601 / pending 319 / exempt 6 unchanged. Next finance-ledger/v1 audit fixtures; R3 gated.

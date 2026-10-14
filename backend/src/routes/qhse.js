@@ -1103,53 +1103,8 @@ router.get('/punch-items/pdf', authenticate, authorize(), async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// NCR widening — exact location, responsible party, root cause, corrective/
-// preventive action, cost & schedule impact, verification, closure authority.
-// Existing severity + open → in_progress → resolved → closed progression is
-// untouched; the field set and PDF are added beside it.
+// NCR verification, closure and PDF beside the existing status transitions.
 // ---------------------------------------------------------------------------
-
-router.put('/ncrs/:id', authenticate, authorize(), async (req, res) => {
-  try {
-    const schema = Joi.object({
-      description: Joi.string(),
-      severity: Joi.string().valid('minor', 'major', 'critical'),
-      resolution_notes: Joi.string().allow(''),
-      project_location_id: Joi.number().integer().allow(null),
-      exact_location: Joi.string().allow('', null),
-      responsible_party: Joi.string().allow('', null),
-      responsible_organization_id: Joi.number().integer().allow(null),
-      root_cause: Joi.string().allow('', null),
-      corrective_action: Joi.string().allow('', null),
-      preventive_action: Joi.string().allow('', null),
-      cost_impact: Joi.number().precision(2),
-      schedule_impact_days: Joi.number().integer(),
-      verification_notes: Joi.string().allow('', null),
-      closure_authority: Joi.string().allow('', null),
-      corrective_action_id: Joi.number().integer().allow(null),
-      preventive_action_id: Joi.number().integer().allow(null),
-    }).min(1);
-    const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-
-    const sets = []; const params = []; let idx = 1;
-    for (const [k, v] of Object.entries(value)) {
-      if (v === undefined) continue;
-      sets.push(`${k} = $${idx++}`); params.push(v);
-    }
-    params.push(req.params.id);
-    const out = await auditedMutation(req, { action: 'update', module: 'qhse', entityType: 'ncr' }, async (q) => {
-      const before = (await q('SELECT * FROM ncrs WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
-      if (!before) return { skipAudit: true, missing: true };
-      if (before.status === 'closed') return { skipAudit: true, closed: true };
-      const result = await q(`UPDATE ncrs SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
-      return { data: result.rows[0], entityId: before.id, projectId: before.project_id, before, after: result.rows[0], oldStatus: before.status, newStatus: result.rows[0].status, description: `Updated NCR ${before.ncr_number || before.id}` };
-    });
-    if (out.missing) return res.status(404).json({ success: false, error: 'NCR not found' });
-    if (out.closed) return res.status(400).json({ success: false, error: 'Closed NCRs are read-only' });
-    res.json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
-});
 
 // Verification + closure — closes the NCR with verification + closure
 // authority (extended closure path beside the legacy status transitions).
@@ -1188,40 +1143,8 @@ router.get('/ncrs/:id/pdf', authenticate, authorize(), async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// Quality tests — link to an ITP/ITP point/checklist + test report PDF.
+// Quality-test report PDF.
 // ---------------------------------------------------------------------------
-
-router.put('/quality-tests/:id', authenticate, authorize(), async (req, res) => {
-  try {
-    const schema = Joi.object({
-      test_type: Joi.string(), test_date: Joi.date().iso(),
-      result: Joi.string().valid('pass', 'fail', 'pending'),
-      tested_by: Joi.string().allow(''), notes: Joi.string().allow(''),
-      attachments: Joi.array().items(Joi.object().unknown(true)),
-      itp_id: Joi.number().integer().allow(null),
-      itp_point_id: Joi.number().integer().allow(null),
-      checklist_instance_id: Joi.number().integer().allow(null),
-    }).min(1);
-    const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-
-    const sets = []; const params = []; let idx = 1;
-    for (const [k, v] of Object.entries(value)) {
-      if (v === undefined) continue;
-      if (k === 'attachments') { sets.push(`attachments = $${idx++}::jsonb`); params.push(JSON.stringify(v)); }
-      else { sets.push(`${k} = $${idx++}`); params.push(v); }
-    }
-    params.push(req.params.id);
-    const out = await auditedMutation(req, { action: 'update', module: 'qhse', entityType: 'quality_test' }, async (q) => {
-      const before = (await q('SELECT * FROM quality_tests WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
-      if (!before) return { skipAudit: true };
-      const r = await q(`UPDATE quality_tests SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
-      return { data: r.rows[0], entityId: before.id, projectId: before.project_id, before, after: r.rows[0], oldStatus: before.result, newStatus: r.rows[0].result, description: `Updated quality test #${before.id}` };
-    });
-    if (!out.data) return res.status(404).json({ success: false, error: 'Test not found' });
-    res.json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
-});
 
 router.get('/quality-tests/:id/pdf', authenticate, authorize(), async (req, res) => {
   try {
