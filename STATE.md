@@ -887,3 +887,11 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - Added seven fixtures for agent token create/revoke, session status, auth registration/login/password change/logout-all. No production handler change.
 - Failing-first targeted registry run: 1 suite failed / 5 passed, identifying only the seven missing fixtures. Initial fixture run found Joi rejected `.test.invalid`; switched to `example.com` synthetic addresses. Final tracked gate: PASS 1 suite / 17 tests; 126 migrations; all seven operations emitted audit rows and injected audit failures left no table changes; container removed.
 - Census 577 fixtures, 8 exemptions, 16 pending, zero unregistered/stale/redundant. Full R2 gates remain pending; R3 not started.
+
+- Committed `abc0517` (R2b.28 auth/agent) with requested trailers. STATE updated after commit.
+
+## Session 10 R2b.29 - team/delegations/reports, 2026-10-15
+
+- Added six fixtures covering team assignment create/delete, delegation create/deactivate, and report saved-view/schedule create. No production route changes.
+- Tracked family gate `R2_ONLY='^(POST /api/(team|delegations|reports/(saved-views|scheduled))|DELETE /api/team)'`: PASS 1 suite / 15 tests; 126 migrations; no audit rollback leaks; container removed.
+- Census 583 fixtures / 8 exemptions / 10 pending / zero unregistered/stale/redundant. R2 exit gates remain pending; R3 gated.

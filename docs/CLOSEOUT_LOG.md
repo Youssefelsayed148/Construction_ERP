@@ -2091,3 +2091,7 @@ Added 3 v1 company mutation fixtures and 3 user mutation fixtures, removed six p
 ## 2026-10-15 - Session 10 R2b.28 auth/agent
 
 Added fixtures for three agent token/session mutations and four auth mutations. The login/change-password/logout fixtures use fresh throwaway users with process-local low-cost bcrypt hashes; registration uses synthetic example.com addresses. Failing-first registry run showed the seven unregistered routes (1 suite failed / 5 passed). First fixture run exposed invalid `.test.invalid` email validation; after using `example.com`, `R2_ONLY='^POST /api/(agent/(tokens|sessions)|auth/)'` passed 1 suite / 17 tests; 126 migrations; no rollback leaks. Census 577 fixtures / 8 exemptions / 16 pending / 0 unregistered / 0 stale / 0 redundant. Full R2 exit gates remain pending; R3 not started.
+
+## 2026-10-15 - Session 10 R2b.29 team/delegations/reports
+
+Added six fixtures for /api/team assignment create/delete, delegation create/deactivate, and scheduled report saved-view/schedule create. Failing-first baseline was included in the prior agent run before these were registered. Targeted `R2_ONLY='^(POST /api/(team|delegations|reports/(saved-views|scheduled))|DELETE /api/team)'` passed 1 suite / 15 tests; 126 migrations; audit rows present and no injected-audit rollback leaks. Census 583 fixtures / 8 exemptions / 10 pending / 0 unregistered / 0 stale / 0 redundant. R2 exit gates pending; R3 gated.

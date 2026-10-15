@@ -1182,3 +1182,7 @@ Added three v1 company create/update/delete fixtures and three user update/deact
 ## 2026-10-15 - Session 10 R2b.28 auth/agent
 
 Added seven mutation fixtures covering agent token create/revoke, agent session status, auth registration/login/password change/logout-all. Fixtures use fresh users and credentials only in the disposable test process. The first runtime attempt found Joi rejects `.test.invalid`; synthetic `example.com` addresses corrected it. Final `R2_ONLY='^POST /api/(agent/(tokens|sessions)|auth/)'` through the tracked PG runner: PASS 1 suite / 17 tests; 126 migrations; no rollback leaks. Census 577 fixtures / 8 exemptions / 16 pending / 0 unregistered / 0 stale / 0 redundant. R2 exit gates pending; R3 gated.
+
+## 2026-10-15 - Session 10 R2b.29 team/delegations/reports
+
+Added six audit/rollback fixtures for the remaining team assignment, delegation, and report create routes. The tracked family gate `R2_ONLY='^(POST /api/(team|delegations|reports/(saved-views|scheduled))|DELETE /api/team)'` passed 1 suite / 15 tests; 126 migrations; container removed; no rollback leaks. Census 583 fixtures, 8 exemptions, 10 pending, zero unregistered/stale/redundant. R2 exit gates pending; R3 gated.
