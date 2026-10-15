@@ -2,7 +2,7 @@
 // totals have ONE definition (the v_project_cost_* views behind services/costView.js).
 //
 // Reproduced first (these failed on the pre-A2.4 code):
-//   * every dashboard section, the commercial engine's commitment sync, the widget dashboards and the location
+//   * every dashboard section, the commercial engine's commitment-ledger read, the widget dashboards and the location
 //     dashboard wrapped their queries in `.catch(() => ({ rows: [] }))` / `try { } catch { x = [] }`: a failing
 //     query returned 200 with zeros, an empty list or a missing figure;
 //   * dashboards, costing and the commercial engine each summed project_costs themselves.
@@ -129,14 +129,12 @@ describePg('A2.4 no catch-to-zero, one cost view (real PostgreSQL, real app)', (
     expect(failed.body.success).toBe(false);
   });
 
-  test('commercial engine: failing purchase-order or sub-contract reads fail the profitability report', async () => {
+  test('commercial engine: a failing commitment-ledger read fails the profitability report', async () => {
     const path = `/api/costing/project/${project.id}/profitability`;
     expect((await call(path)).status).toBe(200);
-    for (const pattern of [/FROM purchase_orders WHERE project_id/, /FROM sub_contracts WHERE project_id/]) {
-      const failed = await withFailure(pattern, () => call(path));
-      expect(failed.status).toBe(500);
-      expect(failed.body.success).toBe(false);
-    }
+    const failed = await withFailure(/FROM commitments WHERE project_id/, () => call(path));
+    expect(failed.status).toBe(500);
+    expect(failed.body.success).toBe(false);
   });
 
   // The section queries used to name tables that do not exist (documents, qhse_records): the swallow hid that those

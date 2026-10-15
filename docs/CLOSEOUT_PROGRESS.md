@@ -1229,3 +1229,11 @@ Migration 0067 adds six indexes: invoice created-time list coverage, project/tim
 # 2026-10-15 — R3.3 route-enumerated GET write guard
 
 Added a real-PG test that enumerates all seven commercial/finance GET handlers invoking commitments, project commercial, or AR/AP ageing, issues each route, and instruments pool/client SQL for INSERT/UPDATE/DELETE/TRUNCATE. All seven returned 200, with zero SQL mutations and no commitment for an active PO lacking a ledger row; 1/1 suite / 1/1 test passed at 129 migrations. Container `erp-r02-gate-20261015053546` removed; exit 0.
+## R3.6 final gate batch (2026-10-15)
+
+- Backend mock: `npm.cmd test -- --runInBand --no-colors` PASS 60/60 suites, 1,059/1,059 tests, exit 0.
+- Real PostgreSQL: tracked `r02-pg-gate.ps1 -All` PASS 81/81 suites, 1,884/1,884 tests, 129 migrations, disposable container removed, exit 0. The suite includes migration from 0064 through 0067 and verifies all six selected indexes plus the statement-level journal trigger.
+- Performance: `r3-performance-gate.ps1` PASS; final plans and full 478-column FK ranking recorded in `docs/R3_EVIDENCE.md` and `docs/R3_FK_INDEX_PLAN.md`; disposable container removed.
+- Frontend: `CI=true npm.cmd run test:ci -- --no-colors` PASS 32/32 suites, 131/131 tests. `i18n:check` and `i18n:parity` PASS (35 namespaces / 1,288 English keys).
+- `npm.cmd run lint:guards` PASS. Root `CI=true npm.cmd run build` PASS (optimized production build). Golden reconciliation through `r02-pg-gate.ps1 -Reconcile` PASS 16/16, zero violations, 129 migrations, disposable container removed.
+- R3 scorecard and evidence-limit notes are the remaining closeout documentation. R4 remains not started.

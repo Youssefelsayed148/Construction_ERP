@@ -253,6 +253,7 @@ describePg('finance flows (real PostgreSQL, real app)', () => {
         status = (await svc.decideOnDocument(q, 'purchase_order', po.id, decider, 'approve')).status;
       }
       expect(status).toBe('issued');
+      await require('../../services/commitmentLedger').syncPurchaseOrder(q, po.id);
     });
     await db.query(
       "INSERT INTO project_costs (project_id, source_type, source_id, amount, description) VALUES ($1, 'manual_test', $2, 500, $3)",

@@ -2156,3 +2156,8 @@ The first full R2 PG suite (126 migrations) failed 1/76 suites, 169/1,871 tests;
 
 - `powershell -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/commitment-get-readonly.pg.test.js` — PASS 1/1 suite, 1/1 test; 129 migrations; container `erp-r02-gate-20261015053546` removed; exit 0.
 - The test discovers seven route handlers by their commercial/finance projection calls, substitutes a seeded project ID, checks every HTTP result is 200, and instruments pool and acquired-client queries. No INSERT/UPDATE/DELETE/TRUNCATE ran, and the unledgered issued PO remained without a commitment.
+## 2026-10-15 - R3.3 fixture alignment and final gates
+
+The full R3 PostgreSQL gate initially identified stale tests after commitment GETs became read-only. Cost guard injections now target the commitments ledger, and finance-flow fixture setup writes the issued PO commitment through the source transaction. Focused suites passed 3/3 / 47/47. The complete PostgreSQL rerun passed 81/81 suites / 1,884/1,884 tests at 129 migrations; `erp-r02-gate-20261015055054` removed, exit 0. The full test includes the 0064-to-0067 upgrade path.
+
+Final performance gate passed and removed `erp-r3-perf-20261015055504`; post-index invoice and PO plans are index-only scans, while the broad open-invoice aggregate appropriately retains a sequential scan. All 478 residual FK columns are ranked in `docs/R3_FK_INDEX_PLAN.md`. Final backend mock, frontend, i18n, lint guards, root production build, and seeded golden reconciliation all passed. Golden: 16/16, zero violations, 129 migrations, `erp-r02-gate-20261015055556` removed. See `docs/R3_EVIDENCE.md`; final scorecard documentation remains to commit.
