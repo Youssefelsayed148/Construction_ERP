@@ -1,6 +1,6 @@
 # R4 Capacity and Operations Scorecard
 
-Status: **R4.0–R4.5 implementation slices are complete; R4.6 exit gates remain. R5 has not started.**
+Status: **R4.0–R4.5 are implemented; R4.6 gates are running. The first full PG attempt failed (3/84 suites); fixes are committed and a clean rerun is in progress. R5 has not started.**
 
 | Finding | Before | After | Test / evidence | Commit |
 |---|---|---|---|---|
@@ -12,4 +12,4 @@ Status: **R4.0–R4.5 implementation slices are complete; R4.6 exit gates remain
 | REV-014 health failure window | Metrics degraded for any retained failed sweep row, including old incidents | Metrics expose all-time retained failures and 24-hour failures separately; health degrades only for recent failed sweeps (or dead letters/failed notification deliveries). CLI failure status/details use the same rolling window. | Focused v1 contract PASS 1 suite / 9 tests on PostgreSQL, covering old and recent failed rows; see `docs/R4_EVIDENCE.md` | `a7ac59c` |
 | REV-015 list pagination | Review enumerated 73 unbounded collection handlers | Default 200, max 1,000, offset paging, stable identifier tiebreak, `X-Total-Count`; body envelopes preserved. SQL lists use `LIMIT/OFFSET`; computed/service arrays use shared post-calculation paging. 33 frontend page files with collection reads are inventoried; UI load-more remains for R5.3. No pagination index migration was justified or added. | Mock PASS 65 suites / 1,083 tests, including route-enumerating census (73+ candidates); focused pagination/report PASS 2 suites / 22 tests. PostgreSQL GET smoke PASS 448 routes / 0 server failures (1 suite / 8 tests, 130 migrations); QHSE 1/4, schedule 1/6, organization/RBAC 1/11, and users-policy 1/4 suites pass. Users-policy clean exit verified with `-NoForceExit`. | `2e9b8de` |
 
-**Owner decisions waiting:** none recorded for R4. R4.6 exit gates are NOT VERIFIED yet. The isolated c=50 login hash benchmark does not meet the 500 ms aspiration; full-app c=50 remains unmeasured. Windows OS-level SIGTERM delivery remains unverified. R5 remains gated on R4 completion.
+**Owner decisions waiting:** none recorded for R4. Full PostgreSQL exit gate is NOT VERIFIED yet. The isolated c=50 login hash benchmark does not meet the 500 ms aspiration; full-app c=50 remains unmeasured. Windows OS-level SIGTERM delivery remains unverified. R5 remains gated on R4 completion.

@@ -1276,3 +1276,11 @@ Passwords now use built-in async `crypto.scrypt` with OWASP-listed N=32768/r=8/p
 - Metrics report retained-history failures and a separate rolling 24-hour count; only recent sweep failures degrade health. `outbox:stats` applies the same recent-failure window to its status and details.
 - Regression PG contract PASS 1 suite / 9 tests at 130 migrations; container `erp-r04-gate-20261015154945` removed, exit 0. Users policy PG PASS 1 suite / 4 tests with `-NoForceExit`, container `erp-r04-gate-20261015155124` removed, exit 0. Syntax and diff checks passed before commit.
 - Implementation commit `a7ac59c`. Proceed to full R4.6 gates; do not begin R5 until every R4 gate passes.
+
+# R4.6 exit-gate current position - 2026-10-15
+
+- Backend mock: PASS 65 suites / 1,083 tests. Frontend CI: PASS 32 suites / 131 tests. i18n check and parity: PASS (35 namespaces / 1,291 keys). Production build PASS. Backend lint:guards PASS after excluding JavaScript `Math.max` false positive from the SQL numbering detector.
+- Golden reconcile: PASS 16/16 checks, 130 migrations, `erp-r02-gate-20261015155823` removed, exit 0.
+- Fresh previous-number migration proof: PASS 0067 → 0068 exactly once, `erp-r04-migration-upgrade-20261015155757` removed, exit 0. Focused PG mutation audit PASS 1/1 / 1,188 tests; v1 metrics PASS 1/1 / 9; legacy R3 migration suite PASS 1/1 / 2. All at 130 migrations with containers removed.
+- First full R4 PG attempt failed 3/84 suites / 200/1,896 tests. Identified the new distributed limiter table as infrastructure noise in the mutation rollback census and the metrics regression test's assumption of an empty suite-wide recent-failure window; both corrected. Full suite rerun is in progress. Legacy R3 migration test passes independently on a fresh database.
+- R4.6 implementation commit `e32f8d7`; final full PG gate and scorecard update remain. R5 not started pending all-green R4 evidence.
