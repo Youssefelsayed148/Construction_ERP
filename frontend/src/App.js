@@ -35,6 +35,7 @@ import ProcurementReview from './pages/ProcurementReview';
 import AgentActivity from './pages/AgentActivity';
 import ProjectOperations from './pages/ProjectOperations';
 import Settings from './pages/Settings';
+import AdminWorkspace from './pages/AdminWorkspace';
 import { authService } from './services/api';
 import { useAuth } from './store/AuthContext';
 import './styles/index.css';
@@ -128,6 +129,7 @@ function App() {
             <Route path="units" element={<UnitsSales />} />
           </Route>
           <Route path="settings" element={<Settings />} />
+          <Route path="admin/:area" element={<AdminWorkspace />} />
           {/* Phase 27 — Agent Activity (owner/admin; backend enforces) */}
           <Route path="agent-activity" element={<AgentActivity />} />
         </Route>

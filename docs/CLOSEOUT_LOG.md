@@ -2247,3 +2247,10 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - Added `useManagedForm`, `FormActions`, and `LoadMore` using existing form validation, server error mapping, `FormField`, locale catalogs, and total-count metadata. No dependencies added; no form library introduced.
 - Focused `FormKit.test.js` PASS 1 suite / 2 tests. `npm.cmd run i18n:check` and `npm.cmd run i18n:parity` PASS, 35 namespaces / 1,295 English keys.
 - R5.2 implementation commit `d9cfba7`; this is the post-commit checkpoint. R5.3 pagination wiring follows.
+
+## 2026-10-15 - R5.4 administrative workspaces
+
+- Implemented organizations, users/existing roles, delegations, approval limits, inventory documents, project variations, claim SLA detail, webhooks, API tokens, numbering, and replenishment in the shared `/admin/:area` workspace. Scoped project views require project IDs. API token/webhook secrets are shown from memory once and never logged. No unsupported CRUD operations were added.
+- Focused tests PASS 4 suites / 37 tests, including all workspace renders, permission denial, validation/create/server error, and API-token one-time display. i18n check/parity PASS (36 namespaces / 1,432 English keys); `lint:api` PASS (1/1 direct fetch); production build PASS.
+- CORS now exposes `X-Total-Count` and `Retry-After`. Current backend gaps: no create-user/role-definition CRUD; no delegation edit; approval limits only list/upsert; claim SLA read-only. No trial-balance endpoint.
+- R5.4 implementation commit pending. R5.3 is not complete: the 33 existing pagination-impact page files still need list-specific next-page wiring. RTL appearance and real-browser behavior are not verified.

@@ -1306,3 +1306,10 @@ Passwords now use built-in async `crypto.scrypt` with OWASP-listed N=32768/r=8/p
 - Added `useManagedForm` to combine the existing validation/error mappers with field values, submit-in-flight state, and typed server errors; added shared `FormActions` and `LoadMore`; extended `FormField` to display translated errors. Added EN/AR pagination labels.
 - Focused kit test PASS 1 suite / 2 tests; i18n check/parity PASS (35 namespaces / 1,295 English keys). Existing dependency set retained.
 - Implementation commit `d9cfba7`; this is the post-commit checkpoint. R5.3 must wire paging to every screen listed in the R4.4 UI impact document.
+
+### R5.4 administrative workspaces
+
+- Added the ten work areas under `/admin/:area` with bilingual labels, role/module visibility and route checks, existing form kit adoption, load/empty/error states, project ID scoping where applicable, and paged list controls. Webhook/API-token secrets display once and clear on dismiss/area change. Backend CORS exposes paging/retry headers.
+- Focused tests PASS 4 suites / 37 tests; i18n check/parity PASS (36 namespaces / 1,432 English keys); API guard PASS 1/1; optimized build PASS.
+- Confirmed API limits: no user create or role-definition CRUD; delegation create/deactivate only; approval-limit list/upsert only; claim SLA read-only. UI does not invent unsupported operations.
+- Implementation commit pending. R5.3 remains open for the 33 existing list pages. Visual/RTL/browser behavior remains unverified; RTL test dependency is absent and none was added.

@@ -39,3 +39,13 @@ This inventory covers the requested screen areas and the current frontend integr
 3. R5.3 shared paging/load-more across the 33 frontend files identified in `docs/R4_PAGINATION_UI_IMPACT.md`.
 4. R5.4 in the requested order: organizations; users/roles; delegations; approval limits; inventory documents; variations; SLA; webhooks/API tokens; numbering sequences; replenishment. Run full backend/frontend gates after approval limits and after replenishment.
 5. R5.5 only after all required R5 work and green gates: record the trial-balance endpoint proposal in `STATE.md`; do not build it without owner direction.
+
+## Current implementation status - 2026-10-15
+
+- R5.1 now routes all frontend `fetch` use through `services/apiClient.js`; the direct-call guard is at 1 call (the client implementation) versus the original 61 across 41 files. Typed errors, 401 handling, abort-on-route/unmount, and `X-Total-Count` support are implemented.
+- R5.2 adds `useManagedForm`, `FormActions`, and `LoadMore` using the existing field and validation helpers. No new dependencies were added.
+- R5.4 uses a bilingual `/admin/:area` workspace with role/module route checks and filtered sub-navigation. Routes cover organizations, users/roles, delegations, approval limits, inventory documents, variations, claim SLA, webhooks, API tokens, document numbering, and replenishment. The project-specific views take a project ID; inventory routes pass project/warehouse scope to existing APIs. Lists expose a load-more control using `X-Total-Count`.
+- Backend contract limits: there is no user-create endpoint or role-definition CRUD, so users can only be listed, edited, deactivated, and assigned an existing role. Delegations have create/deactivate but no edit. Approval limits have list/upsert only. The claim SLA API is read-only; the screen lists claims and views SLA detail. Numbering is a project-scoped read/update. Replenishment policies use the existing upsert and override deletion operations. No endpoint was added for these gaps.
+- Secrets from webhook creation/rotation and API-token creation are held in component state and displayed until dismissed; list data does not include secrets and no code logs them.
+- R5.3 remains incomplete: the shared pager is used in the new admin workspace, while the 33 existing page files listed in `docs/R4_PAGINATION_UI_IMPACT.md` have not all been connected to per-list next-page loaders. Their first 200 rows can still be the only visible rows.
+- The project does not include React Testing Library and R5 rules prohibit adding dependencies; new screen tests use the existing React DOM test harness. No visual, RTL-appearance, or real-browser check has run.

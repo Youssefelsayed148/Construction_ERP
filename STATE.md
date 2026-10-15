@@ -1,3 +1,12 @@
+## R5.4 administrative workspaces - 2026-10-15 - implementation ready for commit
+
+- Added `/admin/:area` for all ten requested screen areas using shared loading/empty/error handling, field validation, submit locking/server errors, project scoping, and list load-more metadata. `Sidebar` now has an administration entry; child routes and links filter against allowed roles and policy modules/actions.
+- Webhook secrets (creation/rotation) and API tokens are shown from component state once and cleared when dismissed or when changing areas. No secret logging is present. Form select controls and EN/AR `admin` labels were added; backend CORS now exposes `X-Total-Count` and `Retry-After` to the client.
+- Focused tests PASS 4 suites / 37 tests; all 11 workspace routes render, permission denial is tested, organization validation/create/server error is covered, and token one-time display is covered. i18n check/parity PASS (36 namespaces / 1,432 English keys); `lint:api` PASS 1/1; optimized build PASS.
+- Backend product limits confirmed: users cannot be created and role definitions cannot be edited because those endpoints do not exist; delegations have no edit; approval-limit API is list/upsert; claim SLA endpoint is read-only. The screens expose only supported operations. No trial-balance endpoint work.
+- R5.3 is still open: the shared pager is active in these new workspaces, but existing 33 R4-flagged list page files are not all wired to next-page state. No visual/RTL/browser validation has run; React Testing Library is not installed and no dependency was added.
+- R5.4 commit pending. Run requested full frontend/backend gates after the screen checkpoint; continue R5.3 wiring and final exit gates afterward.
+
 ## R5.2 shared form kit - 2026-10-15 - committed as `d9cfba7`
 
 - Added `useManagedForm` around the existing `validateValues` and `mapServerErrors`, plus shared `FormActions` and `LoadMore` controls. `FormField` now accepts already translated errors. EN/AR common pagination keys are present.

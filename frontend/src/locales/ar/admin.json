@@ -1,0 +1,34 @@
+{
+  "nav": { "areas": "أقسام الإدارة" },
+  "actions": { "create": "إنشاء سجل", "edit": "تعديل السجل", "loadProject": "تحميل المشروع", "runSweep": "تشغيل مراجعة إعادة التوريد", "viewSla": "عرض اتفاقية مستوى الخدمة", "rotateSecret": "تغيير المفتاح السري", "deactivate": "تعطيل", "post": "ترحيل", "void": "إلغاء", "confirmVoid": "تأكيد الإلغاء", "policies": "السياسات", "alerts": "التنبيهات" },
+  "messages": {
+    "unknownArea": "شاشة الإدارة هذه غير متاحة.",
+    "permissionDenied": "ليست لديك صلاحية لعرض شاشة الإدارة هذه.",
+    "saved": "تم حفظ التغييرات.",
+    "deactivated": "تم تعطيل السجل.", "secretShownOnce": "انسخ مفتاح التوقيع الآن، فلن يظهر مرة أخرى.", "tokenShownOnce": "انسخ رمز واجهة البرمجة الآن، فلن يظهر مرة أخرى.", "sweepComplete": "اكتملت مراجعة إعادة التوريد.", "posted": "تم ترحيل المستند.", "voided": "تم إلغاء المستند."
+  },
+  "organizations": { "title": "المؤسسات" },
+  "users": { "title": "المستخدمون والأدوار" },
+  "delegations": { "title": "التفويضات" },
+  "approvalLimits": { "title": "حدود الموافقات" },
+  "inventoryDocuments": { "title": "مستندات المخزون", "types": "نوع مستند المخزون" },
+  "variations": { "title": "تغييرات المشروع" },
+  "sla": { "title": "مدة استجابة مطالبات الضمان" },
+  "webhooks": { "title": "إشعارات الويب" },
+  "apiTokens": { "title": "رموز واجهة البرمجة" },
+  "numbering": { "title": "ترقيم المستندات" },
+  "replenishment": { "title": "إعادة التوريد", "views": "طرق عرض إعادة التوريد" },
+  "fields": {
+    "code": "الرمز", "org_type": "نوع المؤسسة", "name_en": "الاسم بالإنجليزية", "name_ar": "الاسم بالعربية",
+    "contact_person": "الشخص المسؤول", "email": "البريد الإلكتروني", "phone": "الهاتف", "city": "المدينة", "status": "الحالة",
+    "name": "الاسم", "role": "الدور", "department": "القسم", "job_title": "المسمى الوظيفي", "is_active": "نشط",
+    "delegate_from_name": "المفوِّض", "delegate_name": "المفوَّض إليه", "delegate_user_id": "معرّف المستخدم المفوَّض إليه",
+    "module_scope": "نطاق الوحدة", "max_amount": "الحد الأقصى للمبلغ", "valid_from": "ساري من", "valid_to": "ساري حتى", "notes": "ملاحظات",
+    "action": "الإجراء", "currency": "العملة", "enabled": "مفعّل", "project_id": "معرّف المشروع", "warehouse_id": "معرّف المخزن", "reason": "السبب", "type": "نوع المستند", "lines_json": "بنود المستند (JSON)", "variation_number": "التغيير", "title": "العنوان", "amount": "المبلغ", "description": "الوصف", "created_at": "تاريخ الإنشاء", "claim_number": "المطالبة", "sla_days": "أيام الاستجابة", "due_date": "تاريخ الاستحقاق", "url": "عنوان إشعار الويب", "events_json": "الأحداث (JSON)", "project_ids_json": "معرّفات المشاريع (JSON)", "events": "الأحداث", "token_prefix": "بادئة الرمز", "scopes": "النطاقات", "scopes_text": "النطاقات (مفصولة بفواصل)", "expires_at": "تاريخ الانتهاء", "revoked_at": "تاريخ الإلغاء", "doc_prefix": "بادئة المستند", "include_discipline": "تضمين التخصص", "include_type": "تضمين نوع المستند", "seq_pad": "طول الرقم التسلسلي", "rev_prefix": "بادئة المراجعة", "rule_key": "مفتاح السياسة", "rule_value": "السياسة", "scope": "نطاق السياسة", "ref": "مرجع النطاق", "mode": "وضع السياسة"
+  },
+  "options": {
+    "client": "عميل", "supplier": "مورد", "subcontractor": "مقاول من الباطن", "consultant": "استشاري", "other": "أخرى",
+    "issues": "صرف", "returns": "مرتجعات", "adjustments": "تسويات", "client_instruction": "تعليمات العميل", "design_change": "تغيير التصميم", "site_condition": "ظروف الموقع", "regulatory": "متطلبات تنظيمية", "omission": "حذف بند", "contractor_request": "طلب المقاول", "force_majeure": "قوة قاهرة", "other": "أخرى", "contractor": "المقاول", "third_party": "طرف ثالث", "shared": "مشترك", "default": "افتراضي", "material": "مادة", "category": "فئة", "issue_purchase_order": "إصدار أمر شراء", "issue_client_invoice": "إصدار فاتورة عميل", "record_payment": "تسجيل دفعة", "approve_payment_certificate": "اعتماد شهادة دفع", "release_retention": "صرف مبلغ محتجز", "void_financial_record": "إلغاء سجل مالي", "approve_supplier_invoice": "اعتماد فاتورة مورد", "alert_only": "تنبيه فقط", "auto_draft_pr": "إنشاء مسودة طلب شراء", "auto_draft_po": "إنشاء مسودة أمر شراء", "auto_issue_po": "إصدار أمر شراء", "owner": "المالك", "admin": "مدير النظام", "owner_ceo": "المالك / الرئيس التنفيذي", "coo": "مدير العمليات", "project_manager": "مدير المشروع",
+    "engineer": "مهندس", "site_engineer": "مهندس موقع", "hr_manager": "مدير الموارد البشرية", "accountant_ap": "محاسب الدائنين", "storekeeper": "أمين المخزن", "staff": "موظف"
+  }
+}

@@ -30,7 +30,7 @@ const FRONTEND_ORIGIN = process.env.FRONTEND_URL || 'http://localhost:3000';
 const EXTRA_ORIGINS = (process.env.CORS_EXTRA_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
 const ALLOWED_ORIGINS = validateCorsOrigins(FRONTEND_ORIGIN, EXTRA_ORIGINS,
   process.env.NODE_ENV === 'production', process.env.CORS_ALLOW_HTTP_LOCAL === 'true');
-app.use(cors({ origin: ALLOWED_ORIGINS, credentials: true }));
+app.use(cors({ origin: ALLOWED_ORIGINS, credentials: true, exposedHeaders: ['X-Total-Count', 'Retry-After'] }));
 app.use(securityHeaders);
 app.use(requestId);
 app.use(sanitizeServerError((message, detail) => logger.error(message, { detail })));

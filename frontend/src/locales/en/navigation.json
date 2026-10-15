@@ -14,7 +14,8 @@
     "approvals": "Approvals",
     "myActions": "My Actions",
     "agentActivity": "Agent Activity",
-    "settings": "Settings"
+    "settings": "Settings",
+    "adminWorkspaces": "Administration"
   },
   "portals": {
     "consultant": "Consultant Portal",

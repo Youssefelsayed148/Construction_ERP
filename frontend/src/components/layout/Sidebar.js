@@ -22,6 +22,7 @@ const mainMenuItems = [
   { path: '/approvals', icon: ClipboardList, labelKey: 'approvals', module: 'approvals' },
   { path: '/my-actions', icon: ListChecks, labelKey: 'myActions', module: 'actions' },
   { path: '/settings', icon: SettingsIcon, labelKey: 'settings', module: 'settings', roles: ['owner', 'admin'] },
+  { path: '/admin/organizations', icon: SettingsIcon, labelKey: 'adminWorkspaces', roles: ['owner', 'admin', 'owner_ceo', 'coo'] },
   // Phase 27 — owner/admin only (filtered below).
   { path: '/agent-activity', icon: Bot, labelKey: 'agentActivity', module: 'agent', action: 'view', roles: ['owner', 'admin'] },
 ];
