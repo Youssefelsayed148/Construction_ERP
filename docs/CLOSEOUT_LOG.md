@@ -2059,3 +2059,7 @@ Added five asset mutation fixtures and removed those five paths from pending. BE
 ## 2026-10-15 - Session 8 R2b.20 clients
 
 Added three client create/update/hard-delete fixtures and removed only those entries from pending. Update/delete use fresh client targets. Family-only `R2_ONLY='^\\w+ /api/clients'` through the tracked runner PASS 1 suite / 9 tests; 126 migrations; erp-r02-gate-20261015035334 removed; exit 0. All routes wrote activity rows and showed no rollback leaks under forced audit failure. Census 538 fixtures / 8 exemptions / 55 pending / 0 unregistered / 0 stale / 0 redundant. R2 final gates pending; no R3 work.
+
+## 2026-10-15 - Session 8 R2b.21 expenses
+
+Added three expense audit fixtures. Create uses the production journal/cost transaction; update/delete seed fresh unposted rows so the protected posted-expense 409 path stays unchanged. Removed only these entries from pending. `R2_ONLY='^\\w+ /api/expenses'` with the tracked family registry: PASS 1 suite / 9 tests; 126 migrations; erp-r02-gate-20261015035437 removed; exit 0. All three routes wrote activity rows and passed injected-audit rollback. Census 541 fixtures / 8 exemptions / 52 pending / 0 unregistered / 0 stale / 0 redundant. R2 final gates pending; no R3 work.

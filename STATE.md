@@ -830,8 +830,14 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 
 ## Session 8 R2b.20 - client audit fixtures, 2026-10-15
 
+- Committed `608f333` with requested trailers; STATE.md updated immediately after commit.
 - Added three client create/update/hard-delete fixtures; removed only those three exact paths from pending. Each update/delete uses a fresh client target.
 - `R2_ONLY='^\\w+ /api/clients' powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/mutation-audit.pg.test.js -Filter '^(FAIL|PASS) |Test Suites:|Tests:|^\\s+● |^\\s+R2 '`: PASS 1 suite / 9 tests; 126 migrations; `erp-r02-gate-20261015035334` removed; exit 0. All three routes wrote an activity row and rolled back with no leaked rows under injected audit failure. Census 538 fixtures, 8 exemptions, 55 pending, zero unregistered/stale/redundant. R2 gates remain pending; R3 gated.
+
+## Session 8 R2b.21 - expense audit fixtures, 2026-10-15
+
+- Added three expense fixtures. Create uses the real journal/cost transaction; update/delete seed fresh unposted expenses directly so the existing posted-expense 409 protection remains intact. Removed only the three exact expense routes from pending.
+- `R2_ONLY='^\\w+ /api/expenses' powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/mutation-audit.pg.test.js -Filter '^(FAIL|PASS) |Test Suites:|Tests:|^\\s+● |^\\s+R2 '`: PASS 1 suite / 9 tests; 126 migrations; `erp-r02-gate-20261015035437` removed; exit 0. All three operations audited and forced-audit failures left no leaks. Census 541 fixtures, 8 exemptions, 52 pending, zero unregistered/stale/redundant. R2 final gates pending; R3 gated.
 
 ## Session 7 R2b.16 - report v1 aliases, 2026-10-15
 
