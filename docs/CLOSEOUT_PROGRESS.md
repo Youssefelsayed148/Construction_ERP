@@ -1174,3 +1174,7 @@ Added five v1 webhook fixtures: create/update/delete/rotate-secret/redrive. DNS 
 ## 2026-10-15 — Session 9 R2b.26 items/material aliases
 
 Added the four remaining item mutations and two v1 material aliases, with fresh targets for updates/deletes/restores; removed only those six pending entries. `R2_ONLY='^\\w+ /api/(items|v1/materials)'`: PASS 1 suite / 25 tests; 126 migrations; erp-r02-gate-20261015042244 removed; exit 0. Existing v1 material routes were included; the previously documented leader-locked replenishment sweep remained the sole rollback skip. Census 564 fixtures / 8 exemptions / 29 pending / 0 unregistered / 0 stale / 0 redundant. R2 exit pending; R3 gated.
+
+## 2026-10-15 — Session 9 R2b.27 users/companies
+
+Added three v1 company create/update/delete fixtures and three user update/deactivate fixtures; removed six routes from pending. First company run caught one redundant pending v1 users entry; corrected the entry and pending JSON syntax. Final company PASS 1 suite / 9 tests (`R2_ONLY='^\\w+ /api/v1/companies'`, container erp-r02-gate-20261015042548); user PASS 1 suite / 11 tests (`R2_ONLY='^\\w+ /api/(v1/)?users'`, container erp-r02-gate-20261015042516), both 126 migrations and exit 0. All new routes passed audit and rollback. Census 570 fixtures / 8 exemptions / 23 pending / 0 unregistered / 0 stale / 0 redundant. R2 exit pending; R3 gated.

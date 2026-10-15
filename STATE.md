@@ -866,8 +866,14 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 
 ## Session 9 R2b.26 - remaining item/material aliases, 2026-10-15
 
+- Committed `734dda1` with requested trailers; STATE.md updated immediately after commit.
 - Added four item mutations (create/update/delete/restore) plus v1 material create/update aliases; each mutable item target is fresh. Removed only those six exact entries from pending.
 - Family run `R2_ONLY='^\\w+ /api/(items|v1/materials)'` also includes the already-registered v1 material routes. PASS 1 suite / 25 tests; 126 migrations; `erp-r02-gate-20261015042244` removed; exit 0. All six new routes audited and rollback verified. Existing replenishment sweep is the only rollback skip and retains its documented leader-locked multi-transaction exception. Census 564 fixtures, 8 exemptions, 29 pending, zero unregistered/stale/redundant. R2 final gates pending; R3 gated.
+
+## Session 9 R2b.27 - user/company audit fixtures, 2026-10-15
+
+- Added three company alias fixtures and three user mutations (canonical/v1 update, deactivate); each target is fresh. Removed six exact entries from pending.
+- Initial company family run caught one redundant pending v1-users route (fixtures passed); removed that entry and corrected pending JSON syntax. Final company run `R2_ONLY='^\\w+ /api/v1/companies'`: PASS 1 suite / 9 tests; 126 migrations; `erp-r02-gate-20261015042548` removed; exit 0. User family `R2_ONLY='^\\w+ /api/(v1/)?users'`: PASS 1 suite / 11 tests; 126 migrations; `erp-r02-gate-20261015042516` removed; exit 0 (also rechecked existing preview fixture). All new routes audited and forced-audit failures rolled back without leaks. Census 570 fixtures, 8 exemptions, 23 pending, zero unregistered/stale/redundant. R2 final gates pending; R3 gated.
 
 ## Session 7 R2b.16 - report v1 aliases, 2026-10-15
 
