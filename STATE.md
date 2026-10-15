@@ -5,6 +5,7 @@
 - First full `-All -R4 -NoForceExit` attempt on a fresh 130-migration database: FAIL, 3/84 suites failed and 200/1,896 tests failed. Evidence identified infrastructure-table write accounting, v1 test assuming an empty rolling window, and a legacy R3 migration-upgrade conflict after the mutation census. The first two were corrected; focused legacy migration repro passes fresh. Full rerun is active to verify suite interactions.
 - Other completed R4 exit gates: backend mock PASS 65 suites / 1,083 tests; frontend CI PASS 32 suites / 131 tests; i18n check and parity PASS (35 namespaces / 1,291 English keys); production build PASS; lint:guards PASS after correction; golden reconciliation PASS 16/16 at 130 migrations, container `erp-r02-gate-20261015155823` removed, exit 0.
 - Implementation commit: `e32f8d7`. Remaining: active full PostgreSQL gate and final status/scorecard checkpoint. R5 has not started and remains gated on every R4 gate being green.
+- Follow-up `af318ac` isolates the legacy R3 migration replay in a dedicated empty schema; focused real-PG suite PASS 1/1 / 2 tests at 130 migrations, container `erp-r04-gate-20261015161018` removed, exit 0. This prevents the fixture from rerunning 0066 against shared data created by earlier suites and never drops public indexes or triggers. A final all-suite PG rerun is still required.
 
 ## R4.5 current position - 2026-10-15 - committed as `a7ac59c`
 
