@@ -1,7 +1,8 @@
-import { apiFetch } from '../services/apiClient';
-import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
 import ReasonDialog from '../components/common/ReasonDialog';
+import LoadMore from '../components/common/LoadMore';
 import { Search, Plus, Edit, Trash2, FileText, Receipt, Eye, X, CreditCard } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
@@ -14,7 +15,7 @@ const headers = () => {
 
 const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 const STATUS_LABELS = {
@@ -37,8 +38,12 @@ const ALL_STATUSES = ['draft', 'sent', 'partially_paid', 'paid', 'overdue', 'voi
 function Invoices() {
   const { t, locale } = useLocale();
   const [invoices, setInvoices] = useState([]);
+  const invoicesLength = useRef(0);
+  invoicesLength.current = invoices.length;
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [statusFilter, setStatusFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -71,17 +76,21 @@ function Invoices() {
     } catch (e) { console.error(e); }
   }, []);
 
-  const loadInvoices = useCallback(async () => {
-    setLoading(true);
+  const loadInvoices = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
       const params = new URLSearchParams();
       if (statusFilter) params.append('status', statusFilter);
       if (searchQuery) params.append('search', searchQuery);
       params.append('limit', '200');
+      params.append('offset', String(append ? invoicesLength.current : 0));
       const res = await fetchApi(`${API_URL}/invoices?${params}`);
-      if (res.success) setInvoices(res.data || []);
+      if (res.success) {
+        setInvoices(current => append ? [...current, ...(res.data || [])] : (res.data || []));
+        setTotalCount(res.totalCount ?? null);
+      }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [statusFilter, searchQuery]);
 
   useEffect(() => { loadInvoices(); loadSummary(); }, [loadInvoices, loadSummary]);
@@ -269,6 +278,7 @@ function Invoices() {
         </div>
       )}
 
+      <LoadMore loadedCount={invoices.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => loadInvoices({ append: true })} />
       {showAddModal && (
         <InvoiceModal
           invoice={editingInvoice}

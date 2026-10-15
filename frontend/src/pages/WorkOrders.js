@@ -1,8 +1,9 @@
-import { apiFetch } from '../services/apiClient';
-import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import ReasonDialog from '../components/common/ReasonDialog';
+import LoadMore from '../components/common/LoadMore';
 import { ArrowLeft, Plus, Edit, Trash2, ClipboardList, CheckCircle, XCircle, Package, Wrench, Users, Calendar } from 'lucide-react';
 import { formatCurrency, formatDate, formatPercent } from '../utils/formatters';
 
@@ -15,7 +16,7 @@ const headers = () => {
 
 const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 const STATUS_LABELS = {
@@ -48,7 +49,11 @@ function WorkOrders() {
   const navigate = useNavigate();
   const { t, locale } = useLocale();
   const [workOrders, setWorkOrders] = useState([]);
+  const workOrdersLength = useRef(0);
+  workOrdersLength.current = workOrders.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [statusFilter, setStatusFilter] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingWO, setEditingWO] = useState(null);
@@ -62,16 +67,20 @@ function WorkOrders() {
   const [boqSections, setBoqSections] = useState([]);
   const [users, setUsers] = useState([]);
 
-  const loadWorkOrders = useCallback(async () => {
-    setLoading(true);
+  const loadWorkOrders = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
       const params = new URLSearchParams();
       if (statusFilter) params.append('status', statusFilter);
       params.append('limit', '200');
+      params.append('offset', String(append ? workOrdersLength.current : 0));
       const res = await fetchApi(`${API_URL}/work-orders/project/${projectId}?${params}`);
-      if (res.success) setWorkOrders(res.data || []);
+      if (res.success) {
+        setWorkOrders(current => append ? [...current, ...(res.data || [])] : (res.data || []));
+        setTotalCount(res.totalCount ?? null);
+      }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [projectId, statusFilter]);
 
   const loadRefData = useCallback(async () => {
@@ -268,6 +277,7 @@ function WorkOrders() {
         </div>
       )}
 
+      <LoadMore loadedCount={workOrders.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => loadWorkOrders({ append: true })} />
       <ReasonDialog
         open={Boolean(cancelTarget)}
         title={t('workorders.cancel.title')}

@@ -1,7 +1,8 @@
-import { apiFetch } from '../services/apiClient';
-import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
 import ReasonDialog from '../components/common/ReasonDialog';
+import LoadMore from '../components/common/LoadMore';
 import { Search, Plus, Edit, Trash2, Truck, X, RotateCcw } from 'lucide-react';
 import EGYPT_CITIES from '../constants/egyptCities';
 
@@ -14,7 +15,7 @@ const headers = () => {
 
 const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 const SPECIALTY_LABELS = {
@@ -35,7 +36,11 @@ const specialties = ['concrete', 'steel', 'electrical', 'plumbing', 'wood', 'pai
 function Suppliers() {
   const { t, locale } = useLocale();
   const [suppliers, setSuppliers] = useState([]);
+  const suppliersLength = useRef(0);
+  suppliersLength.current = suppliers.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [selectedSpecialty, setSelectedSpecialty] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -45,18 +50,22 @@ function Suppliers() {
   const [dialogError, setDialogError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const loadSuppliers = useCallback(async () => {
-    setLoading(true);
+  const loadSuppliers = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
       const params = new URLSearchParams();
       if (selectedSpecialty) params.append('specialty', selectedSpecialty);
       if (searchQuery) params.append('search', searchQuery);
       params.append('limit', '200');
+      params.append('offset', String(append ? suppliersLength.current : 0));
       if (showDeleted) params.append('include_deleted', 'true');
       const res = await fetchApi(`${API_URL}/suppliers?${params}`);
-      if (res.success) setSuppliers(res.data || []);
+      if (res.success) {
+        setSuppliers(current => append ? [...current, ...(res.data || [])] : (res.data || []));
+        setTotalCount(res.totalCount ?? null);
+      }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [selectedSpecialty, searchQuery, showDeleted]);
 
   useEffect(() => { loadSuppliers(); }, [loadSuppliers]);
@@ -210,6 +219,7 @@ function Suppliers() {
         </div>
       )}
 
+      <LoadMore loadedCount={suppliers.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => loadSuppliers({ append: true })} />
       <ReasonDialog
         open={Boolean(deleteTarget)}
         title={t('suppliers.record.deleteTitle')}

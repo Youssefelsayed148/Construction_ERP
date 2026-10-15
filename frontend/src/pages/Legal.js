@@ -1,7 +1,8 @@
-import { apiFetch } from '../services/apiClient';
-import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import LoadMore from '../components/common/LoadMore';
 import { Search, Plus, Edit, Trash2, Shield, CheckCircle, XCircle, X } from 'lucide-react';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
@@ -13,7 +14,7 @@ const headers = () => {
 
 const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 const STATUS_TABS = ['all', 'pending', 'verified', 'rejected'];
@@ -39,24 +40,32 @@ const docTypes = ['contract', 'permit', 'insurance', 'report', 'license', 'compl
 function Legal() {
   const { t, locale } = useLocale();
   const [documents, setDocuments] = useState([]);
+  const documentsLength = useRef(0);
+  documentsLength.current = documents.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingDocument, setEditingDocument] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const loadDocuments = useCallback(async () => {
-    setLoading(true);
+  const loadDocuments = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
       const params = new URLSearchParams();
       if (statusFilter !== 'all') params.append('status', statusFilter);
       if (searchQuery) params.append('search', searchQuery);
       params.append('limit', '200');
+      params.append('offset', String(append ? documentsLength.current : 0));
       const res = await fetchApi(`${API_URL}/legal?${params}`);
-      if (res.success) setDocuments(res.data || []);
+      if (res.success) {
+        setDocuments(current => append ? [...current, ...(res.data || [])] : (res.data || []));
+        setTotalCount(res.totalCount ?? null);
+      }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [statusFilter, searchQuery]);
 
   useEffect(() => { loadDocuments(); }, [loadDocuments]);
@@ -233,6 +242,7 @@ function Legal() {
         </div>
       )}
 
+      <LoadMore loadedCount={documents.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => loadDocuments({ append: true })} />
       {showModal && <LegalModal
         document={editingDocument}
         locale={locale}

@@ -313,7 +313,7 @@ export default function AdminWorkspace() {
           {config.deactivate && !showingAlerts && !(area === 'replenishment' && row.rule_key === 'replenishment_policy:default') && row.is_active !== false && row.status !== 'inactive' && !row.revoked_at && <button type="button" className="btn btn-sm" onClick={() => deactivate(row)}>{t('admin.actions.deactivate')}</button>}
         </td></tr>)}
       </tbody></table></div>}
-      <LoadMore loadedCount={rows.length} totalCount={totalCount} loading={loading} onLoadMore={() => refresh({ append: true })} />
+      <LoadMore loadedCount={rows.length} totalCount={totalCount} loading={loading} t={t} onLoadMore={() => refresh({ append: true })} />
     </main>
   );
 }

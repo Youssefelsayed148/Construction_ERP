@@ -1,4 +1,4 @@
-import { apiFetch, apiJson, errorCodeToTranslationKey, parseTotalCount, ApiError } from './apiClient';
+import { apiFetch, apiJson, apiResponseJson, errorCodeToTranslationKey, parseTotalCount, ApiError } from './apiClient';
 
 const response = (status, body = {}, headers = {}) => new Response(JSON.stringify(body), {
   status,
@@ -56,6 +56,14 @@ describe('api client', () => {
     const result = await apiJson('/api/items');
     expect(result.totalCount).toBe(248);
     expect(parseTotalCount(result.headers)).toBe(248);
+  });
+
+  test('page response helper exposes total count without changing the body shape', async () => {
+    window.fetch.mockResolvedValue(response(200, { success: true, data: [{ id: 1 }] }, { 'X-Total-Count': '201' }));
+    const body = await apiResponseJson(await apiFetch('/api/items'));
+    expect(body.data).toEqual([{ id: 1 }]);
+    expect(body.totalCount).toBe(201);
+    expect(Object.keys(body)).not.toContain('totalCount');
   });
 
   test('throws typed ApiError for JSON endpoint failures', async () => {

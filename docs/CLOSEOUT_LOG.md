@@ -2260,3 +2260,9 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - Frontend CI PASS 36/36 suites / 168/168 tests; backend mocks PASS 65/65 suites / 1,084/1,084 tests. `lint:api` PASS 1/1; i18n check/parity PASS 36 namespaces / 1,432 English keys; optimized production build PASS.
 - Full PostgreSQL PASS 84/84 suites / 1,896/1,896 tests at 130 migrations; container `erp-r04-gate-20261015165905` removed, exit 0. Golden reconciliation PASS 16/16 at 130 migrations; container `erp-r02-gate-20261015170231` removed, exit 0.
 - R5.3 remains NOT DONE across the 33 existing page files. No visual, RTL appearance, or real-browser check was run.
+
+## 2026-10-15 - R5.3 UI paging implementation - partial
+
+- Added `apiResponseJson` to retain `X-Total-Count` metadata without changing API response payloads and migrated 28 page-level helpers. Wired offset/append load-more behavior into existing project, inventory, client, finance, HR, quality, document, handover, site, report, approval, and operations lists; `/admin/:area` already had a pager.
+- Verification: frontend CI PASS 36/36 suites / 169/169 tests; API guard PASS 1/1; i18n check/parity PASS 36 namespaces / 1,432 English keys; production build compiled successfully.
+- NOT DONE: remaining page flows in the pagination impact inventory still need paging, including dashboard/project detail/operations/setup, extended QHSE/document control, procurement review, and portal views. The R5.6 exit gates and final scorecard have not been completed. No visual/RTL/browser check was run.

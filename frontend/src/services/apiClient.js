@@ -101,6 +101,17 @@ export function parseTotalCount(headers) {
   return Number.isFinite(count) && count >= 0 ? count : null;
 }
 
+// Preserve the existing JSON response shape while making the pagination
+// header available to page-level helpers that still consume a Response.
+export async function apiResponseJson(response) {
+  const data = await response.json();
+  const totalCount = parseTotalCount(response.headers);
+  if (data && typeof data === 'object' && totalCount != null) {
+    Object.defineProperty(data, 'totalCount', { value: totalCount, configurable: true });
+  }
+  return data;
+}
+
 export function apiUrl(path) {
   return `${API_URL}${path.startsWith('/') ? path : `/${path}`}`;
 }

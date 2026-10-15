@@ -1,8 +1,9 @@
-import { apiFetch } from '../services/apiClient';
-import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import TextEntryDialog from '../components/common/TextEntryDialog';
+import LoadMore from '../components/common/LoadMore';
 import { ArrowLeft, Plus, FlaskConical, AlertOctagon, ShieldCheck, Siren, X, CheckCircle, ClipboardCheck, ListChecks, Wrench, PackageCheck, Gauge } from 'lucide-react';
 import { ItpTab, WirTab, PunchTab, CapaTab, MockUpsTab, CalibrationTab } from './QHSEExtended';
 import QHSECertificatesTab from './QHSECertificatesTab';
@@ -16,7 +17,7 @@ const headers = () => {
 
 const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 const formatDate = (dateStr) => {
@@ -162,17 +163,21 @@ function QHSE() {
 
 function QualityTestsTab({ projectId, locale, t, onChanged }) {
   const [tests, setTests] = useState([]);
+  const rowsLength = useRef(0); rowsLength.current = tests.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [raiseNcrFor, setRaiseNcrFor] = useState(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
-      const res = await fetchApi(`${API_URL}/qhse/quality-tests?project_id=${projectId}`);
-      if (res.success) setTests(res.data || []);
+      const params = new URLSearchParams({ project_id: projectId, limit: '200', offset: String(append ? rowsLength.current : 0) });
+      const res = await fetchApi(`${API_URL}/qhse/quality-tests?${params}`);
+      if (res.success) { setTests(current => append ? [...current, ...(res.data || [])] : (res.data || [])); setTotalCount(res.totalCount ?? null); }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [projectId]);
 
   useEffect(() => { load(); }, [load]);
@@ -231,6 +236,7 @@ function QualityTestsTab({ projectId, locale, t, onChanged }) {
 
       {showModal && <TestModal projectId={projectId} locale={locale} t={t} onClose={() => setShowModal(false)} onSave={() => { load(); onChanged(); }} />}
       {raiseNcrFor && <NcrModal projectId={projectId} locale={locale} t={t} fromTest={raiseNcrFor} onClose={() => setRaiseNcrFor(null)} onSave={() => { load(); onChanged(); }} />}
+      <LoadMore loadedCount={tests.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => load({ append: true })} />
     </div>
   );
 }
@@ -312,20 +318,24 @@ function TestModal({ projectId, locale, t, onClose, onSave }) {
 
 function NcrsTab({ projectId, locale, t, onChanged }) {
   const [ncrs, setNcrs] = useState([]);
+  const rowsLength = useRef(0); rowsLength.current = ncrs.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
   const [resolutionTarget, setResolutionTarget] = useState(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
       const params = new URLSearchParams({ project_id: projectId });
       if (statusFilter !== 'all') params.append('status', statusFilter);
+      params.set('limit', '200'); params.set('offset', String(append ? rowsLength.current : 0));
       const res = await fetchApi(`${API_URL}/qhse/ncrs?${params}`);
-      if (res.success) setNcrs(res.data || []);
+      if (res.success) { setNcrs(current => append ? [...current, ...(res.data || [])] : (res.data || [])); setTotalCount(res.totalCount ?? null); }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [projectId, statusFilter]);
 
   useEffect(() => { load(); }, [load]);
@@ -419,6 +429,7 @@ function NcrsTab({ projectId, locale, t, onChanged }) {
 
       {showModal && <NcrModal projectId={projectId} locale={locale} t={t} onClose={() => setShowModal(false)} onSave={() => { load(); onChanged(); }} />}
       <TextEntryDialog open={Boolean(resolutionTarget)} title={t('common.dialogs.resolveNcrTitle')} label={t('common.dialogs.resolveNcrLabel')} onSubmit={resolveNcr} onCancel={() => setResolutionTarget(null)} />
+      <LoadMore loadedCount={ncrs.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => load({ append: true })} />
     </div>
   );
 }
@@ -498,16 +509,20 @@ const DEFAULT_CHECKLIST = [
 
 function InspectionsTab({ projectId, locale, t, onChanged }) {
   const [inspections, setInspections] = useState([]);
+  const rowsLength = useRef(0); rowsLength.current = inspections.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
-      const res = await fetchApi(`${API_URL}/qhse/inspections?project_id=${projectId}`);
-      if (res.success) setInspections(res.data || []);
+      const params = new URLSearchParams({ project_id: projectId, limit: '200', offset: String(append ? rowsLength.current : 0) });
+      const res = await fetchApi(`${API_URL}/qhse/inspections?${params}`);
+      if (res.success) { setInspections(current => append ? [...current, ...(res.data || [])] : (res.data || [])); setTotalCount(res.totalCount ?? null); }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [projectId]);
 
   useEffect(() => { load(); }, [load]);
@@ -561,6 +576,7 @@ function InspectionsTab({ projectId, locale, t, onChanged }) {
       )}
 
       {showModal && <InspectionModal projectId={projectId} locale={locale} t={t} onClose={() => setShowModal(false)} onSave={() => { load(); onChanged(); }} />}
+      <LoadMore loadedCount={inspections.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => load({ append: true })} />
     </div>
   );
 }
@@ -640,16 +656,20 @@ function InspectionModal({ projectId, locale, t, onClose, onSave }) {
 
 function IncidentsTab({ projectId, locale, t, onChanged }) {
   const [incidents, setIncidents] = useState([]);
+  const rowsLength = useRef(0); rowsLength.current = incidents.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
-      const res = await fetchApi(`${API_URL}/qhse/incidents?project_id=${projectId}`);
-      if (res.success) setIncidents(res.data || []);
+      const params = new URLSearchParams({ project_id: projectId, limit: '200', offset: String(append ? rowsLength.current : 0) });
+      const res = await fetchApi(`${API_URL}/qhse/incidents?${params}`);
+      if (res.success) { setIncidents(current => append ? [...current, ...(res.data || [])] : (res.data || [])); setTotalCount(res.totalCount ?? null); }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [projectId]);
 
   useEffect(() => { load(); }, [load]);
@@ -724,6 +744,7 @@ function IncidentsTab({ projectId, locale, t, onChanged }) {
       )}
 
       {showModal && <IncidentModal projectId={projectId} locale={locale} t={t} onClose={() => setShowModal(false)} onSave={() => { load(); onChanged(); }} />}
+      <LoadMore loadedCount={incidents.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => load({ append: true })} />
     </div>
   );
 }

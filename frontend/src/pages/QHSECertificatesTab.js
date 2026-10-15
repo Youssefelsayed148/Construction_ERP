@@ -1,5 +1,6 @@
 import { apiFetch } from '../services/apiClient';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import LoadMore from '../components/common/LoadMore';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 const emptyForm = {
@@ -23,21 +24,29 @@ async function request(url, options = {}) {
 
 export default function QHSECertificatesTab({ projectId, t }) {
   const [rows, setRows] = useState([]);
+  const rowsLength = useRef(0); rowsLength.current = rows.length;
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
-      setRows(await request(`${API_URL}/qhse/certificates?project_id=${encodeURIComponent(projectId)}`));
+      const response = await apiFetch(`${API_URL}/qhse/certificates?project_id=${encodeURIComponent(projectId)}&limit=200&offset=${append ? rowsLength.current : 0}`, { headers: authHeaders() });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || body.success === false) throw new Error(body.error_code || 'request_failed');
+      setRows(current => append ? [...current, ...(body.data || [])] : (body.data || []));
+      const total = Number(response.headers.get('X-Total-Count'));
+      setTotalCount(Number.isFinite(total) ? total : null);
       setError('');
     } catch (err) {
       setError(err.message);
     } finally {
-      setLoading(false);
+      setLoading(false); setLoadingMore(false);
     }
   }, [projectId]);
 
@@ -126,6 +135,7 @@ export default function QHSECertificatesTab({ projectId, t }) {
           {!rows.length && <p className="empty-state">{t('qhse.certificates.empty')}</p>}
         </div>
       )}
+      <LoadMore loadedCount={rows.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => load({ append: true })} />
     </section>
   );
 }

@@ -1,7 +1,8 @@
-import { apiFetch } from '../services/apiClient';
-import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import LoadMore from '../components/common/LoadMore';
 import { Plus, Edit, Trash2, DollarSign, Filter, X } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 
@@ -14,7 +15,7 @@ const headers = () => {
 
 const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 const CATEGORY_LABELS = {
@@ -35,7 +36,11 @@ const categories = ['materials', 'labor', 'equipment', 'fuel', 'maintenance', 't
 function Expenses() {
   const { t, locale } = useLocale();
   const [expenses, setExpenses] = useState([]);
+  const expensesLength = useRef(0);
+  expensesLength.current = expenses.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -50,17 +55,21 @@ function Expenses() {
     } catch (e) { console.error(e); }
   }, []);
 
-  const loadExpenses = useCallback(async () => {
-    setLoading(true);
+  const loadExpenses = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
       const params = new URLSearchParams();
       if (selectedCategory) params.append('category', selectedCategory);
       if (searchQuery) params.append('search', searchQuery);
       params.append('limit', '200');
+      params.append('offset', String(append ? expensesLength.current : 0));
       const res = await fetchApi(`${API_URL}/expenses?${params}`);
-      if (res.success) setExpenses(res.data || []);
+      if (res.success) {
+        setExpenses(current => append ? [...current, ...(res.data || [])] : (res.data || []));
+        setTotalCount(res.totalCount ?? null);
+      }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [selectedCategory, searchQuery]);
 
   useEffect(() => { loadExpenses(); }, [loadExpenses]);
@@ -242,6 +251,7 @@ function Expenses() {
         </div>
       )}
 
+      <LoadMore loadedCount={expenses.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => loadExpenses({ append: true })} />
       {showModal && <ExpenseModal
         expense={editingExpense}
         locale={locale}

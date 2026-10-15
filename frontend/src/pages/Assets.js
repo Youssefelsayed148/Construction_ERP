@@ -1,7 +1,8 @@
-import { apiFetch } from '../services/apiClient';
-import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import LoadMore from '../components/common/LoadMore';
 import { Search, Plus, Edit, Trash2, Wrench, X } from 'lucide-react';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
@@ -13,7 +14,7 @@ const headers = () => {
 
 const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 const CATEGORY_LABELS = {
@@ -37,7 +38,11 @@ const EQUIPMENT_TYPE_LABELS = {
 function Assets() {
   const { t, locale } = useLocale();
   const [assets, setAssets] = useState([]);
+  const assetsLength = useRef(0);
+  assetsLength.current = assets.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -52,17 +57,21 @@ function Assets() {
     } catch (e) { console.error(e); }
   }, []);
 
-  const loadAssets = useCallback(async () => {
-    setLoading(true);
+  const loadAssets = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
       const params = new URLSearchParams();
       if (selectedCategory) params.append('category', selectedCategory);
       if (searchQuery) params.append('search', searchQuery);
       params.append('limit', '200');
+      params.append('offset', String(append ? assetsLength.current : 0));
       const res = await fetchApi(`${API_URL}/assets?${params}`);
-      if (res.success) setAssets(res.data || []);
+      if (res.success) {
+        setAssets(current => append ? [...current, ...(res.data || [])] : (res.data || []));
+        setTotalCount(res.totalCount ?? null);
+      }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [selectedCategory, searchQuery]);
 
   useEffect(() => { loadAssets(); }, [loadAssets]);
@@ -199,6 +208,7 @@ function Assets() {
           </table>
         </div>
       )}
+      <LoadMore loadedCount={assets.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => loadAssets({ append: true })} />
 
       {showModal && <AssetModal
         asset={editingAsset}

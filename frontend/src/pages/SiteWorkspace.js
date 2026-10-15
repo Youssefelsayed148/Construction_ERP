@@ -1,8 +1,9 @@
-import { apiFetch } from '../services/apiClient';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import TextEntryDialog from '../components/common/TextEntryDialog';
+import LoadMore from '../components/common/LoadMore';
 import { ArrowLeft, Camera, Sun, Users, Truck, HardHat, ClipboardList, AlertTriangle, StickyNote, Play } from 'lucide-react';
 
 // Phase 15 — the site-engineer home screen. Everything on it comes from ONE
@@ -20,7 +21,7 @@ const headers = () => {
 
 const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 const SECTION_LABELS = {
@@ -60,6 +61,9 @@ function SiteWorkspace() {
   const { locale, t: translate } = useLocale();
   const [data, setData] = useState(null);
   const [notes, setNotes] = useState([]);
+  const notesLength = useRef(0); notesLength.current = notes.length;
+  const [notesTotalCount, setNotesTotalCount] = useState(null);
+  const [loadingMoreNotes, setLoadingMoreNotes] = useState(false);
   const [newNote, setNewNote] = useState('');
   const [narrative, setNarrative] = useState('');
   const [issues, setIssues] = useState('');
@@ -76,10 +80,20 @@ function SiteWorkspace() {
     fetchApi(`${API_URL}/projects/${id}/workspace?date=${today}`)
       .then(r => setData(r.data))
       .catch(e => setError(e.message));
-    fetchApi(`${API_URL}/projects/${id}/sticky-notes`)
-      .then(r => setNotes(r.data || []))
+    fetchApi(`${API_URL}/projects/${id}/sticky-notes?limit=200&offset=0`)
+      .then(r => { setNotes(r.data || []); setNotesTotalCount(r.totalCount ?? null); })
       .catch(() => {});
   }, [id, today]);
+
+  const loadMoreNotes = async () => {
+    setLoadingMoreNotes(true);
+    try {
+      const r = await fetchApi(`${API_URL}/projects/${id}/sticky-notes?limit=200&offset=${notesLength.current}`);
+      setNotes(current => [...current, ...(r.data || [])]);
+      setNotesTotalCount(r.totalCount ?? null);
+    } catch (e) { setError(e.message); }
+    finally { setLoadingMoreNotes(false); }
+  };
 
   useEffect(() => { load(); }, [load]);
 
@@ -252,6 +266,7 @@ function SiteWorkspace() {
                 </div>
               ))}
           </div>
+          <LoadMore loadedCount={notes.length} totalCount={notesTotalCount} loading={loadingMoreNotes} t={translate} onLoadMore={loadMoreNotes} />
           <small style={{ color: 'var(--color-text-secondary)' }}>
             {locale === 'ar'
               ? 'الملاحظات اللاصقة ليست مراسلات رسمية — استخدم مسار المستندات الرسمية.'

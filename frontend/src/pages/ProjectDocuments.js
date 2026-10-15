@@ -1,8 +1,9 @@
-import { apiFetch } from '../services/apiClient';
-import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import TextEntryDialog from '../components/common/TextEntryDialog';
+import LoadMore from '../components/common/LoadMore';
 import { ArrowLeft, Plus, Search, X, FileText, FolderOpen, MessageSquare, PackageCheck, History, CheckCircle, XCircle, Upload, Download, AlertTriangle } from 'lucide-react';
 import { RegisterTab, TransmittalsTab, CorrespondenceTab, DocSearchTab } from './DocControlExtended';
 import DocumentUpload from '../components/DocumentUpload';
@@ -19,7 +20,7 @@ const headers = () => {
 
 const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 const formatDate = (dateStr) => {
@@ -113,24 +114,28 @@ function ProjectDocuments() {
 
 function LibraryTab({ projectId, locale, t }) {
   const [documents, setDocuments] = useState([]);
+  const documentsLength = useRef(0); documentsLength.current = documents.length;
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showUpload, setShowUpload] = useState(false);
   const [versionDoc, setVersionDoc] = useState(null);
   const [historyDoc, setHistoryDoc] = useState(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
       const params = new URLSearchParams({ project_id: projectId });
+      params.set('limit', '200'); params.set('offset', String(append ? documentsLength.current : 0));
       if (categoryFilter) params.append('category_id', categoryFilter);
       if (searchQuery) params.append('search', searchQuery);
       const res = await fetchApi(`${API_URL}/docs/documents?${params}`);
-      if (res.success) setDocuments(res.data || []);
+      if (res.success) { setDocuments(current => append ? [...current, ...(res.data || [])] : (res.data || [])); setTotalCount(res.totalCount ?? null); }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [projectId, categoryFilter, searchQuery]);
 
   const loadCategories = useCallback(async () => {
@@ -250,6 +255,7 @@ function LibraryTab({ projectId, locale, t }) {
       {showUpload && <UploadDocModal projectId={projectId} categories={categories} locale={locale} t={t} onClose={() => setShowUpload(false)} onSave={load} />}
       {versionDoc && <NewVersionModal doc={versionDoc} locale={locale} t={t} onClose={() => setVersionDoc(null)} onSave={load} />}
       {historyDoc && <VersionHistoryModal doc={historyDoc} locale={locale} onClose={() => setHistoryDoc(null)} />}
+      <LoadMore loadedCount={documents.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => load({ append: true })} />
     </div>
   );
 }
@@ -488,17 +494,21 @@ function VersionHistoryModal({ doc, locale, onClose }) {
 
 function RfisTab({ projectId, locale, t }) {
   const [rfis, setRfis] = useState([]);
+  const rfisLength = useRef(0); rfisLength.current = rfis.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [respondTo, setRespondTo] = useState(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
-      const res = await fetchApi(`${API_URL}/docs/rfis?project_id=${projectId}`);
-      if (res.success) setRfis(res.data || []);
+      const params = new URLSearchParams({ project_id: projectId, limit: '200', offset: String(append ? rfisLength.current : 0) });
+      const res = await fetchApi(`${API_URL}/docs/rfis?${params}`);
+      if (res.success) { setRfis(current => append ? [...current, ...(res.data || [])] : (res.data || [])); setTotalCount(res.totalCount ?? null); }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [projectId]);
 
   useEffect(() => { load(); }, [load]);
@@ -583,6 +593,7 @@ function RfisTab({ projectId, locale, t }) {
 
       {showModal && <RfiModal projectId={projectId} locale={locale} t={t} onClose={() => setShowModal(false)} onSave={load} />}
       {respondTo && <RfiRespondModal rfi={respondTo} locale={locale} t={t} onClose={() => setRespondTo(null)} onSave={load} />}
+      <LoadMore loadedCount={rfis.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => load({ append: true })} />
     </div>
   );
 }
@@ -736,17 +747,21 @@ function RfiRespondModal({ rfi, locale, t, onClose, onSave }) {
 
 function SubmittalsTab({ projectId, locale, t }) {
   const [submittals, setSubmittals] = useState([]);
+  const submittalsLength = useRef(0); submittalsLength.current = submittals.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [responseTarget, setResponseTarget] = useState(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
-      const res = await fetchApi(`${API_URL}/docs/submittals?project_id=${projectId}`);
-      if (res.success) setSubmittals(res.data || []);
+      const params = new URLSearchParams({ project_id: projectId, limit: '200', offset: String(append ? submittalsLength.current : 0) });
+      const res = await fetchApi(`${API_URL}/docs/submittals?${params}`);
+      if (res.success) { setSubmittals(current => append ? [...current, ...(res.data || [])] : (res.data || [])); setTotalCount(res.totalCount ?? null); }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [projectId]);
 
   useEffect(() => { load(); }, [load]);
@@ -835,6 +850,7 @@ function SubmittalsTab({ projectId, locale, t }) {
 
       {showModal && <SubmittalModal projectId={projectId} locale={locale} t={t} onClose={() => setShowModal(false)} onSave={load} />}
       <TextEntryDialog open={Boolean(responseTarget)} title={t('common.dialogs.submittalResponseTitle')} label={t('common.dialogs.reasonNotesLabel')} required={false} onSubmit={(response) => submitResponse(responseTarget.sub, responseTarget.status, response)} onCancel={() => setResponseTarget(null)} />
+      <LoadMore loadedCount={submittals.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => load({ append: true })} />
     </div>
   );
 }

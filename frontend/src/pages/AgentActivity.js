@@ -1,7 +1,8 @@
-import { apiFetch } from '../services/apiClient';
-import React, { useCallback, useEffect, useState } from 'react';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Bot, ShieldCheck, ClipboardList, CheckCircle2, XCircle } from 'lucide-react';
 import { useLocale } from '../hooks/useLocale';
+import LoadMore from '../components/common/LoadMore';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
@@ -16,7 +17,7 @@ async function fetchApi(url, options = {}) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || `Request failed (${res.status})`);
   }
-  return res.json();
+  return apiResponseJson(res);
 }
 
 // Phase 27 — admin "Agent Activity": every MCP tool call with its
@@ -28,8 +29,12 @@ export default function AgentActivity() {
   const { locale, t } = useLocale();
   const [tab, setTab] = useState('requests');
   const [calls, setCalls] = useState([]);
+  const callsLength = useRef(0); callsLength.current = calls.length;
   const [requests, setRequests] = useState([]);
+  const requestsLength = useRef(0); requestsLength.current = requests.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCounts, setTotalCounts] = useState({ calls: null, requests: null });
   const [error, setError] = useState(null);
   const [decisionComment, setDecisionComment] = useState({});
 
@@ -43,12 +48,30 @@ export default function AgentActivity() {
       ]);
       setCalls(callsRes.data || []);
       setRequests(requestsRes.data || []);
+      setTotalCounts({ calls: callsRes.totalCount ?? null, requests: requestsRes.totalCount ?? null });
     } catch (e) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const loadMore = async (kind) => {
+    setLoadingMore(true);
+    try {
+      const currentCount = kind === 'calls' ? callsLength.current : requestsLength.current;
+      const path = kind === 'calls' ? '/agent/activity' : '/agent/requests';
+      const page = await fetchApi(`${API_URL}${path}?limit=200&offset=${currentCount}`);
+      if (kind === 'calls') {
+        setCalls(current => [...current, ...(page.data || [])]);
+        setTotalCounts(current => ({ ...current, calls: page.totalCount ?? null }));
+      } else {
+        setRequests(current => [...current, ...(page.data || [])]);
+        setTotalCounts(current => ({ ...current, requests: page.totalCount ?? null }));
+      }
+    } catch (e) { setError(e.message); }
+    finally { setLoadingMore(false); }
+  };
 
   useEffect(() => { load(); }, [load]);
 
@@ -90,6 +113,7 @@ export default function AgentActivity() {
       {loading && <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}><span className="spinner" /></div>}
 
       {!loading && tab === 'requests' && (
+        <>
         <div className="table-container">
           <table className="table">
             <thead>
@@ -143,9 +167,12 @@ export default function AgentActivity() {
             </tbody>
           </table>
         </div>
+        <LoadMore loadedCount={requests.length} totalCount={totalCounts.requests} loading={loadingMore} t={t} onLoadMore={() => loadMore('requests')} />
+        </>
       )}
 
       {!loading && tab === 'calls' && (
+        <>
         <div className="table-container">
           <table className="table">
             <thead>
@@ -173,6 +200,8 @@ export default function AgentActivity() {
             </tbody>
           </table>
         </div>
+        <LoadMore loadedCount={calls.length} totalCount={totalCounts.calls} loading={loadingMore} t={t} onLoadMore={() => loadMore('calls')} />
+        </>
       )}
 
       <div style={{ marginTop: 16, fontSize: 13, opacity: 0.7, display: 'flex', gap: 8, alignItems: 'center' }}>

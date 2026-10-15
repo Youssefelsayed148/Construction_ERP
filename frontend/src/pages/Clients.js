@@ -1,7 +1,8 @@
-import { apiFetch } from '../services/apiClient';
-import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import LoadMore from '../components/common/LoadMore';
 import { Search, Plus, Edit, Trash2, Users, X } from 'lucide-react';
 import EGYPT_CITIES from '../constants/egyptCities';
 
@@ -14,7 +15,7 @@ const headers = () => {
 
 const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 const CLIENT_TYPE_LABELS = {
@@ -27,25 +28,33 @@ const clientTypes = ['individual', 'company', 'government', 'contractor', 'devel
 function Clients() {
   const { t, locale } = useLocale();
   const [clients, setClients] = useState([]);
+  const clientsLength = useRef(0);
+  clientsLength.current = clients.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const loadClients = useCallback(async () => {
-    setLoading(true);
+  const loadClients = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
       const params = new URLSearchParams();
       if (searchQuery) params.append('search', searchQuery);
       if (activeFilter === 'active') params.append('is_active', 'true');
       if (activeFilter === 'inactive') params.append('is_active', 'false');
       params.append('limit', '200');
+      params.append('offset', String(append ? clientsLength.current : 0));
       const res = await fetchApi(`${API_URL}/clients?${params}`);
-      if (res.success) setClients(res.data || []);
+      if (res.success) {
+        setClients(current => append ? [...current, ...(res.data || [])] : (res.data || []));
+        setTotalCount(res.totalCount ?? null);
+      }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [searchQuery, activeFilter]);
 
   useEffect(() => { loadClients(); }, [loadClients]);
@@ -215,6 +224,7 @@ function Clients() {
         </div>
       )}
 
+      <LoadMore loadedCount={clients.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => loadClients({ append: true })} />
       {showModal && <ClientModal
         client={editingClient}
         locale={locale}

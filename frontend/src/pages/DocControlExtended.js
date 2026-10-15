@@ -1,4 +1,4 @@
-import { apiFetch } from '../services/apiClient';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
 // Phase 21 — document control extended tabs: controlled registers,
 // transmittals, correspondence, cross-record search.
 // Rendered inside the ProjectDocuments page's tab strip; every tab renders an
@@ -17,7 +17,7 @@ const headers = () => {
 
 const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 const downloadPdf = async (url, filename) => {

@@ -1,8 +1,9 @@
-import { apiFetch } from '../services/apiClient';
-import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import TextEntryDialog from '../components/common/TextEntryDialog';
+import LoadMore from '../components/common/LoadMore';
 import { ArrowLeft, Plus, Building2, LayoutGrid, Trash2 } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 
@@ -15,7 +16,7 @@ const headers = () => {
 
 const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 const UNIT_TYPES = ['apartment', 'villa', 'penthouse', 'studio', 'townhouse', 'duplex', 'commercial', 'plot', 'office'];
@@ -57,27 +58,32 @@ function UnitsSales() {
   const navigate = useNavigate();
   const { t, locale } = useLocale();
   const [buildings, setBuildings] = useState([]);
+  const rowsLength = useRef(0); rowsLength.current = buildings.length;
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [buildingModal, setBuildingModal] = useState(false);
   const [bulkModal, setBulkModal] = useState(null);
   const [unitModal, setUnitModal] = useState(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
+      const params = new URLSearchParams({ project_id: id, limit: '200', offset: String(append ? rowsLength.current : 0) });
       const [bRes, sRes] = await Promise.all([
-        fetchApi(`${API_URL}/sales/buildings?project_id=${id}`),
+        fetchApi(`${API_URL}/sales/buildings?${params}`),
         fetchApi(`${API_URL}/sales/summary?project_id=${id}`),
       ]);
       if (bRes.success) {
-        setBuildings(bRes.data || []);
-        setSelectedBuilding(prev => prev ? (bRes.data.find(b => b.id === prev.id) || bRes.data[0] || null) : (bRes.data[0] || null));
+        setBuildings(current => append ? [...current, ...(bRes.data || [])] : (bRes.data || []));
+        setTotalCount(bRes.totalCount ?? null);
+        setSelectedBuilding(prev => append ? prev : (prev ? (bRes.data.find(b => b.id === prev.id) || bRes.data[0] || null) : (bRes.data[0] || null)));
       }
       if (sRes.success) setSummary(sRes.data);
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
@@ -140,6 +146,7 @@ function UnitsSales() {
               </button>
             ))}
           </div>
+          <LoadMore loadedCount={buildings.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => load({ append: true })} />
 
           {selectedBuilding && (
             <BuildingPanel key={selectedBuilding.id} building={selectedBuilding} locale={locale} t={t}

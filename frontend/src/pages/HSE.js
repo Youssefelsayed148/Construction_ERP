@@ -1,13 +1,14 @@
-import { apiFetch } from '../services/apiClient';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
 // Phase 20 — HSE workspace: dashboard, permits, incidents, near misses,
 // JSA/risk assessments, inspections, inductions, toolbox talks, PPE,
 // equipment inspections, emergency drills. Every tab renders an explicit
 // empty state (the zero-records requirement), never a blank screen.
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import { ArrowLeft, Plus, HardHat, Flame, AlertTriangle, ShieldAlert, Users, Download, Activity } from 'lucide-react';
+import LoadMore from '../components/common/LoadMore';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
@@ -18,7 +19,7 @@ const headers = () => {
 
 const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 const downloadPdf = async (url, filename) => {
@@ -54,17 +55,28 @@ const SEVERITY_BADGE = { minor: 'badge-info', major: 'badge-warning', critical: 
 
 function useProjectData(url) {
   const [rows, setRows] = useState([]);
+  const rowsLength = useRef(0);
+  rowsLength.current = rows.length;
   const [loading, setLoading] = useState(true);
-  const load = useCallback(async () => {
-    setLoading(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
+  const load = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
-      const r = await fetchApi(url);
-      if (r.success) setRows(r.data || []);
+      const [path, query = ''] = url.split('?');
+      const params = new URLSearchParams(query);
+      params.set('limit', '200');
+      params.set('offset', String(append ? rowsLength.current : 0));
+      const r = await fetchApi(`${path}?${params}`);
+      if (r.success) {
+        setRows(current => append ? [...current, ...(r.data || [])] : (r.data || []));
+        setTotalCount(r.totalCount ?? null);
+      }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [url]);
   useEffect(() => { load(); }, [load]);
-  return { rows, loading, reload: load };
+  return { rows, loading, loadingMore, totalCount, reload: load, loadMore: () => load({ append: true }) };
 }
 
 function EmptyState({ icon: Icon, text }) {
@@ -117,7 +129,7 @@ function HseDashboardTab({ projectId, locale }) {
 // ============ PERMITS ============
 
 function PermitsTab({ projectId, locale, t }) {
-  const { rows, loading, reload } = useProjectData(`${API_URL}/hse/permits?project_id=${projectId}`);
+  const { rows, loading, loadingMore, totalCount, reload, loadMore } = useProjectData(`${API_URL}/hse/permits?project_id=${projectId}`);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ permit_type: 'work', title: '', description: '', valid_from: '', valid_to: '', conditions: '' });
 
@@ -214,6 +226,7 @@ function PermitsTab({ projectId, locale, t }) {
           </table>
         </div>
       )}
+      <LoadMore loadedCount={rows.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={loadMore} />
     </div>
   );
 }
@@ -221,7 +234,7 @@ function PermitsTab({ projectId, locale, t }) {
 // ============ INCIDENTS ============
 
 function IncidentsTab({ projectId, locale, t }) {
-  const { rows, loading, reload } = useProjectData(`${API_URL}/hse/incidents?project_id=${projectId}`);
+  const { rows, loading, loadingMore, totalCount, reload, loadMore } = useProjectData(`${API_URL}/hse/incidents?project_id=${projectId}`);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ description: '', incident_category: 'injury', severity: 'minor', is_lti: false, lost_days: 0, injured_party: '' });
 
@@ -307,6 +320,7 @@ function IncidentsTab({ projectId, locale, t }) {
           </table>
         </div>
       )}
+      <LoadMore loadedCount={rows.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={loadMore} />
     </div>
   );
 }
@@ -314,7 +328,7 @@ function IncidentsTab({ projectId, locale, t }) {
 // ============ NEAR MISSES ============
 
 function NearMissesTab({ projectId, locale, t }) {
-  const { rows, loading, reload } = useProjectData(`${API_URL}/hse/near-misses?project_id=${projectId}`);
+  const { rows, loading, loadingMore, totalCount, reload, loadMore } = useProjectData(`${API_URL}/hse/near-misses?project_id=${projectId}`);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ description: '', category: '', severity: 'minor', immediate_action: '' });
 
@@ -380,6 +394,7 @@ function NearMissesTab({ projectId, locale, t }) {
           </table>
         </div>
       )}
+      <LoadMore loadedCount={rows.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={loadMore} />
     </div>
   );
 }
@@ -388,7 +403,7 @@ function NearMissesTab({ projectId, locale, t }) {
 
 function JsaTab({ projectId, locale, t }) {
   const [kind, setKind] = useState('jsas');
-  const { rows, loading, reload } = useProjectData(`${API_URL}/hse/${kind}?project_id=${projectId}`);
+  const { rows, loading, loadingMore, totalCount, reload, loadMore } = useProjectData(`${API_URL}/hse/${kind}?project_id=${projectId}`);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ title: '', activity: '', likelihood: 'medium', severity: 'medium', controls: '' });
 
@@ -485,6 +500,7 @@ function JsaTab({ projectId, locale, t }) {
           </table>
         </div>
       )}
+      <LoadMore loadedCount={rows.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={loadMore} />
     </div>
   );
 }
@@ -493,7 +509,7 @@ function JsaTab({ projectId, locale, t }) {
 
 function RegistersTab({ projectId, locale, t }) {
   const [kind, setKind] = useState('inspections');
-  const { rows, loading, reload } = useProjectData(`${API_URL}/hse/${kind}?project_id=${projectId}`);
+  const { rows, loading, loadingMore, totalCount, reload, loadMore } = useProjectData(`${API_URL}/hse/${kind}?project_id=${projectId}`);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ title: '', person_name: '', item: '', equipment_name: '', drill_type: 'fire', value: '' });
 
@@ -591,6 +607,7 @@ function RegistersTab({ projectId, locale, t }) {
           </table>
         </div>
       )}
+      <LoadMore loadedCount={rows.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={loadMore} />
     </div>
   );
 }

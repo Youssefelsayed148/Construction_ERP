@@ -1,6 +1,7 @@
-import { apiFetch } from '../services/apiClient';
-import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
+import LoadMore from '../components/common/LoadMore';
 import {
   AlertTriangle, CalendarClock, Clock, CircleCheck, Forward,
   Inbox, Bell,
@@ -15,7 +16,7 @@ const headers = () => {
 
 const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 const PRIORITY_STYLES = {
@@ -43,23 +44,27 @@ function formatDate(iso, locale) {
 }
 
 export default function MyActions() {
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [bucket, setBucket] = useState('overdue');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [notifications, setNotifications] = useState([]);
+  const notificationsLength = useRef(0); notificationsLength.current = notifications.length;
+  const [notificationsTotalCount, setNotificationsTotalCount] = useState(null);
+  const [loadingMoreNotifications, setLoadingMoreNotifications] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const [actionsRes, notifRes] = await Promise.all([
         fetchApi(`${API_URL}/actions/my`),
-        fetchApi(`${API_URL}/notifications?limit=10`),
+        fetchApi(`${API_URL}/notifications?limit=200&offset=0`),
       ]);
       setData(actionsRes);
       setNotifications(notifRes.data || []);
+      setNotificationsTotalCount(notifRes.totalCount ?? null);
       setError(null);
     } catch (e) {
       setError(e.message);
@@ -67,6 +72,16 @@ export default function MyActions() {
       setLoading(false);
     }
   }, []);
+
+  const loadMoreNotifications = async () => {
+    setLoadingMoreNotifications(true);
+    try {
+      const result = await fetchApi(`${API_URL}/notifications?limit=200&offset=${notificationsLength.current}`);
+      setNotifications(current => [...current, ...(result.data || [])]);
+      setNotificationsTotalCount(result.totalCount ?? null);
+    } catch (e) { setError(e.message); }
+    finally { setLoadingMoreNotifications(false); }
+  };
 
   useEffect(() => { load(); }, [load]);
 
@@ -219,6 +234,7 @@ export default function MyActions() {
             ))}
           </div>
         )}
+        <LoadMore loadedCount={notifications.length} totalCount={notificationsTotalCount} loading={loadingMoreNotifications} t={t} onLoadMore={loadMoreNotifications} />
       </div>
     </div>
   );

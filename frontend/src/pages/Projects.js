@@ -1,9 +1,10 @@
-import { apiFetch } from '../services/apiClient';
-import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import { Search, Plus, Briefcase, ArrowRight, MapPin, DollarSign, Calendar, TrendingUp, TrendingDown, Receipt, X } from 'lucide-react';
 import { formatCurrency, formatDate, formatPercent } from '../utils/formatters';
+import LoadMore from '../components/common/LoadMore';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
@@ -14,7 +15,7 @@ const headers = () => {
 
 const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 const STATUS_LABELS = {
@@ -42,25 +43,33 @@ function Projects() {
   const { t, locale } = useLocale();
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
+  const projectsLength = useRef(0);
+  projectsLength.current = projects.length;
   const [portfolio, setPortfolio] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [financeData, setFinanceData] = useState({});
 
-  const loadProjects = useCallback(async () => {
-    setLoading(true);
+  const loadProjects = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
       const params = new URLSearchParams();
       if (statusFilter) params.append('status', statusFilter);
       if (typeFilter) params.append('project_type', typeFilter);
       if (searchQuery) params.append('search', searchQuery);
       params.append('limit', '200');
+      params.append('offset', String(append ? projectsLength.current : 0));
       const res = await fetchApi(`${API_URL}/projects?${params}`);
-      if (res.success) setProjects(res.data || []);
+      if (res.success) {
+        setProjects(current => append ? [...current, ...(res.data || [])] : (res.data || []));
+        setTotalCount(res.totalCount ?? null);
+      }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [statusFilter, typeFilter, searchQuery]);
 
   const loadPortfolio = useCallback(async () => {
@@ -296,6 +305,7 @@ function Projects() {
           ))}
         </div>
       )}
+      <LoadMore loadedCount={projects.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => loadProjects({ append: true })} />
 
     </div>
   );

@@ -1,10 +1,11 @@
-import { apiFetch } from '../services/apiClient';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import TextEntryDialog from '../components/common/TextEntryDialog';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import DocumentUpload from '../components/DocumentUpload';
+import LoadMore from '../components/common/LoadMore';
 import { ArrowLeft, Plus, CalendarDays, ClipboardList, Users, Sun, CheckCircle, X, Trash2, RefreshCw, WifiOff } from 'lucide-react';
 import { openProtectedFile, ProtectedImage } from '../components/ProtectedMedia';
 import { currentQueueOwnerId, notifySiteReportQueueChanged, siteReportQueueStore, syncQueuedSiteReports } from '../services/siteReportQueue';
@@ -24,7 +25,7 @@ const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...option
     error.code = e.error_code || e.code;
     throw error;
   });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 const newId = () => window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -118,19 +119,22 @@ function SiteManagement() {
 
 function DailyReportsTab({ projectId, locale, t }) {
   const [reports, setReports] = useState([]);
+  const reportsLength = useRef(0); reportsLength.current = reports.length;
+  const [totalCount, setTotalCount] = useState(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [queuedReports, setQueuedReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [discarding, setDiscarding] = useState(null);
   const ownerId = currentQueueOwnerId();
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
-      const res = await fetchApi(`${API_URL}/projects/${projectId}/site-reports?limit=100`);
-      if (res.success) setReports(res.data || []);
+      const res = await fetchApi(`${API_URL}/projects/${projectId}/site-reports?limit=200&offset=${append ? reportsLength.current : 0}`);
+      if (res.success) { setReports(current => append ? [...current, ...(res.data || [])] : (res.data || [])); setTotalCount(res.totalCount ?? null); }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [projectId]);
 
   const refreshQueue = useCallback(async () => {
@@ -259,6 +263,7 @@ function DailyReportsTab({ projectId, locale, t }) {
         </div>
       )}
 
+      <LoadMore loadedCount={reports.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => load({ append: true })} />
       {showModal && <ReportModal projectId={projectId} locale={locale} t={t} onClose={() => setShowModal(false)} onSave={() => { load(); refreshQueue(); }} />}
       <ConfirmDialog open={!!discarding} title={t('site.offline.removeTitle')} message={t('site.offline.removeMessage')}
         confirmLabel={t('site.offline.remove')} destructive onConfirm={discardQueuedReport} onCancel={() => setDiscarding(null)} />

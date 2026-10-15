@@ -1,8 +1,9 @@
-import { apiFetch } from '../services/apiClient';
-import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
 import TextEntryDialog from '../components/common/TextEntryDialog';
 import { authService } from '../services/api';
+import LoadMore from '../components/common/LoadMore';
 import { ClipboardList, CheckCircle, XCircle, History, Inbox, Clock, Circle } from 'lucide-react';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
@@ -14,7 +15,7 @@ const headers = () => {
 
 const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 const PENDING_ALLOWED_ROLES = ['owner', 'admin', 'finance_manager', 'purchasing_mgr', 'project_manager', 'legal_mgr', 'maintenance_mgr'];
@@ -229,32 +230,38 @@ function Approvals() {
   const [error, setError] = useState('');
 
   const [pending, setPending] = useState([]);
+  const pendingLength = useRef(0); pendingLength.current = pending.length;
   const [mine, setMine] = useState([]);
+  const mineLength = useRef(0); mineLength.current = mine.length;
   const [audit, setAudit] = useState([]);
+  const auditLength = useRef(0); auditLength.current = audit.length;
+  const [totalCounts, setTotalCounts] = useState({ pending: null, mine: null, audit: null });
+  const [loadingMore, setLoadingMore] = useState(false);
   const [auditFilters, setAuditFilters] = useState({ module_name: 'all', status: 'all' });
   const [detail, setDetail] = useState(null); // { id, row }
   const [inlineDecision, setInlineDecision] = useState(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     setError('');
     try {
       if (tab === 'pending') {
-        const res = await fetchApi(`${API_URL}/approvals/pending`);
-        if (res.success) setPending(res.requests || []);
+        const res = await fetchApi(`${API_URL}/approvals/pending?limit=200&offset=${append ? pendingLength.current : 0}`);
+        if (res.success) { setPending(current => append ? [...current, ...(res.requests || [])] : (res.requests || [])); setTotalCounts(current => ({ ...current, pending: res.totalCount ?? null })); }
       } else if (tab === 'mine') {
-        const res = await fetchApi(`${API_URL}/approvals/my-requests?limit=200`);
-        if (res.success) setMine(res.requests || []);
+        const res = await fetchApi(`${API_URL}/approvals/my-requests?limit=200&offset=${append ? mineLength.current : 0}`);
+        if (res.success) { setMine(current => append ? [...current, ...(res.requests || [])] : (res.requests || [])); setTotalCounts(current => ({ ...current, mine: res.totalCount ?? null })); }
       } else if (tab === 'audit') {
         const params = new URLSearchParams();
         if (auditFilters.module_name !== 'all') params.append('module_name', auditFilters.module_name);
         if (auditFilters.status !== 'all') params.append('status', auditFilters.status);
         params.append('limit', '200');
+        params.append('offset', String(append ? auditLength.current : 0));
         const res = await fetchApi(`${API_URL}/approvals/audit?${params}`);
-        if (res.success) setAudit(res.records || []);
+        if (res.success) { setAudit(current => append ? [...current, ...(res.records || [])] : (res.records || [])); setTotalCounts(current => ({ ...current, audit: res.totalCount ?? null })); }
       }
     } catch (e) { setError(e.message); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [tab, auditFilters]);
 
   useEffect(() => { load(); }, [load]);
@@ -458,6 +465,13 @@ function Approvals() {
         )
       )}
 
+      <LoadMore
+        loadedCount={tab === 'pending' ? pending.length : tab === 'mine' ? mine.length : audit.length}
+        totalCount={totalCounts[tab]}
+        loading={loadingMore}
+        t={t}
+        onLoadMore={() => load({ append: true })}
+      />
       {detail && (
         <ApprovalDetailModal
           detail={detail}

@@ -1,7 +1,8 @@
-import { apiFetch } from '../services/apiClient';
-import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
+import LoadMore from '../components/common/LoadMore';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import { ArrowLeft, Plus, Edit, Trash2, ChevronDown, ChevronRight, FileText } from 'lucide-react';
 import { formatCurrency, formatPercent } from '../utils/formatters';
@@ -15,7 +16,7 @@ const headers = () => {
 
 const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { const err = new Error(e.error || 'Request failed'); err.code = e.code; throw err; });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 const TYPE_LABELS = {
@@ -47,8 +48,14 @@ function BOQ() {
   const navigate = useNavigate();
   const { t, locale } = useLocale();
   const [sections, setSections] = useState([]);
+  const sectionsLength = useRef(0); sectionsLength.current = sections.length;
   const [items, setItems] = useState([]);
+  const itemsLength = useRef(0); itemsLength.current = items.length;
+  const [sectionTotalCount, setSectionTotalCount] = useState(null);
+  const [itemTotalCount, setItemTotalCount] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMoreSections, setLoadingMoreSections] = useState(false);
+  const [loadingMoreItems, setLoadingMoreItems] = useState(false);
   const [expandedSections, setExpandedSections] = useState({});
   const [showSectionModal, setShowSectionModal] = useState(false);
   const [showItemModal, setShowItemModal] = useState(false);
@@ -59,17 +66,19 @@ function BOQ() {
   const [deleteTarget, setDeleteTarget] = useState(null); // { kind: 'item' | 'section', id }
   const [deleteError, setDeleteError] = useState('');
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async ({ appendSections = false, appendItems = false } = {}) => {
+    if (appendSections) setLoadingMoreSections(true); else if (appendItems) setLoadingMoreItems(true); else setLoading(true);
     try {
+      const sectionParams = new URLSearchParams({ limit: '200', offset: String(appendSections ? sectionsLength.current : 0) });
+      const itemParams = new URLSearchParams({ limit: '200', offset: String(appendItems ? itemsLength.current : 0) });
       const [secRes, itemRes] = await Promise.all([
-        fetchApi(`${API_URL}/boq/sections/${projectId}`),
-        fetchApi(`${API_URL}/boq/items/${projectId}`)
+        fetchApi(`${API_URL}/boq/sections/${projectId}?${sectionParams}`),
+        fetchApi(`${API_URL}/boq/items/${projectId}?${itemParams}`)
       ]);
-      if (secRes.success) setSections(secRes.data || []);
-      if (itemRes.success) setItems(itemRes.data || []);
+      if (secRes.success) { setSections(current => appendSections ? [...current, ...(secRes.data || [])] : appendItems ? current : (secRes.data || [])); setSectionTotalCount(secRes.totalCount ?? null); }
+      if (itemRes.success) { setItems(current => appendItems ? [...current, ...(itemRes.data || [])] : appendSections ? current : (itemRes.data || [])); setItemTotalCount(itemRes.totalCount ?? null); }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMoreSections(false); setLoadingMoreItems(false); }
   }, [projectId]);
 
   const loadMasterItems = useCallback(async () => {
@@ -226,6 +235,8 @@ function BOQ() {
         </div>
       )}
 
+      <LoadMore loadedCount={sections.length} totalCount={sectionTotalCount} loading={loadingMoreSections} t={t} onLoadMore={() => loadData({ appendSections: true })} />
+      <LoadMore loadedCount={items.length} totalCount={itemTotalCount} loading={loadingMoreItems} t={t} onLoadMore={() => loadData({ appendItems: true })} />
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         title={deleteTarget?.kind === 'section' ? t('boq.delete.sectionTitle') : t('boq.delete.itemTitle')}

@@ -1,8 +1,9 @@
-import { apiFetch } from '../services/apiClient';
-import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
 import { Search, Plus, DollarSign, CheckCircle, ChevronDown, ChevronRight, X } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
+import LoadMore from '../components/common/LoadMore';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
@@ -13,29 +14,33 @@ const headers = () => {
 
 const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 function Payroll() {
   const { t, locale } = useLocale();
   const [periods, setPeriods] = useState([]);
+  const rowsLength = useRef(0); rowsLength.current = periods.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [expandedRows, setExpandedRows] = useState({});
   const [expandedData, setExpandedData] = useState({});
   const [expandedLoading, setExpandedLoading] = useState({});
 
-  const loadPeriods = useCallback(async () => {
-    setLoading(true);
+  const loadPeriods = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
       const params = new URLSearchParams();
       if (searchQuery) params.append('search', searchQuery);
       params.append('limit', '200');
+      params.append('offset', String(append ? rowsLength.current : 0));
       const res = await fetchApi(`${API_URL}/payroll?${params}`);
-      if (res.success) setPeriods(res.data || []);
+      if (res.success) { setPeriods(current => append ? [...current, ...(res.data || [])] : (res.data || [])); setTotalCount(res.totalCount ?? null); }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [searchQuery]);
 
   useEffect(() => { loadPeriods(); }, [loadPeriods]);
@@ -209,6 +214,7 @@ function Payroll() {
         </div>
       )}
 
+      <LoadMore loadedCount={periods.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => loadPeriods({ append: true })} />
       {showCreateModal && <CreatePayrollModal
         locale={locale}
         t={t}

@@ -1,12 +1,13 @@
-import { apiFetch } from '../services/apiClient';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
 // Phase 24 — reports workspace: catalog + saved views + scheduled reports +
 // exports (CSV/PDF) + the automatic project report. Permission-aware: the
 // columns shown are exactly what the server returned for this user.
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import TextEntryDialog from '../components/common/TextEntryDialog';
+import LoadMore from '../components/common/LoadMore';
 import { ArrowLeft, Save, Package } from 'lucide-react';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
@@ -18,7 +19,7 @@ const headers = () => {
 
 const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 function download(url, filename) {
@@ -43,6 +44,9 @@ export default function Reports() {
   const [scheduled, setScheduled] = useState([]);
   const [reportKey, setReportKey] = useState('projects');
   const [rows, setRows] = useState([]);
+  const rowsLength = useRef(0); rowsLength.current = rows.length;
+  const [rowsTotalCount, setRowsTotalCount] = useState(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [columns, setColumns] = useState([]);
   const [projectReport, setProjectReport] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -69,12 +73,19 @@ export default function Reports() {
     } catch (e) { console.error(e); }
   }, [id]);
 
-  const loadData = useCallback(async (key) => {
-    setReportKey(key);
+  const loadData = useCallback(async (key, { append = false } = {}) => {
+    if (!append) setReportKey(key); else setLoadingMore(true);
     try {
-      const r = await fetchApi(`${API_URL}/reports/data/${key}${id ? `?project_id=${id}` : ''}`);
-      if (r.success) { setRows(r.data.rows || []); setColumns(r.data.columns || []); }
+      const params = new URLSearchParams();
+      if (id) params.set('project_id', id);
+      params.set('limit', '200'); params.set('offset', String(append ? rowsLength.current : 0));
+      const r = await fetchApi(`${API_URL}/reports/data/${key}?${params}`);
+      if (r.success) {
+        setRows(current => append ? [...current, ...(r.data.rows || [])] : (r.data.rows || []));
+        setColumns(r.data.columns || []); setRowsTotalCount(r.totalCount ?? null);
+      }
     } catch (e) { console.error(e); }
+    finally { setLoadingMore(false); }
   }, [id]);
 
   useEffect(() => {
@@ -154,6 +165,7 @@ export default function Reports() {
                     </tbody>
                   </table>
                 )}
+                <LoadMore loadedCount={rows.length} totalCount={rowsTotalCount} loading={loadingMore} t={t} onLoadMore={() => loadData(reportKey, { append: true })} />
               </div>
             )}
           </div>

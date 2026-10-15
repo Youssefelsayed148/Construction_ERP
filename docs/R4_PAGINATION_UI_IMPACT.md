@@ -33,3 +33,10 @@ This inventory records every frontend page file with API reads that can include 
 - Lists identified in the route scan have been updated, including reports, project and user registers, HSE/QHSE, document control, schedule, BOQ, organization/team, and related operational collections.
 - Database-backed lists apply SQL `LIMIT/OFFSET`; lists derived from already-loaded project calculations or service results are paged after their existing calculation and sorted by stable identifiers. No index was added in this slice; a new index requires an `EXPLAIN` plan demonstrating need and is not claimed verified here.
 - UI paging controls remain for R5.3; the screens above can currently show only the first page.
+
+## R5.3 UI paging progress - 2026-10-15
+
+- Shared `LoadMore` is wired to project, asset, item, client, expense, invoice, legal, supplier, work-order, schedule activity, HSE, QHSE, QHSE certificate, document/RFI/submittal, handover, HR, agent activity, location, payroll, unit sales, approvals, my-actions notifications, reports, site reports, site notes, and BOQ lists. These requests pass `limit=200` and the current `offset`, append results, and use `X-Total-Count`.
+- The shared API response reader now preserves `X-Total-Count` as a non-enumerable metadata property across the migrated page helpers, without changing the JSON payload shape.
+- R5.3 remains NOT DONE. The remaining flagged page-level flows requiring review and paging are Dashboard, ProjectDetail, ProjectOperations, ProjectWizard, QHSEExtended, DocControlExtended, ProcurementReview, and PortalDashboard. Some are nested or aggregate views and need per-endpoint treatment; do not treat the API metadata migration as UI completion.
+- Frontend CI currently passes 36 suites / 169 tests; `lint:api` 1/1; i18n check/parity 36 namespaces / 1,432 English keys; optimized build compiles. These checks do not prove visual layout, RTL appearance, or browser behavior.

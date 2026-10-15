@@ -1,4 +1,4 @@
-import { apiFetch } from '../services/apiClient';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
 // Phase 25 — handover, closeout & warranty workspace: the exact lifecycle,
 // the package checklist with document upload + completion percent, the asset
 // register, and the warranty/DLP claim flow with SLA tracking.
@@ -7,6 +7,7 @@ import { apiFetch } from '../services/apiClient';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
+import LoadMore from '../components/common/LoadMore';
 import { openProtectedFile } from '../components/ProtectedMedia';
 import DocumentUpload from '../components/DocumentUpload';
 import TextEntryDialog from '../components/common/TextEntryDialog';
@@ -22,7 +23,7 @@ const headers = () => {
 
 const fetchApi = (url, options, translate = (key) => key) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error_code ? translate(`handover.errors.${e.error_code}`) : (e.error || translate('common.states.error'))); });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 const downloadPdf = (path, filename) => openProtectedFile(path);
@@ -56,6 +57,7 @@ export default function Handover() {
   const [claims, setClaims] = useState([]);
   const [packageItems, setPackageItems] = useState([]);
   const [warranties, setWarranties] = useState([]);
+  const [listCounts, setListCounts] = useState({ assets: null, claims: null, warranties: null });
   const [uploadTarget, setUploadTarget] = useState(null);
   const [uploadError, setUploadError] = useState('');
   const [assetDocumentAsset, setAssetDocumentAsset] = useState(null);
@@ -87,9 +89,27 @@ export default function Handover() {
       setAssets(a.data || []);
       setClaims(c.data || []);
       setWarranties(w.data || []);
+      setListCounts({ assets: a.totalCount ?? null, claims: c.totalCount ?? null, warranties: w.totalCount ?? null });
     } catch (e) { setLoadError(e.message); }
     finally { setLoading(false); }
   }, [apiCall, id]);
+
+  const [loadingMore, setLoadingMore] = useState(false);
+  const loadMore = async (kind) => {
+    setLoadingMore(true);
+    const currentRows = kind === 'assets' ? assets : kind === 'claims' ? claims : warranties;
+    const params = new URLSearchParams({ project_id: id, limit: '200', offset: String(currentRows.length) });
+    const endpoint = kind === 'assets' ? '/handover/assets' : kind === 'claims' ? '/handover/claims' : '/handover/warranties';
+    try {
+      const result = await apiCall(`${API_URL}${endpoint}?${params}`);
+      const rows = result.data || [];
+      if (kind === 'assets') setAssets(current => [...current, ...rows]);
+      if (kind === 'claims') setClaims(current => [...current, ...rows]);
+      if (kind === 'warranties') setWarranties(current => [...current, ...rows]);
+      setListCounts(current => ({ ...current, [kind]: result.totalCount ?? null }));
+    } catch (error) { setLoadError(error.message); }
+    finally { setLoadingMore(false); }
+  };
 
   useEffect(() => { load(); }, [load]);
 
@@ -370,6 +390,15 @@ export default function Handover() {
             {warranties.map((warranty) => <tr key={warranty.id}><td>{warranty.warranty_number}</td><td>{warranty.title}{warranty.project_document_title && <div><button className="btn" onClick={() => openProtectedFile(warranty.project_document_url).catch((error) => alert(error.message))}>{warranty.project_document_title}</button></div>}</td><td>{warranty.asset_code ? `${warranty.asset_code} · ${warranty.asset_name}` : '-'}</td><td>{warranty.issuer}</td><td>{fmtDate(warranty.start_date)}</td><td>{fmtDate(warranty.end_date)}</td><td>{warrantyStatusLabel(warranty.effective_status || warranty.status)}</td><td>{warranty.status !== 'void' && <button className="btn" onClick={() => updateWarrantyStatus(warranty, 'void')}>{t('handover.voidWarranty')}</button>}{warranty.status === 'void' && <button className="btn" onClick={() => updateWarrantyStatus(warranty, 'active')}>{t('handover.reactivateWarranty')}</button>}</td></tr>)}
           </tbody></table></div>}
         </>
+      )}
+      {['assets', 'claims', 'warranties'].includes(tab) && (
+        <LoadMore
+          loadedCount={tab === 'assets' ? assets.length : tab === 'claims' ? claims.length : warranties.length}
+          totalCount={listCounts[tab]}
+          loading={loadingMore}
+          t={t}
+          onLoadMore={() => loadMore(tab)}
+        />
       )}
       {showAssetForm && <form className="card" onSubmit={submitAsset} style={{ display: 'grid', gap: 10, maxWidth: 620, marginTop: 16 }}>
         <h3>{t('handover.newAsset')}</h3>

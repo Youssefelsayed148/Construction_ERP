@@ -1,15 +1,16 @@
-import { apiFetch } from '../services/apiClient';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
 // Phase 22 — planning & scheduling workspace: activities + Gantt-style bars,
 // CPM critical path, lookaheads (2/4/6 weeks), delayed activities, SV%/SPI,
 // S-curve, alerts, baselines and CSV import/export.
 // Zero-record states render explicitly, never a blank screen.
 
 import WorkPackageSelect from '../components/project/WorkPackageSelect';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import { authService } from '../services/api';
 import { hasProjectPermission } from '../utils/projectNav';
+import LoadMore from '../components/common/LoadMore';
 import { ArrowLeft, Plus, CalendarRange, AlertTriangle, TrendingDown, Download, Flag, Zap, History, Users, DollarSign } from 'lucide-react';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
@@ -25,7 +26,7 @@ const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...option
     error.error_code = e.error_code || e.error;
     throw error;
   });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 const fmtDate = (d) => {
@@ -95,7 +96,11 @@ function leftPct(a, min, span) {
 export function ActivitiesTab({ projectId, locale, t }) {
   const canEditBudget = hasProjectPermission(authService.getCurrentUser(), 'schedule', 'edit', projectId);
   const [rows, setRows] = useState([]);
+  const rowsLength = useRef(0);
+  rowsLength.current = rows.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ name: '', work_package_id: null, planned_start: '', planned_finish: '', original_duration: 0, is_milestone: false });
   const [progressActivity, setProgressActivity] = useState(null);
@@ -113,13 +118,17 @@ export function ActivitiesTab({ projectId, locale, t }) {
   const [budgetError, setBudgetError] = useState('');
   const [savingBudget, setSavingBudget] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
-      const r = await fetchApi(`${API_URL}/schedule/activities?project_id=${projectId}`);
-      if (r.success) setRows(r.data || []);
+      const params = new URLSearchParams({ project_id: projectId, limit: '200', offset: String(append ? rowsLength.current : 0) });
+      const r = await fetchApi(`${API_URL}/schedule/activities?${params}`);
+      if (r.success) {
+        setRows(current => append ? [...current, ...(r.data || [])] : (r.data || []));
+        setTotalCount(r.totalCount ?? null);
+      }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [projectId]);
 
   useEffect(() => { load(); }, [load]);
@@ -321,6 +330,7 @@ export function ActivitiesTab({ projectId, locale, t }) {
           </table>
         </div>
       )}
+      <LoadMore loadedCount={rows.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => load({ append: true })} />
     </div>
   );
 }

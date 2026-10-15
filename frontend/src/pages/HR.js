@@ -1,6 +1,7 @@
-import { apiFetch } from '../services/apiClient';
-import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
+import LoadMore from '../components/common/LoadMore';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import { Search, Plus, Edit, Trash2, Users, Calendar, Clock, HardHat, DollarSign, X } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
@@ -14,7 +15,7 @@ const headers = () => {
 
 const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 const STATUS_LABELS = {
@@ -90,22 +91,26 @@ function HR() {
 /* ─────────────────── EMPLOYEES TAB ─────────────────── */
 function EmployeesTab({ locale, t }) {
   const [employees, setEmployees] = useState([]);
+  const listLength = useRef(0); listLength.current = employees.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const loadEmployees = useCallback(async () => {
-    setLoading(true);
+  const loadEmployees = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
       const params = new URLSearchParams();
       if (searchQuery) params.append('search', searchQuery);
       params.append('limit', '200');
+      params.append('offset', String(append ? listLength.current : 0));
       const res = await fetchApi(`${API_URL}/hr/employees?${params}`);
-      if (res.success) setEmployees(res.data || []);
+      if (res.success) { setEmployees(current => append ? [...current, ...(res.data || [])] : (res.data || [])); setTotalCount(res.totalCount ?? null); }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [searchQuery]);
 
   useEffect(() => { loadEmployees(); }, [loadEmployees]);
@@ -211,6 +216,7 @@ function EmployeesTab({ locale, t }) {
         </div>
       )}
 
+      <LoadMore loadedCount={employees.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => loadEmployees({ append: true })} />
       {showModal && <EmployeeModal
         employee={editingEmployee}
         locale={locale}
@@ -350,20 +356,24 @@ function EmployeeModal({ employee, locale, t, onClose, onSave }) {
 /* ─────────────────── ATTENDANCE TAB ─────────────────── */
 function AttendanceTab({ locale, t }) {
   const [records, setRecords] = useState([]);
+  const listLength = useRef(0); listLength.current = records.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   const [showRecordModal, setShowRecordModal] = useState(false);
 
-  const loadAttendance = useCallback(async () => {
-    setLoading(true);
+  const loadAttendance = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
       const params = new URLSearchParams();
       if (selectedDate) params.append('date', selectedDate);
       params.append('limit', '200');
+      params.append('offset', String(append ? listLength.current : 0));
       const res = await fetchApi(`${API_URL}/hr/attendance?${params}`);
-      if (res.success) setRecords(res.data || []);
+      if (res.success) { setRecords(current => append ? [...current, ...(res.data || [])] : (res.data || [])); setTotalCount(res.totalCount ?? null); }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [selectedDate]);
 
   useEffect(() => { loadAttendance(); }, [loadAttendance]);
@@ -431,6 +441,7 @@ function AttendanceTab({ locale, t }) {
         </div>
       )}
 
+      <LoadMore loadedCount={records.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => loadAttendance({ append: true })} />
       {showRecordModal && <AttendanceModal
         locale={locale}
         t={t}
@@ -540,22 +551,26 @@ function AttendanceModal({ locale, t, date, onClose, onSave }) {
 /* ─────────────────── DAILY LABORERS TAB ─────────────────── */
 function LaborersTab({ locale, t }) {
   const [laborers, setLaborers] = useState([]);
+  const listLength = useRef(0); listLength.current = laborers.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingLaborer, setEditingLaborer] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const loadLaborers = useCallback(async () => {
-    setLoading(true);
+  const loadLaborers = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
       const params = new URLSearchParams();
       if (searchQuery) params.append('search', searchQuery);
       params.append('limit', '200');
+      params.append('offset', String(append ? listLength.current : 0));
       const res = await fetchApi(`${API_URL}/hr/laborers?${params}`);
-      if (res.success) setLaborers(res.data || []);
+      if (res.success) { setLaborers(current => append ? [...current, ...(res.data || [])] : (res.data || [])); setTotalCount(res.totalCount ?? null); }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [searchQuery]);
 
   useEffect(() => { loadLaborers(); }, [loadLaborers]);
@@ -651,6 +666,7 @@ function LaborersTab({ locale, t }) {
         </div>
       )}
 
+      <LoadMore loadedCount={laborers.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => loadLaborers({ append: true })} />
       {showModal && <LaborerModal
         laborer={editingLaborer}
         locale={locale}
@@ -758,16 +774,19 @@ function LaborerModal({ laborer, locale, t, onClose, onSave }) {
 /* ─────────────────── LABOR PAYMENTS TAB ─────────────────── */
 function LaborPaymentsTab({ locale, t }) {
   const [payments, setPayments] = useState([]);
+  const listLength = useRef(0); listLength.current = payments.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  const loadPayments = useCallback(async () => {
-    setLoading(true);
+  const loadPayments = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
-      const res = await fetchApi(`${API_URL}/hr/labor-payments?limit=200`);
-      if (res.success) setPayments(res.data || []);
+      const res = await fetchApi(`${API_URL}/hr/labor-payments?limit=200&offset=${append ? listLength.current : 0}`);
+      if (res.success) { setPayments(current => append ? [...current, ...(res.data || [])] : (res.data || [])); setTotalCount(res.totalCount ?? null); }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, []);
 
   useEffect(() => { loadPayments(); }, [loadPayments]);
@@ -820,6 +839,7 @@ function LaborPaymentsTab({ locale, t }) {
           </table>
         </div>
       )}
+      <LoadMore loadedCount={payments.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => loadPayments({ append: true })} />
 
       {showModal && <LaborPaymentModal
         locale={locale}

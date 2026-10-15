@@ -1,7 +1,8 @@
-import { apiFetch } from '../services/apiClient';
-import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch, apiResponseJson } from '../services/apiClient';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
+import LoadMore from '../components/common/LoadMore';
 import {
   Building2, Layers, MapPin, AlertTriangle, FileText,
   Users, Camera, Wallet, RefreshCw,
@@ -16,7 +17,7 @@ const headers = () => {
 
 const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
-  return r.json();
+  return apiResponseJson(r);
 });
 
 const TYPE_ICONS = {
@@ -30,12 +31,15 @@ const TYPE_ICONS = {
 
 export default function LocationDashboard() {
   const { id: projectId } = useParams();
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
   const [locations, setLocations] = useState([]);
+  const locationsLength = useRef(0); locationsLength.current = locations.length;
   const [selected, setSelected] = useState(null);
   const [progress, setProgress] = useState(null);
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [error, setError] = useState(null);
   const [weightPolicy, setWeightPolicy] = useState('boq_value');
 
@@ -68,10 +72,13 @@ export default function LocationDashboard() {
     },
   }[locale === 'ar' ? 'ar' : 'en'];
 
-  const loadLocations = useCallback(async () => {
+  const loadLocations = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
-      const r = await fetchApi(`${API_URL}/locations/project/${projectId}`);
-      setLocations(r.data || []);
+      const params = new URLSearchParams({ limit: '200', offset: String(append ? locationsLength.current : 0) });
+      const r = await fetchApi(`${API_URL}/locations/project/${projectId}?${params}`);
+      setLocations(current => append ? [...current, ...(r.data || [])] : (r.data || []));
+      setTotalCount(r.totalCount ?? null);
       // Default selection: the project root.
       if (r.data && r.data.length > 0 && !selected) setSelected(r.data[0]);
       setError(null);
@@ -79,6 +86,7 @@ export default function LocationDashboard() {
       setError(e.message);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, [projectId, selected]);
 
@@ -180,6 +188,7 @@ export default function LocationDashboard() {
               </div>
             </div>
           )}
+      <LoadMore loadedCount={locations.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => loadLocations({ append: true })} />
 
           {dashboard && dashboard.documents && (
             <div className="card">
