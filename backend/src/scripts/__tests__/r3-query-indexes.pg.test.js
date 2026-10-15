@@ -41,53 +41,32 @@ describePg('R3.5 ranked query indexes (real PostgreSQL)', () => {
       '0067_r3_ranked_query_and_fk_indexes.sql',
     ];
     const versionedDir = fs.mkdtempSync(path.join(os.tmpdir(), 'r3-latest-upgrade-'));
+    const schema = `r3_upgrade_${process.pid}`;
+    const previousPgOptions = process.env.PGOPTIONS;
     for (const name of migrationNames) {
       fs.copyFileSync(path.join(__dirname, '..', '..', 'migrations', name), path.join(versionedDir, name));
     }
     try {
-      await pool.query(`
-        DROP INDEX IF EXISTS idx_invoices_created_at_desc_r3;
-        DROP INDEX IF EXISTS idx_purchase_orders_project_created_at_r3;
-        DROP INDEX IF EXISTS idx_project_costs_project_transaction_r3;
-        DROP INDEX IF EXISTS idx_journal_entry_lines_account_id_r3;
-        DROP INDEX IF EXISTS idx_payments_supplier_id_r3;
-        DROP INDEX IF EXISTS idx_payment_allocations_supplier_invoice_r3;
-        DROP TRIGGER IF EXISTS journal_entry_lines_balance_insert_statement ON journal_entry_lines;
-        DROP TRIGGER IF EXISTS journal_entry_lines_balance_update_statement ON journal_entry_lines;
-        DROP TRIGGER IF EXISTS journal_entry_lines_balance_delete_statement ON journal_entry_lines;
-        DROP TRIGGER IF EXISTS journal_entry_balance_checks_deferred ON journal_entry_balance_checks;
-        DROP TRIGGER IF EXISTS journal_entry_lines_balance ON journal_entry_lines;
-        DROP FUNCTION IF EXISTS queue_journal_entry_balance_check();
-        DROP FUNCTION IF EXISTS validate_queued_journal_entry_balance();
-        DROP TABLE IF EXISTS journal_entry_balance_checks;
-        DROP INDEX IF EXISTS idx_journal_entry_lines_journal_entry_id;
-        DROP FUNCTION IF EXISTS journal_entry_must_balance();
-        CREATE FUNCTION journal_entry_must_balance() RETURNS trigger AS $fn$
-        DECLARE d NUMERIC; c NUMERIC; eid INTEGER;
-        BEGIN
-          eid := COALESCE(NEW.journal_entry_id, OLD.journal_entry_id);
-          SELECT COALESCE(SUM(debit), 0), COALESCE(SUM(credit), 0) INTO d, c
-            FROM journal_entry_lines WHERE journal_entry_id = eid;
-          IF d <> c THEN RAISE EXCEPTION 'legacy balance check' USING ERRCODE = '23514'; END IF;
-          RETURN NULL;
-        END;
-        $fn$ LANGUAGE plpgsql;
-        CREATE CONSTRAINT TRIGGER journal_entry_lines_balance
-          AFTER INSERT OR UPDATE OR DELETE ON journal_entry_lines
-          DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION journal_entry_must_balance();
-      `);
-      await pool.query('DELETE FROM schema_migrations WHERE version = ANY($1)', [migrationNames]);
+      await pool.query(`CREATE SCHEMA ${schema}`);
+      for (const table of ['journal_entry_lines', 'commitments', 'purchase_orders', 'sub_contracts', 'document_counters', 'invoices', 'project_costs', 'payments', 'payment_allocations']) {
+        await pool.query(`CREATE TABLE ${schema}.${table} (LIKE public.${table} INCLUDING ALL)`);
+      }
+      // runMigrations and its child scripts use fresh pools; PGOPTIONS scopes all of them to this empty replay schema.
+      process.env.PGOPTIONS = `-c search_path=${schema},public`;
       const result = await runMigrations({ legacy: [], versionedDir });
       expect(result.applied).toEqual(migrationNames);
-      const records = (await pool.query('SELECT version FROM schema_migrations WHERE version = ANY($1) ORDER BY version', [migrationNames])).rows.map((row) => row.version);
+      const records = (await pool.query(`SELECT version FROM ${schema}.schema_migrations WHERE version = ANY($1) ORDER BY version`, [migrationNames])).rows.map((row) => row.version);
       expect(records).toEqual(migrationNames);
       const indexes = (await pool.query(
-        "SELECT count(*)::int AS n FROM pg_indexes WHERE schemaname = 'public' AND indexname = ANY($1)",
-        [['idx_invoices_created_at_desc_r3', 'idx_purchase_orders_project_created_at_r3', 'idx_project_costs_project_transaction_r3', 'idx_journal_entry_lines_account_id_r3', 'idx_payments_supplier_id_r3', 'idx_payment_allocations_supplier_invoice_r3']]
+        'SELECT count(*)::int AS n FROM pg_indexes WHERE schemaname = $1 AND indexname = ANY($2)',
+        [schema, ['idx_invoices_created_at_desc_r3', 'idx_purchase_orders_project_created_at_r3', 'idx_project_costs_project_transaction_r3', 'idx_journal_entry_lines_account_id_r3', 'idx_payments_supplier_id_r3', 'idx_payment_allocations_supplier_invoice_r3']]
       )).rows[0].n;
       expect(indexes).toBe(6);
-      expect((await pool.query("SELECT 1 FROM pg_trigger WHERE tgname = 'journal_entry_lines_balance_insert_statement' AND NOT tgisinternal")).rowCount).toBe(1);
+      expect((await pool.query(`SELECT 1 FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = $1 AND t.tgname = 'journal_entry_lines_balance_insert_statement' AND NOT t.tgisinternal`, [schema])).rowCount).toBe(1);
     } finally {
+      if (previousPgOptions === undefined) delete process.env.PGOPTIONS;
+      else process.env.PGOPTIONS = previousPgOptions;
+      await pool.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
       fs.rmSync(versionedDir, { recursive: true, force: true });
     }
   });
