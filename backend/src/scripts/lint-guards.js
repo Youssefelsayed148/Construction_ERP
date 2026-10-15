@@ -59,9 +59,19 @@ function scanScriptPasswords() {
 
 const SILENT_CATCH = /\.catch\(\s*\(\s*\w*\s*\)\s*=>\s*\{\s*\}\s*\)/g;
 // A COUNT(*)/MAX( query with a "+ 1" on the same line or within the next 3 lines.
-const NUMBER_SOURCE = /\b(?:COUNT|MAX)\(/i;
+// Ignore JavaScript's Math.max; this rule targets SQL COUNT/MAX numbering queries.
+const NUMBER_SOURCE = /(^|[^\w.])(?:COUNT|MAX)\(/i;
 const PLUS_ONE = /\+\s*1\b/;
 const WINDOW = 3;
+function countNumbering(text) {
+  const lines = text.split('\n');
+  let count = 0;
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!NUMBER_SOURCE.test(lines[i])) continue;
+    if (PLUS_ONE.test(lines.slice(i, i + WINDOW + 1).join(' '))) count += 1;
+  }
+  return count;
+}
 // Counter-like column names: seq, next_value, last_value, next_number, counter, *_seq, *_counter.
 // JS: `existing.seq + 1`, `Number(row.next_value) + 1`, `num(seq.seq) + 1`
 const JS_COUNTER_PLUS_ONE = /\.(?:seq|next_value|last_value|next_number|last_number|counter|\w+_seq|\w+_counter)\)?\s*\+\s*1\b/i;
@@ -147,14 +157,10 @@ function scan() {
     }
     const lines = text.split('\n');
     let silent = 0;
-    let numbering = 0;
     for (const line of lines) {
       if (isMigration(rel)) silent += (line.match(SILENT_CATCH) || []).length;
     }
-    for (let i = 0; i < lines.length; i += 1) {
-      if (!NUMBER_SOURCE.test(lines[i])) continue;
-      if (PLUS_ONE.test(lines.slice(i, i + WINDOW + 1).join(' '))) numbering += 1;
-    }
+    const numbering = countNumbering(text);
     if (silent) result['silent-catch'][rel] = silent;
     if (numbering) result['count-numbering'][rel] = numbering;
     if (isRuntimeCode(rel)) {
@@ -227,4 +233,4 @@ function main() {
 }
 
 if (require.main === module) process.exit(main());
-module.exports = { scan, compare, countCounterIncrements, countEventSwallows, countUnboundActivityAudits, countLiteralPasswords, scanScriptPasswords };
+module.exports = { scan, compare, countNumbering, countCounterIncrements, countEventSwallows, countUnboundActivityAudits, countLiteralPasswords, scanScriptPasswords };

@@ -128,15 +128,17 @@ describePg('B5 API contract: OpenAPI spec vs the live /api/v1', () => {
   test('health only degrades for failed sweeps in the rolling 24-hour window', async () => {
     const sweep = `health-window-${tag}`;
     try {
+      const baseline = await call('GET', '/api/v1/ops/metrics');
+      expect(baseline.status).toBe(200);
       await db.query(
         "INSERT INTO background_sweep_runs (sweep, status, started_at, finished_at, error) VALUES ($1, 'failed', NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days', 'historical test')",
         [sweep]
       );
       const historical = await call('GET', '/api/v1/ops/metrics');
       expect(historical.status).toBe(200);
-      expect(historical.body.data.status).toBe('healthy');
-      expect(historical.body.data.failed_sweeps).toBeGreaterThanOrEqual(1);
-      expect(historical.body.data.failed_sweeps_24h).toBe(0);
+      expect(historical.body.data.status).toBe(baseline.body.data.status);
+      expect(historical.body.data.failed_sweeps).toBe(baseline.body.data.failed_sweeps + 1);
+      expect(historical.body.data.failed_sweeps_24h).toBe(baseline.body.data.failed_sweeps_24h);
 
       await db.query(
         "INSERT INTO background_sweep_runs (sweep, status, started_at, finished_at, error) VALUES ($1, 'failed', NOW(), NOW(), 'recent test')",
@@ -145,7 +147,7 @@ describePg('B5 API contract: OpenAPI spec vs the live /api/v1', () => {
       const recent = await call('GET', '/api/v1/ops/metrics');
       expect(recent.status).toBe(200);
       expect(recent.body.data.status).toBe('degraded');
-      expect(recent.body.data.failed_sweeps_24h).toBeGreaterThanOrEqual(1);
+      expect(recent.body.data.failed_sweeps_24h).toBe(historical.body.data.failed_sweeps_24h + 1);
     } finally {
       await db.query('DELETE FROM background_sweep_runs WHERE sweep LIKE $1', [`${sweep}%`]);
     }

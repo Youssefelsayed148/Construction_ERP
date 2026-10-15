@@ -1,4 +1,12 @@
-const { countCounterIncrements, countUnboundActivityAudits, scan } = require('../lint-guards');
+const { countNumbering, countCounterIncrements, countUnboundActivityAudits, scan } = require('../lint-guards');
+
+describe('lint-guards count-numbering', () => {
+  test('ignores JavaScript Math.max arithmetic while detecting SQL COUNT/MAX numbering', () => {
+    expect(countNumbering('const page = Math.max(1, offset) + 1;')).toBe(0);
+    expect(countNumbering("SELECT COUNT(*) FROM invoices\nconst next = Number(row.count) + 1;")).toBe(1);
+    expect(countNumbering("SELECT MAX(invoice_number) FROM invoices\nconst nextNumber = rows[0].max + 1;")).toBe(1);
+  });
+});
 
 describe('lint-guards counter-rmw', () => {
   test('flags the read, JS +1, write pattern the document control engine used', () => {

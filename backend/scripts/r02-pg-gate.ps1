@@ -11,6 +11,7 @@ param(
   [switch]$R4PasswordAfter,
   [switch]$R4MultiInstance,
   [switch]$R4Resilience,
+  [switch]$R4MigrationUpgrade,
   [switch]$NoForceExit,
   [string]$Filter = '^(FAIL|PASS) |Test Suites:|Tests:|^\s+R2 (mutation registry|fixture error|no audit row|rollback leak)|^\s+● .*›'
 )
@@ -18,15 +19,15 @@ $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
 $Suite = @($Suite | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
-if (-not $All -and -not $Reconcile -and -not $R4Baseline -and -not $R4PasswordAfter -and -not $R4MultiInstance -and -not $R4Resilience -and $Suite.Count -eq 0) { throw 'Pass -Suite <path>, -All, -Reconcile, -R4Baseline, -R4PasswordAfter, -R4MultiInstance or -R4Resilience.' }
+if (-not $All -and -not $Reconcile -and -not $R4Baseline -and -not $R4PasswordAfter -and -not $R4MultiInstance -and -not $R4Resilience -and -not $R4MigrationUpgrade -and $Suite.Count -eq 0) { throw 'Pass -Suite <path>, -All, -Reconcile, -R4Baseline, -R4PasswordAfter, -R4MultiInstance, -R4Resilience or -R4MigrationUpgrade.' }
 $backend = Resolve-Path (Join-Path $PSScriptRoot '..')
 $stamp = Get-Date -Format 'yyyyMMddHHmmss'
-$name = if ($R4Baseline) { "erp-r04-baseline-$stamp" } elseif ($R4PasswordAfter) { "erp-r04-password-after-$stamp" } elseif ($R4MultiInstance) { "erp-r04-multi-$stamp" } elseif ($R4Resilience) { "erp-r04-resilience-$stamp" } elseif ($R4) { "erp-r04-gate-$stamp" } else { "erp-r02-gate-$stamp" }
+$name = if ($R4Baseline) { "erp-r04-baseline-$stamp" } elseif ($R4PasswordAfter) { "erp-r04-password-after-$stamp" } elseif ($R4MultiInstance) { "erp-r04-multi-$stamp" } elseif ($R4Resilience) { "erp-r04-resilience-$stamp" } elseif ($R4MigrationUpgrade) { "erp-r04-migration-upgrade-$stamp" } elseif ($R4) { "erp-r04-gate-$stamp" } else { "erp-r02-gate-$stamp" }
 $rand = { -join ((48..57 + 97..122) | Get-Random -Count 24 | ForEach-Object { [char]$_ }) }
 $pw = & $rand
 $port = Get-Random -Minimum 55000 -Maximum 58000
-$env:DB_HOST = '127.0.0.1'; $env:DB_PORT = "$port"; $env:DB_NAME = if ($R4Baseline) { 'erp_r04_baseline' } elseif ($R4PasswordAfter) { 'erp_r04_password_after' } elseif ($R4MultiInstance) { 'erp_r04_multi' } elseif ($R4Resilience) { 'erp_r04_resilience' } elseif ($R4) { 'erp_r04_test' } else { 'erp_r02_test' }
-$env:DB_USER = if ($R4Baseline -or $R4PasswordAfter -or $R4MultiInstance -or $R4Resilience -or $R4) { 'erp_r04' } else { 'erp_r02' }; $env:DB_PASSWORD = $pw
+$env:DB_HOST = '127.0.0.1'; $env:DB_PORT = "$port"; $env:DB_NAME = if ($R4Baseline) { 'erp_r04_baseline' } elseif ($R4PasswordAfter) { 'erp_r04_password_after' } elseif ($R4MultiInstance) { 'erp_r04_multi' } elseif ($R4Resilience) { 'erp_r04_resilience' } elseif ($R4MigrationUpgrade) { 'erp_r04_migration_upgrade' } elseif ($R4) { 'erp_r04_test' } else { 'erp_r02_test' }
+$env:DB_USER = if ($R4Baseline -or $R4PasswordAfter -or $R4MultiInstance -or $R4Resilience -or $R4MigrationUpgrade -or $R4) { 'erp_r04' } else { 'erp_r02' }; $env:DB_PASSWORD = $pw
 $env:JWT_SECRET = & $rand; $env:TEST_PG = '1'; $env:NODE_ENV = 'test'; $env:APP_ENV = 'test'
 $exit = 1
 try {
@@ -41,6 +42,13 @@ try {
   if (-not $ready) { throw 'Postgres container did not become ready.' }
   Push-Location $backend
   $ErrorActionPreference = 'Continue'
+  if ($R4MigrationUpgrade) {
+    $out = node src/scripts/r4-migration-upgrade.js 2>&1 | ForEach-Object { "$_" } | Out-String
+    $exit = $LASTEXITCODE
+    ($out -split "`r?`n") | Where-Object { $_ -match 'migration upgrade (PASS|FAIL)|Error:' } | ForEach-Object { Write-Output $_ }
+    Pop-Location
+    return
+  }
   $mig = npm.cmd run migrate 2>&1 | ForEach-Object { "$_" } | Out-String
   if ($LASTEXITCODE -ne 0) { Write-Output $mig.Substring([Math]::Max(0, $mig.Length - 1500)); throw 'migrate failed' }
   Write-Output ('migrations: ' + (($mig -split "`n" | Select-String -Pattern 'applied|Applied' | Select-Object -Last 1) -join ''))
