@@ -1,6 +1,5 @@
 [
   "DELETE /api/items/:id",
-  "DELETE /api/legal/:id",
   "DELETE /api/payments/:id",
   "DELETE /api/team/:userProjectRoleId",
   "DELETE /api/users/:id",
@@ -18,7 +17,6 @@
   "POST /api/delegations/:id/deactivate",
   "POST /api/items",
   "POST /api/items/:id/restore",
-  "POST /api/legal",
   "POST /api/notifications/deliveries/:id/retry",
   "POST /api/payments",
   "POST /api/portal/subcontractor/instructions/:id/acknowledge",
@@ -42,7 +40,6 @@
   "POST /api/v1/webhooks/deliveries/:deliveryId/redrive",
   "PUT /api/approval-limits",
   "PUT /api/items/:id",
-  "PUT /api/legal/:id",
   "PUT /api/schedule/activities/:id/budgeted-cost",
   "PUT /api/schedule/assignments/:id/status",
   "PUT /api/users/:id",
