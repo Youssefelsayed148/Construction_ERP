@@ -1,13 +1,21 @@
 # Closeout state
 
+## R4.2 current position - 2026-10-15 - committed as `468a374`
+
+- Replaced process-local auth, public v1, and MCP request counters with atomic Postgres fixed-window counters; subjects are SHA-256 hashed, stale counters are cleaned, and limiter database failure returns typed 503 (fail closed). Existing authenticated v1 limiter remains on its existing atomic Postgres table.
+- Sweep runs retain 30 days of history and production intervals enforce a minimum interval after the advisory lock is acquired. A recently completed sweep records a skipped run; concurrent losers remain skipped by the advisory lock.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -R4MultiInstance` PASS: 130 migrations; two actual backend processes shared a limit of 20 (21 requests: 20 accepted, 1 limited, 0 failed); two worker processes produced 1 sweep run and 1 lock skip; immediate rerun skipped for the 60-second minimum interval. Container `erp-r04-multi-20261015150035` removed, exit 0.
+- Focused real PostgreSQL gate for distributed limiter + sweep leader PASS 2 suites / 10 tests; 130 migrations; container `erp-r04-gate-20261015150102` removed, exit 0. Focused mock gate PASS 3 suites / 61 tests. `node --check` passed for all changed JS modules and tests; `git diff --check` passed before commit.
+- Next: continue remaining R4 findings and run their required evidence/gates before R5. Exact command results are in `docs/R4_EVIDENCE.md` and `docs/CLOSEOUT_LOG.md`. The two review reports remain unstaged.
+
 ## R4.0 current position - 2026-10-15
 
 - R4.0 baseline is captured on a fresh throwaway PostgreSQL 16 database before any R4 fix: 4.58 login requests/s; event-loop lag p95/max sample 809.50 ms; pool max 20 with four waiting at peak; no statement timeout; mid-request SIGTERM reset the client; disconnect did not cancel DB work; two instances admitted 21 requests over a per-process limit of 20; immediate sweep reran twice. Hardware, row counts, full results, and one excluded invalid-order harness run are in `docs/R4_EVIDENCE.md`.
 - The corrected tracked command `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -R4Baseline` passed: 129 migrations, container `erp-r04-baseline-20261015144017` removed, exit 0. Docker version 28.3.2 confirmed via the user-authorized elevated path.
 - R4.0 baseline committed as `a4524ef` (`R4.0: capture capacity and operations baseline`) with the required trailers. This state update records that commit immediately afterward. The earlier Docker-unavailable stop is superseded. The two review reports remain untracked and unstaged.
-- R4.1 implementation is complete and ready to commit: `services/passwords.js` uses OWASP-listed scrypt N=32768/r=8/p=3 (32 MiB), random salts, tagged hashes, async crypto, timing-safe compare, and bcryptjs only on legacy user hashes. Register/change/setup owner/staging seed use scrypt; internal and OAuth password login upgrade legacy hashes. OAuth client-secret bcrypt verification remains separate. `UV_THREADPOOL_SIZE=16` is set for the production image and R4 PG runner.
+- R4.1 committed as `710c7c4` (`R4.1: migrate account passwords to async scrypt`) with required trailers. This state update records it immediately afterward. `services/passwords.js` uses OWASP-listed scrypt N=32768/r=8/p=3 (32 MiB), random salts, tagged hashes, async crypto, timing-safe compare, and bcryptjs only on legacy user hashes. Register/change/setup owner/staging seed use scrypt; internal and OAuth password login upgrade legacy hashes. OAuth client-secret bcrypt verification remains separate. `UV_THREADPOOL_SIZE=16` is set for the production image and R4 PG runner.
 - R4.1 tests: failing-first staging-import test found dotenv loaded `.env.docker` on module import; moving load into `main` changed it from 1 failure/3 passes to PASS 1/4, without reading the file. Password/auth/lockout mock suites PASS 3/13; real-PG upgrade/token-typing PASS 2/2 suites / 16 tests at 129 migrations; container removed. Post scrypt c=10 measured 42.12 req/s and maximum 100 ms-window event-loop p95 sample 23.74 ms vs baseline 4.58/s and 809.50 ms (baseline sampler window was 1 s). Node 20 c=50 isolated scrypt p95 remained 913–969 ms; the report's 500 ms target is NOT MET in this crypto-only benchmark; full app c=50 not measured. Details in `docs/R4_EVIDENCE.md`.
-- Next: commit R4.1 with required trailers, update STATE, then start R4.2. R5 must wait for every R4 exit gate to pass. The two review reports remain unstaged.
+- Next: continue remaining R4 findings and run their required evidence/gates before R5. The two review reports remain unstaged.
 
 ## Session 6 R2b.13 - 2026-10-15
 
