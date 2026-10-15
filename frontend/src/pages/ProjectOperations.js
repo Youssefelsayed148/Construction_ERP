@@ -1,5 +1,5 @@
 import { apiFetch } from '../services/apiClient';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Boxes, ClipboardList, DollarSign, Percent, RefreshCw, ShoppingCart } from 'lucide-react';
 import { formatCurrency, formatDate, formatNumber, localizedName } from '../utils/formatters';
@@ -7,6 +7,7 @@ import { translateStatus } from '../i18n/enums';
 import ProcurementWorkspace from '../components/project/ProcurementWorkspace';
 import ProjectFinanceWorkbench from '../components/project/ProjectFinanceWorkbench';
 import { useLocale } from '../hooks/useLocale';
+import LoadMore from '../components/common/LoadMore';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 const tokenHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
@@ -15,7 +16,11 @@ async function get(path) {
   const response = await apiFetch(`${API_URL}${path}`, { headers: tokenHeaders() });
   const body = await response.json().catch(() => ({}));
   if (!response.ok || body.success === false) throw new Error(body.error || `Request failed (${response.status})`);
-  return body.data;
+  const data = body.data;
+  const rawCount = response.headers?.get?.('X-Total-Count');
+  const totalCount = rawCount == null ? null : Number(rawCount);
+  if (data && typeof data === 'object' && totalCount != null && Number.isFinite(totalCount)) Object.defineProperty(data, 'totalCount', { value: totalCount, configurable: true });
+  return data;
 }
 
 const TABS = [
@@ -40,6 +45,9 @@ function ProjectOperations() {
   const navigate = useNavigate();
   const [active, setActive] = useState('materials');
   const [data, setData] = useState(EMPTY);
+  const listLengths = useRef({ materials: 0, inventory: 0, valuations: 0 });
+  const [totalCounts, setTotalCounts] = useState({ materials: null, inventory: null, valuations: null });
+  const [loadingMore, setLoadingMore] = useState(false);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(true);
   const { t } = useLocale();
@@ -47,11 +55,11 @@ function ProjectOperations() {
   const load = useCallback(async () => {
     setLoading(true);
     const requests = {
-      materials: get(`/materials/requirements?project_id=${id}`),
-      inventory: get(`/warehouses?project_id=${id}`),
+      materials: get(`/materials/requirements?project_id=${id}&limit=200&offset=0`),
+      inventory: get(`/warehouses?project_id=${id}&limit=200&offset=0`),
       procurement: get(`/procurement/project/${id}`),
       commercial: get(`/commercial/project/${id}/commercial`),
-      valuations: get(`/invoices?project_id=${id}`),
+      valuations: get(`/invoices?project_id=${id}&limit=200&offset=0`),
       retention: get(`/finance-ledger/retention?project_id=${id}`),
       finance: get(`/finance/project/${id}`),
     };
@@ -59,14 +67,34 @@ function ProjectOperations() {
       try { return [key, await promise, false]; } catch { return [key, null, true]; }
     }));
     const next = { ...EMPTY }; const nextErrors = {};
+    const counts = { materials: null, inventory: null, valuations: null };
     for (const [key, value, error] of entries) {
       if (error) nextErrors[key] = true;
-      else next[key] = value;
+      else {
+        next[key] = value;
+        if (Object.hasOwn(counts, key)) counts[key] = value?.totalCount ?? null;
+      }
     }
-    setData(next); setErrors(nextErrors); setLoading(false);
+    setData(next); setErrors(nextErrors); setTotalCounts(counts); setLoading(false);
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  const loadMore = async () => {
+    const route = active === 'materials' ? `/materials/requirements?project_id=${id}` : active === 'inventory' ? `/warehouses?project_id=${id}` : active === 'valuations' ? `/invoices?project_id=${id}` : null;
+    if (!route) return;
+    setLoadingMore(true);
+    const params = new URLSearchParams(route.split('?')[1]);
+    params.set('limit', '200'); params.set('offset', String(listLengths.current[active]));
+    try {
+      const rows = await get(`${route.split('?')[0]}?${params}`);
+      setData(current => ({ ...current, [active]: [...(current[active] || []), ...(rows || [])] }));
+      setTotalCounts(current => ({ ...current, [active]: rows?.totalCount ?? null }));
+    } catch (error) { setErrors(current => ({ ...current, [active]: true })); }
+    finally { setLoadingMore(false); }
+  };
+
+  listLengths.current = { materials: data.materials.length, inventory: data.inventory.length, valuations: data.valuations.length };
 
   return (
     <div className="page-container project-operations">
@@ -98,6 +126,7 @@ function ProjectOperations() {
           {active === 'valuations' && <Valuations rows={data.valuations || []} />}
           {active === 'retention' && <Retention data={data.retention} />}
           {active === 'finance' && <Finance data={data.finance} projectId={id} invoices={data.valuations || []} />}
+          {['materials', 'inventory', 'valuations'].includes(active) && <LoadMore loadedCount={data[active]?.length || 0} totalCount={totalCounts[active]} loading={loadingMore} t={t} onLoadMore={loadMore} />}
         </>
       )}
     </div>

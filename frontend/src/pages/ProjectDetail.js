@@ -2,6 +2,7 @@ import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
+import LoadMore from '../components/common/LoadMore';
 import { ArrowLeft, Edit, Plus, Users, Calendar, Flag, MapPin, X, Briefcase, TrendingUp, TrendingDown } from 'lucide-react';
 import { formatCurrency, formatDate, formatPercent } from '../utils/formatters';
 import { authService } from '../services/api';
@@ -65,6 +66,8 @@ function ProjectDetail() {
   const [employees, setEmployees] = useState([]);
   const [managers, setManagers] = useState([]);
   const [clients, setClients] = useState([]);
+  const [lookupCounts, setLookupCounts] = useState({ employees: null, managers: null, clients: null });
+  const [loadingLookup, setLoadingLookup] = useState({ employees: false, managers: false, clients: false });
   const [finance, setFinance] = useState(null);
 
   const [phaseModal, setPhaseModal] = useState(null);
@@ -94,24 +97,40 @@ function ProjectDetail() {
 
   const loadEmployees = useCallback(async () => {
     try {
-      const res = await fetchApi(`${API_URL}/hr/employees?limit=200`);
-      if (res.success) setEmployees(res.data || []);
+      const res = await fetchApi(`${API_URL}/hr/employees?limit=200&offset=0`);
+      if (res.success) { setEmployees(res.data || []); setLookupCounts(current => ({ ...current, employees: res.totalCount ?? null })); }
     } catch (e) { console.error(e); }
   }, []);
 
   const loadClients = useCallback(async () => {
     try {
-      const res = await fetchApi(`${API_URL}/clients?limit=200`);
-      if (res.success) setClients(res.data || []);
+      const res = await fetchApi(`${API_URL}/clients?limit=200&offset=0`);
+      if (res.success) { setClients(res.data || []); setLookupCounts(current => ({ ...current, clients: res.totalCount ?? null })); }
     } catch (e) { console.error(e); }
   }, []);
 
   const loadManagers = useCallback(async () => {
     try {
-      const res = await fetchApi(`${API_URL}/hr/employees?is_manager=true&limit=200`);
-      if (res.success) setManagers(res.data || []);
+      const res = await fetchApi(`${API_URL}/hr/employees?is_manager=true&limit=200&offset=0`);
+      if (res.success) { setManagers(res.data || []); setLookupCounts(current => ({ ...current, managers: res.totalCount ?? null })); }
     } catch (e) { console.error(e); }
   }, []);
+
+  const loadMoreLookup = async (kind) => {
+    setLoadingLookup(current => ({ ...current, [kind]: true }));
+    const rows = kind === 'clients' ? clients : kind === 'managers' ? managers : employees;
+    const params = new URLSearchParams({ limit: '200', offset: String(rows.length) });
+    if (kind === 'managers') params.set('is_manager', 'true');
+    try {
+      const result = await fetchApi(`${API_URL}${kind === 'clients' ? '/clients' : '/hr/employees'}?${params}`);
+      const next = result.data || [];
+      if (kind === 'clients') setClients(current => [...current, ...next]);
+      if (kind === 'managers') setManagers(current => [...current, ...next]);
+      if (kind === 'employees') setEmployees(current => [...current, ...next]);
+      setLookupCounts(current => ({ ...current, [kind]: result.totalCount ?? null }));
+    } catch (lookupError) { setError(lookupError.message); }
+    finally { setLoadingLookup(current => ({ ...current, [kind]: false })); }
+  };
 
   useEffect(() => { loadProject(); }, [loadProject]);
   useEffect(() => {
@@ -450,6 +469,9 @@ function ProjectDetail() {
           locale={locale}
           t={t}
           employees={employees}
+          totalCount={lookupCounts.employees}
+          loadingMore={loadingLookup.employees}
+          onLoadMore={() => loadMoreLookup('employees')}
           projectId={id}
           onClose={() => setTeamModal(false)}
           onSave={loadProject}
@@ -476,6 +498,9 @@ function ProjectDetail() {
           t={t}
           clients={clients}
           managers={managers}
+          lookupCounts={lookupCounts}
+          loadingLookup={loadingLookup}
+          loadMoreLookup={loadMoreLookup}
           onClose={() => setEditModal(false)}
           onSave={loadProject}
         />
@@ -484,7 +509,7 @@ function ProjectDetail() {
   );
 }
 
-function EditProjectModal({ project, locale, t, onClose, onSave, clients, managers }) {
+function EditProjectModal({ project, locale, t, onClose, onSave, clients, managers, lookupCounts, loadingLookup, loadMoreLookup }) {
   const [form, setForm] = useState({
     name_en: project.name_en || '', name_ar: project.name_ar || '',
     address: project.address || '', city: project.city || '',
@@ -591,6 +616,7 @@ function EditProjectModal({ project, locale, t, onClose, onSave, clients, manage
                       <option key={c.id} value={c.id}>{locale === 'ar' ? c.name_ar : c.name_en} ({c.code})</option>
                     ))}
                   </select>
+                  <LoadMore loadedCount={clients.length} totalCount={lookupCounts.clients} loading={loadingLookup.clients} onLoadMore={() => loadMoreLookup('clients')} t={t} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">{locale === 'ar' ? 'مدير المشروع' : 'Project Manager'}</label>
@@ -608,6 +634,7 @@ function EditProjectModal({ project, locale, t, onClose, onSave, clients, manage
                       </optgroup>
                     ))}
                   </select>
+                  <LoadMore loadedCount={managers.length} totalCount={lookupCounts.managers} loading={loadingLookup.managers} onLoadMore={() => loadMoreLookup('managers')} t={t} />
                 </div>
               </div>
 
@@ -744,7 +771,7 @@ function PhaseModal({ phase, locale, t, projectId, onClose, onSave }) {
   );
 }
 
-function TeamModal({ locale, t, employees, projectId, onClose, onSave }) {
+function TeamModal({ locale, t, employees, totalCount, loadingMore, onLoadMore, projectId, onClose, onSave }) {
   const [form, setForm] = useState({ employee_id: '', role: 'project_manager' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -789,6 +816,7 @@ function TeamModal({ locale, t, employees, projectId, onClose, onSave }) {
                     );
                   })}
                 </select>
+                <LoadMore loadedCount={employees.length} totalCount={totalCount} loading={loadingMore} onLoadMore={onLoadMore} t={t} />
               </div>
               <div className="form-group">
                 <label className="form-label">{locale === 'ar' ? 'الدور' : 'Role'}</label>

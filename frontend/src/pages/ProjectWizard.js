@@ -1,8 +1,9 @@
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 import { buildWizardPayload } from '../utils/wizardPayload';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
+import LoadMore from '../components/common/LoadMore';
 import { ArrowRight, ArrowLeft, Check, X, Building2, Layers, Network, Users, Globe, ShieldCheck, FileCheck, CalendarRange, FolderTree, BellRing } from 'lucide-react';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
@@ -83,15 +84,36 @@ function ProjectWizard() {
   const [clients, setClients] = useState([]);
   const [managers, setManagers] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [lookupCounts, setLookupCounts] = useState({ clients: null, managers: null, employees: null });
+  const [loadingLookup, setLoadingLookup] = useState({ clients: false, managers: false, employees: false });
+  const lookupRows = { clients, managers, employees };
+  const lookupRowsRef = useRef(lookupRows); lookupRowsRef.current = lookupRows;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const loadLookups = useCallback(async () => {
     try { const r = await fetchApi(`${API_URL}/projects/templates`); if (r.success) setTemplates(r.data || []); } catch (e) { /* none seeded yet */ }
-    try { const r = await fetchApi(`${API_URL}/clients?limit=200`); if (r.success) setClients(r.data || []); } catch (e) { /* ignore */ }
-    try { const r = await fetchApi(`${API_URL}/hr/employees?is_manager=true&limit=200`); if (r.success) setManagers(r.data || []); } catch (e) { /* ignore */ }
-    try { const r = await fetchApi(`${API_URL}/hr/employees?limit=500`); if (r.success) setEmployees(r.data || []); } catch (e) { /* ignore */ }
+    try { const r = await fetchApi(`${API_URL}/clients?limit=200&offset=0`); if (r.success) { setClients(r.data || []); setLookupCounts(current => ({ ...current, clients: r.totalCount ?? null })); } } catch (e) { /* ignore */ }
+    try { const r = await fetchApi(`${API_URL}/hr/employees?is_manager=true&limit=200&offset=0`); if (r.success) { setManagers(r.data || []); setLookupCounts(current => ({ ...current, managers: r.totalCount ?? null })); } } catch (e) { /* ignore */ }
+    try { const r = await fetchApi(`${API_URL}/hr/employees?limit=200&offset=0`); if (r.success) { setEmployees(r.data || []); setLookupCounts(current => ({ ...current, employees: r.totalCount ?? null })); } } catch (e) { /* ignore */ }
   }, []);
+
+  const loadMoreLookup = async (kind) => {
+    setLoadingLookup(current => ({ ...current, [kind]: true }));
+    const rows = lookupRowsRef.current[kind] || [];
+    const params = new URLSearchParams({ limit: '200', offset: String(rows.length) });
+    const path = kind === 'clients' ? '/clients' : '/hr/employees';
+    if (kind === 'managers') params.set('is_manager', 'true');
+    try {
+      const result = await fetchApi(`${API_URL}${path}?${params}`);
+      const next = result.data || [];
+      if (kind === 'clients') setClients(current => [...current, ...next]);
+      if (kind === 'managers') setManagers(current => [...current, ...next]);
+      if (kind === 'employees') setEmployees(current => [...current, ...next]);
+      setLookupCounts(current => ({ ...current, [kind]: result.totalCount ?? null }));
+    } catch (loadError) { setError(loadError.message); }
+    finally { setLoadingLookup(current => ({ ...current, [kind]: false })); }
+  };
 
   useEffect(() => { loadLookups(); }, [loadLookups]);
 
@@ -207,6 +229,7 @@ function ProjectWizard() {
                   <option value="">{L('-- No client assigned --', '-- بدون عميل --')}</option>
                   {clients.map(c => <option key={c.id} value={c.id}>{locale === 'ar' ? c.name_ar : c.name_en} ({c.code})</option>)}
                 </select>
+                <LoadMore loadedCount={clients.length} totalCount={lookupCounts.clients} loading={loadingLookup.clients} onLoadMore={() => loadMoreLookup('clients')} t={t} />
               </div>
             </div>
             <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
@@ -266,6 +289,7 @@ function ProjectWizard() {
                   <option value="">--</option>
                   {managers.map(m => <option key={m.id} value={m.id}>{locale === 'ar' ? m.name_ar : (m.name_en || m.name_ar)}</option>)}
                 </select>
+                <LoadMore loadedCount={managers.length} totalCount={lookupCounts.managers} loading={loadingLookup.managers} onLoadMore={() => loadMoreLookup('managers')} t={t} />
               </div>
             </div>
             <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
@@ -374,6 +398,7 @@ function ProjectWizard() {
                   <option key={e.id} value={e.id}>{locale === 'ar' ? e.name_ar : (e.name_en || e.name_ar)} {e.email ? `(${e.email})` : ''}</option>
                 ))}
               </select>
+              <LoadMore loadedCount={employees.length} totalCount={lookupCounts.employees} loading={loadingLookup.employees} onLoadMore={() => loadMoreLookup('employees')} t={t} />
             </div>
             {form.team.length === 0 && (
               <p style={{ color: 'var(--color-text-secondary)' }}>{L('No team members yet (optional).', 'لا يوجد أعضاء بعد (اختياري).')}</p>
@@ -405,6 +430,7 @@ function ProjectWizard() {
                   <option value="">{L('-- Select organization --', '-- اختر مؤسسة --')}</option>
                   {clients.map(o => <option key={o.id} value={o.id}>{(locale === 'ar' ? o.name_ar : o.name_en) || o.code}</option>)}
                 </select>
+                <LoadMore loadedCount={clients.length} totalCount={lookupCounts.clients} loading={loadingLookup.clients} onLoadMore={() => loadMoreLookup('clients')} t={t} />
               </div>
               <div className="form-group">
                 <label className="form-label">{L('Role', 'الدور')}</label>

@@ -4,8 +4,9 @@ import { apiFetch, apiResponseJson } from '../services/apiClient';
 // Rendered inside the ProjectDocuments page's tab strip; every tab renders an
 // explicit empty state (the zero-records requirement), never a blank screen.
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import TextEntryDialog from '../components/common/TextEntryDialog';
+import LoadMore from '../components/common/LoadMore';
 import { Plus, Send, FileText, Search, Download, AlertTriangle } from 'lucide-react';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
@@ -47,20 +48,24 @@ const CORR_TYPE_LABEL = { letter: 'Letter', notice: 'Notice', instruction: 'Inst
 
 export function RegisterTab({ projectId, locale, t }) {
   const [rows, setRows] = useState([]);
+  const rowsLength = useRef(0); rowsLength.current = rows.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [filter, setFilter] = useState({ doc_type: '', discipline: '', current: 'true' });
   const [registering, setRegistering] = useState(null);
   const [docs, setDocs] = useState([]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
       const params = new URLSearchParams({ project_id: projectId });
       Object.entries(filter).forEach(([k, v]) => { if (v) params.append(k, v); });
+      params.set('limit', '200'); params.set('offset', String(append ? rowsLength.current : 0));
       const r = await fetchApi(`${API_URL}/docs/registers?${params}`);
-      if (r.success) setRows(r.data || []);
+      if (r.success) { setRows(current => append ? [...current, ...(r.data || [])] : (r.data || [])); setTotalCount(r.totalCount ?? null); }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [projectId, filter]);
 
   useEffect(() => { load(); }, [load]);
@@ -150,6 +155,7 @@ export function RegisterTab({ projectId, locale, t }) {
           </table>
         </div>
       )}
+      <LoadMore loadedCount={rows.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => load({ append: true })} />
     </div>
   );
 }
@@ -157,7 +163,7 @@ export function RegisterTab({ projectId, locale, t }) {
 // ============ TRANSMITTALS ============
 
 export function TransmittalsTab({ projectId, locale, t }) {
-  const { rows, loading, reload } = useTransmittals(projectId);
+  const { rows, loading, loadingMore, totalCount, reload, loadMore } = useTransmittals(projectId);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ direction: 'outgoing', purpose: '', attention: '', response_due: '', recipient_organization_id: '', document_ids: [] });
   const [documents, setDocuments] = useState([]);
@@ -276,23 +282,27 @@ export function TransmittalsTab({ projectId, locale, t }) {
           </table>
         </div>
       )}
+      <LoadMore loadedCount={rows.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={loadMore} />
     </div>
   );
 }
 
 function useTransmittals(projectId) {
   const [rows, setRows] = useState([]);
+  const rowsLength = useRef(0); rowsLength.current = rows.length;
   const [loading, setLoading] = useState(true);
-  const reload = useCallback(async () => {
-    setLoading(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
+  const reload = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
-      const r = await fetchApi(`${API_URL}/docs/transmittals?project_id=${projectId}`);
-      if (r.success) setRows(r.data || []);
+      const r = await fetchApi(`${API_URL}/docs/transmittals?project_id=${projectId}&limit=200&offset=${append ? rowsLength.current : 0}`);
+      if (r.success) { setRows(current => append ? [...current, ...(r.data || [])] : (r.data || [])); setTotalCount(r.totalCount ?? null); }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [projectId]);
   useEffect(() => { reload(); }, [reload]);
-  return { rows, loading, reload };
+  return { rows, loading, loadingMore, totalCount, reload, loadMore: () => reload({ append: true }) };
 }
 
 // ============ CORRESPONDENCE ============

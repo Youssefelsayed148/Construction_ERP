@@ -4,8 +4,9 @@ import { apiFetch, apiResponseJson } from '../services/apiClient';
 // Rendered inside the QHSE page's tab strip; every tab renders an explicit
 // empty state (the zero-records requirement), never a blank screen.
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import WorkPackageSelect from '../components/project/WorkPackageSelect';
+import LoadMore from '../components/common/LoadMore';
 import { Plus, ClipboardCheck, ListChecks, Wrench, PackageCheck, Gauge, ShieldCheck, Download } from 'lucide-react';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
@@ -69,8 +70,11 @@ const MOCKUP_STATUS_BADGE = { proposed: 'badge-info', under_review: 'badge-warni
 
 export function ItpTab({ projectId, locale, t }) {
   const [itps, setItps] = useState([]);
+  const rowsLength = useRef(0); rowsLength.current = itps.length;
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [expanded, setExpanded] = useState(null);
   const [points, setPoints] = useState([]);
@@ -79,17 +83,18 @@ export function ItpTab({ projectId, locale, t }) {
   const [pointForm, setPointForm] = useState({ title: '', point_type: 'review', acceptance_criteria: '' });
   const [pointError, setPointError] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
+      const params = new URLSearchParams({ project_id: projectId, limit: '200', offset: String(append ? rowsLength.current : 0) });
       const [r, loc] = await Promise.all([
-        fetchApi(`${API_URL}/qhse/itps?project_id=${projectId}`),
+        fetchApi(`${API_URL}/qhse/itps?${params}`),
         fetchApi(`${API_URL}/locations/project/${projectId}`).catch(() => ({ data: [] })),
       ]);
-      if (r.success) setItps(r.data || []);
+      if (r.success) { setItps(current => append ? [...current, ...(r.data || [])] : (r.data || [])); setTotalCount(r.totalCount ?? null); }
       setLocations(loc.data || []);
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [projectId]);
 
   useEffect(() => { load(); }, [load]);
@@ -228,6 +233,7 @@ export function ItpTab({ projectId, locale, t }) {
           <div className="modal-footer"><button type="button" className="btn" onClick={() => setPointFormTarget(null)}>{t('common.cancel')}</button><button type="submit" className="btn btn-primary">{t('common.save')}</button></div>
         </form>
       </div>}
+      <LoadMore loadedCount={itps.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => load({ append: true })} />
     </div>
   );
 }
@@ -236,22 +242,26 @@ export function ItpTab({ projectId, locale, t }) {
 
 export function WirTab({ projectId, locale, t }) {
   const [wirs, setWirs] = useState([]);
+  const rowsLength = useRef(0); rowsLength.current = wirs.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [itps, setItps] = useState([]);
   const [form, setForm] = useState({ work_package_id: null, itp_id: '', notes: '' });
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
+      const params = new URLSearchParams({ project_id: projectId, limit: '200', offset: String(append ? rowsLength.current : 0) });
       const [r, ip] = await Promise.all([
-        fetchApi(`${API_URL}/qhse/wirs?project_id=${projectId}`),
+        fetchApi(`${API_URL}/qhse/wirs?${params}`),
         fetchApi(`${API_URL}/qhse/itps?project_id=${projectId}`).catch(() => ({ data: [] })),
       ]);
-      if (r.success) setWirs(r.data || []);
+      if (r.success) { setWirs(current => append ? [...current, ...(r.data || [])] : (r.data || [])); setTotalCount(r.totalCount ?? null); }
       setItps(ip.data || []);
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [projectId]);
 
   useEffect(() => { load(); }, [load]);
@@ -342,6 +352,7 @@ export function WirTab({ projectId, locale, t }) {
           </table>
         </div>
       )}
+      <LoadMore loadedCount={wirs.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => load({ append: true })} />
     </div>
   );
 }
@@ -350,17 +361,21 @@ export function WirTab({ projectId, locale, t }) {
 
 export function PunchTab({ projectId, locale, t }) {
   const [items, setItems] = useState([]);
+  const rowsLength = useRef(0); rowsLength.current = items.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ description: '', discipline: '', severity: 'minor', due_date: '', verification_authority: '' });
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
-      const r = await fetchApi(`${API_URL}/qhse/punch-items?project_id=${projectId}`);
-      if (r.success) setItems(r.data || []);
+      const params = new URLSearchParams({ project_id: projectId, limit: '200', offset: String(append ? rowsLength.current : 0) });
+      const r = await fetchApi(`${API_URL}/qhse/punch-items?${params}`);
+      if (r.success) { setItems(current => append ? [...current, ...(r.data || [])] : (r.data || [])); setTotalCount(r.totalCount ?? null); }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [projectId]);
 
   useEffect(() => { load(); }, [load]);
@@ -449,6 +464,7 @@ export function PunchTab({ projectId, locale, t }) {
           </table>
         </div>
       )}
+      <LoadMore loadedCount={items.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => load({ append: true })} />
     </div>
   );
 }
@@ -458,17 +474,21 @@ export function PunchTab({ projectId, locale, t }) {
 export function CapaTab({ projectId, locale, t }) {
   const [kind, setKind] = useState('corrective');
   const [items, setItems] = useState([]);
+  const rowsLength = useRef(0); rowsLength.current = items.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ description: '', assigned_role: '', due_date: '' });
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
-      const r = await fetchApi(`${API_URL}/qhse/actions?project_id=${projectId}&kind=${kind}`);
-      if (r.success) setItems(r.data || []);
+      const params = new URLSearchParams({ project_id: projectId, kind, limit: '200', offset: String(append ? rowsLength.current : 0) });
+      const r = await fetchApi(`${API_URL}/qhse/actions?${params}`);
+      if (r.success) { setItems(current => append ? [...current, ...(r.data || [])] : (r.data || [])); setTotalCount(r.totalCount ?? null); }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [projectId, kind]);
 
   useEffect(() => { load(); }, [load]);
@@ -547,6 +567,7 @@ export function CapaTab({ projectId, locale, t }) {
           </table>
         </div>
       )}
+      <LoadMore loadedCount={items.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => load({ append: true })} />
     </div>
   );
 }
@@ -555,17 +576,21 @@ export function CapaTab({ projectId, locale, t }) {
 
 export function MockUpsTab({ projectId, locale, t }) {
   const [items, setItems] = useState([]);
+  const rowsLength = useRef(0); rowsLength.current = items.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ title: '', discipline: '' });
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
-      const r = await fetchApi(`${API_URL}/qhse/mock-ups?project_id=${projectId}`);
-      if (r.success) setItems(r.data || []);
+      const params = new URLSearchParams({ project_id: projectId, limit: '200', offset: String(append ? rowsLength.current : 0) });
+      const r = await fetchApi(`${API_URL}/qhse/mock-ups?${params}`);
+      if (r.success) { setItems(current => append ? [...current, ...(r.data || [])] : (r.data || [])); setTotalCount(r.totalCount ?? null); }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [projectId]);
 
   useEffect(() => { load(); }, [load]);
@@ -635,6 +660,7 @@ export function MockUpsTab({ projectId, locale, t }) {
           </table>
         </div>
       )}
+      <LoadMore loadedCount={items.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => load({ append: true })} />
     </div>
   );
 }
@@ -643,17 +669,21 @@ export function MockUpsTab({ projectId, locale, t }) {
 
 export function CalibrationTab({ projectId, locale, t }) {
   const [items, setItems] = useState([]);
+  const rowsLength = useRef(0); rowsLength.current = items.length;
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ instrument_name: '', serial_no: '', next_calibration_date: '', certificate_ref: '', result: 'pass' });
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
-      const r = await fetchApi(`${API_URL}/qhse/calibration-records?project_id=${projectId}`);
-      if (r.success) setItems(r.data || []);
+      const params = new URLSearchParams({ project_id: projectId, limit: '200', offset: String(append ? rowsLength.current : 0) });
+      const r = await fetchApi(`${API_URL}/qhse/calibration-records?${params}`);
+      if (r.success) { setItems(current => append ? [...current, ...(r.data || [])] : (r.data || [])); setTotalCount(r.totalCount ?? null); }
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setLoadingMore(false); }
   }, [projectId]);
 
   useEffect(() => { load(); }, [load]);
@@ -720,6 +750,7 @@ export function CalibrationTab({ projectId, locale, t }) {
           </table>
         </div>
       )}
+      <LoadMore loadedCount={items.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={() => load({ append: true })} />
     </div>
   );
 }

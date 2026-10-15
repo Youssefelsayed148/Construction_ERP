@@ -5,6 +5,7 @@ import { authService } from '../services/api';
 import { openProtectedFile } from '../components/ProtectedMedia';
 import DocumentUpload from '../components/DocumentUpload';
 import { useLocale } from '../hooks/useLocale';
+import LoadMore from '../components/common/LoadMore';
 import { translatePriority, translateStatus } from '../i18n/enums';
 import { formatCurrency, formatDate, formatNumber, localizedName } from '../utils/formatters';
 
@@ -49,13 +50,15 @@ function valueText(value, t) {
 
 function Widget({ name, value }) {
   const { t } = useLocale();
+  const [visibleCount, setVisibleCount] = useState(6);
   const title = dashboardLabel(t, 'widgets', name);
   if (value == null) return null;
   if (Array.isArray(value)) {
     return (
       <section className="card portal-widget">
         <div className="card-header">{title} <span className="badge badge-info">{value.length}</span></div>
-        <div className="card-body">{value.length ? value.slice(0, 6).map((item, i) => <Record key={item?.id ?? i} value={item} />) : <em>{t('portals.dashboard.noRecords')}</em>}</div>
+        <div className="card-body">{value.length ? value.slice(0, visibleCount).map((item, i) => <Record key={item?.id ?? i} value={item} />) : <em>{t('portals.dashboard.noRecords')}</em>}</div>
+        <LoadMore loadedCount={Math.min(visibleCount, value.length)} totalCount={value.length} t={t} onLoadMore={() => setVisibleCount(count => count + 6)} />
       </section>
     );
   }
@@ -68,8 +71,9 @@ function Widget({ name, value }) {
       <section className="card portal-widget">
         <div className="card-header">{title} <span className="badge badge-info">{value.count ?? items.length}</span></div>
         <div className="card-body">
-          {items.length ? items.slice(0, 6).map((item, i) => <Record key={item?.id ?? i} value={item} />) : <em>{value.empty_key ? t(value.empty_key, { defaultValue: value.empty_label || t('portals.dashboard.noRecords') }) : value.empty_label || t('portals.dashboard.noRecords')}</em>}
+          {items.length ? items.slice(0, visibleCount).map((item, i) => <Record key={item?.id ?? i} value={item} />) : <em>{value.empty_key ? t(value.empty_key, { defaultValue: value.empty_label || t('portals.dashboard.noRecords') }) : value.empty_label || t('portals.dashboard.noRecords')}</em>}
         </div>
+        <LoadMore loadedCount={Math.min(visibleCount, items.length)} totalCount={items.length} t={t} onLoadMore={() => setVisibleCount(count => count + 6)} />
       </section>
     );
   }
