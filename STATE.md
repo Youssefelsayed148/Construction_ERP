@@ -1061,6 +1061,7 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 
 - Added shared response metadata reading for `X-Total-Count` to 28 page-level API helpers while preserving existing JSON payload shape. Added offset/append load-more flows for current project, asset, item, client, finance, operations, quality, handover, HR, document, site, reporting, approval, agent, and BOQ lists; the new `/admin/:area` workspaces already had paging.
 - Frontend CI PASS 36/36 suites / 169/169 tests; `lint:api` PASS 1/1; i18n check/parity PASS 36 namespaces / 1,432 English keys; production build compiled successfully.
+- Partial implementation slice committed as `e5d7f9e`; this is the post-commit checkpoint. R5.3 remains open.
 - R5.3 is NOT DONE. Remaining flagged flows to review and wire include Dashboard, ProjectDetail, ProjectOperations, ProjectWizard, QHSEExtended, DocControlExtended, ProcurementReview, and PortalDashboard. No visual, RTL appearance, or real-browser check has run.
 - Next: finish these remaining flows and any other flagged list screens in `docs/R4_PAGINATION_UI_IMPACT.md`; then rerun all R5.6 gates and produce the final scorecard. R5.5 stays skipped until required R5 work is green.
 
