@@ -1,8 +1,42 @@
 {
-  "POST /api/delegations/lookup": { "file": "routes/delegations.js", "path": "/lookup", "reason": "Evidence-only policy lookup; SELECTs only, no business mutation." },
-  "POST /api/docs/rfis/:id/respond": { "file": "routes/doccontrol.js", "path": "/rfis/:id/respond", "reason": "Retired command returns 410 before mutation; use staged responses." },
-  "POST /api/docs/submittals/:id/respond": { "file": "routes/doccontrol.js", "path": "/submittals/:id/respond", "reason": "Retired command returns 410 before mutation; use staged responses." },
-  "POST /api/v1/assistants/:assistant/draft": { "file": "routes/v1.js", "path": "/assistants/:assistant/draft", "reason": "Local deterministic draft only; no persisted document or adapter call." },
-  "POST /api/v1/rfis/:id/respond": { "file": "routes/doccontrol.js", "path": "/rfis/:id/respond", "reason": "Alias of retired command; returns 410 before mutation." },
-  "POST /api/v1/submittals/:id/respond": { "file": "routes/doccontrol.js", "path": "/submittals/:id/respond", "reason": "Alias of retired command; returns 410 before mutation." }
+  "POST /api/delegations/lookup": {
+    "file": "routes/delegations.js",
+    "path": "/lookup",
+    "reason": "Evidence-only policy lookup; SELECTs only, no business mutation."
+  },
+  "POST /api/docs/rfis/:id/respond": {
+    "file": "routes/doccontrol.js",
+    "path": "/rfis/:id/respond",
+    "reason": "Retired command returns 410 before mutation; use staged responses."
+  },
+  "POST /api/docs/submittals/:id/respond": {
+    "file": "routes/doccontrol.js",
+    "path": "/submittals/:id/respond",
+    "reason": "Retired command returns 410 before mutation; use staged responses."
+  },
+  "POST /api/v1/assistants/:assistant/draft": {
+    "file": "routes/v1.js",
+    "path": "/assistants/:assistant/draft",
+    "reason": "Local deterministic draft only; no persisted document or adapter call."
+  },
+  "POST /api/v1/rfis/:id/respond": {
+    "file": "routes/doccontrol.js",
+    "path": "/rfis/:id/respond",
+    "reason": "Alias of retired command; returns 410 before mutation."
+  },
+  "POST /api/v1/submittals/:id/respond": {
+    "file": "routes/doccontrol.js",
+    "path": "/submittals/:id/respond",
+    "reason": "Alias of retired command; returns 410 before mutation."
+  },
+  "POST /api/v1/documents/:id/acknowledgement": {
+    "file": "routes/client.js",
+    "path": "/documents/:id/acknowledgement",
+    "reason": "client writes exposed only via /api/client-portal by design"
+  },
+  "POST /api/v1/variations/:id/client-response": {
+    "file": "routes/client.js",
+    "path": "/variations/:id/response",
+    "reason": "client writes exposed only via /api/client-portal by design"
+  }
 }

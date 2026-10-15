@@ -7,4 +7,4 @@
 // Keep one file per route family; add the file name here.
 const FAMILIES = ['commercial', 'boq', 'payroll', 'subcontractors', 'procurement', 'materials', 'sitestructure', 'workorders', 'projects', 'site', 'quantities', 'schedule', 'hr', 'hse', 'qhse', 'portal', 'misc', 'approvals', 'agent-auth', 'finance-ledger', 'inventory', 'project-setup', 'documents', 'organizations', 'invoices'];
 
-module.exports = Object.assign({}, ...FAMILIES.map(name => require(`./${name}`)));
+module.exports = Object.assign({}, ...[...FAMILIES, 'consultant'].map(name => require(`./${name}`)));
