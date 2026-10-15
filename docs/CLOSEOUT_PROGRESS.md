@@ -1178,3 +1178,7 @@ Added the four remaining item mutations and two v1 material aliases, with fresh 
 ## 2026-10-15 — Session 9 R2b.27 users/companies
 
 Added three v1 company create/update/delete fixtures and three user update/deactivate fixtures; removed six routes from pending. First company run caught one redundant pending v1 users entry; corrected the entry and pending JSON syntax. Final company PASS 1 suite / 9 tests (`R2_ONLY='^\\w+ /api/v1/companies'`, container erp-r02-gate-20261015042548); user PASS 1 suite / 11 tests (`R2_ONLY='^\\w+ /api/(v1/)?users'`, container erp-r02-gate-20261015042516), both 126 migrations and exit 0. All new routes passed audit and rollback. Census 570 fixtures / 8 exemptions / 23 pending / 0 unregistered / 0 stale / 0 redundant. R2 exit pending; R3 gated.
+
+## 2026-10-15 - Session 10 R2b.28 auth/agent
+
+Added seven mutation fixtures covering agent token create/revoke, agent session status, auth registration/login/password change/logout-all. Fixtures use fresh users and credentials only in the disposable test process. The first runtime attempt found Joi rejects `.test.invalid`; synthetic `example.com` addresses corrected it. Final `R2_ONLY='^POST /api/(agent/(tokens|sessions)|auth/)'` through the tracked PG runner: PASS 1 suite / 17 tests; 126 migrations; no rollback leaks. Census 577 fixtures / 8 exemptions / 16 pending / 0 unregistered / 0 stale / 0 redundant. R2 exit gates pending; R3 gated.

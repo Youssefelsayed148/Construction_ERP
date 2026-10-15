@@ -2087,3 +2087,7 @@ Added four item mutations and v1 material create/update aliases, removed six exa
 ## 2026-10-15 - Session 9 R2b.27 users/companies
 
 Added 3 v1 company mutation fixtures and 3 user mutation fixtures, removed six pending paths. Initial company gate detected a redundant pending v1 users entry; corrected it and the JSON syntax. Final companies `R2_ONLY='^\\w+ /api/v1/companies'`: PASS 1/9, 126 migrations, erp-r02-gate-20261015042548 removed. Users `R2_ONLY='^\\w+ /api/(v1/)?users'`: PASS 1/11, 126 migrations, erp-r02-gate-20261015042516 removed; existing preview fixture included. All six new routes audited and rollback-verified, no leaks. Census 570/601, 23 pending, 8 exempt, 0 unregistered/stale/redundant. R2 gates pending; R3 gated.
+
+## 2026-10-15 - Session 10 R2b.28 auth/agent
+
+Added fixtures for three agent token/session mutations and four auth mutations. The login/change-password/logout fixtures use fresh throwaway users with process-local low-cost bcrypt hashes; registration uses synthetic example.com addresses. Failing-first registry run showed the seven unregistered routes (1 suite failed / 5 passed). First fixture run exposed invalid `.test.invalid` email validation; after using `example.com`, `R2_ONLY='^POST /api/(agent/(tokens|sessions)|auth/)'` passed 1 suite / 17 tests; 126 migrations; no rollback leaks. Census 577 fixtures / 8 exemptions / 16 pending / 0 unregistered / 0 stale / 0 redundant. Full R2 exit gates remain pending; R3 not started.

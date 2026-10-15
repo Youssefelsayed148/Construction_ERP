@@ -872,6 +872,7 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 
 ## Session 9 R2b.27 - user/company audit fixtures, 2026-10-15
 
+- Committed `a5068c6` with requested trailers; STATE.md updated immediately after commit.
 - Added three company alias fixtures and three user mutations (canonical/v1 update, deactivate); each target is fresh. Removed six exact entries from pending.
 - Initial company family run caught one redundant pending v1-users route (fixtures passed); removed that entry and corrected pending JSON syntax. Final company run `R2_ONLY='^\\w+ /api/v1/companies'`: PASS 1 suite / 9 tests; 126 migrations; `erp-r02-gate-20261015042548` removed; exit 0. User family `R2_ONLY='^\\w+ /api/(v1/)?users'`: PASS 1 suite / 11 tests; 126 migrations; `erp-r02-gate-20261015042516` removed; exit 0 (also rechecked existing preview fixture). All new routes audited and forced-audit failures rolled back without leaks. Census 570 fixtures, 8 exemptions, 23 pending, zero unregistered/stale/redundant. R2 final gates pending; R3 gated.
 
@@ -880,3 +881,9 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - Added four mutation fixtures for v1 saved-view and scheduled-report create/delete aliases, reusing canonical setup for delete targets. Removed those entries from pending; no route changes.
 - `R2_ONLY=/v1/reports/(saved-views|scheduled)` through `backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/mutation-audit.pg.test.js`: PASS 1 suite / 11 tests; 126 migrations; erp-r02-gate-20261015034107 removed; exit 0.
 - Registry 518/601 verified (516 audit+rollback, 2 historical audit-only), 75 pending, 8 exempt; 0 unregistered/stale/redundant. Full gates not rerun after this slice. R3 remains gated.
+
+## Session 10 R2b.28 - auth/agent audit fixtures, 2026-10-15
+
+- Added seven fixtures for agent token create/revoke, session status, auth registration/login/password change/logout-all. No production handler change.
+- Failing-first targeted registry run: 1 suite failed / 5 passed, identifying only the seven missing fixtures. Initial fixture run found Joi rejected `.test.invalid`; switched to `example.com` synthetic addresses. Final tracked gate: PASS 1 suite / 17 tests; 126 migrations; all seven operations emitted audit rows and injected audit failures left no table changes; container removed.
+- Census 577 fixtures, 8 exemptions, 16 pending, zero unregistered/stale/redundant. Full R2 gates remain pending; R3 not started.
