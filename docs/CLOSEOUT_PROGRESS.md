@@ -1305,4 +1305,4 @@ Passwords now use built-in async `crypto.scrypt` with OWASP-listed N=32768/r=8/p
 
 - Added `useManagedForm` to combine the existing validation/error mappers with field values, submit-in-flight state, and typed server errors; added shared `FormActions` and `LoadMore`; extended `FormField` to display translated errors. Added EN/AR pagination labels.
 - Focused kit test PASS 1 suite / 2 tests; i18n check/parity PASS (35 namespaces / 1,295 English keys). Existing dependency set retained.
-- Commit pending. R5.3 must wire paging to every screen listed in the R4.4 UI impact document.
+- Implementation commit `d9cfba7`; this is the post-commit checkpoint. R5.3 must wire paging to every screen listed in the R4.4 UI impact document.

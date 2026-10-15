@@ -1,8 +1,8 @@
-## R5.2 shared form kit - 2026-10-15 - implementation ready to commit
+## R5.2 shared form kit - 2026-10-15 - committed as `d9cfba7`
 
 - Added `useManagedForm` around the existing `validateValues` and `mapServerErrors`, plus shared `FormActions` and `LoadMore` controls. `FormField` now accepts already translated errors. EN/AR common pagination keys are present.
 - Focused form kit test PASS 1 suite / 2 tests; `i18n:check` and parity PASS at 35 namespaces / 1,295 English keys. `npm` packages unchanged; no Testing Library or form dependency installed.
-- Commit and docs checkpoint pending. R5.3 still must wire paging into all screens in `docs/R4_PAGINATION_UI_IMPACT.md`; R5.4 follows.
+- Implementation commit `d9cfba7`; this post-commit docs checkpoint follows. R5.3 still must wire paging into all screens in `docs/R4_PAGINATION_UI_IMPACT.md`; R5.4 follows.
 
 ## R5.1 current position - 2026-10-15 - committed as `ef6c6d4`
 

@@ -2246,4 +2246,4 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 
 - Added `useManagedForm`, `FormActions`, and `LoadMore` using existing form validation, server error mapping, `FormField`, locale catalogs, and total-count metadata. No dependencies added; no form library introduced.
 - Focused `FormKit.test.js` PASS 1 suite / 2 tests. `npm.cmd run i18n:check` and `npm.cmd run i18n:parity` PASS, 35 namespaces / 1,295 English keys.
-- R5.2 commit: pending. R5.3 pagination wiring follows.
+- R5.2 implementation commit `d9cfba7`; this is the post-commit checkpoint. R5.3 pagination wiring follows.
