@@ -2229,3 +2229,9 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - Follow-up `af318ac` moves the legacy R3 migration replay to a dedicated schema so it no longer drops public triggers/indexes or backfills over other suites' accumulated fixtures. Focused PG suite PASS 1/2, container `erp-r04-gate-20261015161018` removed, exit 0. Full PostgreSQL gate must be rerun before R4 is green.
 - Second full PG run: 83/84 suites / 1,895/1,896 tests passed. Remaining issue was the v1 contract test requiring JSON from two documented CSV exports. Added those content-type exceptions; focused v1 PG suite PASS 1/9, `erp-r04-gate-20261015161648` removed, exit 0. Fix committed as `7eb27f5`; full rerun still required.
 - Final full R4 PG gate: PASS 84/84 suites / 1,896/1,896 tests, 130 migrations, container `erp-r04-gate-20261015161743` removed, exit 0. Full R4 exit set green: backend mocks 65/1,083; frontend CI 32/131; i18n check/parity 35 namespaces / 1,291 English keys; lint:guards; production build; golden reconciliation 16/16; migration upgrade 0067→0068 exactly once. R4 complete; proceed to R5.0 inventory.
+
+## 2026-10-15 - R5.0 inventory
+
+- Committed `docs/R5_SCREEN_INVENTORY.md` as `1375b5c` before any R5 application changes. It lists mounted backend routes and permission gates, current frontend page/route/menu gaps, bilingual key groups, existing API/form patterns, and proposed screen placement/order.
+- Baseline: 61 direct fetch call sites across 41 frontend source files; no axios references. `services/api.js` is partial centralization. Existing kit is `FormField`, `formUtils`, `TextEntryDialog`, and `States`; Sidebar applies module/action visibility but App only has an authentication route guard.
+- Proceed to R5.1 central API client; R4 gates remain green.

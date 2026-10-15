@@ -1287,3 +1287,9 @@ Passwords now use built-in async `crypto.scrypt` with OWASP-listed N=32768/r=8/p
 - Follow-up `af318ac` isolates the old R3 migration replay fixture in a dedicated schema. Focused PG PASS 1 suite / 2 tests at 130 migrations, `erp-r04-gate-20261015161018` removed, exit 0. This resolves its dependency on test order; final full PG rerun remains.
 - The second full PG rerun passed 83/84 suites / 1,895/1,896 tests. The remaining failure was a successful CSV export treated as an invalid non-JSON response; the probe now allows the two documented CSV routes. Focused v1 PG PASS 1 suite / 9 tests at 130 migrations, `erp-r04-gate-20261015161648` removed, exit 0. Commit `7eb27f5`; final all-suite rerun remains.
 - Final full R4 PostgreSQL gate PASS 84/84 suites / 1,896/1,896 tests at 130 fresh migrations; `erp-r04-gate-20261015161743` removed, exit 0. Combined with backend mocks 65/1,083, frontend CI 32/131, i18n parity 35/1,291, lint:guards, production build, golden 16/16, and the 0067→0068 upgrade proof, all R4 exit gates are green. R4 is complete; R5.0 may start.
+
+# R5.0 screen inventory - 2026-10-15
+
+- Committed `docs/R5_SCREEN_INVENTORY.md` as `1375b5c` before application work. It maps all ten areas to mounted APIs, current routes/screens/menu gaps, server-side permission rules, and EN/AR key groups; records API/form architecture and the 61 fetch call / 41 file baseline (zero axios); and lists R5 implementation order.
+- Key findings: `/settings` only manages account mappings; `/hr` is personnel rather than account/role management; no standalone role-definition CRUD exists; SLA is exposed as claim/workflow read/configuration fields rather than a standalone SLA CRUD API. New frontend route guards are needed in addition to existing module/action menu filtering.
+- Next: R5.1 central API client and ratcheting direct-call guard, then R5.2 form kit adoption, R5.3 paging UI, and R5.4 in the requested screen order.

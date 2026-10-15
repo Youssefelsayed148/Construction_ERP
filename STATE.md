@@ -5,6 +5,7 @@
 - Corrective R4.6 commits: `e32f8d7` gate/guard/audit fixture correction; `af318ac` isolated migration replay; `7eb27f5` documented CSV contract response. Docs checkpoints follow each. Excluded review reports remain unstaged.
 - R4 limitations retained explicitly: isolated c=50 scrypt hash p95 is 913–969 ms (500 ms aspiration not met; full app c=50 unmeasured); Windows direct OS SIGTERM transport remains unverified, while handler/drain path passed by IPC.
 - R4 is complete; R5.0 inventory is active. Per request, do not enter R6/R7+.
+- R5.0 inventory is committed as `1375b5c` in `docs/R5_SCREEN_INVENTORY.md`, before application changes. It records all 10 requested areas, mounted API paths, current page/menu gaps, permission gate, EN/AR key groups, 61 direct fetch call sites / 41 files, no axios usage, existing service/form/state components, and implementation order. Next: R5.1 central client.
 
 ## R4.6 current position - 2026-10-15 - implementation committed as `e32f8d7`
 
