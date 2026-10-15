@@ -1,3 +1,8 @@
+## R4.3 current position - 2026-10-15 - committed as `2fc521a`
+
+- Graceful shutdown, server/session timeouts, typed DB errors, cancellable report reads, and pool metrics are implemented; no migration was needed. Focused mock/auth suites PASS 3 suites / 13 tests; existing report mock PASS 1 suite / 17 tests; v1 contract PG PASS 1 suite / 8 tests, container `erp-r04-gate-20261015151846` removed, exit 0; real PostgreSQL `resilience.pg.test.js` PASS 1 suite / 3 tests, 130 migrations, container `erp-r04-gate-20261015151748` removed, exit 0. Unit verifies 503/504 mapping, settings validation, bounded shutdown, and pool metric privacy; PG verifies default session settings, timeout rollback/no idle transaction leak, and `pg_cancel_backend` stopping the disconnected query as seen from an independent connection.
+- `-R4Resilience` PASS: real in-flight login returned 401 and graceful handler exited 0, 130 migrations, container `erp-r04-resilience-20261015151147` removed. Direct Windows `child.kill('SIGTERM')` terminated Node and reset the request; the passing harness uses test-only IPC to invoke the registered SIGTERM handler. OS signal transport remains unverified on Windows; handler and drain behavior pass.
+- i18n check and parity PASS, 35 namespaces / 1,291 English keys; syntax checks and `git diff --check` pass. R4.3 commit `2fc521a` includes the resilience slice; next R4.4 pagination.
 # Closeout state
 
 ## R4.2 current position - 2026-10-15 - committed as `468a374`
