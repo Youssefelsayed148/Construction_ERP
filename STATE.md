@@ -812,6 +812,14 @@ R2b.16 committed `ebe8716`; report v1 aliases PASS. Next: remaining action alias
 - `R2_ONLY=/actions` through `backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/mutation-audit.pg.test.js`: PASS 1 suite / 27 tests; 126 migrations; erp-r02-gate-20261015034249 removed; exit 0.
 - Registry 524/601 verified (522 audit+rollback, 2 historical audit-only), 69 pending, 8 exempt; 0 unregistered/stale/redundant. Full gates not rerun after this slice. R3 remains gated.
 
+R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, schedule, portal, auth/agent, reports/webhooks fixtures; run full R2 gates only after pending is empty or fully reasoned. R3 not started; R4 untouched.
+
+## Session 8 R2b.18 - supplier audit fixtures, 2026-10-15
+
+- Added six supplier mutation fixtures (create/update/soft-delete/restore and supplier-material link create/delete), sharing declarative builders while isolating mutable suppliers per operation. Removed only these six exact paths from `pending.json`.
+- Failing-first family registry before correction: 2 failed / 11 passed because restore reused the supplier already deleted by the delete case. Fresh supplier per fixture fixed the setup. AFTER `R2_ONLY=/suppliers/ powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/mutation-audit.pg.test.js -Filter '^(FAIL|PASS) |Test Suites:|Tests:|^\\s+● |^\\s+R2 '`: PASS 1 suite / 13 tests; 126 migrations; `erp-r02-gate-20261015035032` removed; exit 0. Audit rows +1 and rollback status 500 with no leaked rows for target operations. Census 530 fixtures, 8 exemptions, 63 pending, no unregistered/stale/redundant entries.
+- Initial unprivileged gate was denied Docker engine access; retry used the handoff-authorized elevated local path and exact tracked runner. R2 remains open and R3 gated. Next: asset CRUD and remaining family groups. Excluded reports untouched.
+
 ## Session 7 R2b.16 - report v1 aliases, 2026-10-15
 
 - Added four mutation fixtures for v1 saved-view and scheduled-report create/delete aliases, reusing canonical setup for delete targets. Removed those entries from pending; no route changes.

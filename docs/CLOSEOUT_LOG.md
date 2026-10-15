@@ -2047,3 +2047,7 @@ R2b.12 committed a93abec with both requested trailers; STATE updated after commi
 - Added six mutation fixtures: canonical action comment plus v1 create, acknowledge, comment, complete, and delegate. Removed only these exact entries from pending; no route changes.
 - `R2_ONLY=/actions` through `backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/mutation-audit.pg.test.js`: PASS 1 suite / 27 tests; 126 migrations; erp-r02-gate-20261015034249 removed; exit 0.
 - Registry now 524/601 verified (522 audit+rollback, 2 historical audit-only), 69 pending, 8 exempt; 0 unregistered/stale/redundant. Full gates are not rerun after this slice. R3 remains gated.
+
+## 2026-10-15 - Session 8 R2b.18 suppliers
+
+Added six supplier mutation fixtures and removed only those six paths from `pending.json`. BEFORE correction, family-only PG registry: 2 failed / 11 passed because restore reused the target soft-deleted by the prior delete case. Fresh mutable suppliers per operation corrected the fixture. AFTER `R2_ONLY=/suppliers/ powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/mutation-audit.pg.test.js -Filter '^(FAIL|PASS) |Test Suites:|Tests:|^\\s+● |^\\s+R2 '`: PASS 1 suite / 13 tests; 126 migrations; erp-r02-gate-20261015035032 removed; exit 0. Registry census 530 fixtures / 8 exemptions / 63 pending / 0 unregistered / 0 stale / 0 redundant. Default Docker access was denied; elevated loopback-only path authorized in the handoff succeeded. R2 final gates pending; no R3 work.
