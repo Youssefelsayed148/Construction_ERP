@@ -1,3 +1,9 @@
+# 2026-10-15 — R3.2 aggregate finance ageing
+
+- `npm.cmd test -- --runInBand src/scripts/__tests__/finance.test.js` — PASS 1/1 suite, 14/14 tests.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/finance-aging-equivalence.pg.test.js,src/scripts/__tests__/finance-flows.pg.test.js -Filter '.*'` — PASS 2/2 suites, 10/10 tests, 127 migrations; container `erp-r02-gate-20261015050826` removed; exit 0.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Reconcile` — PASS seeded golden 16/16, zero violations, seed/reconcile exit 0; 127 migrations; container `erp-r02-gate-20261015051032` removed.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r3-performance-gate.ps1` — PASS; same 150k invoices / 100k POs / 75k commitments / 300k journal lines, plus 150k payments and 150k allocations; AR service 300.63 ms; cash-flow query data path 309.87 ms; container `erp-r3-perf-20261015051206` removed; exit 0.
 # 2026-10-15 — R3.1 journal balance migration
 
 - Focused PG command via tracked runner: `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/journal-balance-statement.pg.test.js -Filter '.*'` — PASS 1/1 suite, 6/6 tests, 127 migrations; real migration runner simulated upgrade from 0064; container `erp-r02-gate-20261015050355` removed; exit 0.

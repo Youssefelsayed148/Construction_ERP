@@ -494,41 +494,72 @@ function agingBucket(daysOverdue) {
 }
 
 async function arAging(q, { now = new Date() } = {}) {
-  const invoices = (await q('SELECT * FROM invoices')).rows.filter(
-    (i) => !['cancelled', 'void'].includes(i.status)
-  );
   const buckets = { current: 0, '1_30': 0, '31_60': 0, '61_90': 0, '90_plus': 0 };
-  const nowMs = new Date(now).getTime();
-  for (const inv of invoices) {
-    const net = inv.net_amount != null && toNum(inv.net_amount) > 0 ? toNum(inv.net_amount) : toNum(inv.amount);
-    if (net <= 0) continue;
-    const allocs = (await q(
-      "SELECT * FROM payment_allocations WHERE invoice_id = $1 AND target_type = 'client_invoice' AND voided_at IS NULL",
-      [inv.id]
-    )).rows;
-    const outstanding = round2(net - toNum(inv.credited_amount) - allocatedSum(allocs));
-    if (outstanding <= 0) continue;
-    const overdueDays = inv.due_date ? Math.floor((nowMs - new Date(inv.due_date).getTime()) / 86400000) : 0;
-    buckets[agingBucket(overdueDays)] = round2(buckets[agingBucket(overdueDays)] + outstanding);
-  }
+  const rows = (await q(`
+    /* finance aging aggregate: ar */
+    WITH allocation_totals AS (
+      SELECT invoice_id, ROUND(SUM(amount), 2) AS allocated
+        FROM payment_allocations
+       WHERE target_type = 'client_invoice' AND voided_at IS NULL AND invoice_id IS NOT NULL
+       GROUP BY invoice_id
+    ), balances AS (
+      SELECT ROUND(
+               (CASE WHEN COALESCE(i.net_amount, 0) > 0 THEN i.net_amount ELSE i.amount END)
+               - COALESCE(i.credited_amount, 0) - COALESCE(a.allocated, 0), 2
+             ) AS outstanding,
+             FLOOR(EXTRACT(EPOCH FROM ($1::timestamptz - COALESCE(
+               i.due_date::timestamp AT TIME ZONE 'UTC', $1::timestamptz
+             ))) / 86400)::integer AS overdue_days
+        FROM invoices i
+        LEFT JOIN allocation_totals a ON a.invoice_id = i.id
+       WHERE (i.status IS NULL OR i.status NOT IN ('cancelled', 'void'))
+         AND (CASE WHEN COALESCE(i.net_amount, 0) > 0 THEN i.net_amount ELSE i.amount END) > 0
+    )
+    SELECT CASE
+             WHEN overdue_days <= 0 THEN 'current'
+             WHEN overdue_days <= 30 THEN '1_30'
+             WHEN overdue_days <= 60 THEN '31_60'
+             WHEN overdue_days <= 90 THEN '61_90'
+             ELSE '90_plus'
+           END AS bucket,
+           ROUND(SUM(outstanding), 2) AS amount
+      FROM balances
+     WHERE outstanding > 0
+     GROUP BY 1`, [now])).rows;
+  for (const row of rows) buckets[row.bucket] = round2(row.amount);
   return buckets;
 }
 
 async function apAging(q, { now = new Date() } = {}) {
-  const invoices = (await q('SELECT * FROM supplier_invoices')).rows.filter((i) => i.status !== 'paid');
   const buckets = { current: 0, '1_30': 0, '31_60': 0, '61_90': 0, '90_plus': 0 };
-  const nowMs = new Date(now).getTime();
-  for (const inv of invoices) {
-    const allocs = (await q(
-      "SELECT * FROM payment_allocations WHERE supplier_invoice_id = $1 AND target_type = 'supplier_invoice' AND voided_at IS NULL",
-      [inv.id]
-    )).rows;
-    const outstanding = round2(toNum(inv.total_amount) - toNum(inv.credited_amount) - allocatedSum(allocs));
-    if (outstanding <= 0) continue;
-    const due = inv.invoice_date || inv.created_at;
-    const days = due ? Math.floor((nowMs - new Date(due).getTime()) / 86400000) : 0;
-    buckets[agingBucket(days)] = round2(buckets[agingBucket(days)] + outstanding);
-  }
+  const rows = (await q(`
+    /* finance aging aggregate: ap */
+    WITH allocation_totals AS (
+      SELECT supplier_invoice_id, ROUND(SUM(amount), 2) AS allocated
+        FROM payment_allocations
+       WHERE target_type = 'supplier_invoice' AND voided_at IS NULL AND supplier_invoice_id IS NOT NULL
+       GROUP BY supplier_invoice_id
+    ), balances AS (
+      SELECT ROUND(i.total_amount - COALESCE(i.credited_amount, 0) - COALESCE(a.allocated, 0), 2) AS outstanding,
+             FLOOR(EXTRACT(EPOCH FROM ($1::timestamptz - COALESCE(
+               i.invoice_date::timestamp AT TIME ZONE 'UTC', i.created_at, $1::timestamptz
+             ))) / 86400)::integer AS overdue_days
+        FROM supplier_invoices i
+        LEFT JOIN allocation_totals a ON a.supplier_invoice_id = i.id
+       WHERE i.status IS DISTINCT FROM 'paid'
+    )
+    SELECT CASE
+             WHEN overdue_days <= 0 THEN 'current'
+             WHEN overdue_days <= 30 THEN '1_30'
+             WHEN overdue_days <= 60 THEN '31_60'
+             WHEN overdue_days <= 90 THEN '61_90'
+             ELSE '90_plus'
+           END AS bucket,
+           ROUND(SUM(outstanding), 2) AS amount
+      FROM balances
+     WHERE outstanding > 0
+     GROUP BY 1`, [now])).rows;
+  for (const row of rows) buckets[row.bucket] = round2(row.amount);
   return buckets;
 }
 

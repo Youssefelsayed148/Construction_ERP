@@ -55,6 +55,8 @@ class MockDb {
     // Row locks mean nothing to a single-connection mock.
     const norm = sql.replace(/\s+/g, ' ').trim().replace(/\s+FOR UPDATE(?:\s+OF\s+\w+)?\s*$/i, '');
     const upper = norm.toUpperCase();
+    if (upper.includes('FINANCE AGING AGGREGATE: AR')) return this.execAgingAggregate('ar', params[0]);
+    if (upper.includes('FINANCE AGING AGGREGATE: AP')) return this.execAgingAggregate('ap', params[0]);
     if (/^SELECT COALESCE\(SUM\(AMOUNT\) FILTER \(WHERE DIRECTION = 'AR'\)/i.test(norm)) {
       const projectId = params[0];
       const rows = this.table('payments').rows.filter((r) => Number(r.project_id) === Number(projectId) && r.voided_at == null);
@@ -73,6 +75,39 @@ class MockDb {
     if (upper.startsWith('SELECT')) return this.execSelect(norm, params);
     throw new Error(`MockDb: unhandled SQL prefix: ${norm.slice(0, 80)}`);
   };
+
+  execAgingAggregate(kind, nowValue) {
+    const isAr = kind === 'ar';
+    const invoices = this.table(isAr ? 'invoices' : 'supplier_invoices').rows;
+    const allocations = this.table('payment_allocations').rows;
+    const nowMs = new Date(nowValue).getTime();
+    const totals = new Map();
+    for (const allocation of allocations) {
+      if (allocation.voided_at != null || allocation.target_type !== (isAr ? 'client_invoice' : 'supplier_invoice')) continue;
+      const id = isAr ? allocation.invoice_id : allocation.supplier_invoice_id;
+      if (id == null) continue;
+      totals.set(id, (totals.get(id) || 0) + Number(allocation.amount || 0));
+    }
+    const rounded = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
+    const buckets = new Map();
+    for (const invoice of invoices) {
+      if (isAr ? ['cancelled', 'void'].includes(invoice.status) : invoice.status === 'paid') continue;
+      const net = isAr
+        ? (invoice.net_amount != null && Number(invoice.net_amount) > 0 ? Number(invoice.net_amount) : Number(invoice.amount || 0))
+        : Number(invoice.total_amount || 0);
+      if (isAr && net <= 0) continue;
+      const outstanding = rounded(net - Number(invoice.credited_amount || 0) - rounded(totals.get(invoice.id) || 0));
+      if (outstanding <= 0) continue;
+      const due = isAr ? invoice.due_date : (invoice.invoice_date || invoice.created_at);
+      const overdueDays = due ? Math.floor((nowMs - new Date(due).getTime()) / 86400000) : 0;
+      const bucket = overdueDays <= 0 ? 'current'
+        : overdueDays <= 30 ? '1_30'
+          : overdueDays <= 60 ? '31_60'
+            : overdueDays <= 90 ? '61_90' : '90_plus';
+      buckets.set(bucket, rounded((buckets.get(bucket) || 0) + outstanding));
+    }
+    return { rows: [...buckets].map(([bucket, amount]) => ({ bucket, amount: amount.toFixed(2) })), rowCount: buckets.size };
+  }
 
   // The two statements services/numbering.js issues against document_counters.
   execDocumentCounter(upper, params) {

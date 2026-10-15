@@ -3,8 +3,9 @@
 // R3.0 disposable-database benchmark fixture. Never points at a non-loopback or
 // non-test database. Creates representative ERP volumes and prints measured
 // query plans before the R3 fixes; the caller owns and removes the container.
-const { Client } = require('pg');
+const { Client, Pool } = require('pg');
 const { performance } = require('perf_hooks');
+const financeEngine = require('../services/financeEngine');
 
 function assertSafeTarget(env = process.env) {
   if (env.APP_ENV !== 'test' || env.DB_NAME !== 'erp_r3_perf_test') {
@@ -50,6 +51,15 @@ async function main() {
              NOW() - (g * INTERVAL '1 second'), NOW() - (g * INTERVAL '1 second')
         FROM generate_series(1, 100000) AS g`, [projectId, materialId]);
     await db.query(`
+      INSERT INTO payments (invoice_id, project_id, client_id, amount, payment_date, direction)
+      SELECT id, $1, $2, 100, CURRENT_DATE, 'ar'
+        FROM invoices WHERE invoice_number LIKE 'R3-PERF-INV-%'`, [projectId, clientId]);
+    await db.query(`
+      INSERT INTO payment_allocations (payment_id, target_type, invoice_id, amount)
+      SELECT p.id, 'client_invoice', p.invoice_id, 100
+        FROM payments p JOIN invoices i ON i.id = p.invoice_id
+       WHERE i.invoice_number LIKE 'R3-PERF-INV-%'`);
+    await db.query(`
       INSERT INTO commitments (commitment_number, project_id, source_type, source_id, original_amount, status)
       SELECT 'R3-PERF-CM-' || lpad(g::text, 6, '0'), $1, 'benchmark', g, 1000, 'active'
         FROM generate_series(1, 75000) AS g`, [projectId]);
@@ -87,15 +97,19 @@ async function main() {
     console.log(`journal_bulk_insert_and_balance_commit_ms=${(performance.now() - journalSeedStarted).toFixed(2)}`);
 
     await db.query('ANALYZE invoices');
+    await db.query('ANALYZE payments');
+    await db.query('ANALYZE payment_allocations');
     await db.query('ANALYZE purchase_orders');
     await db.query('ANALYZE journal_entry_lines');
     const volumes = (await db.query(`
       SELECT 'invoices' AS relation, count(*)::bigint AS rows FROM invoices WHERE invoice_number LIKE 'R3-PERF-INV-%'
       UNION ALL SELECT 'purchase_orders', count(*)::bigint FROM purchase_orders WHERE order_number LIKE 'R3-PERF-PO-%'
       UNION ALL SELECT 'commitments', count(*)::bigint FROM commitments WHERE commitment_number LIKE 'R3-PERF-CM-%'
+      UNION ALL SELECT 'payments', count(*)::bigint FROM payments p JOIN invoices i ON i.id = p.invoice_id WHERE i.invoice_number LIKE 'R3-PERF-INV-%'
+      UNION ALL SELECT 'payment_allocations', count(*)::bigint FROM payment_allocations a JOIN invoices i ON i.id = a.invoice_id WHERE i.invoice_number LIKE 'R3-PERF-INV-%'
       UNION ALL SELECT 'journal_entry_lines', count(*)::bigint FROM journal_entry_lines WHERE journal_entry_id = ANY($1::int[])
     `, [journalIds])).rows;
-    console.log(`fixture project_id=${projectId}; invoice_count=150000; purchase_order_count=100000; commitment_count=75000; journal_entry_line_count=300000; balance_check=PASS`);
+    console.log(`fixture project_id=${projectId}; invoice_count=150000; payment_count=150000; allocation_count=150000; purchase_order_count=100000; commitment_count=75000; journal_entry_line_count=300000; balance_check=PASS`);
     for (const volume of volumes) console.log(`rows ${volume.relation}=${volume.rows}`);
 
     const plans = [
@@ -120,6 +134,33 @@ async function main() {
       const started = performance.now();
       const result = await db.query(sql, params);
       console.log(`\nQUERY ${label}: rows=${result.rowCount}; elapsed_ms=${(performance.now() - started).toFixed(2)}`);
+    }
+
+    const q = (sql, params) => db.query(sql, params);
+    for (const [label, operation] of [
+      ['aggregate AR ageing service', () => financeEngine.arAging(q)],
+      ['aggregate AP ageing service', () => financeEngine.apAging(q)],
+    ]) {
+      const started = performance.now();
+      const buckets = await operation();
+      console.log(`\nSERVICE ${label}: elapsed_ms=${(performance.now() - started).toFixed(2)}; buckets=${JSON.stringify(buckets)}`);
+    }
+    const servicePool = new Pool({
+      host: process.env.DB_HOST, port: Number(process.env.DB_PORT), database: process.env.DB_NAME,
+      user: process.env.DB_USER, password: process.env.DB_PASSWORD, max: 4,
+    });
+    try {
+      const pooledQuery = (sql, params) => servicePool.query(sql, params);
+      const cashFlowStarted = performance.now();
+      const [ar, ap, retentionReceivable, retentionPayable] = await Promise.all([
+        financeEngine.arAging(pooledQuery),
+        financeEngine.apAging(pooledQuery),
+        financeEngine.retentionTotals(pooledQuery, { party_type: 'client' }),
+        financeEngine.retentionTotals(pooledQuery, { party_type: 'subcontractor' }),
+      ]);
+      console.log(`\nSERVICE cash-flow data path: elapsed_ms=${(performance.now() - cashFlowStarted).toFixed(2)}; ar=${JSON.stringify(ar)}; ap=${JSON.stringify(ap)}; retention=${JSON.stringify([retentionReceivable.balance, retentionPayable.balance])}`);
+    } finally {
+      await servicePool.end();
     }
   } catch (error) {
     await db.query('ROLLBACK').catch(() => {});

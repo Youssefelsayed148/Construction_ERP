@@ -1,3 +1,8 @@
+# 2026-10-15 — R3.2 aggregate ageing
+
+AR/AP ageing now aggregates allocations and buckets in SQL; the focused old-vs-new reference plus existing finance-flow PG tests pass 2/2 suites / 10/10 tests. Existing finance mock suite passes 14/14. Fresh golden reconcile passes 16/16 at 127 migrations. On the expanded 150k invoice + 150k payment + 150k allocation workload, AR ageing is 300.63 ms and the four-query cash-flow data path is 309.87 ms. Container `erp-r3-perf-20261015051206` removed. See `docs/R3_EVIDENCE.md`.
+
+Next R3.3: make commitments GET paths read-only; move commitment updates into purchase-order/subcontract source transactions and outbox/event handling. R3.4–R3.6 remain open; R4 not started.
 # 2026-10-15 — R3.1 journal validation
 
 Migration 0065 now indexes `journal_entry_lines.journal_entry_id` and replaces the deferred row trigger with statement-level ID collection plus one deferred check per affected entry and transaction. The focused tracked PG suite passes 6/6, including multi-statement balance, unbalanced insert/delete rollback, update across parents, bulk insert, and simulated 0064 upgrade. The same 300k-line benchmark committed balanced entries in 3,116.99 ms with validation enabled. Lookup uses the new index (14.594 ms; 717 buffers vs 13.933 ms and 1,911 before; elapsed similar with fewer unrelated pages read). Fresh performance run applied 127 migrations and removed `erp-r3-perf-20261015050435`.

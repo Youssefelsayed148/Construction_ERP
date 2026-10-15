@@ -932,3 +932,10 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - Migration 0065 creates the journal_entry_id index and statement-level event collection with one deferred balance check per affected entry per transaction. Focused PG suite PASS 6/6; tests balanced posts, unbalanced rejection/rollback, INSERT/UPDATE/DELETE, bulk insert, and simulated upgrade from 0064. See docs/R3_EVIDENCE.md.
 - Same 300k-line fixture seeded under active triggers and validated balanced: 3,116.99 ms. Lookup index plan 14.594 ms / 717 shared hits vs baseline seq scan 13.933 ms / 1,911; fewer pages read, similar cached elapsed time.
 - Next R3.2 ageing aggregate equivalence. R3.3–R3.6 open; R4 not started.
+
+## 2026-10-15 — R3.2 aggregate ageing complete
+
+- Prior commits: R3.0 0acaccf; R3.1 e0069a1. R3.2 uses one SQL aggregate per AR/AP ageing query. Equivalence tests compare against the prior per-invoice algorithm on boundaries, credits, allocation/voiding, fallback, and statuses.
+- Focused PG finance 2/2 suites, 10/10 tests; finance mock 14/14; golden reconciliation 16/16 at 127 migrations. Evidence in docs/R3_EVIDENCE.md.
+- Expanded 150k invoice + payment + allocation run: AR service 300.63 ms; cash-flow four-query data path 309.87 ms. Container erp-r3-perf-20261015051206 removed.
+- Next R3.3 make commitment GETs read-only; R3.4–R3.6 open; R4 not started.

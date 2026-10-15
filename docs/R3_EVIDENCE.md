@@ -4,7 +4,7 @@
 
 This evidence was captured before any R3 implementation change. Findings are limited to REV-004, REV-005, and REV-016 in `docs/REVIEW_REPORT_2026-10-14.md`.
 
-The repeatable baseline is `backend/scripts/r3-performance-gate.ps1`, which starts a loopback-only, disposable PostgreSQL 16 container, applies the current migration set, runs `backend/src/scripts/r3-performance-baseline.js`, and removes the container. The benchmark requires `APP_ENV=test`, the exact database name `erp_r3_perf_test`, loopback `DB_HOST`, and credentials generated in the runner process. It does not load `.env` or retain credentials.
+The repeatable baseline is `backend/scripts/r3-performance-gate.ps1`, which starts a loopback-only, disposable PostgreSQL 16 container, applies the current migration set, runs `backend/src/scripts/r3-performance-baseline.js`, and removes the container. The benchmark requires `APP_ENV=test`, the exact database name `erp_r3_perf_test`, loopback `DB_HOST`, and credentials generated in the runner process. It does not load `.env` or retain credentials. The original R3.0 run used no payment/allocation rows; R3.2 extends the same benchmark with one payment and one allocation for each invoice, making the after measurement representative of settlement joins.
 
 Command:
 
@@ -39,3 +39,13 @@ The identical 300,000-line benchmark workload ran with the new trigger active an
 The same run still uses sequential scans for invoice list (17.746 ms), open invoice aggregate (19.159 ms), active project POs (14.156 ms), and commitment count (5.810 ms). These remain R3.2/R3.5 work. Container `erp-r3-perf-20261015050435` removed; 127 migrations; exit 0.
 
 R3.2–R3.6 remain open. R4 has not started.
+
+### R3.2 — aggregate AR/AP ageing
+
+`financeEngine.arAging` and `apAging` now use one grouped SQL query each. Allocation totals are grouped once and left-joined to invoices, outstanding values and overdue buckets are calculated in PostgreSQL, and the existing JavaScript service response shape is preserved. `finance.test.js`'s local MockDb handles the new query contract. The PostgreSQL equivalence test runs the previous per-invoice calculation as a reference against seeded boundary dates (0/30/31/61/91 days, future and null dates), net-amount fallback, credits, multiple allocations, voided allocations, and excluded statuses.
+
+Verification: focused finance PG suites **PASS 2/2 suites, 10/10 tests**, 127 migrations, including AR/AP old-vs-new equivalence and existing finance flows; container `erp-r02-gate-20261015050826` removed, exit 0. Existing finance unit suite **PASS 1/1 suite, 14/14 tests**. Golden reconciliation after the aggregate change **PASS 16/16**, zero violations; container `erp-r02-gate-20261015051032` removed, exit 0.
+
+With 150,000 invoices, 150,000 payment rows, and 150,000 allocation rows, the AR aggregate service measured **300.63 ms** and the four parallel data calls used by the cash-flow route (AR, AP, client retention, subcontractor retention) measured **309.87 ms**. This local query-path timing excludes HTTP auth and serialization. It is below the plan's 1-second data-path target; the prior route observation was 97.6 seconds at 150,000 invoices. The performance container `erp-r3-perf-20261015051206` was removed; 127 migrations; exit 0.
+
+R3.3–R3.6 remain open. R4 has not started.
