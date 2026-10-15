@@ -67,9 +67,9 @@ async function main() {
          VALUES ($1, CURRENT_DATE, 'R3 performance fixture', 5000000) RETURNING id`, [`R3-PERF-JE-${i}`]
       )).rows[0].id);
     }
-    // The isolated fixture inserts balanced lines while temporarily suppressing
-    // the known per-row trigger cost. It validates balance before re-enabling it.
-    await db.query('ALTER TABLE journal_entry_lines DISABLE TRIGGER journal_entry_lines_balance');
+    // This bulk statement stays under the active balance triggers; the deferred
+    // validation must check each of its three entries at commit.
+    const journalSeedStarted = performance.now();
     await db.query(`
       INSERT INTO journal_entry_lines (journal_entry_id, account_id, debit, credit, line_order)
       SELECT $1::int + ((g - 1) / 100000)::int,
@@ -83,8 +83,8 @@ async function main() {
        WHERE journal_entry_id = ANY($1::int[]) GROUP BY journal_entry_id
        HAVING SUM(debit) <> SUM(credit)`, [journalIds]);
     if (unbalanced.rowCount) throw new Error('R3 benchmark journal fixture is unbalanced');
-    await db.query('ALTER TABLE journal_entry_lines ENABLE TRIGGER journal_entry_lines_balance');
     await db.query('COMMIT');
+    console.log(`journal_bulk_insert_and_balance_commit_ms=${(performance.now() - journalSeedStarted).toFixed(2)}`);
 
     await db.query('ANALYZE invoices');
     await db.query('ANALYZE purchase_orders');

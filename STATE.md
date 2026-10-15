@@ -926,3 +926,9 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - Baseline ran before any R3 fix. Disposable PG16 command powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r3-performance-gate.ps1: PASS, 126 migrations; 150k invoices / 100k purchase orders / 75k commitments / 300k balanced journal lines; EXPLAIN plans captured; erp-r3-perf-20261015045726 removed; exit 0.
 - Measurements and repeatable runner are in docs/R3_EVIDENCE.md, backend/scripts/r3-performance-gate.ps1, and backend/src/scripts/r3-performance-baseline.js. The measured query plans use sequential scans; implementation has not yet changed.
 - R3.1 next: migration 0065 and deferred balance-check redesign, proving balanced posts and rejecting unbalanced posts, plus fresh and 0064-upgrade paths. R3.2–R3.6 remain open; R4 not started.
+
+## 2026-10-15 — R3.1 journal balance complete
+
+- Migration 0065 creates the journal_entry_id index and statement-level event collection with one deferred balance check per affected entry per transaction. Focused PG suite PASS 6/6; tests balanced posts, unbalanced rejection/rollback, INSERT/UPDATE/DELETE, bulk insert, and simulated upgrade from 0064. See docs/R3_EVIDENCE.md.
+- Same 300k-line fixture seeded under active triggers and validated balanced: 3,116.99 ms. Lookup index plan 14.594 ms / 717 shared hits vs baseline seq scan 13.933 ms / 1,911; fewer pages read, similar cached elapsed time.
+- Next R3.2 ageing aggregate equivalence. R3.3–R3.6 open; R4 not started.

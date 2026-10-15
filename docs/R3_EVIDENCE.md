@@ -28,4 +28,14 @@ The review's route-level observations remain separate from this database-level r
 
 ## R3 implementation evidence
 
-Not run yet. R3.1–R3.6 must append post-fix plans, result equivalence, GET side-effect checks, numbering concurrency results, FK-index ranking, and final exit gates here. R4 has not started.
+### R3.1 — journal balance validation and parent index
+
+Migration `0065_journal_balance_statement_check.sql` adds `idx_journal_entry_lines_journal_entry_id`. Three statement triggers collect distinct old/new journal entry IDs into a transaction-keyed queue. A deferred constraint trigger checks each queued entry once at commit, using the new index, then removes the queue row. The prior deferred row trigger and function are removed. This preserves deferred multi-statement posting and rejects invalid final balances.
+
+Focused command through the tracked runner: `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/journal-balance-statement.pg.test.js -Filter '.*'` — **PASS**, 1/1 suites and 6/6 tests, 127 migrations, simulated 0064-to-0065 migration through the real migration runner; container `erp-r02-gate-20261015050355` removed, exit 0. Coverage includes separate statements in one transaction, rejected insert rollback, old/new parent tracking on UPDATE, rejected DELETE rollback, bulk insert, and an upgrade path with the old 0064 row trigger restored first.
+
+The identical 300,000-line benchmark workload ran with the new trigger active and balanced validation at commit: bulk insert plus deferred balance commit **3,116.99 ms**; all three entries balanced. The journal lookup changed from a parallel sequential scan (13.933 ms, 1,911 shared-buffer hits) to `idx_journal_entry_lines_journal_entry_id` index scan (14.594 ms, 717 hits). On this all-cached local run, elapsed lookup time is similar, while buffers fell 62.5% and the plan reads only the selected entry's 100,000 lines. This measured result does not imply a timing improvement for an entry containing 100,000 lines; the index removes reads of unrelated entries and supports the balance trigger as the ledger grows.
+
+The same run still uses sequential scans for invoice list (17.746 ms), open invoice aggregate (19.159 ms), active project POs (14.156 ms), and commitment count (5.810 ms). These remain R3.2/R3.5 work. Container `erp-r3-perf-20261015050435` removed; 127 migrations; exit 0.
+
+R3.2–R3.6 remain open. R4 has not started.

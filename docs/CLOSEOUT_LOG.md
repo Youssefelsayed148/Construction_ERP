@@ -1,3 +1,8 @@
+# 2026-10-15 — R3.1 journal balance migration
+
+- Focused PG command via tracked runner: `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/journal-balance-statement.pg.test.js -Filter '.*'` — PASS 1/1 suite, 6/6 tests, 127 migrations; real migration runner simulated upgrade from 0064; container `erp-r02-gate-20261015050355` removed; exit 0.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r3-performance-gate.ps1` — PASS with 127 migrations and identical 150k/100k/75k/300k workload; journal insert + deferred balance check 3,116.99 ms; journal lookup uses index, 14.594 ms and 717 buffer hits (baseline seq scan 13.933 ms / 1,911 buffer hits); container `erp-r3-perf-20261015050435` removed; exit 0.
+- Invoice list, status aggregate, active project POs, and commitment count remain sequential scans pending later R3 slices. Full plans in `docs/R3_EVIDENCE.md`.
 # 2026-10-15 — R3.0 baseline
 
 - `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r3-performance-gate.ps1` — PASS; 126 migrations; 150,000 invoices, 100,000 purchase orders, 75,000 commitments, 300,000 balanced journal lines; disposable container `erp-r3-perf-20261015045726` removed; exit 0.

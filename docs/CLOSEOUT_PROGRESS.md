@@ -1,3 +1,8 @@
+# 2026-10-15 — R3.1 journal validation
+
+Migration 0065 now indexes `journal_entry_lines.journal_entry_id` and replaces the deferred row trigger with statement-level ID collection plus one deferred check per affected entry and transaction. The focused tracked PG suite passes 6/6, including multi-statement balance, unbalanced insert/delete rollback, update across parents, bulk insert, and simulated 0064 upgrade. The same 300k-line benchmark committed balanced entries in 3,116.99 ms with validation enabled. Lookup uses the new index (14.594 ms; 717 buffers vs 13.933 ms and 1,911 before; elapsed similar with fewer unrelated pages read). Fresh performance run applied 127 migrations and removed `erp-r3-perf-20261015050435`.
+
+Next R3.2: aggregate AR/AP ageing SQL and old-vs-new equivalence tests using seeded data. R3.3–R3.6 remain open; R4 not started.
 # 2026-10-15 — R3.0 baseline captured
 
 R3.0 baseline PASS before implementation changes: 126 migrations; 150,000 invoices, 100,000 purchase orders, 75,000 commitments, and 300,000 balanced journal lines. `EXPLAIN (ANALYZE, BUFFERS)` reproduced sequential scans on journal-entry lookup, invoice list and aggregate, project PO filtering, and commitment COUNT numbering. Disposable container `erp-r3-perf-20261015045726` removed, exit 0. Full plans and times are in `docs/R3_EVIDENCE.md`; repeatable runner and seed are `backend/scripts/r3-performance-gate.ps1` and `backend/src/scripts/r3-performance-baseline.js`.
