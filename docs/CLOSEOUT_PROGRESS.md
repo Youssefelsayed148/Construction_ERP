@@ -1146,3 +1146,7 @@ Added six supplier mutation fixtures and removed only their exact pending entrie
 ## 2026-10-15 — Session 8 R2b.19 assets
 
 Added five asset mutation fixtures and removed only those five exact pending entries. BEFORE correction the broad `/assets/` filter included a handover route and one asset usage-log fixture failed (1 failed / 12 passed) because it received assignment-only `assigned_from`. Separate assignment and usage payload builders fixed the fixture. AFTER anchored family-only `R2_ONLY='^\\w+ /api/assets'` through the tracked PG runner: PASS 1 suite / 13 tests; 126 migrations; erp-r02-gate-20261015035227 removed; exit 0. All five mutations wrote activity rows and passed audit-failure rollback checks. Census 535 fixtures, 8 exemptions, 58 pending, zero unregistered/stale/redundant. R2 exit gates remain pending; R3 has not started.
+
+## 2026-10-15 — Session 8 R2b.20 clients
+
+Added three client create/update/hard-delete fixtures; removed only their exact entries from pending. Each update/delete builds a fresh client target. Family-only `R2_ONLY='^\\w+ /api/clients'` via tracked `r02-pg-gate.ps1`: PASS 1 suite / 9 tests; 126 migrations; erp-r02-gate-20261015035334 removed; exit 0. All routes wrote activity rows and passed forced-audit rollback with no leaked changes. Census 538 fixtures / 8 exemptions / 55 pending / 0 unregistered / 0 stale / 0 redundant. R2 exit gates pending; R3 gated.

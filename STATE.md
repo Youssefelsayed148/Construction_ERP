@@ -823,9 +823,15 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 
 ## Session 8 R2b.19 - asset audit fixtures, 2026-10-15
 
+- Committed `c115859` with the requested trailers; STATE.md updated immediately after commit.
 - Added five asset fixtures (create/update/hard-delete, assignment create, usage-log create); each fixture builds a fresh asset. Removed only those five routes from pending.
 - BEFORE correction: `R2_ONLY=/assets/` matched the five target routes plus handover asset documents; 1 failed / 12 passed, because usage-log payload accidentally included assignment-only `assigned_from`. Corrected distinct payload builders and used anchored family filter `R2_ONLY='^\\w+ /api/assets'`.
 - AFTER `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/mutation-audit.pg.test.js -Filter '^(FAIL|PASS) |Test Suites:|Tests:|^\\s+● |^\\s+R2 '`: PASS 1 suite / 13 tests; 126 migrations; `erp-r02-gate-20261015035227` removed; exit 0. All five success requests wrote `activity_log`; forced audit failures returned 500 with no leaked table changes. Census 535 fixtures, 8 exemptions, 58 pending, zero unregistered/stale/redundant. R2 gates remain pending; R3 gated.
+
+## Session 8 R2b.20 - client audit fixtures, 2026-10-15
+
+- Added three client create/update/hard-delete fixtures; removed only those three exact paths from pending. Each update/delete uses a fresh client target.
+- `R2_ONLY='^\\w+ /api/clients' powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/mutation-audit.pg.test.js -Filter '^(FAIL|PASS) |Test Suites:|Tests:|^\\s+● |^\\s+R2 '`: PASS 1 suite / 9 tests; 126 migrations; `erp-r02-gate-20261015035334` removed; exit 0. All three routes wrote an activity row and rolled back with no leaked rows under injected audit failure. Census 538 fixtures, 8 exemptions, 55 pending, zero unregistered/stale/redundant. R2 gates remain pending; R3 gated.
 
 ## Session 7 R2b.16 - report v1 aliases, 2026-10-15
 

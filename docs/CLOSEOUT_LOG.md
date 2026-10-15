@@ -2055,3 +2055,7 @@ Added six supplier mutation fixtures and removed only those six paths from `pend
 ## 2026-10-15 - Session 8 R2b.19 assets
 
 Added five asset mutation fixtures and removed those five paths from pending. BEFORE correction, `/assets/` also selected handover asset-document coverage, and usage-log success failed (1 failed / 12 passed) because its payload included assignment-only `assigned_from`. Split the payload builders and reran anchored `R2_ONLY='^\\w+ /api/assets'` through `backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/mutation-audit.pg.test.js`: PASS 1 suite / 13 tests; 126 migrations; erp-r02-gate-20261015035227 removed; exit 0. All mutations wrote an audit row and the forced-audit failure showed no leak. Census 535 fixtures / 8 exemptions / 58 pending / 0 unregistered / 0 stale / 0 redundant. R2 final gates pending; R3 not started.
+
+## 2026-10-15 - Session 8 R2b.20 clients
+
+Added three client create/update/hard-delete fixtures and removed only those entries from pending. Update/delete use fresh client targets. Family-only `R2_ONLY='^\\w+ /api/clients'` through the tracked runner PASS 1 suite / 9 tests; 126 migrations; erp-r02-gate-20261015035334 removed; exit 0. All routes wrote activity rows and showed no rollback leaks under forced audit failure. Census 538 fixtures / 8 exemptions / 55 pending / 0 unregistered / 0 stale / 0 redundant. R2 final gates pending; no R3 work.
