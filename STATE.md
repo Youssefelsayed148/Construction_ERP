@@ -959,4 +959,13 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 ## 2026-10-15 — R3.3 route-enumerated GET guard
 
 - Added a real-PG route enumerator for all seven commercial/finance handlers using commitment, commercial projection, or ageing services. Each GET returned 200; SQL instrumentation saw zero table writes; an unledgered active PO was not repaired. PASS 1/1 test, 129 migrations; container `erp-r02-gate-20261015053546` removed.
-- R3.3 follow-up test/evidence pending commit; prior R3.3 commit `be1935a`.
+- R3.3 commits `be1935a`, `f099ad2`.
+## 2026-10-15 - R3.3 fixture alignment and R3.6 gates
+
+- The first full R3 PostgreSQL gate exposed two stale expectations after the read-only ledger change: cost guard injection still targeted source tables, and the finance dashboard fixture created an issued PO without its source-ledger transaction. Updated those test fixtures to target `commitments` and explicitly seed the PO commitment in the transaction.
+- Focused cost-guard, finance-flow, and R3.5 index suites passed 3/3 suites / 47/47 tests. Full `powershell -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -All -Filter '.*'` passed 81/81 suites / 1,884/1,884 tests at 129 migrations; container `erp-r02-gate-20261015055054` removed; exit 0. This includes the 0064-to-latest migration upgrade test.
+- Final performance gate passed at 129 migrations in `erp-r3-perf-20261015055504` (removed): invoice list index-only scan 0.070 ms / 5 buffers vs 17.612 ms baseline / 2,765 buffers; active PO plan 0.085 ms / 5 buffers vs 14.841 ms baseline / 1,681 buffers; exact 200-row PO route 0.091 ms / 8 buffers. Journal lookup 14.876 ms / 717 buffers; trial-balance SQL aggregate 28.906 ms; 75k commitment read 230.13 ms; AR service 302.18 ms; cash-flow data path 332.16 ms. The open-invoice aggregate remains sequential (18.160 ms). Current audit writes all 478 residual FK-column rankings to `docs/R3_FK_INDEX_PLAN.md`.
+- Final gates: backend mock PASS 60/60 suites / 1,059/1,059; PostgreSQL PASS 81/81 / 1,884/1,884; frontend PASS 32/32 / 131/131; i18n check/parity PASS (35 namespaces, 1,288 English keys); lint guards PASS; root CI build PASS; golden reconciliation PASS 16/16 with zero violations at 129 migrations, disposable container `erp-r02-gate-20261015055556` removed. The sandbox initially denied Docker, `git` subprocess, and root build child-process access; reruns through the authorized local elevated path passed.
+- Remaining documentation: publish R3 scorecard with measurements, test evidence, commits, and explicit NOT VERIFIED limits; then finalize R3 closeout. No R4 work started.
+
+- R3.3 fixture alignment committed as `fc54b6b`; full PostgreSQL rerun is recorded below. R3.5 audit-plan and complete FK-ranking documentation are still being finalized.

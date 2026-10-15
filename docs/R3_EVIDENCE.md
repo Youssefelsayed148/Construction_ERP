@@ -74,3 +74,22 @@ Same workload and runner before/after: invoice list changed from parallel sequen
 
 Pre-index gate: 128 migrations, container `erp-r3-perf-20261015052719` removed. Post-index gate: 129 migrations, container `erp-r3-perf-20261015052930` removed. Index assertion suite passed 1/1 test with 129 migrations; container `erp-r02-gate-20261015053020` removed. R3.5 complete; R3.6 final gate batch remains. R4 has not started.
 R3.3 route enumeration: `commitment-get-readonly.pg.test.js` discovers every GET route in commercial, costing, dashboard, finance, and finance-ledger routers whose handler calls `projectCommercial`, `listCommitments`, `companyFinanceDashboard`, `arAging`, or `apAging`. It issued seven discovered routes using a seeded project and instrumented both pool queries and transaction clients. All seven returned 200; no INSERT/UPDATE/DELETE/TRUNCATE query occurred; an active PO with no commitment stayed unledgered. Focused PG gate PASS 1/1 suite / 1/1 test at 129 migrations; container `erp-r02-gate-20261015053546` removed; exit 0.
+### Final R3.5 measurements and FK backlog (2026-10-15)
+
+The repeatable performance gate was rerun after all implementation changes: `powershell -ExecutionPolicy Bypass -File backend/scripts/r3-performance-gate.ps1` passed at 129 migrations and removed container `erp-r3-perf-20261015055504` (exit 0). The final run used 150k invoices, 150k payments, 150k allocations, 100k purchase orders, 75k commitments, and 300k journal lines.
+
+| Read path | Final measured result | Plan / interpretation |
+|---|---:|---|
+| Invoice list, newest 100 | 0.070 ms, 5 buffers | Index-only scan; original baseline 17.612 ms / 2,765 buffers. |
+| Active project PO list, 100 | 0.085 ms, 5 buffers | Index-only scan; original baseline 14.841 ms / 1,681 buffers. |
+| Exact 200-row scoped PO list | 0.091 ms, 8 buffers | Uses project/time/ID index. |
+| Journal entry line balance lookup | 14.876 ms, 717 buffers | Index scan; original baseline 13.933 ms / 1,911 buffers. Cached elapsed time is similar while unrelated pages read fell. |
+| Trial-balance aggregate by account | 28.906 ms | SQL aggregate scans journal lines; no matching HTTP trial-balance GET route was found in the route inventory. HTTP GET latency is **NOT VERIFIED**. |
+| Commitment ledger read, 75k rows | 230.13 ms | Ledger read only; no GET-side source reconciliation. |
+| AR aging service | 302.18 ms | SQL aggregate service timing, excluding HTTP auth/serialization. |
+| Cash-flow data path | 332.16 ms | Four service calls, excluding HTTP auth/serialization; below the 1-second plan target. |
+| Open invoice status aggregate | 18.160 ms | Parallel sequential scan remains selected for the broad 50%-match aggregate. |
+
+Bulk insertion and deferred balance validation of 300k journal lines completed in 3,160.56 ms. All seeded journal entries balanced. The current-schema catalog contains 481 total FK constraints / 483 referencing columns before selected indexing; after 0067, 476 constraints / 478 columns remain uncovered. The audit writes every residual column and its deterministic ranking to `docs/R3_FK_INDEX_PLAN.md`; unknown table volumes are marked unknown and score zero. Ranking is a workload triage proxy, not a planner metric.
+
+The test suite `r3-query-indexes.pg.test.js` verifies six new indexes and simulates a real migration from the 0064 schema through 0065, 0066, and 0067. Full PostgreSQL run: 81/81 suites, 1,884/1,884 tests, 129 migrations; container `erp-r02-gate-20261015055054` removed, exit 0. The broad open-invoice scan remains a documented candidate for further query-shape work, not a failed gate.

@@ -114,6 +114,7 @@ async function main() {
 
     const plans = [
       ['journal entry line balance lookup', 'SELECT SUM(debit), SUM(credit) FROM journal_entry_lines WHERE journal_entry_id = $1', [journalIds[0]]],
+      ['trial balance aggregate by account', 'SELECT account_id, SUM(debit) AS debit, SUM(credit) AS credit FROM journal_entry_lines GROUP BY account_id', []],
       ['invoice list page ordered by created_at', 'SELECT id, invoice_number, amount FROM invoices ORDER BY created_at DESC LIMIT 100', []],
       ['open invoice status aggregate', "SELECT SUM(amount) FROM invoices WHERE status NOT IN ('draft','cancelled','void','credited','paid')", []],
       ['purchase orders by project and active status', "SELECT id, total_amount, status FROM purchase_orders WHERE project_id = $1 AND status IN ('issued','approved','confirmed') ORDER BY created_at DESC LIMIT 100", [projectId]],
@@ -131,6 +132,7 @@ async function main() {
     for (const [label, sql, params] of [
       ['current invoice list query', 'SELECT id, invoice_number, amount FROM invoices ORDER BY created_at DESC LIMIT 100', []],
       ['current purchase order project list query', 'SELECT * FROM purchase_orders WHERE project_id = $1 ORDER BY created_at DESC, id DESC LIMIT 200', [projectId]],
+      ['project commitment ledger read', 'SELECT * FROM commitments WHERE project_id = $1 ORDER BY id DESC', [projectId]],
     ]) {
       const started = performance.now();
       const result = await db.query(sql, params);

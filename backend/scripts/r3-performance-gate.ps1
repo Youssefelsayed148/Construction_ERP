@@ -32,7 +32,7 @@ try {
   $exit = $LASTEXITCODE
   Write-Output $out
   if ($exit -eq 0) {
-    $audit = node src/scripts/r3-fk-index-audit.js 2>&1 | ForEach-Object { "$_" } | Out-String
+    $audit = node src/scripts/r3-fk-index-audit.js --write-plan 2>&1 | ForEach-Object { "$_" } | Out-String
     $exit = $LASTEXITCODE
     Write-Output $audit
   }
