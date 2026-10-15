@@ -860,8 +860,14 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 
 ## Session 9 R2b.25 - webhook audit fixtures, 2026-10-15
 
+- Committed `05be70d` with requested trailers; STATE.md updated immediately after commit.
 - Added five v1 webhook fixtures: create/update/delete/rotate-secret/redrive; removed only these routes from pending. Redrive delivery attempts and create/update DNS lookup are stubbed in-process; a synthetic `WEBHOOK_ENCRYPTION_KEY` is set in the PG test process only because runner JWT_SECRET is shorter than the encryption minimum.
 - BEFORE corrections: fixture tests exposed test-helper scope placement, required HTTPS, DNS resolution, and encryption key prerequisites; pending census also caught then-corrected JSON trailing comma. No product handler change. AFTER `R2_ONLY='^\\w+ /api/v1/webhooks'` through tracked runner: PASS 1 suite / 13 tests; 126 migrations; `erp-r02-gate-20261015042125` removed; exit 0. All five routes emitted audit rows and forced-audit failure rolled back with no leaks. Census 558 fixtures, 8 exemptions, 35 pending, zero unregistered/stale/redundant. R2 final gates pending; R3 gated.
+
+## Session 9 R2b.26 - remaining item/material aliases, 2026-10-15
+
+- Added four item mutations (create/update/delete/restore) plus v1 material create/update aliases; each mutable item target is fresh. Removed only those six exact entries from pending.
+- Family run `R2_ONLY='^\\w+ /api/(items|v1/materials)'` also includes the already-registered v1 material routes. PASS 1 suite / 25 tests; 126 migrations; `erp-r02-gate-20261015042244` removed; exit 0. All six new routes audited and rollback verified. Existing replenishment sweep is the only rollback skip and retains its documented leader-locked multi-transaction exception. Census 564 fixtures, 8 exemptions, 29 pending, zero unregistered/stale/redundant. R2 final gates pending; R3 gated.
 
 ## Session 7 R2b.16 - report v1 aliases, 2026-10-15
 
