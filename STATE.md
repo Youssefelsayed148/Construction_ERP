@@ -848,8 +848,14 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 
 ## Session 8 R2b.23 - payment audit fixtures, 2026-10-15
 
+- Committed `28e1e13` with requested trailers; STATE.md updated immediately after commit. This session checkpoint is after the payment slice.
 - Added canonical payment create, v1 payment create, and payment void fixtures; payment setup posts real journal entries through the route before void. Removed only these three exact entries from pending.
 - Family-only payment regex also selected the already registered v1 allocation route. `R2_ONLY='^\\w+ /api/(v1/)?payments'` through tracked PG runner: PASS 1 suite / 11 tests; 126 migrations; `erp-r02-gate-20261015035630` removed; exit 0. New operations emitted activity/audit rows and forced-audit failure rolled back with no leaks. Census 547 fixtures, 8 exemptions, 46 pending, zero unregistered/stale/redundant. R2 gates pending; R3 gated.
+
+## Session 9 R2b.24 - remaining schedule audit fixtures, 2026-10-15
+
+- Added six fixtures for schedule activity budget cost, progress canonical/v1, assignments, assignment status, and CSV import; assignment setup uses a project-owned asset_register row. Removed only these six paths from pending.
+- Full schedule-family run `R2_ONLY='^\\w+ /api/(v1/)?schedule'` through tracked `r02-pg-gate.ps1 -Suite src/scripts/__tests__/mutation-audit.pg.test.js`: PASS 1 suite / 45 tests; 126 migrations; `erp-r02-gate-20261015041548` removed; exit 0. All 21 selected family routes passed audit and injected-failure rollback. Census 553 fixtures, 8 exemptions, 40 pending, zero unregistered/stale/redundant. R2 final gates remain pending; R3 gated.
 
 ## Session 7 R2b.16 - report v1 aliases, 2026-10-15
 

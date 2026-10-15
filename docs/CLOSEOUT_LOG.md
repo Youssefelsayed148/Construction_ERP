@@ -2071,3 +2071,7 @@ Added three legal document create/update/hard-delete fixtures; mutable document 
 ## 2026-10-15 - Session 8 R2b.23 payments
 
 Added three fixtures for canonical payment create, v1 payment create, and payment void, with real posted payment prerequisites for void. Removed only these three pending entries. Payment-family `R2_ONLY='^\\w+ /api/(v1/)?payments'` included the already registered v1 allocation case; PASS 1 suite / 11 tests; 126 migrations; erp-r02-gate-20261015035630 removed; exit 0. The new mutations wrote audit rows and injected audit failures left no leaks. Census 547 fixtures / 8 exemptions / 46 pending / 0 unregistered / 0 stale / 0 redundant. R2 gates pending; no R3 work.
+
+## 2026-10-15 - Session 9 R2b.24 schedule
+
+Added six fixtures for schedule budget cost, progress canonical/v1, resource assignments, assignment status, and CSV import; assignment setup uses a project-owned asset_register row. Removed only these six pending paths. Full schedule-family registry `R2_ONLY='^\\w+ /api/(v1/)?schedule'`: PASS 1 suite / 45 tests; 126 migrations; erp-r02-gate-20261015041548 removed; exit 0. The 21 selected route registrations all wrote audit rows and passed injected-failure rollback. Census 553 fixtures / 8 exemptions / 40 pending / 0 unregistered / 0 stale / 0 redundant. R2 gates pending; R3 gated.
