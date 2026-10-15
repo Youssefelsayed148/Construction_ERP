@@ -1,3 +1,4 @@
+import { apiFetch } from '../services/apiClient';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshCw, FolderKanban, ClipboardCheck, Building2, Truck, Send } from 'lucide-react';
 import { authService } from '../services/api';
@@ -17,7 +18,7 @@ const CONFIG = {
 };
 
 async function request(path, options = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await apiFetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -353,7 +354,7 @@ function QuickActions({ kind, data, onDone }) {
     if (!files.length) return [];
     const form = new FormData();
     files.forEach((file) => form.append('files', file));
-    const response = await fetch(`${API_BASE_URL}/api/documents/upload`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/documents/upload`, {
       method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }, body: form,
     });
     const body = await response.json();

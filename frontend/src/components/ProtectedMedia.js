@@ -1,10 +1,11 @@
+import { apiFetch } from '../services/apiClient';
 import React, { useEffect, useState } from 'react';
 import { useLocale } from '../hooks/useLocale';
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
 
 async function fetchMedia(fileUrl) {
-  const response = await fetch(`${API_BASE_URL}${fileUrl}`, {
+  const response = await apiFetch(`${API_BASE_URL}${fileUrl}`, {
     headers: { Authorization: `Bearer ${sessionStorage.getItem('clientPreviewToken') || localStorage.getItem('token')}` },
   });
   if (!response.ok) throw Object.assign(new Error('File is unavailable'), { code: 'file_unavailable' });

@@ -1,3 +1,4 @@
+import { apiFetch } from '../services/apiClient';
 import React, { useRef, useState } from 'react';
 import { Upload, X, FileText, Image } from 'lucide-react';
 import { useLocale } from '../hooks/useLocale';
@@ -32,7 +33,7 @@ function DocumentUpload({ onUploaded, multiple = true, accept, label, maxFiles =
       const formData = new FormData();
       files.forEach((file) => formData.append('files', file));
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE_URL}/api/documents/upload`, {
+      const res = await apiFetch(`${API_BASE_URL}/api/documents/upload`, {
         method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData,
       });
       const json = await res.json().catch(() => ({}));

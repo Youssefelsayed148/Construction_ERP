@@ -1,3 +1,4 @@
+import { apiFetch } from '../services/apiClient';
 // Phase 24 — reports workspace: catalog + saved views + scheduled reports +
 // exports (CSV/PDF) + the automatic project report. Permission-aware: the
 // columns shown are exactly what the server returned for this user.
@@ -15,13 +16,13 @@ const headers = () => {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 };
 
-const fetchApi = (url, options) => fetch(url, { headers: headers(), ...options }).then(r => {
+const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
   return r.json();
 });
 
 function download(url, filename) {
-  fetch(url, { headers: headers() }).then(r => {
+  apiFetch(url, { headers: headers() }).then(r => {
     if (!r.ok) throw new Error('Export failed');
     return r.blob();
   }).then(blob => {

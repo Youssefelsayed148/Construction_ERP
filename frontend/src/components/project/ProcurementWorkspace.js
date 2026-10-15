@@ -1,3 +1,4 @@
+import { apiFetch } from '../../services/apiClient';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, ClipboardList, FileText, RefreshCw, Send, ShoppingCart, Truck } from 'lucide-react';
 import { useLocale } from '../../hooks/useLocale';
@@ -13,7 +14,7 @@ function tokenHeaders() {
 }
 
 async function api(path, options = {}) {
-  const response = await fetch(`${API}${path}`, { headers: tokenHeaders(), ...options });
+  const response = await apiFetch(`${API}${path}`, { headers: tokenHeaders(), ...options });
   const body = await response.json().catch(() => ({}));
   if (!response.ok || body.success === false) {
     const error = new Error(body.error || 'requestFailed');

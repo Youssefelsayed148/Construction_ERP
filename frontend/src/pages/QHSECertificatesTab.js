@@ -1,3 +1,4 @@
+import { apiFetch } from '../services/apiClient';
 import React, { useCallback, useEffect, useState } from 'react';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
@@ -14,7 +15,7 @@ function authHeaders() {
 }
 
 async function request(url, options = {}) {
-  const response = await fetch(url, { ...options, headers: { ...authHeaders(), ...options.headers } });
+  const response = await apiFetch(url, { ...options, headers: { ...authHeaders(), ...options.headers } });
   const body = await response.json().catch(() => ({}));
   if (!response.ok || body.success === false) throw new Error(body.error_code || 'request_failed');
   return body.data;

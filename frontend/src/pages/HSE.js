@@ -1,3 +1,4 @@
+import { apiFetch } from '../services/apiClient';
 // Phase 20 — HSE workspace: dashboard, permits, incidents, near misses,
 // JSA/risk assessments, inspections, inductions, toolbox talks, PPE,
 // equipment inspections, emergency drills. Every tab renders an explicit
@@ -15,13 +16,13 @@ const headers = () => {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 };
 
-const fetchApi = (url, options) => fetch(url, { headers: headers(), ...options }).then(r => {
+const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
   return r.json();
 });
 
 const downloadPdf = async (url, filename) => {
-  const res = await fetch(url, { headers: headers() });
+  const res = await apiFetch(url, { headers: headers() });
   if (!res.ok) throw new Error('PDF failed');
   const blob = await res.blob();
   const a = document.createElement('a');

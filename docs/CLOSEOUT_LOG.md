@@ -2235,3 +2235,9 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - Committed `docs/R5_SCREEN_INVENTORY.md` as `1375b5c` before any R5 application changes. It lists mounted backend routes and permission gates, current frontend page/route/menu gaps, bilingual key groups, existing API/form patterns, and proposed screen placement/order.
 - Baseline: 61 direct fetch call sites across 41 frontend source files; no axios references. `services/api.js` is partial centralization. Existing kit is `FormField`, `formUtils`, `TextEntryDialog`, and `States`; Sidebar applies module/action visibility but App only has an authentication route guard.
 - Proceed to R5.1 central API client; R4 gates remain green.
+
+## 2026-10-15 - R5.1 central API client
+
+- Centralized all frontend network calls behind `frontend/src/services/apiClient.js`; migrated 60 prior fetch sites across 40 files. The direct-call guard is ratcheted to 1 call in the client; current 1/1, no axios. Added typed errors, EN/AR translation mapping, 401 session redirect, paging total count, and request cancellation on route change/unmount.
+- Focused test command `npm.cmd test -- --watchAll=false --runInBand --no-colors src/services/apiClient.test.js src/hooks/useApiClient.test.js`: PASS 2 suites / 8 tests. `npm.cmd run lint:api`, `i18n:check`, `i18n:parity`, and `git diff --check` PASS; parity is 35 namespaces / 1,293 English keys.
+- R5.1 commit: pending. R5.2 form-kit adoption and R5.3 paging are next.

@@ -1,3 +1,4 @@
+import { apiFetch } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
@@ -17,7 +18,7 @@ const headers = () => {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 };
 
-const fetchApi = (url, options) => fetch(url, { headers: headers(), ...options }).then(r => {
+const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
   return r.json();
 });
@@ -96,7 +97,7 @@ function SiteWorkspace() {
     try {
       const form = new FormData();
       form.append('files', file);
-      const uploadedResponse = await fetch(`${API_BASE_URL}/api/documents/upload`, {
+      const uploadedResponse = await apiFetch(`${API_BASE_URL}/api/documents/upload`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: form,

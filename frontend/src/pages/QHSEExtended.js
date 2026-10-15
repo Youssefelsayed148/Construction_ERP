@@ -1,3 +1,4 @@
+import { apiFetch } from '../services/apiClient';
 // Phase 19 — QA/QC extended tabs: ITP, WIR, Punch items, Checklists,
 // Corrective/Preventive actions, Mock-ups, Calibration records.
 // Rendered inside the QHSE page's tab strip; every tab renders an explicit
@@ -14,13 +15,13 @@ const headers = () => {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 };
 
-const fetchApi = (url, options) => fetch(url, { headers: headers(), ...options }).then(r => {
+const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
   return r.json();
 });
 
 const downloadPdf = async (url, filename) => {
-  const res = await fetch(url, { headers: headers() });
+  const res = await apiFetch(url, { headers: headers() });
   if (!res.ok) throw new Error('PDF failed');
   const blob = await res.blob();
   const a = document.createElement('a');

@@ -1,3 +1,4 @@
+import { apiFetch } from '../services/apiClient';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Boxes, ClipboardList, DollarSign, Percent, RefreshCw, ShoppingCart } from 'lucide-react';
@@ -11,7 +12,7 @@ const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api
 const tokenHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 
 async function get(path) {
-  const response = await fetch(`${API_URL}${path}`, { headers: tokenHeaders() });
+  const response = await apiFetch(`${API_URL}${path}`, { headers: tokenHeaders() });
   const body = await response.json().catch(() => ({}));
   if (!response.ok || body.success === false) throw new Error(body.error || `Request failed (${response.status})`);
   return body.data;

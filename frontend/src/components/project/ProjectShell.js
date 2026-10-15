@@ -1,3 +1,4 @@
+import { apiFetch } from '../../services/apiClient';
 import React, { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useParams } from 'react-router-dom';
 import { useLocale } from '../../hooks/useLocale';
@@ -49,7 +50,7 @@ export default function ProjectShell() {
   useEffect(() => {
     let cancelled = false;
     // Only the type is needed here (to hide Units & Sales); a failure leaves every permitted tab visible.
-    fetch(`${API_URL}/projects/${id}`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+    apiFetch(`${API_URL}/projects/${id}`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
       .then((r) => (r.ok ? r.json() : null))
       .then((body) => { if (!cancelled && body?.data?.project_type) setProjectType(body.data.project_type); })
       .catch(() => { /* type stays unknown: every permitted tab is shown */ });

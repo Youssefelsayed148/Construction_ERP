@@ -1,3 +1,4 @@
+import { apiFetch } from '../services/apiClient';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
@@ -12,7 +13,7 @@ const headers = () => {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 };
 
-const fetchApi = (url, options) => fetch(url, { headers: headers(), ...options }).then(r => {
+const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { const err = new Error(e.error || 'Request failed'); err.code = e.code; throw err; });
   return r.json();
 });

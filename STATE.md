@@ -1,3 +1,9 @@
+## R5.1 current position - 2026-10-15 - API client implementation complete, checkpoint pending
+
+- Centralized all direct frontend fetch use in `frontend/src/services/apiClient.js`. Migrated 60 former call sites across 40 source files; current direct use is 1 call in the shared client. Guard baseline is ratcheted to 1 and `npm.cmd run lint:api` passes 1/1; no axios use remains.
+- The client provides authenticated 401 events (AuthContext logout and login redirect), login 401 suppression, typed network/503/504 errors with EN/AR keys, multipart-safe headers, `X-Total-Count`, and `useApiClient` cancellation on route change/unmount.
+- Focused tests PASS 2 suites / 8 tests. `i18n:check`, parity (35 namespaces / 1,293 English keys), `lint:api`, and `git diff --check` pass. R5.1 commit and post-commit state update are pending; then continue R5.2 and R5.3.
+
 ## R5.0 current position - 2026-10-15 - R4 gates green
 
 - R4.6 all exit gates PASS. Final full PG: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/r02-pg-gate.ps1 -All -R4 -NoForceExit -Filter 'FAIL|Test Suites:|Tests:|● .*›|migrations:|removed'` — 84/84 suites, 1,896/1,896 tests; fresh database, 130 migrations; container `erp-r04-gate-20261015161743` removed, exit 0.

@@ -1,3 +1,4 @@
+import { apiFetch } from '../../services/apiClient';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useLocale } from '../../hooks/useLocale';
 import { formatCurrency } from '../../utils/formatters';
@@ -10,7 +11,7 @@ const headers = () => ({
 });
 
 async function request(path, method = 'GET', payload) {
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await apiFetch(`${API_URL}${path}`, {
     method,
     headers: headers(),
     body: payload ? JSON.stringify(payload) : undefined,

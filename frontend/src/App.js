@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -36,6 +36,7 @@ import AgentActivity from './pages/AgentActivity';
 import ProjectOperations from './pages/ProjectOperations';
 import Settings from './pages/Settings';
 import { authService } from './services/api';
+import { useAuth } from './store/AuthContext';
 import './styles/index.css';
 import './styles/portal.css';
 
@@ -56,9 +57,27 @@ function LandingRedirect() {
   return <Navigate to="/dashboard" replace />;
 }
 
+function ApiSessionRedirect() {
+  const { logout } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      logout();
+      if (location.pathname !== '/login') navigate('/login', { replace: true, state: { from: location } });
+    };
+    window.addEventListener('api:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('api:unauthorized', handleUnauthorized);
+  }, [logout, location, navigate]);
+
+  return null;
+}
+
 function App() {
   return (
     <BrowserRouter>
+      <ApiSessionRedirect />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route

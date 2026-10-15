@@ -1,3 +1,4 @@
+import { apiFetch } from '../services/apiClient';
 import React, { useState } from 'react';
 import { useLocale } from '../hooks/useLocale';
 
@@ -26,7 +27,7 @@ export default function ProcurementReview() {
     event.preventDefault();
     setLoading(true); setError(''); setComparison(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/procurement/rfq/${Number(rfqId)}/comparison`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/procurement/rfq/${Number(rfqId)}/comparison`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
       const body = await response.json();
@@ -39,7 +40,7 @@ export default function ProcurementReview() {
   const documentUrl = (kind) => `${API_BASE_URL}/api/procurement/documents/${kind}/${Number(rfqId)}`;
   const download = async (kind) => {
     try {
-      const response = await fetch(documentUrl(kind), { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      const response = await apiFetch(documentUrl(kind), { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
       if (!response.ok) {
         const body = await response.json();
         throw new Error(body.error || `Download failed (${response.status})`);

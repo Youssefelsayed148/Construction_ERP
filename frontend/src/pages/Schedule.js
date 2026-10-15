@@ -1,3 +1,4 @@
+import { apiFetch } from '../services/apiClient';
 // Phase 22 — planning & scheduling workspace: activities + Gantt-style bars,
 // CPM critical path, lookaheads (2/4/6 weeks), delayed activities, SV%/SPI,
 // S-curve, alerts, baselines and CSV import/export.
@@ -18,7 +19,7 @@ const headers = () => {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 };
 
-const fetchApi = (url, options) => fetch(url, { headers: headers(), ...options }).then(r => {
+const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => {
     const error = new Error(e.error || e.error_code || 'Request failed');
     error.error_code = e.error_code || e.error;
@@ -217,7 +218,7 @@ export function ActivitiesTab({ projectId, locale, t }) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, gap: 8, flexWrap: 'wrap' }}>
         <button className="btn" onClick={async () => {
-          const res = await fetch(`${API_URL}/schedule/activities/export?project_id=${projectId}`, { headers: headers() });
+          const res = await apiFetch(`${API_URL}/schedule/activities/export?project_id=${projectId}`, { headers: headers() });
           const blob = await res.blob();
           const a = document.createElement('a');
           a.href = URL.createObjectURL(blob); a.download = `schedule-${projectId}.csv`; a.click(); URL.revokeObjectURL(a.href);

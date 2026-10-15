@@ -1293,3 +1293,10 @@ Passwords now use built-in async `crypto.scrypt` with OWASP-listed N=32768/r=8/p
 - Committed `docs/R5_SCREEN_INVENTORY.md` as `1375b5c` before application work. It maps all ten areas to mounted APIs, current routes/screens/menu gaps, server-side permission rules, and EN/AR key groups; records API/form architecture and the 61 fetch call / 41 file baseline (zero axios); and lists R5 implementation order.
 - Key findings: `/settings` only manages account mappings; `/hr` is personnel rather than account/role management; no standalone role-definition CRUD exists; SLA is exposed as claim/workflow read/configuration fields rather than a standalone SLA CRUD API. New frontend route guards are needed in addition to existing module/action menu filtering.
 - Next: R5.1 central API client and ratcheting direct-call guard, then R5.2 form kit adoption, R5.3 paging UI, and R5.4 in the requested screen order.
+
+### R5.1 central API client
+
+- Migrated all 60 prior direct fetch call sites in 40 files through `frontend/src/services/apiClient.js`; its one internal fetch is now the sole call site. Ratcheted the per-file guard baseline to 1; zero axios references.
+- Added 401 session expiry redirect, typed network/503/504 errors mapped to EN/AR keys, total-count metadata, multipart-safe headers, and route/unmount abort handling.
+- Focused tests PASS 2 suites / 8 tests; `lint:api`, i18n check/parity, and diff check PASS. i18n parity is 35 namespaces / 1,293 English keys.
+- R5.1 commit/checkpoint pending; next R5.2 and R5.3.

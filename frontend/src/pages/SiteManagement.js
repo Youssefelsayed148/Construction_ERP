@@ -1,3 +1,4 @@
+import { apiFetch } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
@@ -16,7 +17,7 @@ const headers = () => {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 };
 
-const fetchApi = (url, options) => fetch(url, { headers: headers(), ...options }).then(r => {
+const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => {
     const error = new Error(e.error || 'Request failed');
     error.status = r.status;
@@ -33,7 +34,7 @@ async function uploadReportPhotos(files) {
   const formData = new FormData();
   files.forEach((file) => formData.append('files', file, file.name));
   const token = localStorage.getItem('token');
-  const response = await fetch(`${API_URL}/documents/upload`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData });
+  const response = await apiFetch(`${API_URL}/documents/upload`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData });
   const body = await response.json().catch(() => ({}));
   if (!response.ok || !body.success) {
     const error = new Error(body.error || 'Photo upload failed');

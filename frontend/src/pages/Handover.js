@@ -1,3 +1,4 @@
+import { apiFetch } from '../services/apiClient';
 // Phase 25 — handover, closeout & warranty workspace: the exact lifecycle,
 // the package checklist with document upload + completion percent, the asset
 // register, and the warranty/DLP claim flow with SLA tracking.
@@ -19,7 +20,7 @@ const headers = () => {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 };
 
-const fetchApi = (url, options, translate = (key) => key) => fetch(url, { headers: headers(), ...options }).then(r => {
+const fetchApi = (url, options, translate = (key) => key) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error_code ? translate(`handover.errors.${e.error_code}`) : (e.error || translate('common.states.error'))); });
   return r.json();
 });

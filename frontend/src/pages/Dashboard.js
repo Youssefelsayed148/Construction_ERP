@@ -1,3 +1,4 @@
+import { apiFetch } from '../services/apiClient';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
@@ -23,7 +24,7 @@ function Dashboard() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     const authGet = (path) =>
-      fetch(`${API_URL}${path}`, { headers: { Authorization: `Bearer ${token}` } })
+      apiFetch(`${API_URL}${path}`, { headers: { Authorization: `Bearer ${token}` } })
         .then((r) => r.json())
         .catch(() => null);
 

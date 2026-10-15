@@ -26,7 +26,8 @@
     "i18n:pdf-spike": "node scripts/i18n-pdf-spike.js",
     "i18n:review-pack": "node scripts/build-arabic-review-pack.js",
     "i18n:screenshots": "node scripts/i18n-screenshots.js",
-    "i18n:parity": "node scripts/i18n-parity.js"
+    "i18n:parity": "node scripts/i18n-parity.js",
+    "lint:api": "node scripts/api-client-guard.js"
   },
   "eslintConfig": {
     "extends": [

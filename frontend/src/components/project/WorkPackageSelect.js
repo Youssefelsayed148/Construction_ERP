@@ -1,3 +1,4 @@
+import { apiFetch } from '../../services/apiClient';
 import React, { useEffect, useState } from 'react';
 import { useLocale } from '../../hooks/useLocale';
 
@@ -12,7 +13,7 @@ export default function WorkPackageSelect({ projectId, value, onChange, required
   useEffect(() => {
     let cancelled = false;
     setState({ loading: true, error: false, rows: [] });
-    fetch(`${API_URL}/projects/${projectId}/work-packages`, {
+    apiFetch(`${API_URL}/projects/${projectId}/work-packages`, {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
     })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))

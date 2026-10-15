@@ -1,3 +1,4 @@
+import { apiFetch } from '../services/apiClient';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Bot, ShieldCheck, ClipboardList, CheckCircle2, XCircle } from 'lucide-react';
 import { useLocale } from '../hooks/useLocale';
@@ -10,7 +11,7 @@ function headers() {
 }
 
 async function fetchApi(url, options = {}) {
-  const res = await fetch(url, { ...options, headers: headers() });
+  const res = await apiFetch(url, { ...options, headers: headers() });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || `Request failed (${res.status})`);

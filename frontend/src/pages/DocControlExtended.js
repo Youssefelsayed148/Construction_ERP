@@ -1,3 +1,4 @@
+import { apiFetch } from '../services/apiClient';
 // Phase 21 — document control extended tabs: controlled registers,
 // transmittals, correspondence, cross-record search.
 // Rendered inside the ProjectDocuments page's tab strip; every tab renders an
@@ -14,13 +15,13 @@ const headers = () => {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 };
 
-const fetchApi = (url, options) => fetch(url, { headers: headers(), ...options }).then(r => {
+const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...options }).then(r => {
   if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Request failed'); });
   return r.json();
 });
 
 const downloadPdf = async (url, filename) => {
-  const res = await fetch(url, { headers: headers() });
+  const res = await apiFetch(url, { headers: headers() });
   if (!res.ok) throw new Error('PDF failed');
   const blob = await res.blob();
   const a = document.createElement('a');
@@ -263,7 +264,7 @@ export function TransmittalsTab({ projectId, locale, t }) {
                     {tr.status === 'sent' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(tr, 'acknowledged')}>{locale === 'ar' ? 'إقرار' : 'Acknowledge'}</button>}
                     {(tr.status === 'sent' || tr.status === 'acknowledged') && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(tr, 'closed')}>{locale === 'ar' ? 'إغلاق' : 'Close'}</button>}
                     <button className="btn" style={{ padding: '4px 10px' }} onClick={async () => {
-                      const res = await fetch(`${API_URL}/docs/transmittals/${tr.id}/pdf`, { headers: headers() });
+                      const res = await apiFetch(`${API_URL}/docs/transmittals/${tr.id}/pdf`, { headers: headers() });
                       const blob = await res.blob();
                       const a = document.createElement('a');
                       a.href = URL.createObjectURL(blob); a.download = `${tr.transmittal_number}.pdf`; a.click(); URL.revokeObjectURL(a.href);

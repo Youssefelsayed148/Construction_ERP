@@ -1,82 +1,69 @@
 import { jwtDecode } from 'jwt-decode';
-
-const API_BASE_URL = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
-const API_URL = `${API_BASE_URL}/api`;
+import { apiJson, apiUrl } from './apiClient';
 
 const getAuthToken = () => localStorage.getItem('token');
 
-const headers = (includeAuth = true) => {
+const headers = () => {
   const h = { 'Content-Type': 'application/json' };
-  if (includeAuth) {
-    const token = getAuthToken();
-    if (token) h['Authorization'] = `Bearer ${token}`;
-  }
+  const token = getAuthToken();
+  if (token) h['Authorization'] = `Bearer ${token}`;
   return h;
 };
 
-const handleResponse = async (response) => {
-  if (!response.ok) {
-    let error;
-    try {
-      error = await response.json();
-    } catch {
-      error = { error: `HTTP ${response.status}` };
-    }
-    throw new Error(error.error || `HTTP ${response.status}`);
-  }
-  return response.json();
-};
+const request = (path, options = {}) => apiJson(apiUrl(path), options).then(result => result.data);
 
 // Auth API
 export const authApi = {
   login: (email, password) =>
-    fetch(`${API_URL}/auth/login`, {
+    request('/auth/login', {
       method: 'POST',
-      headers: headers(false),
+      auth: false,
+      redirectOn401: false,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
-    }).then(handleResponse),
+    }),
 
   getMe: () =>
-    fetch(`${API_URL}/auth/me`, { headers: headers() }).then(handleResponse),
+    request('/auth/me', { headers: headers() }),
 
   register: (data) =>
-    fetch(`${API_URL}/auth/register`, {
+    request('/auth/register', {
       method: 'POST',
       headers: headers(),
       body: JSON.stringify(data),
-    }).then(handleResponse),
+    }),
 };
 
 // Users API
 export const usersApi = {
-  getAll: () => fetch(`${API_URL}/users`, { headers: headers() }).then(handleResponse),
-  getById: (id) => fetch(`${API_URL}/users/${id}`, { headers: headers() }).then(handleResponse),
+  getAll: () => request('/users', { headers: headers() }),
+  getById: (id) => request(`/users/${id}`, { headers: headers() }),
   update: (id, data) =>
-    fetch(`${API_URL}/users/${id}`, {
+    request(`/users/${id}`, {
       method: 'PUT',
       headers: headers(),
       body: JSON.stringify(data),
-    }).then(handleResponse),
+    }),
   deactivate: (id) =>
-    fetch(`${API_URL}/users/${id}`, {
+    request(`/users/${id}`, {
       method: 'DELETE',
       headers: headers(),
-    }).then(handleResponse),
+    }),
 };
 
 // Dashboard API
 export const dashboardApi = {
-  getStats: () => fetch(`${API_URL}/dashboard`, { headers: headers() }).then(handleResponse),
+  getStats: () => request('/dashboard', { headers: headers() }),
 };
 
 export const accountMappingsApi = {
-  getAll: (locale = 'en') => fetch(`${API_URL}/finance-ledger/account-mappings?locale=${encodeURIComponent(locale)}`, { headers: headers() }).then(handleResponse),
-  update: (key, account_id) => fetch(`${API_URL}/finance-ledger/account-mappings/${encodeURIComponent(key)}`, {
+  getAll: (locale = 'en') => request(`/finance-ledger/account-mappings?locale=${encodeURIComponent(locale)}`, { headers: headers() }),
+  update: (key, account_id) => request(`/finance-ledger/account-mappings/${encodeURIComponent(key)}`, {
     method: 'PUT', headers: headers(), body: JSON.stringify({ account_id }),
-  }).then(handleResponse),
-  confirmMapping: (key) => fetch(`${API_URL}/finance-ledger/account-mappings/${encodeURIComponent(key)}/confirm`, {
+  }),
+  confirmMapping: (key) => request(`/finance-ledger/account-mappings/${encodeURIComponent(key)}/confirm`, {
     method: 'POST', headers: headers(), body: JSON.stringify({}),
-  }).then(handleResponse),
+  }),
 };
 
 // Client-side auth service (mirrors feed factory pattern)
