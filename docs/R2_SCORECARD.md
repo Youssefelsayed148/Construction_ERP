@@ -1,12 +1,13 @@
 # Session 6 current R2b checkpoint - 2026-10-15
 
-**514/601 verified** (512 audit+rollback, 2 historical audit-only), **79 pending**, **8 exempt**. Session change: +40 verified; pending 121 -> 79 (40 fixtures + 2 owner-authorized boundary exemptions). Two client v1 aliases assert 403 from externalPortalAllowed; canonical acknowledgement and variation separately pass audit/rollback. This owner decision supersedes historical product questions below. No decision waiting.
+**518/601 verified** (516 audit+rollback, 2 historical audit-only), **75 pending**, **8 exempt**. Session change: +44 verified; pending 121 -> 75 (44 fixtures + 2 owner-authorized boundary exemptions). Two client v1 aliases assert 403 from externalPortalAllowed; canonical acknowledgement and variation separately pass audit/rollback. This owner decision supersedes historical product questions below. No decision waiting.
 
 | Slice | Before | After | Commit |
 |---|---|---|---|
 | R2b.13 consultant / client boundary | 11 missing fixtures; 2 pending aliases | Family 1/31 PASS; canonical-only exemption reason documented | 6a26960 |
 | R2b.14 handover | 9 missing fixtures | Family 1/25 PASS, fresh process projects | 726264f |
-| R2b.15 HSE / QHSE | 20 missing fixtures; permit status missing audit and ignores injected audit failure (2 failed / 41 passed) | Minimal in-transaction permit audit; HSE 1/43 and QHSE 1/77 PASS | pending commit |
+| R2b.15 HSE / QHSE | 20 missing fixtures; permit status missing audit and ignores injected audit failure (2 failed / 41 passed) | Minimal in-transaction permit audit; HSE 1/43 and QHSE 1/77 PASS | 96184fc |
+| R2b.16 report v1 aliases | 4 missing mutation fixtures | R2_ONLY=/v1/reports/(saved-views\|scheduled): 1/11 PASS; all aliases wrote audit and rolled back | pending commit |
 
 | Session gate | Result |
 |---|---|
@@ -20,7 +21,7 @@
 
 Full PostgreSQL command: `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -All`; PASS 76/76 suites, 1,714/1,714 tests, 126 migrations; erp-r02-gate-20261015033636 removed; exit 0. Registry census: 514 fixtures, 8 exemptions, 79 pending, 0 unregistered/stale/redundant. Golden: 126 migrations; erp-r02-gate-20261015032600 removed. Changed-JS syntax and git diff --check PASS. Initial shell test-summary pipelines returned 1 although all tests passed; explicit LASTEXITCODE capture reruns confirmed mock/frontend test exits 0. No test counts decreased.
 
-NOT verified: 79 remaining mutations (missing fixtures, no waivers); R2 exit; all R3.0-R3.6 measurements, migrations, equivalence/concurrency/index work. R3 not started because the R2 gate requires no unexplained pending entries. R4 untouched. Next: remaining CRUD/aliases, schedule, portals, auth/agent, reports/webhooks fixtures. No production data/services, dependencies, migrations, env-file edits, push/PR/deploy/history changes. Excluded reports untouched/unstaged.
+NOT verified: 75 remaining mutations (missing fixtures, no waivers); R2 exit; all R3.0-R3.6 measurements, migrations, equivalence/concurrency/index work. R3 not started because the R2 gate requires no unexplained pending entries. R4 untouched. Next: remaining CRUD/aliases, schedule, portals, auth/agent, reports/webhooks fixtures. No production data/services, dependencies, migrations, env-file edits, push/PR/deploy/history changes. Excluded reports untouched/unstaged.
 
 ---
 

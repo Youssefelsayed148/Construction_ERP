@@ -25,8 +25,16 @@ module.exports = {
   ...group(['DELETE /api/reports/saved-views/:id'], async ctx => ({
     params: { id: (await ctx.api('POST', '/api/reports/saved-views', { module: 'projects', name: `r02 view ${ctx.n()}` })).id },
   })),
+  ...group(['POST /api/v1/reports/saved-views'], async ctx => ({ body: { module: 'projects', name: `r02 v1 view ${ctx.n()}` }, status: 201 })),
+  ...group(['DELETE /api/v1/reports/saved-views/:id'], async ctx => ({
+    params: { id: (await ctx.api('POST', '/api/reports/saved-views', { module: 'projects', name: `r02 v1 view ${ctx.n()}` })).id },
+  })),
   ...group(['DELETE /api/reports/scheduled/:id'], async ctx => ({
     params: { id: (await ctx.api('POST', '/api/reports/scheduled', { project_id: ctx.pid, report_key: 'projects', name: `r02 schedule ${ctx.n()}` })).id },
+  })),
+  ...group(['POST /api/v1/reports/scheduled'], async ctx => ({ body: { project_id: ctx.pid, report_key: 'projects', name: `r02 v1 schedule ${ctx.n()}` }, status: 201 })),
+  ...group(['DELETE /api/v1/reports/scheduled/:id'], async ctx => ({
+    params: { id: (await ctx.api('POST', '/api/reports/scheduled', { project_id: ctx.pid, report_key: 'projects', name: `r02 v1 schedule ${ctx.n()}` })).id },
   })),
   ...group(['POST /api/consultant/observations/:id/comments'], async ctx => ({ params: { id: (await observation(ctx)).id }, body: { body: 'r02 comment' }, status: 201 })),
   ...group(['POST /api/docs/categories'], async ctx => ({ body: { name: `r02 category ${ctx.n()}` }, status: 201 })),
