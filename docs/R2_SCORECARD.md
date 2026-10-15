@@ -1,6 +1,10 @@
 # R2 scorecard — 2026-10-15
 
-## Session 4 current checkpoint
+## Session 5 current checkpoint
+
+**419/601 verified** (417 audit+rollback, 2 historical audit-only sweeps), **176 pending**, **6 exempt**. R2b.9 adds 41 commercial fixtures. BEFORE 2 contract-number rollback leaks / 115 passes; AFTER moving existing number allocation inside the contract transaction: family registry PASS 1/117. Family prerequisites shared; mutable workflow targets isolated; no maker/checker bypass. Full gates pending once at session end. No waived endpoints, no R3, no product decision waiting.
+
+## Historical session 4 checkpoint
 
 **378/601 verified** (376 audit+rollback, 2 historical audit-only sweep exceptions), **217 pending**, **6 exempt**. No new waiver; R2 exit incomplete and R3 not started. All project/setup endpoints now have fixtures; remaining order is commercial, docs/documents, organizations, invoices, then the rest.
 

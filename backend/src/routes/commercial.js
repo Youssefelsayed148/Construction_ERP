@@ -54,9 +54,8 @@ router.post('/contracts', authenticate, authorize(), async (req, res) => {
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     authorizeProjectPayload(req, value);
 
-    const contractNumber = await nextNumber(query, { table: 'client_contracts', column: 'contract_number', prefix: 'CC', pad: 5 });
-
     const created = await transaction(async (client) => {
+      const contractNumber = await nextNumber(client.query.bind(client), { table: 'client_contracts', column: 'contract_number', prefix: 'CC', pad: 5 });
       const r = await client.query(
         `INSERT INTO client_contracts
          (contract_number, project_id, client_id, title, original_value, revised_value,
