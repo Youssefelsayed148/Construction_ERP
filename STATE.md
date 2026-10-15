@@ -903,3 +903,12 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - Added nine fixture routes covering notification retry/read/preferences, canonical portal instructions/payment applications/submissions, client preview, v1 daily-report assembly, and approval limits. Verified targeted family: PASS 1 suite / 26 tests; 126 migrations; no rollback leaks; container removed.
 - The v1 subcontractor submissions alias is blocked with 403 by the existing externalPortalAllowed path boundary. Added a documented exemption and a regression 403 test; kept the canonical route fixture. Existing two client-only aliases remain covered by the same test.
 - Census 592 fixtures, 9 exemptions, 0 pending, 0 unregistered/stale/redundant. R2 exit gates still need to run; R3 gated.
+
+- Committed `4cd9be4` (R2b.30 final route fixtures and portal alias boundary) with requested trailers. STATE updated after commit. Registry is now 592 fixtures / 9 exemptions / 0 pending; the required full R2 gate set is next and R3 is still gated.
+
+## Session 10 R2b.31 - isolate notification retry fixture, 2026-10-15
+
+- Full PG gate BEFORE: 75/76 suites passed; mutation registry failed 169 tests. Registry census itself was clean (592 fixtures / 9 exemptions / 0 pending).
+- Diagnostic two-route family run BEFORE: after notification retry rollback, report-view delete prerequisite POST failed 500. The retry fixture had inserted the shared owner into `r02_fail_users`; later owner API fixture setup then failed.
+- Changed the retry fixture to own its failed in-app delivery as a fresh project-manager actor, so failure injection stays isolated. AFTER same reproducer: PASS 1 suite / 8 tests; 126 migrations; retry returned 500 with no leaks and report prerequisite setup proceeded; container removed.
+- Full registry and R2 final gate reruns are pending. R3 remains gated.

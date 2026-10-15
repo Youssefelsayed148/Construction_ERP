@@ -1190,3 +1190,7 @@ Added six audit/rollback fixtures for the remaining team assignment, delegation,
 ## 2026-10-15 - Session 10 R2b.30 final routes and alias boundary
 
 Added nine audit/rollback fixtures for notifications, subcontractor portal canonical routes, client preview, daily-report assembly, and approval limits. The v1 subcontractor submission alias is rejected by the existing external portal path guard with 403; documented that boundary and added a regression denial test. Final tracked targeted PG gate: PASS 1 suite / 26 tests; 126 migrations; audit rows and rollback checks passed; container removed. Census 592 fixtures / 9 exemptions / 0 pending / 0 unregistered / 0 stale / 0 redundant. R2 full gate set is next; R3 gated.
+
+## 2026-10-15 - Session 10 R2b.31 isolate notification retry actor
+
+The full R2 PG gate reported 1/76 suites failed with 169/1,871 tests failing; failures were rollback tests after notification retry. The two-route reproducer confirmed the fixture marked the shared owner as the failure-injection user, breaking subsequent owner-authenticated setup (`POST /api/reports/saved-views` returned 500). Changed delivery ownership/audit actor to a fresh project-manager fixture account. Targeted order-dependent reproducer AFTER: PASS 1 suite / 8 tests; 126 migrations; retry audit failure rolled back cleanly and next report fixture proceeded. Full registry and R2 exit gates remain to rerun.

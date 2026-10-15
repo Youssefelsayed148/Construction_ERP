@@ -36,13 +36,14 @@ module.exports = {
   }),
   ...group(['PUT /api/v1/notifications/preferences'], async ctx => ({ body: { event_type: `r02.v1.event.${ctx.n()}`, channel: 'in_app', enabled: false } })),
   ...group(['POST /api/notifications/deliveries/:id/retry'], async ctx => {
+    const who = await ctx.actor('project_manager');
     const key = crypto.createHash('sha256').update(ctx.n()).digest('hex');
     const row = await ctx.one(
       `INSERT INTO notification_deliveries (user_id, channel, event_type, idempotency_key, provider, status, attempts, max_attempts, next_retry_at, payload)
        VALUES ($1, 'in_app', 'r02.retry', $2, 'database', 'failed', 0, 5, NOW() - INTERVAL '1 minute', $3::jsonb) RETURNING id`,
-      [ctx.owner.id, key, JSON.stringify({ title: 'R02 retry fixture', body: 'local fixture only', eventType: 'r02.retry' })]
+      [who.userId, key, JSON.stringify({ title: 'R02 retry fixture', body: 'local fixture only', eventType: 'r02.retry' })]
     );
-    return { params: { id: row.id }, body: {}, actor: { userId: ctx.owner.id, token: ctx.token } };
+    return { params: { id: row.id }, body: {}, actor: who };
   }),
   ...group(['POST /api/client-portal/preview'], async ctx => ({ body: { project_id: ctx.pid }, status: 200 })),
   ...group(['POST /api/v1/daily-reports/:projectId/assemble'], async ctx => ({ params: { projectId: ctx.pid }, body: { report_date: '2099-01-01', narrative: 'R02 assembly fixture' }, status: 201 })),
