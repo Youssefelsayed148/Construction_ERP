@@ -123,7 +123,9 @@
     "tooLarge": "Each file must be {size} MB or smaller.",
     "remove": "Remove {name}"
   },
-  "toast": { "dismiss": "Dismiss" },
+  "toast": {
+    "dismiss": "Dismiss"
+  },
   "dialogs": {
     "typeToConfirm": "Type \"{value}\" to confirm.",
     "handoverClaimTitle": "New warranty claim",
@@ -160,7 +162,9 @@
     "items": {
       "one": "{count} item",
       "other": "{count} items"
-    }
+    },
+    "showing": "Showing {loaded} of {total}",
+    "loadMore": "Load more"
   },
   "language": {
     "en": "English",

@@ -1,3 +1,9 @@
+## R5.2 shared form kit - 2026-10-15 - implementation ready to commit
+
+- Added `useManagedForm` around the existing `validateValues` and `mapServerErrors`, plus shared `FormActions` and `LoadMore` controls. `FormField` now accepts already translated errors. EN/AR common pagination keys are present.
+- Focused form kit test PASS 1 suite / 2 tests; `i18n:check` and parity PASS at 35 namespaces / 1,295 English keys. `npm` packages unchanged; no Testing Library or form dependency installed.
+- Commit and docs checkpoint pending. R5.3 still must wire paging into all screens in `docs/R4_PAGINATION_UI_IMPACT.md`; R5.4 follows.
+
 ## R5.1 current position - 2026-10-15 - committed as `ef6c6d4`
 
 - Centralized all direct frontend fetch use in `frontend/src/services/apiClient.js`. Migrated 60 former call sites across 40 source files; current direct use is 1 call in the shared client. Guard baseline is ratcheted to 1 and `npm.cmd run lint:api` passes 1/1; no axios use remains.

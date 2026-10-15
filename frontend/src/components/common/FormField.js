@@ -6,7 +6,7 @@ export default function FormField({ id, label, error, required = false, hint, as
   const Component = as;
   const errorId = `${id}-error`;
   const hintId = `${id}-hint`;
-  const errorText = error ? t(`common.validation.${error}`, { defaultValue: t('common.validation.invalid') }) : '';
+  const errorText = error ? (typeof error === 'string' ? t(`common.validation.${error}`, { defaultValue: t('common.validation.invalid') }) : error) : '';
   return (
     <div className="form-group">
       <label className="form-label" htmlFor={id}>{label}{required ? ' *' : ''}</label>

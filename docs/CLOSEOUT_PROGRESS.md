@@ -1300,3 +1300,9 @@ Passwords now use built-in async `crypto.scrypt` with OWASP-listed N=32768/r=8/p
 - Added 401 session expiry redirect, typed network/503/504 errors mapped to EN/AR keys, total-count metadata, multipart-safe headers, and route/unmount abort handling.
 - Focused tests PASS 2 suites / 8 tests; `lint:api`, i18n check/parity, and diff check PASS. i18n parity is 35 namespaces / 1,293 English keys.
 - R5.1 implementation commit `ef6c6d4`; post-commit checkpoint is this docs commit. Next R5.2 and R5.3.
+
+### R5.2 shared form kit
+
+- Added `useManagedForm` to combine the existing validation/error mappers with field values, submit-in-flight state, and typed server errors; added shared `FormActions` and `LoadMore`; extended `FormField` to display translated errors. Added EN/AR pagination labels.
+- Focused kit test PASS 1 suite / 2 tests; i18n check/parity PASS (35 namespaces / 1,295 English keys). Existing dependency set retained.
+- Commit pending. R5.3 must wire paging to every screen listed in the R4.4 UI impact document.

@@ -330,6 +330,17 @@ body {
   margin-bottom: 16px;
 }
 
+.form-actions,
+.load-more {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.form-actions { justify-content: flex-end; margin-block-start: 1rem; }
+.load-more { justify-content: space-between; padding-block: 1rem; }
+
 .form-label {
   display: block;
   margin-bottom: 6px;

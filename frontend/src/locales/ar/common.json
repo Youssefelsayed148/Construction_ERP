@@ -123,7 +123,9 @@
     "tooLarge": "يجب ألا يتجاوز حجم الملف {size} ميجابايت.",
     "remove": "إزالة {name}"
   },
-  "toast": { "dismiss": "إغلاق" },
+  "toast": {
+    "dismiss": "إغلاق"
+  },
   "dialogs": {
     "typeToConfirm": "اكتب \"{value}\" للتأكيد.",
     "handoverClaimTitle": "مطالبة ضمان جديدة",
@@ -164,7 +166,9 @@
       "few": "{count} عناصر",
       "many": "{count} عنصرًا",
       "other": "{count} عنصر"
-    }
+    },
+    "showing": "عرض {loaded} من {total}",
+    "loadMore": "تحميل المزيد"
   },
   "language": {
     "en": "English",
