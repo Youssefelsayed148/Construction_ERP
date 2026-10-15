@@ -328,7 +328,7 @@ router.post('/permits/:id/status', authenticate, authorize(), async (req, res) =
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const permit = await auditedTransaction((q) => hseEngine.transitionPermit(q, req.params.id, value.status, req.user, { comment: value.comment }), () => null);
+    const permit = await auditedTransaction((q) => hseEngine.transitionPermit(q, req.params.id, value.status, req.user, { comment: value.comment }), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'hse', description: `${result.permit_number} status: ${value.status}`, entityId: result.id, entityType: 'permit' }));
     res.json({ success: true, data: permit });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

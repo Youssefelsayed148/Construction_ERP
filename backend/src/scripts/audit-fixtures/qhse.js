@@ -12,8 +12,23 @@ const template = ctx => ctx.api('POST', '/api/qhse/checklists/templates', { name
 const instance = ctx => ctx.api('POST', '/api/qhse/checklists/instances', { project_id: ctx.pid, title: `r02 checklist ${ctx.n()}` });
 const action = ctx => ctx.api('POST', '/api/qhse/actions', { project_id: ctx.pid, description: `r02 action ${ctx.n()}` });
 const mockUp = ctx => ctx.api('POST', '/api/qhse/mock-ups', { project_id: ctx.pid, title: `r02 mock-up ${ctx.n()}` });
+const wir = ctx => ctx.api('POST', '/api/qhse/wirs', { project_id: ctx.pid });
+const submittedWir = async ctx => { const row = await wir(ctx); await ctx.api('POST', `/api/qhse/wirs/${row.id}/submit`, {}); return row; };
+const certificateBody = ctx => ({ project_id: ctx.pid, certificate_type: 'other', title: `r02 certificate ${ctx.n()}` });
+const punchBody = ctx => ({ project_id: ctx.pid, description: `r02 punch ${ctx.n()}` });
 
 module.exports = {
+  ...group(['POST /api/qhse/wirs'], async ctx => ({ body: { project_id: ctx.pid }, status: 201 })),
+  ...group(['POST /api/qhse/wirs/:id/submit'], async ctx => ({ params: { id: (await wir(ctx)).id } })),
+  ...group(['POST /api/qhse/wirs/:id/decision'], async ctx => ({ params: { id: (await submittedWir(ctx)).id }, body: { decision: 'approve' } })),
+  ...group(['POST /api/qhse/wirs/:id/result'], async ctx => { const row = await submittedWir(ctx); for (let i = 0; i < 2; i++) await ctx.api('POST', `/api/qhse/wirs/${row.id}/decision`, { decision: 'approve' }); return { params: { id: row.id }, body: { result: 'approved' } }; }),
+  ...group(['POST /api/qhse/calibration-records'], async ctx => ({ body: { project_id: ctx.pid, instrument_name: `r02 instrument ${ctx.n()}` }, status: 201 })),
+  ...group(['POST /api/qhse/certificates'], async ctx => ({ body: certificateBody(ctx), status: 201 })),
+  ...group(['PUT /api/qhse/certificates/:id'], async ctx => ({ params: { id: (await ctx.api('POST', '/api/qhse/certificates', certificateBody(ctx))).id }, body: { notes: 'r02 updated' } })),
+  ...group(['POST /api/qhse/punch-items'], async ctx => ({ body: punchBody(ctx), status: 201 })),
+  ...group(['POST /api/qhse/punch-items/:id/status'], async ctx => ({ params: { id: (await ctx.api('POST', '/api/qhse/punch-items', punchBody(ctx))).id }, body: { status: 'assigned' } })),
+  ...group(['POST /api/qhse/ncrs/:id/status', 'POST /api/v1/ncrs/:id/status'], async ctx => ({ params: { id: (await ncr(ctx)).id }, body: { status: 'in_progress' } })),
+  ...group(['POST /api/qhse/ncrs/:id/verify', 'POST /api/v1/ncrs/:id/verify'], async ctx => { const row = await ncr(ctx); await ctx.api('POST', `/api/qhse/ncrs/${row.id}/status`, { status: 'in_progress' }); return { params: { id: row.id }, body: { verification_notes: 'r02 verified' } }; }),
   ...group(['POST /api/qhse/quality-tests'], async ctx => ({ body: { project_id: ctx.pid, test_type: `r02 slump ${ctx.n()}` }, status: 201 })),
   ...group(['PUT /api/qhse/quality-tests/:id'], async ctx => ({ params: { id: (await test(ctx)).id }, body: { result: 'pass' } })),
   ...group(['DELETE /api/qhse/quality-tests/:id'], async ctx => ({ params: { id: (await test(ctx)).id } })),
