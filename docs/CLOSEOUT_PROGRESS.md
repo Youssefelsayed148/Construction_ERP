@@ -1327,3 +1327,13 @@ Passwords now use built-in async `crypto.scrypt` with OWASP-listed N=32768/r=8/p
 - Frontend CI PASS 36/36 suites / 169/169 tests; `npm.cmd run lint:api` PASS 1/1; i18n check and parity PASS (36 namespaces / 1,432 English keys); optimized build compiled successfully.
 - Partial implementation commit `e5d7f9e`; this is the post-commit checkpoint. R5.3 remains open.
 - R5.3 is NOT DONE. Remaining flagged flows include Dashboard, ProjectDetail, ProjectOperations, ProjectWizard, QHSEExtended, DocControlExtended, ProcurementReview, and PortalDashboard. Full R5.6 exit gates and scorecard remain open; visual/RTL/browser behavior is not verified.
+
+## R5.3 and R5.6 closeout - 2026-10-15
+
+- Completed the remaining procurement comparison, Project Operations, Project Wizard, Project Detail pickers, QHSE Extended, document-control, and portal dashboard paging flows. API-backed lists use offset requests, append results, and consume `X-Total-Count`; portal dashboard widgets expose the remainder of their already returned summary payload. Dashboard is a bounded alert summary; Login and Settings have no list views. The original pagination impact list is covered. Source commit: `9c7dc27`; prior R5.3 slice: `e5d7f9e`.
+- Final backend mock `npm.cmd test -- --runInBand --no-colors`: PASS 65/65 suites, 1,084/1,084 tests. `npm.cmd run lint:guards`: PASS.
+- Final PostgreSQL `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/r02-pg-gate.ps1 -All -R4 -NoForceExit -Filter 'FAIL|Test Suites:|Tests:|● .*›|migrations:|removed'`: PASS 84/84 suites, 1,896/1,896 tests, 130 migrations; container `erp-r04-gate-20261015172937` removed, exit 0.
+- Golden reconciliation `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/r02-pg-gate.ps1 -Reconcile -Filter 'FAIL|PASS|violations|migrations:|removed'`: PASS all 16 checks with zero violations, 130 migrations; container `erp-r02-gate-20261015173330` removed, exit 0.
+- Final frontend CI: PASS 36/36 suites, 169/169 tests. `lint:api`: PASS 1/1 direct call across one file (R5 baseline 61 call sites / 41 files). i18n check PASS; parity PASS 36 namespaces / 1,432 English keys; production build compiled successfully.
+- R5.5 optional trial-balance endpoint remains unimplemented pending owner direction. Question and read-only, company/project-scoped aggregate proposal are recorded in `STATE.md`.
+- R5.6 scorecard: `docs/R5_SCORECARD.md`. No visual layout, RTL appearance, or real-browser check was run. React Testing Library is absent; existing React DOM harness covers all area renders and shared core interactions, not individual visual behavior. R4 scrypt c=50 full-app performance and direct Windows SIGTERM transport limitations remain documented.

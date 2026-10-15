@@ -2,7 +2,7 @@
 
 API lists now default to 200 rows and cap each response at 1,000. Clients that need later rows must request `limit` and `offset`; `X-Total-Count` gives the filtered total. The API response body envelope remains unchanged.
 
-This inventory records every frontend page file with API reads that can include collection data (33 page files found under `frontend/src/pages`). Paging controls are not yet wired into these screens; until R5.3, they can display only the first page. Route names are the backend paths as mounted under `/api` (some screens use a shared route helper).
+This inventory records the frontend screens and collection areas identified during R4.4 (33 page files at that checkpoint). Route names are backend paths mounted under `/api` (some screens use a shared route helper). R5.3 completion status is below.
 
 | Frontend screen | List areas / API paths | Impact |
 |---|---|---|
@@ -32,11 +32,12 @@ This inventory records every frontend page file with API reads that can include 
 - The route-enumerating regression test found and covers at least 73 collection handlers. It passes only when each enumerated handler uses the helper, has an existing SQL limit, or has a finite-reference reason in the allowlist.
 - Lists identified in the route scan have been updated, including reports, project and user registers, HSE/QHSE, document control, schedule, BOQ, organization/team, and related operational collections.
 - Database-backed lists apply SQL `LIMIT/OFFSET`; lists derived from already-loaded project calculations or service results are paged after their existing calculation and sorted by stable identifiers. No index was added in this slice; a new index requires an `EXPLAIN` plan demonstrating need and is not claimed verified here.
-- UI paging controls remain for R5.3; the screens above can currently show only the first page.
+- R5.3 wires UI paging into every API-backed list identified above. Dashboard alert cards remain bounded summary previews linking to full registers; Login and Settings contain no list views. ProjectDetail phases, team, and milestones are returned together by its project-detail endpoint, while its employee/client/manager pickers are paged.
 
-## R5.3 UI paging progress - 2026-10-15
+## R5.3 UI paging - complete - 2026-10-15
 
-- Shared `LoadMore` is wired to project, asset, item, client, expense, invoice, legal, supplier, work-order, schedule activity, HSE, QHSE, QHSE certificate, document/RFI/submittal, handover, HR, agent activity, location, payroll, unit sales, approvals, my-actions notifications, reports, site reports, site notes, and BOQ lists. These requests pass `limit=200` and the current `offset`, append results, and use `X-Total-Count`.
+- Shared `LoadMore` is wired to project, asset, item, client, expense, invoice, legal, supplier, work-order, schedule activity, HSE, QHSE, QHSE certificate, document/RFI/submittal, handover, HR, agent activity, location, payroll, unit sales, approvals, my-actions notifications, reports, site reports, site notes, BOQ, procurement comparison, project operations, project setup lookups, QHSE extended, and document control extended lists. API-backed requests pass `limit=200` and `offset`, append results, and expose `X-Total-Count`. Portal dashboard arrays use a local show-more control for the complete bounded summary payload already returned by the API.
 - The shared API response reader now preserves `X-Total-Count` as a non-enumerable metadata property across the migrated page helpers, without changing the JSON payload shape.
-- R5.3 remains NOT DONE. The remaining flagged page-level flows requiring review and paging are Dashboard, ProjectDetail, ProjectOperations, ProjectWizard, QHSEExtended, DocControlExtended, ProcurementReview, and PortalDashboard. Some are nested or aggregate views and need per-endpoint treatment; do not treat the API metadata migration as UI completion.
-- Frontend CI currently passes 36 suites / 169 tests; `lint:api` 1/1; i18n check/parity 36 namespaces / 1,432 English keys; optimized build compiles. These checks do not prove visual layout, RTL appearance, or browser behavior.
+- Production-page scan: 34/37 page files contain a pager. The other three are Dashboard summary, Login, and Settings; none is a truncated API-backed register. The original impact inventory's grouped list screens are covered.
+- Final frontend CI PASS 36 suites / 169 tests; API guard PASS 1/1; i18n check/parity PASS (36 namespaces / 1,432 English keys); optimized production build PASS. These checks do not prove visual layout, RTL appearance, or browser behavior.
+- Implementation commit: `9c7dc27`; earlier R5.3 offset append slice: `e5d7f9e`.

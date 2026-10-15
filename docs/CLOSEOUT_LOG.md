@@ -2267,3 +2267,13 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - Verification: frontend CI PASS 36/36 suites / 169/169 tests; API guard PASS 1/1; i18n check/parity PASS 36 namespaces / 1,432 English keys; production build compiled successfully.
 - NOT DONE: remaining page flows in the pagination impact inventory still need paging, including dashboard/project detail/operations/setup, extended QHSE/document control, procurement review, and portal views. The R5.6 exit gates and final scorecard have not been completed. No visual/RTL/browser check was run.
 - Partial slice commit `e5d7f9e`; this post-commit status checkpoint records that R5.3 remains open.
+
+## 2026-10-15 - R5.3 completion and R5.6 exit gates
+
+- `npm.cmd test -- --runInBand --no-colors` in `backend` — PASS 65/65 suites, 1,084/1,084 tests. The first sandboxed attempt failed only because the tracked credential guard could not spawn `git`; the authorized rerun passed.
+- `npm.cmd run lint:guards` in `backend` — PASS.
+- `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/r02-pg-gate.ps1 -All -R4 -NoForceExit -Filter 'FAIL|Test Suites:|Tests:|● .*›|migrations:|removed'` — PASS 84/84 suites, 1,896/1,896 tests, 130 migrations; `erp-r04-gate-20261015172937` removed; exit 0.
+- `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/r02-pg-gate.ps1 -Reconcile -Filter 'FAIL|PASS|violations|migrations:|removed'` — PASS 16/16 golden reconciliation checks with zero violations; 130 migrations; `erp-r02-gate-20261015173330` removed; exit 0.
+- `npm.cmd run test:ci -- --no-colors` in `frontend` with CI=true — PASS 36/36 suites, 169/169 tests. `npm.cmd run lint:api` — PASS 1/1 call across one file. `npm.cmd run i18n:check` — PASS. `npm.cmd run i18n:parity` — PASS 36 namespaces / 1,432 English keys. `npm.cmd run build` — PASS, optimized build compiled successfully.
+- R5.3 completed in `9c7dc27`; it covers the list screens in `docs/R4_PAGINATION_UI_IMPACT.md`. R5 scorecard is `docs/R5_SCORECARD.md`. Visual layout, RTL appearance, and real-browser behavior remain NOT VERIFIED. React Testing Library is absent; existing React DOM tests cover all ten admin area renders and shared interaction cases.
+- R5.5 trial-balance proposal is recorded in `STATE.md` and awaits owner direction; no endpoint was created. R4 scrypt and Windows signal limitations remain unchanged from `docs/R4_SCORECARD.md`.
