@@ -15,6 +15,7 @@ const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 const { auditedMutation } = require('../utils/auditedMutation');
@@ -59,10 +60,9 @@ router.get('/incidents', authenticate, authorize(), async (req, res) => {
     if (category) { conditions.push(`i.incident_category = $${idx++}`); params.push(category); }
     if (is_lti === 'true') conditions.push(`i.is_lti = true`);
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const r = await query(
-      `SELECT i.*, u.name as reported_by_name, cu.name as closed_by_name
+    const r = await queryPaginated(req, res, query, { sql: `SELECT i.*, u.name as reported_by_name, cu.name as closed_by_name
        FROM incidents i LEFT JOIN users u ON i.reported_by = u.id LEFT JOIN users cu ON i.closed_by = cu.id
-       ${where} ORDER BY i.incident_date DESC, i.id DESC`, params);
+       ${where} ORDER BY i.incident_date DESC, i.id DESC`, params: params, orderBy: [{"column":"incident_date","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -175,9 +175,8 @@ router.get('/inspections', authenticate, authorize(), async (req, res) => {
     if (status) { conditions.push(`si.status = $${idx++}`); params.push(status); }
     if (type) { conditions.push(`si.inspection_type = $${idx++}`); params.push(type); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const r = await query(
-      `SELECT si.*, u.name as inspector_name FROM hse_inspections si
-       LEFT JOIN users u ON si.inspector_id = u.id ${where} ORDER BY si.inspection_date DESC, si.id DESC`, params);
+    const r = await queryPaginated(req, res, query, { sql: `SELECT si.*, u.name as inspector_name FROM hse_inspections si
+       LEFT JOIN users u ON si.inspector_id = u.id ${where} ORDER BY si.inspection_date DESC, si.id DESC`, params: params, orderBy: [{"column":"inspection_date","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -272,7 +271,7 @@ router.get('/permits', authenticate, authorize(), async (req, res) => {
     if (permit_type) { conditions.push(`p.permit_type = $${idx++}`); params.push(permit_type); }
     if (expiring === 'today') conditions.push(`p.valid_to::date = CURRENT_DATE AND p.status = 'active'`);
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const r = await query(`${PERMIT_SELECT} ${where} ORDER BY p.created_at DESC`, params);
+    const r = await queryPaginated(req, res, query, { sql: `${PERMIT_SELECT} ${where} ORDER BY p.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -364,9 +363,9 @@ router.get('/jsas', authenticate, authorize(), async (req, res) => {
     if (project_id) { conditions.push(`j.project_id = $${idx++}`); params.push(project_id); }
     if (status) { conditions.push(`j.status = $${idx++}`); params.push(status); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const r = await query(`SELECT j.*, u.name as created_by_name, ru.name as reviewed_by_name
+    const r = await queryPaginated(req, res, query, { sql: `SELECT j.*, u.name as created_by_name, ru.name as reviewed_by_name
       FROM jsas j LEFT JOIN users u ON j.created_by = u.id LEFT JOIN users ru ON j.reviewed_by = ru.id
-      ${where} ORDER BY j.created_at DESC`, params);
+      ${where} ORDER BY j.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -437,8 +436,8 @@ router.get('/risk-assessments', authenticate, authorize(), async (req, res) => {
     if (project_id) { conditions.push(`ra.project_id = $${idx++}`); params.push(project_id); }
     if (status) { conditions.push(`ra.status = $${idx++}`); params.push(status); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const r = await query(`SELECT ra.*, u.name as created_by_name FROM risk_assessments ra
-      LEFT JOIN users u ON ra.created_by = u.id ${where} ORDER BY ra.created_at DESC`, params);
+    const r = await queryPaginated(req, res, query, { sql: `SELECT ra.*, u.name as created_by_name FROM risk_assessments ra
+      LEFT JOIN users u ON ra.created_by = u.id ${where} ORDER BY ra.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -513,8 +512,8 @@ router.get('/inductions', authenticate, authorize(), async (req, res) => {
     let conditions = []; let params = []; let idx = 1;
     if (project_id) { conditions.push(`i.project_id = $${idx++}`); params.push(project_id); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const r = await query(`SELECT i.*, COALESCE(o.name_en, o.name_ar) as organization_name FROM inductions i
-      LEFT JOIN organizations o ON i.organization_id = o.id ${where} ORDER BY i.induction_date DESC, i.id DESC`, params);
+    const r = await queryPaginated(req, res, query, { sql: `SELECT i.*, COALESCE(o.name_en, o.name_ar) as organization_name FROM inductions i
+      LEFT JOIN organizations o ON i.organization_id = o.id ${where} ORDER BY i.induction_date DESC, i.id DESC`, params: params, orderBy: [{"column":"induction_date","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -552,7 +551,7 @@ router.get('/toolbox-talks', authenticate, authorize(), async (req, res) => {
     let conditions = []; let params = []; let idx = 1;
     if (project_id) { conditions.push(`t.project_id = $${idx++}`); params.push(project_id); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const r = await query(`SELECT * FROM toolbox_talks t ${where} ORDER BY t.held_at DESC, t.id DESC`, params);
+    const r = await queryPaginated(req, res, query, { sql: `SELECT * FROM toolbox_talks t ${where} ORDER BY t.held_at DESC, t.id DESC`, params: params, orderBy: [{"column":"held_at","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -595,9 +594,9 @@ router.get('/near-misses', authenticate, authorize(), async (req, res) => {
     if (project_id) { conditions.push(`n.project_id = $${idx++}`); params.push(project_id); }
     if (status) { conditions.push(`n.status = $${idx++}`); params.push(status); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const r = await query(`SELECT n.*, pl.name as location_name, u.name as reported_by_name
+    const r = await queryPaginated(req, res, query, { sql: `SELECT n.*, pl.name as location_name, u.name as reported_by_name
       FROM near_misses n LEFT JOIN project_locations pl ON n.project_location_id = pl.id
-      LEFT JOIN users u ON n.reported_by = u.id ${where} ORDER BY n.incident_date DESC, n.id DESC`, params);
+      LEFT JOIN users u ON n.reported_by = u.id ${where} ORDER BY n.incident_date DESC, n.id DESC`, params: params, orderBy: [{"column":"incident_date","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -667,8 +666,8 @@ router.get('/ppe-records', authenticate, authorize(), async (req, res) => {
     let conditions = []; let params = []; let idx = 1;
     if (project_id) { conditions.push(`p.project_id = $${idx++}`); params.push(project_id); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const r = await query(`SELECT p.*, COALESCE(o.name_en, o.name_ar) as organization_name FROM ppe_records p
-      LEFT JOIN organizations o ON p.organization_id = o.id ${where} ORDER BY p.issue_date DESC, p.id DESC`, params);
+    const r = await queryPaginated(req, res, query, { sql: `SELECT p.*, COALESCE(o.name_en, o.name_ar) as organization_name FROM ppe_records p
+      LEFT JOIN organizations o ON p.organization_id = o.id ${where} ORDER BY p.issue_date DESC, p.id DESC`, params: params, orderBy: [{"column":"issue_date","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -707,7 +706,7 @@ router.get('/equipment-inspections', authenticate, authorize(), async (req, res)
     if (project_id) { conditions.push(`e.project_id = $${idx++}`); params.push(project_id); }
     if (insResult) { conditions.push(`e.result = $${idx++}`); params.push(insResult); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const r = await query(`SELECT * FROM equipment_inspections e ${where} ORDER BY e.inspection_date DESC, e.id DESC`, params);
+    const r = await queryPaginated(req, res, query, { sql: `SELECT * FROM equipment_inspections e ${where} ORDER BY e.inspection_date DESC, e.id DESC`, params: params, orderBy: [{"column":"inspection_date","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -745,7 +744,7 @@ router.get('/emergency-drills', authenticate, authorize(), async (req, res) => {
     let conditions = []; let params = []; let idx = 1;
     if (project_id) { conditions.push(`d.project_id = $${idx++}`); params.push(project_id); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const r = await query(`SELECT * FROM emergency_drills d ${where} ORDER BY d.drill_date DESC, d.id DESC`, params);
+    const r = await queryPaginated(req, res, query, { sql: `SELECT * FROM emergency_drills d ${where} ORDER BY d.drill_date DESC, d.id DESC`, params: params, orderBy: [{"column":"drill_date","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

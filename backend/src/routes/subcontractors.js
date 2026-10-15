@@ -4,6 +4,7 @@ const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const { auditedMutation } = require('../utils/auditedMutation');
@@ -89,11 +90,8 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
 // -- Sub Contracts --
 router.get('/contracts/:projectId', authenticate, authorize(), async (req, res) => {
   try {
-    const data = await query(
-      `SELECT sc.*, s.name as sub_name, s.name_en as sub_name_en, bi.description as boq_item_name
-       FROM sub_contracts sc LEFT JOIN subcontractors s ON sc.subcontractor_id = s.id LEFT JOIN boq_items bi ON sc.boq_item_id = bi.id WHERE sc.project_id = $1 ORDER BY sc.created_at DESC`,
-      [req.params.projectId]
-    );
+    const data = await queryPaginated(req, res, query, { sql: `SELECT sc.*, s.name as sub_name, s.name_en as sub_name_en, bi.description as boq_item_name
+       FROM sub_contracts sc LEFT JOIN subcontractors s ON sc.subcontractor_id = s.id LEFT JOIN boq_items bi ON sc.boq_item_id = bi.id WHERE sc.project_id = $1 ORDER BY sc.created_at DESC`, params: [req.params.projectId], orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -147,10 +145,7 @@ router.post('/contracts', authenticate, authorize(), async (req, res) => {
 // -- Work Verifications --
 router.get('/verifications/:contractId', authenticate, authorize(), async (req, res) => {
   try {
-    const data = await query(
-      `SELECT swv.*, bi.description as boq_item_name FROM sub_work_verifications swv LEFT JOIN boq_items bi ON swv.boq_item_id = bi.id WHERE swv.sub_contract_id = $1 ORDER BY period_from DESC`,
-      [req.params.contractId]
-    );
+    const data = await queryPaginated(req, res, query, { sql: `SELECT swv.*, bi.description as boq_item_name FROM sub_work_verifications swv LEFT JOIN boq_items bi ON swv.boq_item_id = bi.id WHERE swv.sub_contract_id = $1 ORDER BY period_from DESC`, params: [req.params.contractId], orderBy: [{"column":"period_from","direction":"DESC"}] });
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -199,10 +194,7 @@ router.put('/verifications/:id', authenticate, authorize(), async (req, res) => 
 // -- Payment Certificates --
 router.get('/certificates/:contractId', authenticate, authorize(), async (req, res) => {
   try {
-    const data = await query(
-      `SELECT spc.*, u.name as certifier_name FROM sub_payment_certificates spc LEFT JOIN users u ON spc.certified_by = u.id WHERE spc.sub_contract_id = $1 ORDER BY period_from DESC`,
-      [req.params.contractId]
-    );
+    const data = await queryPaginated(req, res, query, { sql: `SELECT spc.*, u.name as certifier_name FROM sub_payment_certificates spc LEFT JOIN users u ON spc.certified_by = u.id WHERE spc.sub_contract_id = $1 ORDER BY period_from DESC`, params: [req.params.contractId], orderBy: [{"column":"period_from","direction":"DESC"}] });
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

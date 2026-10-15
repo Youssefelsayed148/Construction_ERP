@@ -700,7 +700,10 @@ async function myReviews(q, user, filters = {}) {
   finalRows.sort((a, b) => {
     const d = (a.due_date ? new Date(a.due_date).getTime() : Infinity) - (b.due_date ? new Date(b.due_date).getTime() : Infinity);
     if (d !== 0) return d;
-    return (PRIORITY_RANK[a.priority] ?? 2) - (PRIORITY_RANK[b.priority] ?? 2);
+    const priority = (PRIORITY_RANK[a.priority] ?? 2) - (PRIORITY_RANK[b.priority] ?? 2);
+    if (priority !== 0) return priority;
+    const type = String(a.type).localeCompare(String(b.type));
+    return type || Number(a.id) - Number(b.id);
   });
   return finalRows;
 }

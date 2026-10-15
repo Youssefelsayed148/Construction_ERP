@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { fireEvent } = require('../utils/activity');
 const commercialEngine = require('../services/commercialEngine');
@@ -8,7 +9,7 @@ const costView = require('../services/costView');
 
 router.get('/codes', authenticate, authorize(), async (req, res) => {
   try {
-    const data = await query('SELECT * FROM cost_codes ORDER BY code');
+    const data = await queryPaginated(req, res, query, { sql: 'SELECT * FROM cost_codes', orderBy: [{ column: 'code' }] });
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

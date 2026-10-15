@@ -4,6 +4,7 @@ const { createInvoiceRecord } = require('../services/financeEngine');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { auditedMutation, auditedChange } = require('../utils/auditedMutation');
@@ -62,8 +63,7 @@ router.get('/buildings', authenticate, authorize(), async (req, res) => {
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     // Phase 8: floors are real project_locations child rows, not an integer
     // column — readers count the rows.
-    const result = await query(
-      `SELECT b.*,
+    const result = await queryPaginated(req, res, query, { sql: `SELECT b.*,
         (SELECT COUNT(*) FROM units u WHERE u.building_id = b.id) as units_count,
         (SELECT COUNT(*) FROM units u WHERE u.building_id = b.id AND u.status = 'available') as available_count,
         (SELECT COUNT(*) FROM project_locations fl WHERE fl.parent_id = b.project_location_id) as floor_count,
@@ -71,9 +71,7 @@ router.get('/buildings', authenticate, authorize(), async (req, res) => {
           JOIN location_types lt ON lt.id = fl.location_type_id
           WHERE fl.parent_id = b.project_location_id AND lt.code = 'floor') as floor_count_typed,
         b.project_location_id
-       FROM buildings b ${where} ORDER BY b.code`,
-      params
-    );
+       FROM buildings b ${where} ORDER BY b.code`, params: params, orderBy: [{"column":"code","direction":"ASC"}] });
     res.json({ success: true, data: result.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -221,7 +219,7 @@ router.get('/buildings/:buildingId/units', authenticate, authorize(), async (req
     const { status } = req.query;
     let conditions = ['building_id = $1']; let params = [req.params.buildingId]; let idx = 2;
     if (status) { conditions.push(`status = $${idx++}`); params.push(status); }
-    const result = await query(`SELECT * FROM units WHERE ${conditions.join(' AND ')} ORDER BY floor_no, code`, params);
+    const result = await queryPaginated(req, res, query, { sql: `SELECT * FROM units WHERE ${conditions.join(' AND ')} ORDER BY floor_no, code`, params: params, orderBy: [{"column":"floor_no","direction":"ASC"},{"column":"code","direction":"ASC"}] });
     res.json({ success: true, data: result.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

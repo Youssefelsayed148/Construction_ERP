@@ -51,6 +51,17 @@ describe('list contract', () => {
     expect(q.pageSize).toBe(25);
   });
 
+  test('limit/offset use the shared 200-row default and are not interpreted as filters', () => {
+    const defaultPage = reporting.parseListQuery({});
+    expect(defaultPage.pageSize).toBe(200);
+    expect(defaultPage.offset).toBe(0);
+    const requestedPage = reporting.parseListQuery({ limit: '40', offset: '80' });
+    expect(requestedPage.where).toBe('');
+    expect(requestedPage.pageSize).toBe(40);
+    expect(requestedPage.offset).toBe(80);
+    expect(requestedPage.page).toBe(3);
+  });
+
   test('sort keys outside the whitelist fall back to the default', () => {
     const q = reporting.parseListQuery({ sort: 'password_hash; DROP TABLE users' }, { allowedSorts: ['status'] });
     expect(q.order).toBe(' ORDER BY id DESC');

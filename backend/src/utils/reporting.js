@@ -125,7 +125,7 @@ function parseListQuery(query, { searchColumns = [], allowedFilters = null, allo
   const params = [];
   let idx = 1;
   for (const [key, value] of Object.entries(query || {})) {
-    if (['sort', 'order', 'page', 'page_size', 'format', 'search', 'columns'].includes(key)) continue;
+    if (['sort', 'order', 'page', 'page_size', 'limit', 'offset', 'format', 'search', 'columns'].includes(key)) continue;
     if (value == null || value === '') continue;
     if (!/^[a-z_][a-z0-9_.]*$/i.test(key)) continue; // identifier injection guard
     if (allowedFilters && !allowedFilters.includes(key)) continue;
@@ -143,10 +143,12 @@ function parseListQuery(query, { searchColumns = [], allowedFilters = null, allo
   if (!/^[a-z_][a-z0-9_.]*$/i.test(sort)) sort = defaultSort;
   const order = query && ['ASC', 'DESC'].includes(String(query.order || '').toUpperCase())
     ? String(query.order).toUpperCase() : defaultOrder;
-  const page = Math.max(1, parseInt((query && query.page) || 1, 10) || 1);
-  const pageSizeRaw = parseInt((query && query.page_size) || 100, 10);
-  const pageSize = Math.min(1000, Math.max(1, isNaN(pageSizeRaw) ? 100 : pageSizeRaw));
-  return { where, params, order: ` ORDER BY ${sort} ${order}`, page, pageSize };
+  const requestedPage = Math.max(1, parseInt((query && query.page) || 1, 10) || 1);
+  const pageSizeRaw = Number(query && (query.limit ?? query.page_size));
+  const pageSize = Math.min(1000, Math.max(1, Number.isSafeInteger(pageSizeRaw) && pageSizeRaw > 0 ? pageSizeRaw : 200));
+  const offsetRaw = Number(query && query.offset);
+  const offset = Number.isSafeInteger(offsetRaw) && offsetRaw >= 0 ? offsetRaw : (requestedPage - 1) * pageSize;
+  return { where, params, order: ` ORDER BY ${sort} ${order}`, sort, direction: order, page: Math.floor(offset / pageSize) + 1, pageSize, offset };
 }
 
 // ---------------------------------------------------------------------------

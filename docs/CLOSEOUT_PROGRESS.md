@@ -1262,3 +1262,10 @@ Passwords now use built-in async `crypto.scrypt` with OWASP-listed N=32768/r=8/p
 - R4 remains in progress; R4.4 pagination and R4.5 remaining findings are next, then R4.6 exit gates.
 
 - Existing report contract PASS 1/17 and v1 PG contract PASS 1/8 at 130 migrations; score/evidence logs include both regression results.
+
+# R4.4 pagination current position - 2026-10-15
+
+- Shared SQL pagination now enforces default 200/max 1,000, offset, stable order with ID tiebreak (or an explicitly selected domain identifier), and `X-Total-Count`; report/project/user and operational collection routes preserve their prior response shapes. Derived schedule/portal/site results use the same helper after their existing calculation/filtering.
+- Route-enumerating test covers at least the review's 73 collection handlers and requires pagination, an existing SQL limit, or a documented finite-reference exemption. Focused pagination + reporting tests PASS 2 suites / 22 tests; route census passes. Full backend mock PASS 65 suites / 1,083 tests.
+- PostgreSQL: GET smoke PASS 448 routes / 0 server failures, 1 suite / 8 tests, 130 migrations; QHSE route suite PASS 1/4; schedule suite PASS 1/6; organization/RBAC suite PASS 1/11. `users-policy.pg.test.js` assertions PASS 1/4, but the Windows runner exits with libuv assertion `!(handle->flags & UV_HANDLE_CLOSING)` after Jest; gate is NOT VERIFIED clean and was reproduced.
+- `docs/R4_PAGINATION_UI_IMPACT.md` inventories all 33 API-using frontend page files. UI paging controls remain for R5.3. No pagination index migration was added; an index requires `EXPLAIN` evidence. R4.5/R4.6 remain before R5.

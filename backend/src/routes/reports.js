@@ -14,6 +14,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { auditedMutation } = require('../utils/auditedMutation');
 const { REPORTS, REPORT_PACKS, parseListQuery, toCsv, visibleColumns, csvField } = require('../utils/reporting');
+const { queryPaginated } = require('../utils/pagination');
 const { renderDocument } = require('../utils/procurementPdf');
 const sweepLeader = require('../services/sweepLeader');
 const policy = require('../services/policy');
@@ -100,13 +101,18 @@ router.get('/data/:reportKey', authenticate, authorize(), async (req, res, next)
     const selectedColumns = visibleColumns(spec.columns, req.user);
     const list = listQueryFor(req, spec, selectedColumns, scope);
     if (!list) return res.status(403).json({ success: false, error: 'Report requires a project-scoped assignment', error_code: 'report_scope_denied' });
-    const { where, params, order, page, pageSize } = list;
+    const { where, params, page, pageSize, sort, direction } = list;
     let rows = [];
     try {
-      rows = (await queryCancellable(req, res, `SELECT ${selectedColumns.map(([key]) => key).join(', ')} FROM ${spec.table}${where}${order}`, params)).rows;
+      const result = await queryPaginated(req, res, (sql, values) => queryCancellable(req, res, sql, values), {
+        sql: `SELECT ${selectedColumns.map(([key]) => key).join(', ')} FROM ${spec.table}${where}`,
+        params, orderBy: [{ column: sort, direction }],
+      });
+      rows = result.rows;
     } catch (e) {
       if (e.error_code) throw e;
       // a fresh system may not have a module's table yet — empty report
+      res.setHeader('X-Total-Count', '0');
       rows = [];
     }
     // Scoped portal roles only see their participants' rows.
@@ -173,8 +179,7 @@ router.get('/saved-views', authenticate, authorize(), async (req, res) => {
     const { module } = req.query;
     let conditions = ['user_id = $1']; let params = [req.user.id]; let idx = 2;
     if (module) { conditions.push(`module = $${idx++}`); params.push(module); }
-    const r = await query(
-      `SELECT * FROM saved_views v WHERE ${conditions.join(' AND ')} ORDER BY v.created_at DESC`, params);
+    const r = await queryPaginated(req, res, query, { sql: `SELECT * FROM saved_views v WHERE ${conditions.join(' AND ')} ORDER BY v.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -223,10 +228,9 @@ router.get('/scheduled', authenticate, authorize(), async (req, res) => {
     let conditions = []; let params = []; let idx = 1;
     if (project_id) { conditions.push(`s.project_id = $${idx++}`); params.push(project_id); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const r = await query(
-      `SELECT s.*, u.name as created_by_name,
+    const r = await queryPaginated(req, res, query, { sql: `SELECT s.*, u.name as created_by_name,
               (SELECT COUNT(*) FROM scheduled_report_runs run WHERE run.scheduled_report_id = s.id)::int AS run_count
-       FROM scheduled_reports s LEFT JOIN users u ON s.created_by = u.id ${where} ORDER BY s.created_at DESC`, params);
+       FROM scheduled_reports s LEFT JOIN users u ON s.created_by = u.id ${where} ORDER BY s.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

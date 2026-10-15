@@ -5,13 +5,15 @@ const { query, transaction } = require('../config/database');
 const { authenticate, authorize, createPreviewToken } = require('../middleware/auth');
 const policy = require('../services/policy');
 const { logActivity } = require('../utils/activity');
+const { queryPaginated } = require('../utils/pagination');
 
 // GET /api/users - list all users (owner/admin)
 router.get('/', authenticate, authorize('owner', 'admin'), async (req, res) => {
   try {
-    const result = await query(
-      'SELECT id, name, email, role, department, module_permissions, is_active, created_at FROM users ORDER BY created_at DESC'
-    );
+    const result = await queryPaginated(req, res, query, {
+      sql: 'SELECT id, name, email, role, department, module_permissions, is_active, created_at FROM users',
+      orderBy: [{ column: 'created_at', direction: 'DESC' }],
+    });
     res.json({ success: true, data: result.rows });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

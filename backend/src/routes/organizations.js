@@ -10,11 +10,14 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const policy = require('../services/policy');
 const org = require('../services/orgService');
 const team = require('../services/teamService');
+
+const paginatedReader = (req, res, orderBy) => (sql, params) => queryPaginated(req, res, query, { sql, params, orderBy });
 
 const name_ar = Joi.string().allow('', null);
 const name_en = Joi.string().allow('', null);
@@ -43,7 +46,7 @@ async function auditedOrgMutation(work, eventForResult, activityForResult = null
 
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
-    const rows = await org.listOrganizations(query, { status: req.query.status || null });
+    const rows = await org.listOrganizations(paginatedReader(req, res, [{ column: 'id', direction: 'DESC' }]), { status: req.query.status || null });
     res.json({ success: true, data: rows });
   } catch (e) { return fail(res, e); }
 });
@@ -132,7 +135,7 @@ router.post('/company', authenticate, authorize('owner', 'admin'), async (req, r
 
 router.get('/departments', authenticate, authorize(), async (req, res) => {
   try {
-    res.json({ success: true, data: await org.listDepartments(query, { includeInactive: req.query.include_inactive !== 'false' }) });
+    res.json({ success: true, data: await org.listDepartments(paginatedReader(req, res, [{ column: 'id' }]), { includeInactive: req.query.include_inactive !== 'false' }) });
   } catch (e) { return fail(res, e); }
 });
 
@@ -169,7 +172,7 @@ router.put('/departments/:id', authenticate, authorize('owner', 'admin', 'owner_
 
 router.get('/job-positions', authenticate, authorize(), async (req, res) => {
   try {
-    res.json({ success: true, data: await org.listJobPositions(query, { department_id: req.query.department_id || null }) });
+    res.json({ success: true, data: await org.listJobPositions(paginatedReader(req, res, [{ column: 'id' }]), { department_id: req.query.department_id || null }) });
   } catch (e) { return fail(res, e); }
 });
 
@@ -205,7 +208,7 @@ router.put('/job-positions/:id', authenticate, authorize('owner', 'admin', 'owne
 
 router.get('/qualifications', authenticate, authorize(), async (req, res) => {
   try {
-    res.json({ success: true, data: await org.listQualifications(query, req.user, { user_id: req.query.user_id || null }) });
+    res.json({ success: true, data: await org.listQualifications(paginatedReader(req, res, [{ column: 'id', direction: 'DESC' }]), req.user, { user_id: req.query.user_id || null }) });
   } catch (e) { return fail(res, e); }
 });
 
@@ -235,7 +238,7 @@ router.delete('/qualifications/:id', authenticate, authorize(), async (req, res)
 
 router.get('/bank-accounts', authenticate, authorize(), async (req, res) => {
   try {
-    res.json({ success: true, data: await org.listBankAccounts(query, { organization_id: req.query.organization_id || null }) });
+    res.json({ success: true, data: await org.listBankAccounts(paginatedReader(req, res, [{ column: 'id' }]), { organization_id: req.query.organization_id || null }) });
   } catch (e) { return fail(res, e); }
 });
 
@@ -281,7 +284,7 @@ router.post('/bank-accounts/:id/make-primary', authenticate, authorize('owner', 
 
 router.get('/performance-scores', authenticate, authorize(), async (req, res) => {
   try {
-    res.json({ success: true, data: await org.listPerformanceScores(query, {
+    res.json({ success: true, data: await org.listPerformanceScores(paginatedReader(req, res, [{ column: 'id', direction: 'DESC' }]), {
       organization_id: req.query.organization_id || null, period: req.query.period || null,
     }) });
   } catch (e) { return fail(res, e); }
@@ -307,7 +310,7 @@ router.post('/performance-scores', authenticate, authorize('owner', 'admin', 'ow
 
 router.get('/team', authenticate, authorize(), async (req, res) => {
   try {
-    const rows = await team.listTeamMembers(query, {
+    const rows = await team.listTeamMembers(paginatedReader(req, res, [{ column: 'id' }]), {
       project_id: req.query.project_id || null,
       organization_id: req.query.organization_id || null,
       role_key: req.query.role_key || null,

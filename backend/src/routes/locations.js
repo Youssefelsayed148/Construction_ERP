@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { isReferenceViolation, recordInUse } = require('../utils/references');
 const { logActivity, fireEvent } = require('../utils/activity');
@@ -23,14 +24,11 @@ async function typeIdForCode(code) {
 // GET /api/locations/project/:projectId — flat tree with resolved type codes.
 router.get('/project/:projectId', authenticate, authorize(), async (req, res) => {
   try {
-    const r = await query(
-      `SELECT pl.*, lt.code AS location_type_code, lt.name AS location_type_name
+    const r = await queryPaginated(req, res, query, { sql: `SELECT pl.*, lt.code AS location_type_code, lt.name AS location_type_name
        FROM project_locations pl
        LEFT JOIN location_types lt ON lt.id = pl.location_type_id
        WHERE pl.project_id = $1
-       ORDER BY pl.sort_order, pl.id`,
-      [req.params.projectId]
-    );
+       ORDER BY pl.sort_order, pl.id`, params: [req.params.projectId], orderBy: [{"column":"sort_order","direction":"ASC"},{"column":"id","direction":"ASC"}] });
     res.json({ success: true, data: r.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

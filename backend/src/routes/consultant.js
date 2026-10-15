@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
+const { paginateRows } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
@@ -17,7 +18,7 @@ const engine = require('../services/consultantEngine');
 router.get('/projects', authenticate, authorize(), async (req, res) => {
   try {
     const projectIds = await engine.resolveConsultantProjects(query, req.user.id);
-    res.json({ success: true, data: projectIds });
+    res.json({ success: true, data: paginateRows(req, res, projectIds).rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -39,7 +40,7 @@ router.get('/reviews', authenticate, authorize(), async (req, res) => {
     if (req.query.discipline) filters.discipline = req.query.discipline;
     if (req.query.type) filters.type = req.query.type;
     const rows = await engine.myReviews(query, req.user, filters);
-    res.json({ success: true, data: rows });
+    res.json({ success: true, data: paginateRows(req, res, rows, { orderBy: [{ column: 'due_date' }, { column: 'priority' }, { column: 'type' }, { column: 'id' }], preserveOrder: true }).rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 

@@ -4,6 +4,7 @@ const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
@@ -292,17 +293,14 @@ router.get('/rfis', authenticate, authorize(), async (req, res) => {
     if (project_id) { conditions.push(`r.project_id = $${idx++}`); params.push(project_id); }
     if (status) { conditions.push(`r.status = $${idx++}`); params.push(status); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const result = await query(
-      `SELECT r.*, ru.name as raised_by_name, au.name as answered_by_name,
+    const result = await queryPaginated(req, res, query, { sql: `SELECT r.*, ru.name as raised_by_name, au.name as answered_by_name,
               pl.name AS project_location_name, wp.code AS work_package_code,
               (r.status = 'open' AND r.due_date IS NOT NULL AND r.due_date < CURRENT_DATE) as is_overdue
        FROM project_rfis r
        LEFT JOIN users ru ON r.raised_by = ru.id LEFT JOIN users au ON r.answered_by = au.id
        LEFT JOIN project_locations pl ON pl.id = r.project_location_id
        LEFT JOIN work_packages wp ON wp.id = r.work_package_id
-       ${where} ORDER BY r.created_at DESC`,
-      params
-    );
+       ${where} ORDER BY r.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: result.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -379,12 +377,9 @@ router.get('/submittals', authenticate, authorize(), async (req, res) => {
     if (project_id) { conditions.push(`s.project_id = $${idx++}`); params.push(project_id); }
     if (status) { conditions.push(`s.status = $${idx++}`); params.push(status); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const result = await query(
-      `SELECT s.*, su.name as submitted_by_name, ru.name as responded_by_name FROM project_submittals s
+    const result = await queryPaginated(req, res, query, { sql: `SELECT s.*, su.name as submitted_by_name, ru.name as responded_by_name FROM project_submittals s
        LEFT JOIN users su ON s.submitted_by = su.id LEFT JOIN users ru ON s.responded_by = ru.id
-       ${where} ORDER BY s.created_at DESC`,
-      params
-    );
+       ${where} ORDER BY s.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: result.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -477,7 +472,7 @@ router.get('/registers', authenticate, authorize(), async (req, res) => {
     if (docStatus) { conditions.push(`d.doc_status = $${idx++}`); params.push(docStatus); }
     if (current === 'true') conditions.push(`d.is_current = true`);
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const r = await query(`${DOC_REGISTER_SELECT} ${where} ORDER BY d.doc_number NULLS LAST, d.created_at DESC`, params);
+    const r = await queryPaginated(req, res, query, { sql: `${DOC_REGISTER_SELECT} ${where} ORDER BY d.doc_number NULLS LAST, d.created_at DESC`, params: params, orderBy: [{"column":"doc_number","direction":"ASC"},{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows.map((doc) => normalizeDateFields(doc, ['issue_date', 'review_due_date'])) });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -541,11 +536,10 @@ router.get('/transmittal-recipients', authenticate, authorize(), async (req, res
   if (!Number.isInteger(projectId) || projectId < 1) return transmittalFailure(res, 400, 'invalid_project_id');
   if (!documentProjectAllowed(req, projectId)) return transmittalFailure(res, 403, 'project_scope_denied');
   try {
-    const result = await query(
-      `SELECT DISTINCT o.id, COALESCE(o.name_en, o.name_ar) AS name, pp.participant_type
+    const result = await queryPaginated(req, res, query, { sql: `SELECT DISTINCT o.id, COALESCE(o.name_en, o.name_ar) AS name, pp.participant_type
        FROM project_participants pp JOIN organizations o ON o.id = pp.organization_id
        WHERE pp.project_id = $1 AND (pp.active_to IS NULL OR pp.active_to >= CURRENT_DATE)
-       ORDER BY name, o.id`, [projectId]);
+       ORDER BY name, o.id`, params: [projectId], orderBy: [{"column":"name","direction":"ASC"},{"column":"id","direction":"ASC"}] });
     res.json({ success: true, data: result.rows });
   } catch (error) {
     console.error('documents.transmittal.recipients failed', error);
@@ -568,7 +562,7 @@ router.get('/transmittals', authenticate, authorize(), async (req, res) => {
     if (direction) { conditions.push(`t.direction = $${idx++}`); params.push(direction); }
     if (status) { conditions.push(`t.status = $${idx++}`); params.push(status); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const r = await query(`${TRANSMITTAL_SELECT} ${where} ORDER BY t.created_at DESC`, params);
+    const r = await queryPaginated(req, res, query, { sql: `${TRANSMITTAL_SELECT} ${where} ORDER BY t.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -750,7 +744,7 @@ router.get('/correspondence', authenticate, authorize(), async (req, res) => {
     if (direction) { conditions.push(`c.direction = $${idx++}`); params.push(direction); }
     if (status) { conditions.push(`c.status = $${idx++}`); params.push(status); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const r = await query(`${CORR_SELECT} ${where} ORDER BY c.created_at DESC`, params);
+    const r = await queryPaginated(req, res, query, { sql: `${CORR_SELECT} ${where} ORDER BY c.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
+const { queryPaginated, paginateRows } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
@@ -38,7 +39,11 @@ router.get('/recipes', authenticate, authorize(), async (req, res) => {
     if (activity_type) { conds.push(`activity_type = $${i++}`); p.push(activity_type); }
     if (include_standard === 'false') conds.push('project_id IS NOT NULL');
     const where = conds.length ? ' WHERE ' + conds.join(' AND ') : '';
-    const recipes = (await query(`SELECT * FROM material_recipes${where} ORDER BY id`, p)).rows;
+    const recipes = (await queryPaginated(req, res, query, {
+      sql: `SELECT * FROM material_recipes${where}`,
+      params: p,
+      orderBy: [{ column: 'id' }],
+    })).rows;
 
     if (req.query.include_lines !== 'false') {
       for (const recipe of recipes) {
@@ -287,7 +292,11 @@ router.get('/replenishment/alerts', authenticate, authorize(), async (req, res) 
 // GET /api/materials/replenishment/policies  (every stored policy row, plus the modes the sweep understands)
 router.get('/replenishment/policies', authenticate, authorize(), async (req, res) => {
   try {
-    const rows = (await query("SELECT rule_key, rule_value, is_active, updated_at FROM business_rules WHERE rule_key LIKE 'replenishment_policy:%' ORDER BY rule_key")).rows;
+    const rows = (await queryPaginated(req, res, query, {
+      sql: "SELECT rule_key, rule_value, is_active, updated_at FROM business_rules WHERE rule_key LIKE 'replenishment_policy:%'",
+      orderBy: [{ column: 'rule_key' }],
+      tieBreaker: 'rule_key',
+    })).rows;
     res.json({ success: true, data: rows, modes: replenishment.MODES, default_mode: replenishment.DEFAULT_MODE });
   } catch (e) { console.error('[MATERIALS] policies', e); return replFail(res, 500, 'replenishment_error', e.message); }
 });
@@ -376,7 +385,8 @@ router.get('/replenishment/open-requirements', authenticate, authorize(), async 
       const item = (await query('SELECT code, name_en, name_ar, unit FROM item_master WHERE id = $1', [materialId])).rows[0] || {};
       data.push({ ...row, material_code: item.code, material_name_en: item.name_en, material_name_ar: item.name_ar, unit: item.unit });
     }
-    res.json({ success: true, data: data.filter((d) => req.query.include_zero === 'true' || d.requirement > 0) });
+    const rows = data.filter((d) => req.query.include_zero === 'true' || d.requirement > 0);
+    res.json({ success: true, data: paginateRows(req, res, rows, { orderBy: [{ column: 'material_id' }], tieBreaker: 'material_id' }).rows });
   } catch (e) { console.error('[MATERIALS] open requirements', e); return replFail(res, 500, 'replenishment_error', e.message); }
 });
 

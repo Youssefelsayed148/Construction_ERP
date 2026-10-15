@@ -3,6 +3,7 @@ const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
+const { queryPaginated, paginateRows } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { idempotency, requireIdempotencyKey } = require('../middleware/v1');
 const { logActivity, fireEvent } = require('../utils/activity');
@@ -183,12 +184,9 @@ router.get('/:projectId/instructions', authenticate, authorize(), async (req, re
     let conditions = ['ei.project_id = $1']; let params = [req.params.projectId]; let idx = 2;
     if (status) { conditions.push(`ei.status = $${idx++}`); params.push(status); }
     if (priority) { conditions.push(`ei.priority = $${idx++}`); params.push(priority); }
-    const result = await query(
-      `SELECT ei.*, iu.name as issued_by_name, cu.name as closed_by_name FROM engineer_instructions ei
+    const result = await queryPaginated(req, res, query, { sql: `SELECT ei.*, iu.name as issued_by_name, cu.name as closed_by_name FROM engineer_instructions ei
        LEFT JOIN users iu ON ei.issued_by = iu.id LEFT JOIN users cu ON ei.closed_by = cu.id
-       WHERE ${conditions.join(' AND ')} ORDER BY ei.created_at DESC`,
-      params
-    );
+       WHERE ${conditions.join(' AND ')} ORDER BY ei.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: result.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -353,12 +351,9 @@ router.post('/:projectId/instructions/:id/:action(acknowledge|implement|close)',
 
 router.get('/:projectId/site-visits', authenticate, authorize(), async (req, res) => {
   try {
-    const result = await query(
-      `SELECT sv.*, u.name as logged_by_name FROM site_visits sv
+    const result = await queryPaginated(req, res, query, { sql: `SELECT sv.*, u.name as logged_by_name FROM site_visits sv
        LEFT JOIN users u ON sv.logged_by = u.id
-       WHERE sv.project_id = $1 ORDER BY sv.visit_date DESC`,
-      [req.params.projectId]
-    );
+       WHERE sv.project_id = $1 ORDER BY sv.visit_date DESC`, params: [req.params.projectId], orderBy: [{"column":"visit_date","direction":"DESC"}] });
     res.json({ success: true, data: result.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -503,7 +498,7 @@ router.get('/:projectId/photos', authenticate, authorize(), async (req, res) => 
       linked_entity_type: req.query.linked_entity_type || null,
       linked_entity_id: req.query.linked_entity_id ? parseInt(req.query.linked_entity_id, 10) : null,
     });
-    res.json({ success: true, data: photos });
+    res.json({ success: true, data: paginateRows(req, res, photos, { orderBy: [{ column: 'created_at', direction: 'DESC' }] }).rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -515,7 +510,7 @@ router.get('/:projectId/sticky-notes', authenticate, authorize(), async (req, re
       project_id: parseInt(req.params.projectId, 10),
       owner_user_id: req.user.id,
     });
-    res.json({ success: true, data: notes });
+    res.json({ success: true, data: paginateRows(req, res, notes, { orderBy: [{ column: 'created_at', direction: 'DESC' }] }).rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 

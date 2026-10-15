@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
@@ -19,17 +20,14 @@ router.get('/project/:projectId', authenticate, authorize(), async (req, res) =>
     if (status && WO_STATUSES.includes(status)) { conds.push(`wo.status = $${i++}`); p.push(status); }
     if (phase_id) { conds.push(`wo.phase_id = $${i++}`); p.push(parseInt(phase_id)); }
 
-    const data = await query(
-      `SELECT wo.*, u.name as assigned_to_name,
+    const data = await queryPaginated(req, res, query, { sql: `SELECT wo.*, u.name as assigned_to_name,
               pp.name as phase_name, pp.name_ar as phase_name_ar, pp.name_en as phase_name_en, pp.code as phase_code,
               bs.name_ar as boq_section_name_ar, bs.name_en as boq_section_name_en, bs.code as boq_section_code
        FROM work_orders wo
        LEFT JOIN users u ON wo.assigned_to = u.id
        LEFT JOIN project_phases pp ON wo.phase_id = pp.id
        LEFT JOIN boq_sections bs ON wo.boq_section_id = bs.id
-       WHERE ${conds.join(' AND ')} ORDER BY wo.created_at DESC`,
-      p
-    );
+       WHERE ${conds.join(' AND ')} ORDER BY wo.created_at DESC`, params: p, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -129,9 +127,7 @@ router.get('/:id/materials', authenticate, authorize(), async (req, res) => {
   try {
     const wo = await query('SELECT id FROM work_orders WHERE id = $1', [req.params.id]);
     if (wo.rows.length === 0) return res.status(404).json({ success: false, error: 'Work order not found' });
-    const r = await query(
-      'SELECT wom.*, im.code as item_code, im.name_en, im.name_ar FROM work_order_materials wom LEFT JOIN item_master im ON wom.item_id = im.id WHERE wom.work_order_id = $1 ORDER BY wom.id',
-      [req.params.id]);
+    const r = await queryPaginated(req, res, query, { sql: 'SELECT wom.*, im.code as item_code, im.name_en, im.name_ar FROM work_order_materials wom LEFT JOIN item_master im ON wom.item_id = im.id WHERE wom.work_order_id = $1 ORDER BY wom.id', params: [req.params.id], orderBy: [{"column":"id","direction":"ASC"}] });
     res.json({ success: true, data: r.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -193,7 +189,7 @@ router.get('/:id/labor', authenticate, authorize(), async (req, res) => {
   try {
     const wo = await query('SELECT id FROM work_orders WHERE id = $1', [req.params.id]);
     if (wo.rows.length === 0) return res.status(404).json({ success: false, error: 'Work order not found' });
-    const r = await query('SELECT * FROM work_order_labor WHERE work_order_id = $1 ORDER BY work_date, id', [req.params.id]);
+    const r = await queryPaginated(req, res, query, { sql: 'SELECT * FROM work_order_labor WHERE work_order_id = $1 ORDER BY work_date, id', params: [req.params.id], orderBy: [{"column":"work_date","direction":"ASC"},{"column":"id","direction":"ASC"}] });
     res.json({ success: true, data: r.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -224,9 +220,7 @@ router.get('/:id/equipment', authenticate, authorize(), async (req, res) => {
   try {
     const wo = await query('SELECT id FROM work_orders WHERE id = $1', [req.params.id]);
     if (wo.rows.length === 0) return res.status(404).json({ success: false, error: 'Work order not found' });
-    const r = await query(
-      'SELECT woe.*, a.code as equipment_code FROM work_order_equipment woe LEFT JOIN assets a ON woe.equipment_id = a.id WHERE woe.work_order_id = $1 ORDER BY woe.work_date, woe.id',
-      [req.params.id]);
+    const r = await queryPaginated(req, res, query, { sql: 'SELECT woe.*, a.code as equipment_code FROM work_order_equipment woe LEFT JOIN assets a ON woe.equipment_id = a.id WHERE woe.work_order_id = $1 ORDER BY woe.work_date, woe.id', params: [req.params.id], orderBy: [{"column":"work_date","direction":"ASC"},{"column":"id","direction":"ASC"}] });
     res.json({ success: true, data: r.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -257,9 +251,7 @@ router.get('/:id/completions', authenticate, authorize(), async (req, res) => {
   try {
     const wo = await query('SELECT id FROM work_orders WHERE id = $1', [req.params.id]);
     if (wo.rows.length === 0) return res.status(404).json({ success: false, error: 'Work order not found' });
-    const r = await query(
-      'SELECT wc.*, u.name as verified_name FROM work_completions wc LEFT JOIN users u ON wc.verified_by = u.id WHERE wc.work_order_id = $1 ORDER BY wc.completion_date, wc.id',
-      [req.params.id]);
+    const r = await queryPaginated(req, res, query, { sql: 'SELECT wc.*, u.name as verified_name FROM work_completions wc LEFT JOIN users u ON wc.verified_by = u.id WHERE wc.work_order_id = $1 ORDER BY wc.completion_date, wc.id', params: [req.params.id], orderBy: [{"column":"completion_date","direction":"ASC"},{"column":"id","direction":"ASC"}] });
     res.json({ success: true, data: r.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

@@ -5,6 +5,7 @@ const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditedMutation } = require('../utils/auditedMutation');
 const { isReferenceViolation, recordInUse } = require('../utils/references');
@@ -13,7 +14,7 @@ const BOQ_ITEM_TYPES = ['material', 'labor', 'equipment', 'subcontract'];
 
 router.get('/sections/:projectId', authenticate, authorize(), async (req, res) => {
   try {
-    const sections = await query('SELECT * FROM boq_sections WHERE project_id = $1 ORDER BY parent_id NULLS FIRST, sort_order', [req.params.projectId]);
+    const sections = await queryPaginated(req, res, query, { sql: 'SELECT * FROM boq_sections WHERE project_id = $1 ORDER BY parent_id NULLS FIRST, sort_order', params: [req.params.projectId], orderBy: [{"column":"parent_id","direction":"ASC"},{"column":"sort_order","direction":"ASC"}] });
     res.json({ success: true, data: sections.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -91,8 +92,7 @@ router.get('/items/:projectId', authenticate, authorize(), async (req, res) => {
     // quantity_measurements (via the item's location allocations). The stored
     // column stays readable during the transition, sourced from this same
     // calculation; the read exposes both so the frontend can switch cleanly.
-    const data = await query(
-      `SELECT bi.*, bs.name as section_name, im.name_en as material_name_en, im.name_ar as material_name_ar,
+    const data = await queryPaginated(req, res, query, { sql: `SELECT bi.*, bs.name as section_name, im.name_en as material_name_en, im.name_ar as material_name_ar,
               COALESCE(qm.executed, 0) as completed_quantity_derived,
               CASE WHEN bi.quantity > 0 THEN LEAST(COALESCE(qm.executed, 0) / bi.quantity * 100, 100) ELSE 0 END as completion_percentage_derived
        FROM boq_items bi
@@ -103,9 +103,7 @@ router.get('/items/:projectId', authenticate, authorize(), async (req, res) => {
          FROM quantity_measurements WHERE approval_state IN ('approved','certified')
          GROUP BY boq_item_id
        ) qm ON qm.boq_item_id = bi.id
-       WHERE ${conds.join(' AND ')} ORDER BY bs.sort_order, bi.code`,
-      p
-    );
+       WHERE ${conds.join(' AND ')} ORDER BY bs.sort_order, bi.code`, params: p, orderBy: [{"column":"sort_order","direction":"ASC"},{"column":"code","direction":"ASC"}] });
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

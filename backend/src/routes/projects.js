@@ -6,6 +6,7 @@ const { query, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const { auditedMutation } = require('../utils/auditedMutation');
+const { queryPaginated } = require('../utils/pagination');
 const provisioning = require('../services/projectProvisioning');
 
 const PROJECT_TYPES = ['residential', 'commercial', 'industrial', 'infrastructure', 'mixed'];
@@ -33,22 +34,21 @@ router.get('/portfolio', authenticate, authorize(), async (req, res) => {
   try {
     const params = [];
     const scope = projectScope(req, params);
-    const data = await query(`
+    const data = await queryPaginated(req, res, query, { sql: `
       SELECT p.*, c.name_ar as client_name, c.name_en as client_name_en,
              e.name_ar as project_manager_name, e.name_en as project_manager_name_en
       FROM projects p
       LEFT JOIN clients c ON p.client_id = c.id
       LEFT JOIN employees e ON p.project_manager_id = e.id
       ${scope ? `WHERE ${scope}` : ''}
-      ORDER BY p.status, p.created_at DESC
-    `, params);
+    `, params, orderBy: [{ column: 'status' }, { column: 'created_at', direction: 'DESC' }] });
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
-    const { status, project_type, search, limit = 100, offset = 0 } = req.query;
+    const { status, project_type, search } = req.query;
     let conds = []; let p = []; let i = 1;
     if (status && PROJECT_STATUSES.includes(status)) { conds.push(`p.status = $${i++}`); p.push(status); }
     if (project_type && PROJECT_TYPES.includes(project_type)) { conds.push(`p.project_type = $${i++}`); p.push(project_type); }
@@ -56,10 +56,11 @@ router.get('/', authenticate, authorize(), async (req, res) => {
     const scope = projectScope(req, p);
     if (scope) { conds.push(scope); i++; }
     const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
-    const data = await query(
-      `SELECT p.*, c.name_ar as client_name, c.name_en as client_name_en, e.name_ar as project_manager_name, e.name_en as project_manager_name_en FROM projects p LEFT JOIN clients c ON p.client_id = c.id LEFT JOIN employees e ON p.project_manager_id = e.id ${w} ORDER BY p.created_at DESC LIMIT $${i++} OFFSET $${i}`,
-      [...p, parseInt(limit), parseInt(offset)]
-    );
+    const data = await queryPaginated(req, res, query, {
+      sql: `SELECT p.*, c.name_ar as client_name, c.name_en as client_name_en, e.name_ar as project_manager_name, e.name_en as project_manager_name_en FROM projects p LEFT JOIN clients c ON p.client_id = c.id LEFT JOIN employees e ON p.project_manager_id = e.id ${w}`,
+      params: p,
+      orderBy: [{ column: 'created_at', direction: 'DESC' }],
+    });
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

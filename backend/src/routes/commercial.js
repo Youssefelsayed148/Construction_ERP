@@ -4,6 +4,7 @@ const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const { auditedChange } = require('../utils/auditedMutation');
@@ -20,7 +21,11 @@ const { atomic, typedFail, typedBody } = require('../utils/typedRoute');
 
 router.get('/contracts/:projectId', authenticate, authorize(), async (req, res) => {
   try {
-    const contracts = (await query('SELECT * FROM client_contracts WHERE project_id = $1 ORDER BY id', [req.params.projectId])).rows;
+    const contracts = (await queryPaginated(req, res, query, {
+      sql: 'SELECT * FROM client_contracts WHERE project_id = $1',
+      params: [req.params.projectId],
+      orderBy: [{ column: 'id' }],
+    })).rows;
     for (const c of contracts) {
       c.lines = (await query('SELECT * FROM contract_lines WHERE client_contract_id = $1 ORDER BY sort_order, id', [c.id])).rows;
     }

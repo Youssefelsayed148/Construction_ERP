@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { fireEvent } = require('../utils/activity');
 const finance = require('../services/financeEngine');
@@ -234,7 +235,10 @@ router.get('/company-dashboard', authenticate, authorize(), async (req, res) => 
 
 router.get('/tax-codes', authenticate, authorize(), async (req, res) => {
   try {
-    const rows = (await query('SELECT * FROM tax_codes WHERE is_active = true ORDER BY rate_pct')).rows;
+    const rows = (await queryPaginated(req, res, query, {
+      sql: 'SELECT * FROM tax_codes WHERE is_active = true',
+      orderBy: [{ column: 'rate_pct' }],
+    })).rows;
     res.json({ success: true, data: rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -242,10 +246,11 @@ router.get('/tax-codes', authenticate, authorize(), async (req, res) => {
 // Audit trail (immutable mirror).
 router.get('/audit/:entityType/:entityId', authenticate, authorize(), async (req, res) => {
   try {
-    const rows = (await query(
-      'SELECT * FROM audit_events WHERE entity_type = $1 AND entity_id = $2 ORDER BY id',
-      [req.params.entityType, req.params.entityId]
-    )).rows;
+    const rows = (await queryPaginated(req, res, query, {
+      sql: 'SELECT * FROM audit_events WHERE entity_type = $1 AND entity_id = $2',
+      params: [req.params.entityType, req.params.entityId],
+      orderBy: [{ column: 'id' }],
+    })).rows;
     res.json({ success: true, data: rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

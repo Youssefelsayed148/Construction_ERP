@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const commercialEngine = require('../services/commercialEngine');
 const dashboardWidgets = require('../services/dashboardWidgets');
@@ -56,13 +57,12 @@ router.get('/', authenticate, authorize(), async (req, res) => {
 // Portfolio - all projects summary
 router.get('/portfolio', authenticate, authorize(), async (req, res) => {
   try {
-    const projects = await q('portfolio', `
+    const projects = await queryPaginated(req, res, (sql, params) => q('portfolio', sql, params), { sql: `
       SELECT p.*, c.name_ar as client_name,
              COALESCE(vct.total_cost, 0) as total_actual_cost
       FROM projects p LEFT JOIN clients c ON p.client_id = c.id
       LEFT JOIN v_project_cost_totals vct ON vct.project_id = p.id
-      ORDER BY p.status, p.created_at DESC
-    `);
+    `, orderBy: [{ column: 'status' }, { column: 'created_at', direction: 'DESC' }] });
 
     const enriched = projects.rows.map(p => ({
       ...p,

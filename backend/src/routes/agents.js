@@ -13,6 +13,7 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const mcpService = require('../services/mcpService');
 const crypto = require('crypto');
@@ -25,10 +26,12 @@ const { typedFail } = require('../utils/typedRoute');
 
 router.get('/tokens', authenticate, authorize('owner', 'admin'), async (req, res) => {
   try {
-    const tokens = await auditedTransaction((q) => q(
-      `SELECT id, name, audience, token_prefix, scopes, expires_at, last_used_at, revoked_at, created_at
-       FROM api_tokens WHERE user_id = $1 ORDER BY created_at DESC`, [req.user.id]
-    ), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'read', module: 'agents',
+    const tokens = await auditedTransaction((q) => queryPaginated(req, res, q, {
+      sql: `SELECT id, name, audience, token_prefix, scopes, expires_at, last_used_at, revoked_at, created_at
+       FROM api_tokens WHERE user_id = $1`,
+      params: [req.user.id],
+      orderBy: [{ column: 'created_at', direction: 'DESC' }],
+    }), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'read', module: 'agents',
       description: 'Read personal API token list', entityType: 'api_token' }));
     res.json({ success: true, data: tokens.rows });
   } catch (error) { return typedFail(res, error, 'AGENT_API_TOKEN_LIST', req); }

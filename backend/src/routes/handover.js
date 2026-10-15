@@ -14,6 +14,7 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
@@ -194,14 +195,13 @@ router.get('/assets', authenticate, authorize(), async (req, res) => {
     let conditions = []; let params = []; let idx = 1;
     if (project_id) { conditions.push(`a.project_id = $${idx++}`); params.push(project_id); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const r = await query(
-      `SELECT a.*, pl.name as location_name,
+    const r = await queryPaginated(req, res, query, { sql: `SELECT a.*, pl.name as location_name,
               COALESCE(so.name_en, so.name_ar) as supplier_name,
               COALESCE(sco.name_en, sco.name_ar) as subcontractor_name
        FROM asset_register a LEFT JOIN project_locations pl ON a.project_location_id = pl.id
        LEFT JOIN organizations so ON a.supplier_organization_id = so.id
        LEFT JOIN organizations sco ON a.subcontractor_organization_id = sco.id
-       ${where} ORDER BY a.id`, params);
+       ${where} ORDER BY a.id`, params: params, orderBy: [{"column":"id","direction":"ASC"}] });
     res.json({ success: true, data: r.rows.map((row) => normalizeDateFields(row, ['commissioning_date', 'warranty_start', 'warranty_end'])) });
   } catch (error) { return handoverError(res, error, 'HANDOVER_ASSET_READ', req); }
 });
@@ -241,10 +241,9 @@ router.get('/assets/:id/documents', authenticate, authorize(), async (req, res) 
   try {
     const asset = (await query('SELECT id, project_id FROM asset_register WHERE id = $1', [req.params.id])).rows[0];
     if (!asset || !handoverProjectAllowed(req, asset.project_id)) return handoverFailure(res, 404, 'asset_not_found');
-    const result = await query(
-      `SELECT ad.*, d.doc_number, d.file_url, d.status AS document_status
+    const result = await queryPaginated(req, res, query, { sql: `SELECT ad.*, d.doc_number, d.file_url, d.status AS document_status
        FROM asset_documents ad JOIN project_documents d ON d.id = ad.project_document_id
-       WHERE ad.asset_id = $1 ORDER BY ad.linked_at DESC, ad.id DESC`, [req.params.id]);
+       WHERE ad.asset_id = $1 ORDER BY ad.linked_at DESC, ad.id DESC`, params: [req.params.id], orderBy: [{"column":"linked_at","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: result.rows });
   } catch (error) { return handoverError(res, error, 'HANDOVER_ASSET_DOCUMENT_READ', req); }
 });
@@ -279,12 +278,11 @@ router.get('/warranties', authenticate, authorize(), async (req, res) => {
   if (!Number.isInteger(projectId) || projectId < 1) return handoverFailure(res, 400, 'invalid_project_id');
   if (!handoverProjectAllowed(req, projectId)) return handoverFailure(res, 403, 'project_scope_denied');
   try {
-    const result = await query(
-      `SELECT w.*, a.asset_code, a.name AS asset_name, d.title AS project_document_title, d.file_url AS project_document_url,
+    const result = await queryPaginated(req, res, query, { sql: `SELECT w.*, a.asset_code, a.name AS asset_name, d.title AS project_document_title, d.file_url AS project_document_url,
               CASE WHEN w.status = 'active' AND w.end_date < CURRENT_DATE THEN 'expired' ELSE w.status END AS effective_status
        FROM warranties w LEFT JOIN asset_register a ON a.id = w.asset_id
        LEFT JOIN project_documents d ON d.id = w.project_document_id
-       WHERE w.project_id = $1 ORDER BY w.end_date, w.id`, [projectId]);
+       WHERE w.project_id = $1 ORDER BY w.end_date, w.id`, params: [projectId], orderBy: [{"column":"end_date","direction":"ASC"},{"column":"id","direction":"ASC"}] });
     res.json({ success: true, data: result.rows.map((row) => normalizeDateFields(row, ['start_date', 'end_date'])) });
   } catch (error) { return handoverError(res, error, 'HANDOVER_WARRANTY_READ', req); }
 });
@@ -364,7 +362,7 @@ router.get('/claims', authenticate, authorize(), async (req, res) => {
     let conditions = []; let params = []; let idx = 1;
     if (project_id) { conditions.push(`wc.project_id = $${idx++}`); params.push(project_id); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const r = await query(`${CLAIM_SELECT} ${where} ORDER BY wc.created_at DESC`, params);
+    const r = await queryPaginated(req, res, query, { sql: `${CLAIM_SELECT} ${where} ORDER BY wc.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

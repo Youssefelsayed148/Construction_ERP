@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
@@ -58,7 +59,7 @@ router.get('/', authenticate, authorize(), async (req, res) => {
     if (warehouse_type && WAREHOUSE_TYPES.includes(warehouse_type)) { conds.push(`w.warehouse_type = $${i++}`); p.push(warehouse_type); }
     if (project_id) { conds.push(`w.project_id = $${i++}`); p.push(parseInt(project_id)); }
     const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
-    const data = await query(`SELECT w.*, p.name as project_name FROM warehouses w LEFT JOIN projects p ON w.project_id = p.id ${w} ORDER BY w.type, w.name`, p);
+    const data = await queryPaginated(req, res, query, { sql: `SELECT w.*, p.name as project_name FROM warehouses w LEFT JOIN projects p ON w.project_id = p.id ${w} ORDER BY w.type, w.name`, params: p, orderBy: [{"column":"type","direction":"ASC"},{"column":"name","direction":"ASC"}] });
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

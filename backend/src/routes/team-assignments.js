@@ -14,6 +14,7 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const policy = require('../services/policy');
 const team = require('../services/teamService');
@@ -30,7 +31,8 @@ function fail(res, e) {
 
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
-    const rows = await team.listTeamMembers(query, {
+    const listQuery = (sql, params) => queryPaginated(req, res, query, { sql, params, orderBy: [{ column: 'id' }] });
+    const rows = await team.listTeamMembers(listQuery, {
       project_id: req.query.project_id || null,
       organization_id: req.query.organization_id || null,
       role_key: req.query.role_key || null,

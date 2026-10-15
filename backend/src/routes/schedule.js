@@ -14,6 +14,7 @@ const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
+const { queryPaginated, paginateRows } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { auditedMutation } = require('../utils/auditedMutation');
@@ -54,8 +55,8 @@ router.get('/resource-load', authenticate, authorize(), async (req, res) => {
     const to = value.to ? isoDay(value.to) : isoDay(new Date(new Date(`${from}T12:00:00`).getTime() + 13 * 86400000));
     const dayCount = Math.floor((new Date(`${to}T12:00:00`).getTime() - new Date(`${from}T12:00:00`).getTime()) / 86400000);
     if (dayCount < 0 || dayCount > 90) return scheduleFailure(res, 400, 'invalid_resource_load_range');
-    const rows = (await query(
-      `WITH days AS (
+    const rows = (await queryPaginated(req, res, query, {
+      sql: `WITH days AS (
          SELECT generate_series($2::date, $3::date, interval '1 day')::date AS load_date
        )
        SELECT d.load_date, a.employee_id, a.asset_register_id,
@@ -70,9 +71,11 @@ router.get('/resource-load', authenticate, authorize(), async (req, res) => {
          LEFT JOIN employees e ON e.id = a.employee_id
          LEFT JOIN asset_register ar ON ar.id = a.asset_register_id
         WHERE a.project_id = $1 AND a.status IN ('planned', 'active')
-        GROUP BY d.load_date, a.employee_id, a.asset_register_id, e.name_en, e.name_ar, ar.name
-        ORDER BY d.load_date, resource_type, resource_name`, [authorizedProjectId(req, value), from, to]
-    )).rows;
+        GROUP BY d.load_date, a.employee_id, a.asset_register_id, e.name_en, e.name_ar, ar.name`,
+      params: [authorizedProjectId(req, value), from, to],
+      orderBy: [{ column: 'load_date' }, { column: 'resource_type' }, { column: 'resource_name' }, { column: 'employee_id' }, { column: 'asset_register_id' }],
+      tieBreaker: 'asset_register_id',
+    })).rows;
     res.json({ success: true, data: rows, from, to });
   } catch (error) {
     return scheduleFailure(res, 500, 'schedule_resource_load_failed');
@@ -89,7 +92,7 @@ router.get('/calendars', authenticate, authorize(), async (req, res) => {
     let conditions = []; let params = []; let idx = 1;
     if (project_id) { conditions.push(`c.project_id = $${idx++}`); params.push(project_id); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const r = await query(`SELECT * FROM calendars c ${where} ORDER BY c.is_default DESC, c.name`, params);
+    const r = await queryPaginated(req, res, query, { sql: `SELECT * FROM calendars c ${where} ORDER BY c.is_default DESC, c.name`, params: params, orderBy: [{"column":"is_default","direction":"DESC"},{"column":"name","direction":"ASC"}] });
     res.json({ success: true, data: r.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -151,7 +154,7 @@ router.get('/activities', authenticate, authorize(), async (req, res) => {
       const critIds = new Set(computed.activities.filter((x) => x.critical).map((x) => x.id));
       rows = rows.filter((a) => critIds.has(engine.toNum(a.id)));
     }
-    res.json({ success: true, data: rows });
+    res.json({ success: true, data: paginateRows(req, res, rows, { orderBy: [{ column: 'planned_start' }] }).rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -392,10 +395,9 @@ router.get('/activities/:id/progress-history', authenticate, authorize(), async 
   try {
     const activity = (await query('SELECT id, project_id FROM schedule_activities WHERE id = $1', [req.params.id])).rows[0];
     if (!activity || !scheduleProjectAllowed(req, activity.project_id)) return scheduleFailure(res, 404, 'schedule_activity_not_found');
-    const result = await query(
-      `SELECT h.*, u.name AS created_by_name FROM schedule_progress_updates h
+    const result = await queryPaginated(req, res, query, { sql: `SELECT h.*, u.name AS created_by_name FROM schedule_progress_updates h
        LEFT JOIN users u ON u.id = h.created_by
-       WHERE h.schedule_activity_id = $1 ORDER BY h.created_at DESC, h.id DESC`, [req.params.id]);
+       WHERE h.schedule_activity_id = $1 ORDER BY h.created_at DESC, h.id DESC`, params: [req.params.id], orderBy: [{"column":"created_at","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: result.rows.map((row) => normalizeDateFields(row, ['data_date'])) });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -406,8 +408,7 @@ router.get('/resources', authenticate, authorize(), async (req, res) => {
   if (!Number.isInteger(projectId) || projectId < 1) return scheduleFailure(res, 400, 'invalid_project_id');
   if (!scheduleProjectAllowed(req, projectId)) return scheduleFailure(res, 403, 'project_scope_denied');
   try {
-    const result = await query(
-      `SELECT 'employee'::text AS resource_type, e.id AS resource_id, COALESCE(e.name_en, e.name) AS name
+    const result = await queryPaginated(req, res, query, { sql: `SELECT 'employee'::text AS resource_type, e.id AS resource_id, COALESCE(e.name_en, e.name) AS name
        FROM project_participants pp JOIN project_participant_users pu ON pu.project_participant_id = pp.id
        JOIN employees e ON e.id = pu.employee_id
        WHERE pp.project_id = $1 AND pp.participant_type = 'internal_team_member'
@@ -415,7 +416,7 @@ router.get('/resources', authenticate, authorize(), async (req, res) => {
          AND e.status = 'active'
        UNION ALL
        SELECT 'asset'::text AS resource_type, a.id AS resource_id, a.name
-       FROM asset_register a WHERE a.project_id = $1 ORDER BY resource_type, name, resource_id`, [projectId]);
+       FROM asset_register a WHERE a.project_id = $1 ORDER BY resource_type, name, resource_id`, params: [projectId], orderBy: [{"column":"resource_type","direction":"ASC"},{"column":"name","direction":"ASC"},{"column":"resource_id","direction":"ASC"}], tieBreaker: 'resource_id' });
     res.json({ success: true, data: result.rows });
   } catch (error) {
     console.error('schedule.resources.failed', error);
@@ -427,12 +428,11 @@ router.get('/activities/:id/assignments', authenticate, authorize(), async (req,
   try {
     const activity = (await query('SELECT id, project_id FROM schedule_activities WHERE id = $1', [req.params.id])).rows[0];
     if (!activity || !scheduleProjectAllowed(req, activity.project_id)) return scheduleFailure(res, 404, 'schedule_activity_not_found');
-    const result = await query(
-      `SELECT a.*, COALESCE(e.name_en, e.name) AS employee_name, ar.name AS asset_name
+    const result = await queryPaginated(req, res, query, { sql: `SELECT a.*, COALESCE(e.name_en, e.name) AS employee_name, ar.name AS asset_name
        FROM schedule_activity_assignments a
        LEFT JOIN employees e ON e.id = a.employee_id
        LEFT JOIN asset_register ar ON ar.id = a.asset_register_id
-       WHERE a.schedule_activity_id = $1 ORDER BY a.assigned_from, a.id`, [req.params.id]);
+       WHERE a.schedule_activity_id = $1 ORDER BY a.assigned_from, a.id`, params: [req.params.id], orderBy: [{"column":"assigned_from","direction":"ASC"},{"column":"id","direction":"ASC"}] });
     res.json({ success: true, data: result.rows.map((row) => normalizeDateFields(row, ['assigned_from', 'assigned_to'])) });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -534,11 +534,9 @@ router.get('/relationships', authenticate, authorize(), async (req, res) => {
     let conditions = []; let params = []; let idx = 1;
     if (project_id) { conditions.push(`r.project_id = $${idx++}`); params.push(project_id); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const r = await query(
-      `SELECT r.*, p.name as predecessor_name, s.name as successor_name FROM activity_relationships r
+    const r = await queryPaginated(req, res, query, { sql: `SELECT r.*, p.name as predecessor_name, s.name as successor_name FROM activity_relationships r
        LEFT JOIN schedule_activities p ON r.predecessor_id = p.id
-       LEFT JOIN schedule_activities s ON r.successor_id = s.id ${where} ORDER BY r.id`,
-      params);
+       LEFT JOIN schedule_activities s ON r.successor_id = s.id ${where} ORDER BY r.id`, params: params, orderBy: [{"column":"id","direction":"ASC"}] });
     res.json({ success: true, data: r.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -612,7 +610,7 @@ router.get('/schedule/lookahead', authenticate, authorize(), async (req, res) =>
     const acts = (await query('SELECT * FROM schedule_activities WHERE project_id = $1', [project_id])).rows;
     const dataDate = data_date ? new Date(data_date) : new Date();
     const rows = engine.lookahead(acts, [2, 4, 6].includes(parseInt(weeks, 10)) ? parseInt(weeks, 10) : 2, dataDate);
-    res.json({ success: true, data: rows, window_weeks: parseInt(weeks, 10) });
+    res.json({ success: true, data: paginateRows(req, res, rows, { orderBy: [{ column: 'planned_start' }] }).rows, window_weeks: parseInt(weeks, 10) });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -622,7 +620,7 @@ router.get('/schedule/delayed', authenticate, authorize(), async (req, res) => {
     if (!project_id) return res.status(400).json({ success: false, error: 'project_id is required' });
     const acts = (await query('SELECT * FROM schedule_activities WHERE project_id = $1', [project_id])).rows;
     const rows = engine.delayedActivities(acts, data_date ? new Date(data_date) : new Date());
-    res.json({ success: true, data: rows });
+    res.json({ success: true, data: paginateRows(req, res, rows, { orderBy: [{ column: 'planned_finish', direction: 'ASC' }] }).rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -730,7 +728,7 @@ router.get('/schedule/alerts', authenticate, authorize(), async (req, res) => {
     const { project_id, data_date } = req.query;
     if (!project_id) return res.status(400).json({ success: false, error: 'project_id is required' });
     const alerts = await engine.scheduleAlerts(query, project_id, data_date ? new Date(data_date) : new Date());
-    res.json({ success: true, data: alerts });
+    res.json({ success: true, data: paginateRows(req, res, alerts, { orderBy: [{ column: 'type' }, { column: 'activity_id' }] }).rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -741,10 +739,9 @@ router.get('/schedule/milestones', authenticate, authorize(), async (req, res) =
     let conditions = []; let params = []; let idx = 1;
     if (project_id) { conditions.push(`m.project_id = $${idx++}`); params.push(project_id); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const r = await query(
-      `SELECT m.*, a.name as activity_name, a.planned_start as activity_planned_start, a.percent_complete as activity_percent_complete
+    const r = await queryPaginated(req, res, query, { sql: `SELECT m.*, a.name as activity_name, a.planned_start as activity_planned_start, a.percent_complete as activity_percent_complete
        FROM project_milestones m LEFT JOIN schedule_activities a ON m.schedule_activity_id = a.id
-       ${where} ORDER BY m.target_date NULLS LAST`, params);
+       ${where} ORDER BY m.target_date NULLS LAST`, params: params, orderBy: [{"column":"target_date","direction":"ASC"}] });
     res.json({ success: true, data: r.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -779,9 +776,8 @@ router.get('/baselines', authenticate, authorize(), async (req, res) => {
     let conditions = []; let params = []; let idx = 1;
     if (project_id) { conditions.push(`b.project_id = $${idx++}`); params.push(project_id); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const r = await query(
-      `SELECT b.*, u.name as created_by_name FROM baselines b LEFT JOIN users u ON b.created_by = u.id
-       ${where} ORDER BY b.baseline_date DESC`, params);
+    const r = await queryPaginated(req, res, query, { sql: `SELECT b.*, u.name as created_by_name FROM baselines b LEFT JOIN users u ON b.created_by = u.id
+       ${where} ORDER BY b.baseline_date DESC`, params: params, orderBy: [{"column":"baseline_date","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

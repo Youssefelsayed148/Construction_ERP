@@ -2,6 +2,7 @@ const express = require('express');
 const Joi = require('joi');
 const router = express.Router();
 const { query, transaction } = require('../config/database');
+const { paginateRows } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
@@ -23,7 +24,7 @@ router.get('/projects', authenticate, authorize(), async (req, res) => {
     const projectIds = await engine.resolveClientProjects(query, req.user.id, {
       previewProjectId: req.preview?.scoped_project_ids?.[0] ?? null,
     });
-    res.json({ success: true, data: projectIds });
+    res.json({ success: true, data: paginateRows(req, res, projectIds).rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
