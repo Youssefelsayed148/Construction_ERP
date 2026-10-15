@@ -125,6 +125,13 @@ const authenticate = async (req, res, next) => {
 
     next();
   } catch (error) {
+    if (error.error_code) {
+      res.setHeader('Retry-After', String(error.retryAfter || 5));
+      return res.status(error.status || 503).json({
+        success: false, error: 'Database operation temporarily unavailable',
+        error_code: error.error_code, error_key: error.error_key, error_params: {},
+      });
+    }
     res.setHeader('Retry-After', '5');
     return res.status(503).json({
       success: false, error: 'Authentication service temporarily unavailable',

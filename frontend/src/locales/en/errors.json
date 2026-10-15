@@ -13,6 +13,8 @@
   "conflict": "This record was changed by someone else.",
   "rateLimited": "Too many requests. Please wait a moment.",
   "rateLimitUnavailable": "The rate limit service is temporarily unavailable. Please try again shortly.",
+  "databaseUnavailable": "The database is temporarily unavailable. Please try again shortly.",
+  "databaseTimeout": "The database operation timed out. Please retry.",
   "serverError": "Something went wrong on our side.",
   "sessionExpired": "Your session has expired.",
   "unknown": "An unexpected error occurred.",

@@ -10,7 +10,7 @@ const { Pool, Client } = require('pg');
 const path = require('path');
 
 function assertSafeTarget(env = process.env) {
-  if (env.APP_ENV !== 'test' || !['erp_r04_baseline', 'erp_r04_password_after', 'erp_r04_multi'].includes(env.DB_NAME)) throw new Error('R4 measurement requires APP_ENV=test and an erp_r04 throwaway database');
+  if (env.APP_ENV !== 'test' || !['erp_r04_baseline', 'erp_r04_password_after', 'erp_r04_multi', 'erp_r04_resilience'].includes(env.DB_NAME)) throw new Error('R4 measurement requires APP_ENV=test and an erp_r04 throwaway database');
   if (!['127.0.0.1', 'localhost', '::1'].includes(String(env.DB_HOST).toLowerCase())) throw new Error('R4 baseline requires loopback DB_HOST');
   if (!env.DB_PASSWORD || !env.DB_USER) throw new Error('R4 baseline requires process-only credentials');
 }
@@ -69,6 +69,27 @@ async function multiInstanceProof() {
   console.log(`two_process_sweep processes=2 actual_runs=${actualRuns} lock_skipped=${results.filter((r) => r.skipped).length} immediate_rerun=skipped minimum_interval_ms=60000`);
 }
 
+async function resilienceProof() {
+  assertSafeTarget();
+  const port = 18000 + Math.floor(Math.random() * 10000);
+  const child = startServer(port, 'resilience');
+  try {
+    await waitReady(port, child);
+    const inFlight = request(port, '/api/auth/login', { email: 'r4-sigterm-drain@example.com', password: 'invalid-password-for-proof' });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const processExit = await new Promise((resolve, reject) => {
+      child.once('error', reject);
+      child.once('exit', (code, signal) => resolve(code ?? signal));
+      child.send('R4_TEST_SIGTERM', (error) => { if (error) reject(error); });
+    });
+    const response = await inFlight;
+    console.log(`sigterm_drain signal_handler=SIGTERM trigger=test_ipc process_exit=${processExit} request_status=${response.status ?? 'none'} request_error=${response.error || 'none'}`);
+    if (processExit !== 0 || response.status !== 401) throw new Error('SIGTERM shutdown handler did not drain the in-flight login request cleanly');
+  } finally {
+    if (child.exitCode === null) await stopChild(child, 'SIGKILL');
+  }
+}
+
 function request(port, pathname, body, { abortAfterMs } = {}) {
   return new Promise((resolve) => {
     const payload = body ? Buffer.from(JSON.stringify(body)) : null;
@@ -98,7 +119,7 @@ function startServer(port, baselineId) {
   const child = spawn(process.execPath, [path.resolve(__dirname, '../../server.js')], {
     env: { ...process.env, PORT: String(port), AUTH_RATE_LIMIT_PER_15_MIN: '20', R4_BASELINE_ID: baselineId,
       ...(passwordAfter ? { UV_THREADPOOL_SIZE: '16', R4_PASSWORD_AFTER: '1' } : {}) },
-    stdio: ['ignore', 'pipe', 'pipe'],
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
   });
   child.output = '';
   child.stdout.on('data', (chunk) => { child.output += chunk.toString(); });
@@ -118,6 +139,7 @@ async function stopChild(child, signal = 'SIGTERM') {
 async function main() {
   if (process.argv[2] === '--sweep-child') return sweepChild(process.argv[3]);
   if (process.argv.includes('--multi-instance-proof')) return multiInstanceProof();
+  if (process.argv.includes('--resilience-proof')) return resilienceProof();
   assertSafeTarget();
   const cpu = os.cpus()[0]?.model || 'unknown';
   console.log(`environment node=${process.version}; platform=${process.platform}; arch=${process.arch}; cpu_model=${cpu}; cpu_logical_count=${os.cpus().length}; memory_gib=${(os.totalmem() / 1024 ** 3).toFixed(2)}`);

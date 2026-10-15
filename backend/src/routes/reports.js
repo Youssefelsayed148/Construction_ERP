@@ -9,7 +9,7 @@ const { authorizedProjectId, authorizeProjectPayload } = require('../services/au
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
-const { query, transaction } = require('../config/database');
+const { query, queryCancellable, transaction } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { auditedMutation } = require('../utils/auditedMutation');
@@ -91,7 +91,7 @@ router.get('/catalog', authenticate, authorize(), async (req, res) => {
 // Filtered data + export per report (same filtered set for UI and export)
 // ---------------------------------------------------------------------------
 
-router.get('/data/:reportKey', authenticate, authorize(), async (req, res) => {
+router.get('/data/:reportKey', authenticate, authorize(), async (req, res, next) => {
   try {
     const spec = REPORTS[req.params.reportKey];
     if (!spec) return res.status(404).json({ success: false, error: 'Unknown report' });
@@ -103,8 +103,9 @@ router.get('/data/:reportKey', authenticate, authorize(), async (req, res) => {
     const { where, params, order, page, pageSize } = list;
     let rows = [];
     try {
-      rows = (await query(`SELECT ${selectedColumns.map(([key]) => key).join(', ')} FROM ${spec.table}${where}${order}`, params)).rows;
+      rows = (await queryCancellable(req, res, `SELECT ${selectedColumns.map(([key]) => key).join(', ')} FROM ${spec.table}${where}${order}`, params)).rows;
     } catch (e) {
+      if (e.error_code) throw e;
       // a fresh system may not have a module's table yet — empty report
       rows = [];
     }
@@ -121,10 +122,13 @@ router.get('/data/:reportKey', authenticate, authorize(), async (req, res) => {
     }
     const columns = selectedColumns.map(([k, label, tag]) => ({ key: k, label, internal: tag === 'internal' }));
     res.json({ success: true, data: { report: spec.label, columns, rows, page, page_size: pageSize } });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) {
+    if (error.error_code) return next(error);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
-router.get('/export/:reportKey', authenticate, authorize(), async (req, res) => {
+router.get('/export/:reportKey', authenticate, authorize(), async (req, res, next) => {
   try {
     const spec = REPORTS[req.params.reportKey];
     if (!spec) return res.status(404).json({ success: false, error: 'Unknown report' });
@@ -136,8 +140,8 @@ router.get('/export/:reportKey', authenticate, authorize(), async (req, res) => 
     const { where, params, order } = list;
     let rows = [];
     try {
-      rows = (await query(`SELECT ${columns.map(([key]) => key).join(', ')} FROM ${spec.table}${where}${order}`, params)).rows;
-    } catch (e) { rows = []; }
+      rows = (await queryCancellable(req, res, `SELECT ${columns.map(([key]) => key).join(', ')} FROM ${spec.table}${where}${order}`, params)).rows;
+    } catch (e) { if (e.error_code) throw e; rows = []; }
     if (PORTAL_ROLES.includes(req.user.role) && rows.length) {
       try {
         const ids = (await query(
@@ -157,7 +161,7 @@ router.get('/export/:reportKey', authenticate, authorize(), async (req, res) => 
       return sendPdf(res, pdf, `${req.params.reportKey}-report.pdf`);
     }
     return sendCsv(res, toCsv(rows, columns), `${req.params.reportKey}-report.csv`);
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { if (error.error_code) return next(error); res.status(500).json({ success: false, error: error.message }); }
 });
 
 // ---------------------------------------------------------------------------
@@ -270,20 +274,22 @@ router.delete('/scheduled/:id', authenticate, authorize(), async (req, res) => {
 // The automatic project report — ~20 sections, each pulling live data
 // ---------------------------------------------------------------------------
 
-router.get('/project-report/:projectId', authenticate, authorize(), async (req, res) => {
+router.get('/project-report/:projectId', authenticate, authorize(), async (req, res, next) => {
   try {
     const projectId = parseInt(req.params.projectId, 10);
-    const projectName = await projectNameFor(query, projectId);
-    const sections = await autoProjectReport(query, projectId, req.user);
+    const cancellableQuery = (sql, params) => queryCancellable(req, res, sql, params);
+    const projectName = await projectNameFor(cancellableQuery, projectId);
+    const sections = await autoProjectReport(cancellableQuery, projectId, req.user);
     res.json({ success: true, data: { project_id: projectId, project_name: projectName, generated_at: new Date().toISOString(), sections } });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { if (error.error_code) return next(error); res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.get('/project-report/:projectId/pdf', authenticate, authorize(), async (req, res) => {
+router.get('/project-report/:projectId/pdf', authenticate, authorize(), async (req, res, next) => {
   try {
     const projectId = parseInt(req.params.projectId, 10);
-    const projectName = await projectNameFor(query, projectId);
-    const sections = await autoProjectReport(query, projectId, req.user);
+    const cancellableQuery = (sql, params) => queryCancellable(req, res, sql, params);
+    const projectName = await projectNameFor(cancellableQuery, projectId);
+    const sections = await autoProjectReport(cancellableQuery, projectId, req.user);
     const pdf = await renderDocument({
       docType: `PROJECT REPORT — ${projectName}`,
       number: `PR-${new Date().toISOString().slice(0, 10)}`,
@@ -294,12 +300,12 @@ router.get('/project-report/:projectId/pdf', authenticate, authorize(), async (r
       notes: sections.map((s) => s.title).join(' | '),
     });
     sendPdf(res, pdf, `project-report-${projectId}.pdf`);
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { if (error.error_code) return next(error); res.status(500).json({ success: false, error: error.message }); }
 });
 
 async function autoProjectReport(q, projectId, user) {
   const safe = async (sql, params) => {
-    try { return (await q(sql, params)).rows; } catch (e) { return []; }
+    try { return (await q(sql, params)).rows; } catch (e) { if (e.error_code) throw e; return []; }
   };
   const count = (rows) => rows.length;
   const sum = (rows, key) => rows.reduce((s, r) => s + (parseFloat(r[key]) || 0), 0);

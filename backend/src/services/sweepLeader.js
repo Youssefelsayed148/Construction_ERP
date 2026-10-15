@@ -15,6 +15,7 @@
 const { pool, query } = require('../config/database');
 
 const lockName = (sweep) => `conerp-sweep:${sweep}`;
+const intervalTimers = new Set();
 
 // One run: try the lock; if taken, skip cleanly; otherwise run the sweep, record the run, release the lock.
 async function runSweepAsLeader(sweep, fn, { query: q = query, minIntervalMs = 0, retentionDays = 30 } = {}) {
@@ -90,8 +91,14 @@ async function runSweepAsLeader(sweep, fn, { query: q = query, minIntervalMs = 0
 function leaderInterval(sweep, intervalMs, fn, { q = query, immediate = false } = {}) {
   const execute = () => runSweepAsLeader(sweep, fn, { query: q, minIntervalMs: intervalMs });
   const timer = setInterval(execute, intervalMs);
+  intervalTimers.add(timer);
   if (typeof timer.unref === 'function') timer.unref();
   return { timer, execute };
 }
 
-module.exports = { lockName, runSweepAsLeader, leaderInterval };
+function stopIntervals() {
+  for (const timer of intervalTimers) clearInterval(timer);
+  intervalTimers.clear();
+}
+
+module.exports = { lockName, runSweepAsLeader, leaderInterval, stopIntervals };

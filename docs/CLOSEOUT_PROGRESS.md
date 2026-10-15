@@ -1254,3 +1254,11 @@ Passwords now use built-in async `crypto.scrypt` with OWASP-listed N=32768/r=8/p
 - Shared Postgres rate limits and sweep minimum interval/retention implemented. Focused mocks PASS 3 suites / 61 tests. Real PostgreSQL PASS 2 suites / 10 tests at 130 migrations.
 - Repeatable `-R4MultiInstance` gate PASS: 20 accepted + 1 limited across two server processes; one sweep run + one lock skip across two workers; immediate rerun suppressed. Both containers removed with exit 0.
 - R4 remains in progress; continue remaining R4 findings and exit gates before R5.
+
+# R4.3 current position - 2026-10-15
+
+- Graceful shutdown, HTTP/DB timeouts, typed DB errors, cancellable report reads, and pool metrics are implemented. Focused mock PASS 3 suites / 13 tests; real PG PASS 1 suite / 3 tests at 130 migrations; i18n check and parity PASS (35 namespaces / 1,291 keys).
+- `-R4Resilience` passed: an in-flight login returned 401 and the registered SIGTERM handler drained before exit 0. On Windows, direct OS SIGTERM delivery was observed to terminate Node immediately; test-only IPC invokes the same registered handler, so OS signal transport itself remains unverified.
+- R4 remains in progress; R4.4 pagination and R4.5 remaining findings are next, then R4.6 exit gates.
+
+- Existing report contract PASS 1/17 and v1 PG contract PASS 1/8 at 130 migrations; score/evidence logs include both regression results.

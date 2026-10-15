@@ -36,7 +36,8 @@ const webhookService = require('../services/webhookService');
 const apiResources = require('../services/apiResources');
 const assistantService = require('../services/assistantService');
 const policy = require('../services/policy');
-const { healthCheck, query, transaction } = require('../config/database');
+const { healthCheck, query, transaction, pool } = require('../config/database');
+const { poolMetrics } = require('../utils/poolMetrics');
 const { auditedMutation } = require('../utils/auditedMutation');
 const buildOpenApi = require('../utils/openapi');
 
@@ -650,6 +651,7 @@ function buildV1Router() {
         },
         failed_sweeps: Number(outbox.sweep_failures || 0),
         notification_deliveries: notificationDeliveries,
+        database_pool: poolMetrics(pool),
       } });
     } catch (error) { next(error); }
   });

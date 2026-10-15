@@ -228,6 +228,7 @@ async function stats(query = null) {
 }
 
 let timer = null;
+let stopping = false;
 function initOutboxDispatcher(opts = {}) {
   if (timer) return timer;
   (async () => {
@@ -237,6 +238,7 @@ function initOutboxDispatcher(opts = {}) {
     } catch (e) {
       console.error('[OUTBOX] startup catch-up failed:', e.message);
     }
+    if (stopping) return;
     timer = setInterval(async () => {
       try {
         await dispatchOnce();
@@ -255,8 +257,14 @@ function initOutboxDispatcher(opts = {}) {
   return timer;
 }
 
+function stopOutboxDispatcher() {
+  stopping = true;
+  if (timer) clearInterval(timer);
+  timer = null;
+}
+
 module.exports = {
   ROUTES, hasOutboxRoute, fromRow, claim, deliverClaimed, dispatchOnce, reap, seedLegacyEventLog, stats,
-  initOutboxDispatcher, backoffSeconds,
+  initOutboxDispatcher, stopOutboxDispatcher, backoffSeconds,
   MAX_ATTEMPTS, BACKOFF_BASE_SECONDS, BACKOFF_MAX_SECONDS, BATCH_SIZE, TIMER_INTERVAL_MS,
 };

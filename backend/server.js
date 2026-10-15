@@ -1,10 +1,12 @@
-require('dotenv').config();
+if (process.env.APP_ENV !== 'test') require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { securityHeaders, requestId, sanitizeServerError, validateRuntimeConfig, validateCorsOrigins, parseTrustProxy } = require('./src/middleware/security');
 const { createPostgresRateLimit } = require('./src/middleware/postgresRateLimit');
 const logger = require('./src/utils/logger');
-const { healthCheck } = require('./src/config/database');
+const { healthCheck, pool } = require('./src/config/database');
+const { httpServerTimeouts } = require('./src/utils/databaseResilience');
+const { createShutdownHandler } = require('./src/utils/serverShutdown');
 if (process.env.R4_BASELINE_ID) {
   const { monitorEventLoopDelay } = require('perf_hooks');
   const eventLoop = monitorEventLoopDelay({ resolution: 10 });
@@ -138,12 +140,14 @@ app.use((err, req, res, next) => {
     || (typeof err.code === 'string' && /^[a-z][a-z0-9_]*$/i.test(err.code) ? err.code : null)
     || ({ 400: 'validation_error', 401: 'unauthenticated', 403: 'forbidden', 404: 'not_found', 409: 'conflict', 429: 'rate_limited' }[status])
     || 'internal_error';
+  if (err.retryAfter) res.setHeader('Retry-After', String(err.retryAfter));
   if (status >= 500) logger.error(err.stack);
   else logger.warn(`${status} ${errorCode}: ${err.message || 'Request failed'}`);
   res.status(status).json({
     success: false,
     error: status >= 500 ? 'Internal server error' : (err.message || 'Request failed'),
     error_code: errorCode,
+    ...(err.error_key ? { error_key: err.error_key } : {}),
     ...(err.error_params ? { error_params: err.error_params } : {}),
     request_id: req.requestId,
   });
@@ -164,14 +168,36 @@ function startBackgroundServices() {
   require('./src/routes/reports').initScheduledReportScheduler();
 }
 
+async function stopBackgroundServices() {
+  require('./src/services/sweepLeader').stopIntervals();
+  require('./src/services/outboxDispatcher').stopOutboxDispatcher();
+}
+
 function startServer() {
+  const timeouts = httpServerTimeouts(process.env);
   startBackgroundServices();
-  return app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     logger.info(`Construction ERP Server running on port ${PORT}`);
     logger.info(`Database: ${process.env.DB_NAME || 'construction_erp'}`);
   });
+  Object.assign(server, timeouts);
+  return server;
 }
 
-if (require.main === module) startServer();
+function registerShutdown(server) {
+  const shutdown = createShutdownHandler({ server, stopBackground: stopBackgroundServices, pool, logger });
+  process.once('SIGTERM', shutdown);
+  process.once('SIGINT', shutdown);
+  return shutdown;
+}
 
-module.exports = { app, startServer, startBackgroundServices };
+if (require.main === module) {
+  registerShutdown(startServer());
+  if (process.env.APP_ENV === 'test' && typeof process.send === 'function') {
+    process.on('message', (message) => {
+      if (message === 'R4_TEST_SIGTERM') process.emit('SIGTERM');
+    });
+  }
+}
+
+module.exports = { app, startServer, startBackgroundServices, stopBackgroundServices, registerShutdown };
