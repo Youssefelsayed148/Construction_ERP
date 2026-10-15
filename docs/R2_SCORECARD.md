@@ -2,6 +2,29 @@
 
 ## Session 5 current checkpoint
 
+**474/601 verified** (472 audit+rollback, 2 historical audit-only sweeps), **121 pending**, **6 exempt**. Session increase **96**; pending **217 -> 121**. No new exemption/waiver and no R3 start.
+
+| Ticket | Before | After | Commit |
+|---|---|---|---|
+| Commercial, 41 fixtures | 2 contract counter rollback failures / 115 passes | Registry 1/117 PASS, allocation shares contract transaction | 5c52a9f |
+| Documents, 34 fixtures | 1 declared client v1 alias fails portal boundary; other cases pass | Registry 1/73 PASS; blocked alias stays pending with product question; no runtime change | d81a772 |
+| Organizations, 16 fixtures | Valid fixtures: 5 failures / 28 passes (bank inner commits, broken team project context) | Registry 1/33 PASS; bank atomicity + team scope fixed | b7c74d4 |
+| Invoices, 5 fixtures | Unverified handlers | Registry 1/11 PASS without production change | R2b.12 (this commit) |
+
+| Final session 5 gate | Baseline | Current output |
+|---|---|---|
+| Backend mock | 60/1,056+ | PASS 60/1,059 (+3 team policy regressions) |
+| Real PG | 76/1,440+ | PASS 76/1,632 (+192 tests = 96 fixtures x audit/rollback) |
+| Frontend | 32/131 | PASS 32/131 |
+| i18n check/parity | 35/1,288 | PASS 35 namespaces / 1,288 English keys |
+| lint:guards | ok | PASS, baseline untouched |
+| CI build | ok | Compiled successfully, exit 0 |
+| Fresh golden reconciliation | 16/16 | PASS 16/16, zero violations; seed/reconcile exit 0 |
+
+Only one full gate set at session end. PG applied 126 migrations and removed erp-r02-gate-20261015031327; all 474 registered endpoints exercised, 472 rollback + 2 historical audit-only exceptions. Golden applied 126 migrations and removed erp-r02-gate-20261015031357. NOT verified: 121 pending endpoints, R2 exit, all R3 performance work. Pending decision: keep client v1 acknowledgement blocked by canonical portal-only boundary, or permit scoped portal aliases? No boundary weakened; this route is pending, not exempt or verified. 120 remaining entries lack fixtures. Next consultant/handover/HSE/QHSE/rest after requested context checkpoint.
+
+### Earlier session 5 family checkpoints
+
 **469/601 verified** (467 audit+rollback, 2 historical audit-only sweeps), **126 pending**, **6 exempt**. R2b.11 adds 16 organization fixtures. Valid-fixture BEFORE 5 failures / 28 passes; AFTER bank mutations reuse audited transaction and team operations use project-scoped policy: PASS family registry 1/33. Standalone bank transaction behavior retained. Mock scope regressions added, pending end-of-session run. One client v1 alias remains pending for the recorded product decision; other pending routes lack fixtures. No R3.
 
 **453/601 verified** (451 audit+rollback, 2 historical audit-only sweeps), **142 pending**, **6 exempt**. R2b.10 adds 34 document-control/related alias fixtures; family registry PASS 1/73, no runtime change required. Shared category/reference/client prerequisites. Initial run 1 alias happy failure / 74 passes; isolated alias 1 failure / 4 passes. Pending product item: POST /api/v1/documents/:id/acknowledgement is deliberately blocked by externalPortalAllowed's canonical portal-only originalUrl rule (403); direct client acknowledgement passes. Owner question: expose guarded client v1 aliases, or keep canonical-only? No boundary weakened and this alias is NOT verified/exempt. Other pending entries still lack fixtures; full gates once at session end; no R3.
