@@ -1166,3 +1166,7 @@ Added canonical payment create, v1 payment create, and payment void fixtures. Vo
 ## 2026-10-15 — Session 9 R2b.24 schedule
 
 Added six fixtures for schedule budgeted cost, progress canonical/v1, assignments, assignment status, and CSV import. Assignment fixtures use a project-owned asset_register resource. Removed only those exact pending entries. Full schedule family `R2_ONLY='^\\w+ /api/(v1/)?schedule'`: PASS 1 suite / 45 tests; 126 migrations; erp-r02-gate-20261015041548 removed; exit 0. All 21 selected route registrations passed audit and rollback. Census 553 fixtures / 8 exemptions / 40 pending / 0 unregistered / 0 stale / 0 redundant. R2 exit gate still pending; R3 gated.
+
+## 2026-10-15 — Session 9 R2b.25 webhooks
+
+Added five v1 webhook fixtures: create/update/delete/rotate-secret/redrive. DNS lookup and outbound delivery are stubbed in-process; a synthetic test-only `WEBHOOK_ENCRYPTION_KEY` is process-local because runner JWT_SECRET is below the encryption helper's minimum. Initial fixture/census issues were corrected (helper scope, HTTPS/DNS prerequisites, JSON comma). Final `R2_ONLY='^\\w+ /api/v1/webhooks'`: PASS 1 suite / 13 tests; 126 migrations; erp-r02-gate-20261015042125 removed; exit 0. All five routes emitted audit rows and rolled back under failure injection. Census 558 fixtures / 8 exemptions / 35 pending / 0 unregistered / 0 stale / 0 redundant. R2 gates pending; R3 gated.

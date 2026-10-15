@@ -15,6 +15,7 @@
 //   R2 rollback leak     - the audit insert failed but business rows still changed
 process.env.AUTH_RATE_LIMIT_PER_15_MIN = '100000';
 process.env.V1_RATE_LIMIT_PER_MIN = '100000';
+process.env.WEBHOOK_ENCRYPTION_KEY ||= 'r02-audit-fixture-key-only-not-a-secret-2026';
 const fs = require('fs');
 const path = require('path');
 const tokens = require('../../services/tokens');
@@ -73,6 +74,11 @@ describePg('R2 every mounted mutation has a successful audited payload', () => {
     let json; try { json = JSON.parse(text); } catch (_) { json = null; }
     return { status: response.status, json, text };
   };
+  const sendFixture = async (payload, who, method, path) => {
+    const restore = payload.adapterStub?.();
+    try { return await send(method, path, payload.body, who.token, payload.headers); }
+    finally { if (typeof restore === 'function') restore(); }
+  };
   // Fixture helpers: create prerequisites through the API as owner (valid by construction).
   const ctx = () => {
     const n = () => `${tag}-${++seq}`;
@@ -93,7 +99,7 @@ describePg('R2 every mounted mutation has a successful audited payload', () => {
       await db.query('INSERT INTO user_project_roles (user_id, project_id, role_id) SELECT $1, NULL, id FROM roles WHERE key = $2', [row.id, role]);
       return { userId: row.id, token: tokens.signSession({ userId: row.id, tokenVersion: row.token_version }) };
     };
-    const as = async (who, method, url, body, expected = [200, 201], headers = {}) => {
+  const as = async (who, method, url, body, expected = [200, 201], headers = {}) => {
       const r = await send(method, url, body, who.token, headers);
       if (!expected.includes(r.status)) throw new Error(`prerequisite (actor) ${method} ${url} -> ${r.status} ${r.text.slice(0, 160)}`);
       return r.json?.data ?? r.json;
@@ -178,7 +184,7 @@ describePg('R2 every mounted mutation has a successful audited payload', () => {
     const payload = await registry[key](ctx());
     const who = payload.actor || { userId: owner.id, token };
     const before = await counts(who.userId);
-    const r = await send(key.split(' ')[0], payload.path, payload.body, who.token, payload.headers);
+    const r = await sendFixture(payload, who, key.split(' ')[0], payload.path);
     if (r.status !== payload.status) throw new Error(`R2 fixture error ${key}: status=${r.status} expected ${payload.status} ${r.text.slice(0, 200)}`);
     const after = await counts(who.userId);
     const delta = { activity: after.activity - before.activity, audit_events: after.policy - before.policy };
@@ -192,7 +198,7 @@ describePg('R2 every mounted mutation has a successful audited payload', () => {
     const beforeRows = await tableCounts();
     const { xid } = await one('SELECT txid_current()::text AS xid');
     if (payload.actor) await db.query('INSERT INTO r02_fail_users (user_id) VALUES ($1) ON CONFLICT DO NOTHING', [payload.actor.userId]);
-    const r = await send(key.split(' ')[0], payload.path, payload.body, payload.actor ? payload.actor.token : failToken, payload.headers);
+    const r = await sendFixture(payload, payload.actor || { token: failToken }, key.split(' ')[0], payload.path);
     const { rows } = await db.query(`
       WITH snapshots AS MATERIALIZED (
         SELECT c.relname, query_to_xml(format('SELECT count(*) AS total, count(*) FILTER (WHERE xmin::text::bigint > %s) AS n FROM %I.%I', $1::bigint, n.nspname, c.relname), false, true, '') AS snapshot

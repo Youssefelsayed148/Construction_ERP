@@ -854,8 +854,14 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 
 ## Session 9 R2b.24 - remaining schedule audit fixtures, 2026-10-15
 
+- Committed `15cdf48` with requested trailers; STATE.md updated immediately after commit.
 - Added six fixtures for schedule activity budget cost, progress canonical/v1, assignments, assignment status, and CSV import; assignment setup uses a project-owned asset_register row. Removed only these six paths from pending.
 - Full schedule-family run `R2_ONLY='^\\w+ /api/(v1/)?schedule'` through tracked `r02-pg-gate.ps1 -Suite src/scripts/__tests__/mutation-audit.pg.test.js`: PASS 1 suite / 45 tests; 126 migrations; `erp-r02-gate-20261015041548` removed; exit 0. All 21 selected family routes passed audit and injected-failure rollback. Census 553 fixtures, 8 exemptions, 40 pending, zero unregistered/stale/redundant. R2 final gates remain pending; R3 gated.
+
+## Session 9 R2b.25 - webhook audit fixtures, 2026-10-15
+
+- Added five v1 webhook fixtures: create/update/delete/rotate-secret/redrive; removed only these routes from pending. Redrive delivery attempts and create/update DNS lookup are stubbed in-process; a synthetic `WEBHOOK_ENCRYPTION_KEY` is set in the PG test process only because runner JWT_SECRET is shorter than the encryption minimum.
+- BEFORE corrections: fixture tests exposed test-helper scope placement, required HTTPS, DNS resolution, and encryption key prerequisites; pending census also caught then-corrected JSON trailing comma. No product handler change. AFTER `R2_ONLY='^\\w+ /api/v1/webhooks'` through tracked runner: PASS 1 suite / 13 tests; 126 migrations; `erp-r02-gate-20261015042125` removed; exit 0. All five routes emitted audit rows and forced-audit failure rolled back with no leaks. Census 558 fixtures, 8 exemptions, 35 pending, zero unregistered/stale/redundant. R2 final gates pending; R3 gated.
 
 ## Session 7 R2b.16 - report v1 aliases, 2026-10-15
 
