@@ -2,6 +2,8 @@
 
 ## Session 5 current checkpoint
 
+**453/601 verified** (451 audit+rollback, 2 historical audit-only sweeps), **142 pending**, **6 exempt**. R2b.10 adds 34 document-control/related alias fixtures; family registry PASS 1/73, no runtime change required. Shared category/reference/client prerequisites. Initial run 1 alias happy failure / 74 passes; isolated alias 1 failure / 4 passes. Pending product item: POST /api/v1/documents/:id/acknowledgement is deliberately blocked by externalPortalAllowed's canonical portal-only originalUrl rule (403); direct client acknowledgement passes. Owner question: expose guarded client v1 aliases, or keep canonical-only? No boundary weakened and this alias is NOT verified/exempt. Other pending entries still lack fixtures; full gates once at session end; no R3.
+
 **419/601 verified** (417 audit+rollback, 2 historical audit-only sweeps), **176 pending**, **6 exempt**. R2b.9 adds 41 commercial fixtures. BEFORE 2 contract-number rollback leaks / 115 passes; AFTER moving existing number allocation inside the contract transaction: family registry PASS 1/117. Family prerequisites shared; mutable workflow targets isolated; no maker/checker bypass. Full gates pending once at session end. No waived endpoints, no R3, no product decision waiting.
 
 ## Historical session 4 checkpoint

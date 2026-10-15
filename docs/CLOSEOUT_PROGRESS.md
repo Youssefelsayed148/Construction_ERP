@@ -1092,3 +1092,7 @@ FINAL session 4 gates: PG PASS 76 suites / 1,440 tests (+144 vs 76/1,296 from 72
 ## 2026-10-15 - Session 5 R2b.9 commercial
 
 Preserved inherited STATE/log edits, branch/HEAD bae3e39 verified; elevated Docker available. Added 41 commercial fixtures sharing immutable family prerequisites. BEFORE: 2 rollback failures / 115 passes (internal/v1 contract number allocated outside transaction). Minimal fix moves existing nextNumber onto transaction client; AFTER same family registry PASS 1 suite / 117 tests. Both exact containers removed; 126 migrations each. Verified 378 -> 419/601, pending 217 -> 176, exempt 6. Family gates only; full gates once at session end. Next docs/documents, organizations, invoices, consultant, handover, HSE/QHSE, rest. R3 gated.
+
+## 2026-10-15 - R2b.10 document control
+
+34 new verified document/control and related aliases; shared category/reference document/client setup; current family registry PASS 1/73, no runtime change needed. Verified 419 -> 453/601, pending 176 -> 142, exempt 6. Initial 1 alias happy failure / 74 passes; isolated 1 failure / 4 passes confirms client v1 acknowledgement hits canonical portal-only guard (403), not a missing audit. It remains pending, with explicit product question in STATE/scorecard; direct client acknowledgement succeeds and rolls back on audit failure. No guard bypass. Full gates at session end; next organizations/invoices.
