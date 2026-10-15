@@ -1220,3 +1220,6 @@ The full R2 PG gate reported 1/76 suites failed with 169/1,871 tests failing; fa
 # 2026-10-15 — R3.3 source-backed commitment ledger
 
 Commitment GET paths now read the ledger without reconciliation writes. Migration 0066 backfills active PO/subcontract sources and existing ledger state. PO issuance/cancellation and subcontract variation incorporation sync the ledger in the source transaction; PO issue/cancel and subcontract creation record transactional outbox events. Targeted PG verification PASS 2/2 suites / 28/28 tests, 128 migrations; container `erp-r02-gate-20261015052205` removed; exit 0. Coverage includes 20 concurrent read-only GETs, no repair writes, PO issue ledger + outbox, subcontract-create outbox, and existing commercial flows. R3.4–R3.6 remain open; R4 not started.
+# 2026-10-15 — R3.4 commitment numbering concurrency
+
+The real-PG commitment ledger test now drives 20 concurrent purchase-order source syncs through `commitmentLedger.syncPurchaseOrder`, verifies 20 distinct CM numbers and 21 total rows including the rollback/retry case. A failed source transaction leaves no commitment and reuses the rolled-back number. Existing numbering suite also passes: 2/2 suites / 9/9 tests, 128 migrations; container `erp-r02-gate-20261015052406` removed; exit 0. R3.5–R3.6 remain open; R4 not started.

@@ -2140,3 +2140,8 @@ The first full R2 PG suite (126 migrations) failed 1/76 suites, 169/1,871 tests;
 - Coverage: migration 0066 applied on a fresh database; active PO/subcontract commitment backfill; PO issuance creates its commitment and outbox event inside the audited source transaction; subcontract creation records an outbox event; project commercial and budgeting reads preserve all ledger fields/timestamps and do not repair an unledgered active source; 20 concurrent commitment GET requests all return 200; existing adjustment and procurement flows pass.
 - `node --check` passed for changed backend modules and tests; `rg -n "syncCommitments" backend/src` returned no callers. `git diff --check` runs before commit.
 - Migration 0066 updates existing rows and inserts missing active sources with deterministic CM numbers, then seeds `document_counters`. No `.env` or external service was used.
+# 2026-10-15 — R3.4 commitment numbering concurrency
+
+- `powershell -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/commitment-numbering.pg.test.js,src/scripts/__tests__/numbering.pg.test.js` — PASS 2/2 suites, 9/9 tests; 128 migrations; disposable container `erp-r02-gate-20261015052406` removed; exit 0.
+- 20 concurrent committed PO source syncs allocated 20 distinct CM numbers. A deliberate rollback left no commitment and retry received the same CM number. Existing generic numbering suite passed, including 50 concurrent creates and rollback semantics.
+- `node --check backend/src/scripts/__tests__/commitment-numbering.pg.test.js` — PASS.

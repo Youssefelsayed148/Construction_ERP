@@ -59,3 +59,8 @@ The existing PG fixture now seeds its source-backed commitment instead of relyin
 Focused command: `powershell -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/commercial-5-5.pg.test.js,src/scripts/__tests__/procurement-flows.pg.test.js` — **PASS**, 2/2 suites / 28/28 tests, 128 migrations; container `erp-r02-gate-20261015052205` removed; exit 0. `node --check` passed for changed modules and tests; `rg -n "syncCommitments" backend/src` found no references.
 
 R3.3 complete. R3.4–R3.6 remain open. R4 has not started.
+### R3.4 — CM numbering concurrency and rollback
+
+`commitment-numbering.pg.test.js` exercises 20 concurrent source syncs through the same ledger helper used by PO source transactions. All 20 allocated distinct CM numbers. A separate source row is synced and then intentionally rolled back: no commitment remains and the next committed retry receives the same number, confirming the counter and ledger insert share the caller transaction. The existing numbering suite also runs its 50-way first-use, seeded-scope and rollback checks.
+
+Focused command: `powershell -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/commitment-numbering.pg.test.js,src/scripts/__tests__/numbering.pg.test.js` — **PASS**, 2/2 suites / 9/9 tests, 128 migrations; container `erp-r02-gate-20261015052406` removed; exit 0. R3.4 complete; R3.5–R3.6 remain open. R4 has not started.

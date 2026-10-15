@@ -915,34 +915,38 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 
 - Committed `d9bd802` (R2b.31 notification fixture actor isolation) with requested trailers; STATE updated after commit. Full PG registry and all R2 exit gates are pending rerun.
 
-## 2026-10-15 — R2 closed; R3 authorized
+## 2026-10-15 ï¿½ R2 closed; R3 authorized
 
 - Final R2 gates PASS: backend mock 60/1,059; PostgreSQL registry 76/76 suites and 1,871/1,871 tests, 126 migrations; frontend 32/131; i18n check and parity 35/1,288; lint guards; root build; seeded golden 16/16. See docs/R2_SCORECARD.md and docs/CLOSEOUT_LOG.md for commands and disposable container cleanup evidence.
 - Mutation census: 592 fixtures (590 audit+rollback; 2 documented audit-only replenishment sweeps), 9 reasoned exemptions, 0 pending/unregistered/stale/redundant. R2 is closed.
-- User explicitly approved uninterrupted R3 work. Begin R3.0 baseline, then R3.1–R3.6. Do not start R4.
+- User explicitly approved uninterrupted R3 work. Begin R3.0 baseline, then R3.1ï¿½R3.6. Do not start R4.
 
-## 2026-10-15 — R3.0 baseline captured
+## 2026-10-15 ï¿½ R3.0 baseline captured
 
 - Baseline ran before any R3 fix. Disposable PG16 command powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r3-performance-gate.ps1: PASS, 126 migrations; 150k invoices / 100k purchase orders / 75k commitments / 300k balanced journal lines; EXPLAIN plans captured; erp-r3-perf-20261015045726 removed; exit 0.
 - Measurements and repeatable runner are in docs/R3_EVIDENCE.md, backend/scripts/r3-performance-gate.ps1, and backend/src/scripts/r3-performance-baseline.js. The measured query plans use sequential scans; implementation has not yet changed.
-- R3.1 next: migration 0065 and deferred balance-check redesign, proving balanced posts and rejecting unbalanced posts, plus fresh and 0064-upgrade paths. R3.2–R3.6 remain open; R4 not started.
+- R3.1 next: migration 0065 and deferred balance-check redesign, proving balanced posts and rejecting unbalanced posts, plus fresh and 0064-upgrade paths. R3.2ï¿½R3.6 remain open; R4 not started.
 
-## 2026-10-15 — R3.1 journal balance complete
+## 2026-10-15 ï¿½ R3.1 journal balance complete
 
 - Migration 0065 creates the journal_entry_id index and statement-level event collection with one deferred balance check per affected entry per transaction. Focused PG suite PASS 6/6; tests balanced posts, unbalanced rejection/rollback, INSERT/UPDATE/DELETE, bulk insert, and simulated upgrade from 0064. See docs/R3_EVIDENCE.md.
 - Same 300k-line fixture seeded under active triggers and validated balanced: 3,116.99 ms. Lookup index plan 14.594 ms / 717 shared hits vs baseline seq scan 13.933 ms / 1,911; fewer pages read, similar cached elapsed time.
-- Next R3.2 ageing aggregate equivalence. R3.3–R3.6 open; R4 not started.
+- Next R3.2 ageing aggregate equivalence. R3.3ï¿½R3.6 open; R4 not started.
 
-## 2026-10-15 — R3.2 aggregate ageing complete
+## 2026-10-15 ï¿½ R3.2 aggregate ageing complete
 
 - Prior commits: R3.0 0acaccf; R3.1 e0069a1. R3.2 uses one SQL aggregate per AR/AP ageing query. Equivalence tests compare against the prior per-invoice algorithm on boundaries, credits, allocation/voiding, fallback, and statuses.
 - Focused PG finance 2/2 suites, 10/10 tests; finance mock 14/14; golden reconciliation 16/16 at 127 migrations. Evidence in docs/R3_EVIDENCE.md.
 - Expanded 150k invoice + payment + allocation run: AR service 300.63 ms; cash-flow four-query data path 309.87 ms. Container erp-r3-perf-20261015051206 removed.
-- Next R3.3 make commitment GETs read-only; R3.4–R3.6 open; R4 not started.
+- Next R3.3 make commitment GETs read-only; R3.4ï¿½R3.6 open; R4 not started.
 
 ## 2026-10-15 â€” R3.3 commitment reads and source transactions complete
 
 - R3.3 implementation: GET paths no longer synchronize commitments; migration 0066 backfills source-backed commitments and initializes atomic CM numbering. PO issue/cancel and subcontract variation incorporation sync the ledger in their source transaction; outbox events are written with PO source events and subcontract creation.
 - Focused PG gate PASS 2/2 suites, 28/28 tests, 128 migrations; container `erp-r02-gate-20261015052205` removed. Tests prove read-only repeated/concurrent GETs, no repair, and PO/subcontract source events.
 - Changed modules/tests pass `node --check`; `rg -n "syncCommitments" backend/src` has no hits. Evidence in docs/R3_EVIDENCE.md.
-- Prior commits: R3.0 `0acaccf`, R3.1 `e0069a1`, R3.2 `d084204`. R3.3 commit pending this documentation/checkpoint update. Next R3.4 numbering concurrency and rollback evidence; R3.5â€“R3.6 open; R4 not started.
+- Prior commits: R3.0 `0acaccf`, R3.1 `e0069a1`, R3.2 `d084204`. R3.3 commit `be1935a`. Next R3.4 numbering concurrency and rollback evidence; R3.5â€“R3.6 open; R4 not started.
+## 2026-10-15 â€” R3.4 CM numbering concurrency complete
+
+- R3.4 uses existing atomic `nextNumber` in the R3.3 source transaction. PostgreSQL gate PASS 2/2 suites, 9/9 tests; 128 migrations; container `erp-r02-gate-20261015052406` removed. Twenty concurrent PO source syncs had distinct CM numbers; rollback left no ledger row and retried with the same number. Existing 50-way numbering tests also pass.
+- R3.3 commit `be1935a`; R3.4 changes/tests and evidence are staged for commit after final slice checks. R3.5 index review remains; R3.6 final gates remain; R4 not started.
