@@ -816,9 +816,16 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 
 ## Session 8 R2b.18 - supplier audit fixtures, 2026-10-15
 
+- Committed `e32b1ac` with the requested trailers; STATE.md is updated immediately after commit. The inherited checkpoint was included as directed.
 - Added six supplier mutation fixtures (create/update/soft-delete/restore and supplier-material link create/delete), sharing declarative builders while isolating mutable suppliers per operation. Removed only these six exact paths from `pending.json`.
 - Failing-first family registry before correction: 2 failed / 11 passed because restore reused the supplier already deleted by the delete case. Fresh supplier per fixture fixed the setup. AFTER `R2_ONLY=/suppliers/ powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/mutation-audit.pg.test.js -Filter '^(FAIL|PASS) |Test Suites:|Tests:|^\\s+● |^\\s+R2 '`: PASS 1 suite / 13 tests; 126 migrations; `erp-r02-gate-20261015035032` removed; exit 0. Audit rows +1 and rollback status 500 with no leaked rows for target operations. Census 530 fixtures, 8 exemptions, 63 pending, no unregistered/stale/redundant entries.
 - Initial unprivileged gate was denied Docker engine access; retry used the handoff-authorized elevated local path and exact tracked runner. R2 remains open and R3 gated. Next: asset CRUD and remaining family groups. Excluded reports untouched.
+
+## Session 8 R2b.19 - asset audit fixtures, 2026-10-15
+
+- Added five asset fixtures (create/update/hard-delete, assignment create, usage-log create); each fixture builds a fresh asset. Removed only those five routes from pending.
+- BEFORE correction: `R2_ONLY=/assets/` matched the five target routes plus handover asset documents; 1 failed / 12 passed, because usage-log payload accidentally included assignment-only `assigned_from`. Corrected distinct payload builders and used anchored family filter `R2_ONLY='^\\w+ /api/assets'`.
+- AFTER `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/mutation-audit.pg.test.js -Filter '^(FAIL|PASS) |Test Suites:|Tests:|^\\s+● |^\\s+R2 '`: PASS 1 suite / 13 tests; 126 migrations; `erp-r02-gate-20261015035227` removed; exit 0. All five success requests wrote `activity_log`; forced audit failures returned 500 with no leaked table changes. Census 535 fixtures, 8 exemptions, 58 pending, zero unregistered/stale/redundant. R2 gates remain pending; R3 gated.
 
 ## Session 7 R2b.16 - report v1 aliases, 2026-10-15
 

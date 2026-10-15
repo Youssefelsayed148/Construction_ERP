@@ -1,5 +1,4 @@
 [
-  "DELETE /api/assets/:id",
   "DELETE /api/clients/:id",
   "DELETE /api/expenses/:id",
   "DELETE /api/items/:id",
@@ -12,9 +11,6 @@
   "POST /api/agent/sessions/:id/status",
   "POST /api/agent/tokens",
   "POST /api/agent/tokens/:id/revoke",
-  "POST /api/assets",
-  "POST /api/assets/:id/assignments",
-  "POST /api/assets/:id/usage-logs",
   "POST /api/auth/change-password",
   "POST /api/auth/login",
   "POST /api/auth/logout-all",
@@ -49,7 +45,6 @@
   "POST /api/v1/webhooks/:id/rotate-secret",
   "POST /api/v1/webhooks/deliveries/:deliveryId/redrive",
   "PUT /api/approval-limits",
-  "PUT /api/assets/:id",
   "PUT /api/clients/:id",
   "PUT /api/expenses/:id",
   "PUT /api/items/:id",
