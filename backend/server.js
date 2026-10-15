@@ -4,6 +4,16 @@ const cors = require('cors');
 const { securityHeaders, requestId, sanitizeServerError, fixedWindowRateLimit, validateRuntimeConfig, validateCorsOrigins, parseTrustProxy } = require('./src/middleware/security');
 const logger = require('./src/utils/logger');
 const { healthCheck } = require('./src/config/database');
+if (process.env.R4_BASELINE_ID) {
+  const { monitorEventLoopDelay } = require('perf_hooks');
+  const eventLoop = monitorEventLoopDelay({ resolution: 10 });
+  eventLoop.enable();
+  const eventLoopReporter = setInterval(() => {
+    logger.info(`R4_BASELINE_EVENT_LOOP id=${process.env.R4_BASELINE_ID} p95_ms=${(eventLoop.percentile(95) / 1e6).toFixed(2)} max_ms=${(eventLoop.max / 1e6).toFixed(2)}`);
+    eventLoop.reset();
+  }, 1000);
+  eventLoopReporter.unref();
+}
 
 validateRuntimeConfig();
 

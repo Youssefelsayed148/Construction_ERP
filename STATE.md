@@ -1,5 +1,12 @@
 # Closeout state
 
+## R4.0 current position - 2026-10-15
+
+- R4.0 baseline is captured on a fresh throwaway PostgreSQL 16 database before any R4 fix: 4.58 login requests/s; event-loop lag p95/max sample 809.50 ms; pool max 20 with four waiting at peak; no statement timeout; mid-request SIGTERM reset the client; disconnect did not cancel DB work; two instances admitted 21 requests over a per-process limit of 20; immediate sweep reran twice. Hardware, row counts, full results, and one excluded invalid-order harness run are in `docs/R4_EVIDENCE.md`.
+- The corrected tracked command `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -R4Baseline` passed: 129 migrations, container `erp-r04-baseline-20261015144017` removed, exit 0. Docker version 28.3.2 confirmed via the user-authorized elevated path.
+- R4.0 source, evidence, scorecard, and closeout notes are uncommitted and ready for the required `R4.0: ...` commit. No R4 implementation fix has started. The earlier Docker-unavailable stop is superseded. The two review reports remain untracked and must stay unstaged.
+- Next: commit R4.0 with the required trailers and update this state immediately afterward; then start R4.1. R5 must wait for every R4 exit gate to pass.
+
 ## Session 6 R2b.13 - 2026-10-15
 
 - Owner decision applied: client writes remain canonical-only. Two v1 aliases return 403 with the externalPortalAllowed message; no audit increase. Initial 2 assertion failures / 3 passes were a fixture-envelope mismatch (v1 wraps error.message); corrected assertions PASS 1 suite / 5 tests, erp-r02-gate-20261015032020 removed, 126 migrations. No permission widening.

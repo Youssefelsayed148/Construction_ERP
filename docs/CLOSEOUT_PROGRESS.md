@@ -1241,3 +1241,7 @@ Added a real-PG test that enumerates all seven commercial/finance GET handlers i
 ## R3 closeout (2026-10-15)
 
 R3 is complete. The full backend mock, PostgreSQL, frontend, i18n, lint, production build, performance, migration-upgrade, and golden reconciliation gates are green. Results and explicit NOT VERIFIED/NOT DONE items are in `docs/R3_SCORECARD.md`, `docs/R3_EVIDENCE.md`, and `docs/R3_FK_INDEX_PLAN.md`. Final scorecard: backend mock 60/60 suites (1,059 tests), PostgreSQL 81/81 (1,884 tests, 129 migrations), frontend 32/32 (131 tests), i18n 35 namespaces/1,288 English keys, golden 16/16 with zero violations. R4 has not started.
+
+## R4.0 baseline - 2026-10-15
+
+Baseline measurements captured before fixes using the tracked `-R4Baseline` runner. Login rate was 4.58 req/s (10 concurrent requests), event-loop lag p95/max sample was 809.50 ms, pool waiting peak was 4/20, statement timeout was 0, SIGTERM reset an in-flight request, DB work continued after release/disconnect, two instances admitted requests above one process limit, and two immediate sweep invocations both ran. The failed Docker availability attempt is superseded by the successful elevated run. 129 migrations applied; disposable container `erp-r04-baseline-20261015144017` removed. See `docs/R4_EVIDENCE.md`. R4.0 commit pending; no R4 fixes started.

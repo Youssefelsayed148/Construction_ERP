@@ -2165,3 +2165,16 @@ Final performance gate passed and removed `erp-r3-perf-20261015055504`; post-ind
 ## 2026-10-15 - R3 final closeout
 
 R3 implementation and final gates are complete. The scorecard in `docs/R3_SCORECARD.md` records each finding, before/after measurements, verification, implementation commits, and explicit NOT VERIFIED/NOT DONE limitations. The performance evidence and complete current FK ranking are in `docs/R3_EVIDENCE.md` and `docs/R3_FK_INDEX_PLAN.md`. All disposable database containers were removed. R4 was not started.
+
+## 2026-10-15 - R4.0 baseline blocked before measurement
+
+- `node --check backend/src/scripts/r4-capacity-baseline.js` — exit 0; `node --check backend/server.js` — exit 0.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -R4Baseline` — exit 1 before a container was created: Docker Desktop pipe `//./pipe/dockerDesktopLinuxEngine/_ping` was unavailable (`The system cannot find the file specified`). The runner cleanup call got the same error; no container existed to remove.
+- Retried through the user's explicitly authorized elevated path; same Docker pipe error and exit 1. No measurements, fixes, or R4 commits. `docs/R4_EVIDENCE.md` and `docs/R4_SCORECARD.md` mark all R4 evidence NOT VERIFIED. Next action: restore Docker Desktop and rerun the baseline before any R4.1 work.
+
+## 2026-10-15 - R4.0 baseline captured (supersedes blocked attempt)
+
+- Elevated `docker version --format '{{.Server.Version}}'` returned 28.3.2. Tracked `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -R4Baseline` passed: 129 fresh migrations; container `erp-r04-baseline-20261015144017` removed; exit 0.
+- On Windows x64, Node v24.14.0, Intel i7-12650H (16 logical CPUs), 15.63 GiB RAM, fresh 0-project/0-user/0-invoice DB: 10 invalid login requests took 2,184.8 ms (4.58/s); event-loop monitor p95/max sample 809.50 ms. Pool max 20 had 4 waiters for 24 concurrent pg_sleep(200 ms) calls; finished in 430 ms, waiting returned to zero. `pg_sleep(500 ms)` succeeded with statement_timeout=0 in 502.7 ms.
+- SIGTERM 50 ms into a login caused ECONNRESET and immediate SIGTERM process exit. HTTP abort at 50 ms caused ECONNRESET; direct DB query remained active after releasing its client. Two live instances admitted 21 requests (10+11) with per-process limit 20 and returned 21 expected 401s, zero 429s. Two immediate sweep invocations both ran. Full evidence and interpretation are in `docs/R4_EVIDENCE.md`.
+- First limiter probe attempt targeted a server after it had been stopped and showed 10 ECONNREFUSED; excluded. Corrected ordering rerun above gives the valid result. R4.0 commit pending; no implementation fix has started.
