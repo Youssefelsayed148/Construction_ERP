@@ -1,3 +1,7 @@
+# Session 6 R2b.14 checkpoint
+
+**494/601 verified**, **99 pending**, **8 exempt**. Handover +9 fixtures; family PASS 1/25, no production fix required. Full session gates pending; R2 exit incomplete, R3 NOT started.
+
 # R2 current session 6 checkpoint
 
 **485/601 verified**, **108 pending**, **8 exempt**. R2b.13 adds 11 audit/rollback fixtures; family PASS 1/31. Two client aliases now have tested 403 boundary exemptions by owner decision. Canonical acknowledgement PASS audit/rollback; canonical variation PASS audit/rollback. No runtime fix needed. Full session gates NOT yet run. R3 NOT started; no decisions waiting.
