@@ -1,3 +1,10 @@
+## R4.4 current position - 2026-10-15 - committed as `2e9b8de`
+
+- Implemented shared SQL and derived-row pagination: default limit 200, maximum 1,000, offset, deterministic order with ID/domain-key tiebreak, `X-Total-Count`, and unchanged response envelopes. Route census detects at least 73 collection handlers and passes; documented finite-reference exemptions include reasons. 33 frontend page files with list reads are recorded in `docs/R4_PAGINATION_UI_IMPACT.md`; their UI paging controls remain R5.3 work.
+- Verification: backend mock PASS 65 suites / 1,083 tests; focused pagination/report tests PASS 2 suites / 22 tests; route-enumerating test PASS. PostgreSQL GET smoke PASS 448 routes / 0 server failures, 1 suite / 8 tests, 130 migrations, container `erp-r04-gate-20261015154331` removed. QHSE PASS 1/4, schedule PASS 1/6, organization/RBAC PASS 1/11, all fresh 130-migration disposable DBs removed.
+- `users-policy.pg.test.js` assertions pass 4/4, but the tracked runner reproducibly exits `-1073740791` with Windows `UV_HANDLE_CLOSING` assertion after Jest; it is NOT VERIFIED as a clean gate. No index/migration was added; future index work requires `EXPLAIN` evidence.
+- Next: R4.5 remaining review items, then R4.6 full gates. R5 remains gated on every R4 gate passing.
+
 ## R4.3 current position - 2026-10-15 - committed as `2fc521a`
 
 - Graceful shutdown, server/session timeouts, typed DB errors, cancellable report reads, and pool metrics are implemented; no migration was needed. Focused mock/auth suites PASS 3 suites / 13 tests; existing report mock PASS 1 suite / 17 tests; v1 contract PG PASS 1 suite / 8 tests, container `erp-r04-gate-20261015151846` removed, exit 0; real PostgreSQL `resilience.pg.test.js` PASS 1 suite / 3 tests, 130 migrations, container `erp-r04-gate-20261015151748` removed, exit 0. Unit verifies 503/504 mapping, settings validation, bounded shutdown, and pool metric privacy; PG verifies default session settings, timeout rollback/no idle transaction leak, and `pg_cancel_backend` stopping the disconnected query as seen from an independent connection.
