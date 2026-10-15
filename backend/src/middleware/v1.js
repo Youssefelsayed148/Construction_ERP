@@ -28,6 +28,7 @@
 const crypto = require('crypto');
 const oauthService = require('../services/oauthService');
 const { query: defaultQuery } = require('../config/database');
+const { createPostgresRateLimit } = require('./postgresRateLimit');
 
 // ---------------------------------------------------------------------------
 // 1. Correlation IDs
@@ -44,36 +45,26 @@ function correlationId(req, res, next) {
 }
 
 // ---------------------------------------------------------------------------
-// 2. Rate limiting (fixed window, in-memory — no new deps)
+// 2. Rate limiting (shared Postgres fixed window)
 // ---------------------------------------------------------------------------
 
-const buckets = new Map();
 const RATE_LIMIT_PER_MIN = parseInt(process.env.V1_RATE_LIMIT_PER_MIN || '300', 10);
 
-function rateLimit(req, res, next) {
-  const subject = req.v1Subject || req.user?.id || req.ip || 'anonymous';
-  const now = Date.now();
-  const windowStart = Math.floor(now / 60000);
-  let bucket = buckets.get(subject);
-  if (!bucket || bucket.window !== windowStart) {
-    bucket = { window: windowStart, count: 0 };
-    buckets.set(subject, bucket);
-  }
-  bucket.count += 1;
-  // Opportunistic cleanup so the map cannot grow unbounded.
-  if (buckets.size > 5000) {
-    for (const [key, b] of buckets) if (b.window !== windowStart) buckets.delete(key);
-  }
-  res.setHeader('X-RateLimit-Limit', RATE_LIMIT_PER_MIN);
-  res.setHeader('X-RateLimit-Remaining', Math.max(0, RATE_LIMIT_PER_MIN - bucket.count));
-  if (bucket.count > RATE_LIMIT_PER_MIN) {
-    res.setHeader('Retry-After', 60);
-    const err = new Error('Rate limit exceeded');
-    err.status = 429; err.code = 'rate_limited';
-    return next(err);
-  }
-  next();
+function createRateLimit(q = defaultQuery, limit = RATE_LIMIT_PER_MIN) {
+  const asError = (status, code, message) => Object.assign(new Error(message), { status, code });
+  return createPostgresRateLimit({
+    scope: 'v1_public', windowMs: 60_000, limit, query: q,
+    key: (req) => req.v1Subject || req.user?.id || req.ip || 'anonymous',
+    onExceeded: (_req, _res, next, { retryAfter }) => {
+      const error = asError(429, 'rate_limited', 'Rate limit exceeded');
+      error.retryAfter = retryAfter;
+      return next(error);
+    },
+    onUnavailable: (_req, _res, next) => next(asError(503, 'rate_limit_unavailable', 'Rate limit service unavailable')),
+  });
 }
+
+const rateLimit = createRateLimit();
 
 function createAuthenticatedRateLimit(q = defaultQuery, limit = RATE_LIMIT_PER_MIN) {
   let cleanupTicks = 0;
@@ -422,6 +413,7 @@ function structuredErrorHandler(err, req, res, next) {
 module.exports = {
   correlationId,
   rateLimit,
+  createRateLimit,
   rateLimitAuthenticated,
   createAuthenticatedRateLimit,
   authenticateV1,

@@ -17,7 +17,7 @@ const { pool, query } = require('../config/database');
 const lockName = (sweep) => `conerp-sweep:${sweep}`;
 
 // One run: try the lock; if taken, skip cleanly; otherwise run the sweep, record the run, release the lock.
-async function runSweepAsLeader(sweep, fn, { query: q = query } = {}) {
+async function runSweepAsLeader(sweep, fn, { query: q = query, minIntervalMs = 0, retentionDays = 30 } = {}) {
   const client = await pool.connect();
   let record = null;
   let ran = false;
@@ -34,6 +34,21 @@ async function runSweepAsLeader(sweep, fn, { query: q = query } = {}) {
       }
       record = { sweep, status: 'skipped' };
       return { ran, record };
+    }
+    await client.query("DELETE FROM background_sweep_runs WHERE started_at < NOW() - ($1 * INTERVAL '1 day')", [retentionDays]);
+    if (minIntervalMs > 0) {
+      const previous = (await client.query(
+        `SELECT started_at FROM background_sweep_runs
+          WHERE sweep = $1 AND status <> 'skipped'
+          ORDER BY started_at DESC LIMIT 1`, [sweep]
+      )).rows[0];
+      if (previous && Date.now() - new Date(previous.started_at).getTime() < minIntervalMs) {
+        await client.query(
+          'INSERT INTO background_sweep_runs (sweep, status, finished_at) VALUES ($1, $2, now())', [sweep, 'skipped']
+        );
+        record = { sweep, status: 'skipped', reason: 'minimum_interval' };
+        return { ran, record };
+      }
     }
     ran = true;
     const started = await client.query(
@@ -73,7 +88,7 @@ async function runSweepAsLeader(sweep, fn, { query: q = query } = {}) {
 // Interval wrapper used by the init functions: returns the timer; the sweep never double-runs with
 // another replica.
 function leaderInterval(sweep, intervalMs, fn, { q = query, immediate = false } = {}) {
-  const execute = () => runSweepAsLeader(sweep, fn, { query: q });
+  const execute = () => runSweepAsLeader(sweep, fn, { query: q, minIntervalMs: intervalMs });
   const timer = setInterval(execute, intervalMs);
   if (typeof timer.unref === 'function') timer.unref();
   return { timer, execute };

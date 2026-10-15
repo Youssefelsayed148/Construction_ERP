@@ -66,30 +66,6 @@ function sanitizeServerError(log = console.error) {
   };
 }
 
-function fixedWindowRateLimit({ windowMs, limit, applies = () => true, key = (req) => req.ip || 'unknown' }) {
-  const buckets = new Map();
-  return function rateLimitMiddleware(req, res, next) {
-    if (!applies(req)) return next();
-    const now = Date.now();
-    const window = Math.floor(now / windowMs);
-    const bucketKey = key(req);
-    let bucket = buckets.get(bucketKey);
-    if (!bucket || bucket.window !== window) bucket = { window, count: 0 };
-    bucket.count += 1;
-    buckets.set(bucketKey, bucket);
-    if (buckets.size > 10000) {
-      for (const [candidate, value] of buckets) if (value.window !== window) buckets.delete(candidate);
-    }
-    res.setHeader('X-RateLimit-Limit', String(limit));
-    res.setHeader('X-RateLimit-Remaining', String(Math.max(0, limit - bucket.count)));
-    if (bucket.count > limit) {
-      res.setHeader('Retry-After', String(Math.ceil(windowMs / 1000)));
-      return res.status(429).json({ success: false, error: 'Too many requests. Please try again later.' });
-    }
-    next();
-  };
-}
-
 function validateRuntimeConfig(env = process.env) {
   if (!env.JWT_SECRET) throw new Error('JWT_SECRET environment variable is required');
   if (env.NODE_ENV === 'production' && env.JWT_SECRET.length < 32) {
@@ -100,4 +76,4 @@ function validateRuntimeConfig(env = process.env) {
   }
 }
 
-module.exports = { securityHeaders, requestId, sanitizeServerError, fixedWindowRateLimit, validateRuntimeConfig, validateCorsOrigins, parseTrustProxy };
+module.exports = { securityHeaders, requestId, sanitizeServerError, validateRuntimeConfig, validateCorsOrigins, parseTrustProxy };

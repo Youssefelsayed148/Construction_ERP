@@ -16,27 +16,17 @@ const oauthService = require('../services/oauthService');
 const mcpService = require('../services/mcpService');
 const agentSessionService = require('../services/agentSessionService');
 const { correlationId } = require('../middleware/v1');
+const { createPostgresRateLimit } = require('../middleware/postgresRateLimit');
 
 router.use(correlationId);
 
-// Fixed-window limiter per user (the env is read per request so it can be tuned without a restart).
-const buckets = new Map();
-function rateLimit(req, res, next) {
-  const limit = parseInt(process.env.MCP_RATE_LIMIT_PER_MIN || '120', 10);
-  const subject = `u${req.user.id}`;
-  const window = Math.floor(Date.now() / 60000);
-  let bucket = buckets.get(subject);
-  if (!bucket || bucket.window !== window) { bucket = { window, count: 0 }; buckets.set(subject, bucket); }
-  bucket.count += 1;
-  if (buckets.size > 5000) for (const [k, b] of buckets) if (b.window !== window) buckets.delete(k);
-  res.setHeader('X-RateLimit-Limit', limit);
-  res.setHeader('X-RateLimit-Remaining', Math.max(0, limit - bucket.count));
-  if (bucket.count > limit) {
-    res.setHeader('Retry-After', 60);
-    return res.status(429).json({ jsonrpc: '2.0', id: null, error: { code: -32029, message: 'Rate limit exceeded' } });
-  }
-  return next();
-}
+const rateLimit = createPostgresRateLimit({
+  scope: 'mcp', windowMs: 60_000,
+  limit: () => parseInt(process.env.MCP_RATE_LIMIT_PER_MIN || '120', 10),
+  key: (req) => `u${req.user.id}`,
+  onExceeded: (_req, res) => res.status(429).json({ jsonrpc: '2.0', id: null, error: { code: -32029, message: 'Rate limit exceeded' } }),
+  onUnavailable: (_req, res) => res.status(503).json({ jsonrpc: '2.0', id: null, error: { code: -32003, message: 'Rate limit service unavailable' } }),
+});
 
 // MCP accepts the same bearer tokens as /api/v1: internal UI tokens (full
 // parity) and v1 tokens (scopes: api:read for read tools, api:write for

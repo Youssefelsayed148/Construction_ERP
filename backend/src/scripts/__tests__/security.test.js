@@ -1,4 +1,5 @@
-const { securityHeaders, requestId, sanitizeServerError, fixedWindowRateLimit, validateRuntimeConfig, validateCorsOrigins, parseTrustProxy } = require('../../middleware/security');
+const { securityHeaders, requestId, sanitizeServerError, validateRuntimeConfig, validateCorsOrigins, parseTrustProxy } = require('../../middleware/security');
+const { createPostgresRateLimit } = require('../../middleware/postgresRateLimit');
 const express = require('express');
 const proxyaddr = require('proxy-addr');
 
@@ -42,14 +43,15 @@ describe('production security middleware', () => {
     expect(unsafe.requestId).toMatch(/^[0-9a-f-]{36}$/);
   });
 
-  test('rate limiter blocks only after its configured allowance', () => {
-    const middleware = fixedWindowRateLimit({ windowMs: 60000, limit: 2 });
+  test('PostgreSQL rate limiter blocks only after its configured allowance', async () => {
+    let count = 0;
+    const middleware = createPostgresRateLimit({ scope: 'test', windowMs: 60000, limit: 2, query: async () => ({ rows: [{ hit_count: ++count }] }) });
     const req = { ip: '127.0.0.1' };
     for (let i = 0; i < 2; i++) {
-      const next = jest.fn(); middleware(req, response(), next); expect(next).toHaveBeenCalled();
+      const next = jest.fn(); await middleware(req, response(), next); expect(next).toHaveBeenCalled();
     }
     const blocked = response(); const next = jest.fn();
-    middleware(req, blocked, next);
+    await middleware(req, blocked, next);
     expect(blocked.statusCode).toBe(429);
     expect(next).not.toHaveBeenCalled();
   });
@@ -73,19 +75,20 @@ describe('production security middleware', () => {
     expect(req.ips).toEqual(['198.51.100.23']);
   });
 
-  test('with no trusted proxy spoofed X-Forwarded-For cannot change the rate-limit key', () => {
-    const limiter = fixedWindowRateLimit({ windowMs: 60000, limit: 1 });
+  test('with no trusted proxy spoofed X-Forwarded-For cannot change the database rate-limit key', async () => {
+    const q = jest.fn().mockResolvedValueOnce({ rows: [{ hit_count: 1 }] }).mockResolvedValueOnce({ rows: [{ hit_count: 2 }] });
+    const limiter = createPostgresRateLimit({ scope: 'test', windowMs: 60000, limit: 1, query: q });
     const first = proxyRequest(parseTrustProxy(undefined));
     const spoofed = proxyRequest(parseTrustProxy('false'), '198.51.100.99');
     expect(first.ip).toBe('203.0.113.7');
     expect(spoofed.ip).toBe(first.ip);
     expect(spoofed.ips).toEqual([]);
     const allowed = jest.fn();
-    limiter(first, response(), allowed);
+    await limiter(first, response(), allowed);
     expect(allowed).toHaveBeenCalledTimes(1);
     const blocked = response();
     const next = jest.fn();
-    limiter(spoofed, blocked, next);
+    await limiter(spoofed, blocked, next);
     expect(blocked.statusCode).toBe(429);
     expect(next).not.toHaveBeenCalled();
   });

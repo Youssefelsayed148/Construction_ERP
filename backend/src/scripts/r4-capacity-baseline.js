@@ -10,9 +10,63 @@ const { Pool, Client } = require('pg');
 const path = require('path');
 
 function assertSafeTarget(env = process.env) {
-  if (env.APP_ENV !== 'test' || !['erp_r04_baseline', 'erp_r04_password_after'].includes(env.DB_NAME)) throw new Error('R4 measurement requires APP_ENV=test and an erp_r04 throwaway database');
+  if (env.APP_ENV !== 'test' || !['erp_r04_baseline', 'erp_r04_password_after', 'erp_r04_multi'].includes(env.DB_NAME)) throw new Error('R4 measurement requires APP_ENV=test and an erp_r04 throwaway database');
   if (!['127.0.0.1', 'localhost', '::1'].includes(String(env.DB_HOST).toLowerCase())) throw new Error('R4 baseline requires loopback DB_HOST');
   if (!env.DB_PASSWORD || !env.DB_USER) throw new Error('R4 baseline requires process-only credentials');
+}
+
+async function sweepChild(sweep) {
+  assertSafeTarget();
+  const { runSweepAsLeader } = require('../services/sweepLeader');
+  const result = await runSweepAsLeader(sweep, async () => {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }, { minIntervalMs: 60_000 });
+  console.log(`sweep_child ran=${result.ran} status=${result.record?.status || 'none'} reason=${result.record?.reason || 'none'}`);
+  const { pool } = require('../config/database');
+  await pool.end();
+}
+
+async function multiInstanceProof() {
+  assertSafeTarget();
+  const port1 = 18000 + Math.floor(Math.random() * 10000);
+  const port2 = port1 + 10001;
+  let first;
+  let second;
+  try {
+    first = startServer(port1, 'multi-a');
+    second = startServer(port2, 'multi-b');
+    await Promise.all([waitReady(port1, first), waitReady(port2, second)]);
+    const responses = await Promise.all([
+      ...Array.from({ length: 10 }, (_, i) => request(port1, '/api/auth/login', { email: `r4-multi-a-${i}@example.com`, password: 'invalid-password-for-proof' })),
+      ...Array.from({ length: 11 }, (_, i) => request(port2, '/api/auth/login', { email: `r4-multi-b-${i}@example.com`, password: 'invalid-password-for-proof' })),
+    ]);
+    const accepted = responses.filter((r) => r.status === 401).length;
+    const limited = responses.filter((r) => r.status === 429).length;
+    const failed = responses.length - accepted - limited;
+    console.log(`two_process_rate_limit processes=2 requests=${responses.length} accepted=${accepted} rate_limited=${limited} failed=${failed} configured_limit=20`);
+    if (accepted !== 20 || limited !== 1 || failed !== 0) throw new Error('distributed rate-limit proof did not enforce one shared limit of 20');
+  } finally {
+    if (first) await stopChild(first, 'SIGTERM');
+    if (second) await stopChild(second, 'SIGTERM');
+  }
+
+  const sweep = `r4_multi_proof_${Date.now()}`;
+  const runWorker = () => new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [__filename, '--sweep-child', sweep], { env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
+    let output = '';
+    child.stdout.on('data', (chunk) => { output += chunk.toString(); });
+    child.stderr.on('data', (chunk) => { output += chunk.toString(); });
+    child.once('error', reject);
+    child.once('exit', (code) => code === 0 ? resolve(output) : reject(new Error(`sweep worker exit=${code}: ${output.slice(-500)}`)));
+  });
+  const workers = await Promise.all([runWorker(), runWorker()]);
+  const results = workers.map((output) => ({ ran: /sweep_child ran=true/.test(output), skipped: /status=skipped/.test(output) }));
+  const actualRuns = results.filter((r) => r.ran).length;
+  if (actualRuns !== 1 || results.filter((r) => r.skipped).length !== 1) throw new Error('concurrent sweep proof expected one runner and one skipped worker');
+  const repeat = await runWorker();
+  const minimumIntervalSkipped = /status=skipped reason=minimum_interval/.test(repeat);
+  if (!minimumIntervalSkipped) throw new Error('immediate repeat sweep was not suppressed by minimum interval');
+  console.log(`two_process_sweep processes=2 actual_runs=${actualRuns} lock_skipped=${results.filter((r) => r.skipped).length} immediate_rerun=skipped minimum_interval_ms=60000`);
 }
 
 function request(port, pathname, body, { abortAfterMs } = {}) {
@@ -62,6 +116,8 @@ async function stopChild(child, signal = 'SIGTERM') {
 }
 
 async function main() {
+  if (process.argv[2] === '--sweep-child') return sweepChild(process.argv[3]);
+  if (process.argv.includes('--multi-instance-proof')) return multiInstanceProof();
   assertSafeTarget();
   const cpu = os.cpus()[0]?.model || 'unknown';
   console.log(`environment node=${process.version}; platform=${process.platform}; arch=${process.arch}; cpu_model=${cpu}; cpu_logical_count=${os.cpus().length}; memory_gib=${(os.totalmem() / 1024 ** 3).toFixed(2)}`);

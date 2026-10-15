@@ -1,7 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { securityHeaders, requestId, sanitizeServerError, fixedWindowRateLimit, validateRuntimeConfig, validateCorsOrigins, parseTrustProxy } = require('./src/middleware/security');
+const { securityHeaders, requestId, sanitizeServerError, validateRuntimeConfig, validateCorsOrigins, parseTrustProxy } = require('./src/middleware/security');
+const { createPostgresRateLimit } = require('./src/middleware/postgresRateLimit');
 const logger = require('./src/utils/logger');
 const { healthCheck } = require('./src/config/database');
 if (process.env.R4_BASELINE_ID) {
@@ -31,10 +32,12 @@ app.use(cors({ origin: ALLOWED_ORIGINS, credentials: true }));
 app.use(securityHeaders);
 app.use(requestId);
 app.use(sanitizeServerError((message, detail) => logger.error(message, { detail })));
-app.use(fixedWindowRateLimit({
+app.use(createPostgresRateLimit({
+  scope: 'auth',
   windowMs: 15 * 60 * 1000,
   limit: parseInt(process.env.AUTH_RATE_LIMIT_PER_15_MIN || '20', 10),
   applies: (req) => req.path === '/api/auth/login' || req.path === '/api/v1/oauth/token',
+  key: (req) => `${req.ip || 'unknown'}:${req.path}`,
 }));
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: process.env.FORM_BODY_LIMIT || '1mb' }));

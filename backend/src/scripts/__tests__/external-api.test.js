@@ -135,6 +135,8 @@ query.mockImplementation(async (sql, params = []) => {
     return { rows: [] };
   }
   if (/UPDATE service_accounts SET last_used_at/i.test(s)) return { rows: [] };
+  // OAuth password-grant tests exercise the R4 legacy-hash upgrade transaction.
+  if (/UPDATE users SET password\s*=\s*\$1/i.test(s)) return { rows: [] };
   if (/INSERT INTO webhooks/i.test(s)) {
     const id = ++stub.webhookSeq;
     const row = { id, url: params[0], secret: params[1], events: JSON.parse(params[2]), description: params[3], project_ids: params[4] == null ? null : JSON.parse(params[4]), is_active: true, created_by: params[5], created_at: new Date() };
@@ -638,19 +640,16 @@ describe('v1 correlation ids', () => {
 });
 
 describe('v1 rate limiting', () => {
-  test('exceeding the window returns 429 with Retry-After', () => {
+  test('exceeding the shared database window returns 429 with Retry-After', async () => {
     const req = () => ({ headers: {}, user: null, ip: '10.0.0.99', v1Subject: null });
     let blocked = null;
-    let calls = 0;
-    for (let i = 0; i < v1.RATE_LIMIT_PER_MIN + 5; i++) {
-      const r = { setHeader: jest.fn(), statusCode: 200 };
-      v1.rateLimit(req(), r, (err) => { if (err) { blocked = { err, r }; } });
-      if (blocked) break;
-    }
+    const q = jest.fn().mockResolvedValue({ rows: [{ hit_count: 2 }] });
+    const r = { setHeader: jest.fn(), statusCode: 200 };
+    await v1.createRateLimit(q, 1)(req(), r, (err) => { blocked = err ? { err, r } : null; });
     expect(blocked).toBeTruthy();
     expect(blocked.err.status).toBe(429);
     expect(blocked.err.code).toBe('rate_limited');
-    expect(blocked.r.setHeader).toHaveBeenCalledWith('Retry-After', 60);
+    expect(blocked.r.setHeader).toHaveBeenCalledWith('Retry-After', expect.any(String));
   });
 
   test('persists a rate counter keyed by the authenticated service account', async () => {

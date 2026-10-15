@@ -56,6 +56,24 @@ describePg('3.4 advisory-lock sweep leader (real PostgreSQL)', () => {
     expect(second.ran).toBe(true);
   });
 
+  test('minimum interval suppresses an immediate sequential rerun after releasing the lock', async () => {
+    let calls = 0;
+    const sweep = `leader.interval.${tag}`;
+    const first = await sweepLeader.runSweepAsLeader(sweep, async () => { calls += 1; }, { minIntervalMs: 60_000 });
+    const second = await sweepLeader.runSweepAsLeader(sweep, async () => { calls += 1; }, { minIntervalMs: 60_000 });
+    expect(first.ran).toBe(true);
+    expect(second).toMatchObject({ ran: false, record: { status: 'skipped', reason: 'minimum_interval' } });
+    expect(calls).toBe(1);
+  });
+
+  test('retains only the configured sweep history window', async () => {
+    const sweep = `leader.retention.${tag}`;
+    await db.query("INSERT INTO background_sweep_runs (sweep,status,started_at,finished_at) VALUES ($1,'failed',NOW()-INTERVAL '40 days',NOW()-INTERVAL '40 days')", [sweep]);
+    await sweepLeader.runSweepAsLeader(sweep, async () => {}, { retentionDays: 30 });
+    const rows = await db.query('SELECT id FROM background_sweep_runs WHERE sweep=$1', [sweep]);
+    expect(rows.rowCount).toBe(1);
+  });
+
   test('a crashed leader leaves no stuck lock: the session-level lock dies with its connection', async () => {
     const { Client } = require('pg');
     const name = `leader.crash.${tag}`;
