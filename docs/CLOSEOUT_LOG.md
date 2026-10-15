@@ -2240,4 +2240,4 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 
 - Centralized all frontend network calls behind `frontend/src/services/apiClient.js`; migrated 60 prior fetch sites across 40 files. The direct-call guard is ratcheted to 1 call in the client; current 1/1, no axios. Added typed errors, EN/AR translation mapping, 401 session redirect, paging total count, and request cancellation on route change/unmount.
 - Focused test command `npm.cmd test -- --watchAll=false --runInBand --no-colors src/services/apiClient.test.js src/hooks/useApiClient.test.js`: PASS 2 suites / 8 tests. `npm.cmd run lint:api`, `i18n:check`, `i18n:parity`, and `git diff --check` PASS; parity is 35 namespaces / 1,293 English keys.
-- R5.1 commit: pending. R5.2 form-kit adoption and R5.3 paging are next.
+- R5.1 implementation commit `ef6c6d4`; post-commit checkpoint follows. R5.2 form-kit adoption and R5.3 paging are next.

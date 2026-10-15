@@ -1299,4 +1299,4 @@ Passwords now use built-in async `crypto.scrypt` with OWASP-listed N=32768/r=8/p
 - Migrated all 60 prior direct fetch call sites in 40 files through `frontend/src/services/apiClient.js`; its one internal fetch is now the sole call site. Ratcheted the per-file guard baseline to 1; zero axios references.
 - Added 401 session expiry redirect, typed network/503/504 errors mapped to EN/AR keys, total-count metadata, multipart-safe headers, and route/unmount abort handling.
 - Focused tests PASS 2 suites / 8 tests; `lint:api`, i18n check/parity, and diff check PASS. i18n parity is 35 namespaces / 1,293 English keys.
-- R5.1 commit/checkpoint pending; next R5.2 and R5.3.
+- R5.1 implementation commit `ef6c6d4`; post-commit checkpoint is this docs commit. Next R5.2 and R5.3.
