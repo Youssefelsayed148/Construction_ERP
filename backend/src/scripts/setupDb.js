@@ -461,8 +461,7 @@ async function setupDatabase() {
         'SEED_DEFAULT_OWNER requires DEFAULT_OWNER_EMAIL and DEFAULT_OWNER_PASSWORD (minimum 12 characters)'
       );
     }
-    const bcrypt = require('bcryptjs');
-    const hashedPassword = await bcrypt.hash(ownerPassword, 12);
+    const hashedPassword = await require('../services/passwords').hashPassword(ownerPassword);
     await query(
       `INSERT INTO users (name, email, password, role, department, module_permissions, is_active)
        VALUES ($1, $2, $3, $4, $5, $6, true)`,

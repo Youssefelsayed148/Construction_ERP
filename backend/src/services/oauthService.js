@@ -31,6 +31,7 @@ const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 
 const tokens = require('./tokens');
+const passwords = require('./passwords');
 
 const ISSUER = tokens.ISSUER;
 const AUDIENCE = tokens.KINDS.v1.audience;
@@ -128,7 +129,7 @@ async function issueForPassword(body) {
     'SELECT id, name, email, password, role, is_active, token_version FROM users WHERE email = $1',
     [value.username]
   )).rows[0];
-  if (!u || !u.is_active || !(await bcrypt.compare(value.password, u.password))) {
+  if (!u || !u.is_active || !(await passwords.verifyPassword(value.password, u.password))) {
     throw Object.assign(new Error('Invalid user credentials'), { code: 'invalid_grant', status: 401 });
   }
 
@@ -141,7 +142,12 @@ async function issueForPassword(body) {
   // reduction, never an expansion.
   const granted = requested && requested.length ? requested : ['api:read'];
   const token = signAccessToken({ sub: `user:${u.id}`, userId: u.id, scope: granted, tokenVersion: u.token_version });
-  await auditIssuance({ subject: `user:${u.id}`, kind: 'password', scopes: granted, userId: u.id });
+  const upgradedPassword = passwords.needsRehash(u.password) ? await passwords.hashPassword(value.password) : null;
+  await transaction(async (client) => {
+    const q = client.query.bind(client);
+    if (upgradedPassword) await q('UPDATE users SET password = $1, updated_at = NOW() WHERE id = $2', [upgradedPassword, u.id]);
+    await auditIssuance({ subject: `user:${u.id}`, kind: 'password', scopes: granted, userId: u.id }, q);
+  });
   return {
     access_token: token,
     token_type: 'Bearer',

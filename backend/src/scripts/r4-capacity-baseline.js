@@ -10,7 +10,7 @@ const { Pool, Client } = require('pg');
 const path = require('path');
 
 function assertSafeTarget(env = process.env) {
-  if (env.APP_ENV !== 'test' || env.DB_NAME !== 'erp_r04_baseline') throw new Error('R4 baseline requires APP_ENV=test and DB_NAME=erp_r04_baseline');
+  if (env.APP_ENV !== 'test' || !['erp_r04_baseline', 'erp_r04_password_after'].includes(env.DB_NAME)) throw new Error('R4 measurement requires APP_ENV=test and an erp_r04 throwaway database');
   if (!['127.0.0.1', 'localhost', '::1'].includes(String(env.DB_HOST).toLowerCase())) throw new Error('R4 baseline requires loopback DB_HOST');
   if (!env.DB_PASSWORD || !env.DB_USER) throw new Error('R4 baseline requires process-only credentials');
 }
@@ -40,8 +40,10 @@ async function waitReady(port, child) {
 }
 
 function startServer(port, baselineId) {
+  const passwordAfter = process.argv.includes('--password-after');
   const child = spawn(process.execPath, [path.resolve(__dirname, '../../server.js')], {
-    env: { ...process.env, PORT: String(port), AUTH_RATE_LIMIT_PER_15_MIN: '20', R4_BASELINE_ID: baselineId },
+    env: { ...process.env, PORT: String(port), AUTH_RATE_LIMIT_PER_15_MIN: '20', R4_BASELINE_ID: baselineId,
+      ...(passwordAfter ? { UV_THREADPOOL_SIZE: '16', R4_PASSWORD_AFTER: '1' } : {}) },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   child.output = '';
@@ -82,7 +84,7 @@ async function main() {
     const burst = await Promise.all(Array.from({ length: 10 }, (_, i) => request(port1, '/api/auth/login', { email: `r4-unknown-${i}@example.com`, password: 'baseline-incorrect-password' })));
     const burstMs = performance.now() - burstStarted;
     const loopMetrics = [...first.output.matchAll(/R4_BASELINE_EVENT_LOOP[^\n]*p95_ms=([0-9.]+) max_ms=([0-9.]+)/g)].map((m) => ({ p95: Number(m[1]), max: Number(m[2]) }));
-    console.log(`login_burst requests=10 invalid_credentials=${burst.filter((r) => r.status === 401).length} rate_limited=${burst.filter((r) => r.status === 429).length} errors=${burst.filter((r) => r.status !== 401 && r.status !== 429).length} elapsed_ms=${burstMs.toFixed(1)} throughput_per_s=${(10000 / burstMs).toFixed(2)} event_loop_lag_ms_p95=${loopMetrics.length ? Math.max(...loopMetrics.map((m) => m.p95)).toFixed(2) : 'not-sampled'} event_loop_lag_ms_max=${loopMetrics.length ? Math.max(...loopMetrics.map((m) => m.max)).toFixed(2) : 'not-sampled'}`);
+    console.log(`login_burst mode=${process.argv.includes('--password-after') ? 'scrypt' : 'bcryptjs-baseline'} requests=10 invalid_credentials=${burst.filter((r) => r.status === 401).length} rate_limited=${burst.filter((r) => r.status === 429).length} errors=${burst.filter((r) => r.status !== 401 && r.status !== 429).length} elapsed_ms=${burstMs.toFixed(1)} throughput_per_s=${(10000 / burstMs).toFixed(2)} event_loop_lag_ms_p95=${loopMetrics.length ? Math.max(...loopMetrics.map((m) => m.p95)).toFixed(2) : 'not-sampled'} event_loop_lag_ms_max=${loopMetrics.length ? Math.max(...loopMetrics.map((m) => m.max)).toFixed(2) : 'not-sampled'}`);
 
     const saturationStarted = performance.now();
     let maxWaiting = 0;

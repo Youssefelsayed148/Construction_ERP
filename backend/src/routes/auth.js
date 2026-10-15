@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcryptjs');
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
 const { authenticate, authorize, authorizeSelfSession } = require('../middleware/auth');
@@ -8,9 +7,8 @@ const { logActivity } = require('../utils/activity');
 const policy = require('../services/policy');
 
 const tokens = require('../services/tokens');
+const passwords = require('../services/passwords');
 const authLockout = require('../services/authLockout');
-const BCRYPT_COST = 12;
-const DUMMY_PASSWORD_HASH = '$2a$12$vVbihfowu2ItcbFLrqLSd.OH5/yWImcOd9nLI55t8vfpebkc0SU6y';
 
 // POST /api/auth/register
 router.post('/register', authenticate, authorize('owner', 'admin'), async (req, res) => {
@@ -38,7 +36,7 @@ router.post('/register', authenticate, authorize('owner', 'admin'), async (req, 
       return res.status(403).json({ success: false, error: 'Only an owner can create an owner' });
     }
 
-    const hashedPassword = await bcrypt.hash(value.password, BCRYPT_COST);
+    const hashedPassword = await passwords.hashPassword(value.password);
 
     // The user and their company-wide role assignment are created together: a user without a
     // user_project_roles row has no access at all (Phase 1.2).
@@ -90,17 +88,18 @@ router.post('/login', async (req, res) => {
     const user = result.rows[0];
     const emailKey = value.email.trim().toLowerCase();
     const attempt = await authLockout.getAttempt(query, emailKey);
-    // Always pay for one bcrypt comparison, including unknown and disabled accounts,
+    // Always pay for one asynchronous password comparison, including unknown and disabled accounts,
     // then return one generic denial to avoid identity/account-state disclosure.
-    const validPassword = await bcrypt.compare(value.password, user && user.is_active && user.password ? user.password : DUMMY_PASSWORD_HASH);
+    const validPassword = await passwords.verifyPassword(
+      value.password,
+      user && user.is_active && user.password ? user.password : passwords.DUMMY_HASH
+    );
     if (!user || !user.is_active || !validPassword || authLockout.isLocked(attempt)) {
       if (!authLockout.isLocked(attempt)) await authLockout.recordFailure(query, emailKey);
       return res.status(401).json({ success: false, error: 'Invalid email or password' });
     }
 
-    const upgradedHash = bcrypt.getRounds(user.password) < BCRYPT_COST
-      ? await bcrypt.hash(value.password, BCRYPT_COST)
-      : null;
+    const upgradedHash = passwords.needsRehash(user.password) ? await passwords.hashPassword(value.password) : null;
     const token = tokens.signSession({ userId: user.id, tokenVersion: user.token_version });
     await transaction(async (client) => {
       const q = client.query.bind(client);
@@ -166,10 +165,10 @@ router.post('/change-password', authenticate, authorize(), async (req, res) => {
     }
 
     const result = await query('SELECT password FROM users WHERE id = $1', [req.user.id]);
-    const valid = await bcrypt.compare(currentPassword, result.rows[0].password);
+    const valid = await passwords.verifyPassword(currentPassword, result.rows[0].password);
     if (!valid) return res.status(400).json({ success: false, error: 'Current password is incorrect' });
 
-    const hashed = await bcrypt.hash(newPassword, BCRYPT_COST);
+    const hashed = await passwords.hashPassword(newPassword);
     // Bumping token_version signs the user out everywhere; the response carries a fresh session token.
     const updated = await transaction(async (client) => {
       const q = client.query.bind(client);

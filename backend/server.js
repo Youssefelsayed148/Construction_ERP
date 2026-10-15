@@ -11,7 +11,7 @@ if (process.env.R4_BASELINE_ID) {
   const eventLoopReporter = setInterval(() => {
     logger.info(`R4_BASELINE_EVENT_LOOP id=${process.env.R4_BASELINE_ID} p95_ms=${(eventLoop.percentile(95) / 1e6).toFixed(2)} max_ms=${(eventLoop.max / 1e6).toFixed(2)}`);
     eventLoop.reset();
-  }, 1000);
+  }, 100);
   eventLoopReporter.unref();
 }
 

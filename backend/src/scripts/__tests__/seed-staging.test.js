@@ -1,8 +1,14 @@
 'use strict';
 
+jest.mock('dotenv', () => ({ config: jest.fn() }));
+const dotenv = require('dotenv');
 const { assertSafeTarget, CANONICAL_ROLES } = require('../seed-staging');
 
 describe('staging seeder guardrails', () => {
+  test('does not read dotenv files when imported for validation', () => {
+    expect(dotenv.config).not.toHaveBeenCalled();
+  });
+
   test('requires exact staging mode and a staging/test database name', () => {
     expect(() => assertSafeTarget({ APP_ENV: 'development', DB_NAME: 'construction_erp_staging', DB_HOST: 'db' }))
       .toThrow('APP_ENV must be exactly staging');

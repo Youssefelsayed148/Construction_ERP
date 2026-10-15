@@ -21,7 +21,7 @@ COPY --from=test /app/.tests-passed /tmp/.tests-passed
 
 RUN mkdir -p uploads && chown -R node:node /app
 
-ENV NODE_ENV=production
+ENV NODE_ENV=production UV_THREADPOOL_SIZE=16
 EXPOSE 5000
 USER node
 

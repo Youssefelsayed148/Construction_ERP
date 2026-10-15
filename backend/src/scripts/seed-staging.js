@@ -1,11 +1,10 @@
 'use strict';
 
-require('dotenv').config({ path: require('path').resolve(__dirname, '..', '..', '..', '.env.docker') });
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const bcrypt = require('bcryptjs');
 const { Pool } = require('pg');
+const passwords = require('../services/passwords');
 
 const repoRoot = path.resolve(__dirname, '..', '..', '..');
 const credentialsPath = path.join(repoRoot, '.staging-users.json');
@@ -36,6 +35,7 @@ function password() { return crypto.randomBytes(36).toString('base64url'); }
 function emailFor(key) { return `pilot-${key}@${SEED_EMAIL_DOMAIN}`; }
 
 async function main() {
+  require('dotenv').config({ path: path.resolve(__dirname, '..', '..', '..', '.env.docker') });
   assertSafeTarget();
   const pool = new Pool({
     host: process.env.DB_HOST || 'db', port: Number(process.env.DB_PORT || 5432),
@@ -86,7 +86,7 @@ async function main() {
     );
     for (const account of definitions) {
       const plainPassword = password();
-      const hash = await bcrypt.hash(plainPassword, 12);
+      const hash = await passwords.hashPassword(plainPassword);
       const row = (await client.query(
         `INSERT INTO users (name, email, password, role, is_active, token_version)
          VALUES ($1, $2, $3, $4, true, 0)
