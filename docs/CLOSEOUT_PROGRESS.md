@@ -1,3 +1,10 @@
+# 2026-10-15 — R2 final close and R3 gate
+
+R2 is closed. The mutation registry reports 592 fixtures, 9 documented exemptions, and 0 pending/unregistered/stale/redundant routes. Of the fixtures, 590 passed audit-and-rollback checks and two existing replenishment sweeps passed their documented audit-only check.
+
+Final gate evidence: backend mock PASS 60 suites / 1,059 tests; tracked PostgreSQL gate PASS 76/76 suites and 1,871/1,871 tests, 126 migrations, disposable container `erp-r02-gate-20261015044641` removed, exit 0; frontend PASS 32/32 suites and 131/131 tests; i18n check PASS and parity PASS 35 namespaces / 1,288 English keys; lint guards PASS; root build compiled successfully, exit 0; fresh seeded golden reconciliation PASS 16/16 with zero violations and disposable container `erp-r02-gate-20261015045022` removed. Full command evidence is recorded in `docs/CLOSEOUT_LOG.md` and `docs/R2_SCORECARD.md`.
+
+R3 begins after the R2 close commit. R3.0 must capture only REV-004, REV-005, and REV-016 from the review report, realistic seeded row counts, and baseline query plans before any fix. R3.0–R3.6 remain unverified. R4 has not started.
 # Closeout progress (append-only)
 
 ## 2026-10-15 — R2b.2 task B checkpoint

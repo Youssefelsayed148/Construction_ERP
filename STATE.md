@@ -912,3 +912,11 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - Diagnostic two-route family run BEFORE: after notification retry rollback, report-view delete prerequisite POST failed 500. The retry fixture had inserted the shared owner into `r02_fail_users`; later owner API fixture setup then failed.
 - Changed the retry fixture to own its failed in-app delivery as a fresh project-manager actor, so failure injection stays isolated. AFTER same reproducer: PASS 1 suite / 8 tests; 126 migrations; retry returned 500 with no leaks and report prerequisite setup proceeded; container removed.
 - Full registry and R2 final gate reruns are pending. R3 remains gated.
+
+- Committed `d9bd802` (R2b.31 notification fixture actor isolation) with requested trailers; STATE updated after commit. Full PG registry and all R2 exit gates are pending rerun.
+
+## 2026-10-15 — R2 closed; R3 authorized
+
+- Final R2 gates PASS: backend mock 60/1,059; PostgreSQL registry 76/76 suites and 1,871/1,871 tests, 126 migrations; frontend 32/131; i18n check and parity 35/1,288; lint guards; root build; seeded golden 16/16. See docs/R2_SCORECARD.md and docs/CLOSEOUT_LOG.md for commands and disposable container cleanup evidence.
+- Mutation census: 592 fixtures (590 audit+rollback; 2 documented audit-only replenishment sweeps), 9 reasoned exemptions, 0 pending/unregistered/stale/redundant. R2 is closed.
+- User explicitly approved uninterrupted R3 work. Begin R3.0 baseline, then R3.1–R3.6. Do not start R4.

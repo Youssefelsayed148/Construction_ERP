@@ -6,12 +6,14 @@ Classification is source inspection, not happy-path/rollback verification. R2.2 
 
 | Before class | Endpoint count | After R2 fixes |
 |---|---:|---|
-| audited-in-transaction | 238 | 67 runtime-verified by the R2.2 registry; 168 not yet exercised (source-audited) |
-| delegates to an auditing service | 165 | 31 runtime-verified (audit row + rollback); 134 not yet exercised |
-| audited-not-in-transaction (includes partial/optional coverage) | 7 | 1 fixed; 2 documented exception (replenishment sweep); 4 untouched (agent decision, MCP, preview, OAuth token) |
-| not audited (includes conditional omissions) | 185 | 0 by the static guard; 171 runtime-verified, 14 aliases/other not exercised |
-| legitimately exempt | 6 | Unchanged |
-| Total | 601 | 272 runtime-verified, 323 pending fixtures, 6 exempt (see docs/R2_SCORECARD.md) |
+| audited-in-transaction | 238 | 235 fixtures runtime-verified; 3 portal-only aliases explicitly exempt |
+| delegates to an auditing service | 165 | 165 fixtures runtime-verified (audit row + rollback) |
+| audited-not-in-transaction (includes partial/optional coverage) | 7 | 7 fixtures runtime-verified, including 2 documented audit-only replenishment sweeps |
+| not audited (includes conditional omissions) | 185 | 185 fixtures runtime-verified; static guard reports no remaining unguarded mutation |
+| legitimately exempt | 6 | 6 registered exemptions unchanged |
+| Total | 601 | 592 fixtures runtime-verified, 9 exempt, 0 pending/unregistered/stale/redundant (see docs/R2_SCORECARD.md) |
+
+Final registry execution distinguishes 590 routes verified with audit plus rollback from two historical replenishment sweeps verified for audit only because their leader-locked multi-step work is intentionally non-atomic. The nine exemptions are individually reasoned in `backend/src/scripts/mutation-audit-exemptions.json`.
 
 Evidence conventions: route file/line identifies the handler; audit locations identify the reachable write helper. â€œneeds transactionâ€ includes existing transactional mutations and unresolved mutation/delegate work, not merely handlers lacking a transaction. â€œhard deleteâ€ means any reachable physical SQL DELETE, including replacement child rows; it does not claim the primary entity is deleted. No hard delete is silently converted or exempted from audit.
 

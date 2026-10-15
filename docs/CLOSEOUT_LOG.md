@@ -1,3 +1,14 @@
+# 2026-10-15 — R2 final gates and close
+
+- `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -All -Filter ...` — PASS 76/76 suites; 1,871/1,871 tests; 126 migrations; census 592 fixtures / 9 exemptions / 0 pending / 0 unregistered / 0 stale / 0 redundant; container `erp-r02-gate-20261015044641` removed; exit 0.
+- Fresh golden: `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Reconcile` — seed and reconcile exit 0; 16/16 checks `[OK]`, zero violations; container `erp-r02-gate-20261015045022` removed.
+- Backend mock gate — PASS 60 suites / 1,059 tests, exit 0 (elevated rerun after sandbox blocked the test's git child-process spawn).
+- Frontend `npm run test:ci --prefix frontend` — PASS 32 suites / 131 tests, exit 0.
+- `i18n:check` — PASS. `i18n:parity` — PASS 35 namespaces / 1,288 English keys.
+- `lint:guards` — PASS (`lint-guards: ok`; elevated rerun after sandbox blocked the git child-process spawn).
+- Root `npm run build` — PASS, compiled successfully, exit 0; existing deprecation warnings only.
+
+R2 closed with 592 route fixtures (590 audit+rollback, 2 documented audit-only replenishment sweeps), 9 reasoned exemptions, and no pending or registry consistency errors. R3.0–R3.6 remain unverified. R4 has not started.
 # Closeout log
 
 ## 2026-10-15 — R2b.2 commands and evidence

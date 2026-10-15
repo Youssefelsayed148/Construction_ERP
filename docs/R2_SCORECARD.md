@@ -1,3 +1,29 @@
+# R2 closeout scorecard — 2026-10-15
+
+## Final R2 status
+
+**592/601 mutation routes runtime verified**: 590 passed audit-and-rollback checks and the two existing replenishment sweeps passed their documented audit-only checks. **9 routes are explicitly exempt and documented; 0 routes are pending; 0 are unregistered, stale, or redundant.** R2 is closed. R3 starts after this closeout commit. R4 has not started.
+
+| Gate | Final result |
+|---|---|
+| Backend mock | PASS 60 suites / 1,059 tests; exit 0 |
+| PostgreSQL registry | PASS 76/76 suites, 1,871/1,871 tests; 126 migrations; exit 0 |
+| Frontend | PASS 32/32 suites, 131/131 tests; exit 0 |
+| i18n check | PASS |
+| i18n parity | PASS 35 namespaces / 1,288 English keys |
+| lint:guards | PASS (`lint-guards: ok`) |
+| Root build | PASS, compiled successfully; exit 0 (existing deprecation warnings) |
+| Fresh seeded golden reconciliation | PASS 16/16, zero violations; seed and reconcile exit 0 |
+
+Final PostgreSQL command: `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -All -Filter ...`; 76/76 suites and 1,871/1,871 tests passed, 126 migrations applied, disposable container `erp-r02-gate-20261015044641` removed, exit 0. The census reported 592 fixtures, 9 exemptions, 0 pending, 0 unregistered, 0 stale, and 0 redundant. Fresh golden command: `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Reconcile`; all 16 checks were `[OK]`, seed/reconcile exit 0, and `erp-r02-gate-20261015045022` was removed.
+
+The nine route exemptions are individually registered in `backend/src/scripts/mutation-audit-exemptions.json`: evidence-only delegation lookup; two retired document commands returning 410; deterministic non-persisting assistant draft; two v1 aliases of the retired document commands; and three client/subcontractor v1 portal aliases denied by the existing external portal boundary (403).
+
+## R3 status
+
+R3.0–R3.6 are **not verified** at this checkpoint. Next: inspect only REV-004, REV-005, and REV-016; capture realistic seeded-database row counts and before-fix `EXPLAIN (ANALYZE, BUFFERS)` evidence; commit the baseline script and numbers before changing implementation. No R4 work has started.
+
+---
 # Session 6 current R2b checkpoint - 2026-10-15
 
 **524/601 verified** (522 audit+rollback, 2 historical audit-only), **69 pending**, **8 exempt**. Session change: +50 verified; pending 121 -> 69 (50 fixtures + 2 owner-authorized boundary exemptions). Two client v1 aliases assert 403 from externalPortalAllowed; canonical acknowledgement and variation separately pass audit/rollback. This owner decision supersedes historical product questions below. No decision waiting.
