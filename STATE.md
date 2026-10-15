@@ -949,4 +949,10 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 ## 2026-10-15 — R3.4 CM numbering concurrency complete
 
 - R3.4 uses existing atomic `nextNumber` in the R3.3 source transaction. PostgreSQL gate PASS 2/2 suites, 9/9 tests; 128 migrations; container `erp-r02-gate-20261015052406` removed. Twenty concurrent PO source syncs had distinct CM numbers; rollback left no ledger row and retried with the same number. Existing 50-way numbering tests also pass.
-- R3.3 commit `be1935a`; R3.4 changes/tests and evidence are staged for commit after final slice checks. R3.5 index review remains; R3.6 final gates remain; R4 not started.
+- R3.3 commit `be1935a`; R3.4 commit `de00cd8`. R3.5 index review remains; R3.6 final gates remain; R4 not started.
+## 2026-10-15 — R3.5 ranked indexes complete
+
+- Migration 0067 adds six evidence-selected indexes. Pre-index performance container `erp-r3-perf-20261015052719` (128 migrations) and post-index container `erp-r3-perf-20261015052930` (129 migrations) were removed. Invoice list plan: 17.429 ms / 2,765 buffers to 0.041 ms / 5; active PO plan: 13.508 ms / 1,681 to 0.055 ms / 5. Exact 200-row scoped PO list: 0.070 ms / 8. Open invoice aggregate stayed sequential; its unused candidate index was removed.
+- Disposable catalog audit ranked 481 constraints / 483 FK columns before selected indexing; 476 / 478 remain. Top loaded table groups and residual candidates are recorded in docs/R3_EVIDENCE.md. This is a ranked partial reduction; the full backlog remains for follow-up.
+- Migration assertion test PASS 1/1 at 129 migrations; disposable container `erp-r02-gate-20261015053020` removed. AR service 280.53 ms / cash-flow four-query path 325.70 ms.
+- R3.5 implementation/evidence pending commit. R3.6 full closeout gates remain; R4 not started.

@@ -117,6 +117,7 @@ async function main() {
       ['invoice list page ordered by created_at', 'SELECT id, invoice_number, amount FROM invoices ORDER BY created_at DESC LIMIT 100', []],
       ['open invoice status aggregate', "SELECT SUM(amount) FROM invoices WHERE status NOT IN ('draft','cancelled','void','credited','paid')", []],
       ['purchase orders by project and active status', "SELECT id, total_amount, status FROM purchase_orders WHERE project_id = $1 AND status IN ('issued','approved','confirmed') ORDER BY created_at DESC LIMIT 100", [projectId]],
+      ['purchase order project list route', 'SELECT * FROM purchase_orders WHERE project_id = $1 ORDER BY created_at DESC, id DESC LIMIT 200', [projectId]],
       ['commitment numbering count', 'SELECT COUNT(*) FROM commitments', []],
     ];
     for (const [label, sql, params] of plans) {
@@ -129,7 +130,7 @@ async function main() {
 
     for (const [label, sql, params] of [
       ['current invoice list query', 'SELECT id, invoice_number, amount FROM invoices ORDER BY created_at DESC LIMIT 100', []],
-      ['current purchase order scope query', 'SELECT id, total_amount, status FROM purchase_orders WHERE project_id = $1 AND status IN (\'issued\',\'approved\',\'confirmed\')', [projectId]],
+      ['current purchase order project list query', 'SELECT * FROM purchase_orders WHERE project_id = $1 ORDER BY created_at DESC, id DESC LIMIT 200', [projectId]],
     ]) {
       const started = performance.now();
       const result = await db.query(sql, params);
