@@ -2211,3 +2211,10 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - `users-policy.pg.test.js`: Jest assertions PASS 1/1 suite / 4/4 tests at 130 migrations, but the runner exits `-1073740791` after Jest with Windows libuv assertion `!(handle->flags & UV_HANDLE_CLOSING)`. Reproduced twice; recorded NOT VERIFIED as a clean gate. Containers `erp-r04-gate-20261015154454` and `erp-r04-gate-20261015154519` were removed.
 - `docs/R4_PAGINATION_UI_IMPACT.md` maps 33 API-using frontend page files and notes that UI load-more is still R5.3. No pagination index/migration was added; new indexes require `EXPLAIN` evidence. R4.5/R4.6 remain before R5.
 - R4.4 implementation committed as `2e9b8de` with the requested trailers. `STATE.md` was updated immediately after the commit.
+
+## 2026-10-15 - R4.5 recent sweep health
+
+- `/api/v1/ops/metrics` continues exposing all retained failed sweeps and adds `failed_sweeps_24h`; health status uses the recent count. The CLI uses the same 24-hour status/detail window.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -R4 -Suite src/scripts/__tests__/v1-contract.pg.test.js -Filter 'FAIL|PASS|Test Suites:|Tests:|●|Error:'` - PASS 1 suite / 9 tests, 130 migrations, container `erp-r04-gate-20261015154945` removed, exit 0. Test proves historical failed sweep does not degrade health and a recent failed sweep does.
+- Users-policy PostgreSQL suite exits cleanly with runner `-NoForceExit`: PASS 1 suite / 4 tests, 130 migrations; container `erp-r04-gate-20261015155124` removed, exit 0. This avoids the Windows libuv shutdown assertion seen after `--forceExit` despite passed assertions.
+- Changed JavaScript syntax checks and `git diff --check` passed. Implementation committed as `a7ac59c` with requested trailers; `STATE.md` updated after commit.

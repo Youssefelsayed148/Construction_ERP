@@ -1,3 +1,11 @@
+## R4.5 current position - 2026-10-15 - committed as `a7ac59c`
+
+- R4.5 closes the retained-history health regression: `/api/v1/ops/metrics` remains healthy for failed sweep rows older than 24 hours, reports all-time retained failures separately, and degrades for a recent failure. `outbox:stats` uses the same rolling 24-hour window for failure status and details.
+- Focused real PostgreSQL contract: `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -R4 -Suite src/scripts/__tests__/v1-contract.pg.test.js -Filter 'FAIL|PASS|Test Suites:|Tests:|●|Error:'` PASS 1 suite / 9 tests, 130 migrations; container `erp-r04-gate-20261015154945` removed, exit 0. Includes historical/recent health behavior.
+- Windows Jest shutdown issue: `users-policy.pg.test.js` passes 4/4 with the runner's new `-NoForceExit` option; container `erp-r04-gate-20261015155124` removed, 130 migrations, exit 0. The default `--forceExit` had reproducibly crashed Node after assertions; the opt-in mode is intended for verification without that abrupt shutdown.
+- Syntax checks for all changed JS files and `git diff --check` passed before commit. Implementation commit: `a7ac59c`; this status is the post-commit checkpoint.
+- Next: R4.6 gates against current baselines, including fresh and previous-number-to-latest migration proof plus golden reconciliation. R5 remains gated on every R4 gate being green.
+
 ## R4.4 current position - 2026-10-15 - committed as `2e9b8de`
 
 - Implemented shared SQL and derived-row pagination: default limit 200, maximum 1,000, offset, deterministic order with ID/domain-key tiebreak, `X-Total-Count`, and unchanged response envelopes. Route census detects at least 73 collection handlers and passes; documented finite-reference exemptions include reasons. 33 frontend page files with list reads are recorded in `docs/R4_PAGINATION_UI_IMPACT.md`; their UI paging controls remain R5.3 work.
