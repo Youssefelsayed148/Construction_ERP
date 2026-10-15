@@ -1237,3 +1237,7 @@ Added a real-PG test that enumerates all seven commercial/finance GET handlers i
 - Frontend: `CI=true npm.cmd run test:ci -- --no-colors` PASS 32/32 suites, 131/131 tests. `i18n:check` and `i18n:parity` PASS (35 namespaces / 1,288 English keys).
 - `npm.cmd run lint:guards` PASS. Root `CI=true npm.cmd run build` PASS (optimized production build). Golden reconciliation through `r02-pg-gate.ps1 -Reconcile` PASS 16/16, zero violations, 129 migrations, disposable container removed.
 - R3 scorecard and evidence-limit notes are the remaining closeout documentation. R4 remains not started.
+
+## R3 closeout (2026-10-15)
+
+R3 is complete. The full backend mock, PostgreSQL, frontend, i18n, lint, production build, performance, migration-upgrade, and golden reconciliation gates are green. Results and explicit NOT VERIFIED/NOT DONE items are in `docs/R3_SCORECARD.md`, `docs/R3_EVIDENCE.md`, and `docs/R3_FK_INDEX_PLAN.md`. Final scorecard: backend mock 60/60 suites (1,059 tests), PostgreSQL 81/81 (1,884 tests, 129 migrations), frontend 32/32 (131 tests), i18n 35 namespaces/1,288 English keys, golden 16/16 with zero violations. R4 has not started.

@@ -2161,3 +2161,7 @@ The first full R2 PG suite (126 migrations) failed 1/76 suites, 169/1,871 tests;
 The full R3 PostgreSQL gate initially identified stale tests after commitment GETs became read-only. Cost guard injections now target the commitments ledger, and finance-flow fixture setup writes the issued PO commitment through the source transaction. Focused suites passed 3/3 / 47/47. The complete PostgreSQL rerun passed 81/81 suites / 1,884/1,884 tests at 129 migrations; `erp-r02-gate-20261015055054` removed, exit 0. The full test includes the 0064-to-0067 upgrade path.
 
 Final performance gate passed and removed `erp-r3-perf-20261015055504`; post-index invoice and PO plans are index-only scans, while the broad open-invoice aggregate appropriately retains a sequential scan. All 478 residual FK columns are ranked in `docs/R3_FK_INDEX_PLAN.md`. Final backend mock, frontend, i18n, lint guards, root production build, and seeded golden reconciliation all passed. Golden: 16/16, zero violations, 129 migrations, `erp-r02-gate-20261015055556` removed. See `docs/R3_EVIDENCE.md`; final scorecard documentation remains to commit.
+
+## 2026-10-15 - R3 final closeout
+
+R3 implementation and final gates are complete. The scorecard in `docs/R3_SCORECARD.md` records each finding, before/after measurements, verification, implementation commits, and explicit NOT VERIFIED/NOT DONE limitations. The performance evidence and complete current FK ranking are in `docs/R3_EVIDENCE.md` and `docs/R3_FK_INDEX_PLAN.md`. All disposable database containers were removed. R4 was not started.

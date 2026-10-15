@@ -969,3 +969,5 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - Remaining documentation: publish R3 scorecard with measurements, test evidence, commits, and explicit NOT VERIFIED limits; then finalize R3 closeout. No R4 work started.
 
 - R3.3 fixture alignment committed as `fc54b6b`; full PostgreSQL rerun is recorded below. R3.5 audit-plan and complete FK-ranking documentation are still being finalized.
+
+- R3.5 benchmark and full catalog inventory committed as `010e110`; R3.6 scorecard and final status are next.
