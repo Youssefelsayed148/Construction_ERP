@@ -183,6 +183,7 @@ const MODULE_OVERRIDES = Object.freeze({
   // reorganization (e.g. delegations nested under organizations) cannot silently re-key the grants
   // an organization mount is judged under. They resolve the same module the mount name already gives.
   organizations: [
+    [/^\/team(?:\/|$)/, 'team'],
     [/.*/, 'organizations'],
   ],
   delegations: [
@@ -295,6 +296,7 @@ function effectiveAction(req, mountModule) {
 // bypassed by guessing another project's record id. Every table name below is
 // a constant owned by the server; request input is used only as a parameter.
 const RECORD_SCOPE_RULES = Object.freeze({
+  organizations: [[/^\/team\/:userProjectRoleId(?:\/|$)/, 'user_project_roles', 'userProjectRoleId']],
   hr: [[/^\/labor-payments\/:id(?:\/|$)/, 'labor_payments']],
   assets: [
     [/^\/:id$/, 'SELECT current_project_id AS project_id FROM assets WHERE id = $1'],

@@ -452,7 +452,7 @@ async function listBankAccounts(q = query, { organization_id = null } = {}) {
        ${where} ORDER BY b.is_primary DESC, b.id`, params)).rows;
 }
 
-async function createBankAccount(q, { organization_id, bank_name, iban, account_no, currency = 'EGP', is_primary = false }) {
+async function createBankAccount(q, { organization_id, bank_name, iban, account_no, currency = 'EGP', is_primary = false }, opts = {}) {
   if (typeof q === 'object' && typeof q.query === 'function') q = q.query;
   if (toNum(organization_id) == null) throw new OrgValidationError('organization_id is required', 'bank_account_org_required');
   if (!bank_name || String(bank_name).trim() === '') throw new OrgValidationError('bank_name is required', 'bank_account_name_required');
@@ -462,7 +462,7 @@ async function createBankAccount(q, { organization_id, bank_name, iban, account_
   const org = (await q('SELECT id FROM organizations WHERE id = $1', [toNum(organization_id)])).rows[0];
   if (!org) throw new OrgNotFoundError(`Organization #${organization_id} not found`, 'organization_not_found', { organization_id: toNum(organization_id) });
   const wantPrimary = Boolean(is_primary);
-  return database.transaction(async (client) => {
+  return (opts.transaction || database.transaction)(async (client) => {
     const cq = (t, p) => client.query(t, p);
     const existing = (await cq(
       'SELECT count(*)::int n, COALESCE(SUM(CASE WHEN is_primary THEN 1 ELSE 0 END), 0)::int primaries FROM org_bank_accounts WHERE organization_id = $1',
@@ -502,7 +502,7 @@ async function updateBankAccount(q, id, fields = {}) {
   return r.rows[0];
 }
 
-async function setPrimaryBankAccount(q, organization_id, id) {
+async function setPrimaryBankAccount(q, organization_id, id, opts = {}) {
   if (typeof q === 'object' && typeof q.query === 'function') q = q.query;
   const account = (await q('SELECT * FROM org_bank_accounts WHERE id = $1', [toNum(id)])).rows[0];
   if (!account) throw new OrgNotFoundError(`Bank account #${id} not found`, 'bank_account_not_found', { bank_account_id: toNum(id) });
@@ -510,7 +510,7 @@ async function setPrimaryBankAccount(q, organization_id, id) {
     throw new OrgValidationError(`Bank account #${id} does not belong to organization #${organization_id}`,
       'bank_account_wrong_organization', { bank_account_id: toNum(id), organization_id: toNum(organization_id) });
   }
-  return database.transaction(async (client) => {
+  return (opts.transaction || database.transaction)(async (client) => {
     const cq = (t, p) => client.query(t, p);
     await cq('UPDATE org_bank_accounts SET is_primary = false WHERE organization_id = $1', [toNum(organization_id)]);
     const r = await cq('UPDATE org_bank_accounts SET is_primary = true WHERE id = $1 RETURNING *', [toNum(id)]);

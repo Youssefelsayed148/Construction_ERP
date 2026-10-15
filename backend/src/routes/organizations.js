@@ -249,7 +249,7 @@ router.post('/bank-accounts', authenticate, authorize('owner', 'admin', 'owner_c
     });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error' });
-    const created = await auditedOrgMutation((q) => org.createBankAccount(q, value),
+    const created = await auditedOrgMutation((q) => org.createBankAccount(q, value, { transaction: work => work({ query: q }) }),
       (row) => ({ entity: 'org_bank_account', entityId: row.id, action: 'create', after: row, userId: req.user.id }));
     res.status(201).json({ success: true, data: created });
   } catch (e) { return fail(res, e); }
@@ -271,7 +271,7 @@ router.put('/bank-accounts/:id', authenticate, authorize('owner', 'admin', 'owne
 
 router.post('/bank-accounts/:id/make-primary', authenticate, authorize('owner', 'admin', 'owner_ceo', 'coo', 'finance_manager', 'accountant_ap'), async (req, res) => {
   try {
-    const updated = await auditedOrgMutation((q) => org.setPrimaryBankAccount(q, req.body.organization_id, req.params.id),
+    const updated = await auditedOrgMutation((q) => org.setPrimaryBankAccount(q, req.body.organization_id, req.params.id, { transaction: work => work({ query: q }) }),
       (row) => ({ entity: 'org_bank_account', entityId: row.id, action: 'edit', after: { is_primary: true }, userId: req.user.id }));
     res.json({ success: true, data: updated });
   } catch (e) { return fail(res, e); }

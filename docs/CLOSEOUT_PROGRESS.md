@@ -1096,3 +1096,7 @@ Preserved inherited STATE/log edits, branch/HEAD bae3e39 verified; elevated Dock
 ## 2026-10-15 - R2b.10 document control
 
 34 new verified document/control and related aliases; shared category/reference document/client setup; current family registry PASS 1/73, no runtime change needed. Verified 419 -> 453/601, pending 176 -> 142, exempt 6. Initial 1 alias happy failure / 74 passes; isolated 1 failure / 4 passes confirms client v1 acknowledgement hits canonical portal-only guard (403), not a missing audit. It remains pending, with explicit product question in STATE/scorecard; direct client acknowledgement succeeds and rolls back on audit failure. No guard bypass. Full gates at session end; next organizations/invoices.
+
+## 2026-10-15 - R2b.11 organizations
+
+16 organization fixtures with shared setup. Valid-fixture BEFORE 5 failed / 28 passed: create/make-primary bank writes commit inner transaction ahead of audit; organization team create incorrectly canonicalizes project to NULL, breaking create and deletion prerequisite. Minimal optional transaction-runner injection keeps standalone banking atomic and shares audited route q. Team policy override and stored-assignment project resolution enforce project scope. AFTER family registry PASS 1/33. Added policy scope/record mock regressions, not run until final gates. Verified 453 -> 469/601, pending 142 -> 126, exempt 6. Required/unique fixture fields corrected without runtime validation relaxation. Full gates at end; next invoices.

@@ -190,6 +190,7 @@ describe('policy.evaluateRequest', () => {
     ['finance-ledger', '/invoices/:id/transition', { id: '15' }, /FROM invoices WHERE id/i],
     ['handover', '/claims/:id/status', { id: '16' }, /FROM warranty_claims WHERE id/i],
     ['quantities', '/measurements/:id/review', { id: '17' }, /FROM quantity_measurements WHERE id/i],
+    ['organizations', '/team/:userProjectRoleId', { userProjectRoleId: '18' }, /FROM user_project_roles WHERE id/i],
   ])('resolves %s record routes before authorization', async (module, routePath, params, expectedSql) => {
     const calls = [];
     const context = await policy.resolveProjectContext(
@@ -199,7 +200,16 @@ describe('policy.evaluateRequest', () => {
     );
     expect(context).toEqual({ projectId: 7, recordScoped: true, recordFound: true });
     expect(calls[0].sql).toMatch(expectedSql);
-    expect(calls[0].values).toEqual([params.id]);
+    expect(calls[0].values).toEqual([params.id ?? params.userProjectRoleId]);
+  });
+
+  test.each([[7, true], [8, false]])('organization team creation on project %s respects the assigned project', async (projectId, allowed) => {
+    const decision = await policy.evaluateRequest({
+      baseUrl: '/api/organizations', route: { path: '/team' }, method: 'POST',
+      params: {}, query: {}, body: { project_id: projectId }, user: { id: 42, role: 'project_manager' },
+    }, { query: async () => ({ rows: [{ role_key: 'project_manager', project_id: 7, perm_module: 'team', perm_action: 'create' }] }) });
+    expect(decision.allowed).toBe(allowed);
+    expect(decision.project_id).toBe(projectId);
   });
 
   test('resolves nested warehouse movement ownership through its warehouse', async () => {
