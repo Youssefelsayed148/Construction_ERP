@@ -119,9 +119,36 @@ describePg('B5 API contract: OpenAPI spec vs the live /api/v1', () => {
       },
       failed_sweeps: expect.any(Number),
       notification_deliveries: expect.any(Object),
+      failed_sweeps_24h: expect.any(Number),
     });
     expect(JSON.stringify(res.body.data)).not.toContain('last_error');
     expect(JSON.stringify(res.body.data)).not.toContain('payload');
+  });
+
+  test('health only degrades for failed sweeps in the rolling 24-hour window', async () => {
+    const sweep = `health-window-${tag}`;
+    try {
+      await db.query(
+        "INSERT INTO background_sweep_runs (sweep, status, started_at, finished_at, error) VALUES ($1, 'failed', NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days', 'historical test')",
+        [sweep]
+      );
+      const historical = await call('GET', '/api/v1/ops/metrics');
+      expect(historical.status).toBe(200);
+      expect(historical.body.data.status).toBe('healthy');
+      expect(historical.body.data.failed_sweeps).toBeGreaterThanOrEqual(1);
+      expect(historical.body.data.failed_sweeps_24h).toBe(0);
+
+      await db.query(
+        "INSERT INTO background_sweep_runs (sweep, status, started_at, finished_at, error) VALUES ($1, 'failed', NOW(), NOW(), 'recent test')",
+        [`${sweep}-recent`]
+      );
+      const recent = await call('GET', '/api/v1/ops/metrics');
+      expect(recent.status).toBe(200);
+      expect(recent.body.data.status).toBe('degraded');
+      expect(recent.body.data.failed_sweeps_24h).toBeGreaterThanOrEqual(1);
+    } finally {
+      await db.query('DELETE FROM background_sweep_runs WHERE sweep LIKE $1', [`${sweep}%`]);
+    }
   });
 
   test('project role cannot read platform-wide metrics', async () => {

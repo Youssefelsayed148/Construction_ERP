@@ -26,7 +26,10 @@ describePg('users are deactivated, never deleted (real PostgreSQL, real app)', (
   afterAll(async () => {
     await db.query('DELETE FROM user_project_roles WHERE user_id = $1', [owner.id]);
     await db.query('UPDATE users SET is_active = false WHERE id = $1', [owner.id]);
-    await new Promise((resolve) => server.close(resolve));
+    await new Promise((resolve) => {
+      server.close(resolve);
+      server.closeAllConnections?.();
+    });
     await db.pool.end();
   });
 
@@ -68,7 +71,7 @@ describePg('users are deactivated, never deleted (real PostgreSQL, real app)', (
   test('DELETE /api/users/:id deactivates: the row, its authored records and its history stay', async () => {
     const u = await one("INSERT INTO users (name, email, password, role) VALUES ('up-target', $1, 'x', 'staff') RETURNING id", [`up-target-${tag}@test.io`]);
     await db.query("INSERT INTO user_project_roles (user_id, project_id, role_id) SELECT $1, NULL, id FROM roles WHERE key = 'staff'", [u.id]);
-    const res = await fetch(`${base}/api/users/${u.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${owner.token}` } });
+    const res = await fetch(`${base}/api/users/${u.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${owner.token}`, Connection: 'close' } });
     expect(res.status).toBe(200);
     const row = await one('SELECT is_active FROM users WHERE id = $1', [u.id]);
     expect(row.is_active).toBe(false);

@@ -221,6 +221,8 @@ async function stats(query = null) {
        count(*) FILTER (WHERE status = 'delivered')::int AS delivered,
        count(*) FILTER (WHERE status = 'dead')::int AS dead,
        (SELECT count(*)::int FROM background_sweep_runs WHERE status = 'failed') AS sweep_failures,
+       (SELECT count(*)::int FROM background_sweep_runs
+         WHERE status = 'failed' AND started_at >= NOW() - INTERVAL '24 hours') AS sweep_failures_24h,
        (SELECT date_trunc('second', min(next_attempt_at)) FROM event_outbox WHERE status = 'pending') AS oldest_pending_next_retry
      FROM event_outbox`
   )).rows[0];

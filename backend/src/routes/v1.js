@@ -639,7 +639,7 @@ function buildV1Router() {
       )).rows;
       const notificationDeliveries = Object.fromEntries(deliveryRows.map((row) => [row.status, row.count]));
       const failedDeliveries = Number(notificationDeliveries.failed || 0) + Number(notificationDeliveries.undelivered || 0);
-      const status = Number(outbox.dead || 0) > 0 || Number(outbox.sweep_failures || 0) > 0 || failedDeliveries > 0
+      const status = Number(outbox.dead || 0) > 0 || Number(outbox.sweep_failures_24h || 0) > 0 || failedDeliveries > 0
         ? 'degraded' : 'healthy';
       res.json({ success: true, data: {
         status,
@@ -650,6 +650,7 @@ function buildV1Router() {
           dead: Number(outbox.dead || 0), oldest_pending_next_retry: outbox.oldest_pending_next_retry,
         },
         failed_sweeps: Number(outbox.sweep_failures || 0),
+        failed_sweeps_24h: Number(outbox.sweep_failures_24h || 0),
         notification_deliveries: notificationDeliveries,
         database_pool: poolMetrics(pool),
       } });

@@ -11,6 +11,7 @@ param(
   [switch]$R4PasswordAfter,
   [switch]$R4MultiInstance,
   [switch]$R4Resilience,
+  [switch]$NoForceExit,
   [string]$Filter = '^(FAIL|PASS) |Test Suites:|Tests:|^\s+R2 (mutation registry|fixture error|no audit row|rollback leak)|^\s+● .*›'
 )
 $ErrorActionPreference = 'Stop'
@@ -85,7 +86,8 @@ try {
     Pop-Location
     return
   }
-  $args2 = @('--config', 'jest.pg.config.js', '--runInBand', '--forceExit', '--no-colors')
+  $args2 = @('--config', 'jest.pg.config.js', '--runInBand', '--no-colors')
+  if (-not $NoForceExit) { $args2 += '--forceExit' }
   if (-not $All) { $args2 += $Suite }
   if ($R4) { $env:UV_THREADPOOL_SIZE = '16' }
   $ErrorActionPreference = 'Continue'
