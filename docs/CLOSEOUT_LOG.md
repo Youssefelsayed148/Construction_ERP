@@ -1,3 +1,11 @@
+# 2026-10-15 — R3.0 baseline
+
+- `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r3-performance-gate.ps1` — PASS; 126 migrations; 150,000 invoices, 100,000 purchase orders, 75,000 commitments, 300,000 balanced journal lines; disposable container `erp-r3-perf-20261015045726` removed; exit 0.
+- `node --check backend/src/scripts/r3-performance-baseline.js` — PASS before baseline run; `git diff --check` — PASS before R3.0 commit.
+- Journal balance lookup: parallel seq scan, 13.933 ms, 1,911 shared-buffer hits. Invoice list: seq scan + top-N sort, 17.612 ms. Open invoice aggregate: seq scan, 18.746 ms. Active project POs: seq scan + top-N sort, 14.841 ms. Commitment count over 75,000 rows: seq scan, 6.288 ms.
+- Standalone reads: current invoice list 15.34 ms / 100 rows; current project/status POs 67.34 ms / 100,000 rows.
+
+See `docs/R3_EVIDENCE.md` for setup, workload, review's prior route-level results, and remaining post-fix evidence. No implementation fix was included in the R3.0 baseline slice.
 # 2026-10-15 — R2 final gates and close
 
 - `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -All -Filter ...` — PASS 76/76 suites; 1,871/1,871 tests; 126 migrations; census 592 fixtures / 9 exemptions / 0 pending / 0 unregistered / 0 stale / 0 redundant; container `erp-r02-gate-20261015044641` removed; exit 0.

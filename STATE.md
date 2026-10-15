@@ -920,3 +920,9 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - Final R2 gates PASS: backend mock 60/1,059; PostgreSQL registry 76/76 suites and 1,871/1,871 tests, 126 migrations; frontend 32/131; i18n check and parity 35/1,288; lint guards; root build; seeded golden 16/16. See docs/R2_SCORECARD.md and docs/CLOSEOUT_LOG.md for commands and disposable container cleanup evidence.
 - Mutation census: 592 fixtures (590 audit+rollback; 2 documented audit-only replenishment sweeps), 9 reasoned exemptions, 0 pending/unregistered/stale/redundant. R2 is closed.
 - User explicitly approved uninterrupted R3 work. Begin R3.0 baseline, then R3.1–R3.6. Do not start R4.
+
+## 2026-10-15 — R3.0 baseline captured
+
+- Baseline ran before any R3 fix. Disposable PG16 command powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r3-performance-gate.ps1: PASS, 126 migrations; 150k invoices / 100k purchase orders / 75k commitments / 300k balanced journal lines; EXPLAIN plans captured; erp-r3-perf-20261015045726 removed; exit 0.
+- Measurements and repeatable runner are in docs/R3_EVIDENCE.md, backend/scripts/r3-performance-gate.ps1, and backend/src/scripts/r3-performance-baseline.js. The measured query plans use sequential scans; implementation has not yet changed.
+- R3.1 next: migration 0065 and deferred balance-check redesign, proving balanced posts and rejecting unbalanced posts, plus fresh and 0064-upgrade paths. R3.2–R3.6 remain open; R4 not started.

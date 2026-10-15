@@ -1,3 +1,8 @@
+# 2026-10-15 — R3.0 baseline captured
+
+R3.0 baseline PASS before implementation changes: 126 migrations; 150,000 invoices, 100,000 purchase orders, 75,000 commitments, and 300,000 balanced journal lines. `EXPLAIN (ANALYZE, BUFFERS)` reproduced sequential scans on journal-entry lookup, invoice list and aggregate, project PO filtering, and commitment COUNT numbering. Disposable container `erp-r3-perf-20261015045726` removed, exit 0. Full plans and times are in `docs/R3_EVIDENCE.md`; repeatable runner and seed are `backend/scripts/r3-performance-gate.ps1` and `backend/src/scripts/r3-performance-baseline.js`.
+
+Next R3.1: inspect migration conventions, then implement migration 0065 with the journal-entry-line index plus statement-level balance validation; prove balanced posts, unbalanced rejection and rollback, and fresh-schema plus 0064-upgrade application. R3.2–R3.6 remain open. R4 not started.
 # 2026-10-15 — R2 final close and R3 gate
 
 R2 is closed. The mutation registry reports 592 fixtures, 9 documented exemptions, and 0 pending/unregistered/stale/redundant routes. Of the fixtures, 590 passed audit-and-rollback checks and two existing replenishment sweeps passed their documented audit-only check.
