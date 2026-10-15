@@ -1313,3 +1313,11 @@ Passwords now use built-in async `crypto.scrypt` with OWASP-listed N=32768/r=8/p
 - Focused tests PASS 4 suites / 37 tests; i18n check/parity PASS (36 namespaces / 1,432 English keys); API guard PASS 1/1; optimized build PASS.
 - Confirmed API limits: no user create or role-definition CRUD; delegation create/deactivate only; approval-limit list/upsert only; claim SLA read-only. UI does not invent unsupported operations.
 - Implementation commit `b5a90f5`; this is the post-commit checkpoint. Run full frontend/backend gates now. R5.3 remains open for the 33 existing list pages. Visual/RTL/browser behavior remains unverified; RTL test dependency is absent and none was added.
+## R5.4 full-gate verification - 2026-10-15
+
+- `npm.cmd run test:ci -- --no-colors` (with PowerShell `$env:CI='true'`) — PASS 36/36 suites, 168/168 tests.
+- Backend mock gate — PASS 65/65 suites, 1,084/1,084 tests (elevated rerun required for read-only `git ls-files` sandbox restriction).
+- `npm.cmd run lint:api` — PASS, 1/1 direct fetch site; i18n check and parity — PASS, 36 namespaces / 1,432 English keys; optimized production build — PASS.
+- `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/r02-pg-gate.ps1 -All -R4 -NoForceExit -Filter 'FAIL|Test Suites:|Tests:|● .*›|migrations:|removed'` — PASS 84/84 suites, 1,896/1,896 tests, 130 migrations; container `erp-r04-gate-20261015165905` removed, exit 0.
+- `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/r02-pg-gate.ps1 -Reconcile` — PASS, all 16 golden checks; 130 migrations; container `erp-r02-gate-20261015170231` removed, exit 0.
+- R5.3 remains NOT DONE: load-more wiring has not been applied to all 33 existing list page files. No visual, RTL-appearance, or real-browser check was run.

@@ -1050,3 +1050,10 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - R3.5 benchmark and full catalog inventory committed as `010e110`; R3.6 scorecard and final status are next.
 
 - R3.6 scorecard and closeout documentation committed as `456fa41`. R3 is closed; R4 remains not started. Final repository-state check follows.
+## R5.4 workspace gates - 2026-10-15 - verified
+
+- Full PostgreSQL gate PASS: 84/84 suites, 1,896/1,896 tests, 130 migrations; disposable container `erp-r04-gate-20261015165905` removed, exit 0. Golden reconciliation PASS 16/16 at 130 migrations; container `erp-r02-gate-20261015170231` removed, exit 0.
+- Frontend CI PASS 36/36 suites / 168/168 tests; backend mock PASS 65/65 suites / 1,084/1,084 tests. `lint:api` PASS 1/1 direct-fetch call; i18n check/parity PASS (36 namespaces / 1,432 English keys); optimized production build PASS. No migration was added in R5.
+- R5.4 is implemented. R5.3 remains NOT DONE: the shared `LoadMore` is connected to `/admin/:area`, but the existing 33 pagination-impact files are not all wired to per-list offset/append state. Do not mark R5 complete until resolved or explicitly stopped with evidence.
+- No visual, RTL appearance, or real-browser verification was run. React Testing Library is absent and no dependency was added.
+- Next: complete R5.3 for the 33 files; rerun all R5.6 exit gates; write the optional trial-balance proposal only after the required work is green.
