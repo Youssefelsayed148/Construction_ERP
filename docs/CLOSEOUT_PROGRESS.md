@@ -1158,3 +1158,7 @@ Added three expense fixtures. Create exercises the real journal/cost transaction
 ## 2026-10-15 — Session 8 R2b.22 legal
 
 Added three legal document create/update/hard-delete fixtures with fresh targets for update/delete and removed those entries from pending. Family-only `R2_ONLY='^\\w+ /api/legal'` through the tracked PG runner: PASS 1 suite / 9 tests; 126 migrations; erp-r02-gate-20261015035530 removed; exit 0. Audit rows were written and forced-audit failures showed no leaked changes. Census 544 fixtures / 8 exemptions / 49 pending / 0 unregistered / 0 stale / 0 redundant. R2 final gates pending; R3 gated.
+
+## 2026-10-15 — Session 8 R2b.23 payments
+
+Added canonical payment create, v1 payment create, and payment void fixtures. Void prerequisites create actual payments and journal posts. Removed only the three exact pending entries. `R2_ONLY='^\\w+ /api/(v1/)?payments'` also included the already registered v1 allocation route; tracked PG gate PASS 1 suite / 11 tests; 126 migrations; erp-r02-gate-20261015035630 removed; exit 0. New mutations wrote audit rows and forced-audit failures had no leaks. Census 547 fixtures / 8 exemptions / 46 pending / 0 unregistered / 0 stale / 0 redundant. R2 gates pending; R3 gated.

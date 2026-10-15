@@ -842,8 +842,14 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 
 ## Session 8 R2b.22 - legal audit fixtures, 2026-10-15
 
+- Committed `e5dc52b` with requested trailers; STATE.md updated immediately after commit.
 - Added three legal document create/update/hard-delete fixtures with fresh documents on update/delete; removed only their exact entries from pending.
 - `R2_ONLY='^\\w+ /api/legal' powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/mutation-audit.pg.test.js -Filter '^(FAIL|PASS) |Test Suites:|Tests:|^\\s+● |^\\s+R2 '`: PASS 1 suite / 9 tests; 126 migrations; `erp-r02-gate-20261015035530` removed; exit 0. All requests wrote an activity audit row and forced-audit failures had no leaks. Census 544 fixtures, 8 exemptions, 49 pending, zero unregistered/stale/redundant. R2 final gates pending; R3 gated.
+
+## Session 8 R2b.23 - payment audit fixtures, 2026-10-15
+
+- Added canonical payment create, v1 payment create, and payment void fixtures; payment setup posts real journal entries through the route before void. Removed only these three exact entries from pending.
+- Family-only payment regex also selected the already registered v1 allocation route. `R2_ONLY='^\\w+ /api/(v1/)?payments'` through tracked PG runner: PASS 1 suite / 11 tests; 126 migrations; `erp-r02-gate-20261015035630` removed; exit 0. New operations emitted activity/audit rows and forced-audit failure rolled back with no leaks. Census 547 fixtures, 8 exemptions, 46 pending, zero unregistered/stale/redundant. R2 gates pending; R3 gated.
 
 ## Session 7 R2b.16 - report v1 aliases, 2026-10-15
 

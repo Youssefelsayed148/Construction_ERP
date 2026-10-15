@@ -1,6 +1,5 @@
 [
   "DELETE /api/items/:id",
-  "DELETE /api/payments/:id",
   "DELETE /api/team/:userProjectRoleId",
   "DELETE /api/users/:id",
   "DELETE /api/v1/companies/:id",
@@ -18,7 +17,6 @@
   "POST /api/items",
   "POST /api/items/:id/restore",
   "POST /api/notifications/deliveries/:id/retry",
-  "POST /api/payments",
   "POST /api/portal/subcontractor/instructions/:id/acknowledge",
   "POST /api/portal/subcontractor/payment-applications",
   "POST /api/portal/subcontractor/submissions/:kind",
@@ -32,7 +30,6 @@
   "POST /api/v1/daily-reports/:projectId/assemble",
   "POST /api/v1/materials",
   "POST /api/v1/notifications/:id/read",
-  "POST /api/v1/payments",
   "POST /api/v1/schedule/activities/:id/progress",
   "POST /api/v1/subcontracts/subcontractor/submissions/:kind",
   "POST /api/v1/webhooks",
