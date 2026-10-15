@@ -133,6 +133,11 @@ router.post('/contracts', authenticate, authorize(), async (req, res) => {
         action: 'create', module: 'commercial', description: `Created subcontract ${contract_number}`,
         entityId: created.rows[0].id, entityType: 'sub_contract', amount: created.rows[0].contract_value,
       }, { query: q });
+      await fireEvent({
+        eventType: 'subcontract.created', entityType: 'sub_contract', entityId: created.rows[0].id,
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        payload: { sub_contract_id: created.rows[0].id, project_id: created.rows[0].project_id, status: created.rows[0].status },
+      }, { query: q });
       return created;
     });
     res.status(201).json({ success: true, data: r.rows[0] });

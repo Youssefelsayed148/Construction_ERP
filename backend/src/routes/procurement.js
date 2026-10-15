@@ -254,6 +254,7 @@ router.post('/rfq/:id/award', authenticate, authorize('owner', 'admin'), async (
 const awards = require('../services/awardService');
 const docsSvc = require('../services/procurementDocuments');
 const analytics = require('../services/procurementAnalytics');
+const commitmentLedger = require('../services/commitmentLedger');
 
 function typedFail(res, e) {
   return commonTypedFail(res, e, 'PROCUREMENT');
@@ -436,7 +437,16 @@ router.post('/po/:id/cancel', authenticate, authorize(), async (req, res) => {
   try {
     const value = typedBody(Joi.object({ reason: Joi.string().required() }), req, res);
     if (!value) return;
-    const po = await auditedProc(req, (q) => docsSvc.cancelPurchaseOrder(q, req.params.id, req.user, value.reason),
+    const po = await auditedProc(req, async (q) => {
+      const cancelled = await docsSvc.cancelPurchaseOrder(q, req.params.id, req.user, value.reason);
+      await commitmentLedger.syncPurchaseOrder(q, cancelled.id);
+      await fireEvent({
+        eventType: 'purchase_order.cancelled', entityType: 'purchase_order', entityId: cancelled.id,
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        payload: { purchase_order_id: cancelled.id, status: cancelled.status },
+      }, { query: q });
+      return cancelled;
+    },
       (row) => ({ action: 'cancel', description: `Cancelled purchase order ${row.order_number}: ${value.reason}`, entityType: 'purchase_order', entityId: row.id }));
     res.json({ success: true, data: po });
   } catch (e) { return typedFail(res, e); }
@@ -515,6 +525,7 @@ router.post('/po/:id/decide', authenticate, authorize(), async (req, res) => {
       run: async (q) => {
       const decided = await svc.decideOnDocument(q, 'purchase_order', parseInt(req.params.id, 10), req.user, value.decision, value.comment);
       if (decided.status === 'issued') {
+        await commitmentLedger.syncPurchaseOrder(q, poId);
         await fireEvent({
           eventType: 'purchase_order.issued', entityType: 'purchase_order', entityId: parseInt(req.params.id, 10),
           userId: req.user.id, userName: req.user.name, userRole: req.user.role,

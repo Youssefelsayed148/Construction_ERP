@@ -939,3 +939,10 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - Focused PG finance 2/2 suites, 10/10 tests; finance mock 14/14; golden reconciliation 16/16 at 127 migrations. Evidence in docs/R3_EVIDENCE.md.
 - Expanded 150k invoice + payment + allocation run: AR service 300.63 ms; cash-flow four-query data path 309.87 ms. Container erp-r3-perf-20261015051206 removed.
 - Next R3.3 make commitment GETs read-only; R3.4�R3.6 open; R4 not started.
+
+## 2026-10-15 — R3.3 commitment reads and source transactions complete
+
+- R3.3 implementation: GET paths no longer synchronize commitments; migration 0066 backfills source-backed commitments and initializes atomic CM numbering. PO issue/cancel and subcontract variation incorporation sync the ledger in their source transaction; outbox events are written with PO source events and subcontract creation.
+- Focused PG gate PASS 2/2 suites, 28/28 tests, 128 migrations; container `erp-r02-gate-20261015052205` removed. Tests prove read-only repeated/concurrent GETs, no repair, and PO/subcontract source events.
+- Changed modules/tests pass `node --check`; `rg -n "syncCommitments" backend/src` has no hits. Evidence in docs/R3_EVIDENCE.md.
+- Prior commits: R3.0 `0acaccf`, R3.1 `e0069a1`, R3.2 `d084204`. R3.3 commit pending this documentation/checkpoint update. Next R3.4 numbering concurrency and rollback evidence; R3.5–R3.6 open; R4 not started.

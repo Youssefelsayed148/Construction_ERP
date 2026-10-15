@@ -179,7 +179,7 @@ async function approveForecastVersion(q, id, user) {
 // Commitments
 // ---------------------------------------------------------------------------------------------------------
 async function listCommitments(q, projectId) {
-  const rows = await engine.syncCommitments(q, toInt(projectId));
+  const rows = (await q('SELECT * FROM commitments WHERE project_id = $1 ORDER BY id DESC', [toInt(projectId)])).rows;
   return rows.map((c) => ({ ...c, net_amount: engine.round2(toNum(c.original_amount) - toNum(c.cancelled_amount)) }));
 }
 

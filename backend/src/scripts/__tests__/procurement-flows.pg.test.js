@@ -194,6 +194,11 @@ describePg('procurement flows (real PostgreSQL, real app)', () => {
     const wfId = (await one('SELECT workflow_instance_id FROM purchase_orders WHERE id = $1', [po.id])).workflow_instance_id;
     const wf = (await one('SELECT current_step_key, status FROM workflow_instances WHERE id = $1', [wfId]));
     expect(wf).toMatchObject({ current_step_key: 'issued', status: 'active' });
+    const commitment = await one("SELECT project_id, source_id, original_amount, status FROM commitments WHERE source_type = 'purchase_order' AND source_id = $1", [po.id]);
+    expect(commitment).toMatchObject({ project_id: po.project_id, source_id: po.id, status: 'active' });
+    expect(Number(commitment.original_amount)).toBe(Number(po.total_amount));
+    expect(await one("SELECT event_type FROM event_outbox WHERE event_type = 'purchase_order.issued' AND entity_id = $1", [po.id]))
+      .toEqual({ event_type: 'purchase_order.issued' });
     fixtures.pr = pr;
     fixtures.po = po;
     fixtures.poLine = poLine;

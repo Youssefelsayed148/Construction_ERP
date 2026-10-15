@@ -49,3 +49,13 @@ Verification: focused finance PG suites **PASS 2/2 suites, 10/10 tests**, 127 mi
 With 150,000 invoices, 150,000 payment rows, and 150,000 allocation rows, the AR aggregate service measured **300.63 ms** and the four parallel data calls used by the cash-flow route (AR, AP, client retention, subcontractor retention) measured **309.87 ms**. This local query-path timing excludes HTTP auth and serialization. It is below the plan's 1-second data-path target; the prior route observation was 97.6 seconds at 150,000 invoices. The performance container `erp-r3-perf-20261015051206` was removed; 127 migrations; exit 0.
 
 R3.3–R3.6 remain open. R4 has not started.
+
+### R3.3 — source-backed commitments and read-only GETs
+
+`commercialEngine.projectCommercial` and `budgeting.listCommitments` now read the commitments ledger without scanning or mutating POs/subcontracts. Migration `0066_commitment_source_backfill.sql` reconciles existing source-linked rows, inserts missing active PO/subcontract commitments with deterministic numbers, and seeds the atomic `document_counters` scope. New source changes synchronize the ledger in the same transaction: PO issuance and cancellation, and incorporated subcontract variations. PO issue/cancel and subcontract creation write their outbox events through the same transaction query client.
+
+The existing PG fixture now seeds its source-backed commitment instead of relying on GET self-healing. Coverage also verifies an active but unledgered source remains untouched after commercial/budgeting reads, the row/timestamp snapshot is unchanged, and 20 concurrent commitment GETs all return 200. The procurement flow checks that issuance commits both the ledger row and `purchase_order.issued` event; subcontract creation checks `subcontract.created` in the outbox.
+
+Focused command: `powershell -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/commercial-5-5.pg.test.js,src/scripts/__tests__/procurement-flows.pg.test.js` — **PASS**, 2/2 suites / 28/28 tests, 128 migrations; container `erp-r02-gate-20261015052205` removed; exit 0. `node --check` passed for changed modules and tests; `rg -n "syncCommitments" backend/src` found no references.
+
+R3.3 complete. R3.4–R3.6 remain open. R4 has not started.

@@ -177,6 +177,8 @@ describe('forecast margin scenarios (hand-calculated)', () => {
              VALUES ($1,$2,$3,$4,$5)`, [10, 'CC-00001', 2, CONTRACT, CONTRACT]);
     await q(`INSERT INTO purchase_orders (id, order_number, project_id, total_amount, status)
              VALUES ($1,$2,$3,$4,$5)`, [900, 'PO-00900', 2, PO_COMMIT, 'issued']);
+    await q(`INSERT INTO commitments (commitment_number, project_id, source_type, source_id, original_amount, status)
+             VALUES ('CM-00900', 2, 'purchase_order', 900, $1, 'active')`, [PO_COMMIT]);
     await q(`INSERT INTO project_costs (id, project_id, amount) VALUES ($1,$2,$3)`, [2, 2, 20000]);
   });
 
@@ -244,6 +246,8 @@ describe('forecast margin scenarios (hand-calculated)', () => {
   test('scenario C — client variation + subcontract change (+5,000)', async () => {
     await q(`INSERT INTO sub_contracts (id, contract_number, project_id, subcontractor_id, contract_value, revised_amount, status)
              VALUES ($1,$2,$3,$4,$5,$6,$7)`, [50, 'SC-0050', 2, 1, 50000, 55000, 'active']);
+    await q(`INSERT INTO commitments (commitment_number, project_id, source_type, source_id, original_amount, status)
+             VALUES ('CM-00050', 2, 'sub_contract', 50, 55000, 'active')`);
     await engine.applyBudgetChange(q, {
       project_id: 2, new_amount: 85000, reason: 'skim coat budget', created_by: OWNER.id,
     });

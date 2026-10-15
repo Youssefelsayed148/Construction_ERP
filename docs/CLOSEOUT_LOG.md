@@ -2133,3 +2133,10 @@ Added nine audit/rollback fixtures for notification delivery retry, v1 notificat
 ## 2026-10-15 - Session 10 R2b.31 isolate notification audit actor
 
 The first full R2 PG suite (126 migrations) failed 1/76 suites, 169/1,871 tests; all failures were registry rollback cases after notification delivery retry. A two-route failing-first reproducer (`POST /api/notifications/deliveries/:id/retry`, then `DELETE /api/reports/saved-views/:id`) showed the retry fixture used the global owner, so its failure-injection user row poisoned later owner-authenticated prerequisite API calls (report saved-view returned 500). Small fix: create the failed delivery for a fresh project-manager actor and return that actor for audit injection. Reproducer AFTER: PASS 1 suite / 8 tests; 126 migrations; retry returned 500 with no leaks, following report delete fixture completed; container removed. Full registry and exit gates must be rerun.
+
+# 2026-10-15 — R3.3 commitment source ledger
+
+- `powershell -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/commercial-5-5.pg.test.js,src/scripts/__tests__/procurement-flows.pg.test.js` — PASS 2/2 suites, 28/28 tests; 128 migrations; disposable container `erp-r02-gate-20261015052205` removed; exit 0.
+- Coverage: migration 0066 applied on a fresh database; active PO/subcontract commitment backfill; PO issuance creates its commitment and outbox event inside the audited source transaction; subcontract creation records an outbox event; project commercial and budgeting reads preserve all ledger fields/timestamps and do not repair an unledgered active source; 20 concurrent commitment GET requests all return 200; existing adjustment and procurement flows pass.
+- `node --check` passed for changed backend modules and tests; `rg -n "syncCommitments" backend/src` returned no callers. `git diff --check` runs before commit.
+- Migration 0066 updates existing rows and inserts missing active sources with deterministic CM numbers, then seeds `document_counters`. No `.env` or external service was used.

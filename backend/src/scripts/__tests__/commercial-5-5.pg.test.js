@@ -76,6 +76,7 @@ describePg('5.5 commercial and finance (real PostgreSQL, real app)', () => {
     contractA = (await one("INSERT INTO client_contracts (contract_number, project_id, client_id, original_value, revised_value, retention_percent) VALUES ($1, $2, $3, 1000000, 1000000, 10) RETURNING id", [`CC-55-${tag}`, pA, client1])).id;
     const sub = (await one("INSERT INTO subcontractors (name, name_en, name_ar) VALUES ($1, $1, $1) RETURNING id", [`c55-sub-${tag}`])).id;
     subContractA = (await one("INSERT INTO sub_contracts (contract_number, project_id, subcontractor_id, contract_value, retention_percent, advance_amount, status) VALUES ($1, $2, $3, 500000, 5, 10000, 'active') RETURNING id", [`SC-55-${tag}`, pA, sub])).id;
+    await db.query("INSERT INTO commitments (commitment_number, project_id, source_type, source_id, original_amount, status) VALUES ($1, $2, 'sub_contract', $3, 500000, 'active')", [`CM-C55-${tag}`, pA, subContractA]);
     await makeUser('owner', 'owner');
     await makeUser('cm', 'staff', 'commercial_manager');
     await makeUser('cmA', 'staff', 'commercial_manager', pA);
@@ -193,6 +194,17 @@ describePg('5.5 commercial and finance (real PostgreSQL, real app)', () => {
   });
 
   // --------------------------------------------------------------------------------------------------
+  test('3a. subcontract source creation records its outbox event in the source transaction', async () => {
+    const subcontractorId = (await one('SELECT id FROM subcontractors ORDER BY id DESC LIMIT 1')).id;
+    const subcontract = await call('POST', '/api/subcontractors/contracts', users.cm, {
+      project_id: pA, subcontractor_id: subcontractorId, contract_value: 12500, scope: 'R3 source event fixture',
+    });
+    expect(subcontract.status).toBe(201);
+    const event = await one("SELECT event_type, entity_type, entity_id, payload FROM event_outbox WHERE event_type = 'subcontract.created' AND entity_id = $1", [subcontract.body.data.id]);
+    expect(event).toMatchObject({ event_type: 'subcontract.created', entity_type: 'sub_contract', entity_id: subcontract.body.data.id });
+    expect(event.payload).toMatchObject({ sub_contract_id: subcontract.body.data.id, project_id: pA });
+  });
+
   test('4. currency rates: dated history, exact conversion, inverse fallback, a missing rate is an error', async () => {
     const from = 'USD'; const to = 'Q' + [...String(tag).slice(-2)].map((d) => 'ABCDEFGHIJ'[d]).join(''); // a pair no other suite uses
     await db.query('DELETE FROM currency_rates WHERE from_currency = $1 AND to_currency = $2', [from, to]);   // rates are history: clear this suite's own pair
@@ -483,7 +495,10 @@ describePg('5.5 commercial and finance (real PostgreSQL, real app)', () => {
   // --------------------------------------------------------------------------------------------------
   test('8. commitment adjustment: reason, range, history; the committed cost follows', async () => {
     const po = await tx((q) => svc.createPurchaseOrder(q, { supplier_id: supplier1, project_id: pA, taxes: 0, freight: 0, approved_charges: 0, lines: [{ material_id: null, description: `c55 ${tag}`, quantity: 10, unit: 'ea', unit_rate: 1000 }], created_by: users.owner.id }));
-    await db.query("UPDATE purchase_orders SET status = 'issued' WHERE id = $1", [po.id]);
+    await tx(async (q) => {
+      await q("UPDATE purchase_orders SET status = 'issued' WHERE id = $1", [po.id]);
+      await require('../../services/commitmentLedger').syncPurchaseOrder(q, po.id);
+    });
     const list = await call('GET', `/api/commercial/project/${pA}/commitments`, users.cm);
     expect(list.status).toBe(200);
     const commitment = list.body.data.find((c) => c.source_type === 'purchase_order' && c.source_id === po.id);
@@ -500,6 +515,19 @@ describePg('5.5 commercial and finance (real PostgreSQL, real app)', () => {
     expect(hist.adjustments.map((a) => [Number(a.previous_cancelled), Number(a.new_cancelled)])).toEqual([[2500, 0], [0, 2500]]);
     await call('POST', url, users.cm, { cancelled_amount: 4000, reason: 'descoped again' });
     expect((await engine.projectCommercial(db.query, pA)).committed_cost).toBe(506000);   // + the 500000 active subcontract commitment
+  });
+
+  test('8a. commercial and budgeting commitment reads do not write or repair the ledger', async () => {
+    const unledgered = (await one("INSERT INTO sub_contracts (contract_number, project_id, subcontractor_id, contract_value, retention_percent, advance_amount, status) VALUES ($1, $2, (SELECT id FROM subcontractors ORDER BY id DESC LIMIT 1), 1200, 5, 0, 'active') RETURNING id", [`SC-55-READ-${tag}`, pA])).id;
+    const before = await all('SELECT id, commitment_number, source_type, source_id, original_amount, status, updated_at FROM commitments WHERE project_id = $1 ORDER BY id', [pA]);
+    expect(before.some((row) => row.source_type === 'sub_contract' && Number(row.source_id) === subContractA)).toBe(true);
+    await engine.projectCommercial(db.query, pA);
+    await budgeting.listCommitments(db.query, pA);
+    const concurrentReads = await Promise.all(Array.from({ length: 20 }, () => call('GET', `/api/commercial/project/${pA}/commitments`, users.cm)));
+    expect(concurrentReads.map((response) => response.status)).toEqual(Array(20).fill(200));
+    const after = await all('SELECT id, commitment_number, source_type, source_id, original_amount, status, updated_at FROM commitments WHERE project_id = $1 ORDER BY id', [pA]);
+    expect(after).toEqual(before);
+    expect(after.some((row) => Number(row.source_id) === unledgered)).toBe(false);
   });
 
   // --------------------------------------------------------------------------------------------------

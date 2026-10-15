@@ -1216,3 +1216,7 @@ Added nine audit/rollback fixtures for notifications, subcontractor portal canon
 ## 2026-10-15 - Session 10 R2b.31 isolate notification retry actor
 
 The full R2 PG gate reported 1/76 suites failed with 169/1,871 tests failing; failures were rollback tests after notification retry. The two-route reproducer confirmed the fixture marked the shared owner as the failure-injection user, breaking subsequent owner-authenticated setup (`POST /api/reports/saved-views` returned 500). Changed delivery ownership/audit actor to a fresh project-manager fixture account. Targeted order-dependent reproducer AFTER: PASS 1 suite / 8 tests; 126 migrations; retry audit failure rolled back cleanly and next report fixture proceeded. Full registry and R2 exit gates remain to rerun.
+
+# 2026-10-15 — R3.3 source-backed commitment ledger
+
+Commitment GET paths now read the ledger without reconciliation writes. Migration 0066 backfills active PO/subcontract sources and existing ledger state. PO issuance/cancellation and subcontract variation incorporation sync the ledger in the source transaction; PO issue/cancel and subcontract creation record transactional outbox events. Targeted PG verification PASS 2/2 suites / 28/28 tests, 128 migrations; container `erp-r02-gate-20261015052205` removed; exit 0. Coverage includes 20 concurrent read-only GETs, no repair writes, PO issue ledger + outbox, subcontract-create outbox, and existing commercial flows. R3.4–R3.6 remain open; R4 not started.

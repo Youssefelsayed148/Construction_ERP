@@ -26,6 +26,7 @@
 const workflowEngineRef = () => require('./workflowEngine');
 const { nextNumber } = require('./numbering');
 const costView = require('./costView');
+const commitmentLedger = require('./commitmentLedger');
 
 function toNum(v) {
   if (v == null) return 0;
@@ -120,59 +121,6 @@ async function actualCost(q, projectId) {
   return round2(await costView.projectTotal(q, projectId));
 }
 
-// Commitments ledger, self-healing from purchase_orders + sub_contracts.
-async function syncCommitments(q, projectId) {
-  const existing = (await q(
-    'SELECT * FROM commitments WHERE project_id = $1',
-    [projectId]
-  )).rows;
-  const bySource = new Map(existing.map((c) => [`${c.source_type}:${c.source_id}`, c]));
-  const activeKeys = new Set();
-
-  // Issued/approved POs (Phase 12 statuses).
-  // A failed read is an error, never "no purchase orders" (closeout A2.4): commitments are cost exposure.
-  const pos = (await q('SELECT id, supplier_id, total_amount, status FROM purchase_orders WHERE project_id = $1', [projectId])).rows
-    .filter((po) => !['draft', 'rejected', 'cancelled', 'void'].includes(po.status));
-  for (const po of pos) {
-    const key = `purchase_order:${po.id}`;
-    activeKeys.add(key);
-    if (!bySource.has(key)) {
-      const count = parseInt((await q('SELECT COUNT(*) FROM commitments')).rows[0].count);
-      await q(
-        `INSERT INTO commitments (commitment_number, project_id, source_type, source_id, original_amount, status)
-         VALUES ($1, $2, 'purchase_order', $3, $4, 'active')`,
-        [`CM-${String(count + 1).padStart(5, '0')}`, projectId, po.id, toNum(po.total_amount)]
-      );
-    } else await q('UPDATE commitments SET original_amount = $1, status = $2, updated_at = $3 WHERE id = $4',
-      [toNum(po.total_amount), 'active', new Date(), bySource.get(key).id]);
-  }
-
-  // Active subcontracts.
-  const subs = (await q('SELECT id, contract_value, revised_amount, status FROM sub_contracts WHERE project_id = $1', [projectId])).rows
-    .filter((sc) => ['active', 'approved', 'completed', 'closed'].includes(sc.status));
-  for (const sc of subs) {
-    const key = `sub_contract:${sc.id}`;
-    activeKeys.add(key);
-    const amount = sc.revised_amount != null && toNum(sc.revised_amount) > 0 ? toNum(sc.revised_amount) : toNum(sc.contract_value);
-    if (!bySource.has(key)) {
-      const count = parseInt((await q('SELECT COUNT(*) FROM commitments')).rows[0].count);
-      await q(
-        `INSERT INTO commitments (commitment_number, project_id, source_type, source_id, original_amount, status)
-         VALUES ($1, $2, 'sub_contract', $3, $4, 'active')`,
-        [`CM-${String(count + 1).padStart(5, '0')}`, projectId, sc.id, amount]
-      );
-    } else await q('UPDATE commitments SET original_amount = $1, status = $2, updated_at = $3 WHERE id = $4',
-      [amount, 'active', new Date(), bySource.get(key).id]);
-  }
-  for (const commitment of existing) {
-    const key = `${commitment.source_type}:${commitment.source_id}`;
-    if (['purchase_order', 'sub_contract'].includes(commitment.source_type) && !activeKeys.has(key) && commitment.status !== 'cancelled') {
-      await q('UPDATE commitments SET status = $1, updated_at = $2 WHERE id = $3', ['cancelled', new Date(), commitment.id]);
-    }
-  }
-  return (await q('SELECT * FROM commitments WHERE project_id = $1', [projectId])).rows;
-}
-
 // ---------------------------------------------------------------------------
 // The canonical project computation
 // ---------------------------------------------------------------------------
@@ -210,7 +158,7 @@ async function projectCommercial(q, projectId) {
     currentBudgetTotal = currentBudget(toNum(project.budget), changes);
   }
 
-  const commitments = await syncCommitments(q, projectId);
+  const commitments = (await q('SELECT * FROM commitments WHERE project_id = $1', [projectId])).rows;
   const committed = committedCost(commitments);
   const actual = await actualCost(q, projectId);
   const accrued = accruedCost(committed, actual);
@@ -424,12 +372,7 @@ async function incorporateVariation(q, variationId) {
         'UPDATE sub_contracts SET revised_amount = $1, updated_at = $2 WHERE id = $3',
         [round2(toNum(sc.contract_value) + changeTotal_guard(changeTotal)), new Date(), variation.sub_contract_id]
       );
-      const count = parseInt((await q('SELECT COUNT(*) FROM commitments')).rows[0].count);
-      await q(
-        `UPDATE commitments SET original_amount = $1, updated_at = $2 WHERE source_type = 'sub_contract' AND source_id = $3`,
-        [round2(toNum(sc.contract_value) + toNum(changeTotal)), new Date(), variation.sub_contract_id]
-      );
-      void count;
+      await commitmentLedger.syncSubcontract(q, variation.sub_contract_id);
     }
   }
   // The project forecast is a live engine output — recompute to prove the
@@ -493,7 +436,6 @@ module.exports = {
   approvedVariationTotal,
   budgetChangeTotal,
   actualCost,
-  syncCommitments,
   projectCommercial,
   createVariation,
   startVariationWorkflow,
