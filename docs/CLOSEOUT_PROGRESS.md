@@ -1186,3 +1186,7 @@ Added seven mutation fixtures covering agent token create/revoke, agent session 
 ## 2026-10-15 - Session 10 R2b.29 team/delegations/reports
 
 Added six audit/rollback fixtures for the remaining team assignment, delegation, and report create routes. The tracked family gate `R2_ONLY='^(POST /api/(team|delegations|reports/(saved-views|scheduled))|DELETE /api/team)'` passed 1 suite / 15 tests; 126 migrations; container removed; no rollback leaks. Census 583 fixtures, 8 exemptions, 10 pending, zero unregistered/stale/redundant. R2 exit gates pending; R3 gated.
+
+## 2026-10-15 - Session 10 R2b.30 final routes and alias boundary
+
+Added nine audit/rollback fixtures for notifications, subcontractor portal canonical routes, client preview, daily-report assembly, and approval limits. The v1 subcontractor submission alias is rejected by the existing external portal path guard with 403; documented that boundary and added a regression denial test. Final tracked targeted PG gate: PASS 1 suite / 26 tests; 126 migrations; audit rows and rollback checks passed; container removed. Census 592 fixtures / 9 exemptions / 0 pending / 0 unregistered / 0 stale / 0 redundant. R2 full gate set is next; R3 gated.

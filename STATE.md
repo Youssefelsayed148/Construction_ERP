@@ -895,3 +895,11 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - Added six fixtures covering team assignment create/delete, delegation create/deactivate, and report saved-view/schedule create. No production route changes.
 - Tracked family gate `R2_ONLY='^(POST /api/(team|delegations|reports/(saved-views|scheduled))|DELETE /api/team)'`: PASS 1 suite / 15 tests; 126 migrations; no audit rollback leaks; container removed.
 - Census 583 fixtures / 8 exemptions / 10 pending / zero unregistered/stale/redundant. R2 exit gates remain pending; R3 gated.
+
+- Committed `36ae41a` (R2b.29 team/delegations/reports) with requested trailers. STATE updated after commit.
+
+## Session 10 R2b.30 - final routes and portal alias boundary, 2026-10-15
+
+- Added nine fixture routes covering notification retry/read/preferences, canonical portal instructions/payment applications/submissions, client preview, v1 daily-report assembly, and approval limits. Verified targeted family: PASS 1 suite / 26 tests; 126 migrations; no rollback leaks; container removed.
+- The v1 subcontractor submissions alias is blocked with 403 by the existing externalPortalAllowed path boundary. Added a documented exemption and a regression 403 test; kept the canonical route fixture. Existing two client-only aliases remain covered by the same test.
+- Census 592 fixtures, 9 exemptions, 0 pending, 0 unregistered/stale/redundant. R2 exit gates still need to run; R3 gated.

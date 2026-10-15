@@ -168,15 +168,16 @@ describePg('R2 every mounted mutation has a successful audited payload', () => {
   const keys = Object.keys(registry).filter(key => !ONLY || ONLY.test(key));
 
   test.each([
-    '/api/v1/documents/1/acknowledgement',
-    '/api/v1/variations/1/client-response',
-  ])('client alias %s is denied by externalPortalAllowed', async url => {
-    const client = await ctx().actor('client');
-    const before = await counts(client.userId);
-    const r = await send('POST', url, {}, client.token);
+    ['/api/v1/documents/1/acknowledgement', 'client'],
+    ['/api/v1/variations/1/client-response', 'client'],
+    ['/api/v1/subcontracts/subcontractor/submissions/manpower', 'subcontractor'],
+  ])('external portal alias %s is denied by externalPortalAllowed', async (url, role) => {
+    const actor = await ctx().actor(role);
+    const before = await counts(actor.userId);
+    const r = await send('POST', url, {}, actor.token);
     expect(r.status).toBe(403);
     expect(r.json.error.message).toBe('This account can access only its scoped portal');
-    expect(await counts(client.userId)).toEqual(before);
+    expect(await counts(actor.userId)).toEqual(before);
   });
 
   test.each(keys)('%s success writes an audit row', async key => {

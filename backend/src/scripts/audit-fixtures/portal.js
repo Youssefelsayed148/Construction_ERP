@@ -32,6 +32,20 @@ module.exports = {
     const s = await subWorld(ctx);
     return { params: { id: s.contract.id }, body: {}, actor: s.actor };
   }),
+  ...group(['POST /api/portal/subcontractor/instructions/:id/acknowledge'], async ctx => {
+    const s = await subWorld(ctx);
+    const instruction = await ctx.api('POST', `/api/projects/${ctx.pid}/instructions`, { title: `R02 portal instruction ${ctx.n()}` }, [201]);
+    await ctx.db.query('UPDATE engineer_instructions SET sub_contract_id = $1 WHERE id = $2', [s.contract.id, instruction.id]);
+    return { params: { id: instruction.id }, body: { project_id: ctx.pid, response: 'Received' }, actor: s.actor };
+  }),
+  ...group(['POST /api/portal/subcontractor/payment-applications'], async ctx => {
+    const s = await subWorld(ctx);
+    return { body: { project_id: ctx.pid, sub_contract_id: s.contract.id, period_from: '2026-10-01', period_to: '2026-10-14', work_value: 250 }, status: 201, actor: s.actor };
+  }),
+  ...group(['POST /api/portal/subcontractor/submissions/:kind'], async ctx => {
+    const s = await subWorld(ctx);
+    return { params: { kind: 'manpower' }, body: { project_id: ctx.pid, payload: { sub_contract_id: s.contract.id, report_date: '2026-10-14', worker_count: 4, worker_type: 'crew', note: 'R02 fixture' } }, status: 201, actor: s.actor };
+  }),
   ...group(['POST /api/portal/subcontractor/quantities'], async ctx => {
     const s = await subWorld(ctx);
     return {

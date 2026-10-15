@@ -1,12 +1,1 @@
-[
-  "POST /api/client-portal/preview",
-  "POST /api/notifications/deliveries/:id/retry",
-  "POST /api/portal/subcontractor/instructions/:id/acknowledge",
-  "POST /api/portal/subcontractor/payment-applications",
-  "POST /api/portal/subcontractor/submissions/:kind",
-  "POST /api/v1/daily-reports/:projectId/assemble",
-  "POST /api/v1/notifications/:id/read",
-  "POST /api/v1/subcontracts/subcontractor/submissions/:kind",
-  "PUT /api/approval-limits",
-  "PUT /api/v1/notifications/preferences"
-]
+[]

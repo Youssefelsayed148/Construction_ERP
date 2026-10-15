@@ -38,5 +38,10 @@
     "file": "routes/client.js",
     "path": "/variations/:id/response",
     "reason": "client writes exposed only via /api/client-portal by design"
+  },
+  "POST /api/v1/subcontracts/subcontractor/submissions/:kind": {
+    "file": "routes/v1.js",
+    "path": "/subcontracts/subcontractor/submissions/:kind",
+    "reason": "Scoped subcontractor writes are exposed only through the canonical /api/portal/subcontractor mount; externalPortalAllowed denies this versioned alias with 403"
   }
 }
