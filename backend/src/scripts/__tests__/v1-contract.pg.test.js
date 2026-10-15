@@ -82,6 +82,8 @@ describePg('B5 API contract: OpenAPI spec vs the live /api/v1', () => {
         }
         // A documented document route (GET .../pdf) legitimately answers a PDF once the record exists.
         if (res.contentType.includes('application/pdf') && path.endsWith('/pdf')) continue;
+        // Successful export handlers intentionally return downloadable CSV, not a JSON envelope.
+        if (res.contentType.includes('text/csv') && ['/reports/export/:reportKey', '/schedule/activities/export'].includes(path)) continue;
         if (!res.contentType.includes('application/json')) {
           unanswerable.push(`${method.toUpperCase()} ${path} → ${res.contentType}`);
           continue;
@@ -94,6 +96,9 @@ describePg('B5 API contract: OpenAPI spec vs the live /api/v1', () => {
         );
         if (!okShape) wrongEnvelope.push(`${method.toUpperCase()} ${path} → ${res.status} ${JSON.stringify(body).slice(0, 120)}`);
       }
+    }
+    if (unanswerable.length || wrongEnvelope.length) {
+      console.error('v1 route contract probe failures:', JSON.stringify({ unanswerable, wrongEnvelope: wrongEnvelope.map((item) => item.split(' ').slice(0, 3).join(' ')) }));
     }
     expect(unanswerable).toEqual([]);
     expect(wrongEnvelope).toEqual([]);
