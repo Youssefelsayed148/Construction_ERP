@@ -13,7 +13,14 @@ module.exports = {
   ...group(['POST /api/actions'], async ctx => ({ body: { title: `r02 action ${ctx.n()}`, project_id: ctx.pid, assigned_user_id: ctx.owner.id }, status: 201 })),
   ...group(['POST /api/actions/:id/acknowledge'], async ctx => ({ params: { id: (await action(ctx)).id }, body: {} })),
   ...group(['POST /api/actions/:id/complete'], async ctx => ({ params: { id: (await action(ctx)).id }, body: {} })),
+  ...group(['POST /api/actions/:id/comments', 'POST /api/v1/actions/:id/comments'], async ctx => ({ params: { id: (await action(ctx)).id }, body: { body: 'r02 action comment' }, status: 201 })),
   ...group(['POST /api/actions/:id/delegate'], async ctx => {
+    const other = await ctx.actor('project_manager');
+    return { params: { id: (await action(ctx)).id }, body: { to_user_id: other.userId, comment: 'r02' } };
+  }),
+  ...group(['POST /api/v1/actions'], async ctx => ({ body: { title: `r02 v1 action ${ctx.n()}`, project_id: ctx.pid, assigned_user_id: ctx.owner.id }, status: 201 })),
+  ...group(['POST /api/v1/actions/:id/acknowledge', 'POST /api/v1/actions/:id/complete'], async ctx => ({ params: { id: (await action(ctx)).id }, body: {} })),
+  ...group(['POST /api/v1/actions/:id/delegate'], async ctx => {
     const other = await ctx.actor('project_manager');
     return { params: { id: (await action(ctx)).id }, body: { to_user_id: other.userId, comment: 'r02' } };
   }),

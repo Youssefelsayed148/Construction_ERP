@@ -1132,3 +1132,9 @@ FINAL session 5 full gates PASS: mock 60/1,059; real PG 76/1,632 (+192 = 96 new 
 - Added four mutation fixtures for v1 saved-view and scheduled-report create/delete aliases, reusing valid canonical setup for deletes. Removed these exact entries from pending; no route changes.
 - `R2_ONLY=/v1/reports/(saved-views|scheduled) powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/mutation-audit.pg.test.js`: PASS 1 suite / 11 tests; 126 migrations; erp-r02-gate-20261015034107 removed; exit 0.
 - Registry now 518/601 verified (516 audit+rollback, 2 historical audit-only), 75 pending, 8 exempt; 0 unregistered/stale/redundant. Full gates are not rerun after this slice. R3 remains gated.
+
+## Session 7 R2b.17 - action audit fixtures
+
+- Added six mutation fixtures: canonical action comment plus v1 create, acknowledge, comment, complete, and delegate. Removed only these exact entries from pending; no route changes.
+- `R2_ONLY=/actions` through `backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/mutation-audit.pg.test.js`: PASS 1 suite / 27 tests; 126 migrations; erp-r02-gate-20261015034249 removed; exit 0.
+- Registry now 524/601 verified (522 audit+rollback, 2 historical audit-only), 69 pending, 8 exempt; 0 unregistered/stale/redundant. Full gates are not rerun after this slice. R3 remains gated.

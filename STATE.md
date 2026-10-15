@@ -804,6 +804,13 @@ R2b.14 committed; STATE updated after commit. Continue HSE/QHSE remainder.
 - Session-end backend mock PASS 60/1,059 exit 0; frontend PASS 32/131 exit 0; i18n check/parity PASS 35 namespaces / 1,288 English keys; lint:guards PASS unchanged; CI build compiled successfully exit 0 (existing fs.F_OK deprecation). Initial summary pipelines returned shell exit 1 with all tests passing; explicit LASTEXITCODE capture reruns confirm both test processes exit 0, no test assertion failure. Changed JS syntax and git diff --check PASS. Full PostgreSQL: `powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/r02-pg-gate.ps1 -All` PASS 76/76 suites, 1,714/1,714 tests; 126 migrations; erp-r02-gate-20261015033636 removed; exit 0. Registry census: 514 fixtures, 8 exemptions, 79 pending, 0 unregistered/stale/redundant. Golden previously PASS 16/16, zero violations, 126 migrations; no new golden run this session.
 
 R2b.15 committed `96184fc`; STATE updated after commit. Next: remaining CRUD/aliases, schedule, portal, auth/agent, reports/webhooks fixtures. R2 exit and all R3 work remain gated; no R4.
+R2b.16 committed `ebe8716`; report v1 aliases PASS. Next: remaining action aliases and CRUD fixtures.
+
+## Session 7 R2b.17 - action audit fixtures, 2026-10-15
+
+- Added six mutation fixtures: canonical action comment plus v1 create, acknowledge, comment, complete, and delegate. Removed only these exact entries from pending; no route changes.
+- `R2_ONLY=/actions` through `backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/mutation-audit.pg.test.js`: PASS 1 suite / 27 tests; 126 migrations; erp-r02-gate-20261015034249 removed; exit 0.
+- Registry 524/601 verified (522 audit+rollback, 2 historical audit-only), 69 pending, 8 exempt; 0 unregistered/stale/redundant. Full gates not rerun after this slice. R3 remains gated.
 
 ## Session 7 R2b.16 - report v1 aliases, 2026-10-15
 
