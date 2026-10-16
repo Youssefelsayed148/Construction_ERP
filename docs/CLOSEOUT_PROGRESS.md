@@ -1386,3 +1386,10 @@ Reviewed the existing lint-guards fallback and Docker-context launcher tests. Ad
 - CI workflow slice committed as `8c0e3b5`; includes audit, API guard, root build, and existing dedicated Playwright browser setup. Remote workflow status NOT VERIFIED.
 - Local requested gates: backend mock 65/1,089; PostgreSQL `-All` 84/1,933 at 130 migrations; golden reconciliation 16/16; frontend 37/323; i18n check, API guard, backend guard, and root build passed. Playwright local E2E: 74 passed. Production audits returned 0 vulnerabilities across all severities in both packages.
 - Golden seed source and documentation corrections are in progress. See `docs/BATCH3_SCORECARD.md` for ticket states and decisions waiting.
+
+## Batch 3 - completion checkpoint
+
+- CI commits: `8c0e3b5`, `59df19f`; golden seed guard commit: `43ae0df`. Documentation truth and scorecard changes are complete; command results are in `docs/CLOSEOUT_LOG.md` and `docs/BATCH3_SCORECARD.md`.
+- Local exit gates: backend mock 65/1,089; PG `-All` 84/1,933 at 130 migrations; golden reconciliation 16/16; frontend 37/323; Playwright 74 passed; i18n check, API guard, backend guard, and root build passed. Both production npm audits returned zero vulnerabilities at every severity.
+- Remote GitHub Actions remains NOT VERIFIED. Production remains NO-GO pending human UAT, finance sign-off, native Arabic review, and security dispositions.
+- CI follow-up `52cf9df` isolates Playwright and the Chromium install into a dedicated E2E job, separate from build/runtime image work.

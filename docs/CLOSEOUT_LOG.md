@@ -2340,3 +2340,13 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - Ticket 3.3 throwaway-PG reconciliation gate: non-staging target refused; golden seed reported 96 units, 1 BOQ, 122.4000 m3; reconciliation 16/16 checks, all zero violations; 130 migrations, container removed, exit 0. Backend golden target-guard unit test passed 1 suite / 9 tests.
 - Local `npm audit --omit=dev` results: frontend 0 critical / 0 high / 0 moderate / 0 low; backend 0 critical / 0 high / 0 moderate / 0 low. No vulnerable package names were returned, so no dependency change or pending package decision was needed.
 - The first sandboxed Docker gate and Playwright/build process launches returned access errors. The same authorized throwaway gate and local commands passed after escalation; no pilot restart, seed, or database action occurred.
+
+## Batch 3 completion checkpoint
+
+- CI implementation commits: `8c0e3b5` and `59df19f`; golden-seed implementation commit: `43ae0df`. Required co-author and session trailers are present.
+- The required exit commands all passed locally: backend mock 65/65 suites / 1,089/1,089 tests; PG `-All` 84/84 / 1,933/1,933 tests at 130 migrations; golden reconcile 16/16; frontend 37/37 / 323/323; `i18n:check`; `lint:guards`; `lint:api`; root build. Local Playwright E2E passed 74 tests.
+- npm production audit outcomes: backend 0 critical / 0 high / 0 moderate / 0 low / 0 info; frontend 0 critical / 0 high / 0 moderate / 0 low / 0 info; no vulnerable packages were returned.
+- Documentation truth slice updates `docs/STAGING.md`, `docs/GO_NOGO.md`, and `docs/UAT_PILOT.md`. This batch's scorecard, final command evidence, and commit references are in `docs/BATCH3_SCORECARD.md`.
+- NOT VERIFIED: remote Actions result, workflow `npm ci` / i18n parity / explicit browser installation / second migration invocation, and human production approvals. Running pilot was not used.
+
+- CI's dedicated Playwright E2E job is in commit `52cf9df`; it installs Chromium through Playwright and runs `npm run test:e2e` outside the production image.

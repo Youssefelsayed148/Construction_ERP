@@ -18,7 +18,7 @@ Use [STAGING.md](STAGING.md) for exact local startup, health, seed, smoke, and s
 
 ## Role scripts
 
-Use the account keys below in `.staging-users.json`. The keys identify seeded accounts and do not contain credentials.
+Use the account keys below in `.staging-users.json`. The current seeder defines 38 keys in `backend/src/scripts/seed-staging.js`: `owner_ceo`, `coo`, `projects_director`, `construction_manager`, `project_manager`, `site_manager`, `site_engineer`, `planning_engineer`, `technical_office_engineer`, `quantity_surveyor`, `commercial_manager`, `contracts_manager`, `procurement_manager`, `procurement_officer`, `finance_manager`, `accountant_ar`, `accountant_ap`, `storekeeper`, `qa_qc_manager`, `hse_manager`, `document_controller`, `equipment_manager`, `hr_manager`, `business_development`, `client_executive`, `client_reviewer`, `pmc_manager`, `consultant_coordinator`, `consultant_reviewer`, `subcontractor_manager`, `subcontractor_site_engineer`, `supplier_sales`, `testing_lab`, `unassigned`, `expired_assignment`, `workflow_owner`, `workflow_checker`, and `workflow_budget`. The keys identify seeded accounts and do not contain credentials.
 
 | Account key / role | Script and expected result |
 |---|---|

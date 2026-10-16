@@ -3,15 +3,15 @@
 **Decision: NO-GO.** No production deployment or real-data cutover is authorized
 by this report. Evidence below is local, disposable, and incomplete where marked.
 
-| # | GO criterion | Status | Evidence | Remaining action and owner |
+| # | GO criterion | Status | Evidence (file, commit, or command record) | Owner / next action |
 |---:|---|---|---|---|
-| 1 | Zero open Critical/High findings from the three audits | **pending-human** | `docs/CODEX_AUDIT_REPORT.md`; `docs/SECURITY_REVIEW_PREP.md` | Independent security reviewer must resolve, downgrade with evidence, or accept each open finding. Owner: independent reviewer + system owner. |
-| 2 | Golden E2E, concurrency, and permission-matrix suites green in CI on real PostgreSQL | **not met** | Final local PG16 suite: 68 suites / 635 tests; concurrency and policy-matrix pass in that suite. Phase 9 fixture is partial in `backend/src/scripts/__tests__/golden-chain.pg.test.js`; no full tender-to-warranty UI/API journey and no remote CI result. | Complete the full API and Playwright journeys, wire them as required CI checks, and confirm them on CI after billing is restored. Owner: implementation + CI owner. |
-| 3 | Reconciliation clean on migrated data | **not met** | `backend/src/scripts/reconcile-database.js` covers the listed invariants; fourteen disposable-PG seeded-defect cases cover 15 of 16 reconciliation checks; owned-sequence lag remains covered by unit test because real sequence rewinds are not transactionally rollbackable; previous disposable fixture runs showed nonzero test residue. A fresh disposable PostgreSQL 16 database with 126 migrations and the golden demo seed returned 0 violations from all 16 checks; data-cleaning report returned []. A custom-format dump restored to a second disposable database with matching 96-unit / 1-BOQ / 122.4000 m3 snapshot, 16/16 checks clean, and data-cleaning []. This is not a restored pilot/real-data copy, so that acceptance remains open. | Run backup rehearsal on an approved local pilot, retain the restore report, run reconciliation and data-cleaning report on the restored copy, fix and re-run findings. Owner: environment operator + implementation. |
-| 4 | Demo project cost, progress, and finance match golden values | **not met** | `docs/GOLDEN_VALUES.md` contains arithmetic and a verified C35 fixture slice; commercial assumptions are provisional and not asserted end-to-end. | Finance and construction owners approve the fixture assumptions; finish seed and full golden assertions; record runtime outputs. Owner: finance + construction + implementation. |
-| 5 | Offline/mobile checks and Phase 10 localization exit, including Arabic PDFs | **not met** | Phase 7 mobile route sweep 36/36 and offline report journey are recorded in `docs/CLOSEOUT_LOG.md`. IBM Plex Sans and IBM Plex Sans Arabic are installed under OFL-1.1 with license texts in `docs/licenses/`; same-origin offline font loading passes Playwright. `docs/i18n/PDF_SPIKE.md` records six EN/AR PDFKit and Chromium samples; Arabic shaping/RTL was visually inspected and the renderer decision is Chromium. Phase 10 L0-L11 remains incomplete; production PDF/CSV migration and native terminology review are open. | Package the chosen renderer and fonts in the backend, migrate export call sites, finish localization gates, and obtain native Egyptian construction-domain review in `docs/ARABIC_REVIEW_PACK.md`. Owner: implementation + Arabic reviewer. |
-| 6 | Restore drill and rollback runbook rehearsed | **pending-human** | Synthetic golden-demo custom-format dump/restore on local Docker is recorded with matching source/restore counts and clean restored checks; earlier local staging backup rehearsal is also recorded in `docs/CLOSEOUT_LOG.md`; no production-environment restore/rollback rehearsal is claimed. | Run and sign the documented restore/rollback rehearsal on the approved pilot environment; retain before/after counts and restore evidence. Owner: environment operator + owner. |
-| 7 | Finance, procurement, site, and owner UAT signed | **pending-human** | `docs/UAT_PILOT.md` contains role scripts and sign-off table; no human UAT results are recorded. | Run scoped UAT with each role, close or accept defects, and collect signatures. Owner: finance, procurement, site, and owner. |
+| 1 | Zero open Critical/High findings from the three audits | **pending-human** | Open findings are listed in `docs/REVIEW_REPORT_2026-10-14.md` and `docs/SECURITY_REVIEW_PREP.md`; npm production-dependency audits are recorded in `docs/BATCH3_SCORECARD.md`. | Independent reviewer + system owner: resolve, downgrade with evidence, or accept each open finding. |
+| 2 | Golden E2E, concurrency, and permission-matrix suites green in CI on real PostgreSQL | **not met** | `.github/workflows/ci.yml` defines mock, PG16, frontend, Playwright, API guard, i18n, and root-build jobs. Local gate command results are in `docs/CLOSEOUT_LOG.md`; this workflow has no verified remote run in this batch. `golden-chain.pg.test.js` covers a partial P2P/residential slice, not tender through warranty. | CI owner + implementation: obtain a green remote run and complete the tender-to-warranty journey. |
+| 3 | Reconciliation clean on migrated data | **not met** | `backend/scripts/r02-pg-gate.ps1 -Reconcile` runs against a fresh throwaway PostgreSQL 16 database; the latest result is recorded in `docs/CLOSEOUT_LOG.md`. This does not establish a restored pilot/real-data copy. Current migration total is 130 per the PG gate output in `docs/CLOSEOUT_LOG.md` and `backend/src/scripts/run-all-migrations.js`. | Environment operator + implementation: retain a restored pilot-copy report, run reconciliation/data-cleaning there, and resolve findings. |
+| 4 | Demo project cost, progress, and finance match golden values | **not met** | `docs/GOLDEN_VALUES.md` and `backend/src/scripts/__tests__/golden-chain.pg.test.js` document/test the C35 slice; commercial assumptions remain provisional and the full project outputs are not asserted end-to-end. | Finance + construction + implementation: approve assumptions and complete runtime golden assertions. |
+| 5 | Offline/mobile checks and Phase 10 localization exit, including Arabic PDFs | **not met** | `docs/CLOSEOUT_LOG.md` records the mobile/offline checks; `docs/i18n/PDF_SPIKE.md` records the renderer samples. `docs/i18n/STATUS.md` and `docs/ARABIC_REVIEW_PACK.md` show open Phase 10 and native terminology work. | Implementation + Arabic reviewer: finish production PDF/CSV work, localization gates, and native Egyptian construction terminology review. |
+| 6 | Restore drill and rollback runbook rehearsed | **pending-human** | Local backup/restore rehearsal output, migration dry-run, reconciliation, and data-cleaning result are recorded under `docs/CLOSEOUT_LOG.md` (2026-10-13 B5). The evidence is local staging; a production-environment rollback rehearsal is not claimed. | Environment operator + owner: review/sign the documented rehearsal and record approved-environment rollback evidence. |
+| 7 | Finance, procurement, site, and owner UAT signed | **pending-human** | `docs/UAT_PILOT.md` contains role scripts/sign-off fields; the sign-off table has no recorded human results. | Finance, procurement, site, and owner: complete scoped UAT and record signatures. |
 
 ## Exact local PowerShell commands
 
@@ -36,9 +36,15 @@ npm --prefix backend run test:pg -- --silent src/scripts/__tests__/golden-chain.
 npm --prefix backend run test:pg -- --silent
 ```
 
-These commands describe the intended operator sequence. In this continuation the
-new metrics and Phase 9 fixture tests were run on fresh disposable Docker PG16
-instances, but the pilot smoke and full restore rehearsal were **not run**.
+The smoke requires a confirmed restorable backup because it invokes the read-only
+reconciliation script. After verifying a backup, set
+`RECONCILIATION_BACKUP_CONFIRMED=true` only for the smoke process. In PowerShell:
+`$env:RECONCILIATION_BACKUP_CONFIRMED='true'; npm --prefix backend run smoke:staging`.
+In `cmd.exe`: `set "RECONCILIATION_BACKUP_CONFIRMED=true" && npm --prefix backend run smoke:staging`.
+The pilot smoke and local staging backup/restore rehearsal were run on 2026-10-13;
+their output is recorded in `docs/CLOSEOUT_LOG.md` (B4/B5). They were **not rerun
+for Batch 3**. Batch 3's new workflow was not executed remotely; see
+`docs/BATCH3_SCORECARD.md` for exact local command status.
 
 ## Decision
 

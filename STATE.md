@@ -1151,3 +1151,11 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - Golden target guard was proved against the throwaway PG gate: non-staging `APP_ENV` refused before seed; staging seed yielded 96 units, 1 BOQ, 122.4000 m3; reconcile 16/16. Focused seed guard suite passed 1/1, 9/9.
 - Documentation truth updates are in progress for migration/gate counts, smoke backup flag, seeded account keys, command forms, and GO/NO-GO evidence. The excluded review reports remain untouched and unstaged.
 - NOT VERIFIED: remote CI result; workflow install steps and i18n parity were not run locally; production remains NO-GO pending human UAT, finance sign-off, and native Arabic review. Running pilot was not restarted, reseeded, or used for this batch.
+
+## Batch 3 implementation complete - 2026-10-16
+
+- CI commits: `8c0e3b5`, `59df19f`; golden seed guard commit: `43ae0df`. Source commits carry the required co-author/session trailers.
+- Tickets 3.1-3.5 are documented in `docs/BATCH3_SCORECARD.md`. Local exit gates passed: backend mock 65/1,089, PG -All 84/1,933 at 130 migrations, golden 16/16, frontend 37/323, Playwright E2E 74, i18n check, lint guards, API lint, and root build. Both production npm audits reported zero vulnerabilities at all severities.
+- `docs/STAGING.md`, `docs/GO_NOGO.md`, and `docs/UAT_PILOT.md` now reflect file/command evidence, 130 migrations, 38 seed keys, cmd.exe command forms, backup confirmation, and criterion owners/statuses. Production decision remains NO-GO.
+- NOT VERIFIED: GitHub Actions remote result and human UAT/finance/native-Arabic/security sign-offs. CI `npm ci`, parity, browser-install step, and second migration run were not executed locally. The pilot was not restarted, reseeded, or used.
+- CI follow-up `52cf9df` creates a dedicated E2E job with Playwright's Chromium install; browser binaries remain outside the production image. STATE updated after this commit.
