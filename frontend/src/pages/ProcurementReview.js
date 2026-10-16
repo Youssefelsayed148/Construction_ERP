@@ -2,6 +2,7 @@ import { apiFetch } from '../services/apiClient';
 import React, { useState } from 'react';
 import { useLocale } from '../hooks/useLocale';
 import LoadMore from '../components/common/LoadMore';
+import { formatNumber } from '../utils/formatters';
 
 const API_BASE_URL = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
 const COLUMNS = [
@@ -10,15 +11,17 @@ const COLUMNS = [
 ];
 const DOCUMENTS = ['rfq', 'technical-evaluation', 'commercial-comparison', 'award-recommendation'];
 
-function cell(value, t) {
+const NUMBER_COLUMNS = new Set(['lead_time_days', 'unit_price', 'total_price', 'tax_amount', 'warranty_months', 'technical_score', 'commercial_score']);
+function cell(value, t, locale, key) {
   if (value == null || value === '') return '—';
+  if (NUMBER_COLUMNS.has(key) && Number.isFinite(Number(value))) return formatNumber(value, { locale, decimals: Number.isInteger(Number(value)) ? 0 : 2 });
   if (typeof value === 'boolean') return t(value ? 'common.yes' : 'common.no');
   if (Array.isArray(value)) return value.join(', ') || '—';
   return String(value);
 }
 
 export default function ProcurementReview() {
-  const { t } = useLocale();
+  const { t, locale, dir } = useLocale();
   const [rfqId, setRfqId] = useState('');
   const [comparison, setComparison] = useState(null);
   const [error, setError] = useState('');
@@ -74,7 +77,7 @@ export default function ProcurementReview() {
     } catch { setError(t('procurement.comparison.downloadError')); }
   };
 
-  return <div className="page-container">
+  return <div className="page-container" dir={dir}>
     <h1>{t('procurement.comparison.title')}</h1>
     <p>{t('procurement.comparison.description')}</p>
     <form onSubmit={load} className="portal-toolbar" style={{ marginBottom: 16 }}>
@@ -90,10 +93,15 @@ export default function ProcurementReview() {
           <button key={kind} className="btn btn-secondary btn-sm" onClick={() => download(kind)}>{t(`procurement.comparison.documents.${kind.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())}`)}</button>)}
       </div>
       {comparison.rows.length ? <div className="table-container"><table className="table"><thead><tr>{COLUMNS.map((key) => <th key={key}>{t(`procurement.fields.${key}`)}</th>)}</tr></thead>
-        <tbody>{comparison.rows.map((row) => <tr key={row.quotation_id}>{COLUMNS.map((key) => <td key={key}>{cell(row[key], t)}</td>)}</tr>)}</tbody></table></div>
+        <tbody>{comparison.rows.map((row) => <tr key={row.quotation_id}>{COLUMNS.map((key) => <td key={key}><bdi>{cell(row[key], t, locale, key)}</bdi></td>)}</tr>)}</tbody></table></div>
         : <p>{t('procurement.comparison.noQuotations')}</p>}
       <LoadMore loadedCount={comparison.rows.length} totalCount={totalCount} loading={loadingMore} t={t} onLoadMore={loadMore} />
-      {comparison.recommendation && <div className="alert alert-info">{t('procurement.comparison.recommendation', { supplier: comparison.recommendation.supplier_name, reason: cell(comparison.recommendation.reason, t) })}</div>}
+      {comparison.recommendation && <div className="alert alert-info">{t('procurement.comparison.recommendation', {
+        supplier: `\u2068${comparison.recommendation.supplier_name}\u2069`,
+        reason: comparison.recommendation.reason_code
+          ? t(`procurement.comparison.reasons.${comparison.recommendation.reason_code}`, { ...comparison.recommendation.reason_params, defaultValue: comparison.recommendation.reason })
+          : cell(comparison.recommendation.reason, t),
+      })}</div>}
     </>}
   </div>;
 }

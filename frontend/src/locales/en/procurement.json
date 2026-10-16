@@ -8,12 +8,15 @@
     "noQuotations": "No quotations have been submitted for this RFQ.",
     "loadError": "The quotation comparison could not be loaded. Check the RFQ and try again.",
     "downloadError": "The comparison document could not be downloaded. Try again.",
-    "recommendation": "Recommended: {{supplier}} — {{reason}}",
+    "recommendation": "Recommended: {supplier} — {reason}",
     "documents": {
       "rfq": "RFQ PDF",
       "technicalEvaluation": "Technical evaluation PDF",
       "commercialComparison": "Commercial comparison PDF",
       "awardRecommendation": "Award recommendation PDF"
+    },
+    "reasons": {
+      "highest_commercial_score_lowest_price_tiebreak": "highest commercial score among compliant quotes; lowest total price as tiebreak"
     }
   },
   "rfq": "Request for quotation",

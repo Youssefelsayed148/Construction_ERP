@@ -404,7 +404,11 @@ async function buildBidComparison(q, rfqId, opts = {}) {
   })[0] || null;
 
   const comparison = { rfq_id: rfqId, rfq_number: rfq.rfq_number, rows };
-  const recommendation = best ? { quotation_id: best.quotation_id, supplier_id: best.supplier_id, supplier_name: best.supplier_name, total_price: best.total_price, reason: 'highest commercial score among compliant quotes; lowest total price as tiebreak' } : null;
+  const recommendation = best ? {
+    quotation_id: best.quotation_id, supplier_id: best.supplier_id, supplier_name: best.supplier_name, total_price: best.total_price,
+    reason: 'highest commercial score among compliant quotes; lowest total price as tiebreak',
+    reason_code: 'highest_commercial_score_lowest_price_tiebreak', reason_params: {},
+  } : null;
 
   if (opts.persist !== false) {
     await q(

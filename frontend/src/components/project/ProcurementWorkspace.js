@@ -1,3 +1,4 @@
+import { translateEnum } from '../../i18n/enums';
 import { apiFetch } from '../../services/apiClient';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, ClipboardList, FileText, RefreshCw, Send, ShoppingCart, Truck } from 'lucide-react';
@@ -248,7 +249,7 @@ function ProcurementWorkspace({ projectId }) {
     </section>
     <section className="card"><h2>{t('procurement.workspace.orderActions')}</h2>
       <SelectField id="po-action-select" label={t('procurement.fields.purchaseOrder')} value={selectedPo} onChange={(e) => setSelectedPo(e.target.value)} options={poOptions} emptyLabel={t('common.none')} />
-      {poDetail && <><p>{refOf(poDetail)} · {poDetail.status}</p><EntityTable rows={poDetail.lines} title={t('procurement.workspace.orderLines')} empty={t('procurement.messages.noLines')}
+      {poDetail && <><p>{refOf(poDetail)} · {translateEnum(t, 'status', poDetail.status)}</p><EntityTable rows={poDetail.lines} title={t('procurement.workspace.orderLines')} empty={t('procurement.messages.noLines')}
         columns={[["id", t('procurement.fields.line')], ['description', t('procurement.fields.description')], ['quantity', t('common.quantity')], ['unit_rate', t('procurement.fields.unitPrice')]]} />
         <div className="procurement-action-row">
           {poDetail.status === 'draft' && !poDetail.workflow_instance_id && <button className="btn btn-primary" disabled={busy} onClick={() => postAction(`/procurement/po/${poDetail.id}/issue`)}>{t('procurement.actions.startPoApproval')}</button>}
@@ -279,7 +280,7 @@ function ProcurementWorkspace({ projectId }) {
     </section>
     <section className="card"><h2>{t('procurement.workspace.inspectAndReceive')}</h2>
       <div className="procurement-action-row">{(data.deliveries || []).filter((row) => !(data.material_inspection_requests || []).some((mir) => Number(mir.delivery_id) === Number(row.id))).map((row) => <div className="procurement-action" key={row.id}><b>{refOf(row)}</b><button className="btn btn-sm" disabled={busy} onClick={() => postAction(`/procurement/deliveries/${row.id}/mir`)}>{t('procurement.actions.createMir')}</button></div>)}</div>
-      {(data.material_inspection_requests || []).map((row) => <div className="procurement-action" key={`mir-${row.id}`}><b>{refOf(row)} · {row.status}</b>
+      {(data.material_inspection_requests || []).map((row) => <div className="procurement-action" key={`mir-${row.id}`}><b>{refOf(row)} · {translateEnum(t, 'status', row.status)}</b>
         {row.status === 'pending' && <><button className="btn btn-sm" disabled={busy} onClick={() => postAction(`/procurement/mir/${row.id}/decide`, { decision: 'accept' })}>{t('procurement.actions.accept')}</button>
           <button className="btn btn-sm btn-danger" disabled={busy} onClick={() => postAction(`/procurement/mir/${row.id}/decide`, { decision: 'reject' })}>{t('procurement.actions.reject')}</button></>}
         {row.status === 'accepted' && <button className="btn btn-sm" disabled={busy} onClick={() => postAction(`/procurement/mir/${row.id}/grn`)}>{t('procurement.actions.createGrn')}</button>}</div>)}

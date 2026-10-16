@@ -8,12 +8,15 @@
     "noQuotations": "لم يتم تقديم عروض أسعار لهذا الطلب.",
     "loadError": "تعذر تحميل مقارنة عروض الأسعار. تحقق من الطلب وحاول مرة أخرى.",
     "downloadError": "تعذر تنزيل مستند المقارنة. حاول مرة أخرى.",
-    "recommendation": "المورد الموصى به: {{supplier}} — {{reason}}",
+    "recommendation": "المورد الموصى به: {supplier} — {reason}",
     "documents": {
       "rfq": "ملف طلب عرض السعر PDF",
       "technicalEvaluation": "ملف التقييم الفني PDF",
       "commercialComparison": "ملف المقارنة التجارية PDF",
       "awardRecommendation": "ملف توصية الترسية PDF"
+    },
+    "reasons": {
+      "highest_commercial_score_lowest_price_tiebreak": "أعلى تقييم تجاري بين العروض المطابقة؛ وعند التعادل يُختار أقل سعر إجمالي"
     }
   },
   "rfq": "طلب عرض سعر",

@@ -242,6 +242,9 @@ describe('full procurement scenario (gate — zero manual DB edits)', () => {
     expect(row11.compliant).toBe(false);
     // Recommendation: highest commercial score among compliant quotes.
     expect(comparison.recommendation.quotation_id).toBe(q10Id());
+    expect(comparison.recommendation.reason_code).toBe('highest_commercial_score_lowest_price_tiebreak');
+    expect(comparison.recommendation.reason_params).toEqual({});
+    expect(comparison.recommendation.reason).toBe('highest commercial score among compliant quotes; lowest total price as tiebreak');
 
     // Vendor scoping: vendor 9's view contains only vendor 9's quotation.
     const vendorView = await svc.quotationsForVendor(q, rfq.id, 9);
