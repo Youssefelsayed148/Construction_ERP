@@ -11,10 +11,10 @@ async function main() {
   const policy = require('../services/policy');
   const pool = new Pool({ host: '127.0.0.1', port: 55441, database: env.DB_NAME, user: env.DB_USER, password: env.DB_PASSWORD, options: '-c default_transaction_read_only=on', max: 8, connectionTimeoutMillis: 10000 });
   const q = async (text, values) => pool.query(text, values);
-  const output = { totals: {}, routes: routes.map(({ method, path: endpoint }) => ({ method, path: endpoint })), gets: [], writes: [], skips: [], pagination: [], findings: [], accounts: [], started: new Date().toISOString() };
+  const output = { totals: {}, routes: routes.map(({ method, path: endpoint }) => ({ method, path: endpoint })), gets: [], writes: [], skips: [], pagination: [], findings: [], accounts: [], auditCountedTables: ['audit_events','activity_log','event_log'], started: new Date().toISOString() };
   if (only === 'gets' && fs.existsSync(path.join(c.artifacts, 'api.json'))) {
     const previous = JSON.parse(fs.readFileSync(path.join(c.artifacts, 'api.json'), 'utf8'));
-    Object.assign(output, { writes: previous.writes, skips: previous.skips, findings: previous.findings.filter(f=>f.method!=='GET'), auditBefore: previous.auditBefore, auditAfter: previous.auditAfter, originalWriteAuditTables: previous.originalWriteAuditTables || ['audit_events'] });
+    Object.assign(output, { writes: previous.writes, skips: previous.skips, findings: previous.findings.filter(f=>f.method!=='GET'), auditBefore: previous.auditBefore, auditAfter: previous.auditAfter, auditCountedTables: previous.auditCountedTables || previous.originalWriteAuditTables || ['audit_events'] });
   }
   for (const route of routes) output.totals[route.method] = (output.totals[route.method] || 0) + 1;
   const flag = (kind, row, extra = {}) => output.findings.push({ kind, ...row, ...extra });

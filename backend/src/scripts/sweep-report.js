@@ -13,6 +13,7 @@ function main(){
   const sum=(values,key)=>values.reduce((n,row)=>n+(row[key]||0),0);
   const countBy=(values,key)=>{const counts={};for(const value of values){const k=typeof key==='function'?key(value):value[key];counts[k]=(counts[k]||0)+1;}return counts;};
   const money=inv.checks.money[0],overview=inv.api['/api/dashboard/overview'].data,finance=inv.api['/api/finance/summary'].data;
+  const auditTables=api.auditCountedTables || api.originalWriteAuditTables || ['audit_events'];
   const getErrors=api.gets.filter(r=>r.status>=500);
   const noId=api.gets.filter(r=>!r.idAvailable).length;
   const noMatrix=api.gets.filter(r=>r.expectedAllowed===null||r.matrixUnavailable).length;
@@ -83,7 +84,7 @@ function main(){
     '',
     'SQL scope matches the seeded Owner/CEO assignment, not the unfiltered whole database. Full SELECT statements are in the ignored invariant JSON. Number checks cover discovered text document-number columns; gaps/reservation sequence semantics and numeric/external-reference namespaces were not certified.',
     '',
-    `The initial main probe counted audit_events alone (${api.auditBefore} -> ${api.auditAfter}, delta ${api.auditAfter-api.auditBefore}). This produced false audit candidates: client creation is correctly recorded in activity_log. The organization deactivation also had an audit increment. Two replenishment sweep calls succeeded with no audit increment; these were no-op job invocations, not demonstrated unaudited business mutations. The final valid-body pass counts both audit stores per actor: ${sum(valid.requests,'auditDelta')} total audit increments across ${valid.requests.filter(r=>r.status<300).length} successful writes, zero successful writes without an increment. Authentication/background work also grows audit counts; whole-run deltas cannot prove per-request attribution or transaction atomicity. No audit rollback/fault-injection guarantee is claimed.`,
+    `Main probe counted stores: ${auditTables.join(', ')} (${api.auditBefore} -> ${api.auditAfter}, delta ${api.auditAfter-api.auditBefore}). ${auditTables.length===1?'The original audit_events-only run produced false audit candidates: client creation is correctly recorded in activity_log.':'Audit candidates must be assessed against the counted stores and actual business mutations.'} The organization deactivation also had an audit increment. Two replenishment sweep calls succeeded with no audit increment; these were no-op job invocations, not demonstrated unaudited business mutations. The final valid-body pass counts both audit stores per actor: ${sum(valid.requests,'auditDelta')} total audit increments across ${valid.requests.filter(r=>r.status<300).length} successful writes, zero successful writes without an increment. Authentication/background work also grows audit counts; whole-run deltas cannot prove per-request attribution or transaction atomicity. No audit rollback/fault-injection guarantee is claimed.`,
     '',
     'Two earlier harness candidates are dismissed: an empty body is valid for a no-argument replenishment sweep, and a company-only payment-batch endpoint is correctly forbidden to project-bound pilot seats. These are not counted as application defects.',
     '', '| Final valid request | Role | HTTP | Actor audit delta |', '|---|---|---:|---:|',
