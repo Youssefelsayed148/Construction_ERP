@@ -1395,3 +1395,7 @@ Reviewed the existing lint-guards fallback and Docker-context launcher tests. Ad
 - CI follow-up `52cf9df` isolates Playwright and the Chromium install into a dedicated E2E job, separate from build/runtime image work.
 - Documentation and scorecard committed as `52962e7`; completion evidence is in `docs/BATCH3_SCORECARD.md`.
 - Scorecard correction committed as `0717699`; dedicated browser job wording now matches the workflow.
+
+## Batch 4 checkpoint - 2026-10-16
+
+Implemented tickets 4.1–4.5; commits and per-ticket evidence are recorded in `docs/BATCH4_SCORECARD.md` and `docs/CLOSEOUT_LOG.md`. Final requested gates passed: backend mock 65/65 suites / 1,095 tests; PG `-All` 84/84 suites / 1,934 tests at 130 migrations; golden reconcile 16/16 with zero violations; lint guards and root build pass. The two-server retention proof passed. Windows direct OS SIGTERM remains NOT VERIFIED after the real process was terminated and its in-flight request reset. Full HTTP scrypt load completed with 0 errors/timeouts at 1/10/25/50 clients; c=50 p95 was 902.5 ms. The pilot was untouched. Required owner actions are listed in the scorecard.
