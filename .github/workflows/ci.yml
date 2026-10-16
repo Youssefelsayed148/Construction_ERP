@@ -31,6 +31,15 @@ jobs:
         run: npm test -- --runInBand --detectOpenHandles
         working-directory: backend
 
+  # BuildKit runs the Dockerfile test stage, including guards and backend mocks, in the image context.
+  backend-image-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build backend test image stage
+        run: docker build -f backend/Dockerfile --target test -t erp-hotfix-test backend
+
   # Gate 2: fresh migration and the real-PostgreSQL suite.
   backend-pg:
     runs-on: ubuntu-latest

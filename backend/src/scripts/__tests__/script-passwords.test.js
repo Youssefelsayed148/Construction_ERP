@@ -24,6 +24,34 @@ describe('R0.1 launcher credentials', () => {
     expect(containsLegacyDbPassword('DB_PASSWORD=$env:DB_PASSWORD')).toBe(false);
     expect(findLegacyDbPasswordReferences()).toEqual([]);
   });
+  test('an unreadable regular file warns with its path and scanning continues', () => {
+    const root = fs.mkdtempSync(path.join(repo, '.lint-guards-unreadable-'));
+    const unreadable = path.join(root, 'unreadable.js');
+    const matching = path.join(root, 'matching.js');
+    const pattern = 'NewStrongPassword' + '12345!';
+    const warningMessages = [];
+    fs.writeFileSync(unreadable, 'not readable by this scan');
+    fs.writeFileSync(matching, `DB_PASSWORD=${pattern}\n`);
+    const originalReadFileSync = fs.readFileSync;
+    const readFileSync = jest.spyOn(fs, 'readFileSync');
+    readFileSync.mockImplementation((file, ...args) => {
+      if (path.resolve(String(file)) === unreadable) {
+        const error = new Error('read denied');
+        error.code = 'EACCES';
+        throw error;
+      }
+      return originalReadFileSync.call(fs, file, ...args);
+    });
+
+    try {
+      expect(findLegacyDbPasswordReferences(root, (warning) => warningMessages.push(warning)))
+        .toEqual(['matching.js:1']);
+      expect(warningMessages).toEqual(['WARN committed-default-password scan unreadable: unreadable.js']);
+    } finally {
+      readFileSync.mockRestore();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
   test('git-less fallback scans backend scripts and reports the same backend violations', () => {
     const tracked = scanScriptPasswords();
     const fallback = scanScriptPasswords({ forceFallback: true });

@@ -1,3 +1,10 @@
+# 2026-10-16 - Batch 4 Docker test-stage hotfix
+
+- Reproduced `docker build -f backend/Dockerfile --target test -t erp-hotfix-test backend`: `lint:guards` failed with EINVAL reading `/proc/1/attr/apparmor/current`, a procfs pseudo-file exposed because the backend-only image computed its scan root as `/`.
+- Guard regression was failing-first (1 test failed with simulated EACCES); after the fix, the focused suite passed 1/1 suite / 11/11 tests. Unreadable paths now warn by path and scanning continues; actual password matches still report only `file:line`.
+- Docker fallback scans `/app` rather than `/`; `backend/.dockerignore` excludes `.env*`. No root `.dockerignore` exists. The throwaway image contains no `.env*` files under `/app`.
+- Local gates: `npm.cmd run lint:guards` PASS; backend mock suite PASS 65/65 suites / 1,096/1,096 tests. Throwaway Docker test-stage build PASS; Dockerfile step reported lint PASS and Jest PASS 64 suites / 1,075 tests (84 suites and 1,939 tests skipped by Docker test filters).
+- CI now has a dedicated backend image test-stage build job. Pilot container IDs and creation times matched before/after: backend `37c18aa279e8` 2026-10-15 21:03:45 +0300; db `b64d97334eff` 2026-10-13 15:52:27 +0300; frontend `a3623fdec54e` 2026-10-15 21:03:46 +0300; migrate `4cd64375212f` 2026-10-15 21:03:45 +0300. No pilot `up`, `down`, rebuild, restart, or reseed command was run.
 # 2026-10-15 — R3.2 aggregate finance ageing
 
 - `npm.cmd test -- --runInBand src/scripts/__tests__/finance.test.js` — PASS 1/1 suite, 14/14 tests.

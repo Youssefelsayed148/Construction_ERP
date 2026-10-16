@@ -86,28 +86,52 @@ function containsLegacyDbPassword(text) {
   return /NewStrongPassword\d{5}!/i.test(text);
 }
 
-function findLegacyDbPasswordReferences() {
+// The backend-only Docker context has no repository above /app; repoDir resolves
+// to / there, so anchor the fallback scan to the copied backend tree.
+function findLegacyDbPasswordReferences(
+  root = repoDir === path.parse(repoDir).root ? path.resolve(srcDir, '..') : repoDir,
+  onWarning = (message) => console.warn(message),
+) {
   const ignoredDirs = new Set(['.git', '.aws', '.codex', '.agents', 'node_modules', 'build', 'coverage', '.next']);
   const ignoredFiles = new Set(['.staging-users.json']);
   const found = [];
   const walk = (dir) => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      onWarning(`WARN committed-default-password scan unreadable: ${path.relative(root, dir).split(path.sep).join('/') || '.'}`);
+      return;
+    }
+    for (const entry of entries) {
       if (entry.isDirectory() && ignoredDirs.has(entry.name)) continue;
       if (entry.isSymbolicLink()) continue;
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) { walk(full); continue; }
       if (!entry.isFile() || ignoredFiles.has(entry.name) || /^\.env(?:\.|$)/i.test(entry.name)) continue;
-      const stat = fs.statSync(full);
+      let stat;
+      try {
+        stat = fs.statSync(full);
+      } catch {
+        onWarning(`WARN committed-default-password scan unreadable: ${path.relative(root, full).split(path.sep).join('/')}`);
+        continue;
+      }
       if (stat.size > 2 * 1024 * 1024) continue;
-      const buffer = fs.readFileSync(full);
+      let buffer;
+      try {
+        buffer = fs.readFileSync(full);
+      } catch {
+        onWarning(`WARN committed-default-password scan unreadable: ${path.relative(root, full).split(path.sep).join('/')}`);
+        continue;
+      }
       if (buffer.includes(0)) continue;
       const lines = buffer.toString('utf8').split(/\r?\n/);
       lines.forEach((line, index) => {
-        if (containsLegacyDbPassword(line)) found.push(`${path.relative(repoDir, full)}:${index + 1}`);
+        if (containsLegacyDbPassword(line)) found.push(`${path.relative(root, full).split(path.sep).join('/')}:${index + 1}`);
       });
     }
   };
-  walk(repoDir);
+  walk(root);
   return found;
 }
 
