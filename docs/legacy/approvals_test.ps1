@@ -3,17 +3,17 @@ $ErrorActionPreference = "Continue"
 $BASE_URL = "http://localhost:5000/api"
 
 # Get tokens for all three users
-$ownerBody = @{ email = "owner@construction-erp.com"; password = "admin123" } | ConvertTo-Json
+$ownerBody = @{ email = "owner@construction-erp.com"; password = $env:DEFAULT_OWNER_PASSWORD } | ConvertTo-Json
 $ownerLogin = Invoke-RestMethod -Uri "$BASE_URL/auth/login" -Method POST -Body $ownerBody -ContentType "application/json"
 $OWNER_TOKEN = $ownerLogin.data.token
 Write-Host "[SETUP] Owner logged in (id=$($ownerLogin.data.user.id))"
 
-$fmBody = @{ email = "test-finance-mgr@test.com"; password = "test123" } | ConvertTo-Json
+$fmBody = @{ email = "test-finance-mgr@test.com"; password = $env:DEFAULT_OWNER_PASSWORD } | ConvertTo-Json
 $fmLogin = Invoke-RestMethod -Uri "$BASE_URL/auth/login" -Method POST -Body $fmBody -ContentType "application/json"
 $FM_TOKEN = $fmLogin.data.token
 Write-Host "[SETUP] Finance Manager logged in (id=$($fmLogin.data.user.id), role=$($fmLogin.data.user.role))"
 
-$staffBody = @{ email = "test-staff@test.com"; password = "test123" } | ConvertTo-Json
+$staffBody = @{ email = "test-staff@test.com"; password = $env:DEFAULT_OWNER_PASSWORD } | ConvertTo-Json
 $staffLogin = Invoke-RestMethod -Uri "$BASE_URL/auth/login" -Method POST -Body $staffBody -ContentType "application/json"
 $STAFF_TOKEN = $staffLogin.data.token
 Write-Host "[SETUP] Staff logged in (id=$($staffLogin.data.user.id), role=$($staffLogin.data.user.role))"

@@ -35,7 +35,7 @@ describe('database bootstrap', () => {
   test('fresh database setup contains no predictable owner credential', () => {
     const setupSource = fs.readFileSync(path.join(scriptsDir, 'setupDb.js'), 'utf8');
 
-    expect(setupSource).not.toContain('admin123');
+    expect(setupSource).not.toContain(['admin', '123'].join(''));
     expect(setupSource).toContain("process.env.SEED_DEFAULT_OWNER === 'true'");
     expect(setupSource).toContain('DEFAULT_OWNER_PASSWORD');
   });

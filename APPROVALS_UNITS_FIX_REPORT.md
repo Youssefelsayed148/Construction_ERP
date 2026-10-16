@@ -24,7 +24,7 @@ Direct DB INSERT (API register endpoint only allows `admin, manager, staff, acco
 
 | ID | Name | Email | Role | Password |
 |----|------|-------|------|----------|
-| 1 | Owner | owner@construction-erp.com | owner | admin123 |
+| 1 | Owner | owner@construction-erp.com | owner | Supplied through the required DEFAULT_OWNER_PASSWORD environment variable |
 | 2 | TEST-Finance Manager | test-finance-mgr@test.com | finance_manager | test123 |
 | 3 | TEST-Staff User | test-staff@test.com | staff | test123 |
 

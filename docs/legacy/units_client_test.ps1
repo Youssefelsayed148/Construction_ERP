@@ -3,7 +3,7 @@ $ErrorActionPreference = "Continue"
 $BASE_URL = "http://localhost:5000/api"
 
 # Login
-$ownerBody = @{ email = "owner@construction-erp.com"; password = "admin123" } | ConvertTo-Json
+$ownerBody = @{ email = "owner@construction-erp.com"; password = $env:DEFAULT_OWNER_PASSWORD } | ConvertTo-Json
 $login = Invoke-RestMethod -Uri "$BASE_URL/auth/login" -Method POST -Body $ownerBody -ContentType "application/json"
 $TOKEN = $login.data.token
 Write-Host "[SETUP] Owner logged in"

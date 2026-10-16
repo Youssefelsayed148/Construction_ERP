@@ -58,8 +58,8 @@ describe('production security middleware', () => {
 
   test('production requires strong secrets and database credentials', () => {
     expect(() => validateRuntimeConfig({ NODE_ENV: 'production', JWT_SECRET: 'short', DB_PASSWORD: 'db-secret' })).toThrow('32 characters');
-    expect(() => validateRuntimeConfig({ NODE_ENV: 'production', JWT_SECRET: 'x'.repeat(32), DB_PASSWORD: '' })).toThrow('DB_PASSWORD');
-    expect(() => validateRuntimeConfig({ NODE_ENV: 'production', JWT_SECRET: 'x'.repeat(32), DB_PASSWORD: 'db-secret' })).not.toThrow();
+    expect(() => validateRuntimeConfig({ NODE_ENV: 'production', JWT_SECRET: 'x'.repeat(32), DB_PASSWORD: '', WEBHOOK_ENCRYPTION_KEY: 'w'.repeat(48) })).toThrow('DB_PASSWORD');
+    expect(() => validateRuntimeConfig({ NODE_ENV: 'production', JWT_SECRET: 'x'.repeat(32), DB_PASSWORD: 'db-secret', WEBHOOK_ENCRYPTION_KEY: 'w'.repeat(48) })).not.toThrow();
   });
 
   test('staging and production require a dedicated webhook encryption key', () => {

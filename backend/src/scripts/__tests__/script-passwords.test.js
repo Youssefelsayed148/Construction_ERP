@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { countLiteralPasswords, scanScriptPasswords } = require('../lint-guards');
+const { countLiteralPasswords, scanScriptPasswords, containsLegacyDbPassword, findLegacyDbPasswordReferences } = require('../lint-guards');
 
 const repo = path.resolve(__dirname, '../../../..');
 const scripts = ['start_backend.bat', 'orchestrator.bat', 'launch_backend.ps1', 'docs/legacy/run_tests.ps1', 'start_backend.ps1'];
@@ -17,6 +17,12 @@ describe('R0.1 launcher credentials', () => {
 
   test('no tracked shell script contains a literal password assignment', () => {
     expect(scanScriptPasswords()).toEqual({});
+  });
+  test('the legacy committed database password pattern is rejected and absent', () => {
+    const pattern = 'NewStrongPassword' + '12345!';
+    expect(containsLegacyDbPassword(`DB_PASSWORD=${pattern}`)).toBe(true);
+    expect(containsLegacyDbPassword('DB_PASSWORD=$env:DB_PASSWORD')).toBe(false);
+    expect(findLegacyDbPasswordReferences()).toEqual([]);
   });
   test('git-less fallback scans backend scripts and reports the same backend violations', () => {
     const tracked = scanScriptPasswords();

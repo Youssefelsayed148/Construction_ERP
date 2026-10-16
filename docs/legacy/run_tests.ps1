@@ -24,7 +24,7 @@ try {
 
 # Test login
 try {
-    $body = @{ email = "admin@osirislabs.com"; password = "admin123" } | ConvertTo-Json
+    $body = @{ email = "admin@osirislabs.com"; password = $env:DEFAULT_OWNER_PASSWORD } | ConvertTo-Json
     $login = Invoke-RestMethod -Uri "http://localhost:5000/api/auth/login" -Method Post -Body $body -ContentType "application/json"
     Write-Host "Login: $($login | ConvertTo-Json)"
     $token = $login.data.token

@@ -92,8 +92,10 @@ manually by plan decision — no thresholds yet).
 
 `frontend/e2e/journeys-backend.spec.js` — gated, not API-mocked, desktop + mobile viewports,
 Arabic-first shell assertions (Phase 10 boundary respected). One seeded owner per throwaway
-database: in `backend/`, `SEED_DEFAULT_OWNER=true DEFAULT_OWNER_EMAIL=<journey email>
-DEFAULT_OWNER_PASSWORD=<12+ chars> node src/scripts/setupDb.js` (joi's default TLD rule rejects
+database: first provide `DB_PASSWORD` through the process environment, then in `backend/` run
+`SEED_DEFAULT_OWNER=true DEFAULT_OWNER_EMAIL=<journey email>
+DEFAULT_OWNER_PASSWORD=<12+ chars> node src/scripts/setupDb.js`. The DB password has no code or
+script default; do not put its value in the command or a committed file. (joi's default TLD rule rejects
 invented TLDs like `.erp` — use a plausible domain), then run the app and
 `E2E_BACKEND=1 npx playwright test e2e/journeys-backend.spec.js` from `frontend/`.
 

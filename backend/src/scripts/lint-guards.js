@@ -82,6 +82,35 @@ function scanScriptPasswords(options) {
   return violations;
 }
 
+function containsLegacyDbPassword(text) {
+  return /NewStrongPassword\d{5}!/i.test(text);
+}
+
+function findLegacyDbPasswordReferences() {
+  const ignoredDirs = new Set(['.git', '.aws', '.codex', '.agents', 'node_modules', 'build', 'coverage', '.next']);
+  const ignoredFiles = new Set(['.staging-users.json', 'REVIEW_REPORT_2026-10-14.md', 'CODEX_AUDIT_REPORT.md']);
+  const found = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory() && ignoredDirs.has(entry.name)) continue;
+      if (entry.isSymbolicLink()) continue;
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) { walk(full); continue; }
+      if (!entry.isFile() || ignoredFiles.has(entry.name) || /^\.env(?:\.|$)/i.test(entry.name)) continue;
+      const stat = fs.statSync(full);
+      if (stat.size > 2 * 1024 * 1024) continue;
+      const buffer = fs.readFileSync(full);
+      if (buffer.includes(0)) continue;
+      const lines = buffer.toString('utf8').split(/\r?\n/);
+      lines.forEach((line, index) => {
+        if (containsLegacyDbPassword(line)) found.push(`${path.relative(repoDir, full)}:${index + 1}`);
+      });
+    }
+  };
+  walk(repoDir);
+  return found;
+}
+
 const SILENT_CATCH = /\.catch\(\s*\(\s*\w*\s*\)\s*=>\s*\{\s*\}\s*\)/g;
 // A COUNT(*)/MAX( query with a "+ 1" on the same line or within the next 3 lines.
 // Ignore JavaScript's Math.max; this rule targets SQL COUNT/MAX numbering queries.
@@ -222,6 +251,11 @@ function compare(current, baseline) {
 }
 
 function main() {
+  const weakPasswordRefs = findLegacyDbPasswordReferences();
+  if (weakPasswordRefs.length) {
+    weakPasswordRefs.forEach((location) => console.error(`FAIL  committed-default-password: ${location}`));
+    return 1;
+  }
   // This rule is never baselined: tracked script credentials always fail,
   // including with --update. Output filenames and counts only.
   const passwords = scanScriptPasswords();
@@ -258,4 +292,4 @@ function main() {
 }
 
 if (require.main === module) process.exit(main());
-module.exports = { scan, compare, countNumbering, countCounterIncrements, countEventSwallows, countUnboundActivityAudits, countLiteralPasswords, scanScriptPasswords };
+module.exports = { scan, compare, countNumbering, countCounterIncrements, countEventSwallows, countUnboundActivityAudits, countLiteralPasswords, scanScriptPasswords, containsLegacyDbPassword, findLegacyDbPasswordReferences };

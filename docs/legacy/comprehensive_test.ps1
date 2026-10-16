@@ -55,7 +55,7 @@ Write-Host "============================================"
 Write-Host "SETUP: Logging in..."
 Write-Host "============================================"
 
-$loginBody = @{ email = "owner@construction-erp.com"; password = "admin123" }
+$loginBody = @{ email = "owner@construction-erp.com"; password = $env:DEFAULT_OWNER_PASSWORD }
 $loginResult = Api-Call "POST" "/auth/login" $loginBody
 if ($loginResult.success -and $loginResult.data.data.token) {
     $TOKEN = $loginResult.data.data.token
