@@ -533,6 +533,35 @@ const DASHBOARDS = {
 };
 
 const ROLE_ALIASES = {
+  // Seeded canonical roles resolve through the dashboard matrix role whose
+  // widgets cover the same work domain. This avoids treating new role keys
+  // as unknown site engineers.
+  owner_ceo: 'owner',
+  coo: 'projects_director',
+  site_manager: 'construction_manager',
+  planning_engineer: 'planning',
+  technical_office_engineer: 'site_engineer',
+  quantity_surveyor: 'qs',
+  commercial_manager: 'commercial',
+  contracts_manager: 'commercial',
+  procurement_manager: 'procurement',
+  procurement_officer: 'procurement',
+  accountant_ar: 'finance_manager',
+  accountant_ap: 'finance_manager',
+  qa_qc_manager: 'qa_qc',
+  hse_manager: 'hse',
+  equipment_manager: 'construction_manager',
+  hr_manager: 'site_engineer',
+  business_development: 'projects_director',
+  client_executive: 'client',
+  client_reviewer: 'client',
+  pmc_manager: 'consultant',
+  consultant_coordinator: 'consultant',
+  consultant_reviewer: 'consultant',
+  subcontractor_manager: 'subcontractor',
+  subcontractor_site_engineer: 'subcontractor',
+  supplier_sales: 'procurement',
+  testing_lab: 'qa_qc',
   owner: 'owner',
   admin: 'admin',
   manager: 'construction_manager',
@@ -602,7 +631,8 @@ async function visibleProjectIds(q, user) {
 // The resolver: role first, then legacy alias; unknown roles get the
 // site-engineer-shaped payload (empty widgets, valid structure).
 async function roleDashboard(q, user, { projectId = null } = {}) {
-  const builder = DASHBOARDS[user.role] || siteEngineerWidgets;
+  const resolvedRole = ROLE_ALIASES[user.role] || user.role;
+  const builder = DASHBOARDS[resolvedRole] || siteEngineerWidgets;
   const widgetsList = await builder(q, { userId: user.id, projectId: projectId != null ? Number(projectId) : null });
   const sticky = await stickyNotesWidget(q, user, projectId);
   const location = projectId != null ? await locationWidget(q, user, projectId) : null;

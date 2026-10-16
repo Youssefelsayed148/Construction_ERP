@@ -6,6 +6,7 @@
 
 const { MockDb } = require('../test-helpers/mock-db');
 const widgets = require('../../services/dashboardWidgets');
+const { CANONICAL_ROLES } = require('../seed-staging');
 
 const db = new MockDb();
 const q = (sql, params) => db.query(sql, params);
@@ -63,6 +64,19 @@ describe('the 16 role dashboards', () => {
     expect(widgets.ROLE_ALIASES.manager).toBe('construction_manager');
     expect(widgets.ROLE_ALIASES.staff).toBe('site_engineer');
     expect(widgets.ROLE_ALIASES.accountant).toBe('finance_manager');
+  });
+
+  test('every seeded canonical role resolves to a defined widget set or explicit fallback', () => {
+    const explicitFallbacks = widgets.DASHBOARD_FALLBACKS || {};
+    for (const role of CANONICAL_ROLES) {
+      const target = widgets.ROLE_ALIASES[role] || role;
+      expect(widgets.DASHBOARDS[target] || explicitFallbacks[role]).toBeTruthy();
+    }
+    expect(widgets.ROLE_ALIASES.planning_engineer).toBe('planning');
+    expect(widgets.ROLE_ALIASES.quantity_surveyor).toBe('qs');
+    expect(widgets.ROLE_ALIASES.procurement_manager).toBe('procurement');
+    expect(widgets.ROLE_ALIASES.qa_qc_manager).toBe('qa_qc');
+    expect(widgets.ROLE_ALIASES.hse_manager).toBe('hse');
   });
 });
 

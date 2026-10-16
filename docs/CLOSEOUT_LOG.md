@@ -2321,3 +2321,4 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - Tickets 2.3 and 2.5 and the requested final gates remain pending. Do not infer that the pilot browser run occurred; preserve the running pilot and use no seed/restart/stop actions.
 - The Batch 2 checkpoint records the two excluded audit reports as unstaged; no report was staged.
 - Ticket 2.1 implementation commit: `447e103 fix: verify admin dynamic labels and table styling`. Required co-author and session trailers are present. The excluded audit reports were not staged.
+- Ticket 2.4 resolver test initially failed on a seeded canonical role. `dashboardWidgets.js` now maps all seeded canonical keys to a widget family and applies the alias in resolution; `DASHBOARD_MATRIX.md` records the mappings. Focused suite PASS 1/1, 26/26 tests. Commit pending.

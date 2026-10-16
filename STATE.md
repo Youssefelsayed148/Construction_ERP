@@ -1136,3 +1136,4 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - 2.3 and 2.5 remain NOT DONE. Final gates and implementation commits remain pending. No pilot restart, stop, seed, or data-changing browser action has been performed.
 - Next action: complete admin error-state coverage, then page-level paging and 21-page smoke/permission checks; proceed to the read-only pilot role matrix only if the existing Playwright browser binary is already installed.
 - Post-commit checkpoint: ticket 2.1 is committed as `447e103`; i18n check passed. The scorecard/log/state commit-reference update is pending as a docs checkpoint. Remaining tickets are still open.
+- The required post-commit docs checkpoint is committed as `434540d`. Ticket 2.4's resolver and regression test pass 1 suite / 26 tests; role mapping documentation is staged for its implementation commit. Ticket 2.2/2.3/2.5 remain open.

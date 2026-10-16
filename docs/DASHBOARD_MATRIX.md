@@ -51,3 +51,30 @@ shapes (the legacy flag) until the frontend fully migrates.
 
 Every role dashboard renders on a brand-new system: empty widgets with valid
 structure — never an error, never a crash. Tested explicitly for all 16.
+
+## Seeded canonical role aliases
+
+Canonical keys from `backend/src/scripts/seed-staging.js` are resolved by
+`ROLE_ALIASES` to one of the widget families above. This is a display-family
+mapping; endpoint permission and project scoping still come from the user's
+authenticated grants and participant assignments.
+
+| Canonical roles | Widget family |
+|---|---|
+| `owner_ceo` | CEO / Owner |
+| `coo`, `business_development` | Projects Director |
+| `projects_director` | Projects Director |
+| `construction_manager`, `site_manager`, `equipment_manager` | Construction Manager |
+| `project_manager` | Project Manager |
+| `site_engineer`, `technical_office_engineer`, `hr_manager` | Site Engineer |
+| `planning_engineer` | Planning |
+| `quantity_surveyor`, `commercial_manager`, `contracts_manager` | QS / Commercial |
+| `procurement_manager`, `procurement_officer`, `supplier_sales` | Procurement |
+| `finance_manager`, `accountant_ar`, `accountant_ap` | Finance |
+| `storekeeper` | Storekeeper |
+| `qa_qc_manager`, `testing_lab` | QA/QC |
+| `hse_manager` | HSE |
+| `document_controller` | Document Controller |
+| `client_executive`, `client_reviewer` | Client portal |
+| `pmc_manager`, `consultant_coordinator`, `consultant_reviewer` | Consultant portal |
+| `subcontractor_manager`, `subcontractor_site_engineer` | Subcontractor portal |
