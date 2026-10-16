@@ -90,10 +90,10 @@ function UnitsSales() {
 
   const statusCounts = summary?.by_status || {};
   const summaryCards = [
-    { label: locale === 'ar' ? 'إجمالي الوحدات' : 'Total Units', value: summary?.total_units || 0 },
+    { label: t('projects.system.totalUnits'), value: summary?.total_units || 0 },
     { label: UNIT_STATUS_LABELS[locale].available, value: statusCounts.available?.count || 0, color: 'var(--color-success)' },
     { label: UNIT_STATUS_LABELS[locale].reserved, value: statusCounts.reserved?.count || 0, color: 'var(--color-warning)' },
-    { label: locale === 'ar' ? 'مبيعات' : 'Sold Value', value: formatCurrency(summary?.total_sold_amount || 0), color: 'var(--color-accent)' },
+    { label: t('projects.system.soldValue'), value: formatCurrency(summary?.total_sold_amount || 0), color: 'var(--color-accent)' },
   ];
 
   return (
@@ -103,14 +103,14 @@ function UnitsSales() {
           <ArrowLeft size={16} />
         </button>
         <div style={{ flex: 1 }}>
-          <h1>{locale === 'ar' ? 'الوحدات والمبيعات' : 'Units & Sales'}</h1>
+          <h1>{t('projects.nav.tabs.units')}</h1>
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'المباني والوحدات وحالة البيع' : 'Buildings, unit inventory & sales status'}
+            {t('projects.system.buildingsUnitInventorySalesStatus')}
           </p>
         </div>
         <button className="btn btn-primary" onClick={() => setBuildingModal(true)}>
           <Plus size={16} />
-          {locale === 'ar' ? 'إضافة مبنى' : 'Add Building'}
+          {t('projects.system.addBuilding')}
         </button>
       </div>
 
@@ -131,7 +131,7 @@ function UnitsSales() {
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <Building2 size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'لا توجد مبانٍ. أضف أول مبنى.' : 'No buildings yet. Add your first building.'}
+            {t('projects.system.noBuildingsYetAddYourFirstBuilding')}
           </p>
         </div>
       ) : (
@@ -207,7 +207,7 @@ function BuildingPanel({ building, locale, t, onBulk, onAddUnit, onChanged }) {
   };
 
   const deleteUnit = async (unit) => {
-    if (!window.confirm(locale === 'ar' ? `حذف الوحدة ${unit.code}؟` : `Delete unit ${unit.code}?`)) return;
+    if (!window.confirm(t('projects.system.deleteUnit', { code: unit.code }))) return;
     try {
       await fetchApi(`${API_URL}/sales/units/${unit.id}`, { method: 'DELETE' });
       load(); onChanged();
@@ -222,17 +222,17 @@ function BuildingPanel({ building, locale, t, onBulk, onAddUnit, onChanged }) {
         <div>
           <h3 className="card-title">{building.code} — {building.name}</h3>
           <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
-            {BUILDING_STATUS_LABELS[locale]?.[building.status] || building.status} · {Number(building.floor_count) || 0} {locale === 'ar' ? 'طوابق' : 'floors'} · {Number(building.completion_percentage) || 0}% {locale === 'ar' ? 'إنجاز' : 'complete'}
+            {BUILDING_STATUS_LABELS[locale]?.[building.status] || building.status} · {Number(building.floor_count) || 0} {t('projects.system.floors')} · {Number(building.completion_percentage) || 0}% {t('projects.system.complete')}
           </div>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button className="btn" style={{ padding: '6px 12px', fontSize: '13px' }} onClick={onAddUnit}>
             <Plus size={14} />
-            {locale === 'ar' ? 'وحدة' : 'Unit'}
+            {t('projects.system.unit')}
           </button>
           <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '13px' }} onClick={onBulk}>
             <LayoutGrid size={14} />
-            {locale === 'ar' ? 'توليد وحدات' : 'Bulk Generate'}
+            {t('projects.system.bulkGenerate')}
           </button>
         </div>
       </div>
@@ -240,7 +240,7 @@ function BuildingPanel({ building, locale, t, onBulk, onAddUnit, onChanged }) {
       <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
         {['all', 'available', 'reserved', 'contracted', 'delivered', 'blocked', 'closed'].map(s => (
           <button key={s} className={`btn ${statusFilter === s ? 'btn-primary' : ''}`} style={{ padding: '4px 10px', fontSize: '12px' }} onClick={() => setStatusFilter(s)}>
-            {s === 'all' ? (locale === 'ar' ? 'الكل' : 'All') : (UNIT_STATUS_LABELS[locale]?.[s] || s)}
+            {s === 'all' ? (t('projects.system.all')) : (UNIT_STATUS_LABELS[locale]?.[s] || s)}
             {s !== 'all' && <span style={{ marginLeft: '4px', opacity: 0.7 }}>({units.filter(u => u.status === s).length})</span>}
           </button>
         ))}
@@ -250,7 +250,7 @@ function BuildingPanel({ building, locale, t, onBulk, onAddUnit, onChanged }) {
         <div style={{ display: 'flex', justifyContent: 'center', padding: '30px' }}><span className="spinner" /></div>
       ) : filtered.length === 0 ? (
         <p style={{ color: 'var(--color-text-secondary)', textAlign: 'center', padding: '20px 0' }}>
-          {locale === 'ar' ? 'لا توجد وحدات.' : 'No units.'}
+          {t('projects.system.noUnits')}
         </p>
       ) : (
         <div className="responsive-grid responsive-grid--auto-210" style={{ gap: '12px' }}>
@@ -266,11 +266,11 @@ function BuildingPanel({ building, locale, t, onBulk, onAddUnit, onChanged }) {
                 <span className={`badge ${UNIT_STATUS_BADGE[u.status]}`}>{UNIT_STATUS_LABELS[locale]?.[u.status] || u.status}</span>
               </div>
               <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <span>{UNIT_TYPE_LABELS[locale]?.[u.type] || u.type} · {locale === 'ar' ? 'طابق' : 'Floor'} {u.floor_no ?? '-'}</span>
+                <span>{UNIT_TYPE_LABELS[locale]?.[u.type] || u.type} · {t('projects.system.floor')} {u.floor_no ?? '-'}</span>
                 <span>{u.area ? `${u.area} m²` : '-'} {u.bedrooms != null ? `· ${u.bedrooms}BR` : ''} {u.bathrooms != null ? `· ${u.bathrooms}BA` : ''}</span>
                 <span>{FINISHING_LABELS[locale]?.[u.finishing_type] || u.finishing_type}</span>
                 {u.price && <span style={{ color: 'var(--color-accent)', fontWeight: 600 }}>{formatCurrency(u.price)}</span>}
-                {u.sold_amount && <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>{locale === 'ar' ? 'بيعت بـ' : 'Sold'}: {formatCurrency(u.sold_amount)}</span>}
+                {u.sold_amount && <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>{t('projects.system.sold')}: {formatCurrency(u.sold_amount)}</span>}
               </div>
               <div style={{ display: 'flex', gap: '4px', marginTop: '10px', flexWrap: 'wrap' }}>
                 {(UNIT_TRANSITIONS[u.status] || []).map(next => (
@@ -320,7 +320,7 @@ function BuildingModal({ projectId, locale, t, onClose, onSave }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{locale === 'ar' ? 'إضافة مبنى' : 'Add Building'}</h3>
+          <h3 className="modal-title">{t('projects.system.addBuilding')}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
@@ -328,17 +328,17 @@ function BuildingModal({ projectId, locale, t, onClose, onSave }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="responsive-grid responsive-grid--one-two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الكود' : 'Code'} *</label>
+                  <label className="form-label">{t('projects.system.code')} *</label>
                   <input className="form-input" value={form.code} onChange={e => handleChange('code', e.target.value)} placeholder="B1" required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الاسم' : 'Name'} *</label>
+                  <label className="form-label">{t('projects.system.name')} *</label>
                   <input className="form-input" value={form.name} onChange={e => handleChange('name', e.target.value)} required />
                 </div>
               </div>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الطوابق' : 'Floors'}</label>
+                  <label className="form-label">{t('projects.system.floors2')}</label>
                   <input className="form-input" type="number" min="1" value={form.floors} onChange={e => handleChange('floors', e.target.value)} />
                 </div>
                 <div className="form-group">
@@ -401,7 +401,7 @@ function BulkUnitsModal({ building, locale, t, onClose, onSave }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{locale === 'ar' ? `توليد وحدات — ${building.code}` : `Bulk Generate Units — ${building.code}`}</h3>
+          <h3 className="modal-title">{t('projects.system.bulkGenerateUnits', { code: building.code })}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
@@ -409,36 +409,34 @@ function BulkUnitsModal({ building, locale, t, onClose, onSave }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="responsive-grid responsive-grid--four" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الطوابق' : 'Floors'} *</label>
+                  <label className="form-label">{t('projects.system.floors2')} *</label>
                   <input className="form-input" type="number" min="1" value={form.floors} onChange={e => handleChange('floors', e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'وحدات/طابق' : 'Units/Floor'} *</label>
+                  <label className="form-label">{t('projects.system.unitsFloor')} *</label>
                   <input className="form-input" type="number" min="1" value={form.units_per_floor} onChange={e => handleChange('units_per_floor', e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'أول طابق' : 'Start Floor'}</label>
+                  <label className="form-label">{t('projects.system.startFloor')}</label>
                   <input className="form-input" type="number" value={form.start_floor} onChange={e => handleChange('start_floor', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'بادئة' : 'Prefix'}</label>
+                  <label className="form-label">{t('projects.system.prefix')}</label>
                   <input className="form-input" value={form.prefix} onChange={e => handleChange('prefix', e.target.value)} placeholder="A-" />
                 </div>
               </div>
               <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
-                {locale === 'ar'
-                  ? `سيتم إنشاء ${count} وحدة (مثال: ${exampleCode})`
-                  : `Will create ${count} units (e.g. ${exampleCode})`}
+                {t('projects.system.willCreateUnitsEG', { count: count, exampleCode: exampleCode })}
               </p>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'النوع' : 'Type'}</label>
+                  <label className="form-label">{t('projects.system.type')}</label>
                   <select className="form-select" value={form.type} onChange={e => handleChange('type', e.target.value)}>
                     {UNIT_TYPES.map(ut => <option key={ut} value={ut}>{UNIT_TYPE_LABELS[locale]?.[ut] || ut}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'التشطيب' : 'Finishing'}</label>
+                  <label className="form-label">{t('projects.system.finishing')}</label>
                   <select className="form-select" value={form.finishing_type} onChange={e => handleChange('finishing_type', e.target.value)}>
                     {Object.keys(FINISHING_LABELS.en).map(ft => <option key={ft} value={ft}>{FINISHING_LABELS[locale]?.[ft] || ft}</option>)}
                   </select>
@@ -446,19 +444,19 @@ function BulkUnitsModal({ building, locale, t, onClose, onSave }) {
               </div>
               <div className="responsive-grid responsive-grid--four" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'المساحة م²' : 'Area m²'}</label>
+                  <label className="form-label">{t('projects.system.areaM')}</label>
                   <input className="form-input" type="number" min="0" value={form.area} onChange={e => handleChange('area', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'غرف' : 'Beds'}</label>
+                  <label className="form-label">{t('projects.system.beds')}</label>
                   <input className="form-input" type="number" min="0" value={form.bedrooms} onChange={e => handleChange('bedrooms', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'حمامات' : 'Baths'}</label>
+                  <label className="form-label">{t('projects.system.baths')}</label>
                   <input className="form-input" type="number" min="0" value={form.bathrooms} onChange={e => handleChange('bathrooms', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'السعر' : 'Price'}</label>
+                  <label className="form-label">{t('projects.system.price')}</label>
                   <input className="form-input" type="number" min="0" value={form.price} onChange={e => handleChange('price', e.target.value)} />
                 </div>
               </div>
@@ -508,7 +506,7 @@ function UnitModal({ building, locale, t, onClose, onSave }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{locale === 'ar' ? `إضافة وحدة — ${building.code}` : `Add Unit — ${building.code}`}</h3>
+          <h3 className="modal-title">{t('projects.system.addUnit', { code: building.code })}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
@@ -516,51 +514,51 @@ function UnitModal({ building, locale, t, onClose, onSave }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الكود' : 'Code'} *</label>
+                  <label className="form-label">{t('projects.system.code')} *</label>
                   <input className="form-input" value={form.code} onChange={e => handleChange('code', e.target.value)} placeholder="101" required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'النوع' : 'Type'}</label>
+                  <label className="form-label">{t('projects.system.type')}</label>
                   <select className="form-select" value={form.type} onChange={e => handleChange('type', e.target.value)}>
                     {UNIT_TYPES.map(ut => <option key={ut} value={ut}>{UNIT_TYPE_LABELS[locale]?.[ut] || ut}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الطابق' : 'Floor'}</label>
+                  <label className="form-label">{t('projects.system.floor2')}</label>
                   <input className="form-input" type="number" value={form.floor_no} onChange={e => handleChange('floor_no', e.target.value)} />
                 </div>
               </div>
               <div className="responsive-grid responsive-grid--four" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'المساحة م²' : 'Area m²'}</label>
+                  <label className="form-label">{t('projects.system.areaM')}</label>
                   <input className="form-input" type="number" min="0" value={form.area} onChange={e => handleChange('area', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'غرف' : 'Beds'}</label>
+                  <label className="form-label">{t('projects.system.beds')}</label>
                   <input className="form-input" type="number" min="0" value={form.bedrooms} onChange={e => handleChange('bedrooms', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'حمامات' : 'Baths'}</label>
+                  <label className="form-label">{t('projects.system.baths')}</label>
                   <input className="form-input" type="number" min="0" value={form.bathrooms} onChange={e => handleChange('bathrooms', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'السعر' : 'Price'}</label>
+                  <label className="form-label">{t('projects.system.price')}</label>
                   <input className="form-input" type="number" min="0" value={form.price} onChange={e => handleChange('price', e.target.value)} />
                 </div>
               </div>
               <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'التشطيب' : 'Finishing'}</label>
+                  <label className="form-label">{t('projects.system.finishing')}</label>
                   <select className="form-select" value={form.finishing_type} onChange={e => handleChange('finishing_type', e.target.value)}>
                     {Object.keys(FINISHING_LABELS.en).map(ft => <option key={ft} value={ft}>{FINISHING_LABELS[locale]?.[ft] || ft}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الإطلالة' : 'View'}</label>
+                  <label className="form-label">{t('projects.system.view')}</label>
                   <input className="form-input" value={form.view} onChange={e => handleChange('view', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الاتجاه' : 'Facing'}</label>
+                  <label className="form-label">{t('projects.system.facing')}</label>
                   <input className="form-input" value={form.facing} onChange={e => handleChange('facing', e.target.value)} />
                 </div>
               </div>

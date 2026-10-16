@@ -1,3 +1,11 @@
+## Batch 5A slice 2B — 2026-10-16
+
+- Slice 2A committed as eca18df after git diff --cached --check PASS. This slice migrates project, document-control, schedule, safety, site, work-order and portal system text, including 57 wizard helper calls. Repairs 99 pre-existing corrupt Arabic catalog values across five namespaces; corrupt-catalog regression was RED (1 failed / 4 passed), then PASS after repair. Four portal placeholders now use the translator's single-brace syntax in both languages.
+- Extended npm.cmd --prefix frontend run i18n:check: checks every producer widget title/field against both catalogs; follows identifier-backed/nested data and handover readiness. Tests deliberately remove EN/AR keys and introduce a new widget/field. Page guards forbid literal language branches/helper calls and unapproved rendered Latin literals. Exact identifier/example exclusions are documented in docs/I18N_SYSTEM_STRINGS.md.
+- Refined baseline -> current static counts: inline system branches 1,097 -> 0; helper calls 57 -> 0; JSX text/expressions/attributes 145 -> 9 (all nine are documented file formats, reference prefixes or input examples); direct raw enums 28 -> 0; corrupt Arabic catalog lines 99 -> 0. Backend English titles/reason remain compatibility fallbacks, translated at their UI consumers. No browser-wide exposure count is claimed.
+- Current gates remain PASS: frontend 40 suites / 332 tests (baseline 37 / 323); mocks 66 / 1,103 (baseline 66 / 1,102); i18n:check ok; parity 36 namespaces / 2,709 keys; lint:api 1/1; lint:guards ok; root build Compiled successfully / exit 0. Command evidence recorded in slice 2A; catalog formatting was preserved using structural edits and deep equality checks.
+- Remaining: commit procurement reason-code slice and final LF/whitespace/status checks. Human visual/RTL and native Arabic review NOT VERIFIED. Pilot remains untouched; owner must rebuild it separately to see these source changes.
+
 ## Batch 5A slice 2A — 2026-10-16
 
 - Migrated dashboard overview, approvals, agent activity, directories, finance, inventory, payroll and HR system text into existing EN/AR namespaces. Added canonical role/status labels and reused shared date/number/currency formatters. Stored names, notes, descriptions, justifications and references remain data.

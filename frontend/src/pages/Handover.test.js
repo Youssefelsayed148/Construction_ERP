@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import Handover from './Handover';
 
 jest.mock('../hooks/useLocale', () => {
-  const t = (key) => key;
+  const t = require('../testUtils/systemText').systemText;
   return { useLocale: () => ({ locale: 'en', t }) };
 });
 jest.mock('../components/DocumentUpload', () => function MockDocumentUpload({ onUploaded }) {

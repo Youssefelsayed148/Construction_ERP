@@ -1,3 +1,4 @@
+import { translateEnum } from '../i18n/enums';
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -157,120 +158,118 @@ function SiteWorkspace() {
   };
 
   if (error) return <div className="page-container"><div className="alert alert-danger">{error}</div></div>;
-  if (!data) return <div className="page-container"><p>Loading workspace…</p></div>;
+  if (!data) return <div className="page-container"><p>{translate('site.system.loadingWorkspace')}</p></div>;
 
   return (
     <div className="page-container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button className="btn btn-secondary btn-sm" onClick={() => navigate(-1)}><ArrowLeft size={14} /></button>
-          <h1 style={{ fontSize: 20, margin: 0 }}>{locale === 'ar' ? 'مساحة عمل مهندس الموقع' : 'Site Engineer Workspace'}</h1>
+          <h1 style={{ fontSize: 20, margin: 0 }}>{translate('site.system.siteEngineerWorkspace')}</h1>
         </div>
         <input ref={photoInput} type="file" accept="image/*" capture="environment" onChange={selectPhoto} style={{ display: 'none' }} />
         <button className="btn btn-primary btn-sm" disabled={uploadingPhoto} onClick={() => photoInput.current?.click()}>
-          <Camera size={14} style={{ marginRight: 4 }} /> {uploadingPhoto ? 'Uploading…' : (locale === 'ar' ? 'التقاط صورة' : 'Quick Photo')}
+          <Camera size={14} style={{ marginRight: 4 }} /> {uploadingPhoto ? translate('site.system.uploading') : (translate('site.system.quickPhoto'))}
         </button>
       </div>
 
       <div className="responsive-grid responsive-grid--auto-280" style={{ gap: 16 }}>
         <Section icon={ClipboardList} label={t.activities} count={data.activities.count}>
           {data.activities.items.length === 0
-            ? <em>{locale === 'ar' ? 'لا توجد أنشطة اليوم.' : 'No activities scheduled today.'}</em>
-            : data.activities.items.map(a => <div key={a.id}>{a.title} — {a.status}</div>)}
+            ? <em>{translate('site.system.noActivitiesScheduledToday')}</em>
+            : data.activities.items.map(a => <div key={a.id}>{a.title} — {translateEnum(translate, 'status', a.status)}</div>)}
         </Section>
 
         <Section icon={Users} label={t.manpower} count={data.manpower.present}>
           {data.manpower.present === 0
-            ? <em>{locale === 'ar' ? 'لا سجلات حضور اليوم.' : 'No attendance records today.'}</em>
-            : <span>{data.manpower.present} present</span>}
+            ? <em>{translate('site.system.noAttendanceRecordsToday')}</em>
+            : <span>{data.manpower.present}  {translate('site.system.present')}</span>}
         </Section>
 
         <Section icon={HardHat} label={t.equipment} count={data.equipment.count}>
           {data.equipment.count === 0
-            ? <em>{locale === 'ar' ? 'لا معدات اليوم.' : 'No equipment logged today.'}</em>
-            : <span>{data.equipment.hours} h total</span>}
+            ? <em>{translate('site.system.noEquipmentLoggedToday')}</em>
+            : <span>{data.equipment.hours}  {translate('site.system.hTotal')}</span>}
         </Section>
 
         <Section icon={Truck} label={t.deliveries} count={data.deliveries.grns}>
           {data.deliveries.grns === 0
-            ? <em>{locale === 'ar' ? 'لا توريدات اليوم.' : 'No GRNs today.'}</em>
+            ? <em>{translate('site.system.noGrnsToday')}</em>
             : data.deliveries.items.map(d => <div key={d.id}>{d.grn_number}</div>)}
         </Section>
 
         <Section icon={ClipboardList} label={t.executed_quantities} count={data.executed_quantities.approved_measurements}>
           {data.executed_quantities.approved_measurements === 0
-            ? <em>{locale === 'ar' ? 'لا كميات معتمدة اليوم.' : 'No approved measurements today.'}</em>
-            : <span>{data.executed_quantities.total_quantity} total</span>}
+            ? <em>{translate('site.system.noApprovedMeasurementsToday')}</em>
+            : <span>{data.executed_quantities.total_quantity}  {translate('site.system.total')}</span>}
         </Section>
 
         <Section icon={Sun} label={t.inspections} count={data.inspections.items.length}>
           {data.inspections.items.length === 0
-            ? <em>{locale === 'ar' ? 'لا فحوصات اليوم.' : 'No inspections scheduled today.'}</em>
+            ? <em>{translate('site.system.noInspectionsScheduledToday')}</em>
             : data.inspections.items.map(i => <div key={i.kind + i.id}>{i.kind}: {i.status || '-'}</div>)}
         </Section>
 
         <Section icon={AlertTriangle} label={t.safety} count={data.safety.incidents}>
           {data.safety.incidents === 0
-            ? <em>{locale === 'ar' ? 'لا حوادث.' : 'No incidents today.'}</em>
+            ? <em>{translate('site.system.noIncidentsToday')}</em>
             : data.safety.items.map(i => <div key={i.id}>{i.incident_type}</div>)}
         </Section>
 
         <Section icon={ClipboardList} label={t.instructions} count={data.instructions.open}>
           {data.instructions.open === 0
-            ? <em>{locale === 'ar' ? 'لا تعليمات مفتوحة.' : 'No open instructions.'}</em>
+            ? <em>{translate('site.system.noOpenInstructions')}</em>
             : data.instructions.items.map(i => (
-              <div key={i.id}>{i.instruction_number}: {i.title} ({i.status})</div>
+              <div key={i.id}>{i.instruction_number}: {i.title} ({translateEnum(translate, 'status', i.status)})</div>
             ))}
         </Section>
 
         <Section icon={StickyNote} label={t.photos} count={data.photos.count}>
           {data.photos.count === 0
-            ? <em>{locale === 'ar' ? 'لا صور اليوم.' : 'No photos today.'}</em>
-            : data.photos.items.map(p => <div key={p.id}>{p.caption || 'photo'}</div>)}
+            ? <em>{translate('site.system.noPhotosToday')}</em>
+            : data.photos.items.map(p => <div key={p.id}>{p.caption || translate('site.system.photo')}</div>)}
         </Section>
 
         <Section icon={Sun} label={t.material_readiness} count={data.material_readiness.ready}>
-          <span>{data.material_readiness.ready} / {data.material_readiness.requirements} ready to pick</span>
+          <span>{data.material_readiness.ready} / {data.material_readiness.requirements}  {translate('site.system.readyToPick')}</span>
         </Section>
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
-        <div className="card-header">{locale === 'ar' ? 'التقرير اليومي' : 'Daily Report'}</div>
+        <div className="card-header">{translate('site.system.dailyReport')}</div>
         <div className="card-body">
-          <textarea className="form-control" rows={2} placeholder={locale === 'ar' ? 'السرد:' : 'Narrative:'} value={narrative} onChange={e => setNarrative(e.target.value)} />
-          <textarea className="form-control" rows={2} style={{ marginTop: 8 }} placeholder={locale === 'ar' ? 'المشاكل والمعوقات:' : 'Issues / blockers:'} value={issues} onChange={e => setIssues(e.target.value)} />
-          <textarea className="form-control" rows={2} style={{ marginTop: 8 }} placeholder={locale === 'ar' ? 'خطة الغد:' : 'Next-day plan:'} value={plan} onChange={e => setPlan(e.target.value)} />
+          <textarea className="form-control" rows={2} placeholder={translate('site.system.narrative')} value={narrative} onChange={e => setNarrative(e.target.value)} />
+          <textarea className="form-control" rows={2} style={{ marginTop: 8 }} placeholder={translate('site.system.issuesBlockers')} value={issues} onChange={e => setIssues(e.target.value)} />
+          <textarea className="form-control" rows={2} style={{ marginTop: 8 }} placeholder={translate('site.system.nextDayPlan')} value={plan} onChange={e => setPlan(e.target.value)} />
           <button className="btn btn-primary" style={{ marginTop: 8 }} onClick={assembleReport}>
-            {locale === 'ar' ? 'تجميع التقرير من السجلات' : 'Assemble report from records'}
+            {translate('site.system.assembleReportFromRecords')}
           </button>
         </div>
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
-        <div className="card-header">{locale === 'ar' ? 'ملاحظات لاصقة' : 'Sticky Notes'}</div>
+        <div className="card-header">{translate('site.system.stickyNotes')}</div>
         <div className="card-body">
           <div style={{ display: 'flex', gap: 8 }}>
-            <input className="form-control" placeholder={locale === 'ar' ? 'ملاحظة سريعة…' : 'Quick note…'} value={newNote} onChange={e => setNewNote(e.target.value)} />
-            <button className="btn btn-secondary btn-sm" onClick={() => addSticky('personal')}>{locale === 'ar' ? 'شخصية' : 'Personal'}</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => addSticky('project')}>{locale === 'ar' ? 'مشروع' : 'Project'}</button>
+            <input className="form-control" placeholder={translate('site.system.quickNote')} value={newNote} onChange={e => setNewNote(e.target.value)} />
+            <button className="btn btn-secondary btn-sm" onClick={() => addSticky('personal')}>{translate('site.system.personal')}</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => addSticky('project')}>{translate('site.system.project')}</button>
           </div>
           <div style={{ marginTop: 8 }}>
             {notes.length === 0
-              ? <em>{locale === 'ar' ? 'لا ملاحظات.' : 'No sticky notes.'}</em>
+              ? <em>{translate('site.system.noStickyNotes')}</em>
               : notes.map(n => (
                 <div key={n.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
-                  <span><StickyNote size={12} /> {n.text} <small>({n.scope})</small></span>
+                  <span><StickyNote size={12} /> {n.text} <small>({translateEnum(translate, 'scope', n.scope)})</small></span>
                   {n.converted_action_item_id == null
-                    ? <button className="btn btn-info btn-sm" onClick={() => convertNote(n.id)}><Play size={10} /> {locale === 'ar' ? 'تحويل لإجراء' : 'Convert to action'}</button>
-                    : <span className="badge badge-success">{locale === 'ar' ? 'أصبح إجراء' : 'Action created'}</span>}
+                    ? <button className="btn btn-info btn-sm" onClick={() => convertNote(n.id)}><Play size={10} /> {translate('site.system.convertToAction')}</button>
+                    : <span className="badge badge-success">{translate('site.system.actionCreated')}</span>}
                 </div>
               ))}
           </div>
           <LoadMore loadedCount={notes.length} totalCount={notesTotalCount} loading={loadingMoreNotes} t={translate} onLoadMore={loadMoreNotes} />
           <small style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar'
-              ? 'الملاحظات اللاصقة ليست مراسلات رسمية — استخدم مسار المستندات الرسمية.'
-              : 'Sticky notes are not formal correspondence — use the official document registers for anything contractual.'}
+            {translate('site.system.stickyNotesAreNotFormalCorrespondenceUseTheOfficialDocument')}
           </small>
         </div>
       </div>

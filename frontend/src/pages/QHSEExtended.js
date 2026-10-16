@@ -1,3 +1,5 @@
+import { formatDate as sharedDate } from '../utils/formatters';
+import { translateEnum } from '../i18n/enums';
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 // Phase 19 — QA/QC extended tabs: ITP, WIR, Punch items, Checklists,
 // Corrective/Preventive actions, Mock-ups, Calibration records.
@@ -32,12 +34,7 @@ const downloadPdf = async (url, filename) => {
   URL.revokeObjectURL(a.href);
 };
 
-const fmtDate = (d) => {
-  if (!d) return '-';
-  const dt = new Date(d);
-  if (isNaN(dt.getTime())) return d;
-  return `${dt.getDate().toString().padStart(2, '0')}/${(dt.getMonth() + 1).toString().padStart(2, '0')}/${dt.getFullYear()}`;
-};
+const fmtDate = sharedDate;
 
 const WIR_STATUS_LABELS = {
   en: { draft: 'Draft', submitted: 'QA/QC Review', qa_qc_review: 'QA/QC Review', pm_review: 'PM Review', consultant_review: 'Consultant', approved: 'Approved', approved_with_comments: 'Approved with Comments', rejected: 'Rejected' },
@@ -45,7 +42,6 @@ const WIR_STATUS_LABELS = {
 };
 const WIR_STATUS_BADGE = { draft: 'badge-info', submitted: 'badge-warning', qa_qc_review: 'badge-warning', pm_review: 'badge-info', consultant_review: 'badge-info', approved: 'badge-success', approved_with_comments: 'badge-success', rejected: 'badge-danger' };
 
-const POINT_TYPE_LABELS = { hold: 'Hold', witness: 'Witness', review: 'Review' };
 const POINT_TYPE_BADGE = { hold: 'badge-danger', witness: 'badge-warning', review: 'badge-info' };
 
 const PUNCH_STATUS_LABELS = {
@@ -141,22 +137,22 @@ export function ItpTab({ projectId, locale, t }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{locale === 'ar' ? 'خطة فحص جديدة' : 'New ITP'}</button>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{t('qhse.system.newItp')}</button>
       </div>
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: '16px', display: 'grid', gap: '10px' }}>
-          <input className="input" required placeholder={locale === 'ar' ? 'العنوان' : 'Title'} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+          <input className="input" required placeholder={t('qhse.certificates.name')} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
           <div className="responsive-grid responsive-grid--two" style={{ gap: '10px' }}>
-            <input className="input" placeholder={locale === 'ar' ? 'التخصص' : 'Discipline'} value={form.discipline} onChange={e => setForm({ ...form, discipline: e.target.value })} />
+            <input className="input" placeholder={t('qhse.system.discipline')} value={form.discipline} onChange={e => setForm({ ...form, discipline: e.target.value })} />
             <WorkPackageSelect projectId={projectId} value={form.work_package_id} onChange={(v) => setForm({ ...form, work_package_id: v })} />
           </div>
           <select className="input" value={form.project_location_id} onChange={e => setForm({ ...form, project_location_id: e.target.value })}>
-            <option value="">{locale === 'ar' ? '— الموقع —' : '— Location —'}</option>
+            <option value="">{t('qhse.system.location')}</option>
             {(locations || []).map(l => <option key={l.id} value={l.id}>{l.name || l.location_name}</option>)}
           </select>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-primary" type="submit">{t('common.save') || 'Save'}</button>
-            <button className="btn" type="button" onClick={() => setShowModal(false)}>Cancel</button>
+            <button className="btn btn-primary" type="submit">{t('common.save') || t('qhse.system.save')}</button>
+            <button className="btn" type="button" onClick={() => setShowModal(false)}>{t('qhse.system.cancel')}</button>
           </div>
         </form>
       )}
@@ -165,15 +161,15 @@ export function ItpTab({ projectId, locale, t }) {
       ) : itps.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <ClipboardCheck size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
-          <p style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'لا توجد خطط فحص.' : 'No inspection & test plans yet.'}</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('qhse.system.noInspectionTestPlansYet')}</p>
         </div>
       ) : (
         <div className="table-container">
           <table className="table">
             <thead>
               <tr>
-                <th>ITP</th><th>{locale === 'ar' ? 'العنوان' : 'Title'}</th><th>{locale === 'ar' ? 'التخصص' : 'Discipline'}</th>
-                <th>{locale === 'ar' ? 'النقاط' : 'Points'}</th><th>{locale === 'ar' ? 'الحالة' : 'Status'}</th><th>{t('common.actions')}</th>
+                <th>{t('qhse.system.itp2')}</th><th>{t('qhse.certificates.name')}</th><th>{t('qhse.system.discipline')}</th>
+                <th>{t('qhse.system.points')}</th><th>{t('qhse.certificates.status')}</th><th>{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -184,26 +180,26 @@ export function ItpTab({ projectId, locale, t }) {
                     <td style={{ fontWeight: 500 }}>{i.title}</td>
                     <td>{i.discipline || '-'}</td>
                     <td>{i.point_count}</td>
-                    <td><span className="badge badge-info">{i.status}</span></td>
+                    <td><span className="badge badge-info">{translateEnum(t, 'status', i.status)}</span></td>
                     <td>
-                      <button className="btn" style={{ padding: '4px 10px' }} onClick={() => openPoints(i)}>{locale === 'ar' ? 'النقاط' : 'Points'}</button>{' '}
+                      <button className="btn" style={{ padding: '4px 10px' }} onClick={() => openPoints(i)}>{t('qhse.system.points')}</button>{' '}
                       <button className="btn" style={{ padding: '4px 10px' }} onClick={() => downloadPdf(`${API_URL}/qhse/itps/${i.id}/pdf`, `${i.itp_number}.pdf`)}><Download size={14} /></button>
                     </td>
                   </tr>
                   {expanded === i.id && (
                     <tr>
                       <td colSpan={6} style={{ background: 'var(--color-bg-secondary, #f7f7f8)' }}>
-                        <button className="btn" style={{ padding: '4px 10px', marginBottom: '8px' }} onClick={() => addPoint(i.id)}><Plus size={12} />{locale === 'ar' ? 'نقطة' : 'Point'}</button>
+                        <button className="btn" style={{ padding: '4px 10px', marginBottom: '8px' }} onClick={() => addPoint(i.id)}><Plus size={12} />{t('qhse.system.point')}</button>
                         {points.length === 0 ? (
-                          <p style={{ color: 'var(--color-text-secondary)', fontSize: '13px' }}>{locale === 'ar' ? 'لا توجد نقاط فحص.' : 'No inspection points defined.'}</p>
+                          <p style={{ color: 'var(--color-text-secondary)', fontSize: '13px' }}>{t('qhse.system.noInspectionPointsDefined')}</p>
                         ) : (
                           <table className="table" style={{ fontSize: '13px' }}>
-                            <thead><tr><th>#</th><th>{locale === 'ar' ? 'النقطة' : 'Point'}</th><th>{locale === 'ar' ? 'النوع' : 'Type'}</th><th>{locale === 'ar' ? 'المسؤول' : 'Responsible'}</th><th>{locale === 'ar' ? 'الاستشاري' : 'Consultant'}</th><th>{locale === 'ar' ? 'معايير القبول' : 'Acceptance criteria'}</th></tr></thead>
+                            <thead><tr><th>#</th><th>{t('qhse.system.point2')}</th><th>{t('qhse.system.type')}</th><th>{t('qhse.system.responsible')}</th><th>{t('qhse.system.consultant')}</th><th>{t('qhse.system.acceptanceCriteria')}</th></tr></thead>
                             <tbody>
                               {points.map(p => (
                                 <tr key={p.id}>
                                   <td>{p.seq}</td><td>{p.title}</td>
-                                  <td><span className={`badge ${POINT_TYPE_BADGE[p.point_type]}`}>{POINT_TYPE_LABELS[p.point_type] || p.point_type}</span></td>
+                                  <td><span className={`badge ${POINT_TYPE_BADGE[p.point_type]}`}>{translateEnum(t, 'inspectionPointType', p.point_type)}</span></td>
                                   <td>{p.responsible_party || p.responsible_user_name || '-'}</td>
                                   <td>{p.consultant_responsibility || '-'}</td>
                                   <td>{p.acceptance_criteria || '-'}</td>
@@ -226,7 +222,7 @@ export function ItpTab({ projectId, locale, t }) {
           <div className="modal-header"><h2 className="modal-title">{t('common.dialogs.addInspectionPointTitle')}</h2></div>
           <div className="modal-body">
             <label className="form-group"><span className="form-label">{t('common.dialogs.inspectionPointTitleLabel')} *</span><input className="form-input" required value={pointForm.title} onChange={(event) => setPointForm({ ...pointForm, title: event.target.value })} /></label>
-            <label className="form-group"><span className="form-label">{t('common.dialogs.inspectionPointTypeLabel')}</span><select className="form-select" value={pointForm.point_type} onChange={(event) => setPointForm({ ...pointForm, point_type: event.target.value })}>{['hold', 'witness', 'review'].map((type) => <option key={type} value={type}>{POINT_TYPE_LABELS[type]}</option>)}</select></label>
+            <label className="form-group"><span className="form-label">{t('common.dialogs.inspectionPointTypeLabel')}</span><select className="form-select" value={pointForm.point_type} onChange={(event) => setPointForm({ ...pointForm, point_type: event.target.value })}>{['hold', 'witness', 'review'].map((type) => <option key={type} value={type}>{translateEnum(t, 'inspectionPointType', type)}</option>)}</select></label>
             <label className="form-group"><span className="form-label">{t('common.dialogs.inspectionCriteriaLabel')}</span><textarea className="form-textarea" value={pointForm.acceptance_criteria} onChange={(event) => setPointForm({ ...pointForm, acceptance_criteria: event.target.value })} /></label>
             {pointError && <div className="form-error" role="alert">{pointError}</div>}
           </div>
@@ -288,19 +284,19 @@ export function WirTab({ projectId, locale, t }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{locale === 'ar' ? 'طلب فحص أعمال' : 'New WIR'}</button>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{t('qhse.system.newWir')}</button>
       </div>
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: '16px', display: 'grid', gap: '10px' }}>
           <WorkPackageSelect projectId={projectId} required value={form.work_package_id} onChange={(v) => setForm({ ...form, work_package_id: v })} />
           <select className="input" value={form.itp_id} onChange={e => setForm({ ...form, itp_id: e.target.value })}>
-            <option value="">{locale === 'ar' ? '— ITP (اختياري) —' : '— ITP (optional) —'}</option>
+            <option value="">{t('qhse.system.itpOptional')}</option>
             {itps.map(i => <option key={i.id} value={i.id}>{i.itp_number} — {i.title}</option>)}
           </select>
-          <textarea className="input" placeholder={locale === 'ar' ? 'ملاحظات' : 'Notes'} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
+          <textarea className="input" placeholder={t('qhse.certificates.notes')} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-primary" type="submit">{t('common.save') || 'Save'}</button>
-            <button className="btn" type="button" onClick={() => setShowModal(false)}>Cancel</button>
+            <button className="btn btn-primary" type="submit">{t('common.save') || t('qhse.system.save')}</button>
+            <button className="btn" type="button" onClick={() => setShowModal(false)}>{t('qhse.system.cancel')}</button>
           </div>
         </form>
       )}
@@ -309,15 +305,15 @@ export function WirTab({ projectId, locale, t }) {
       ) : wirs.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <ShieldCheck size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
-          <p style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'لا توجد طلبات فحص أعمال.' : 'No work inspection requests yet.'}</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('qhse.system.noWorkInspectionRequestsYet')}</p>
         </div>
       ) : (
         <div className="table-container">
           <table className="table">
             <thead>
               <tr>
-                <th>WIR</th><th>{locale === 'ar' ? 'حزمة العمل' : 'Work package'}</th><th>{locale === 'ar' ? 'الموقع' : 'Location'}</th>
-                <th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th><th>{locale === 'ar' ? 'المرحلة' : 'Stage'}</th><th>{locale === 'ar' ? 'النتيجة' : 'Result'}</th><th>{t('common.actions')}</th>
+                <th>{t('qhse.system.wir')}</th><th>{t('qhse.system.workPackage')}</th><th>{t('qhse.system.location2')}</th>
+                <th>{t('qhse.system.date')}</th><th>{t('qhse.system.stage')}</th><th>{t('qhse.system.result')}</th><th>{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -330,18 +326,18 @@ export function WirTab({ projectId, locale, t }) {
                   <td><span className={`badge ${WIR_STATUS_BADGE[w.status] || 'badge-info'}`}>{WIR_STATUS_LABELS[locale]?.[w.status] || w.status}</span></td>
                   <td>{w.result ? <span className={`badge ${w.result === 'approved' || w.result === 'approved_with_comments' ? 'badge-success' : w.result === 'rejected' ? 'badge-danger' : 'badge-warning'}`}>{WIR_STATUS_LABELS[locale]?.[w.result] || w.result}</span> : '-'}</td>
                   <td style={{ whiteSpace: 'nowrap' }}>
-                    {w.status === 'draft' && <button className="btn btn-primary" style={{ padding: '4px 10px' }} onClick={() => act(w, 'submit')}>{locale === 'ar' ? 'إرسال' : 'Submit'}</button>}
+                    {w.status === 'draft' && <button className="btn btn-primary" style={{ padding: '4px 10px' }} onClick={() => act(w, 'submit')}>{t('qhse.system.submit')}</button>}
                     {(w.status === 'qa_qc_review' || w.status === 'pm_review') && (
                       <>
-                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(w, 'decision', { decision: 'approve' })}>{locale === 'ar' ? 'اعتماد' : 'Approve'}</button>{' '}
-                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(w, 'decision', { decision: 'return' })}>{locale === 'ar' ? 'إرجاع' : 'Return'}</button>{' '}
+                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(w, 'decision', { decision: 'approve' })}>{t('qhse.system.approve')}</button>{' '}
+                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(w, 'decision', { decision: 'return' })}>{t('qhse.system.return')}</button>{' '}
                       </>
                     )}
                     {w.status === 'consultant_review' && (
                       <>
-                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(w, 'result', { result: 'approved' })}>{locale === 'ar' ? 'قبول' : 'Accept'}</button>{' '}
-                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(w, 'result', { result: 'rejected' })}>{locale === 'ar' ? 'رفض' : 'Reject'}</button>{' '}
-                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(w, 'result', { result: 'reinspect' })}>{locale === 'ar' ? 'إعادة فحص' : 'Reinspect'}</button>{' '}
+                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(w, 'result', { result: 'approved' })}>{t('qhse.system.accept')}</button>{' '}
+                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(w, 'result', { result: 'rejected' })}>{t('qhse.system.reject')}</button>{' '}
+                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(w, 'result', { result: 'reinspect' })}>{t('qhse.system.reinspect')}</button>{' '}
                       </>
                     )}
                     <button className="btn" style={{ padding: '4px 10px' }} onClick={() => downloadPdf(`${API_URL}/qhse/wirs/${w.id}/pdf`, `${w.wir_number}.pdf`)}><Download size={14} /></button>
@@ -402,23 +398,23 @@ export function PunchTab({ projectId, locale, t }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '16px' }}>
-        <button className="btn" onClick={() => downloadPdf(`${API_URL}/qhse/punch-items/pdf?project_id=${projectId}`, `punch-list-${projectId}.pdf`)}><Download size={16} />{locale === 'ar' ? 'قائمة PUNCH' : 'Punch list PDF'}</button>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{locale === 'ar' ? 'بند جديد' : 'New Punch Item'}</button>
+        <button className="btn" onClick={() => downloadPdf(`${API_URL}/qhse/punch-items/pdf?project_id=${projectId}`, `punch-list-${projectId}.pdf`)}><Download size={16} />{t('qhse.system.punchListPdf')}</button>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{t('qhse.system.newPunchItem')}</button>
       </div>
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: '16px', display: 'grid', gap: '10px' }}>
-          <textarea className="input" required placeholder={locale === 'ar' ? 'الوصف' : 'Description'} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+          <textarea className="input" required placeholder={t('qhse.system.description')} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
           <div className="responsive-grid responsive-grid--three" style={{ gap: '10px' }}>
-            <input className="input" placeholder={locale === 'ar' ? 'التخصص' : 'Discipline'} value={form.discipline} onChange={e => setForm({ ...form, discipline: e.target.value })} />
+            <input className="input" placeholder={t('qhse.system.discipline')} value={form.discipline} onChange={e => setForm({ ...form, discipline: e.target.value })} />
             <select className="input" value={form.severity} onChange={e => setForm({ ...form, severity: e.target.value })}>
-              <option value="minor">Minor</option><option value="major">Major</option><option value="critical">Critical</option>
+              <option value="minor">{t('qhse.system.minor')}</option><option value="major">{t('qhse.system.major')}</option><option value="critical">{t('qhse.system.critical')}</option>
             </select>
             <input className="input" type="date" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} />
           </div>
-          <input className="input" placeholder={locale === 'ar' ? 'جهة التحقق' : 'Verification authority'} value={form.verification_authority} onChange={e => setForm({ ...form, verification_authority: e.target.value })} />
+          <input className="input" placeholder={t('qhse.system.verificationAuthority')} value={form.verification_authority} onChange={e => setForm({ ...form, verification_authority: e.target.value })} />
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-primary" type="submit">{t('common.save') || 'Save'}</button>
-            <button className="btn" type="button" onClick={() => setShowModal(false)}>Cancel</button>
+            <button className="btn btn-primary" type="submit">{t('common.save') || t('qhse.system.save')}</button>
+            <button className="btn" type="button" onClick={() => setShowModal(false)}>{t('qhse.system.cancel')}</button>
           </div>
         </form>
       )}
@@ -427,15 +423,15 @@ export function PunchTab({ projectId, locale, t }) {
       ) : items.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <ListChecks size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
-          <p style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'لا توجد بنود PUNCH.' : 'No punch items — the register is clean.'}</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('qhse.system.noPunchItemsTheRegisterIsClean')}</p>
         </div>
       ) : (
         <div className="table-container">
           <table className="table">
             <thead>
               <tr>
-                <th>Item</th><th>{locale === 'ar' ? 'الوصف' : 'Description'}</th><th>{locale === 'ar' ? 'الموقع' : 'Location'}</th>
-                <th>{locale === 'ar' ? 'المسؤول' : 'Responsible'}</th><th>{locale === 'ar' ? 'الاستحقاق' : 'Due'}</th><th>{locale === 'ar' ? 'الحالة' : 'Status'}</th><th>{t('common.actions')}</th>
+                <th>{t('qhse.system.item')}</th><th>{t('qhse.system.description')}</th><th>{t('qhse.system.location2')}</th>
+                <th>{t('qhse.system.responsible')}</th><th>{t('qhse.system.due')}</th><th>{t('qhse.certificates.status')}</th><th>{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -448,15 +444,15 @@ export function PunchTab({ projectId, locale, t }) {
                   <td>{fmtDate(p.due_date)}</td>
                   <td><span className={`badge ${PUNCH_STATUS_BADGE[p.status]}`}>{PUNCH_STATUS_LABELS[locale]?.[p.status] || p.status}</span></td>
                   <td style={{ whiteSpace: 'nowrap' }}>
-                    {p.status === 'open' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'assigned')}>{locale === 'ar' ? 'إسناد' : 'Assign'}</button>}
-                    {p.status === 'assigned' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'rectified')}>{locale === 'ar' ? 'تم التصحيح' : 'Rectified'}</button>}
+                    {p.status === 'open' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'assigned')}>{t('qhse.system.assign')}</button>}
+                    {p.status === 'assigned' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'rectified')}>{t('qhse.system.rectified')}</button>}
                     {p.status === 'rectified' && (
                       <>
-                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'verified')}>{locale === 'ar' ? 'تحقق' : 'Verify'}</button>{' '}
-                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'open')}>{locale === 'ar' ? 'إعادة فتح' : 'Reopen'}</button>
+                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'verified')}>{t('qhse.system.verify')}</button>{' '}
+                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'open')}>{t('qhse.system.reopen')}</button>
                       </>
                     )}
-                    {p.status === 'verified' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'closed')}>{locale === 'ar' ? 'إغلاق' : 'Close'}</button>}
+                    {p.status === 'verified' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'closed')}>{t('qhse.system.close')}</button>}
                   </td>
                 </tr>
               ))}
@@ -516,21 +512,21 @@ export function CapaTab({ projectId, locale, t }) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button className={`btn ${kind === 'corrective' ? 'btn-primary' : ''}`} onClick={() => setKind('corrective')} style={{ padding: '6px 16px', fontSize: '13px' }}>{locale === 'ar' ? 'إجراءات تصحيحية' : 'Corrective'}</button>
-          <button className={`btn ${kind === 'preventive' ? 'btn-primary' : ''}`} onClick={() => setKind('preventive')} style={{ padding: '6px 16px', fontSize: '13px' }}>{locale === 'ar' ? 'إجراءات وقائية' : 'Preventive'}</button>
+          <button className={`btn ${kind === 'corrective' ? 'btn-primary' : ''}`} onClick={() => setKind('corrective')} style={{ padding: '6px 16px', fontSize: '13px' }}>{t('qhse.system.corrective')}</button>
+          <button className={`btn ${kind === 'preventive' ? 'btn-primary' : ''}`} onClick={() => setKind('preventive')} style={{ padding: '6px 16px', fontSize: '13px' }}>{t('qhse.system.preventive')}</button>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{locale === 'ar' ? 'إجراء جديد' : 'New Action'}</button>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{t('qhse.system.newAction')}</button>
       </div>
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: '16px', display: 'grid', gap: '10px' }}>
-          <textarea className="input" required placeholder={locale === 'ar' ? 'الوصف' : 'Description'} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+          <textarea className="input" required placeholder={t('qhse.system.description')} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
           <div className="responsive-grid responsive-grid--two" style={{ gap: '10px' }}>
-            <input className="input" placeholder={locale === 'ar' ? 'الدور المسؤول' : 'Assigned role'} value={form.assigned_role} onChange={e => setForm({ ...form, assigned_role: e.target.value })} />
+            <input className="input" placeholder={t('qhse.system.assignedRole')} value={form.assigned_role} onChange={e => setForm({ ...form, assigned_role: e.target.value })} />
             <input className="input" type="date" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} />
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-primary" type="submit">{t('common.save') || 'Save'}</button>
-            <button className="btn" type="button" onClick={() => setShowModal(false)}>Cancel</button>
+            <button className="btn btn-primary" type="submit">{t('common.save') || t('qhse.system.save')}</button>
+            <button className="btn" type="button" onClick={() => setShowModal(false)}>{t('qhse.system.cancel')}</button>
           </div>
         </form>
       )}
@@ -539,27 +535,27 @@ export function CapaTab({ projectId, locale, t }) {
       ) : items.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <Wrench size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
-          <p style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'لا توجد إجراءات.' : 'No actions recorded.'}</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('qhse.system.noActionsRecorded')}</p>
         </div>
       ) : (
         <div className="table-container">
           <table className="table">
             <thead>
-              <tr><th>#</th><th>{locale === 'ar' ? 'الوصف' : 'Description'}</th><th>{locale === 'ar' ? 'المصدر' : 'Source'}</th><th>{locale === 'ar' ? 'المسؤول' : 'Assigned'}</th><th>{locale === 'ar' ? 'الاستحقاق' : 'Due'}</th><th>{locale === 'ar' ? 'الحالة' : 'Status'}</th><th>{t('common.actions')}</th></tr>
+              <tr><th>#</th><th>{t('qhse.system.description')}</th><th>{t('qhse.system.source')}</th><th>{t('qhse.system.assigned')}</th><th>{t('qhse.system.due')}</th><th>{t('qhse.certificates.status')}</th><th>{t('common.actions')}</th></tr>
             </thead>
             <tbody>
               {items.map(a => (
                 <tr key={a.id}>
                   <td>{a.id}</td>
                   <td>{a.description}</td>
-                  <td style={{ fontSize: '13px' }}>{a.source_type} #{a.source_id}</td>
+                  <td style={{ fontSize: '13px' }}>{translateEnum(t, 'entityType', a.source_type)} #{a.source_id}</td>
                   <td>{a.assigned_user_name || a.assigned_role || '-'}</td>
-                  <td>{fmtDate(a.due_date)}{a.is_overdue ? <span className="badge badge-danger" style={{ marginLeft: 6 }}>overdue</span> : null}</td>
+                  <td>{fmtDate(a.due_date)}{a.is_overdue ? <span className="badge badge-danger" style={{ marginLeft: 6 }}>{t('qhse.system.overdue')}</span> : null}</td>
                   <td><span className={`badge ${CAPA_STATUS_BADGE[a.status]}`}>{CAPA_STATUS_LABELS[locale]?.[a.status] || a.status}</span></td>
                   <td>
-                    {a.status === 'open' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(a, 'in_progress')}>{locale === 'ar' ? 'بدء' : 'Start'}</button>}
-                    {(a.status === 'open' || a.status === 'in_progress') && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(a, 'completed')}>{locale === 'ar' ? 'إنجاز' : 'Complete'}</button>}
-                    {a.status === 'completed' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(a, 'verified')}>{locale === 'ar' ? 'تحقق' : 'Verify'}</button>}
+                    {a.status === 'open' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(a, 'in_progress')}>{t('qhse.system.start')}</button>}
+                    {(a.status === 'open' || a.status === 'in_progress') && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(a, 'completed')}>{t('qhse.system.complete')}</button>}
+                    {a.status === 'completed' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(a, 'verified')}>{t('qhse.system.verify')}</button>}
                   </td>
                 </tr>
               ))}
@@ -614,15 +610,15 @@ export function MockUpsTab({ projectId, locale, t }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{locale === 'ar' ? 'نموذج تجريبي' : 'Propose Mock-up'}</button>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{t('qhse.system.proposeMockUp')}</button>
       </div>
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: '16px', display: 'grid', gap: '10px' }}>
-          <input className="input" required placeholder={locale === 'ar' ? 'العنوان' : 'Title'} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
-          <input className="input" placeholder={locale === 'ar' ? 'التخصص' : 'Discipline'} value={form.discipline} onChange={e => setForm({ ...form, discipline: e.target.value })} />
+          <input className="input" required placeholder={t('qhse.certificates.name')} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+          <input className="input" placeholder={t('qhse.system.discipline')} value={form.discipline} onChange={e => setForm({ ...form, discipline: e.target.value })} />
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-primary" type="submit">{t('common.save') || 'Save'}</button>
-            <button className="btn" type="button" onClick={() => setShowModal(false)}>Cancel</button>
+            <button className="btn btn-primary" type="submit">{t('common.save') || t('qhse.system.save')}</button>
+            <button className="btn" type="button" onClick={() => setShowModal(false)}>{t('qhse.system.cancel')}</button>
           </div>
         </form>
       )}
@@ -631,12 +627,12 @@ export function MockUpsTab({ projectId, locale, t }) {
       ) : items.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <PackageCheck size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
-          <p style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'لا توجد نماذج تجريبية.' : 'No mock-ups proposed.'}</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('qhse.system.noMockUpsProposed')}</p>
         </div>
       ) : (
         <div className="table-container">
           <table className="table">
-            <thead><tr><th>{locale === 'ar' ? 'العنوان' : 'Title'}</th><th>{locale === 'ar' ? 'التخصص' : 'Discipline'}</th><th>{locale === 'ar' ? 'الموقع' : 'Location'}</th><th>{locale === 'ar' ? 'الحالة' : 'Status'}</th><th>{t('common.actions')}</th></tr></thead>
+            <thead><tr><th>{t('qhse.certificates.name')}</th><th>{t('qhse.system.discipline')}</th><th>{t('qhse.system.location2')}</th><th>{t('qhse.certificates.status')}</th><th>{t('common.actions')}</th></tr></thead>
             <tbody>
               {items.map(m => (
                 <tr key={m.id}>
@@ -645,14 +641,14 @@ export function MockUpsTab({ projectId, locale, t }) {
                   <td>{m.location_name || '-'}</td>
                   <td><span className={`badge ${MOCKUP_STATUS_BADGE[m.status]}`}>{MOCKUP_STATUS_LABELS[locale]?.[m.status] || m.status}</span></td>
                   <td style={{ whiteSpace: 'nowrap' }}>
-                    {m.status === 'proposed' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(m, 'under_review')}>{locale === 'ar' ? 'مراجعة' : 'Review'}</button>}
+                    {m.status === 'proposed' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(m, 'under_review')}>{t('qhse.system.review')}</button>}
                     {(m.status === 'proposed' || m.status === 'under_review') && (
                       <>
-                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(m, 'approved')}>{locale === 'ar' ? 'قبول' : 'Approve'}</button>{' '}
-                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(m, 'rejected')}>{locale === 'ar' ? 'رفض' : 'Reject'}</button>
+                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(m, 'approved')}>{t('qhse.system.approve2')}</button>{' '}
+                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(m, 'rejected')}>{t('qhse.system.reject')}</button>
                       </>
                     )}
-                    {m.status === 'rework' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(m, 'under_review')}>{locale === 'ar' ? 'إعادة مراجعة' : 'Re-review'}</button>}
+                    {m.status === 'rework' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(m, 'under_review')}>{t('qhse.system.reReview')}</button>}
                   </td>
                 </tr>
               ))}
@@ -703,24 +699,24 @@ export function CalibrationTab({ projectId, locale, t }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{locale === 'ar' ? 'سجل معايرة' : 'Record Calibration'}</button>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{t('qhse.system.recordCalibration')}</button>
       </div>
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: '16px', display: 'grid', gap: '10px' }}>
-          <input className="input" required placeholder={locale === 'ar' ? 'اسم الجهاز' : 'Instrument name'} value={form.instrument_name} onChange={e => setForm({ ...form, instrument_name: e.target.value })} />
+          <input className="input" required placeholder={t('qhse.system.instrumentName')} value={form.instrument_name} onChange={e => setForm({ ...form, instrument_name: e.target.value })} />
           <div className="responsive-grid responsive-grid--two" style={{ gap: '10px' }}>
-            <input className="input" placeholder="Serial no." value={form.serial_no} onChange={e => setForm({ ...form, serial_no: e.target.value })} />
+            <input className="input" placeholder={t('qhse.system.serialNo')} value={form.serial_no} onChange={e => setForm({ ...form, serial_no: e.target.value })} />
             <input className="input" type="date" value={form.next_calibration_date} onChange={e => setForm({ ...form, next_calibration_date: e.target.value })} />
           </div>
           <div className="responsive-grid responsive-grid--two" style={{ gap: '10px' }}>
-            <input className="input" placeholder={locale === 'ar' ? 'مرجع الشهادة' : 'Certificate ref'} value={form.certificate_ref} onChange={e => setForm({ ...form, certificate_ref: e.target.value })} />
+            <input className="input" placeholder={t('qhse.system.certificateRef')} value={form.certificate_ref} onChange={e => setForm({ ...form, certificate_ref: e.target.value })} />
             <select className="input" value={form.result} onChange={e => setForm({ ...form, result: e.target.value })}>
-              <option value="pass">Pass</option><option value="fail">Fail</option>
+              <option value="pass">{t('qhse.system.pass')}</option><option value="fail">{t('qhse.system.fail')}</option>
             </select>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-primary" type="submit">{t('common.save') || 'Save'}</button>
-            <button className="btn" type="button" onClick={() => setShowModal(false)}>Cancel</button>
+            <button className="btn btn-primary" type="submit">{t('common.save') || t('qhse.system.save')}</button>
+            <button className="btn" type="button" onClick={() => setShowModal(false)}>{t('qhse.system.cancel')}</button>
           </div>
         </form>
       )}
@@ -729,20 +725,20 @@ export function CalibrationTab({ projectId, locale, t }) {
       ) : items.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <Gauge size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
-          <p style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'لا توجد سجلات معايرة.' : 'No calibration records.'}</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('qhse.system.noCalibrationRecords')}</p>
         </div>
       ) : (
         <div className="table-container">
           <table className="table">
-            <thead><tr><th>{locale === 'ar' ? 'الجهاز' : 'Instrument'}</th><th>Serial</th><th>{locale === 'ar' ? 'المعايرة' : 'Calibrated'}</th><th>{locale === 'ar' ? 'القادمة' : 'Next due'}</th><th>{locale === 'ar' ? 'النتيجة' : 'Result'}</th><th>{locale === 'ar' ? 'الشهادة' : 'Certificate'}</th></tr></thead>
+            <thead><tr><th>{t('qhse.system.instrument')}</th><th>{t('qhse.system.serial')}</th><th>{t('qhse.system.calibrated')}</th><th>{t('qhse.system.nextDue')}</th><th>{t('qhse.system.result')}</th><th>{t('qhse.system.certificate')}</th></tr></thead>
             <tbody>
               {items.map(c => (
                 <tr key={c.id}>
                   <td style={{ fontWeight: 500 }}>{c.instrument_name}</td>
                   <td>{c.serial_no || '-'}</td>
                   <td>{fmtDate(c.calibration_date)}</td>
-                  <td>{fmtDate(c.next_calibration_date)}{c.calibration_overdue ? <span className="badge badge-danger" style={{ marginLeft: 6 }}>overdue</span> : null}</td>
-                  <td><span className={`badge ${c.result === 'pass' ? 'badge-success' : 'badge-danger'}`}>{c.result}</span></td>
+                  <td>{fmtDate(c.next_calibration_date)}{c.calibration_overdue ? <span className="badge badge-danger" style={{ marginLeft: 6 }}>{t('qhse.system.overdue')}</span> : null}</td>
+                  <td><span className={`badge ${c.result === 'pass' ? 'badge-success' : 'badge-danger'}`}>{translateEnum(t, 'result', c.result)}</span></td>
                   <td>{c.certificate_ref || '-'}</td>
                 </tr>
               ))}

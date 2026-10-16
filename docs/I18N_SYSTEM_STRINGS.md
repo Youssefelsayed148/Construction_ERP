@@ -1,6 +1,15 @@
-# System-string inventory ? Batch 5A
+# System-string inventory — Batch 5A
 
-Pre-change static inventory. Locations refer to the branch before Batch 5A edits. Counts are occurrences, not unique translations. Catalog-bypassing branches already contain Arabic; they are separate from English leakage. Only file/line and category are recorded. Stored names, notes, descriptions, justifications, document references and other business data are excluded. Language-code and layout branches are excluded.
+Baseline: parent of 6d609d9, before Batch 5A. Locations refer to that baseline. Entries contain file/line and category only; counts are static occurrences, not unique translations or browser-verified exposures. Inline branches/helper calls already contain Arabic and are catalog bypasses rather than English leakage. Data selections are excluded.
+
+## backend/src/services/dashboardWidgets.js (166)
+
+- backend-widget-title (64): 63, 69, 73, 79, 101, 102, 103, 106, 122, 126, 130, 178, 179, 180, 181, 185, 186, 190, 191, 204, 206, 224, 225, 226, 239, 245, 248, 270, 275, 276, 280, 284, 304, 305, 306, 320, 324, 327, 346, 350, 351, 352, 374, 378, 379, 380, 381, 400, 404, 405, 408, 429, 430, 431, 451, 452, 453, 464, 465, 469, 484, 492, 504, 507
+- backend-widget-field (102): 64, 65, 67, 70, 71, 74, 75, 76, 77, 80, 81, 82, 101, 101, 102, 104, 107, 123, 124, 127, 128, 131, 178, 179, 179, 179, 182, 183, 185, 187, 188, 190, 192, 193, 206, 224, 225, 226, 240, 241, 242, 243, 246, 249, 271, 272, 273, 275, 277, 278, 281, 282, 285, 286, 304, 305, 306, 321, 322, 325, 327, 347, 348, 350, 351, 353, 375, 376, 378, 379, 380, 382, 401, 402, 404, 406, 409, 429, 429, 429, 430, 432, 451, 452, 452, 453, 453, 453, 464, 466, 467, 470, 471, 472, 484, 484, 484, 493, 494, 495, 504, 507
+
+## backend/src/services/procurementService.js (1)
+
+- backend-recommendation-reason (1): 407
 
 ## frontend/src/components/DocumentUpload.js (1)
 
@@ -14,10 +23,36 @@ Pre-change static inventory. Locations refer to the branch before Batch 5A edits
 
 - JSX-system-text (1): 265
 
-## frontend/src/pages/AgentActivity.js (27)
+## frontend/src/locales/ar/documentControl.json (7)
+
+- corrupt-Arabic-catalog-text (7): 73, 74, 75, 76, 77, 78, 79
+
+## frontend/src/locales/ar/errors.json (23)
+
+- corrupt-Arabic-catalog-text (23): 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53
+
+## frontend/src/locales/ar/handover.json (30)
+
+- corrupt-Arabic-catalog-text (30): 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35
+
+## frontend/src/locales/ar/portals.json (4)
+
+- corrupt-Arabic-catalog-text (4): 17, 18, 19, 20
+
+## frontend/src/locales/ar/schedule.json (35)
+
+- corrupt-Arabic-catalog-text (35): 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 54, 55, 56, 57
+
+## frontend/src/pages/AdminWorkspace.js (2)
+
+- indirect-system-label (2): 308, 316
+
+## frontend/src/pages/AgentActivity.js (29)
 
 - inline-language-system-text (26): 97, 99, 105, 105, 108, 121, 121, 122, 122, 123, 129, 139, 139, 148, 148, 151, 156, 180, 180, 181, 181, 182, 183, 184, 188, 209
+- raw-system-enum (1): 142
 - JSX-system-text (1): 162
+- indirect-system-label (1): 139
 
 ## frontend/src/pages/Approvals.js (45)
 
@@ -43,12 +78,14 @@ Pre-change static inventory. Locations refer to the branch before Batch 5A edits
 - inline-language-system-text (54): 55, 61, 67, 73, 79, 85, 96, 97, 98, 99, 103, 105, 106, 107, 108, 114, 115, 116, 117, 123, 124, 130, 131, 132, 138, 139, 140, 146, 147, 148, 154, 155, 161, 167, 168, 174, 175, 176, 219, 228, 231, 240, 247, 253, 259, 269, 304, 310, 316, 322, 329, 343, 365, 392
 - raw-system-enum (2): 365, 399
 
-## frontend/src/pages/DocControlExtended.js (44)
+## frontend/src/pages/DocControlExtended.js (51)
 
 - inline-language-system-text (35): 93, 97, 101, 102, 105, 110, 113, 117, 128, 248, 262, 262, 269, 270, 271, 360, 370, 371, 383, 389, 389, 390, 390, 402, 403, 404, 405, 442, 443, 449, 454, 459, 459, 459, 459
 - JSX-system-text (6): 120, 143, 374, 389, 390, 463
+- JSX-expression-system-text (2): 238, 373
 - raw-system-enum (2): 267, 400
 - JSX-system-attribute (1): 368
+- indirect-system-label (5): 45, 94, 98, 366, 396
 
 ## frontend/src/pages/Expenses.js (22)
 
@@ -60,17 +97,20 @@ Pre-change static inventory. Locations refer to the branch before Batch 5A edits
 - raw-system-enum (3): 267, 302, 361
 - JSX-system-text (9): 281, 287, 328, 328, 355, 431, 432, 433, 434
 
-## frontend/src/pages/HR.js (63)
+## frontend/src/pages/HR.js (67)
 
 - inline-language-system-text (61): 51, 53, 143, 153, 165, 175, 176, 177, 190, 272, 273, 298, 302, 309, 314, 318, 324, 328, 398, 410, 418, 419, 421, 422, 493, 500, 502, 510, 524, 528, 533, 602, 612, 624, 633, 634, 635, 649, 649, 719, 720, 734, 739, 745, 750, 756, 799, 811, 819, 820, 821, 822, 823, 824, 901, 908, 910, 918, 922, 926, 932
 - JSX-system-text (2): 288, 912
+- JSX-expression-system-text (4): 334, 335, 336, 337
 
-## frontend/src/pages/HSE.js (149)
+## frontend/src/pages/HSE.js (157)
 
 - inline-language-system-text (112): 102, 103, 104, 105, 106, 107, 108, 122, 159, 163, 168, 170, 184, 189, 189, 190, 190, 201, 204, 205, 210, 211, 216, 217, 220, 263, 267, 276, 281, 294, 299, 299, 300, 300, 301, 313, 314, 350, 354, 356, 361, 371, 376, 376, 377, 377, 388, 435, 437, 441, 442, 453, 463, 467, 467, 467, 467, 476, 477, 488, 488, 488, 488, 488, 517, 518, 519, 521, 522, 549, 553, 554, 557, 558, 563, 564, 567, 570, 571, 583, 588, 588, 588, 588, 589, 589, 589, 589, 590, 590, 590, 590, 591, 591, 591, 591, 592, 592, 592, 592, 593, 593, 593, 593, 624, 625, 626, 627, 628, 629, 637, 639
 - JSX-system-attribute (3): 172, 173, 283
+- JSX-expression-system-text (6): 176, 286, 363, 455, 575, 598
 - JSX-system-text (27): 177, 189, 270, 270, 271, 271, 271, 274, 274, 274, 287, 301, 310, 358, 358, 358, 364, 376, 434, 446, 446, 446, 449, 449, 449, 456, 576
-- raw-system-enum (7): 309, 311, 385, 386, 474, 495, 598
+- raw-system-enum (8): 309, 311, 385, 386, 474, 495, 598, 602
+- indirect-system-label (1): 520
 
 ## frontend/src/pages/Invoices.js (49)
 
@@ -89,10 +129,10 @@ Pre-change static inventory. Locations refer to the branch before Batch 5A edits
 
 - JSX-system-attribute (1): 86
 
-## frontend/src/pages/MyActions.js (3)
+## frontend/src/pages/MyActions.js (4)
 
 - inline-language-system-text (1): 171
-- raw-system-enum (2): 185, 190
+- raw-system-enum (3): 183, 185, 190
 
 ## frontend/src/pages/Payroll.js (24)
 
@@ -103,40 +143,47 @@ Pre-change static inventory. Locations refer to the branch before Batch 5A edits
 - inline-language-system-text (56): 175, 187, 188, 189, 190, 191, 192, 193, 198, 199, 200, 201, 228, 258, 278, 281, 286, 329, 332, 337, 344, 345, 389, 392, 397, 435, 435, 563, 582, 586, 593, 601, 612, 614, 622, 624, 626, 643, 647, 654, 658, 715, 715, 735, 743, 750, 754, 798, 805, 807, 822, 882, 882, 901, 907, 911
 - JSX-system-text (5): 571, 643, 647, 724, 891
 
-## frontend/src/pages/ProjectDocuments.js (68)
+## frontend/src/pages/ProjectDocuments.js (69)
 
 - inline-language-system-text (65): 67, 68, 69, 70, 71, 72, 73, 83, 85, 165, 169, 175, 184, 191, 192, 193, 194, 196, 213, 232, 235, 240, 243, 277, 312, 319, 324, 331, 370, 374, 399, 419, 425, 428, 432, 463, 480, 528, 537, 545, 547, 548, 570, 577, 582, 640, 647, 651, 656, 660, 666, 729, 792, 801, 809, 810, 812, 832, 836, 839, 880, 887, 892, 898, 900
 - JSX-system-text (2): 225, 473
 - JSX-system-attribute (1): 371
+- indirect-system-label (1): 662
 
 ## frontend/src/pages/Projects.js (13)
 
 - inline-language-system-text (12): 113, 115, 120, 131, 137, 143, 178, 188, 205, 242, 280, 297
 - JSX-system-text (1): 301
 
-## frontend/src/pages/ProjectWizard.js (4)
+## frontend/src/pages/ProjectWizard.js (63)
 
+- inline-language-helper-text (57): 174, 176, 207, 211, 217, 221, 227, 229, 237, 241, 246, 259, 265, 272, 279, 283, 287, 297, 301, 305, 310, 314, 318, 322, 328, 332, 343, 345, 352, 368, 379, 380, 394, 396, 404, 424, 428, 430, 436, 448, 452, 470, 478, 488, 489, 504, 508, 508, 517, 521, 521, 530, 551, 555, 579, 583, 587
 - JSX-system-attribute (1): 218
 - JSX-system-text (3): 251, 255, 542
+- indirect-system-label (2): 412, 438
 
 ## frontend/src/pages/QHSE.js (63)
 
 - inline-language-system-text (63): 92, 93, 94, 95, 96, 97, 98, 99, 101, 102, 106, 107, 108, 109, 119, 121, 190, 199, 206, 207, 208, 209, 210, 226, 269, 277, 279, 282, 288, 294, 299, 374, 380, 389, 398, 400, 439, 462, 470, 478, 535, 544, 557, 571, 609, 617, 628, 637, 689, 698, 705, 706, 707, 721, 729, 734, 780, 788, 792, 794, 797, 809, 813
 
-## frontend/src/pages/QHSEExtended.js (102)
+## frontend/src/pages/QHSEExtended.js (113)
 
 - inline-language-system-text (83): 144, 148, 150, 154, 168, 175, 175, 176, 176, 189, 196, 198, 201, 201, 201, 201, 201, 291, 297, 300, 312, 319, 319, 320, 320, 320, 333, 336, 337, 342, 343, 344, 405, 406, 410, 412, 418, 430, 437, 437, 438, 438, 438, 451, 452, 455, 456, 459, 519, 520, 522, 526, 528, 542, 548, 548, 548, 548, 548, 560, 561, 562, 617, 621, 622, 634, 639, 639, 639, 639, 648, 651, 652, 655, 706, 710, 716, 732, 737, 737, 737, 737, 737
+- JSX-expression-system-text (6): 158, 302, 420, 532, 624, 722
 - JSX-system-text (17): 159, 175, 303, 319, 414, 414, 414, 421, 437, 533, 557, 625, 718, 718, 723, 737, 744
-- raw-system-enum (1): 187
+- raw-system-enum (3): 187, 555, 745
 - JSX-system-attribute (1): 712
+- indirect-system-label (3): 48, 206, 229
 
-## frontend/src/pages/Reports.js (13)
+## frontend/src/pages/Reports.js (14)
 
 - inline-language-system-text (5): 116, 133, 135, 160, 201
 - JSX-system-text (8): 175, 176, 177, 178, 182, 188, 191, 203
+- raw-system-enum (1): 191
 
-## frontend/src/pages/Schedule.js (40)
+## frontend/src/pages/Schedule.js (42)
 
+- JSX-expression-system-text (2): 57, 253
 - JSX-system-text (8): 234, 254, 311, 324, 378, 404, 422, 428
 - inline-language-system-text (30): 235, 239, 246, 250, 305, 311, 311, 312, 312, 313, 313, 394, 404, 409, 411, 417, 419, 472, 473, 478, 483, 483, 484, 484, 492, 510, 511, 512, 520, 522
 - JSX-system-attribute (2): 241, 242
@@ -147,10 +194,11 @@ Pre-change static inventory. Locations refer to the branch before Batch 5A edits
 - JSX-system-attribute (1): 401
 - JSX-system-text (1): 470
 
-## frontend/src/pages/SiteWorkspace.js (32)
+## frontend/src/pages/SiteWorkspace.js (34)
 
 - JSX-system-text (5): 160, 185, 191, 203, 233
 - inline-language-system-text (24): 167, 171, 178, 184, 190, 196, 202, 208, 214, 220, 228, 238, 240, 241, 242, 244, 250, 253, 254, 255, 259, 264, 265, 271
+- JSX-expression-system-text (2): 171, 229
 - raw-system-enum (3): 179, 222, 262
 
 ## frontend/src/pages/Suppliers.js (31)
@@ -163,19 +211,28 @@ Pre-change static inventory. Locations refer to the branch before Batch 5A edits
 - inline-language-system-text (42): 93, 96, 106, 108, 113, 134, 210, 225, 225, 231, 235, 243, 253, 269, 273, 323, 331, 335, 341, 404, 412, 416, 420, 424, 429, 435, 441, 449, 453, 457, 461, 511, 519, 523, 529, 535, 539, 543, 547, 553, 559, 563
 - JSX-system-attribute (2): 332, 425
 
-## frontend/src/pages/WorkOrders.js (73)
+## frontend/src/pages/WorkOrders.js (76)
 
 - inline-language-system-text (72): 146, 152, 161, 198, 219, 220, 222, 256, 257, 379, 389, 396, 397, 398, 399, 401, 471, 478, 480, 488, 492, 498, 500, 545, 555, 562, 563, 564, 565, 629, 636, 645, 649, 653, 703, 713, 720, 721, 722, 724, 792, 799, 801, 809, 813, 817, 883, 893, 900, 901, 902, 916, 918, 919, 928, 932, 998, 1005, 1007, 1015, 1019, 1093, 1094, 1113, 1115, 1122, 1124, 1133, 1137, 1141, 1143, 1151
+- JSX-expression-system-text (3): 165, 169, 173
 - JSX-system-text (1): 1103
 
-## backend/src/services/dashboardWidgets.js (63)
+## Counts before / after
 
-- backend-widget-title (63): 63, 69, 73, 79, 101, 102, 103, 106, 122, 126, 130, 178, 179, 180, 181, 185, 186, 190, 191, 204, 206, 225, 226, 239, 245, 248, 270, 275, 276, 280, 284, 304, 305, 306, 320, 324, 327, 346, 350, 351, 352, 374, 378, 379, 380, 381, 400, 404, 405, 408, 429, 430, 431, 451, 452, 453, 464, 465, 469, 484, 492, 504, 507
+| Category | Before | After |
+| --- | ---: | ---: |
+| inline-language-system-text | 1097 | 0 |
+| inline-language-helper-text | 57 | 0 |
+| JSX-system-text | 107 | 5 |
+| JSX-expression-system-text | 25 | 0 |
+| JSX-system-attribute | 13 | 4 |
+| raw-system-enum | 28 | 0 |
+| corrupt-Arabic-catalog-text | 99 | 0 |
 
-## backend/src/services/procurementService.js (1)
-
-- backend-recommendation-reason (1): 407
+Backend English titles (64 call sites; 53 unique keys) and the English recommendation reason are retained for compatibility; their frontend consumers now translate stable keys/codes. The widget contract guard covers 66 unique fields, including nested and externally built handover data. Indirect label sites are cataloged separately from direct JSX expressions.
 
 ## Guard allow-list
 
-No user-visible literal language branches are allow-listed. Allowed non-system branches select stored business data, locale codes (ar/en/ar-EG/en-US/en-GB), direction/alignment (rtl/ltr/left/right), punctuation, or the language switch endonym (EN/?). These are not catalog text.
+No user-visible language branches are allow-listed. Non-text selections of stored business data, locale codes (ar/en/ar-EG/en-US/en-GB), direction/alignment (rtl/ltr/left/right), punctuation, and the language-switch endonym (EN/ع) are excluded. Literal exceptions: Reports.js CSV/PDF, Schedule.js CSV (file formats); ProjectFinanceWorkbench.js REL- (stored reference prefix); Login.js email@example.com, SiteManagement.js 35°C, UnitsSales.js B1/A- (example input values). These 5 JSX text and 4 attribute occurrences are identifiers/examples, not untranslated prose.
+
+Stored supplier/client/project/item/user names, notes, descriptions, justifications, payment terms, captions and document references remain business data. Unknown enum values and unknown widget keys retain their existing fallback behavior. Static guards do not certify human visual/RTL rendering or native Arabic wording.

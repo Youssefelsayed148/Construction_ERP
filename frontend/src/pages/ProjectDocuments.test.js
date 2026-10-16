@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import ProjectDocuments from './ProjectDocuments';
 
-jest.mock('../hooks/useLocale', () => ({ useLocale: () => ({ locale: 'en', t: (key) => key }) }));
+jest.mock('../hooks/useLocale', () => ({ useLocale: () => ({ locale: 'en', t: require('../testUtils/systemText').systemText }) }));
 jest.mock('./DocControlExtended', () => ({ RegisterTab: () => null, TransmittalsTab: () => null, CorrespondenceTab: () => null, DocSearchTab: () => null }));
 jest.mock('../components/DocumentUpload', () => function MockDocumentUpload({ onUploaded }) {
   return <button type="button" data-testid="mock-upload" onClick={() => onUploaded({ file_url: '/uploads/register.pdf', file_type: 'pdf', file_size_bytes: 12 })}>Mock uploaded file</button>;

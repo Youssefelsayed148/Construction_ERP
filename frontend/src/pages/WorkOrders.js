@@ -143,13 +143,13 @@ function WorkOrders() {
           <div>
             <h1>{t('common.nav.workOrders')}</h1>
             <p style={{ color: 'var(--color-text-secondary)' }}>
-              {locale === 'ar' ? 'أوامر العمل للمشروع' : 'Work Orders for Project'}
+              {t('workorders.system.workOrdersForProject')}
             </p>
           </div>
         </div>
         <button className="btn btn-primary" onClick={() => { setEditingWO(null); setShowCreateModal(true); loadRefData(); }}>
           <Plus size={16} />
-          {locale === 'ar' ? 'أمر عمل جديد' : 'New Work Order'}
+          {t('workorders.system.newWorkOrder')}
         </button>
       </div>
 
@@ -158,19 +158,19 @@ function WorkOrders() {
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-value">{counts.total}</div>
-          <div className="stat-label">{locale === 'ar' ? 'إجمالي الأوامر' : 'Total Orders'}</div>
+          <div className="stat-label">{t('workorders.system.totalOrders')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-value" style={{ color: 'var(--color-warning)' }}>{counts.planned}</div>
-          <div className="stat-label">{STATUS_LABELS[locale]?.planned || 'Planned'}</div>
+          <div className="stat-label">{STATUS_LABELS[locale]?.planned || t('workorders.system.planned')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-value" style={{ color: 'var(--color-text-secondary)' }}>{counts.inProgress}</div>
-          <div className="stat-label">{STATUS_LABELS[locale]?.in_progress || 'In Progress'}</div>
+          <div className="stat-label">{STATUS_LABELS[locale]?.in_progress || t('workorders.system.inProgress')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-value" style={{ color: 'var(--color-success)' }}>{counts.completed}</div>
-          <div className="stat-label">{STATUS_LABELS[locale]?.completed || 'Completed'}</div>
+          <div className="stat-label">{STATUS_LABELS[locale]?.completed || t('workorders.system.completed')}</div>
         </div>
       </div>
 
@@ -195,7 +195,7 @@ function WorkOrders() {
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <ClipboardList size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'لا توجد أوامر عمل. أنشئ أول أمر.' : 'No work orders found. Create your first.'}
+            {t('workorders.system.noWorkOrdersFoundCreateYourFirst')}
           </p>
         </div>
       ) : (
@@ -216,10 +216,10 @@ function WorkOrders() {
                     </div>
                     <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '8px', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
                       <span><Calendar size={13} style={{ verticalAlign: 'middle', marginRight: '4px' }} />{formatDate(wo.planned_start_date)} — {formatDate(wo.planned_end_date)}</span>
-                      <span>{locale === 'ar' ? 'المرحلة' : 'Phase'}: <span style={{ color: 'var(--color-text-primary)' }}>{phaseName(wo)}</span></span>
-                      <span>{locale === 'ar' ? 'قسم الحصر' : 'BOQ Section'}: <span style={{ color: 'var(--color-text-primary)' }}>{boqSectionName(wo)}</span></span>
+                      <span>{t('workorders.system.phase')}: <span style={{ color: 'var(--color-text-primary)' }}>{phaseName(wo)}</span></span>
+                      <span>{t('workorders.system.boqSection')}: <span style={{ color: 'var(--color-text-primary)' }}>{boqSectionName(wo)}</span></span>
                       {wo.assigned_to_name && (
-                        <span>{locale === 'ar' ? 'مسند إلى' : 'Assigned'}: <span style={{ color: 'var(--color-text-primary)' }}>{wo.assigned_to_name}</span></span>
+                        <span>{t('workorders.system.assigned')}: <span style={{ color: 'var(--color-text-primary)' }}>{wo.assigned_to_name}</span></span>
                       )}
                     </div>
                     {wo.description && (
@@ -253,8 +253,8 @@ function WorkOrders() {
                     )}
                     <button className="btn" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => toggleExpand(wo.id)}>
                       {expandedWO === wo.id
-                        ? (locale === 'ar' ? 'طي' : 'Collapse')
-                        : (locale === 'ar' ? 'تفاصيل' : 'Details')}
+                        ? (t('workorders.system.collapse'))
+                        : (t('workorders.system.details'))}
                     </button>
                   </div>
                 </div>
@@ -376,7 +376,7 @@ function WOMaterialsTab({ wo, projectId, locale, t }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
         <button className="btn btn-primary" style={{ padding: '6px 14px', fontSize: '13px' }} onClick={() => { setShowForm(true); loadRefData(); }}>
           <Plus size={14} />
-          {locale === 'ar' ? 'صرف مادة' : 'Issue Material'}
+          {t('workorders.system.issueMaterial')}
         </button>
       </div>
 
@@ -386,19 +386,19 @@ function WOMaterialsTab({ wo, projectId, locale, t }) {
         </div>
       ) : materials.length === 0 ? (
         <p style={{ color: 'var(--color-text-secondary)', textAlign: 'center', padding: '20px' }}>
-          {locale === 'ar' ? 'لا توجد مواد مصروفة.' : 'No materials issued yet.'}
+          {t('workorders.system.noMaterialsIssuedYet')}
         </p>
       ) : (
         <div className="table-container">
           <table className="table" style={{ fontSize: '13px' }}>
             <thead>
               <tr>
-                <th>{locale === 'ar' ? 'المادة' : 'Item'}</th>
-                <th>{locale === 'ar' ? 'الكمية المخطط' : 'Planned Qty'}</th>
-                <th>{locale === 'ar' ? 'الكمية الفعلية' : 'Actual Qty'}</th>
-                <th>{locale === 'ar' ? 'تكلفة الوحدة' : 'Unit Cost'}</th>
+                <th>{t('workorders.system.item')}</th>
+                <th>{t('workorders.system.plannedQty')}</th>
+                <th>{t('workorders.system.actualQty')}</th>
+                <th>{t('workorders.system.unitCost')}</th>
                 <th>{t('common.total')}</th>
-                <th>{locale === 'ar' ? 'المستودع' : 'Warehouse'}</th>
+                <th>{t('workorders.system.warehouse')}</th>
               </tr>
             </thead>
             <tbody>
@@ -468,16 +468,16 @@ export function WOMaterialFormModal({ wo, items, warehouses, locale, t, onClose,
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{locale === 'ar' ? 'صرف مادة' : 'Issue Material'}</h3>
+          <h3 className="modal-title">{t('workorders.system.issueMaterial')}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'المادة' : 'Item'} *</label>
+                <label className="form-label">{t('workorders.system.item')} *</label>
                 <select className="form-select" value={form.item_id} onChange={e => handleChange('item_id', e.target.value)} required>
-                  <option value="">{locale === 'ar' ? '— اختر المادة —' : '— Select Item —'}</option>
+                  <option value="">{t('workorders.system.selectItem')}</option>
                   {items.map(it => (
                     <option key={it.id} value={it.id}>{itemLabel(it)}</option>
                   ))}
@@ -485,19 +485,19 @@ export function WOMaterialFormModal({ wo, items, warehouses, locale, t, onClose,
               </div>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الكمية المخطط' : 'Planned Qty'}</label>
+                  <label className="form-label">{t('workorders.system.plannedQty')}</label>
                   <input className="form-input" type="number" step="0.01" min="0" value={form.planned_quantity} onChange={e => handleChange('planned_quantity', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الكمية الفعلية' : 'Actual Qty'}</label>
+                  <label className="form-label">{t('workorders.system.actualQty')}</label>
                   <input className="form-input" type="number" step="0.01" min="0" value={form.actual_quantity} onChange={e => handleChange('actual_quantity', e.target.value)} />
                 </div>
               </div>
               <div className="responsive-grid responsive-grid--one" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'المستودع' : 'Warehouse'}</label>
+                  <label className="form-label">{t('workorders.system.warehouse')}</label>
                   <select className="form-select" value={form.warehouse_id} onChange={e => handleChange('warehouse_id', e.target.value)}>
-                    <option value="">{locale === 'ar' ? '— اختر —' : '— Select —'}</option>
+                    <option value="">{t('workorders.system.select')}</option>
                     {warehouses.map(w => (
                       <option key={w.id} value={w.id}>{w.name}</option>
                     ))}
@@ -542,7 +542,7 @@ function WOLaborTab({ wo, projectId, locale, t }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
         <button className="btn btn-primary" style={{ padding: '6px 14px', fontSize: '13px' }} onClick={() => setShowForm(true)}>
           <Plus size={14} />
-          {locale === 'ar' ? 'تسجيل عمالة' : 'Record Labor'}
+          {t('workorders.system.recordLabor')}
         </button>
       </div>
 
@@ -552,17 +552,17 @@ function WOLaborTab({ wo, projectId, locale, t }) {
         </div>
       ) : entries.length === 0 ? (
         <p style={{ color: 'var(--color-text-secondary)', textAlign: 'center', padding: '20px' }}>
-          {locale === 'ar' ? 'لا توجد تسجيلات عمالة.' : 'No labor entries recorded.'}
+          {t('workorders.system.noLaborEntriesRecorded')}
         </p>
       ) : (
         <div className="table-container">
           <table className="table" style={{ fontSize: '13px' }}>
             <thead>
               <tr>
-                <th>{locale === 'ar' ? 'المهارة' : 'Skill'}</th>
-                <th>{locale === 'ar' ? 'عدد العمال' : 'Workers'}</th>
-                <th>{locale === 'ar' ? 'الساعات' : 'Hours'}</th>
-                <th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th>
+                <th>{t('workorders.system.skill')}</th>
+                <th>{t('workorders.system.workers')}</th>
+                <th>{t('workorders.system.hours')}</th>
+                <th>{t('workorders.system.date')}</th>
               </tr>
             </thead>
             <tbody>
@@ -626,14 +626,14 @@ function WOLaborFormModal({ wo, locale, t, onClose, onSave }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{locale === 'ar' ? 'تسجيل عمالة' : 'Record Labor'}</h3>
+          <h3 className="modal-title">{t('workorders.system.recordLabor')}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'المهارة' : 'Skill Category'}</label>
+                <label className="form-label">{t('workorders.system.skillCategory')}</label>
                 <select className="form-select" value={form.skill_category} onChange={e => handleChange('skill_category', e.target.value)}>
                   {SKILLS.map(s => (
                     <option key={s} value={s}>{SKILL_LABELS[locale]?.[s] || s}</option>
@@ -642,15 +642,15 @@ function WOLaborFormModal({ wo, locale, t, onClose, onSave }) {
               </div>
               <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'عدد العمال' : 'Worker Count'} *</label>
+                  <label className="form-label">{t('workorders.system.workerCount')} *</label>
                   <input className="form-input" type="number" min="0" value={form.worker_count} onChange={e => handleChange('worker_count', e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الساعات' : 'Hours'} *</label>
+                  <label className="form-label">{t('workorders.system.hours')} *</label>
                   <input className="form-input" type="number" step="0.5" min="0" value={form.hours} onChange={e => handleChange('hours', e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'التاريخ' : 'Date'} *</label>
+                  <label className="form-label">{t('workorders.system.date')} *</label>
                   <input className="form-input" type="date" value={form.work_date} onChange={e => handleChange('work_date', e.target.value)} required />
                 </div>
               </div>
@@ -700,7 +700,7 @@ function WOEquipmentTab({ wo, projectId, locale, t }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
         <button className="btn btn-primary" style={{ padding: '6px 14px', fontSize: '13px' }} onClick={() => { setShowForm(true); loadEquipment(); }}>
           <Plus size={14} />
-          {locale === 'ar' ? 'تسجيل معدة' : 'Record Equipment'}
+          {t('workorders.system.recordEquipment')}
         </button>
       </div>
 
@@ -710,18 +710,18 @@ function WOEquipmentTab({ wo, projectId, locale, t }) {
         </div>
       ) : entries.length === 0 ? (
         <p style={{ color: 'var(--color-text-secondary)', textAlign: 'center', padding: '20px' }}>
-          {locale === 'ar' ? 'لا توجد تسجيلات معدات.' : 'No equipment entries recorded.'}
+          {t('workorders.system.noEquipmentEntriesRecorded')}
         </p>
       ) : (
         <div className="table-container">
           <table className="table" style={{ fontSize: '13px' }}>
             <thead>
               <tr>
-                <th>{locale === 'ar' ? 'المعدة' : 'Equipment'}</th>
-                <th>{locale === 'ar' ? 'الساعات' : 'Hours'}</th>
-                <th>{locale === 'ar' ? 'تكلفة الساعة' : 'Hourly Cost'}</th>
+                <th>{t('workorders.system.equipment')}</th>
+                <th>{t('workorders.system.hours')}</th>
+                <th>{t('workorders.system.hourlyCost')}</th>
                 <th>{t('common.total')}</th>
-                <th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th>
+                <th>{t('workorders.system.date')}</th>
               </tr>
             </thead>
             <tbody>
@@ -789,16 +789,16 @@ function WOEquipmentFormModal({ wo, equipment, locale, t, onClose, onSave }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{locale === 'ar' ? 'تسجيل معدة' : 'Record Equipment'}</h3>
+          <h3 className="modal-title">{t('workorders.system.recordEquipment')}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'المعدة' : 'Equipment'} *</label>
+                <label className="form-label">{t('workorders.system.equipment')} *</label>
                 <select className="form-select" value={form.equipment_id} onChange={e => handleChange('equipment_id', e.target.value)} required>
-                  <option value="">{locale === 'ar' ? '— اختر المعدة —' : '— Select Equipment —'}</option>
+                  <option value="">{t('workorders.system.selectEquipment')}</option>
                   {equipment.map(eq => (
                     <option key={eq.id} value={eq.id}>{eqLabel(eq)}</option>
                   ))}
@@ -806,15 +806,15 @@ function WOEquipmentFormModal({ wo, equipment, locale, t, onClose, onSave }) {
               </div>
               <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الساعات' : 'Hours'} *</label>
+                  <label className="form-label">{t('workorders.system.hours')} *</label>
                   <input className="form-input" type="number" step="0.5" min="0" value={form.hours} onChange={e => handleChange('hours', e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'تكلفة الساعة' : 'Hourly Cost'}</label>
+                  <label className="form-label">{t('workorders.system.hourlyCost')}</label>
                   <input className="form-input" type="number" step="0.01" min="0" value={form.hourly_cost} onChange={e => handleChange('hourly_cost', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'التاريخ' : 'Date'} *</label>
+                  <label className="form-label">{t('workorders.system.date')} *</label>
                   <input className="form-input" type="date" value={form.work_date} onChange={e => handleChange('work_date', e.target.value)} required />
                 </div>
               </div>
@@ -880,7 +880,7 @@ function WOCompletionsTab({ wo, projectId, locale, t, loadWorkOrders }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
         <button className="btn btn-primary" style={{ padding: '6px 14px', fontSize: '13px' }} onClick={() => { setShowForm(true); loadBoqItems(); }}>
           <Plus size={14} />
-          {locale === 'ar' ? 'تسجيل إنجاز' : 'Record Completion'}
+          {t('workorders.system.recordCompletion')}
         </button>
       </div>
 
@@ -890,16 +890,16 @@ function WOCompletionsTab({ wo, projectId, locale, t, loadWorkOrders }) {
         </div>
       ) : completions.length === 0 ? (
         <p style={{ color: 'var(--color-text-secondary)', textAlign: 'center', padding: '20px' }}>
-          {locale === 'ar' ? 'لا توجد تسجيلات إنجاز.' : 'No completions recorded yet.'}
+          {t('workorders.system.noCompletionsRecordedYet')}
         </p>
       ) : (
         <div className="table-container">
           <table className="table" style={{ fontSize: '13px' }}>
             <thead>
               <tr>
-                <th>{locale === 'ar' ? 'البند' : 'BOQ Item'}</th>
-                <th>{locale === 'ar' ? 'الكمية' : 'Quantity'}</th>
-                <th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th>
+                <th>{t('workorders.system.boqItem')}</th>
+                <th>{t('workorders.system.quantity')}</th>
+                <th>{t('workorders.system.date')}</th>
                 <th>{t('common.status')}</th>
                 <th>{t('common.actions')}</th>
               </tr>
@@ -913,10 +913,10 @@ function WOCompletionsTab({ wo, projectId, locale, t, loadWorkOrders }) {
                   <td>
                     <span className={`badge ${comp.status === 'verified' ? 'badge-success' : comp.status === 'rejected' ? 'badge-danger' : 'badge-warning'}`}>
                       {comp.status === 'verified'
-                        ? (locale === 'ar' ? 'معتمد' : 'Verified')
+                        ? (t('workorders.system.verified'))
                         : comp.status === 'rejected'
-                          ? (locale === 'ar' ? 'مرفوض' : 'Rejected')
-                          : (locale === 'ar' ? 'معلق' : 'Pending')}
+                          ? (t('workorders.system.rejected'))
+                          : (t('workorders.system.pending'))}
                     </span>
                   </td>
                   <td>
@@ -925,11 +925,11 @@ function WOCompletionsTab({ wo, projectId, locale, t, loadWorkOrders }) {
                         <>
                           <button className="btn btn-success" style={{ padding: '4px 10px', fontSize: '12px' }} onClick={() => handleVerify(comp.id)}>
                             <CheckCircle size={12} />
-                            {locale === 'ar' ? 'اعتماد' : 'Verify'}
+                            {t('workorders.system.verify')}
                           </button>
                           <button className="btn btn-danger" style={{ padding: '4px 10px', fontSize: '12px' }} onClick={() => handleReject(comp.id)}>
                             <XCircle size={12} />
-                            {locale === 'ar' ? 'رفض' : 'Reject'}
+                            {t('workorders.system.reject')}
                           </button>
                         </>
                       )}
@@ -995,16 +995,16 @@ function WOCompletionFormModal({ wo, boqItems, locale, t, onClose, onSave }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{locale === 'ar' ? 'تسجيل إنجاز' : 'Record Completion'}</h3>
+          <h3 className="modal-title">{t('workorders.system.recordCompletion')}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'بند الحصر' : 'BOQ Item'} *</label>
+                <label className="form-label">{t('workorders.system.boqItem2')} *</label>
                 <select className="form-select" value={form.boq_item_id} onChange={e => handleChange('boq_item_id', e.target.value)} required>
-                  <option value="">{locale === 'ar' ? '— اختر البند —' : '— Select BOQ Item —'}</option>
+                  <option value="">{t('workorders.system.selectBoqItem')}</option>
                   {boqItems.map(it => (
                     <option key={it.id} value={it.id}>{itemLabel(it)}</option>
                   ))}
@@ -1012,11 +1012,11 @@ function WOCompletionFormModal({ wo, boqItems, locale, t, onClose, onSave }) {
               </div>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الكمية المنجزة' : 'Quantity Completed'} *</label>
+                  <label className="form-label">{t('workorders.system.quantityCompleted')} *</label>
                   <input className="form-input" type="number" step="0.01" min="0" value={form.quantity_completed} onChange={e => handleChange('quantity_completed', e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'التاريخ' : 'Date'} *</label>
+                  <label className="form-label">{t('workorders.system.date')} *</label>
                   <input className="form-input" type="date" value={form.completion_date} onChange={e => handleChange('completion_date', e.target.value)} required />
                 </div>
               </div>
@@ -1090,8 +1090,8 @@ function WorkOrderModal({ wo, projectId, phases, boqSections, users, locale, t, 
         <div className="modal-header">
           <h3 className="modal-title">
             {isEdit
-              ? (locale === 'ar' ? 'تعديل أمر العمل' : 'Edit Work Order')
-              : (locale === 'ar' ? 'أمر عمل جديد' : 'New Work Order')}
+              ? (t('workorders.system.editWorkOrder'))
+              : (t('workorders.system.newWorkOrder'))}
           </h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
@@ -1100,7 +1100,7 @@ function WorkOrderModal({ wo, projectId, phases, boqSections, users, locale, t, 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">English Title *</label>
+                  <label className="form-label">{t('workorders.system.englishTitle')}</label>
                   <input className="form-input" value={form.title_en} onChange={e => handleChange('title_en', e.target.value)} required />
                 </div>
                 <div className="form-group">
@@ -1110,18 +1110,18 @@ function WorkOrderModal({ wo, projectId, phases, boqSections, users, locale, t, 
               </div>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'المرحلة' : 'Phase'}</label>
+                  <label className="form-label">{t('workorders.system.phase')}</label>
                   <select className="form-select" value={form.phase_id} onChange={e => handleChange('phase_id', e.target.value)}>
-                    <option value="">{locale === 'ar' ? '— اختر —' : '— Select —'}</option>
+                    <option value="">{t('workorders.system.select')}</option>
                     {phases.map(p => (
                       <option key={p.id} value={p.id}>{phaseLabel(p)}</option>
                     ))}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'قسم الحصر' : 'BOQ Section'}</label>
+                  <label className="form-label">{t('workorders.system.boqSection')}</label>
                   <select className="form-select" value={form.boq_section_id} onChange={e => handleChange('boq_section_id', e.target.value)}>
-                    <option value="">{locale === 'ar' ? '— اختر —' : '— Select —'}</option>
+                    <option value="">{t('workorders.system.select')}</option>
                     {boqSections.map(s => (
                       <option key={s.id} value={s.id}>{s.code || ''} - {locale === 'ar' ? (s.name_ar || s.name_en) : (s.name_en || s.name_ar)}</option>
                     ))}
@@ -1130,17 +1130,17 @@ function WorkOrderModal({ wo, projectId, phases, boqSections, users, locale, t, 
               </div>
               <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'تاريخ البدء المخطط' : 'Planned Start'}</label>
+                  <label className="form-label">{t('workorders.system.plannedStart')}</label>
                   <input className="form-input" type="date" value={form.planned_start_date} onChange={e => handleChange('planned_start_date', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'تاريخ الانتهاء المخطط' : 'Planned End'}</label>
+                  <label className="form-label">{t('workorders.system.plannedEnd')}</label>
                   <input className="form-input" type="date" value={form.planned_end_date} onChange={e => handleChange('planned_end_date', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'مسند إلى' : 'Assigned To'}</label>
+                  <label className="form-label">{t('workorders.system.assignedTo')}</label>
                   <select className="form-select" value={form.assigned_to} onChange={e => handleChange('assigned_to', e.target.value)}>
-                    <option value="">{locale === 'ar' ? '— اختر —' : '— Select —'}</option>
+                    <option value="">{t('workorders.system.select')}</option>
                     {users.map(u => (
                       <option key={u.id} value={u.id}>{userLabel(u)}</option>
                     ))}
@@ -1148,7 +1148,7 @@ function WorkOrderModal({ wo, projectId, phases, boqSections, users, locale, t, 
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'الوصف' : 'Description'}</label>
+                <label className="form-label">{t('workorders.system.description')}</label>
                 <textarea className="form-textarea" value={form.description} onChange={e => handleChange('description', e.target.value)} />
               </div>
               <div className="form-group">

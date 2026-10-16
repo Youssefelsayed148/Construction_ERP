@@ -46,7 +46,7 @@ async function fillRequiredFields(container, config) {
 }
 
 function adminRow(config) {
-  const row = { id: 41, is_active: true, status: 'draft', rule_key: 'replenishment_policy:material:cement' };
+  const row = { id: 41, key: 'owner', is_active: true, status: 'draft', rule_key: 'replenishment_policy:material:cement' };
   for (const field of config.fields) row[field.name] = field.type === 'checkbox' ? true : field.required ? (field.type === 'number' ? 1 : 'existing') : '';
   return row;
 }

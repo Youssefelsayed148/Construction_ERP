@@ -172,7 +172,7 @@ function ProjectDetail() {
       <div className="page-container">
         <button className="btn" onClick={() => navigate('/projects')} style={{ marginBottom: '20px' }}>
           <ArrowLeft size={16} />
-          {locale === 'ar' ? 'العودة للمشاريع' : 'Back to Projects'}
+          {t('projects.system.backToProjects')}
         </button>
         <div className="alert alert-danger">{error}</div>
       </div>
@@ -184,21 +184,21 @@ function ProjectDetail() {
   // Presentation only: the API still decides what each role may read (utils/projectNav.js).
   const showFinancials = canSeeFinancials(authService.getCurrentUser(), Number(id));
   const infoCards = [
-    { icon: Briefcase, label: locale === 'ar' ? 'العميل' : 'Client', value: clientName() },
-    { icon: Users, label: locale === 'ar' ? 'مدير المشروع' : 'Project Manager', value: (locale === 'ar' ? project.project_manager_name : (project.project_manager_name_en || project.project_manager_name)) || '-' },
-    { icon: MapPin, label: locale === 'ar' ? 'العنوان' : 'Address', value: project.address || '-' },
-    { icon: Flag, label: locale === 'ar' ? 'قيمة العقد' : 'Contract Value', value: formatCurrency(project.contract_value), accent: true, financial: true },
-    { icon: Flag, label: locale === 'ar' ? 'الميزانية' : 'Budget', value: formatCurrency(project.budget), accent: true, financial: true },
-    { icon: Calendar, label: locale === 'ar' ? 'تاريخ البدء' : 'Start Date', value: formatDate(project.start_date) },
-    { icon: Calendar, label: locale === 'ar' ? 'المتوقع' : 'Expected', value: project.expected_completion ? formatDate(project.expected_completion) : '-' },
+    { icon: Briefcase, label: t('projects.system.client'), value: clientName() },
+    { icon: Users, label: t('projects.system.projectManager'), value: (locale === 'ar' ? project.project_manager_name : (project.project_manager_name_en || project.project_manager_name)) || '-' },
+    { icon: MapPin, label: t('projects.system.address'), value: project.address || '-' },
+    { icon: Flag, label: t('projects.system.contractValue'), value: formatCurrency(project.contract_value), accent: true, financial: true },
+    { icon: Flag, label: t('projects.system.budget'), value: formatCurrency(project.budget), accent: true, financial: true },
+    { icon: Calendar, label: t('projects.system.startDate'), value: formatDate(project.start_date) },
+    { icon: Calendar, label: t('projects.system.expected'), value: project.expected_completion ? formatDate(project.expected_completion) : '-' },
   ].filter((card) => showFinancials || !card.financial);
 
   if (finance && showFinancials) {
     infoCards.push(
-      { icon: TrendingUp, label: locale === 'ar' ? 'المدفوعات' : 'Payments Collected', value: formatCurrency(finance.total_paid), accent: true },
-      { icon: Flag, label: locale === 'ar' ? 'المستحق' : 'Outstanding', value: formatCurrency(finance.outstanding_balance), accent: true },
-      { icon: TrendingDown, label: locale === 'ar' ? 'المصروفات' : 'Expenses', value: formatCurrency(finance.total_expenses), accent: true },
-      { icon: finance.profit >= 0 ? TrendingUp : TrendingDown, label: locale === 'ar' ? 'الربح' : 'Profit', value: formatCurrency(finance.profit), accent: true,
+      { icon: TrendingUp, label: t('projects.system.paymentsCollected'), value: formatCurrency(finance.total_paid), accent: true },
+      { icon: Flag, label: t('projects.operations.metrics.outstanding'), value: formatCurrency(finance.outstanding_balance), accent: true },
+      { icon: TrendingDown, label: t('projects.system.expenses'), value: formatCurrency(finance.total_expenses), accent: true },
+      { icon: finance.profit >= 0 ? TrendingUp : TrendingDown, label: t('projects.system.profit'), value: formatCurrency(finance.profit), accent: true,
         color: finance.profit >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }
     );
   }
@@ -225,7 +225,7 @@ function ProjectDetail() {
         </div>
         <button className="btn btn-primary" onClick={() => { loadClients(); loadManagers(); setEditModal(true); }}>
           <Edit size={16} />
-          {locale === 'ar' ? 'تعديل' : 'Edit'}
+          {t('projects.system.edit')}
         </button>
       </div>
 
@@ -255,7 +255,7 @@ function ProjectDetail() {
       <div className="card" style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
           <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
-            {locale === 'ar' ? 'نسبة الإنجاز الإجمالية' : 'Overall Completion'}
+            {t('projects.system.overallCompletion')}
           </span>
           <span style={{ color: 'var(--color-accent)', fontWeight: 600, fontSize: '14px' }}>
             {formatPercent(project.completion_percentage)}
@@ -275,15 +275,15 @@ function ProjectDetail() {
       {/* Phase tracker */}
       <div className="card">
         <div className="card-header">
-          <h3 className="card-title">{locale === 'ar' ? 'مراحل المشروع' : 'Project Phases'}</h3>
+          <h3 className="card-title">{t('projects.system.projectPhases')}</h3>
           <button className="btn btn-primary" style={{ padding: '6px 14px', fontSize: '13px' }} onClick={() => setPhaseModal({})}>
             <Plus size={14} />
-            {locale === 'ar' ? 'إضافة مرحلة' : 'Add Phase'}
+            {t('projects.system.addPhase')}
           </button>
         </div>
         {phases.length === 0 ? (
           <p style={{ color: 'var(--color-text-secondary)', padding: '20px 0', textAlign: 'center' }}>
-            {locale === 'ar' ? 'لا توجد مراحل بعد.' : 'No phases yet.'}
+            {t('projects.system.noPhasesYet')}
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -326,23 +326,23 @@ function ProjectDetail() {
       {/* Team section */}
       <div className="card">
         <div className="card-header">
-          <h3 className="card-title">{locale === 'ar' ? 'فريق المشروع' : 'Project Team'}</h3>
+          <h3 className="card-title">{t('projects.system.projectTeam')}</h3>
           <button className="btn btn-primary" style={{ padding: '6px 14px', fontSize: '13px' }} onClick={() => { loadEmployees(); setTeamModal(true); }}>
             <Plus size={14} />
-            {locale === 'ar' ? 'إضافة عضو' : 'Add Member'}
+            {t('projects.system.addMember')}
           </button>
         </div>
         {team.length === 0 ? (
           <p style={{ color: 'var(--color-text-secondary)', padding: '20px 0', textAlign: 'center' }}>
-            {locale === 'ar' ? 'لا يوجد أعضاء في الفريق.' : 'No team members yet.'}
+            {t('projects.system.noTeamMembersYet')}
           </p>
         ) : (
           <div className="table-container">
             <table className="table">
               <thead>
                 <tr>
-                  <th>{locale === 'ar' ? 'الاسم' : 'Name'}</th>
-                  <th>{locale === 'ar' ? 'الدور' : 'Role'}</th>
+                  <th>{t('projects.system.name')}</th>
+                  <th>{t('projects.system.role')}</th>
                   <th>{t('common.actions')}</th>
                 </tr>
               </thead>
@@ -386,15 +386,15 @@ function ProjectDetail() {
       {/* Milestone timeline */}
       <div className="card">
         <div className="card-header">
-          <h3 className="card-title">{locale === 'ar' ? 'المعالم الرئيسية' : 'Milestones'}</h3>
+          <h3 className="card-title">{t('projects.system.milestones')}</h3>
           <button className="btn btn-primary" style={{ padding: '6px 14px', fontSize: '13px' }} onClick={() => setMilestoneModal({})}>
             <Plus size={14} />
-            {locale === 'ar' ? 'إضافة معلم' : 'Add Milestone'}
+            {t('projects.system.addMilestone')}
           </button>
         </div>
         {milestones.length === 0 ? (
           <p style={{ color: 'var(--color-text-secondary)', padding: '20px 0', textAlign: 'center' }}>
-            {locale === 'ar' ? 'لا توجد معالم رئيسية بعد.' : 'No milestones yet.'}
+            {t('projects.system.noMilestonesYet')}
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
@@ -432,7 +432,7 @@ function ProjectDetail() {
                     </div>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                       <span className={`badge ${m.achieved_date ? 'badge-success' : 'badge-warning'}`}>
-                        {m.achieved_date ? (locale === 'ar' ? 'مكتمل' : 'Done') : (locale === 'ar' ? 'معلق' : 'Pending')}
+                        {m.achieved_date ? (t('projects.system.done')) : (t('projects.system.pending'))}
                       </span>
                       <button className="btn" style={{ padding: '4px 8px' }} onClick={() => setMilestoneModal(m)}>
                         <Edit size={12} />
@@ -560,7 +560,7 @@ function EditProjectModal({ project, locale, t, onClose, onSave, clients, manage
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal-wide" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{locale === 'ar' ? 'تعديل المشروع' : 'Edit Project'}</h3>
+          <h3 className="modal-title">{t('projects.system.editProject')}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
@@ -568,7 +568,7 @@ function EditProjectModal({ project, locale, t, onClose, onSave, clients, manage
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">English Name *</label>
+                  <label className="form-label">{t('projects.system.englishName')}</label>
                   <input className="form-input" value={form.name_en} onChange={e => handleChange('name_en', e.target.value)} required />
                 </div>
                 <div className="form-group">
@@ -579,18 +579,18 @@ function EditProjectModal({ project, locale, t, onClose, onSave, clients, manage
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'العنوان' : 'Address'}</label>
+                  <label className="form-label">{t('projects.system.address')}</label>
                   <input className="form-input" value={form.address} onChange={e => handleChange('address', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'المدينة' : 'City'}</label>
+                  <label className="form-label">{t('projects.system.city')}</label>
                   <input className="form-input" value={form.city} onChange={e => handleChange('city', e.target.value)} />
                 </div>
               </div>
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'نوع المشروع' : 'Project Type'}</label>
+                  <label className="form-label">{t('projects.system.projectType')}</label>
                   <select className="form-select" value={form.project_type} onChange={e => handleChange('project_type', e.target.value)}>
                     {ALL_TYPES.map(tp => (
                       <option key={tp} value={tp}>{TYPE_LABELS[locale]?.[tp] || tp}</option>
@@ -598,7 +598,7 @@ function EditProjectModal({ project, locale, t, onClose, onSave, clients, manage
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الحالة' : 'Status'}</label>
+                  <label className="form-label">{t('projects.operations.fields.status')}</label>
                   <select className="form-select" value={form.status} onChange={e => handleChange('status', e.target.value)}>
                     {ALL_STATUSES.map(s => (
                       <option key={s} value={s}>{STATUS_LABELS[locale]?.[s] || s}</option>
@@ -609,9 +609,9 @@ function EditProjectModal({ project, locale, t, onClose, onSave, clients, manage
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'العميل' : 'Client'}</label>
+                  <label className="form-label">{t('projects.system.client')}</label>
                   <select className="form-select" value={form.client_id} onChange={e => handleChange('client_id', e.target.value)}>
-                    <option value="">-- {locale === 'ar' ? 'اختر العميل' : 'Select Client'} --</option>
+                    <option value="">-- {t('projects.system.selectClient')} --</option>
                     {clients.map(c => (
                       <option key={c.id} value={c.id}>{locale === 'ar' ? c.name_ar : c.name_en} ({c.code})</option>
                     ))}
@@ -619,11 +619,11 @@ function EditProjectModal({ project, locale, t, onClose, onSave, clients, manage
                   <LoadMore loadedCount={clients.length} totalCount={lookupCounts.clients} loading={loadingLookup.clients} onLoadMore={() => loadMoreLookup('clients')} t={t} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'مدير المشروع' : 'Project Manager'}</label>
+                  <label className="form-label">{t('projects.system.projectManager')}</label>
                   <select className="form-select" value={form.project_manager_id} onChange={e => handleChange('project_manager_id', e.target.value)}>
-                    <option value="">-- {locale === 'ar' ? 'اختر مدير المشروع' : 'Select PM'} --</option>
+                    <option value="">-- {t('projects.system.selectPm')} --</option>
                     {Object.entries(managers.reduce((groups, m) => {
-                      const dept = m.department || (locale === 'ar' ? 'بدون قسم' : 'No Department');
+                      const dept = m.department || (t('projects.system.noDepartment'));
                       (groups[dept] = groups[dept] || []).push(m);
                       return groups;
                     }, {})).map(([dept, deptManagers]) => (
@@ -640,22 +640,22 @@ function EditProjectModal({ project, locale, t, onClose, onSave, clients, manage
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'قيمة العقد' : 'Contract Value'} (EGP)</label>
+                  <label className="form-label">{t('projects.system.contractValue')}  {t('projects.system.egp')}</label>
                   <input className="form-input" type="number" min="0" value={form.contract_value} onChange={e => handleChange('contract_value', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الميزانية' : 'Budget'} (EGP)</label>
+                  <label className="form-label">{t('projects.system.budget')}  {t('projects.system.egp')}</label>
                   <input className="form-input" type="number" min="0" value={form.budget} onChange={e => handleChange('budget', e.target.value)} />
                 </div>
               </div>
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'تاريخ البدء' : 'Start Date'}</label>
+                  <label className="form-label">{t('projects.system.startDate')}</label>
                   <input className="form-input" type="date" value={form.start_date} onChange={e => handleChange('start_date', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'تاريخ الانتهاء المتوقع' : 'Expected Completion'}</label>
+                  <label className="form-label">{t('projects.system.expectedCompletion')}</label>
                   <input className="form-input" type="date" value={form.expected_completion} onChange={e => handleChange('expected_completion', e.target.value)} />
                 </div>
               </div>
@@ -712,7 +712,7 @@ function PhaseModal({ phase, locale, t, projectId, onClose, onSave }) {
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h3 className="modal-title">
-            {isEdit ? (locale === 'ar' ? 'تعديل المرحلة' : 'Edit Phase') : (locale === 'ar' ? 'إضافة مرحلة' : 'Add Phase')}
+            {isEdit ? (t('projects.system.editPhase')) : (t('projects.system.addPhase'))}
           </h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
@@ -721,7 +721,7 @@ function PhaseModal({ phase, locale, t, projectId, onClose, onSave }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">English Name *</label>
+                  <label className="form-label">{t('projects.system.englishName')}</label>
                   <input className="form-input" value={form.name_en} onChange={e => handleChange('name_en', e.target.value)} required />
                 </div>
                 <div className="form-group">
@@ -732,7 +732,7 @@ function PhaseModal({ phase, locale, t, projectId, onClose, onSave }) {
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الحالة' : 'Status'}</label>
+                  <label className="form-label">{t('projects.operations.fields.status')}</label>
                   <select className="form-select" value={form.status} onChange={e => handleChange('status', e.target.value)}>
                     {ALL_PHASE_STATUSES.map(s => (
                       <option key={s} value={s}>{PHASE_STATUS_LABELS[locale]?.[s] || s}</option>
@@ -740,18 +740,18 @@ function PhaseModal({ phase, locale, t, projectId, onClose, onSave }) {
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'نسبة الإنجاز' : 'Completion %'}</label>
+                  <label className="form-label">{t('projects.system.completion')}</label>
                   <input className="form-input" type="number" min="0" max="100" value={form.completion_percentage} onChange={e => handleChange('completion_percentage', e.target.value)} />
                 </div>
               </div>
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'تاريخ البدء' : 'Start Date'}</label>
+                  <label className="form-label">{t('projects.system.startDate')}</label>
                   <input className="form-input" type="date" value={form.start_date} onChange={e => handleChange('start_date', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'تاريخ الانتهاء المتوقع' : 'Expected Completion'}</label>
+                  <label className="form-label">{t('projects.system.expectedCompletion')}</label>
                   <input className="form-input" type="date" value={form.expected_completion} onChange={e => handleChange('expected_completion', e.target.value)} />
                 </div>
               </div>
@@ -795,16 +795,16 @@ function TeamModal({ locale, t, employees, totalCount, loadingMore, onLoadMore, 
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{locale === 'ar' ? 'إضافة عضو للفريق' : 'Add Team Member'}</h3>
+          <h3 className="modal-title">{t('projects.system.addTeamMember')}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'الموظف' : 'Employee'}</label>
+                <label className="form-label">{t('projects.system.employee')}</label>
                 <select className="form-select" value={form.employee_id} onChange={e => handleChange('employee_id', e.target.value)} required>
-                  <option value="">-- {locale === 'ar' ? 'اختر الموظف' : 'Select Employee'} --</option>
+                  <option value="">-- {t('projects.system.selectEmployee')} --</option>
                   {employees.map(emp => {
                     const nm = locale === 'ar'
                       ? (emp.name_ar || emp.name || emp.name_en)
@@ -819,7 +819,7 @@ function TeamModal({ locale, t, employees, totalCount, loadingMore, onLoadMore, 
                 <LoadMore loadedCount={employees.length} totalCount={totalCount} loading={loadingMore} onLoadMore={onLoadMore} t={t} />
               </div>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'الدور' : 'Role'}</label>
+                <label className="form-label">{t('projects.system.role')}</label>
                 <select className="form-select" value={form.role} onChange={e => handleChange('role', e.target.value)}>
                   {ALL_TEAM_ROLES.map(r => (
                     <option key={r} value={r}>{TEAM_ROLES[locale]?.[r] || r}</option>
@@ -879,7 +879,7 @@ function MilestoneModal({ milestone, locale, t, projectId, onClose, onSave }) {
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h3 className="modal-title">
-            {isEdit ? (locale === 'ar' ? 'تعديل المعلم' : 'Edit Milestone') : (locale === 'ar' ? 'إضافة معلم' : 'Add Milestone')}
+            {isEdit ? (t('projects.system.editMilestone')) : (t('projects.system.addMilestone'))}
           </h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
@@ -888,7 +888,7 @@ function MilestoneModal({ milestone, locale, t, projectId, onClose, onSave }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">English Title *</label>
+                  <label className="form-label">{t('projects.system.englishTitle')}</label>
                   <input className="form-input" value={form.title_en} onChange={e => handleChange('title_en', e.target.value)} required />
                 </div>
                 <div className="form-group">
@@ -898,17 +898,17 @@ function MilestoneModal({ milestone, locale, t, projectId, onClose, onSave }) {
               </div>
 
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'الوصف' : 'Description'}</label>
+                <label className="form-label">{t('projects.system.description')}</label>
                 <textarea className="form-textarea" value={form.description} onChange={e => handleChange('description', e.target.value)} />
               </div>
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'التاريخ المستهدف' : 'Target Date'} *</label>
+                  <label className="form-label">{t('projects.system.targetDate')} *</label>
                   <input className="form-input" type="date" value={form.target_date} onChange={e => handleChange('target_date', e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'تاريخ الإنجاز' : 'Achieved Date'}</label>
+                  <label className="form-label">{t('projects.system.achievedDate')}</label>
                   <input className="form-input" type="date" value={form.achieved_date} onChange={e => handleChange('achieved_date', e.target.value)} />
                 </div>
               </div>

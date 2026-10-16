@@ -1,3 +1,4 @@
+import { translateEnum } from '../i18n/enums';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import FormActions from '../components/common/FormActions';
@@ -305,7 +306,7 @@ export default function AdminWorkspace() {
         {config.fields.map(item => {
           const options = item.name === 'role' && availableRoles.length ? availableRoles : (item.options || []);
           return <FormField key={item.name} id={`admin-${item.name}`} label={t(`admin.fields.${item.name}`)} required={item.required} as={item.type === 'textarea' ? 'textarea' : item.type === 'select' ? 'select' : 'input'} type={item.type === 'checkbox' ? 'checkbox' : ['textarea', 'select'].includes(item.type) ? undefined : item.type} checked={item.type === 'checkbox' ? !!form.values[item.name] : undefined} value={item.type === 'checkbox' ? undefined : form.values[item.name]} error={form.errors[item.name]} onChange={event => form.change(item.name, item.type === 'checkbox' ? event.target.checked : event.target.value)}>
-            {item.type === 'select' && <><option key="empty" value="">{t('common.select', 'Select')}</option>{options.map(option => <option key={option} value={option}>{t(`admin.options.${option}`, option)}</option>)}</>}
+            {item.type === 'select' && <><option key="empty" value="">{t('common.select', 'Select')}</option>{options.map(option => <option key={option} value={option}>{item.name === 'role' ? translateEnum(t, 'role', option) : t(`admin.options.${option}`, option)}</option>)}</>}
           </FormField>;
         })}
         <FormActions saving={form.saving} error={form.submitError} onCancel={editing ? () => setEditing(null) : undefined} submitLabel={t('common.save')} />
@@ -313,7 +314,7 @@ export default function AdminWorkspace() {
       {loadError && <ErrorState message={t(loadError.translationKey || 'common.states.error')} onRetry={() => refresh()} />}
       {config.sweep && <button type="button" className="btn" onClick={runSweep} disabled={loading}>{t('admin.actions.runSweep')}</button>}
       {loading && rows.length === 0 ? <LoadingState /> : rows.length === 0 ? <EmptyState /> : <div className="table-responsive"><table className="data-table"><thead><tr>{columns.map(key => <th key={key}>{t(`admin.fields.${key}`)}</th>)}<th>{t('common.actions')}</th></tr></thead><tbody>
-        {rows.map(row => <tr key={row.id}>{columns.map(key => <td key={key}>{row[key] == null ? '—' : typeof row[key] === 'object' ? JSON.stringify(row[key]) : String(row[key])}</td>)}<td className="admin-row-actions">
+        {rows.map(row => <tr key={row.id}>{columns.map(key => <td key={key}>{row[key] == null ? '—' : ['status', 'role'].includes(key) ? translateEnum(t, key, row[key]) : typeof row[key] === 'object' ? JSON.stringify(row[key]) : String(row[key])}</td>)}<td className="admin-row-actions">
           {config.detail && <button type="button" className="btn btn-sm" onClick={() => showSla(row)}>{t('admin.actions.viewSla')}</button>}
           {config.update && !showingAlerts && <button type="button" className="btn btn-sm" onClick={() => editRow(row)}>{t('common.edit')}</button>}
           {config.post && row.status === 'draft' && <button type="button" className="btn btn-sm" onClick={() => documentAction(row, 'post')}>{t('admin.actions.post')}</button>}

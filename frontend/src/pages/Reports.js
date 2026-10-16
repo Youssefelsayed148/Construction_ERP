@@ -1,3 +1,4 @@
+import { translateEnum } from '../i18n/enums';
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 // Phase 24 — reports workspace: catalog + saved views + scheduled reports +
 // exports (CSV/PDF) + the automatic project report. Permission-aware: the
@@ -38,7 +39,7 @@ function download(url, filename) {
 export default function Reports() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { locale, t } = useLocale();
+  const { t } = useLocale();
   const [catalog, setCatalog] = useState(null);
   const [savedViews, setSavedViews] = useState([]);
   const [scheduled, setScheduled] = useState([]);
@@ -113,7 +114,7 @@ export default function Reports() {
   };
 
   const scheduleReport = async () => {
-    if (!id) { alert(locale === 'ar' ? 'افتح من داخل مشروع' : 'Open from inside a project first'); return; }
+    if (!id) { alert(t('reports.system.openFromInsideAProjectFirst')); return; }
     try {
       await fetchApi(`${API_URL}/reports/scheduled`, { method: 'POST', body: JSON.stringify({
         project_id: Number(id), report_key: reportKey, name: `${reportKey} weekly`, frequency: 'weekly', format: 'pdf',
@@ -130,9 +131,9 @@ export default function Reports() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
         <button className="btn" onClick={() => navigate(id ? `/projects/${id}` : '/dashboard')}><ArrowLeft size={16} /></button>
         <div>
-          <h1>{locale === 'ar' ? 'التقارير' : 'Reports'}</h1>
+          <h1>{t('reports.title')}</h1>
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'كتالوج التقارير والتصدير والتقارير المجدولة' : 'Catalog, exports, saved views & schedules'}
+            {t('reports.system.catalogExportsSavedViewsSchedules')}
           </p>
         </div>
       </div>
@@ -157,7 +158,7 @@ export default function Reports() {
                   <tbody>
                     {rows.length === 0 ? (
                       <tr><td colSpan={columns.length || 1} style={{ textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-                        {locale === 'ar' ? 'لا سجلات.' : 'No records.'}
+                        {t('reports.system.noRecords')}
                       </td></tr>
                     ) : rows.map((row, i) => (
                       <tr key={row.id || i}>{columns.map(c => <td key={c.key}>{String(row[c.key] == null ? '-' : row[c.key]).slice(0, 40)}</td>)}</tr>
@@ -174,21 +175,21 @@ export default function Reports() {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button className="btn" onClick={() => download(`${API_URL}/reports/export/${reportKey}${id ? `?project_id=${id}` : ''}&format=csv`, `${reportKey}-report.csv`)}><Save size={14} /> CSV</button>
               <button className="btn" onClick={() => download(`${API_URL}/reports/export/${reportKey}?format=pdf${id ? `&project_id=${id}` : ''}`, `${reportKey}-report.pdf`)}><Package size={14} /> PDF</button>
-              <button className="btn" onClick={saveView}>Save view</button>
-              <button className="btn" onClick={scheduleReport}>Schedule</button>
+              <button className="btn" onClick={saveView}>{t('reports.system.saveView')}</button>
+              <button className="btn" onClick={scheduleReport}>{t('reports.system.schedule')}</button>
             </div>
             {savedViews.length > 0 && (
               <div style={{ marginTop: 10 }}>
-                <h4 style={{ fontSize: 13, marginBottom: 6 }}>Saved views</h4>
+                <h4 style={{ fontSize: 13, marginBottom: 6 }}>{t('reports.system.savedViews')}</h4>
                 {savedViews.map(v => <div key={v.id} style={{ fontSize: 13, padding: '3px 0' }}>{v.name} · {v.module}</div>)}
               </div>
             )}
             {scheduled.length > 0 && (
               <div style={{ marginTop: 10 }}>
-                <h4 style={{ fontSize: 13, marginBottom: 6 }}>Scheduled reports</h4>
+                <h4 style={{ fontSize: 13, marginBottom: 6 }}>{t('reports.system.scheduledReports')}</h4>
                 {scheduled.map(s => (
                   <div key={s.id} style={{ fontSize: 13, padding: '3px 0' }}>
-                    {s.name} — {s.frequency} ({s.format}) · runs: {s.run_count}
+                    {s.name} — {translateEnum(t, 'frequency', s.frequency)} ({s.format}{t('reports.system.runs')} {s.run_count}
                   </div>
                 ))}
               </div>
@@ -198,7 +199,7 @@ export default function Reports() {
           {isProjectReport && (
             <div className="card" style={{ padding: 12 }}>
               <h3 className="card-title" style={{ fontSize: 14, marginBottom: 8 }}>
-                {locale === 'ar' ? 'تقرير المشروع التلقائي' : 'Automatic project report'} — {projectReport?.project_name || ''}
+                {t('reports.system.automaticProjectReport')} — {projectReport?.project_name || ''}
               </h3>
               <button className="btn" onClick={() => download(`${API_URL}/reports/project-report/${id}/pdf`, `project-report-${id}.pdf`)}><Save size={14} /> PDF</button>
               <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>

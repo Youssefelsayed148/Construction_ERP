@@ -170,5 +170,8 @@
   "language": {
     "en": "English",
     "ar": "Arabic"
+  },
+  "system": {
+    "kb": "KB"
   }
 }

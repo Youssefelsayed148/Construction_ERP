@@ -1,3 +1,5 @@
+import { formatDate as sharedDate } from '../utils/formatters';
+import { translateEnum } from '../i18n/enums';
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 // Phase 20 — HSE workspace: dashboard, permits, incidents, near misses,
 // JSA/risk assessments, inspections, inductions, toolbox talks, PPE,
@@ -33,12 +35,7 @@ const downloadPdf = async (url, filename) => {
   URL.revokeObjectURL(a.href);
 };
 
-const fmtDate = (d) => {
-  if (!d) return '-';
-  const dt = new Date(d);
-  if (isNaN(dt.getTime())) return d;
-  return `${dt.getDate().toString().padStart(2, '0')}/${(dt.getMonth() + 1).toString().padStart(2, '0')}/${dt.getFullYear()}`;
-};
+const fmtDate = sharedDate;
 
 const PERMIT_TYPE_LABELS = {
   en: { work: 'Work', hot_work: 'Hot Work', lifting: 'Lifting', excavation: 'Excavation', confined_space: 'Confined Space' },
@@ -90,7 +87,7 @@ function EmptyState({ icon: Icon, text }) {
 
 // ============ DASHBOARD ============
 
-function HseDashboardTab({ projectId, locale }) {
+function HseDashboardTab({ projectId, locale, t }) {
   const [dash, setDash] = useState(null);
   useEffect(() => {
     const url = projectId ? `${API_URL}/hse/dashboard?project_id=${projectId}` : `${API_URL}/hse/dashboard`;
@@ -99,13 +96,13 @@ function HseDashboardTab({ projectId, locale }) {
 
   if (!dash) return <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}><span className="spinner" /></div>;
   const cards = [
-    { label: locale === 'ar' ? 'أيام بدون حادث فقدان وقت' : 'Days without LTI', value: dash.days_without_lti ?? '—', color: 'var(--color-success)' },
-    { label: locale === 'ar' ? 'ساعات عمل (اليوم)' : 'Man-hours today', value: dash.man_hours_today, color: 'var(--color-accent)' },
-    { label: locale === 'ar' ? 'حوادث مفتوحة' : 'Open incidents', value: dash.open_incidents, color: dash.open_incidents > 0 ? 'var(--color-danger, #e5534b)' : 'var(--color-success)' },
-    { label: locale === 'ar' ? 'حوادث شبه مفتوحة' : 'Open near misses', value: dash.open_near_misses, color: dash.open_near_misses > 0 ? 'var(--color-warning)' : 'var(--color-success)' },
-    { label: locale === 'ar' ? 'تصاريح سارية' : 'Active permits', value: dash.permits?.active ?? 0, color: 'var(--color-accent)' },
-    { label: locale === 'ar' ? 'تصاريح تنتهي اليوم' : 'Permits expiring today', value: dash.permits?.expiring_today ?? 0, color: dash.permits?.expiring_today > 0 ? 'var(--color-warning)' : 'var(--color-success)' },
-    { label: locale === 'ar' ? 'إجراءات متأخرة' : 'Overdue actions', value: dash.overdue_corrective_actions, color: dash.overdue_corrective_actions > 0 ? 'var(--color-danger, #e5534b)' : 'var(--color-success)' },
+    { label: t('hse.system.daysWithoutLti'), value: dash.days_without_lti ?? '—', color: 'var(--color-success)' },
+    { label: t('hse.system.manHoursToday'), value: dash.man_hours_today, color: 'var(--color-accent)' },
+    { label: t('hse.system.openIncidents'), value: dash.open_incidents, color: dash.open_incidents > 0 ? 'var(--color-danger, #e5534b)' : 'var(--color-success)' },
+    { label: t('hse.system.openNearMisses'), value: dash.open_near_misses, color: dash.open_near_misses > 0 ? 'var(--color-warning)' : 'var(--color-success)' },
+    { label: t('hse.system.activePermits'), value: dash.permits?.active ?? 0, color: 'var(--color-accent)' },
+    { label: t('hse.system.permitsExpiringToday'), value: dash.permits?.expiring_today ?? 0, color: dash.permits?.expiring_today > 0 ? 'var(--color-warning)' : 'var(--color-success)' },
+    { label: t('hse.system.overdueActions'), value: dash.overdue_corrective_actions, color: dash.overdue_corrective_actions > 0 ? 'var(--color-danger, #e5534b)' : 'var(--color-success)' },
   ];
   return (
     <div>
@@ -119,7 +116,7 @@ function HseDashboardTab({ projectId, locale }) {
       </div>
       {dash.permits?.expired_active > 0 && (
         <div className="card" style={{ marginTop: 12, borderLeft: '4px solid var(--color-danger, #e5534b)', padding: 12 }}>
-          {locale === 'ar' ? `${dash.permits.expired_active} تصريح نشط انتهت صلاحيته — يجب إغلاقه` : `${dash.permits.expired_active} active permit(s) past validity — close or renew them.`}
+          {t('hse.system.activePermitSPastValidityCloseOrRenewThem', { expired_active: dash.permits.expired_active })}
         </div>
       )}
     </div>
@@ -156,38 +153,38 @@ function PermitsTab({ projectId, locale, t }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{locale === 'ar' ? 'تصريح جديد' : 'New Permit'}</button>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{t('hse.system.newPermit')}</button>
       </div>
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: '16px', display: 'grid', gap: '10px' }}>
-          <input className="input" required placeholder={locale === 'ar' ? 'العنوان' : 'Title'} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+          <input className="input" required placeholder={t('hse.system.title')} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
           <div className="responsive-grid responsive-grid--two" style={{ gap: '10px' }}>
             <select className="input" value={form.permit_type} onChange={e => setForm({ ...form, permit_type: e.target.value })}>
               {Object.entries(PERMIT_TYPE_LABELS[locale] || PERMIT_TYPE_LABELS.en).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
-            <input className="input" placeholder={locale === 'ar' ? 'الشروط' : 'Conditions'} value={form.conditions} onChange={e => setForm({ ...form, conditions: e.target.value })} />
+            <input className="input" placeholder={t('hse.system.conditions')} value={form.conditions} onChange={e => setForm({ ...form, conditions: e.target.value })} />
           </div>
-          <textarea className="input" placeholder={locale === 'ar' ? 'الوصف' : 'Description'} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+          <textarea className="input" placeholder={t('hse.system.description')} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
           <div className="responsive-grid responsive-grid--two" style={{ gap: '10px' }}>
-            <input className="input" type="date" title="Valid from" value={form.valid_from} onChange={e => setForm({ ...form, valid_from: e.target.value })} />
-            <input className="input" type="date" title="Valid to" value={form.valid_to} onChange={e => setForm({ ...form, valid_to: e.target.value })} />
+            <input className="input" type="date" title={t('hse.system.validFrom')} value={form.valid_from} onChange={e => setForm({ ...form, valid_from: e.target.value })} />
+            <input className="input" type="date" title={t('hse.system.validTo')} value={form.valid_to} onChange={e => setForm({ ...form, valid_to: e.target.value })} />
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-primary" type="submit">{t('common.save') || 'Save'}</button>
-            <button className="btn" type="button" onClick={() => setShowModal(false)}>Cancel</button>
+            <button className="btn btn-primary" type="submit">{t('common.save') || t('hse.system.save')}</button>
+            <button className="btn" type="button" onClick={() => setShowModal(false)}>{t('hse.system.cancel')}</button>
           </div>
         </form>
       )}
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}><span className="spinner" /></div>
       ) : rows.length === 0 ? (
-        <EmptyState icon={Flame} text={locale === 'ar' ? 'لا توجد تصاريح.' : 'No permits to work issued.'} />
+        <EmptyState icon={Flame} text={t('hse.system.noPermitsToWorkIssued')} />
       ) : (
         <div className="table-container">
           <table className="table">
             <thead><tr>
-              <th>Permit</th><th>{locale === 'ar' ? 'النوع' : 'Type'}</th><th>{locale === 'ar' ? 'العنوان' : 'Title'}</th>
-              <th>{locale === 'ar' ? 'صالح حتى' : 'Valid to'}</th><th>{locale === 'ar' ? 'الحالة' : 'Status'}</th><th>{t('common.actions')}</th>
+              <th>{t('hse.system.permit')}</th><th>{t('hse.system.type')}</th><th>{t('hse.system.title')}</th>
+              <th>{t('hse.system.validTo2')}</th><th>{t('hse.system.status')}</th><th>{t('common.actions')}</th>
             </tr></thead>
             <tbody>
               {rows.map(p => (
@@ -198,26 +195,26 @@ function PermitsTab({ projectId, locale, t }) {
                   <td>{fmtDate(p.valid_to)}</td>
                   <td><span className={`badge ${PERMIT_STATUS_BADGE[p.status]}`}>{PERMIT_STATUS_LABELS[locale]?.[p.status] || p.status}</span></td>
                   <td style={{ whiteSpace: 'nowrap' }}>
-                    {p.status === 'draft' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'submit')}>{locale === 'ar' ? 'إرسال' : 'Submit'}</button>}
+                    {p.status === 'draft' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'submit')}>{t('hse.system.submit')}</button>}
                     {(p.status === 'pending_approval' || p.status === 'approved') && (
                       <>
-                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'decision', { decision: 'approve' })}>{locale === 'ar' ? 'موافقة' : 'Approve'}</button>{' '}
-                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'decision', { decision: 'reject' })}>{locale === 'ar' ? 'رفض' : 'Reject'}</button>{' '}
+                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'decision', { decision: 'approve' })}>{t('hse.system.approve')}</button>{' '}
+                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'decision', { decision: 'reject' })}>{t('hse.system.reject')}</button>{' '}
                       </>
                     )}
                     {p.status === 'active' && (
                       <>
-                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'status', { status: 'suspended' })}>{locale === 'ar' ? 'إيقاف' : 'Suspend'}</button>{' '}
-                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'status', { status: 'closed' })}>{locale === 'ar' ? 'إغلاق' : 'Close'}</button>{' '}
+                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'status', { status: 'suspended' })}>{t('hse.system.suspend')}</button>{' '}
+                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'status', { status: 'closed' })}>{t('hse.system.close')}</button>{' '}
                       </>
                     )}
                     {p.status === 'suspended' && (
                       <>
-                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'status', { status: 'active' })}>{locale === 'ar' ? 'استئناف' : 'Resume'}</button>{' '}
-                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'status', { status: 'closed' })}>{locale === 'ar' ? 'إغلاق' : 'Close'}</button>{' '}
+                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'status', { status: 'active' })}>{t('hse.system.resume')}</button>{' '}
+                        <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'status', { status: 'closed' })}>{t('hse.system.close')}</button>{' '}
                       </>
                     )}
-                    {p.status === 'rejected' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'status', { status: 'pending_approval' })}>{locale === 'ar' ? 'إعادة' : 'Reopen'}</button>}
+                    {p.status === 'rejected' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(p, 'status', { status: 'pending_approval' })}>{t('hse.system.reopen')}</button>}
                     <button className="btn" style={{ padding: '4px 10px' }} onClick={() => downloadPdf(`${API_URL}/hse/permits/${p.id}/pdf`, `${p.permit_number}.pdf`)}><Download size={14} /></button>
                   </td>
                 </tr>
@@ -260,45 +257,45 @@ function IncidentsTab({ projectId, locale, t }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{locale === 'ar' ? 'حادث جديد' : 'Report Incident'}</button>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{t('hse.system.reportIncident')}</button>
       </div>
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: '16px', display: 'grid', gap: '10px' }}>
-          <textarea className="input" required placeholder={locale === 'ar' ? 'الوصف' : 'Description'} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+          <textarea className="input" required placeholder={t('hse.system.description')} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
           <div className="responsive-grid responsive-grid--three" style={{ gap: '10px' }}>
             <select className="input" value={form.incident_category} onChange={e => setForm({ ...form, incident_category: e.target.value })}>
-              <option value="injury">Injury</option><option value="environmental">Environmental</option>
-              <option value="property">Property</option><option value="vehicle">Vehicle</option><option value="other">Other</option>
+              <option value="injury">{t('hse.system.injury')}</option><option value="environmental">{t('hse.system.environmental')}</option>
+              <option value="property">{t('hse.system.property')}</option><option value="vehicle">{t('hse.system.vehicle')}</option><option value="other">{t('hse.system.other')}</option>
             </select>
             <select className="input" value={form.severity} onChange={e => setForm({ ...form, severity: e.target.value })}>
-              <option value="minor">Minor</option><option value="major">Major</option><option value="critical">Critical</option>
+              <option value="minor">{t('hse.system.minor')}</option><option value="major">{t('hse.system.major')}</option><option value="critical">{t('hse.system.critical')}</option>
             </select>
-            <input className="input" placeholder={locale === 'ar' ? 'المتضرر' : 'Injured party'} value={form.injured_party} onChange={e => setForm({ ...form, injured_party: e.target.value })} />
+            <input className="input" placeholder={t('hse.system.injuredParty')} value={form.injured_party} onChange={e => setForm({ ...form, injured_party: e.target.value })} />
           </div>
           <div className="responsive-grid responsive-grid--two" style={{ gap: '10px', alignItems: 'center' }}>
             <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}>
               <input type="checkbox" checked={form.is_lti} onChange={e => setForm({ ...form, is_lti: e.target.checked })} />
-              {locale === 'ar' ? 'حادث فقدان وقت (LTI)' : 'Lost-time injury (LTI)'}
+              {t('hse.system.lostTimeInjuryLti')}
             </label>
-            <input className="input" type="number" min="0" placeholder="Lost days" value={form.lost_days} onChange={e => setForm({ ...form, lost_days: e.target.value })} disabled={!form.is_lti} />
+            <input className="input" type="number" min="0" placeholder={t('hse.system.lostDays')} value={form.lost_days} onChange={e => setForm({ ...form, lost_days: e.target.value })} disabled={!form.is_lti} />
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-primary" type="submit">{t('common.save') || 'Save'}</button>
-            <button className="btn" type="button" onClick={() => setShowModal(false)}>Cancel</button>
+            <button className="btn btn-primary" type="submit">{t('common.save') || t('hse.system.save')}</button>
+            <button className="btn" type="button" onClick={() => setShowModal(false)}>{t('hse.system.cancel')}</button>
           </div>
         </form>
       )}
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}><span className="spinner" /></div>
       ) : rows.length === 0 ? (
-        <EmptyState icon={ShieldAlert} text={locale === 'ar' ? 'لا توجد حوادث.' : 'No incidents reported.'} />
+        <EmptyState icon={ShieldAlert} text={t('hse.system.noIncidentsReported')} />
       ) : (
         <div className="table-container">
           <table className="table">
             <thead><tr>
-              <th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th><th>{locale === 'ar' ? 'التصنيف' : 'Category'}</th>
-              <th>{locale === 'ar' ? 'الوصف' : 'Description'}</th><th>{locale === 'ar' ? 'الخطورة' : 'Severity'}</th>
-              <th>LTI</th><th>{locale === 'ar' ? 'الحالة' : 'Status'}</th><th>{t('common.actions')}</th>
+              <th>{t('hse.system.date')}</th><th>{t('hse.system.category')}</th>
+              <th>{t('hse.system.description')}</th><th>{t('hse.system.severity')}</th>
+              <th>{t('hse.system.lti')}</th><th>{t('hse.system.status')}</th><th>{t('common.actions')}</th>
             </tr></thead>
             <tbody>
               {rows.map(i => (
@@ -306,12 +303,12 @@ function IncidentsTab({ projectId, locale, t }) {
                   <td>{fmtDate(i.incident_date)}</td>
                   <td>{i.incident_category || '-'}</td>
                   <td>{i.description}</td>
-                  <td><span className={`badge ${SEVERITY_BADGE[i.severity]}`}>{i.severity}</span></td>
-                  <td>{i.is_lti ? <span className="badge badge-danger">LTI</span> : '-'}</td>
-                  <td><span className="badge badge-info">{i.status}</span></td>
+                  <td><span className={`badge ${SEVERITY_BADGE[i.severity]}`}>{translateEnum(t, 'severity', i.severity)}</span></td>
+                  <td>{i.is_lti ? <span className="badge badge-danger">{t('hse.system.lti')}</span> : '-'}</td>
+                  <td><span className="badge badge-info">{translateEnum(t, 'status', i.status)}</span></td>
                   <td style={{ whiteSpace: 'nowrap' }}>
-                    {i.status === 'open' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(i, 'investigating')}>{locale === 'ar' ? 'تحقيق' : 'Investigate'}</button>}
-                    {(i.status === 'open' || i.status === 'investigating') && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(i, 'closed')}>{locale === 'ar' ? 'إغلاق' : 'Close'}</button>}
+                    {i.status === 'open' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(i, 'investigating')}>{t('hse.system.investigate')}</button>}
+                    {(i.status === 'open' || i.status === 'investigating') && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(i, 'closed')}>{t('hse.system.close')}</button>}
                     <button className="btn" style={{ padding: '4px 10px' }} onClick={() => downloadPdf(`${API_URL}/hse/incidents/${i.id}/pdf`, `incident-${i.id}.pdf`)}><Download size={14} /></button>
                   </td>
                 </tr>
@@ -347,34 +344,34 @@ function NearMissesTab({ projectId, locale, t }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{locale === 'ar' ? 'حدث وشيك' : 'Report Near Miss'}</button>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{t('hse.system.reportNearMiss')}</button>
       </div>
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: '16px', display: 'grid', gap: '10px' }}>
-          <textarea className="input" required placeholder={locale === 'ar' ? 'الوصف' : 'Description'} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+          <textarea className="input" required placeholder={t('hse.system.description')} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
           <div className="responsive-grid responsive-grid--two" style={{ gap: '10px' }}>
-            <input className="input" placeholder={locale === 'ar' ? 'التصنيف' : 'Category'} value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} />
+            <input className="input" placeholder={t('hse.system.category')} value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} />
             <select className="input" value={form.severity} onChange={e => setForm({ ...form, severity: e.target.value })}>
-              <option value="minor">Minor</option><option value="major">Major</option><option value="critical">Critical</option>
+              <option value="minor">{t('hse.system.minor')}</option><option value="major">{t('hse.system.major')}</option><option value="critical">{t('hse.system.critical')}</option>
             </select>
           </div>
-          <textarea className="input" placeholder={locale === 'ar' ? 'الإجراء الفوري' : 'Immediate action'} value={form.immediate_action} onChange={e => setForm({ ...form, immediate_action: e.target.value })} />
+          <textarea className="input" placeholder={t('hse.system.immediateAction')} value={form.immediate_action} onChange={e => setForm({ ...form, immediate_action: e.target.value })} />
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-primary" type="submit">{t('common.save') || 'Save'}</button>
-            <button className="btn" type="button" onClick={() => setShowModal(false)}>Cancel</button>
+            <button className="btn btn-primary" type="submit">{t('common.save') || t('hse.system.save')}</button>
+            <button className="btn" type="button" onClick={() => setShowModal(false)}>{t('hse.system.cancel')}</button>
           </div>
         </form>
       )}
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}><span className="spinner" /></div>
       ) : rows.length === 0 ? (
-        <EmptyState icon={AlertTriangle} text={locale === 'ar' ? 'لا توجد أحداث وشيك.' : 'No near misses reported.'} />
+        <EmptyState icon={AlertTriangle} text={t('hse.system.noNearMissesReported')} />
       ) : (
         <div className="table-container">
           <table className="table">
             <thead><tr>
-              <th>NM</th><th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th><th>{locale === 'ar' ? 'الوصف' : 'Description'}</th>
-              <th>{locale === 'ar' ? 'الخطورة' : 'Severity'}</th><th>{locale === 'ar' ? 'الحالة' : 'Status'}</th><th>{t('common.actions')}</th>
+              <th>{t('hse.system.nm')}</th><th>{t('hse.system.date')}</th><th>{t('hse.system.description')}</th>
+              <th>{t('hse.system.severity')}</th><th>{t('hse.system.status')}</th><th>{t('common.actions')}</th>
             </tr></thead>
             <tbody>
               {rows.map(n => (
@@ -382,10 +379,10 @@ function NearMissesTab({ projectId, locale, t }) {
                   <td style={{ fontFamily: 'monospace', fontSize: '13px' }}>{n.near_miss_number}</td>
                   <td>{fmtDate(n.incident_date)}</td>
                   <td>{n.description}</td>
-                  <td><span className={`badge ${SEVERITY_BADGE[n.severity]}`}>{n.severity}</span></td>
-                  <td><span className="badge badge-info">{n.status}</span></td>
+                  <td><span className={`badge ${SEVERITY_BADGE[n.severity]}`}>{translateEnum(t, 'severity', n.severity)}</span></td>
+                  <td><span className="badge badge-info">{translateEnum(t, 'status', n.status)}</span></td>
                   <td style={{ whiteSpace: 'nowrap' }}>
-                    {n.status === 'open' && <button className="btn" style={{ padding: '4px 10px' }} onClick={async () => { try { await fetchApi(`${API_URL}/hse/near-misses/${n.id}/status`, { method: 'POST', body: JSON.stringify({ status: 'closed' }) }); reload(); } catch (e) { alert(e.message); } }}>{locale === 'ar' ? 'إغلاق' : 'Close'}</button>}
+                    {n.status === 'open' && <button className="btn" style={{ padding: '4px 10px' }} onClick={async () => { try { await fetchApi(`${API_URL}/hse/near-misses/${n.id}/status`, { method: 'POST', body: JSON.stringify({ status: 'closed' }) }); reload(); } catch (e) { alert(e.message); } }}>{t('hse.system.close')}</button>}
                     <button className="btn" style={{ padding: '4px 10px' }} onClick={() => downloadPdf(`${API_URL}/hse/near-misses/${n.id}/pdf`, `${n.near_miss_number}.pdf`)}><Download size={14} /></button>
                   </td>
                 </tr>
@@ -431,50 +428,50 @@ function JsaTab({ projectId, locale, t }) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button className={`btn ${kind === 'jsas' ? 'btn-primary' : ''}`} onClick={() => setKind('jsas')} style={{ padding: '6px 16px', fontSize: '13px' }}>JSA</button>
-          <button className={`btn ${kind === 'risk-assessments' ? 'btn-primary' : ''}`} onClick={() => setKind('risk-assessments')} style={{ padding: '6px 16px', fontSize: '13px' }}>{locale === 'ar' ? 'تقييم المخاطر' : 'Risk Assessments'}</button>
+          <button className={`btn ${kind === 'jsas' ? 'btn-primary' : ''}`} onClick={() => setKind('jsas')} style={{ padding: '6px 16px', fontSize: '13px' }}>{t('hse.system.jsa')}</button>
+          <button className={`btn ${kind === 'risk-assessments' ? 'btn-primary' : ''}`} onClick={() => setKind('risk-assessments')} style={{ padding: '6px 16px', fontSize: '13px' }}>{t('hse.system.riskAssessments')}</button>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{locale === 'ar' ? 'جديد' : 'New'}</button>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{t('hse.system.new')}</button>
       </div>
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: '16px', display: 'grid', gap: '10px' }}>
-          <input className="input" required placeholder={locale === 'ar' ? 'العنوان' : 'Title'} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
-          <input className="input" placeholder={locale === 'ar' ? 'النشاط' : 'Activity'} value={form.activity} onChange={e => setForm({ ...form, activity: e.target.value })} />
+          <input className="input" required placeholder={t('hse.system.title')} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+          <input className="input" placeholder={t('hse.system.activity')} value={form.activity} onChange={e => setForm({ ...form, activity: e.target.value })} />
           {kind === 'risk-assessments' && (
             <div className="responsive-grid responsive-grid--two" style={{ gap: '10px' }}>
               <select className="input" value={form.likelihood} onChange={e => setForm({ ...form, likelihood: e.target.value })}>
-                <option value="low">Likelihood: Low</option><option value="medium">Likelihood: Medium</option><option value="high">Likelihood: High</option>
+                <option value="low">{t('hse.system.likelihoodLow')}</option><option value="medium">{t('hse.system.likelihoodMedium')}</option><option value="high">{t('hse.system.likelihoodHigh')}</option>
               </select>
               <select className="input" value={form.severity} onChange={e => setForm({ ...form, severity: e.target.value })}>
-                <option value="low">Severity: Low</option><option value="medium">Severity: Medium</option><option value="high">Severity: High</option>
+                <option value="low">{t('hse.system.severityLow')}</option><option value="medium">{t('hse.system.severityMedium')}</option><option value="high">{t('hse.system.severityHigh')}</option>
               </select>
             </div>
           )}
-          <textarea className="input" placeholder={locale === 'ar' ? 'إجراءات التحكم' : 'Controls'} value={form.controls} onChange={e => setForm({ ...form, controls: e.target.value })} />
+          <textarea className="input" placeholder={t('hse.system.controls')} value={form.controls} onChange={e => setForm({ ...form, controls: e.target.value })} />
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-primary" type="submit">{t('common.save') || 'Save'}</button>
-            <button className="btn" type="button" onClick={() => setShowModal(false)}>Cancel</button>
+            <button className="btn btn-primary" type="submit">{t('common.save') || t('hse.system.save')}</button>
+            <button className="btn" type="button" onClick={() => setShowModal(false)}>{t('hse.system.cancel')}</button>
           </div>
         </form>
       )}
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}><span className="spinner" /></div>
       ) : rows.length === 0 ? (
-        <EmptyState icon={Activity} text={locale === 'ar' ? 'لا توجد سجلات.' : 'No records yet.'} />
+        <EmptyState icon={Activity} text={t('hse.system.noRecordsYet')} />
       ) : kind === 'jsas' ? (
         <div className="table-container">
           <table className="table">
-            <thead><tr><th>{locale === 'ar' ? 'العنوان' : 'Title'}</th><th>{locale === 'ar' ? 'النشاط' : 'Activity'}</th><th>{locale === 'ar' ? 'المخاطر' : 'Hazards'}</th><th>{locale === 'ar' ? 'الحالة' : 'Status'}</th><th>{t('common.actions')}</th></tr></thead>
+            <thead><tr><th>{t('hse.system.title')}</th><th>{t('hse.system.activity')}</th><th>{t('hse.system.hazards')}</th><th>{t('hse.system.status')}</th><th>{t('common.actions')}</th></tr></thead>
             <tbody>
               {rows.map(j => (
                 <tr key={j.id}>
                   <td style={{ fontWeight: 500 }}>{j.title}</td>
                   <td>{j.activity || '-'}</td>
                   <td>{(j.hazards || []).length}</td>
-                  <td><span className="badge badge-info">{j.status}</span></td>
+                  <td><span className="badge badge-info">{translateEnum(t, 'status', j.status)}</span></td>
                   <td style={{ whiteSpace: 'nowrap' }}>
-                    {j.status === 'draft' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(j, 'reviewed')}>{locale === 'ar' ? 'مراجعة' : 'Review'}</button>}
-                    {j.status === 'reviewed' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(j, 'approved')}>{locale === 'ar' ? 'اعتماد' : 'Approve'}</button>}
+                    {j.status === 'draft' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(j, 'reviewed')}>{t('hse.system.review')}</button>}
+                    {j.status === 'reviewed' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(j, 'approved')}>{t('hse.system.approve2')}</button>}
                     <button className="btn" style={{ padding: '4px 10px' }} onClick={() => downloadPdf(`${API_URL}/hse/jsas/${j.id}/pdf`, `jsa-${j.id}.pdf`)}><Download size={14} /></button>
                   </td>
                 </tr>
@@ -485,14 +482,14 @@ function JsaTab({ projectId, locale, t }) {
       ) : (
         <div className="table-container">
           <table className="table">
-            <thead><tr><th>{locale === 'ar' ? 'العنوان' : 'Title'}</th><th>{locale === 'ar' ? 'النشاط' : 'Activity'}</th><th>{locale === 'ar' ? 'الاحتمالية' : 'Likelihood'}</th><th>{locale === 'ar' ? 'الخطورة' : 'Severity'}</th><th>{locale === 'ar' ? 'مستوى الخطر' : 'Risk'}</th></tr></thead>
+            <thead><tr><th>{t('hse.system.title')}</th><th>{t('hse.system.activity')}</th><th>{t('hse.system.likelihood')}</th><th>{t('hse.system.severity')}</th><th>{t('hse.system.risk')}</th></tr></thead>
             <tbody>
               {rows.map(ra => (
                 <tr key={ra.id}>
                   <td style={{ fontWeight: 500 }}>{ra.title}</td>
                   <td>{ra.activity || '-'}</td>
                   <td>{ra.likelihood}</td>
-                  <td>{ra.severity}</td>
+                  <td>{translateEnum(t, 'severity', ra.severity)}</td>
                   <td><span className={`badge ${ra.risk_level === 'low' ? 'badge-success' : ra.risk_level === 'critical' ? 'badge-danger' : 'badge-warning'}`}>{ra.risk_level}</span></td>
                 </tr>
               ))}
@@ -514,12 +511,12 @@ function RegistersTab({ projectId, locale, t }) {
   const [form, setForm] = useState({ title: '', person_name: '', item: '', equipment_name: '', drill_type: 'fire', value: '' });
 
   const KINDS = [
-    { key: 'inspections', label: locale === 'ar' ? 'التفتيش' : 'Inspections' },
-    { key: 'inductions', label: locale === 'ar' ? 'التعريفات' : 'Inductions' },
-    { key: 'toolbox-talks', label: locale === 'ar' ? 'التوعية' : 'Toolbox Talks' },
-    { key: 'ppe-records', label: 'PPE' },
-    { key: 'equipment-inspections', label: locale === 'ar' ? 'فحص المعدات' : 'Equipment' },
-    { key: 'emergency-drills', label: locale === 'ar' ? 'تدريبات' : 'Drills' },
+    { key: 'inspections', label: t('hse.system.inspections') },
+    { key: 'inductions', label: t('hse.system.inductions') },
+    { key: 'toolbox-talks', label: t('hse.system.toolboxTalks') },
+    { key: 'ppe-records', label: t('hse.system.personalProtectiveEquipment') },
+    { key: 'equipment-inspections', label: t('hse.system.equipment') },
+    { key: 'emergency-drills', label: t('hse.system.drills') },
   ];
 
   const submit = async (e) => {
@@ -546,60 +543,60 @@ function RegistersTab({ projectId, locale, t }) {
             <button key={k.key} className={`btn ${kind === k.key ? 'btn-primary' : ''}`} onClick={() => setKind(k.key)} style={{ padding: '6px 14px', fontSize: '13px' }}>{k.label}</button>
           ))}
         </div>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{locale === 'ar' ? 'إضافة' : 'Add'}</button>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{t('hse.system.add')}</button>
       </div>
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: '16px', display: 'grid', gap: '10px', maxWidth: 480 }}>
-          {kind === 'inspections' && <input className="input" placeholder={locale === 'ar' ? 'الملاحظات' : 'Findings'} value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} />}
-          {kind === 'inductions' && <input className="input" placeholder={locale === 'ar' ? 'الشخص' : 'Person name'} value={form.person_name} onChange={e => setForm({ ...form, person_name: e.target.value })} required />}
+          {kind === 'inspections' && <input className="input" placeholder={t('hse.system.findings')} value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} />}
+          {kind === 'inductions' && <input className="input" placeholder={t('hse.system.personName')} value={form.person_name} onChange={e => setForm({ ...form, person_name: e.target.value })} required />}
           {kind === 'toolbox-talks' && (
             <>
-              <input className="input" placeholder={locale === 'ar' ? 'العنوان' : 'Title'} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} required />
-              <input className="input" type="number" placeholder={locale === 'ar' ? 'عدد الحضور' : 'Attendees'} value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} />
+              <input className="input" placeholder={t('hse.system.title')} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} required />
+              <input className="input" type="number" placeholder={t('hse.system.attendees')} value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} />
             </>
           )}
           {kind === 'ppe-records' && (
             <>
-              <input className="input" placeholder={locale === 'ar' ? 'الشخص' : 'Person name'} value={form.person_name} onChange={e => setForm({ ...form, person_name: e.target.value })} required />
-              <input className="input" placeholder={locale === 'ar' ? 'الصنف' : 'PPE item'} value={form.item} onChange={e => setForm({ ...form, item: e.target.value })} required />
+              <input className="input" placeholder={t('hse.system.personName')} value={form.person_name} onChange={e => setForm({ ...form, person_name: e.target.value })} required />
+              <input className="input" placeholder={t('hse.system.ppeItem')} value={form.item} onChange={e => setForm({ ...form, item: e.target.value })} required />
             </>
           )}
-          {kind === 'equipment-inspections' && <input className="input" placeholder={locale === 'ar' ? 'اسم المعدة' : 'Equipment name'} value={form.equipment_name} onChange={e => setForm({ ...form, equipment_name: e.target.value })} required />}
+          {kind === 'equipment-inspections' && <input className="input" placeholder={t('hse.system.equipmentName')} value={form.equipment_name} onChange={e => setForm({ ...form, equipment_name: e.target.value })} required />}
           {kind === 'emergency-drills' && (
             <>
-              <input className="input" placeholder={locale === 'ar' ? 'نوع التدريب' : 'Drill type'} value={form.drill_type} onChange={e => setForm({ ...form, drill_type: e.target.value })} required />
-              <input className="input" type="number" placeholder={locale === 'ar' ? 'المشاركون' : 'Participants'} value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} />
+              <input className="input" placeholder={t('hse.system.drillType')} value={form.drill_type} onChange={e => setForm({ ...form, drill_type: e.target.value })} required />
+              <input className="input" type="number" placeholder={t('hse.system.participants')} value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} />
             </>
           )}
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-primary" type="submit">{t('common.save') || 'Save'}</button>
-            <button className="btn" type="button" onClick={() => setShowModal(false)}>Cancel</button>
+            <button className="btn btn-primary" type="submit">{t('common.save') || t('hse.system.save')}</button>
+            <button className="btn" type="button" onClick={() => setShowModal(false)}>{t('hse.system.cancel')}</button>
           </div>
         </form>
       )}
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}><span className="spinner" /></div>
       ) : rows.length === 0 ? (
-        <EmptyState icon={Users} text={locale === 'ar' ? 'لا توجد سجلات.' : 'No records in this register.'} />
+        <EmptyState icon={Users} text={t('hse.system.noRecordsInThisRegister')} />
       ) : (
         <div className="table-container">
           <table className="table">
             <thead><tr>
-              {kind === 'inspections' && <><th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th><th>{locale === 'ar' ? 'النوع' : 'Type'}</th><th>{locale === 'ar' ? 'الحالة' : 'Status'}</th><th>{locale === 'ar' ? 'الملاحظات' : 'Findings'}</th></>}
-              {kind === 'inductions' && <><th>{locale === 'ar' ? 'الشخص' : 'Person'}</th><th>{locale === 'ar' ? 'الجهة' : 'Organization'}</th><th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th><th>{locale === 'ar' ? 'النوع' : 'Type'}</th></>}
-              {kind === 'toolbox-talks' && <><th>{locale === 'ar' ? 'العنوان' : 'Title'}</th><th>{locale === 'ar' ? 'الموضوع' : 'Topic'}</th><th>{locale === 'ar' ? 'الحضور' : 'Attendees'}</th><th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th></>}
-              {kind === 'ppe-records' && <><th>{locale === 'ar' ? 'الشخص' : 'Person'}</th><th>{locale === 'ar' ? 'الصنف' : 'Item'}</th><th>{locale === 'ar' ? 'الكمية' : 'Qty'}</th><th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th></>}
-              {kind === 'equipment-inspections' && <><th>{locale === 'ar' ? 'المعدة' : 'Equipment'}</th><th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th><th>{locale === 'ar' ? 'النتيجة' : 'Result'}</th><th>{locale === 'ar' ? 'العيوب' : 'Defects'}</th></>}
-              {kind === 'emergency-drills' && <><th>{locale === 'ar' ? 'النوع' : 'Type'}</th><th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th><th>{locale === 'ar' ? 'المشاركون' : 'Participants'}</th><th>{locale === 'ar' ? 'الملاحظات' : 'Findings'}</th></>}
+              {kind === 'inspections' && <><th>{t('hse.system.date')}</th><th>{t('hse.system.type')}</th><th>{t('hse.system.status')}</th><th>{t('hse.system.findings')}</th></>}
+              {kind === 'inductions' && <><th>{t('hse.system.person')}</th><th>{t('hse.system.organization')}</th><th>{t('hse.system.date')}</th><th>{t('hse.system.type')}</th></>}
+              {kind === 'toolbox-talks' && <><th>{t('hse.system.title')}</th><th>{t('hse.system.topic')}</th><th>{t('hse.system.attendees2')}</th><th>{t('hse.system.date')}</th></>}
+              {kind === 'ppe-records' && <><th>{t('hse.system.person')}</th><th>{t('hse.system.item')}</th><th>{t('hse.system.qty')}</th><th>{t('hse.system.date')}</th></>}
+              {kind === 'equipment-inspections' && <><th>{t('hse.system.equipment2')}</th><th>{t('hse.system.date')}</th><th>{t('hse.system.result')}</th><th>{t('hse.system.defects')}</th></>}
+              {kind === 'emergency-drills' && <><th>{t('hse.system.type')}</th><th>{t('hse.system.date')}</th><th>{t('hse.system.participants')}</th><th>{t('hse.system.findings')}</th></>}
             </tr></thead>
             <tbody>
               {rows.map(r => (
                 <tr key={r.id}>
-                  {kind === 'inspections' && <><td>{fmtDate(r.inspection_date)}</td><td>{r.inspection_type || 'site'}</td><td><span className="badge badge-info">{r.status}</span></td><td>{r.findings || '-'}</td></>}
+                  {kind === 'inspections' && <><td>{fmtDate(r.inspection_date)}</td><td>{r.inspection_type || t('hse.system.site')}</td><td><span className="badge badge-info">{translateEnum(t, 'status', r.status)}</span></td><td>{r.findings || '-'}</td></>}
                   {kind === 'inductions' && <><td>{r.person_name}</td><td>{r.organization_name || '-'}</td><td>{fmtDate(r.induction_date)}</td><td>{r.induction_type}</td></>}
                   {kind === 'toolbox-talks' && <><td>{r.title}</td><td>{r.topic || '-'}</td><td>{r.attendees_count}</td><td>{fmtDate(r.held_at)}</td></>}
                   {kind === 'ppe-records' && <><td>{r.person_name}</td><td>{r.item}</td><td>{r.quantity}</td><td>{fmtDate(r.issue_date)}</td></>}
-                  {kind === 'equipment-inspections' && <><td>{r.equipment_name}</td><td>{fmtDate(r.inspection_date)}</td><td><span className={`badge ${r.result === 'pass' ? 'badge-success' : 'badge-danger'}`}>{r.result}</span></td><td>{r.defects || '-'}</td></>}
+                  {kind === 'equipment-inspections' && <><td>{r.equipment_name}</td><td>{fmtDate(r.inspection_date)}</td><td><span className={`badge ${r.result === 'pass' ? 'badge-success' : 'badge-danger'}`}>{translateEnum(t, 'result', r.result)}</span></td><td>{r.defects || '-'}</td></>}
                   {kind === 'emergency-drills' && <><td>{r.drill_type}</td><td>{fmtDate(r.drill_date)}</td><td>{r.participants_count}</td><td>{r.findings || '-'}</td></>}
                 </tr>
               ))}
@@ -621,12 +618,12 @@ export default function HSE() {
   const [tab, setTab] = useState('dashboard');
 
   const TABS = [
-    { key: 'dashboard', icon: Activity, label: locale === 'ar' ? 'لوحة HSE' : 'HSE Dashboard' },
-    { key: 'permits', icon: Flame, label: locale === 'ar' ? 'تصاريح العمل' : 'Permits' },
-    { key: 'incidents', icon: ShieldAlert, label: locale === 'ar' ? 'الحوادث' : 'Incidents' },
-    { key: 'nearmisses', icon: AlertTriangle, label: locale === 'ar' ? 'الأحداث الوشيكة' : 'Near Misses' },
-    { key: 'jsa', icon: HardHat, label: locale === 'ar' ? 'JSA والمخاطر' : 'JSA / Risk' },
-    { key: 'registers', icon: Users, label: locale === 'ar' ? 'السجلات' : 'Registers' },
+    { key: 'dashboard', icon: Activity, label: t('hse.system.hseDashboard') },
+    { key: 'permits', icon: Flame, label: t('hse.system.permits') },
+    { key: 'incidents', icon: ShieldAlert, label: t('hse.incidents') },
+    { key: 'nearmisses', icon: AlertTriangle, label: t('hse.system.nearMisses') },
+    { key: 'jsa', icon: HardHat, label: t('hse.system.jsaRisk') },
+    { key: 'registers', icon: Users, label: t('hse.system.registers') },
   ];
 
   return (
@@ -634,9 +631,9 @@ export default function HSE() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
         <button className="btn" onClick={() => navigate(`/projects/${id}`)}><ArrowLeft size={16} /></button>
         <div>
-          <h1>{locale === 'ar' ? 'الصحة والسلامة' : 'HSE'}</h1>
+          <h1>{t('hse.system.hse')}</h1>
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'التصاريح والحوادث والسجلات السلامة' : 'Permits, incidents & safety registers'}
+            {t('hse.system.permitsIncidentsSafetyRegisters')}
           </p>
         </div>
       </div>
@@ -653,7 +650,7 @@ export default function HSE() {
         ))}
       </div>
 
-      {tab === 'dashboard' && <HseDashboardTab projectId={id} locale={locale} />}
+      {tab === 'dashboard' && <HseDashboardTab projectId={id} locale={locale} t={t} />}
       {tab === 'permits' && <PermitsTab projectId={id} locale={locale} t={t} />}
       {tab === 'incidents' && <IncidentsTab projectId={id} locale={locale} t={t} />}
       {tab === 'nearmisses' && <NearMissesTab projectId={id} locale={locale} t={t} />}

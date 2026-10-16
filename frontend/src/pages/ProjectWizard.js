@@ -1,3 +1,4 @@
+import { translateEnum } from '../i18n/enums';
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 import { buildWizardPayload } from '../utils/wizardPayload';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -171,9 +172,9 @@ function ProjectWizard() {
     <div className="page-container">
       <div className="page-header">
         <div>
-          <h1>{L('New Project — Wizard', 'مشروع جديد — معالج الإعداد')}</h1>
+          <h1>{t('projectWizard.system.newProjectWizard')}</h1>
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {L('11 steps · everything is committed atomically on Finish', '١١ خطوة · يُحفظ كل شيء ذرياً عند الإنهاء')}
+            {t('projectWizard.system.11StepsEverythingIsCommittedAtomicallyOnFinish')}
           </p>
         </div>
         <button className="btn" onClick={() => navigate('/projects')}>
@@ -204,29 +205,29 @@ function ProjectWizard() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
               <div className="form-group">
-                <label className="form-label">{L('English Name', 'الاسم بالإنجليزية')}</label>
+                <label className="form-label">{t('projectWizard.system.englishName')}</label>
                 <input className="form-input" value={form.name_en} onChange={e => set('name_en', e.target.value)} />
               </div>
               <div className="form-group">
-                <label className="form-label">{L('Arabic Name *', 'الاسم العربي *')}</label>
+                <label className="form-label">{t('projectWizard.system.arabicName')}</label>
                 <input className="form-input" value={form.name_ar} onChange={e => set('name_ar', e.target.value)} required />
               </div>
             </div>
             <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
               <div className="form-group">
-                <label className="form-label">{L('Project Number', 'رقم المشروع')}</label>
-                <input className="form-input" value={form.project_number} onChange={e => set('project_number', e.target.value)} placeholder="auto" />
+                <label className="form-label">{t('projectWizard.system.projectNumber')}</label>
+                <input className="form-input" value={form.project_number} onChange={e => set('project_number', e.target.value)} placeholder={t('projectWizard.system.auto')} />
               </div>
               <div className="form-group">
-                <label className="form-label">{L('Project Type', 'نوع المشروع')}</label>
+                <label className="form-label">{t('projectWizard.system.projectType')}</label>
                 <select className="form-select" value={form.project_type} onChange={e => set('project_type', e.target.value)}>
                   {ALL_TYPES.map(tp => <option key={tp} value={tp}>{TYPE_LABELS[locale]?.[tp] || tp}</option>)}
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">{L('Client (optional)', 'العميل (اختياري)')}</label>
+                <label className="form-label">{t('projectWizard.system.clientOptional')}</label>
                 <select className="form-select" value={form.client_id} onChange={e => set('client_id', e.target.value)}>
-                  <option value="">{L('-- No client assigned --', '-- بدون عميل --')}</option>
+                  <option value="">{t('projectWizard.system.noClientAssigned')}</option>
                   {clients.map(c => <option key={c.id} value={c.id}>{locale === 'ar' ? c.name_ar : c.name_en} ({c.code})</option>)}
                 </select>
                 <LoadMore loadedCount={clients.length} totalCount={lookupCounts.clients} loading={loadingLookup.clients} onLoadMore={() => loadMoreLookup('clients')} t={t} />
@@ -234,57 +235,57 @@ function ProjectWizard() {
             </div>
             <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
               <div className="form-group">
-                <label className="form-label">{L('Country', 'الدولة')}</label>
+                <label className="form-label">{t('projectWizard.system.country')}</label>
                 <input className="form-input" value={form.country} onChange={e => set('country', e.target.value)} />
               </div>
               <div className="form-group">
-                <label className="form-label">{L('City', 'المدينة')}</label>
+                <label className="form-label">{t('projectWizard.system.city')}</label>
                 <input className="form-input" value={form.city} onChange={e => set('city', e.target.value)} />
               </div>
             </div>
             <div className="form-group">
-              <label className="form-label">{L('Address', 'العنوان')}</label>
+              <label className="form-label">{t('projectWizard.system.address')}</label>
               <input className="form-input" value={form.address} onChange={e => set('address', e.target.value)} />
             </div>
             <div className="responsive-grid responsive-grid--four" style={{ gap: '16px' }}>
               <div className="form-group">
-                <label className="form-label">GPS Lat</label>
+                <label className="form-label">{t('projectWizard.system.gpsLat')}</label>
                 <input className="form-input" type="number" step="any" value={form.gps_latitude} onChange={e => set('gps_latitude', e.target.value)} />
               </div>
               <div className="form-group">
-                <label className="form-label">GPS Lng</label>
+                <label className="form-label">{t('projectWizard.system.gpsLng')}</label>
                 <input className="form-input" type="number" step="any" value={form.gps_longitude} onChange={e => set('gps_longitude', e.target.value)} />
               </div>
               <div className="form-group">
-                <label className="form-label">{L('Timezone', 'المنطقة الزمنية')}</label>
+                <label className="form-label">{t('projectWizard.system.timezone')}</label>
                 <select className="form-select" value={form.timezone} onChange={e => set('timezone', e.target.value)}>
                   {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">{L('Currency', 'العملة')}</label>
+                <label className="form-label">{t('projectWizard.system.currency')}</label>
                 <select className="form-select" value={form.currency} onChange={e => set('currency', e.target.value)}>
                   {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
             </div>
             <div className="form-group">
-              <label className="form-label">{L('Tax Profile', 'الملف الضريبي')}</label>
+              <label className="form-label">{t('projectWizard.system.taxProfile')}</label>
               <select className="form-select" value={form.tax_profile} onChange={e => set('tax_profile', e.target.value)}>
                 {TAX_PROFILES.map(tp => <option key={tp.value} value={tp.value}>{L(tp.en, tp.ar)}</option>)}
               </select>
             </div>
             <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
               <div className="form-group">
-                <label className="form-label">{L('Original Contract Value', 'قيمة العقد الأصلية')}</label>
+                <label className="form-label">{t('projectWizard.system.originalContractValue')}</label>
                 <input className="form-input" type="number" min="0" value={form.contract_value} onChange={e => set('contract_value', e.target.value)} />
               </div>
               <div className="form-group">
-                <label className="form-label">{L('Original Budget', 'الميزانية الأصلية')}</label>
+                <label className="form-label">{t('projectWizard.system.originalBudget')}</label>
                 <input className="form-input" type="number" min="0" value={form.budget} onChange={e => set('budget', e.target.value)} />
               </div>
               <div className="form-group">
-                <label className="form-label">{L('Project Manager', 'مدير المشروع')}</label>
+                <label className="form-label">{t('projectWizard.system.projectManager')}</label>
                 <select className="form-select" value={form.project_manager_id} onChange={e => set('project_manager_id', e.target.value)}>
                   <option value="">--</option>
                   {managers.map(m => <option key={m.id} value={m.id}>{locale === 'ar' ? m.name_ar : (m.name_en || m.name_ar)}</option>)}
@@ -294,42 +295,42 @@ function ProjectWizard() {
             </div>
             <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
               <div className="form-group">
-                <label className="form-label">{L('Start Date', 'تاريخ البدء')}</label>
+                <label className="form-label">{t('projectWizard.system.startDate')}</label>
                 <input className="form-input" type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)} />
               </div>
               <div className="form-group">
-                <label className="form-label">{L('Completion Date', 'تاريخ الإنجاز')}</label>
+                <label className="form-label">{t('projectWizard.system.completionDate')}</label>
                 <input className="form-input" type="date" value={form.expected_completion} onChange={e => set('expected_completion', e.target.value)} />
               </div>
               <div className="form-group">
-                <label className="form-label">{L('Tax / retention handled in steps 6-7', 'يُكمل في الخطوات ٦-٧')}</label>
+                <label className="form-label">{t('projectWizard.system.taxRetentionHandledInSteps67')}</label>
               </div>
             </div>
             <div className="responsive-grid responsive-grid--four" style={{ gap: '16px' }}>
               <div className="form-group">
-                <label className="form-label">{L('DLP (months)', 'فترة الصيانة (شهور)')}</label>
+                <label className="form-label">{t('projectWizard.system.dlpMonths')}</label>
                 <input className="form-input" type="number" min="0" value={form.dlp_period_months} onChange={e => set('dlp_period_months', e.target.value)} />
               </div>
               <div className="form-group">
-                <label className="form-label">{L('Warranty (months)', 'الضمان (شهور)')}</label>
+                <label className="form-label">{t('projectWizard.system.warrantyMonths')}</label>
                 <input className="form-input" type="number" min="0" value={form.warranty_period_months} onChange={e => set('warranty_period_months', e.target.value)} />
               </div>
               <div className="form-group">
-                <label className="form-label">{L('Retention %', 'نسبة الحجز %')}</label>
+                <label className="form-label">{t('projectWizard.system.retention')}</label>
                 <input className="form-input" type="number" min="0" max="100" value={form.retention_percentage} onChange={e => set('retention_percentage', e.target.value)} />
               </div>
               <div className="form-group">
-                <label className="form-label">{L('Retention Cap', 'سقف الحجز')}</label>
+                <label className="form-label">{t('projectWizard.system.retentionCap')}</label>
                 <input className="form-input" type="number" min="0" value={form.retention_cap_amount} onChange={e => set('retention_cap_amount', e.target.value)} />
               </div>
             </div>
             <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
               <div className="form-group">
-                <label className="form-label">{L('Advance Payment %', 'نسبة الدفعة المقدمة %')}</label>
+                <label className="form-label">{t('projectWizard.system.advancePayment')}</label>
                 <input className="form-input" type="number" min="0" max="100" value={form.advance_payment_percentage} onChange={e => set('advance_payment_percentage', e.target.value)} />
               </div>
               <div className="form-group">
-                <label className="form-label">{L('Liquidated Damages %/day', 'التعويض الاتفاقي %/يوم')}</label>
+                <label className="form-label">{t('projectWizard.system.liquidatedDamagesDay')}</label>
                 <input className="form-input" type="number" step="any" min="0" value={form.liquidated_damages_rate} onChange={e => set('liquidated_damages_rate', e.target.value)} />
               </div>
             </div>
@@ -340,19 +341,16 @@ function ProjectWizard() {
         {step === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div className="form-group">
-              <label className="form-label">{L('Start from a template or blank', 'البدء من قالب أو فراغ')}</label>
+              <label className="form-label">{t('projectWizard.system.startFromATemplateOrBlank')}</label>
               <select className="form-select" value={form.template_key} onChange={e => set('template_key', e.target.value)}>
-                <option value="">{L('Blank project', 'مشروع فارغ')}</option>
+                <option value="">{t('projectWizard.system.blankProject')}</option>
                 {templates.map(tpl => <option key={tpl.key} value={tpl.key}>{tpl.name} ({tpl.project_type})</option>)}
               </select>
             </div>
             {form.template_key && templateDetail && (
               <div>
                 <div className="alert alert-info">
-                  {L(
-                    `${templateDetail.description} — ${templateDetail.locations.length} locations, ${templateDetail.wbs.length} WBS nodes, ${templateDetail.folders.length} folders will be created.`,
-                    `${templateDetail.description} — سيتم إنشاء ${templateDetail.locations.length} موقع و ${templateDetail.wbs.length} عقدة WBS و ${templateDetail.folders.length} مجلد.`
-                  )}
+                  {t('projectWizard.system.locationsWbsNodesFoldersWillBeCreated', { description: templateDetail.description, length: templateDetail.locations.length, length2: templateDetail.wbs.length, length3: templateDetail.folders.length })}
                 </div>
                 <div style={{ maxHeight: '220px', overflow: 'auto', border: '1px solid var(--color-surface-raised)', borderRadius: 'var(--radius-md)', padding: '12px' }}>
                   {templateDetail.locations.map(loc => (
@@ -365,7 +363,7 @@ function ProjectWizard() {
             )}
             {!form.template_key && (
               <p style={{ color: 'var(--color-text-secondary)' }}>
-                {L('Blank selected — you can still define a custom location tree in the BOQ/schedule steps later, or import one.', 'تم اختيار المشروع الفارغ — يمكنك تعريف المواقع لاحقاً أو استيرادها.')}
+                {t('projectWizard.system.blankSelectedYouCanStillDefineACustomLocationTree')}
               </p>
             )}
           </div>
@@ -376,8 +374,8 @@ function ProjectWizard() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <p style={{ color: 'var(--color-text-secondary)' }}>
               {form.template_key && templateDetail
-                ? L('WBS nodes come from the selected template and are created inside the Finish transaction.', 'عقد WBS تُنشأ من القالب داخل معاملة الإنهاء.')
-                : L('Blank WBS — a single root node is created; phases can be added later from the project page.', 'سيُنشأ عقدة جذر واحدة؛ يمكن إضافة المراحل من صفحة المشروع.')}
+                ? t('projectWizard.system.wbsNodesComeFromTheSelectedTemplateAndAreCreated')
+                : t('projectWizard.system.blankWbsASingleRootNodeIsCreatedPhasesCan')}
             </p>
             {form.template_key && templateDetail && templateDetail.wbs.map(n => (
               <div key={n.code} style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
@@ -391,9 +389,9 @@ function ProjectWizard() {
         {step === 3 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div className="form-group">
-              <label className="form-label">{L('Add team member', 'إضافة عضو فريق')}</label>
+              <label className="form-label">{t('projectWizard.system.addTeamMember')}</label>
               <select className="form-select" value="" onChange={e => addTeamMember(e.target.value)}>
-                <option value="">{L('-- Select employee --', '-- اختر موظفاً --')}</option>
+                <option value="">{t('projectWizard.system.selectEmployee')}</option>
                 {employees.filter(e => !form.team.some(m => m.employee_id === e.id)).map(e => (
                   <option key={e.id} value={e.id}>{locale === 'ar' ? e.name_ar : (e.name_en || e.name_ar)} {e.email ? `(${e.email})` : ''}</option>
                 ))}
@@ -401,7 +399,7 @@ function ProjectWizard() {
               <LoadMore loadedCount={employees.length} totalCount={lookupCounts.employees} loading={loadingLookup.employees} onLoadMore={() => loadMoreLookup('employees')} t={t} />
             </div>
             {form.team.length === 0 && (
-              <p style={{ color: 'var(--color-text-secondary)' }}>{L('No team members yet (optional).', 'لا يوجد أعضاء بعد (اختياري).')}</p>
+              <p style={{ color: 'var(--color-text-secondary)' }}>{t('projectWizard.system.noTeamMembersYetOptional')}</p>
             )}
             {form.team.map((m, idx) => (
               <div key={m.employee_id} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -409,7 +407,7 @@ function ProjectWizard() {
                   {(() => { const e = employees.find(x => x.id === m.employee_id); return e ? (locale === 'ar' ? e.name_ar : (e.name_en || e.name_ar)) : m.employee_id; })()}
                 </span>
                 <select className="form-select" style={{ width: '220px' }} value={m.role} onChange={e => setForm(f => ({ ...f, team: f.team.map((x, i) => i === idx ? { ...x, role: e.target.value } : x) }))}>
-                  {TEAM_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                  {TEAM_ROLES.map(r => <option key={r} value={r}>{translateEnum(t, 'role', r)}</option>)}
                 </select>
                 <button className="btn" onClick={() => setForm(f => ({ ...f, team: f.team.filter((_, i) => i !== idx) }))}><X size={14} /></button>
               </div>
@@ -421,21 +419,21 @@ function ProjectWizard() {
         {step === 4 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <p style={{ color: 'var(--color-text-secondary)' }}>
-              {L('Optional — can be empty. Consultants/clients get portal access per participant.', 'اختياري — يمكن أن يبقى فارغاً.')}
+              {t('projectWizard.system.optionalCanBeEmptyConsultantsClientsGetPortalAccessPer')}
             </p>
             <div className="responsive-grid responsive-grid--two-one-auto" style={{ gap: '12px', alignItems: 'end' }}>
               <div className="form-group">
-                <label className="form-label">{L('Organization (client directory)', 'المؤسسة (دليل العملاء)')}</label>
+                <label className="form-label">{t('projectWizard.system.organizationClientDirectory')}</label>
                 <select id="participant-org" className="form-select" defaultValue="">
-                  <option value="">{L('-- Select organization --', '-- اختر مؤسسة --')}</option>
+                  <option value="">{t('projectWizard.system.selectOrganization')}</option>
                   {clients.map(o => <option key={o.id} value={o.id}>{(locale === 'ar' ? o.name_ar : o.name_en) || o.code}</option>)}
                 </select>
                 <LoadMore loadedCount={clients.length} totalCount={lookupCounts.clients} loading={loadingLookup.clients} onLoadMore={() => loadMoreLookup('clients')} t={t} />
               </div>
               <div className="form-group">
-                <label className="form-label">{L('Role', 'الدور')}</label>
+                <label className="form-label">{t('projectWizard.system.role')}</label>
                 <select id="participant-type" className="form-select" defaultValue="consultant">
-                  {['consultant', 'client', 'supplier', 'subcontractor'].map(tp => <option key={tp} value={tp}>{tp}</option>)}
+                  {['consultant', 'client', 'supplier', 'subcontractor'].map(tp => <option key={tp} value={tp}>{translateEnum(t, 'role', tp)}</option>)}
                 </select>
               </div>
               <button className="btn btn-primary" style={{ marginBottom: '20px' }}
@@ -445,11 +443,11 @@ function ProjectWizard() {
                   addParticipant(orgEl.value, typeEl.value);
                   orgEl.value = '';
                 }}>
-                {L('Add', 'إضافة')}
+                {t('projectWizard.system.add')}
               </button>
             </div>
             {form.participants.length === 0 && (
-              <p style={{ color: 'var(--color-text-secondary)' }}>{L('No external participants (they can be added later).', 'لا توجد أطراف خارجية (يمكن إضافتها لاحقاً).')}</p>
+              <p style={{ color: 'var(--color-text-secondary)' }}>{t('projectWizard.system.noExternalParticipantsTheyCanBeAddedLater')}</p>
             )}
             {form.participants.map((p, idx) => {
               const c = clients.find(x => x.id === p.client_id);
@@ -467,7 +465,7 @@ function ProjectWizard() {
         {/* Step 6 — permission profile */}
         {step === 5 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <label className="form-label">{L('Visibility policy', 'سياسة الظهور')}</label>
+            <label className="form-label">{t('projectWizard.system.visibilityPolicy')}</label>
             {VISIBILITY_POLICIES.map(vp => (
               <label key={vp.value} style={{ display: 'flex', gap: '8px', alignItems: 'center', fontSize: '14px' }}>
                 <input type="radio" name="visibility" checked={form.visibility_policy === vp.value} onChange={() => set('visibility_policy', vp.value)} />
@@ -475,7 +473,7 @@ function ProjectWizard() {
               </label>
             ))}
             <p style={{ color: 'var(--color-text-secondary)', fontSize: '13px' }}>
-              {L('Internal cost fields under /costing and /finance are hidden from consultant and client roles by the Phase 4 policy engine regardless of this setting.', 'حقول التكلفة الداخلية مخفية عن أدوار الاستشاري والعميل بمحرك الصلاحيات من المرحلة ٤ بغض النظر عن هذا الإعداد.')}
+              {t('projectWizard.system.internalCostFieldsUnderCostingAndFinanceAreHiddenFrom')}
             </p>
           </div>
         )}
@@ -485,8 +483,8 @@ function ProjectWizard() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <p style={{ color: 'var(--color-text-secondary)' }}>
               {form.template_key && templateDetail
-                ? L('Approval rules below come from the selected template.', 'قواعد الاعتماد أدناه من القالب المختار.')
-                : L('Default approval rules apply (edit thresholds after creation).', 'قواعد افتراضية — يمكن تعديل الحدود بعد الإنشاء.')}
+                ? t('projectWizard.system.approvalRulesBelowComeFromTheSelectedTemplate')
+                : t('projectWizard.system.defaultApprovalRulesApplyEditThresholdsAfterCreation')}
             </p>
             {(form.template_key && templateDetail ? templateDetail.approval_rules : []).map((r, i) => (
               <div key={i} style={{ display: 'flex', gap: '12px', fontSize: '14px', color: 'var(--color-text-secondary)' }}>
@@ -501,11 +499,11 @@ function ProjectWizard() {
         {step === 7 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div className="form-group">
-              <label className="form-label">{L('BOQ/CBS source file (optional import)', 'ملف جدول الكميات (اختياري)')}</label>
+              <label className="form-label">{t('projectWizard.system.boqCbsSourceFileOptionalImport')}</label>
               <input className="form-input" type="file" onChange={e => set('boq', e.target.files[0] ? e.target.files[0].name : null)} />
             </div>
             <p style={{ color: 'var(--color-text-secondary)' }}>
-              {form.boq ? L(`Queued: ${form.boq} (import runs after provisioning)`, `في الانتظار: ${form.boq}`) : L('Blank — BOQ sections/items can be built or imported later from the project BOQ page.', 'فارغ — يمكن بناء أو استيراد جدول الكميات لاحقاً.')}
+              {form.boq ? t('projectWizard.system.queuedImportRunsAfterProvisioning', { boq: form.boq }) : t('projectWizard.system.blankBoqSectionsItemsCanBeBuiltOrImportedLater')}
             </p>
           </div>
         )}
@@ -514,11 +512,11 @@ function ProjectWizard() {
         {step === 8 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div className="form-group">
-              <label className="form-label">{L('Schedule import (optional)', 'استيراد الجدول الزمني (اختياري)')}</label>
+              <label className="form-label">{t('projectWizard.system.scheduleImportOptional')}</label>
               <input className="form-input" type="file" onChange={e => set('schedule', e.target.files[0] ? e.target.files[0].name : null)} />
             </div>
             <p style={{ color: 'var(--color-text-secondary)' }}>
-              {form.schedule ? L(`Queued: ${form.schedule}`, `في الانتظار: ${form.schedule}`) : L('Blank — milestones can be added from the project page.', 'فارغ — يمكن إضافة المعالم من صفحة المشروع.')}
+              {form.schedule ? t('projectWizard.system.queued', { schedule: form.schedule }) : t('projectWizard.system.blankMilestonesCanBeAddedFromTheProjectPage')}
             </p>
           </div>
         )}
@@ -527,7 +525,7 @@ function ProjectWizard() {
         {step === 9 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <p style={{ color: 'var(--color-text-secondary)' }}>
-              {L('These standard folders and registers are created automatically on Finish:', 'تُنشأ هذه المجلدات والسجلات تلقائياً عند الإنهاء:')}
+              {t('projectWizard.system.theseStandardFoldersAndRegistersAreCreatedAutomaticallyOnFinish')}
             </p>
             {(form.template_key && templateDetail && templateDetail.folders.length ? templateDetail.folders : [
               { code: 'contracts', name: 'Contracts' }, { code: 'drawings', name: 'Drawings' },
@@ -539,7 +537,7 @@ function ProjectWizard() {
               </div>
             ))}
             {['site-diary', 'safety-incidents', 'inspections', 'correspondence'].map(r => (
-              <div key={r} style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>🗂 Register: {r}</div>
+              <div key={r} style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>{t('projectWizard.system.register')} {r}</div>
             ))}
           </div>
         )}
@@ -548,11 +546,11 @@ function ProjectWizard() {
         {step === 10 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div className="form-group" style={{ maxWidth: '240px' }}>
-              <label className="form-label">{L('Approval SLA (hours)', 'مهلة الاعتماد (ساعات)')}</label>
+              <label className="form-label">{t('projectWizard.system.approvalSlaHours')}</label>
               <input className="form-input" type="number" min="1" value={form.sla_hours} onChange={e => set('sla_hours', e.target.value)} />
             </div>
             <div className="form-group">
-              <label className="form-label">{L('Notification channels', 'قنوات التنبيه')}</label>
+              <label className="form-label">{t('projectWizard.system.notificationChannels')}</label>
               {['in_app', 'email', 'sms', 'whatsapp'].map(ch => (
                 <label key={ch} style={{ display: 'flex', gap: '8px', alignItems: 'center', fontSize: '14px' }}>
                   <input
@@ -576,15 +574,15 @@ function ProjectWizard() {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px' }}>
           <button className="btn" disabled={step === 0} onClick={() => setStep(s => Math.max(0, s - 1))}>
-            <ArrowLeft size={14} />{L('Back', 'السابق')}
+            <ArrowLeft size={14} />{t('projectWizard.system.back')}
           </button>
           {step < STEPS.length - 1 ? (
             <button className="btn btn-primary" disabled={!stepValid(step)} onClick={() => setStep(s => s + 1)}>
-              {L('Next', 'التالي')}<ArrowRight size={14} />
+              {t('projectWizard.system.next')}<ArrowRight size={14} />
             </button>
           ) : (
             <button className="btn btn-primary" onClick={handleFinish} disabled={saving}>
-              {saving ? <span className="spinner" /> : <><Check size={14} />{L('Finish — provision project', 'إنهاء — إنشاء المشروع')}</>}
+              {saving ? <span className="spinner" /> : <><Check size={14} />{t('projectWizard.system.finishProvisionProject')}</>}
             </button>
           )}
         </div>

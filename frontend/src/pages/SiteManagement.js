@@ -1,3 +1,4 @@
+import { formatDate as sharedDate } from '../utils/formatters';
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -63,12 +64,7 @@ const NEXT_ACTION_LABELS = {
   ar: { acknowledge: 'استلام', implement: 'تم التنفيذ', close: 'إغلاق' }
 };
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return '-';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
-  return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
-};
+const formatDate = sharedDate;
 
 function SiteManagement() {
   const { id } = useParams();
@@ -77,9 +73,9 @@ function SiteManagement() {
   const [tab, setTab] = useState('reports');
 
   const TABS = [
-    { key: 'reports', icon: CalendarDays, label: locale === 'ar' ? 'التقارير اليومية' : 'Daily Reports' },
-    { key: 'instructions', icon: ClipboardList, label: locale === 'ar' ? 'تعليمات المهندس' : 'Engineer Instructions' },
-    { key: 'visits', icon: Users, label: locale === 'ar' ? 'زيارات الموقع' : 'Site Visits' },
+    { key: 'reports', icon: CalendarDays, label: t('site.system.dailyReports') },
+    { key: 'instructions', icon: ClipboardList, label: t('site.system.engineerInstructions') },
+    { key: 'visits', icon: Users, label: t('site.system.siteVisits') },
   ];
 
   return (
@@ -89,9 +85,9 @@ function SiteManagement() {
           <ArrowLeft size={16} />
         </button>
         <div>
-          <h1>{locale === 'ar' ? 'إدارة الموقع' : 'Site Management'}</h1>
+          <h1>{t('site.system.siteManagement')}</h1>
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'التقارير اليومية والتعليمات والزيارات' : 'Daily reports, instructions & visits'}
+            {t('site.system.dailyReportsInstructionsVisits')}
           </p>
         </div>
       </div>
@@ -217,7 +213,7 @@ function DailyReportsTab({ projectId, locale, t }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>
           <Plus size={16} />
-          {locale === 'ar' ? 'تقرير اليوم' : "File Today's Report"}
+          {t('site.system.fileTodaySReport')}
         </button>
       </div>
 
@@ -227,7 +223,7 @@ function DailyReportsTab({ projectId, locale, t }) {
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <CalendarDays size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'لا توجد تقارير يومية بعد.' : 'No daily reports filed yet.'}
+            {t('site.system.noDailyReportsFiledYet')}
           </p>
         </div>
       ) : (
@@ -238,15 +234,15 @@ function DailyReportsTab({ projectId, locale, t }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--color-accent)' }}>{formatDate(r.report_date)}</span>
                   {r.weather && <span className="badge badge-info"><Sun size={12} style={{ verticalAlign: 'middle', marginRight: '4px' }} />{r.weather}{r.temperature ? ` ${r.temperature}` : ''}</span>}
-                  <span className="badge badge-info"><Users size={12} style={{ verticalAlign: 'middle', marginRight: '4px' }} />{r.workers_count} {locale === 'ar' ? 'عامل' : 'workers'}</span>
+                  <span className="badge badge-info"><Users size={12} style={{ verticalAlign: 'middle', marginRight: '4px' }} />{r.workers_count} {t('site.system.workers')}</span>
                 </div>
                 <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>{r.created_by_name || ''}</span>
               </div>
               {r.work_summary && <p style={{ marginTop: '12px', fontSize: '14px' }}>{r.work_summary}</p>}
               <div className="site-report-summary-grid">
-                {r.material_received && <div><strong>{locale === 'ar' ? 'مواد مستلمة: ' : 'Materials received: '}</strong>{r.material_received}</div>}
-                {r.equipment_on_site && <div><strong>{locale === 'ar' ? 'معدات بالموقع: ' : 'Equipment on site: '}</strong>{r.equipment_on_site}</div>}
-                {r.issues_notes && <div style={{ color: 'var(--color-danger, #e5534b)' }}><strong>{locale === 'ar' ? 'مشاكل: ' : 'Issues: '}</strong>{r.issues_notes}</div>}
+                {r.material_received && <div><strong>{t('site.system.materialsReceived')}</strong>{r.material_received}</div>}
+                {r.equipment_on_site && <div><strong>{t('site.system.equipmentOnSite')}</strong>{r.equipment_on_site}</div>}
+                {r.issues_notes && <div style={{ color: 'var(--color-danger, #e5534b)' }}><strong>{t('site.system.issues')}</strong>{r.issues_notes}</div>}
               </div>
               {Array.isArray(r.photos) && r.photos.length > 0 && (
                 <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
@@ -381,7 +377,7 @@ function ReportModal({ projectId, locale, t, onClose, onSave }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{locale === 'ar' ? 'تقرير موقع يومي' : 'Daily Site Report'}</h3>
+          <h3 className="modal-title">{t('site.system.dailySiteReport')}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
@@ -389,38 +385,38 @@ function ReportModal({ projectId, locale, t, onClose, onSave }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="site-report-form-grid site-report-form-grid-three">
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'التاريخ' : 'Date'} *</label>
+                  <label className="form-label">{t('site.system.date')} *</label>
                   <input className="form-input" type="date" value={form.report_date} onChange={e => handleChange('report_date', e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الطقس' : 'Weather'}</label>
-                  <input className="form-input" value={form.weather} onChange={e => handleChange('weather', e.target.value)} placeholder={locale === 'ar' ? 'مشمس' : 'Sunny'} />
+                  <label className="form-label">{t('site.system.weather')}</label>
+                  <input className="form-input" value={form.weather} onChange={e => handleChange('weather', e.target.value)} placeholder={t('site.system.sunny')} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الحرارة' : 'Temp'}</label>
+                  <label className="form-label">{t('site.system.temp')}</label>
                   <input className="form-input" value={form.temperature} onChange={e => handleChange('temperature', e.target.value)} placeholder="35°C" />
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'عدد العمال' : 'Workers Count'}</label>
+                <label className="form-label">{t('site.system.workersCount')}</label>
                 <input className="form-input" type="number" min="0" value={form.workers_count} onChange={e => handleChange('workers_count', e.target.value)} />
               </div>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'ملخص الأعمال' : 'Work Summary'} *</label>
+                <label className="form-label">{t('site.system.workSummary')} *</label>
                 <textarea className="form-textarea" value={form.work_summary} onChange={e => handleChange('work_summary', e.target.value)} required />
               </div>
               <div className="site-report-form-grid">
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'مواد مستلمة' : 'Materials Received'}</label>
+                  <label className="form-label">{t('site.system.materialsReceived2')}</label>
                   <textarea className="form-textarea" value={form.material_received} onChange={e => handleChange('material_received', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'معدات بالموقع' : 'Equipment on Site'}</label>
+                  <label className="form-label">{t('site.system.equipmentOnSite2')}</label>
                   <textarea className="form-textarea" value={form.equipment_on_site} onChange={e => handleChange('equipment_on_site', e.target.value)} />
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'مشاكل / ملاحظات' : 'Issues / Notes'}</label>
+                <label className="form-label">{t('site.system.issuesNotes')}</label>
                 <textarea className="form-textarea" value={form.issues_notes} onChange={e => handleChange('issues_notes', e.target.value)} />
               </div>
               <section className="site-report-measurements">
@@ -467,7 +463,7 @@ function ReportModal({ projectId, locale, t, onClose, onSave }) {
                 <div className="form-hint">{t('common.upload.limits', { count: 5, size: 10 })}</div>
                 {photos.length > 0 && <ul className="site-report-photo-list">
                   {photos.map((file, index) => <li key={`${file.name}-${file.lastModified}-${index}`}>
-                    <span>{file.name} ({Math.ceil(file.size / 1024)} KB)</span>
+                    <span>{file.name} ({Math.ceil(file.size / 1024)}  {t('site.system.kb')}</span>
                     <button type="button" className="btn btn-sm" aria-label={t('common.upload.remove', { name: file.name })} onClick={() => setPhotos((current) => current.filter((_, i) => i !== index))}>
                       <X size={14} aria-hidden="true" />
                     </button>
@@ -536,13 +532,13 @@ function InstructionsTab({ projectId, locale, t }) {
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {['all', 'issued', 'acknowledged', 'implemented', 'closed'].map(s => (
             <button key={s} className={`btn ${statusFilter === s ? 'btn-primary' : ''}`} style={{ padding: '6px 12px', fontSize: '13px' }} onClick={() => setStatusFilter(s)}>
-              {s === 'all' ? (locale === 'ar' ? 'الكل' : 'All') : (INSTRUCTION_STATUS_LABELS[locale]?.[s] || s)}
+              {s === 'all' ? (t('site.system.all')) : (INSTRUCTION_STATUS_LABELS[locale]?.[s] || s)}
             </button>
           ))}
         </div>
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>
           <Plus size={16} />
-          {locale === 'ar' ? 'إصدار تعليمات' : 'Issue Instruction'}
+          {t('site.system.issueInstruction')}
         </button>
       </div>
 
@@ -551,7 +547,7 @@ function InstructionsTab({ projectId, locale, t }) {
       ) : instructions.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <ClipboardList size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
-          <p style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'لا توجد تعليمات.' : 'No instructions.'}</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('site.system.noInstructions')}</p>
         </div>
       ) : (
         <div className="table-container">
@@ -559,11 +555,11 @@ function InstructionsTab({ projectId, locale, t }) {
             <thead>
               <tr>
                 <th>#</th>
-                <th>{locale === 'ar' ? 'العنوان' : 'Title'}</th>
-                <th>{locale === 'ar' ? 'الأولوية' : 'Priority'}</th>
+                <th>{t('site.system.title')}</th>
+                <th>{t('site.system.priority')}</th>
                 <th>{t('common.status')}</th>
-                <th>{locale === 'ar' ? 'أصدرها' : 'Issued By'}</th>
-                <th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th>
+                <th>{t('site.system.issuedBy')}</th>
+                <th>{t('site.system.date')}</th>
                 <th>{t('common.actions')}</th>
               </tr>
             </thead>
@@ -587,7 +583,7 @@ function InstructionsTab({ projectId, locale, t }) {
                       </button>
                     ) : (
                       <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-                        {locale === 'ar' ? 'مغلقة' : 'Closed'} {inst.closed_by_name ? `— ${inst.closed_by_name}` : ''}
+                        {t('site.system.closed')} {inst.closed_by_name ? `— ${inst.closed_by_name}` : ''}
                       </span>
                     )}
                   </td>
@@ -625,18 +621,18 @@ function InstructionModal({ projectId, locale, t, onClose, onSave }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{locale === 'ar' ? 'إصدار تعليمات' : 'Issue Instruction'}</h3>
+          <h3 className="modal-title">{t('site.system.issueInstruction')}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'العنوان' : 'Title'} *</label>
+                <label className="form-label">{t('site.system.title')} *</label>
                 <input className="form-input" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} required />
               </div>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'الأولوية' : 'Priority'}</label>
+                <label className="form-label">{t('site.system.priority')}</label>
                 <select className="form-select" value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}>
                   {['low', 'normal', 'high', 'urgent'].map(p => <option key={p} value={p}>{PRIORITY_LABELS[locale]?.[p] || p}</option>)}
                 </select>
@@ -694,7 +690,7 @@ function VisitsTab({ projectId, locale, t }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>
           <Plus size={16} />
-          {locale === 'ar' ? 'تسجيل زيارة' : 'Log Visit'}
+          {t('site.system.logVisit')}
         </button>
       </div>
 
@@ -703,7 +699,7 @@ function VisitsTab({ projectId, locale, t }) {
       ) : visits.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <Users size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
-          <p style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'لا توجد زيارات مسجلة.' : 'No visits logged.'}</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('site.system.noVisitsLogged')}</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -719,7 +715,7 @@ function VisitsTab({ projectId, locale, t }) {
               {v.notes && <p style={{ marginTop: '8px', fontSize: '14px', color: 'var(--color-text-secondary)' }}>{v.notes}</p>}
               {Array.isArray(v.action_items) && v.action_items.length > 0 && (
                 <div style={{ marginTop: '12px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>{locale === 'ar' ? 'بنود المتابعة' : 'Action Items'}</div>
+                  <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>{t('site.system.actionItems')}</div>
                   {v.action_items.map((item, i) => (
                     <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', padding: '4px 0', cursor: 'pointer' }}>
                       <input type="checkbox" checked={!!item.done} onChange={() => toggleActionItem(v, i)} />
@@ -780,7 +776,7 @@ function VisitModal({ projectId, locale, t, onClose, onSave }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{locale === 'ar' ? 'تسجيل زيارة موقع' : 'Log Site Visit'}</h3>
+          <h3 className="modal-title">{t('site.system.logSiteVisit')}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
@@ -788,28 +784,28 @@ function VisitModal({ projectId, locale, t, onClose, onSave }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="site-report-form-grid site-report-form-grid-three">
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'التاريخ' : 'Date'} *</label>
+                  <label className="form-label">{t('site.system.date')} *</label>
                   <input className="form-input" type="date" value={form.visit_date} onChange={e => handleChange('visit_date', e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'اسم الزائر' : 'Visitor Name'} *</label>
+                  <label className="form-label">{t('site.system.visitorName')} *</label>
                   <input className="form-input" value={form.visitor_name} onChange={e => handleChange('visitor_name', e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الصفة' : 'Role'}</label>
-                  <input className="form-input" value={form.visitor_role} onChange={e => handleChange('visitor_role', e.target.value)} placeholder={locale === 'ar' ? 'استشاري' : 'Consultant'} />
+                  <label className="form-label">{t('site.system.role')}</label>
+                  <input className="form-input" value={form.visitor_role} onChange={e => handleChange('visitor_role', e.target.value)} placeholder={t('site.system.consultant')} />
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'ملاحظات' : 'Notes'}</label>
+                <label className="form-label">{t('site.system.notes')}</label>
                 <textarea className="form-textarea" value={form.notes} onChange={e => handleChange('notes', e.target.value)} />
               </div>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'بنود المتابعة' : 'Action Items'}</label>
+                <label className="form-label">{t('site.system.actionItems')}</label>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input className="form-input" value={newItem} onChange={e => setNewItem(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addItem(); } }}
-                    placeholder={locale === 'ar' ? 'أضف بند...' : 'Add an item...'} />
+                    placeholder={t('site.system.addAnItem')} />
                   <button type="button" className="btn" onClick={addItem}><Plus size={14} /></button>
                 </div>
                 {actionItems.map((item, i) => (
@@ -823,7 +819,7 @@ function VisitModal({ projectId, locale, t, onClose, onSave }) {
                 ))}
               </div>
               <DocumentUpload locale={locale} accept="image/*,.pdf"
-                label={locale === 'ar' ? 'صور' : 'Photos'}
+                label={t('site.system.photos')}
                 onUploaded={files => handleChange('photos', files || [])} />
               {error && <div className="alert alert-danger">{error}</div>}
             </div>

@@ -14,10 +14,10 @@
     "recommendApprove": "التوصية بالاعتماد",
     "recommendReject": "التوصية بالرفض",
     "submitError": "تعذر إرسال المراجعة. حدّث الصفحة وحاول مجددًا.",
-    "rfiLocation": "?????? ??? {{id}}",
-    "rfiWorkPackage": "???? ????? ??? {{id}}",
-    "rfiCostImpact": "??????? ??????? {{amount}}",
-    "rfiScheduleImpact": "??? ?????? {{days}} ?????"
+    "rfiLocation": "الموقع رقم {id}",
+    "rfiWorkPackage": "حزمة العمل رقم {id}",
+    "rfiCostImpact": "الأثر المالي المتوقع {amount}",
+    "rfiScheduleImpact": "الأثر الزمني {days} أيام"
   },
   "clientActions": {
     "empty": "لا توجد إجراءات عميل معلقة.",

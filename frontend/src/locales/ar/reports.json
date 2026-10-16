@@ -1,4 +1,15 @@
 {
   "title": "التقارير",
-  "empty": "لا توجد تقارير متاحة."
+  "empty": "لا توجد تقارير متاحة.",
+  "system": {
+    "openFromInsideAProjectFirst": "افتح من داخل مشروع",
+    "catalogExportsSavedViewsSchedules": "كتالوج التقارير والتصدير والتقارير المجدولة",
+    "noRecords": "لا سجلات.",
+    "saveView": "حفظ العرض",
+    "schedule": "جدولة",
+    "savedViews": "العروض المحفوظة",
+    "scheduledReports": "التقارير المجدولة",
+    "runs": ") · مرات التشغيل:",
+    "automaticProjectReport": "تقرير المشروع التلقائي"
+  }
 }

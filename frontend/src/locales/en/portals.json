@@ -156,8 +156,8 @@
     "reinspect": "Request reinspection",
     "recommendApprove": "Recommend approval",
     "recommendReject": "Recommend rejection",
-    "rfiLocation": "Location #{{id}}", "rfiWorkPackage": "Work package #{{id}}",
-    "rfiCostImpact": "Estimated cost {{amount}}", "rfiScheduleImpact": "Schedule impact {{days}} days",
+    "rfiLocation": "Location #{id}", "rfiWorkPackage": "Work package #{id}",
+    "rfiCostImpact": "Estimated cost {amount}", "rfiScheduleImpact": "Schedule impact {days} days",
     "submitError": "The review could not be submitted. Refresh and try again."
   },
   "clientActions": {

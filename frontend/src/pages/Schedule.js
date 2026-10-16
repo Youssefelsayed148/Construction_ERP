@@ -1,3 +1,4 @@
+import { formatDate as sharedDate } from '../utils/formatters';
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 // Phase 22 — planning & scheduling workspace: activities + Gantt-style bars,
 // CPM critical path, lookaheads (2/4/6 weeks), delayed activities, SV%/SPI,
@@ -29,12 +30,7 @@ const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...option
   return apiResponseJson(r);
 });
 
-const fmtDate = (d) => {
-  if (!d) return '-';
-  const dt = new Date(d);
-  if (isNaN(dt.getTime())) return d;
-  return `${dt.getDate().toString().padStart(2, '0')}/${(dt.getMonth() + 1).toString().padStart(2, '0')}/${dt.getFullYear()}`;
-};
+const fmtDate = sharedDate;
 const localDateInputValue = () => {
   const now = new Date(); const pad = (value) => String(value).padStart(2, '0');
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
@@ -50,11 +46,11 @@ function EmptyState({ icon: Icon, text }) {
 }
 
 // Gantt-style bars across the min/max planning window.
-function GanttList({ activities }) {
+function GanttList({ activities, t }) {
   const usable = activities.filter(a => a.planned_start && a.planned_finish);
   if (usable.length === 0) {
     return <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>
-      {activities.length > 0 ? 'Activities need planned start/finish dates to draw bars.' : ''}</p>;
+      {activities.length > 0 ? t('schedule.system.activitiesNeedPlannedStartFinishDatesToDrawBars') : ''}</p>;
   }
   const times = usable.flatMap(a => [new Date(a.planned_start).getTime(), new Date(a.planned_finish).getTime()]);
   const min = Math.min(...times), max = Math.max(...times);
@@ -232,26 +228,26 @@ export function ActivitiesTab({ projectId, locale, t }) {
           const a = document.createElement('a');
           a.href = URL.createObjectURL(blob); a.download = `schedule-${projectId}.csv`; a.click(); URL.revokeObjectURL(a.href);
         }}><Download size={16} /> CSV</button>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{locale === 'ar' ? 'نشاط جديد' : 'New Activity'}</button>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{t('schedule.system.newActivity')}</button>
       </div>
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: 16, display: 'grid', gap: 10, maxWidth: 560 }}>
-          <input className="input" required placeholder={locale === 'ar' ? 'اسم النشاط' : 'Activity name'} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+          <input className="input" required placeholder={t('schedule.system.activityName')} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
           <div className="responsive-grid responsive-grid--two" style={{ gap: 10 }}>
-            <input className="input" type="date" title="Planned start" value={form.planned_start} onChange={e => setForm({ ...form, planned_start: e.target.value })} />
-            <input className="input" type="date" title="Planned finish" value={form.planned_finish} onChange={e => setForm({ ...form, planned_finish: e.target.value })} />
+            <input className="input" type="date" title={t('schedule.system.plannedStart')} value={form.planned_start} onChange={e => setForm({ ...form, planned_start: e.target.value })} />
+            <input className="input" type="date" title={t('schedule.system.plannedFinish')} value={form.planned_finish} onChange={e => setForm({ ...form, planned_finish: e.target.value })} />
           </div>
           <div className="responsive-grid responsive-grid--two" style={{ gap: 10 }}>
             <WorkPackageSelect projectId={projectId} value={form.work_package_id} onChange={(v) => setForm({ ...form, work_package_id: v })} />
-            <input className="input" type="number" min="0" placeholder={locale === 'ar' ? 'المدة (أيام)' : 'Duration (days)'} value={form.original_duration} onChange={e => setForm({ ...form, original_duration: e.target.value })} />
+            <input className="input" type="number" min="0" placeholder={t('schedule.system.durationDays')} value={form.original_duration} onChange={e => setForm({ ...form, original_duration: e.target.value })} />
           </div>
           <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}>
             <input type="checkbox" checked={form.is_milestone} onChange={e => setForm({ ...form, is_milestone: e.target.checked })} />
-            {locale === 'ar' ? 'معلم' : 'Milestone'}
+            {t('schedule.system.milestone')}
           </label>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-primary" type="submit">{t('common.save') || 'Save'}</button>
-            <button className="btn" type="button" onClick={() => setShowModal(false)}>Cancel</button>
+            <button className="btn btn-primary" type="submit">{t('common.save') || t('schedule.system.save')}</button>
+            <button className="btn" type="button" onClick={() => setShowModal(false)}>{t('schedule.system.cancel')}</button>
           </div>
         </form>
       )}
@@ -302,15 +298,15 @@ export function ActivitiesTab({ projectId, locale, t }) {
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><span className="spinner" /></div>
       ) : rows.length === 0 ? (
-        <EmptyState icon={CalendarRange} text={locale === 'ar' ? 'لا توجد أنشطة مجدولة.' : 'No schedule activities yet — the Gantt is empty.'} />
-      ) : <GanttList activities={rows} />}
+        <EmptyState icon={CalendarRange} text={t('schedule.system.noScheduleActivitiesYetTheGanttIsEmpty')} />
+      ) : <GanttList t={t} activities={rows} />}
       {!loading && rows.length > 0 && (
         <div className="table-container" style={{ marginTop: 20 }}>
           <table className="table">
             <thead><tr>
-              <th>Code</th><th>{locale === 'ar' ? 'النشاط' : 'Activity'}</th><th>{locale === 'ar' ? 'البداية' : 'Start'}</th>
-              <th>{locale === 'ar' ? 'النهاية' : 'Finish'}</th><th>{locale === 'ar' ? 'المدة' : 'Dur.'}</th>
-              <th>{locale === 'ar' ? 'الإنجاز' : '% Complete'}</th><th>{locale === 'ar' ? 'حرج' : 'Critical'}</th><th>{t('schedule.budgetAtCompletion')}</th><th>{t('common.actions')}</th>
+              <th>{t('schedule.system.code')}</th><th>{t('schedule.system.activity')}</th><th>{t('schedule.system.start')}</th>
+              <th>{t('schedule.system.finish')}</th><th>{t('schedule.system.dur')}</th>
+              <th>{t('schedule.system.complete')}</th><th>{t('schedule.system.critical')}</th><th>{t('schedule.budgetAtCompletion')}</th><th>{t('common.actions')}</th>
             </tr></thead>
             <tbody>
               {rows.map(a => (
@@ -321,7 +317,7 @@ export function ActivitiesTab({ projectId, locale, t }) {
                   <td>{fmtDate(a.planned_finish)}</td>
                   <td>{a.original_duration}</td>
                   <td>{a.percent_complete || 0}%</td>
-                  <td>{a.cpm?.critical ? <span className="badge badge-danger">Critical</span> : '-'}</td>
+                  <td>{a.cpm?.critical ? <span className="badge badge-danger">{t('schedule.system.critical')}</span> : '-'}</td>
                   <td>{a.budgeted_cost ?? '—'}</td>
                   <td style={{ display: 'flex', gap: 6 }}><button className="btn" style={{ padding: '4px 10px' }} onClick={() => openProgress(a)}><History size={14} />{t('schedule.updateProgress')}</button> {canEditBudget && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => openBudget(a)}><DollarSign size={14} />{t('schedule.activityBudget')}</button>} <button className="btn" style={{ padding: '4px 10px' }} onClick={() => openAssignments(a)}><Users size={14} />{t('schedule.assignResources')}</button></td>
                 </tr>
@@ -375,7 +371,7 @@ function ViewsTab({ projectId, locale, t }) {
           <div className="stat-card"><div className="stat-label">{t('schedule.actualProgress')}</div><div className="stat-value">{kpis.project.actual_progress}%</div></div>
           <div className="stat-card"><div className="stat-label">{t('schedule.scheduleVariance')}</div>
             <div className="stat-value" style={{ color: kpis.project.schedule_variance_percent < 0 ? 'var(--color-danger, #e5534b)' : 'var(--color-success)' }}>{kpis.project.schedule_variance_percent}%</div></div>
-          <div className="stat-card"><div className="stat-label">SPI</div><div className="stat-value">{kpis.spi ?? '—'}</div></div>
+          <div className="stat-card"><div className="stat-label">{t('schedule.system.spi')}</div><div className="stat-value">{kpis.spi ?? '—'}</div></div>
           <div className="stat-card"><div className="stat-label">{t('schedule.cpi')}</div><div className="stat-value">{kpis.project.cpi ?? '—'}</div>{kpis.project.cpi == null && <small>{t(`schedule.cpiStatus.${kpis.cpi_status}`)}</small>}</div>
           {kpis.project.bac != null && <div className="stat-card"><div className="stat-label">{t('schedule.budgetAtCompletion')}</div><div className="stat-value">{Number(kpis.project.bac).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US')}</div></div>}
         </div>
@@ -391,7 +387,7 @@ function ViewsTab({ projectId, locale, t }) {
       </section>
       {alerts.length > 0 && (
         <div className="card" style={{ padding: 12 }}>
-          <h3 style={{ fontSize: 14, marginBottom: 8 }}><AlertTriangle size={14} /> {locale === 'ar' ? 'تنبيهات الجدولة' : 'Schedule alerts'}</h3>
+          <h3 style={{ fontSize: 14, marginBottom: 8 }}><AlertTriangle size={14} /> {t('schedule.system.scheduleAlerts')}</h3>
           {alerts.map((a, i) => (
             <div key={i} style={{ fontSize: 13, padding: '4px 0', borderBottom: '1px solid var(--color-surface-raised)' }}>
               {a.type}: {a.name || a.activity_code || a.blocker}
@@ -401,31 +397,31 @@ function ViewsTab({ projectId, locale, t }) {
       )}
       <div className="card" style={{ padding: 16 }}>
         <h3 style={{ fontSize: 14, marginBottom: 10 }}>
-          <Zap size={14} /> {locale === 'ar' ? 'المسار الحرج (CPM)' : 'Critical path (CPM)'} — project finish: {cpm?.project_finish || '—'}
+          <Zap size={14} /> {t('schedule.system.criticalPathCpm')}  {t('schedule.system.projectFinish')} {cpm?.project_finish || '—'}
         </h3>
-        <GanttList activities={(cpm?.activities || []).filter(a => a.cpm?.critical)} />
+        <GanttList t={t} activities={(cpm?.activities || []).filter(a => a.cpm?.critical)} />
       </div>
       <div className="card" style={{ padding: 12 }}>
-        <h3 style={{ fontSize: 14, marginBottom: 8 }}>{locale === 'ar' ? `نافذة ${lookahead.weeks} أسابيع` : `${lookahead.weeks}-week lookahead`}</h3>
+        <h3 style={{ fontSize: 14, marginBottom: 8 }}>{t('schedule.system.weekLookahead', { weeks: lookahead.weeks })}</h3>
         {lookahead.rows.length === 0 ? (
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>{locale === 'ar' ? 'لا أنشطة في النافذة.' : 'No activities start in this window.'}</p>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>{t('schedule.system.noActivitiesStartInThisWindow')}</p>
         ) : lookahead.rows.map(a => (
           <div key={a.id} style={{ fontSize: 13, padding: '4px 0' }}>{a.activity_code} — {a.name} ({fmtDate(a.planned_start)})</div>
         ))}
       </div>
       <div className="card" style={{ padding: 12 }}>
-        <h3 style={{ fontSize: 14, marginBottom: 8 }}><TrendingDown size={14} /> {locale === 'ar' ? 'أنشطة متأخرة' : 'Delayed activities'}</h3>
+        <h3 style={{ fontSize: 14, marginBottom: 8 }}><TrendingDown size={14} /> {t('schedule.system.delayedActivities')}</h3>
         {delayed.length === 0 ? (
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>{locale === 'ar' ? 'لا أنشطة متأخرة.' : 'No delayed activities.'}</p>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>{t('schedule.system.noDelayedActivities')}</p>
         ) : delayed.map(a => (
           <div key={a.id} style={{ fontSize: 13, padding: '4px 0' }}>
-            {a.activity_code} {a.name} — planned finish {fmtDate(a.planned_finish)} @ {a.percent_complete || 0}%
+            {a.activity_code} {a.name}  {t('schedule.system.plannedFinish2')} {fmtDate(a.planned_finish)} @ {a.percent_complete || 0}%
           </div>
         ))}
       </div>
       {scurve.length > 0 && (
         <div className="card" style={{ padding: 12 }}>
-          <h3 style={{ fontSize: 14, marginBottom: 8 }}>S-curve</h3>
+          <h3 style={{ fontSize: 14, marginBottom: 8 }}>{t('schedule.system.sCurve')}</h3>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 80 }}>
             {scurve.map((p, i) => (
               <div key={i} title={`${p.date}: planned ${p.planned_percent}% actual ${p.actual_percent ?? '—'}%`}
@@ -469,19 +465,19 @@ function BaselinesTab({ projectId, locale, t }) {
   return (
     <div>
       <form onSubmit={submit} className="card" style={{ display: 'flex', gap: 8, marginBottom: 16, maxWidth: 480 }}>
-        <input className="input" placeholder={locale === 'ar' ? 'اسم خط الأساس' : 'Baseline name'} value={name} onChange={e => setName(e.target.value)} required />
-        <button className="btn btn-primary" type="submit">{locale === 'ar' ? 'التقاط' : 'Capture'}</button>
+        <input className="input" placeholder={t('schedule.system.baselineName')} value={name} onChange={e => setName(e.target.value)} required />
+        <button className="btn btn-primary" type="submit">{t('schedule.system.capture')}</button>
       </form>
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><span className="spinner" /></div>
       ) : rows.length === 0 ? (
-        <EmptyState icon={Flag} text={locale === 'ar' ? 'لا توجد خطوط أساس.' : 'No baselines captured.'} />
+        <EmptyState icon={Flag} text={t('schedule.system.noBaselinesCaptured')} />
       ) : (
         <div className="table-container">
           <table className="table">
             <thead><tr>
-              <th>{locale === 'ar' ? 'الاسم' : 'Name'}</th><th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th>
-              <th>{locale === 'ar' ? 'الأنشطة' : 'Activities'}</th><th>{locale === 'ar' ? 'الحالي' : 'Current'}</th>
+              <th>{t('schedule.system.name')}</th><th>{t('schedule.loadDate')}</th>
+              <th>{t('schedule.activities')}</th><th>{t('schedule.system.current')}</th>
             </tr></thead>
             <tbody>
               {rows.map(b => (
@@ -489,7 +485,7 @@ function BaselinesTab({ projectId, locale, t }) {
                   <td style={{ fontWeight: 500 }}>{b.name}</td>
                   <td>{fmtDate(b.baseline_date)}</td>
                   <td>{(b.data || []).length}</td>
-                  <td>{b.is_current ? <span className="badge badge-success">{locale === 'ar' ? 'الحالي' : 'Current'}</span> : '-'}</td>
+                  <td>{b.is_current ? <span className="badge badge-success">{t('schedule.system.current')}</span> : '-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -507,9 +503,9 @@ export default function Schedule() {
   const [tab, setTab] = useState('activities');
 
   const TABS = [
-    { key: 'activities', icon: CalendarRange, label: locale === 'ar' ? 'الأنشطة والجانت' : 'Activities & Gantt' },
-    { key: 'views', icon: TrendingDown, label: locale === 'ar' ? 'التحليلات' : 'Analytics' },
-    { key: 'baselines', icon: Flag, label: locale === 'ar' ? 'خطوط الأساس' : 'Baselines' },
+    { key: 'activities', icon: CalendarRange, label: t('schedule.system.activitiesGantt') },
+    { key: 'views', icon: TrendingDown, label: t('schedule.system.analytics') },
+    { key: 'baselines', icon: Flag, label: t('schedule.system.baselines') },
   ];
 
   return (
@@ -517,9 +513,9 @@ export default function Schedule() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
         <button className="btn" onClick={() => navigate(`/projects/${id}`)}><ArrowLeft size={16} /></button>
         <div>
-          <h1>{locale === 'ar' ? 'الجدولة' : 'Schedule'}</h1>
+          <h1>{t('schedule.system.schedule')}</h1>
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'الأنشطة والمسار الحرج والنظرات المستقبلية' : 'Activities, critical path & lookaheads'}
+            {t('schedule.system.activitiesCriticalPathLookaheads')}
           </p>
         </div>
       </div>

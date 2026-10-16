@@ -1,4 +1,15 @@
 {
   "title": "Reports",
-  "empty": "No reports available."
+  "empty": "No reports available.",
+  "system": {
+    "openFromInsideAProjectFirst": "Open from inside a project first",
+    "catalogExportsSavedViewsSchedules": "Catalog, exports, saved views & schedules",
+    "noRecords": "No records.",
+    "saveView": "Save view",
+    "schedule": "Schedule",
+    "savedViews": "Saved views",
+    "scheduledReports": "Scheduled reports",
+    "runs": ") · runs:",
+    "automaticProjectReport": "Automatic project report"
+  }
 }

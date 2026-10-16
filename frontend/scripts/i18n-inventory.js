@@ -12,6 +12,8 @@
 // Plus: empty/missing namespaces, keys used in code but absent from the catalog, English server messages.
 const fs = require('fs');
 const path = require('path');
+const { widgetContract, missingWidgetKeys } = require('./widget-contract');
+const { pageViolations, visibleLiteralViolations } = require('./system-strings');
 
 const root = path.join(__dirname, '..');
 const srcDir = path.join(root, 'src');
@@ -157,6 +159,10 @@ function main() {
   if (process.argv.includes('--check')) {
     const base = JSON.parse(fs.readFileSync(outFile, 'utf8'));
     const failures = [];
+    const dashboards = Object.fromEntries(['en', 'ar'].map(locale => [locale, JSON.parse(fs.readFileSync(path.join(srcDir, 'locales', locale, 'dashboard.json'), 'utf8'))]));
+    failures.push(...missingWidgetKeys(widgetContract(), dashboards));
+    failures.push(...pageViolations().map(location => `${location}: inline system text must use the catalog`));
+    failures.push(...visibleLiteralViolations().map(location => `${location}: literal system text must use the catalog`));
     const files = new Set([...Object.keys(inv.frontend.files), ...Object.keys(base.frontend.files)]);
     for (const f of files) {
       for (const metric of ['inlineBranches', 'hardcodedEnglish', 'rawEnumRendering', 'hardcodedFormat', 'prompts']) {

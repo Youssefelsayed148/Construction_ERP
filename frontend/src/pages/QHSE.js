@@ -1,3 +1,4 @@
+import { formatDate as sharedDate } from '../utils/formatters';
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -20,12 +21,7 @@ const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...option
   return apiResponseJson(r);
 });
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return '-';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
-  return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
-};
+const formatDate = sharedDate;
 
 const SEVERITY_LABELS = {
   en: { minor: 'Minor', major: 'Major', critical: 'Critical' },
@@ -89,24 +85,24 @@ function QHSE() {
   useEffect(() => { loadSummary(); }, [loadSummary]);
 
   const TABS = [
-    { key: 'tests', icon: FlaskConical, label: locale === 'ar' ? 'اختبارات الجودة' : 'Quality Tests' },
-    { key: 'ncrs', icon: AlertOctagon, label: locale === 'ar' ? 'تقارير عدم المطابقة' : 'NCRs' },
-    { key: 'itp', icon: ClipboardCheck, label: locale === 'ar' ? 'خطط الفحص' : 'ITP' },
-    { key: 'wirs', icon: ShieldCheck, label: locale === 'ar' ? 'فحص الأعمال' : 'WIRs' },
-    { key: 'punch', icon: ListChecks, label: locale === 'ar' ? 'بنود PUNCH' : 'Punch Items' },
-    { key: 'capa', icon: Wrench, label: locale === 'ar' ? 'إجراءات CAPA' : 'CAPA' },
-    { key: 'mockups', icon: PackageCheck, label: locale === 'ar' ? 'نماذج تجريبية' : 'Mock-ups' },
-    { key: 'calibration', icon: Gauge, label: locale === 'ar' ? 'المعايرة' : 'Calibration' },
+    { key: 'tests', icon: FlaskConical, label: t('qhse.system.qualityTests') },
+    { key: 'ncrs', icon: AlertOctagon, label: t('qhse.system.ncrs') },
+    { key: 'itp', icon: ClipboardCheck, label: t('qhse.system.itp') },
+    { key: 'wirs', icon: ShieldCheck, label: t('qhse.system.wirs') },
+    { key: 'punch', icon: ListChecks, label: t('qhse.system.punchItems') },
+    { key: 'capa', icon: Wrench, label: t('qhse.system.capa') },
+    { key: 'mockups', icon: PackageCheck, label: t('qhse.system.mockUps') },
+    { key: 'calibration', icon: Gauge, label: t('qhse.system.calibration') },
     { key: 'certificates', icon: ClipboardCheck, label: t('qhse.certificates.title') },
-    { key: 'inspections', icon: ShieldCheck, label: locale === 'ar' ? 'تفتيش السلامة' : 'Safety Inspections' },
-    { key: 'incidents', icon: Siren, label: locale === 'ar' ? 'الحوادث' : 'Incidents' },
+    { key: 'inspections', icon: ShieldCheck, label: t('qhse.system.safetyInspections') },
+    { key: 'incidents', icon: Siren, label: t('qhse.system.incidents') },
   ];
 
   const summaryCards = [
-    { label: locale === 'ar' ? 'عدم مطابقة مفتوحة' : 'Open NCRs', value: summary.openNcrs, color: summary.openNcrs > 0 ? 'var(--color-danger, #e5534b)' : 'var(--color-success)' },
-    { label: locale === 'ar' ? 'اختبارات فاشلة' : 'Failed Tests', value: summary.failedTests, color: summary.failedTests > 0 ? 'var(--color-danger, #e5534b)' : 'var(--color-success)' },
-    { label: locale === 'ar' ? 'حوادث مفتوحة' : 'Open Incidents', value: summary.openIncidents, color: summary.openIncidents > 0 ? 'var(--color-warning)' : 'var(--color-success)' },
-    { label: locale === 'ar' ? 'عمليات تفتيش' : 'Inspections', value: summary.inspections, color: 'var(--color-accent)' },
+    { label: t('qhse.system.openNcrs'), value: summary.openNcrs, color: summary.openNcrs > 0 ? 'var(--color-danger, #e5534b)' : 'var(--color-success)' },
+    { label: t('qhse.system.failedTests'), value: summary.failedTests, color: summary.failedTests > 0 ? 'var(--color-danger, #e5534b)' : 'var(--color-success)' },
+    { label: t('qhse.system.openIncidents'), value: summary.openIncidents, color: summary.openIncidents > 0 ? 'var(--color-warning)' : 'var(--color-success)' },
+    { label: t('qhse.system.inspections'), value: summary.inspections, color: 'var(--color-accent)' },
   ];
 
   return (
@@ -116,9 +112,9 @@ function QHSE() {
           <ArrowLeft size={16} />
         </button>
         <div>
-          <h1>{locale === 'ar' ? 'الجودة والسلامة' : 'Quality & HSE'}</h1>
+          <h1>{t('qhse.title')}</h1>
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'اختبارات الجودة وعدم المطابقة والسلامة' : 'Quality tests, NCRs & site safety'}
+            {t('qhse.system.qualityTestsNcrsSiteSafety')}
           </p>
         </div>
       </div>
@@ -187,7 +183,7 @@ function QualityTestsTab({ projectId, locale, t, onChanged }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>
           <Plus size={16} />
-          {locale === 'ar' ? 'تسجيل اختبار' : 'Log Test'}
+          {t('qhse.system.logTest')}
         </button>
       </div>
 
@@ -196,18 +192,18 @@ function QualityTestsTab({ projectId, locale, t, onChanged }) {
       ) : tests.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <FlaskConical size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
-          <p style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'لا توجد اختبارات.' : 'No quality tests logged.'}</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('qhse.system.noQualityTestsLogged')}</p>
         </div>
       ) : (
         <div className="table-container">
           <table className="table">
             <thead>
               <tr>
-                <th>{locale === 'ar' ? 'نوع الاختبار' : 'Test Type'}</th>
-                <th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th>
-                <th>{locale === 'ar' ? 'النتيجة' : 'Result'}</th>
-                <th>{locale === 'ar' ? 'أجراه' : 'Tested By'}</th>
-                <th>{locale === 'ar' ? 'ملاحظات' : 'Notes'}</th>
+                <th>{t('qhse.system.testType')}</th>
+                <th>{t('qhse.system.date')}</th>
+                <th>{t('qhse.system.result')}</th>
+                <th>{t('qhse.system.testedBy')}</th>
+                <th>{t('qhse.certificates.notes')}</th>
                 <th>{t('common.actions')}</th>
               </tr>
             </thead>
@@ -223,7 +219,7 @@ function QualityTestsTab({ projectId, locale, t, onChanged }) {
                     {qt.result === 'fail' && (
                       <button className="btn btn-danger" style={{ padding: '6px 10px', fontSize: '12px' }} onClick={() => setRaiseNcrFor(qt)}>
                         <AlertOctagon size={12} />
-                        {locale === 'ar' ? 'رفع عدم مطابقة' : 'Raise NCR'}
+                        {t('qhse.system.raiseNcr')}
                       </button>
                     )}
                   </td>
@@ -266,7 +262,7 @@ function TestModal({ projectId, locale, t, onClose, onSave }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{locale === 'ar' ? 'تسجيل اختبار جودة' : 'Log Quality Test'}</h3>
+          <h3 className="modal-title">{t('qhse.system.logQualityTest')}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
@@ -274,29 +270,29 @@ function TestModal({ projectId, locale, t, onClose, onSave }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'نوع الاختبار' : 'Test Type'} *</label>
+                  <label className="form-label">{t('qhse.system.testType')} *</label>
                   <input className="form-input" value={form.test_type} onChange={e => handleChange('test_type', e.target.value)}
-                    placeholder={locale === 'ar' ? 'اختبار مكعبات خرسانة' : 'Concrete cube test'} required />
+                    placeholder={t('qhse.system.concreteCubeTest')} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'التاريخ' : 'Date'}</label>
+                  <label className="form-label">{t('qhse.system.date')}</label>
                   <input className="form-input" type="date" value={form.test_date} onChange={e => handleChange('test_date', e.target.value)} />
                 </div>
               </div>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'النتيجة' : 'Result'}</label>
+                  <label className="form-label">{t('qhse.system.result')}</label>
                   <select className="form-select" value={form.result} onChange={e => handleChange('result', e.target.value)}>
                     {['pending', 'pass', 'fail'].map(r => <option key={r} value={r}>{RESULT_LABELS[locale]?.[r] || r}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'أجراه' : 'Tested By'}</label>
+                  <label className="form-label">{t('qhse.system.testedBy')}</label>
                   <input className="form-input" value={form.tested_by} onChange={e => handleChange('tested_by', e.target.value)} />
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'ملاحظات' : 'Notes'}</label>
+                <label className="form-label">{t('qhse.certificates.notes')}</label>
                 <textarea className="form-textarea" value={form.notes} onChange={e => handleChange('notes', e.target.value)} />
               </div>
               {error && <div className="alert alert-danger">{error}</div>}
@@ -371,13 +367,13 @@ function NcrsTab({ projectId, locale, t, onChanged }) {
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {['all', 'open', 'in_progress', 'resolved', 'closed'].map(s => (
             <button key={s} className={`btn ${statusFilter === s ? 'btn-primary' : ''}`} style={{ padding: '6px 12px', fontSize: '13px' }} onClick={() => setStatusFilter(s)}>
-              {s === 'all' ? (locale === 'ar' ? 'الكل' : 'All') : (NCR_STATUS_LABELS[locale]?.[s] || s)}
+              {s === 'all' ? (t('qhse.system.all')) : (NCR_STATUS_LABELS[locale]?.[s] || s)}
             </button>
           ))}
         </div>
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>
           <Plus size={16} />
-          {locale === 'ar' ? 'رفع عدم مطابقة' : 'Raise NCR'}
+          {t('qhse.system.raiseNcr')}
         </button>
       </div>
 
@@ -386,7 +382,7 @@ function NcrsTab({ projectId, locale, t, onChanged }) {
       ) : ncrs.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <AlertOctagon size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
-          <p style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'لا توجد تقارير عدم مطابقة.' : 'No NCRs.'}</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('qhse.system.noNcrs')}</p>
         </div>
       ) : (
         <div className="table-container">
@@ -395,9 +391,9 @@ function NcrsTab({ projectId, locale, t, onChanged }) {
               <tr>
                 <th>#</th>
                 <th>{t('common.description')}</th>
-                <th>{locale === 'ar' ? 'الخطورة' : 'Severity'}</th>
+                <th>{t('qhse.system.severity')}</th>
                 <th>{t('common.status')}</th>
-                <th>{locale === 'ar' ? 'رفعه' : 'Raised By'}</th>
+                <th>{t('qhse.system.raisedBy')}</th>
                 <th>{t('common.actions')}</th>
               </tr>
             </thead>
@@ -436,7 +432,7 @@ function NcrsTab({ projectId, locale, t, onChanged }) {
 
 function NcrModal({ projectId, locale, t, fromTest, onClose, onSave }) {
   const [form, setForm] = useState({
-    description: fromTest ? `${locale === 'ar' ? 'اختبار فاشل' : 'Failed test'}: ${fromTest.test_type}${fromTest.notes ? ` — ${fromTest.notes}` : ''}` : '',
+    description: fromTest ? `${t('qhse.system.failedTest')}: ${fromTest.test_type}${fromTest.notes ? ` — ${fromTest.notes}` : ''}` : '',
     severity: 'minor',
   });
   const [saving, setSaving] = useState(false);
@@ -459,7 +455,7 @@ function NcrModal({ projectId, locale, t, fromTest, onClose, onSave }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{locale === 'ar' ? 'رفع تقرير عدم مطابقة' : 'Raise NCR'}</h3>
+          <h3 className="modal-title">{t('qhse.system.raiseNcr2')}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
@@ -467,7 +463,7 @@ function NcrModal({ projectId, locale, t, fromTest, onClose, onSave }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {fromTest && (
                 <div className="alert" style={{ background: 'var(--color-surface)', padding: '8px 12px', borderRadius: 'var(--radius-md)', fontSize: '13px' }}>
-                  {locale === 'ar' ? 'مرتبط بالاختبار: ' : 'Linked to test: '}<strong>{fromTest.test_type}</strong> ({formatDate(fromTest.test_date)})
+                  {t('qhse.system.linkedToTest')}<strong>{fromTest.test_type}</strong> ({formatDate(fromTest.test_date)})
                 </div>
               )}
               <div className="form-group">
@@ -475,7 +471,7 @@ function NcrModal({ projectId, locale, t, fromTest, onClose, onSave }) {
                 <textarea className="form-textarea" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} required />
               </div>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'الخطورة' : 'Severity'}</label>
+                <label className="form-label">{t('qhse.system.severity')}</label>
                 <select className="form-select" value={form.severity} onChange={e => setForm(f => ({ ...f, severity: e.target.value }))}>
                   {['minor', 'major', 'critical'].map(s => <option key={s} value={s}>{SEVERITY_LABELS[locale]?.[s] || s}</option>)}
                 </select>
@@ -532,7 +528,7 @@ function InspectionsTab({ projectId, locale, t, onChanged }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>
           <Plus size={16} />
-          {locale === 'ar' ? 'تفتيش جديد' : 'New Inspection'}
+          {t('qhse.system.newInspection')}
         </button>
       </div>
 
@@ -541,7 +537,7 @@ function InspectionsTab({ projectId, locale, t, onChanged }) {
       ) : inspections.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <ShieldCheck size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
-          <p style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'لا توجد عمليات تفتيش.' : 'No inspections logged.'}</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('qhse.system.noInspectionsLogged')}</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -554,7 +550,7 @@ function InspectionsTab({ projectId, locale, t, onChanged }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{formatDate(insp.inspection_date)}</span>
                     <span className={`badge ${INSPECTION_STATUS_BADGE[insp.status]}`}>{INSPECTION_STATUS_LABELS[locale]?.[insp.status] || insp.status}</span>
-                    {items.length > 0 && <span className="badge badge-info">{okCount}/{items.length} {locale === 'ar' ? 'مطابق' : 'OK'}</span>}
+                    {items.length > 0 && <span className="badge badge-info">{okCount}/{items.length} {t('qhse.system.ok')}</span>}
                   </div>
                   <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>{insp.inspector_name || ''}</span>
                 </div>
@@ -568,7 +564,7 @@ function InspectionsTab({ projectId, locale, t, onChanged }) {
                     ))}
                   </div>
                 )}
-                {insp.findings && <p style={{ marginTop: '10px', fontSize: '13px', color: 'var(--color-text-secondary)' }}><strong>{locale === 'ar' ? 'الملاحظات: ' : 'Findings: '}</strong>{insp.findings}</p>}
+                {insp.findings && <p style={{ marginTop: '10px', fontSize: '13px', color: 'var(--color-text-secondary)' }}><strong>{t('qhse.system.findings')}</strong>{insp.findings}</p>}
               </div>
             );
           })}
@@ -606,7 +602,7 @@ function InspectionModal({ projectId, locale, t, onClose, onSave }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{locale === 'ar' ? 'تفتيش سلامة' : 'Safety Inspection'}</h3>
+          <h3 className="modal-title">{t('qhse.system.safetyInspection')}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
@@ -614,7 +610,7 @@ function InspectionModal({ projectId, locale, t, onClose, onSave }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'التاريخ' : 'Date'}</label>
+                  <label className="form-label">{t('qhse.system.date')}</label>
                   <input className="form-input" type="date" value={form.inspection_date} onChange={e => setForm(f => ({ ...f, inspection_date: e.target.value }))} />
                 </div>
                 <div className="form-group">
@@ -625,7 +621,7 @@ function InspectionModal({ projectId, locale, t, onClose, onSave }) {
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'قائمة الفحص' : 'Checklist'}</label>
+                <label className="form-label">{t('qhse.system.checklist')}</label>
                 {checklist.map((it, i) => (
                   <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', padding: '4px 0', cursor: 'pointer' }}>
                     <input type="checkbox" checked={it.ok} onChange={() => toggleItem(i)} />
@@ -634,7 +630,7 @@ function InspectionModal({ projectId, locale, t, onClose, onSave }) {
                 ))}
               </div>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'الملاحظات' : 'Findings'}</label>
+                <label className="form-label">{t('qhse.system.findings2')}</label>
                 <textarea className="form-textarea" value={form.findings} onChange={e => setForm(f => ({ ...f, findings: e.target.value }))} />
               </div>
               {error && <div className="alert alert-danger">{error}</div>}
@@ -686,7 +682,7 @@ function IncidentsTab({ projectId, locale, t, onChanged }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>
           <Plus size={16} />
-          {locale === 'ar' ? 'الإبلاغ عن حادث' : 'Report Incident'}
+          {t('qhse.system.reportIncident')}
         </button>
       </div>
 
@@ -695,16 +691,16 @@ function IncidentsTab({ projectId, locale, t, onChanged }) {
       ) : incidents.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <Siren size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
-          <p style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'لا توجد حوادث مسجلة.' : 'No incidents reported.'}</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('qhse.system.noIncidentsReported')}</p>
         </div>
       ) : (
         <div className="table-container">
           <table className="table">
             <thead>
               <tr>
-                <th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th>
-                <th>{locale === 'ar' ? 'النوع' : 'Type'}</th>
-                <th>{locale === 'ar' ? 'الخطورة' : 'Severity'}</th>
+                <th>{t('qhse.system.date')}</th>
+                <th>{t('qhse.system.type')}</th>
+                <th>{t('qhse.system.severity')}</th>
                 <th>{t('common.description')}</th>
                 <th>{t('common.status')}</th>
                 <th>{t('common.actions')}</th>
@@ -718,7 +714,7 @@ function IncidentsTab({ projectId, locale, t, onChanged }) {
                   <td><span className={`badge ${SEVERITY_BADGE[inc.severity]}`}>{SEVERITY_LABELS[locale]?.[inc.severity] || inc.severity}</span></td>
                   <td style={{ fontSize: '13px' }}>
                     {inc.description}
-                    {inc.injured_party && <div style={{ fontSize: '12px', color: 'var(--color-danger, #e5534b)' }}>{locale === 'ar' ? 'مصاب: ' : 'Injured: '}{inc.injured_party}</div>}
+                    {inc.injured_party && <div style={{ fontSize: '12px', color: 'var(--color-danger, #e5534b)' }}>{t('qhse.system.injured')}{inc.injured_party}</div>}
                     {inc.corrective_action && <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>↳ {inc.corrective_action}</div>}
                   </td>
                   <td><span className={`badge ${INCIDENT_STATUS_BADGE[inc.status]}`}>{INCIDENT_STATUS_LABELS[locale]?.[inc.status] || inc.status}</span></td>
@@ -726,12 +722,12 @@ function IncidentsTab({ projectId, locale, t, onChanged }) {
                     <div style={{ display: 'flex', gap: '6px' }}>
                       {inc.status === 'open' && (
                         <button className="btn" style={{ padding: '6px 10px', fontSize: '12px' }} onClick={() => updateStatus(inc, 'investigating')}>
-                          {locale === 'ar' ? 'تحقيق' : 'Investigate'}
+                          {t('qhse.system.investigate')}
                         </button>
                       )}
                       {inc.status !== 'closed' && (
                         <button className="btn btn-success" style={{ padding: '6px 10px', fontSize: '12px' }} onClick={() => updateStatus(inc, 'closed')}>
-                          {locale === 'ar' ? 'إغلاق' : 'Close'}
+                          {t('qhse.system.close')}
                         </button>
                       )}
                     </div>
@@ -777,7 +773,7 @@ function IncidentModal({ projectId, locale, t, onClose, onSave }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{locale === 'ar' ? 'الإبلاغ عن حادث' : 'Report Incident'}</h3>
+          <h3 className="modal-title">{t('qhse.system.reportIncident')}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
@@ -785,16 +781,16 @@ function IncidentModal({ projectId, locale, t, onClose, onSave }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'التاريخ' : 'Date'}</label>
+                  <label className="form-label">{t('qhse.system.date')}</label>
                   <input className="form-input" type="date" value={form.incident_date} onChange={e => handleChange('incident_date', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'النوع' : 'Type'}</label>
+                  <label className="form-label">{t('qhse.system.type')}</label>
                   <input className="form-input" value={form.incident_type} onChange={e => handleChange('incident_type', e.target.value)}
-                    placeholder={locale === 'ar' ? 'سقوط، جرح...' : 'Fall, cut...'} />
+                    placeholder={t('qhse.system.fallCut')} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الخطورة' : 'Severity'}</label>
+                  <label className="form-label">{t('qhse.system.severity')}</label>
                   <select className="form-select" value={form.severity} onChange={e => handleChange('severity', e.target.value)}>
                     {['minor', 'major', 'critical'].map(s => <option key={s} value={s}>{SEVERITY_LABELS[locale]?.[s] || s}</option>)}
                   </select>
@@ -806,11 +802,11 @@ function IncidentModal({ projectId, locale, t, onClose, onSave }) {
               </div>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'المصاب (إن وجد)' : 'Injured Party (if any)'}</label>
+                  <label className="form-label">{t('qhse.system.injuredPartyIfAny')}</label>
                   <input className="form-input" value={form.injured_party} onChange={e => handleChange('injured_party', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الإجراء التصحيحي' : 'Corrective Action'}</label>
+                  <label className="form-label">{t('qhse.system.correctiveAction')}</label>
                   <input className="form-input" value={form.corrective_action} onChange={e => handleChange('corrective_action', e.target.value)} />
                 </div>
               </div>

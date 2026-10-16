@@ -110,14 +110,14 @@ function Projects() {
     <div className="page-container">
       <div className="page-header">
         <div>
-          <h1>{locale === 'ar' ? 'المشاريع' : 'Projects'}</h1>
+          <h1>{t('projects.title')}</h1>
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'إدارة محفظة المشاريع' : 'Project Portfolio Management'}
+            {t('projects.system.projectPortfolioManagement')}
           </p>
         </div>
         <button className="btn btn-primary" onClick={handleOpenWizard}>
           <Plus size={16} />
-          {locale === 'ar' ? 'مشروع جديد' : 'New Project'}
+          {t('projects.system.newProject')}
         </button>
       </div>
 
@@ -128,19 +128,19 @@ function Projects() {
         <div className="stats-grid">
           <div className="stat-card">
             <div className="stat-value">{portfolio.total || projects.length}</div>
-            <div className="stat-label">{locale === 'ar' ? 'إجمالي المشاريع' : 'Total Projects'}</div>
+            <div className="stat-label">{t('projects.system.totalProjects')}</div>
           </div>
           <div className="stat-card">
             <div className="stat-value" style={{ color: 'var(--color-success)' }}>
               {portfolio.active || projects.filter(p => p.status === 'active').length}
             </div>
-            <div className="stat-label">{locale === 'ar' ? 'مشاريع نشطة' : 'Active Projects'}</div>
+            <div className="stat-label">{t('projects.system.activeProjects')}</div>
           </div>
           <div className="stat-card">
             <div className="stat-value" style={{ color: 'var(--color-accent)' }}>
               {formatCurrency(portfolio.total_value || projects.reduce((s, p) => s + (Number(p.contract_value) || 0), 0))}
             </div>
-            <div className="stat-label">{locale === 'ar' ? 'إجمالي قيمة العقود' : 'Total Contract Value'}</div>
+            <div className="stat-label">{t('projects.system.totalContractValue')}</div>
           </div>
         </div>
       )}
@@ -175,7 +175,7 @@ function Projects() {
             style={{ background: 'transparent', border: 'none', padding: '0', flex: 1 }}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder={locale === 'ar' ? 'بحث عن مشاريع...' : 'Search projects...'}
+            placeholder={t('projects.system.searchProjects')}
           />
           {searchQuery && (
             <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
@@ -185,7 +185,7 @@ function Projects() {
         </div>
         <div className="form-group" style={{ marginBottom: 0, minWidth: '180px' }}>
           <select className="form-select" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
-            <option value="">{locale === 'ar' ? 'كل الأنواع' : 'All Types'}</option>
+            <option value="">{t('projects.system.allTypes')}</option>
             {ALL_TYPES.map(tp => (
               <option key={tp} value={tp}>{typeLabel(tp)}</option>
             ))}
@@ -202,7 +202,7 @@ function Projects() {
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <Briefcase size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'لا توجد مشاريع. أضف أول مشروع.' : 'No projects found. Add your first project.'}
+            {t('projects.system.noProjectsFoundAddYourFirstProject')}
           </p>
         </div>
       ) : (
@@ -239,7 +239,7 @@ function Projects() {
 
               <div style={{ marginBottom: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-                  <span>{locale === 'ar' ? 'نسبة الإنجاز' : 'Completion'}</span>
+                  <span>{t('projects.system.completion2')}</span>
                   <span style={{ color: 'var(--color-accent)', fontWeight: 600 }}>{formatPercent(p.completion_percentage)}</span>
                 </div>
                 <div style={{ height: '4px', background: 'var(--color-surface-raised)', borderRadius: '2px', overflow: 'hidden' }}>
@@ -277,7 +277,7 @@ function Projects() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <Receipt size={14} />
                       <span style={{ color: 'var(--color-warning)', fontSize: '12px', fontWeight: 500 }}>
-                        {locale === 'ar' ? 'مستحق: ' : 'Outstanding: '}{formatCurrency(financeData[p.id].outstanding_balance)}
+                        {t('projects.system.outstanding')}{formatCurrency(financeData[p.id].outstanding_balance)}
                       </span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -294,11 +294,11 @@ function Projects() {
                 {p.expected_completion && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Calendar size={14} style={{ color: 'var(--color-warning)' }} />
-                    <span>{locale === 'ar' ? 'متوقع: ' : 'Due: '}{formatDate(p.expected_completion)}</span>
+                    <span>{t('projects.system.due')}{formatDate(p.expected_completion)}</span>
                   </div>
                 )}
                 <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
-                  PM: {pmName(p)}
+                   {t('projects.system.pm')} {pmName(p)}
                 </div>
               </div>
             </div>

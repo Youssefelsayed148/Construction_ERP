@@ -1,3 +1,5 @@
+import { formatDate as sharedDate } from '../utils/formatters';
+import { translateEnum } from '../i18n/enums';
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 // Phase 25 — handover, closeout & warranty workspace: the exact lifecycle,
 // the package checklist with document upload + completion percent, the asset
@@ -28,12 +30,7 @@ const fetchApi = (url, options, translate = (key) => key) => apiFetch(url, { hea
 
 const downloadPdf = (path, filename) => openProtectedFile(path);
 
-const fmtDate = (d) => {
-  if (!d) return '-';
-  const dt = new Date(d);
-  if (isNaN(dt.getTime())) return d;
-  return `${dt.getDate().toString().padStart(2, '0')}/${(dt.getMonth() + 1).toString().padStart(2, '0')}/${dt.getFullYear()}`;
-};
+const fmtDate = sharedDate;
 
 function EmptyState({ icon: Icon, text }) {
   return (
@@ -50,7 +47,7 @@ const CLAIM_STATUS_BADGE = { raised: 'badge-danger', assigned: 'badge-warning', 
 export default function Handover() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { t, locale } = useLocale();
+  const { t } = useLocale();
   const [tab, setTab] = useState('lifecycle');
   const [data, setData] = useState(null);
   const [assets, setAssets] = useState([]);
@@ -212,11 +209,11 @@ export default function Handover() {
   };
 
   const TABS = [
-    { key: 'lifecycle', icon: ArrowLeft, label: locale === 'ar' ? 'دورة التسليم' : 'Lifecycle' },
-    { key: 'package', icon: PackageCheck, label: locale === 'ar' ? 'حزمة التسليم' : 'Handover package' },
-    { key: 'assets', icon: KeyRound, label: locale === 'ar' ? 'سجل الأصول' : 'Asset register' },
+    { key: 'lifecycle', icon: ArrowLeft, label: t('handover.system.lifecycle') },
+    { key: 'package', icon: PackageCheck, label: t('handover.system.handoverPackage') },
+    { key: 'assets', icon: KeyRound, label: t('handover.system.assetRegister') },
     { key: 'warranties', icon: FileText, label: t('handover.warranties') },
-    { key: 'claims', icon: CheckCircle, label: locale === 'ar' ? 'مطالبات الضمان' : 'Warranty claims' },
+    { key: 'claims', icon: CheckCircle, label: t('handover.system.warrantyClaims') },
   ];
 
   const readiness = data?.readiness || { percent: 0, items_total: 0, open_punch_items: 0 };
@@ -226,21 +223,21 @@ export default function Handover() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: 20 }}>
         <button className="btn" onClick={() => navigate(`/projects/${id}`)}><ArrowLeft size={16} /></button>
         <div>
-          <h1>{locale === 'ar' ? 'التسليم والإقفال' : 'Handover & closeout'}</h1>
+          <h1>{t('handover.system.handoverCloseout')}</h1>
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'دورة التسليم والحزمة وسجل الأصول ومطالبات الضمان' : 'Lifecycle, package checklist, asset register & warranty claims'}
+            {t('handover.system.lifecyclePackageChecklistAssetRegisterWarrantyClaims')}
           </p>
         </div>
       </div>
 
       <div className="stats-grid">
-        <div className="stat-card"><div className="stat-label">{locale === 'ar' ? 'جاهزية التسليم' : 'Handover readiness'}</div>
+        <div className="stat-card"><div className="stat-label">{t('handover.system.handoverReadiness')}</div>
           <div className="stat-value" style={{ color: readiness.percent === 100 ? 'var(--color-success)' : 'var(--color-accent)' }}>{readiness.percent}%</div></div>
-        <div className="stat-card"><div className="stat-label">{locale === 'ar' ? 'بنود الحزمة' : 'Package items'}</div>
+        <div className="stat-card"><div className="stat-label">{t('handover.system.packageItems')}</div>
           <div className="stat-value">{readiness.items_total ? `${readiness.items_complete}/${readiness.items_total}` : '—'}</div></div>
-        <div className="stat-card"><div className="stat-label">{locale === 'ar' ? 'بنود PUNCH مفتوحة' : 'Open punch items'}</div>
+        <div className="stat-card"><div className="stat-label">{t('handover.system.openPunchItems')}</div>
           <div className="stat-value" style={{ color: readiness.open_punch_items > 0 ? 'var(--color-danger, #e5534b)' : 'var(--color-success)' }}>{readiness.open_punch_items}</div></div>
-        <div className="stat-card"><div className="stat-label">{locale === 'ar' ? 'مطالبات الضمان' : 'Warranty claims'}</div>
+        <div className="stat-card"><div className="stat-label">{t('handover.system.warrantyClaims')}</div>
           <div className="stat-value">{claims.length || '—'}</div></div>
       </div>
 
@@ -259,12 +256,12 @@ export default function Handover() {
 
       {tab === 'lifecycle' && (
         !data?.process ? (
-          <EmptyState icon={ArrowLeft} text={locale === 'ar' ? 'لم تبدأ دورة التسليم بعد.' : 'No handover process started yet.'} />
+          <EmptyState icon={ArrowLeft} text={t('handover.system.noHandoverProcessStartedYet')} />
         ) : (
           <div className="card" style={{ padding: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
               <span style={{ fontWeight: 600 }}>{data.process.process_number}</span>
-              <span className="badge badge-info">{data.process.status}</span>
+              <span className="badge badge-info">{translateEnum(t, 'status', data.process.status)}</span>
             </div>
             <div style={{ display: 'grid', gap: 6 }}>
               {['pre_handover', 'punch_snag', 'rectification', 'final_inspection', 'testing_commissioning', 'as_builts', 'o_m', 'training', 'taking_over', 'dlp_warranty', 'final_completion'].map(s => {
@@ -278,34 +275,34 @@ export default function Handover() {
                 );
               })}
             </div>
-            <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={advance}>Advance</button>
+            <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={advance}>{t('handover.system.advance')}</button>
           </div>
         )
       )}
 
       {tab === 'lifecycle' && !data?.process && (
-        <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={start}>Start handover process</button>
+        <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={start}>{t('handover.system.startHandoverProcess')}</button>
       )}
 
       {tab === 'package' && (
         packageItems.length === 0 ? (
-          <EmptyState icon={PackageCheck} text={locale === 'ar' ? 'الحزمة فارغة (0% جاهزية).' : 'The handover package is empty — 0% complete.'} />
+          <EmptyState icon={PackageCheck} text={t('handover.system.theHandoverPackageIsEmpty0Complete')} />
         ) : (
           <div className="table-container">
             <table className="table">
-              <thead><tr><th>#</th><th>{locale === 'ar' ? 'البند' : 'Item'}</th><th>{locale === 'ar' ? 'الحالة' : 'Status'}</th><th>{t('common.actions')}</th></tr></thead>
+              <thead><tr><th>#</th><th>{t('handover.system.item')}</th><th>{t('handover.system.status')}</th><th>{t('common.actions')}</th></tr></thead>
               <tbody>
                 {packageItems.map((item, idx) => (
                   <tr key={item.id}>
                     <td>{idx + 1}</td>
                     <td style={{ fontWeight: 500 }}>{item.title}{item.project_document_title ? <div><button className="btn" onClick={() => openProtectedFile(item.project_document_url).catch((error) => alert(error.message))}>{item.project_document_title}</button></div> : item.document_url ? <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>{t('handover.legacyDocumentUrl')}</div> : null}</td>
-                    <td><span className={`badge ${STATUS_BADGE[item.status] || 'badge-info'}`}>{item.status}</span></td>
+                    <td><span className={`badge ${STATUS_BADGE[item.status] || 'badge-info'}`}>{translateEnum(t, 'status', item.status)}</span></td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       <button className="btn" style={{ padding: '4px 10px' }} onClick={() => { setUploadTarget(item); setUploadError(''); }}>{t('handover.uploadEvidence')}</button>{' '}
                       {item.status !== 'complete' && (
                         <>
-                          <button className="btn" style={{ padding: '4px 10px' }} onClick={() => verifyItem(item, 'approved')}>{locale === 'ar' ? 'اعتماد' : 'Approve'}</button>{' '}
-                          <button className="btn" style={{ padding: '4px 10px' }} onClick={() => verifyItem(item, 'complete')}>{locale === 'ar' ? 'مكتمل' : 'Complete'}</button>
+                          <button className="btn" style={{ padding: '4px 10px' }} onClick={() => verifyItem(item, 'approved')}>{t('handover.system.approve')}</button>{' '}
+                          <button className="btn" style={{ padding: '4px 10px' }} onClick={() => verifyItem(item, 'complete')}>{t('handover.system.complete')}</button>
                         </>
                       )}
                     </td>
@@ -319,13 +316,13 @@ export default function Handover() {
 
       {tab === 'assets' && (
         <>
-          <button className="btn btn-primary" style={{ marginBottom: 16 }} onClick={raiseAsset}><Plus size={16} />{locale === 'ar' ? 'أصل جديد' : 'New asset'}</button>
+          <button className="btn btn-primary" style={{ marginBottom: 16 }} onClick={raiseAsset}><Plus size={16} />{t('handover.system.newAsset')}</button>
           {assets.length === 0 ? (
-            <EmptyState icon={KeyRound} text={locale === 'ar' ? 'لا توجد أصول.' : 'No assets registered yet.'} />
+            <EmptyState icon={KeyRound} text={t('handover.system.noAssetsRegisteredYet')} />
           ) : (
             <div className="table-container">
               <table className="table">
-                <thead><tr><th>Code</th><th>{locale === 'ar' ? 'الاسم' : 'Name'}</th><th>Serial</th><th>{locale === 'ar' ? 'التشغيل' : 'Commissioned'}</th><th>{locale === 'ar' ? 'نهاية الضمان' : 'Warranty end'}</th><th>{t('common.actions')}</th></tr></thead>
+                <thead><tr><th>{t('handover.system.code')}</th><th>{t('handover.system.name')}</th><th>{t('handover.system.serial')}</th><th>{t('handover.system.commissioned')}</th><th>{t('handover.system.warrantyEnd')}</th><th>{t('common.actions')}</th></tr></thead>
                 <tbody>
                   {assets.map(a => (
                     <tr key={a.id}>
@@ -346,19 +343,19 @@ export default function Handover() {
 
       {tab === 'claims' && (
         <>
-          <button className="btn btn-primary" style={{ marginBottom: 16 }} onClick={raiseClaim}><Plus size={16} />{locale === 'ar' ? 'مطالبة جديدة' : 'New claim'}</button>
+          <button className="btn btn-primary" style={{ marginBottom: 16 }} onClick={raiseClaim}><Plus size={16} />{t('handover.system.newClaim')}</button>
           {claims.length === 0 ? (
-            <EmptyState icon={CheckCircle} text={locale === 'ar' ? 'لا مطالبات — السجل نظيف.' : 'No warranty claims — the DLP register is clean.'} />
+            <EmptyState icon={CheckCircle} text={t('handover.system.noWarrantyClaimsTheDlpRegisterIsClean')} />
           ) : (
             <div className="table-container">
               <table className="table">
-                <thead><tr><th>Claim</th><th>{locale === 'ar' ? 'العنوان' : 'Title'}</th><th>{locale === 'ar' ? 'الحالة' : 'Status'}</th><th>{locale === 'ar' ? 'الاستحقاق' : 'Due'}</th></tr></thead>
+                <thead><tr><th>{t('handover.system.claim')}</th><th>{t('handover.system.title')}</th><th>{t('handover.system.status')}</th><th>{t('handover.system.due')}</th></tr></thead>
                 <tbody>
                   {claims.map(c => (
                     <tr key={c.id}>
                       <td style={{ fontFamily: 'monospace', fontSize: 13 }}>{c.claim_number}</td>
                       <td style={{ fontWeight: 500 }}>{c.title}</td>
-                      <td><span className={`badge ${CLAIM_STATUS_BADGE[c.status]}`}>{c.status}</span></td>
+                      <td><span className={`badge ${CLAIM_STATUS_BADGE[c.status]}`}>{translateEnum(t, 'status', c.status)}</span></td>
                       <td>{fmtDate(c.due_date)}</td>
                     </tr>
                   ))}
@@ -426,12 +423,12 @@ export default function Handover() {
       </div>}
       <TextEntryDialog open={showClaimForm} title={t('common.dialogs.handoverClaimTitle')} label={t('common.dialogs.handoverClaimLabel')} onSubmit={createClaim} onCancel={() => setShowClaimForm(false)} />
       <div className="card" style={{ padding: 12, marginTop: 20 }}>
-        <h4 style={{ fontSize: 13, marginBottom: 8 }}>{locale === 'ar' ? 'المستندات' : 'Documents'}</h4>
+        <h4 style={{ fontSize: 13, marginBottom: 8 }}>{t('handover.system.documents')}</h4>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn" onClick={() => downloadPdf(`/api/handover/checklist/${id}/pdf`, 'checklist.pdf')}>Checklist PDF</button>
-          <button className="btn" onClick={() => downloadPdf(`/api/handover/assets/${id}/pdf`, 'assets.pdf')}>Asset register PDF</button>
-          <button className="btn" onClick={() => downloadPdf(`/api/handover/warranty-register/${id}/pdf`, 'warranty.pdf')}>Warranty register PDF</button>
-          <button className="btn" onClick={() => downloadPdf(`/api/handover/certificate/${id}/pdf`, 'certificate.pdf')}>Handover certificate</button>
+          <button className="btn" onClick={() => downloadPdf(`/api/handover/checklist/${id}/pdf`, 'checklist.pdf')}>{t('handover.system.checklistPdf')}</button>
+          <button className="btn" onClick={() => downloadPdf(`/api/handover/assets/${id}/pdf`, 'assets.pdf')}>{t('handover.system.assetRegisterPdf')}</button>
+          <button className="btn" onClick={() => downloadPdf(`/api/handover/warranty-register/${id}/pdf`, 'warranty.pdf')}>{t('handover.system.warrantyRegisterPdf')}</button>
+          <button className="btn" onClick={() => downloadPdf(`/api/handover/certificate/${id}/pdf`, 'certificate.pdf')}>{t('handover.system.handoverCertificate')}</button>
         </div>
       </div>
     </div>

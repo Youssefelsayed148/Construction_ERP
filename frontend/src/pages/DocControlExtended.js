@@ -1,3 +1,5 @@
+import { formatDate as sharedDate } from '../utils/formatters';
+import { translateEnum } from '../i18n/enums';
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 // Phase 21 — document control extended tabs: controlled registers,
 // transmittals, correspondence, cross-record search.
@@ -32,12 +34,7 @@ const downloadPdf = async (url, filename) => {
   URL.revokeObjectURL(a.href);
 };
 
-const fmtDate = (d) => {
-  if (!d) return '-';
-  const dt = new Date(d);
-  if (isNaN(dt.getTime())) return d;
-  return `${dt.getDate().toString().padStart(2, '0')}/${(dt.getMonth() + 1).toString().padStart(2, '0')}/${dt.getFullYear()}`;
-};
+const fmtDate = sharedDate;
 
 
 const TR_STATUS_BADGE = { draft: 'badge-info', sent: 'badge-warning', acknowledged: 'badge-success', closed: 'badge-info' };
@@ -90,34 +87,34 @@ export function RegisterTab({ projectId, locale, t }) {
     <div>
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
         <select className="form-select" style={{ maxWidth: 200 }} value={filter.doc_type} onChange={e => setFilter({ ...filter, doc_type: e.target.value })}>
-          <option value="">{locale === 'ar' ? 'كل الأنواع' : 'All types'}</option>
-          {['drawing', 'specification', 'contract', 'report', 'method_statement', 'as_built', 'o_m'].map(tp => <option key={tp} value={tp}>{tp.replace('_', ' ')}</option>)}
+          <option value="">{t('documentControl.system.allTypes')}</option>
+          {['drawing', 'specification', 'contract', 'report', 'method_statement', 'as_built', 'o_m'].map(tp => <option key={tp} value={tp}>{translateEnum(t, 'documentType', tp)}</option>)}
         </select>
         <select className="form-select" style={{ maxWidth: 200 }} value={filter.discipline} onChange={e => setFilter({ ...filter, discipline: e.target.value })}>
-          <option value="">{locale === 'ar' ? 'كل التخصصات' : 'All disciplines'}</option>
-          {['architectural', 'structural', 'civil', 'mechanical', 'electrical', 'plumbing', 'hvac', 'fire'].map(d => <option key={d} value={d}>{d}</option>)}
+          <option value="">{t('documentControl.system.allDisciplines')}</option>
+          {['architectural', 'structural', 'civil', 'mechanical', 'electrical', 'plumbing', 'hvac', 'fire'].map(d => <option key={d} value={d}>{translateEnum(t, 'discipline', d)}</option>)}
         </select>
         <select className="form-select" style={{ maxWidth: 200 }} value={filter.current} onChange={e => setFilter({ ...filter, current: e.target.value })}>
-          <option value="true">{locale === 'ar' ? 'الإصدار الحالي' : 'Current revisions'}</option>
-          <option value="">{locale === 'ar' ? 'كل الإصدارات' : 'All revisions'}</option>
+          <option value="true">{t('documentControl.system.currentRevisions')}</option>
+          <option value="">{t('documentControl.system.allRevisions')}</option>
         </select>
         <div style={{ flex: 1 }} />
-        <button className="btn btn-primary" onClick={openRegister}><Plus size={16} />{locale === 'ar' ? 'تسجيل مستند' : 'Register document'}</button>
+        <button className="btn btn-primary" onClick={openRegister}><Plus size={16} />{t('documentControl.system.registerDocument')}</button>
       </div>
       {registering && (
         <div className="card" style={{ marginBottom: 16 }}>
           <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
-            {locale === 'ar' ? 'اختر مستنداً لتسجيله — رقم مستند بصيغة PROJECT-DISCIPLINE-TYPE-SEQ-REV' : 'Pick a document to register — number format PROJECT-DISCIPLINE-TYPE-SEQ-REV'}
+            {t('documentControl.system.pickADocumentToRegisterNumberFormatProjectDisciplineType')}
           </p>
           {docs.filter(d => !d.doc_number).length === 0 ? (
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>{locale === 'ar' ? 'كل المستندات مسجلة.' : 'All documents are already registered.'}</p>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>{t('documentControl.system.allDocumentsAreAlreadyRegistered')}</p>
           ) : docs.filter(d => !d.doc_number).map(d => (
             <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--color-surface-raised)' }}>
               <span style={{ fontSize: 13 }}>{d.title} <span style={{ color: 'var(--color-text-secondary)' }}>({d.document_type})</span></span>
-              <button className="btn btn-primary" style={{ padding: '4px 10px' }} onClick={() => registerDoc(d)}>{locale === 'ar' ? 'تسجيل' : 'Register'}</button>
+              <button className="btn btn-primary" style={{ padding: '4px 10px' }} onClick={() => registerDoc(d)}>{t('documentControl.system.register')}</button>
             </div>
           ))}
-          <button className="btn" style={{ marginTop: 8 }} onClick={() => setRegistering(false)}>Close</button>
+          <button className="btn" style={{ marginTop: 8 }} onClick={() => setRegistering(false)}>{t('documentControl.system.close')}</button>
         </div>
       )}
       {loading ? (
@@ -125,7 +122,7 @@ export function RegisterTab({ projectId, locale, t }) {
       ) : rows.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <FileText size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
-          <p style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'السجل فارغ.' : 'The controlled register is empty.'}</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('documentControl.system.theControlledRegisterIsEmpty')}</p>
         </div>
       ) : (
         <div className="table-container">
@@ -140,7 +137,7 @@ export function RegisterTab({ projectId, locale, t }) {
             <tbody>
               {rows.map(d => (
                 <tr key={d.id}>
-                  <td style={{ fontFamily: 'monospace', fontSize: 13 }}>{d.doc_number}{!d.is_current && <span className="badge badge-danger" style={{ marginLeft: 6 }}><AlertTriangle size={10} /> superseded</span>}</td>
+                  <td style={{ fontFamily: 'monospace', fontSize: 13 }}>{d.doc_number}{!d.is_current && <span className="badge badge-danger" style={{ marginLeft: 6 }}><AlertTriangle size={10} />  {t('documentControl.system.superseded')}</span>}</td>
                   <td style={{ fontWeight: 500 }}>{d.title}</td>
                   <td>{t(`documentControl.register.types.${d.doc_type || d.document_type}`)}</td>
                   <td>{d.discipline || '-'}</td>
@@ -235,7 +232,7 @@ export function TransmittalsTab({ projectId, locale, t }) {
           {modalLoading && <p role="status">{t('documentControl.transmittalForm.loading')}</p>}
           {modalError && <p role="alert" className="alert alert-danger">{modalError}</p>}
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-primary" type="submit" disabled={modalLoading || Boolean(modalError)}>{t('common.save') || 'Save'}</button>
+            <button className="btn btn-primary" type="submit" disabled={modalLoading || Boolean(modalError)}>{t('common.save') || t('documentControl.system.save')}</button>
             <button className="btn" type="button" onClick={() => setShowModal(false)}>{t('common.cancel')}</button>
           </div>
         </form>
@@ -245,7 +242,7 @@ export function TransmittalsTab({ projectId, locale, t }) {
       ) : rows.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <Send size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
-          <p style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'لا توجد مذكرات إرسال.' : 'No transmittals.'}</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('documentControl.system.noTransmittals')}</p>
         </div>
       ) : (
         <div className="table-container">
@@ -259,16 +256,16 @@ export function TransmittalsTab({ projectId, locale, t }) {
               {rows.map(tr => (
                 <tr key={tr.id}>
                   <td style={{ fontFamily: 'monospace', fontSize: 13 }}>{tr.transmittal_number}</td>
-                  <td>{tr.direction === 'incoming' ? (locale === 'ar' ? 'واردة' : 'Incoming') : (locale === 'ar' ? 'صادرة' : 'Outgoing')}</td>
+                  <td>{tr.direction === 'incoming' ? (t('documentControl.transmittalForm.incoming')) : (t('documentControl.transmittalForm.outgoing'))}</td>
                   <td>{tr.recipient_organization_name || '-'}</td>
                   <td>{tr.purpose || '-'}</td>
                   <td>{tr.item_count || 0}</td>
                   <td>{fmtDate(tr.response_due)}</td>
-                  <td><span className={`badge ${TR_STATUS_BADGE[tr.status]}`}>{tr.status}</span></td>
+                  <td><span className={`badge ${TR_STATUS_BADGE[tr.status]}`}>{translateEnum(t, 'status', tr.status)}</span></td>
                   <td style={{ whiteSpace: 'nowrap' }}>
-                    {tr.status === 'draft' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(tr, 'sent')}><Send size={12} /> {locale === 'ar' ? 'إرسال' : 'Send'}</button>}
-                    {tr.status === 'sent' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(tr, 'acknowledged')}>{locale === 'ar' ? 'إقرار' : 'Acknowledge'}</button>}
-                    {(tr.status === 'sent' || tr.status === 'acknowledged') && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(tr, 'closed')}>{locale === 'ar' ? 'إغلاق' : 'Close'}</button>}
+                    {tr.status === 'draft' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(tr, 'sent')}><Send size={12} /> {t('documentControl.system.send')}</button>}
+                    {tr.status === 'sent' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(tr, 'acknowledged')}>{t('documentControl.system.acknowledge')}</button>}
+                    {(tr.status === 'sent' || tr.status === 'acknowledged') && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(tr, 'closed')}>{t('documentControl.system.close')}</button>}
                     <button className="btn" style={{ padding: '4px 10px' }} onClick={async () => {
                       const res = await apiFetch(`${API_URL}/docs/transmittals/${tr.id}/pdf`, { headers: headers() });
                       const blob = await res.blob();
@@ -357,21 +354,21 @@ export function CorrespondenceTab({ projectId, locale, t }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{locale === 'ar' ? 'مراسلة جديدة' : 'New Correspondence'}</button>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={16} />{t('documentControl.system.newCorrespondence')}</button>
       </div>
       {showModal && (
         <form className="card" onSubmit={submit} style={{ marginBottom: '16px', display: 'grid', gap: '10px', maxWidth: 560 }}>
           <div className="responsive-grid responsive-grid--two" style={{ gap: 10 }}>
             <select className="input" value={form.corr_type} onChange={e => setForm({ ...form, corr_type: e.target.value })}>
-              {Object.entries(CORR_TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              {Object.entries(CORR_TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{translateEnum(t, 'correspondenceType', k)}</option>)}
             </select>
-            <input className="input" type="date" title="Response due" value={form.response_due} onChange={e => setForm({ ...form, response_due: e.target.value })} />
+            <input className="input" type="date" title={t('documentControl.transmittalForm.responseDue')} value={form.response_due} onChange={e => setForm({ ...form, response_due: e.target.value })} />
           </div>
-          <input className="input" required placeholder={locale === 'ar' ? 'الموضوع' : 'Subject'} value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} />
-          <textarea className="input" rows={4} placeholder={locale === 'ar' ? 'المحتوى' : 'Body'} value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} />
+          <input className="input" required placeholder={t('documentControl.system.subject')} value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} />
+          <textarea className="input" rows={4} placeholder={t('documentControl.system.body')} value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} />
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-primary" type="submit">{t('common.save') || 'Save'}</button>
-            <button className="btn" type="button" onClick={() => setShowModal(false)}>Cancel</button>
+            <button className="btn btn-primary" type="submit">{t('common.save') || t('documentControl.system.save')}</button>
+            <button className="btn" type="button" onClick={() => setShowModal(false)}>{t('documentControl.system.cancel')}</button>
           </div>
         </form>
       )}
@@ -380,29 +377,29 @@ export function CorrespondenceTab({ projectId, locale, t }) {
       ) : rows.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <FileText size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
-          <p style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'لا توجد مراسلات.' : 'No correspondence.'}</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('documentControl.system.noCorrespondence')}</p>
         </div>
       ) : (
         <div className="table-container">
           <table className="table">
             <thead><tr>
-              <th>Ref</th><th>{locale === 'ar' ? 'النوع' : 'Type'}</th><th>{locale === 'ar' ? 'الموضوع' : 'Subject'}</th>
-              <th>Rev</th><th>{locale === 'ar' ? 'رد مستحق' : 'Response due'}</th><th>{locale === 'ar' ? 'الحالة' : 'Status'}</th><th>{t('common.actions')}</th>
+              <th>{t('documentControl.system.ref')}</th><th>{t('documentControl.register.type')}</th><th>{t('documentControl.system.subject')}</th>
+              <th>{t('documentControl.system.rev')}</th><th>{t('documentControl.system.responseDue')}</th><th>{t('documentControl.transmittalForm.status')}</th><th>{t('common.actions')}</th>
             </tr></thead>
             <tbody>
               {rows.map(c => (
                 <tr key={c.id}>
                   <td style={{ fontFamily: 'monospace', fontSize: 13 }}>{c.corr_number}</td>
-                  <td>{CORR_TYPE_LABEL[c.corr_type] || c.corr_type}</td>
+                  <td>{translateEnum(t, 'correspondenceType', c.corr_type)}</td>
                   <td>{c.subject}</td>
                   <td>{c.revision}</td>
                   <td>{fmtDate(c.response_due)}</td>
-                  <td><span className={`badge ${CORR_STATUS_BADGE[c.status]}`}>{c.status}</span></td>
+                  <td><span className={`badge ${CORR_STATUS_BADGE[c.status]}`}>{translateEnum(t, 'status', c.status)}</span></td>
                   <td style={{ whiteSpace: 'nowrap' }}>
-                    {c.status === 'draft' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(c, 'sent')}><Send size={12} /> {locale === 'ar' ? 'إرسال' : 'Send'}</button>}
-                    {c.status === 'sent' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(c, 'responded')}>{locale === 'ar' ? 'تم الرد' : 'Responded'}</button>}
-                    {(c.status === 'sent' || c.status === 'responded') && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(c, 'closed')}>{locale === 'ar' ? 'إغلاق' : 'Close'}</button>}
-                    {c.status !== 'closed' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => amend(c)}>{locale === 'ar' ? 'تعديل' : 'Amend'}</button>}
+                    {c.status === 'draft' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(c, 'sent')}><Send size={12} /> {t('documentControl.system.send')}</button>}
+                    {c.status === 'sent' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(c, 'responded')}>{t('documentControl.system.responded')}</button>}
+                    {(c.status === 'sent' || c.status === 'responded') && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => act(c, 'closed')}>{t('documentControl.system.close')}</button>}
+                    {c.status !== 'closed' && <button className="btn" style={{ padding: '4px 10px' }} onClick={() => amend(c)}>{t('documentControl.system.amend')}</button>}
                     <button className="btn" style={{ padding: '4px 10px' }} onClick={() => downloadPdf(`${API_URL}/docs/correspondence/${c.id}/pdf`, `${c.corr_number}.pdf`)}><Download size={14} /></button>
                   </td>
                 </tr>
@@ -418,7 +415,7 @@ export function CorrespondenceTab({ projectId, locale, t }) {
 
 // ============ CROSS-RECORD SEARCH ============
 
-export function DocSearchTab({ projectId, locale }) {
+export function DocSearchTab({ projectId, locale, t }) {
   const [term, setTerm] = useState('');
   const [results, setResults] = useState([]);
   const [searched, setSearched] = useState(false);
@@ -439,28 +436,28 @@ export function DocSearchTab({ projectId, locale }) {
   return (
     <div>
       <form onSubmit={run} style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <input className="input" placeholder={locale === 'ar' ? 'ابحث في المستندات والمذكرات والمراسلات وطلبات المعلومات والاعتمادات…' : 'Search documents, transmittals, correspondence, RFIs, submittals…'} value={term} onChange={e => setTerm(e.target.value)} style={{ flex: 1 }} />
-        <button className="btn btn-primary" type="submit"><Search size={16} />{locale === 'ar' ? 'بحث' : 'Search'}</button>
+        <input className="input" placeholder={t('documentControl.system.searchDocumentsTransmittalsCorrespondenceRfisSubmittals')} value={term} onChange={e => setTerm(e.target.value)} style={{ flex: 1 }} />
+        <button className="btn btn-primary" type="submit"><Search size={16} />{t('documentControl.system.search')}</button>
       </form>
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}><span className="spinner" /></div>
       ) : !searched ? (
         <p style={{ color: 'var(--color-text-secondary)', textAlign: 'center', padding: 40 }}>
-          {locale === 'ar' ? 'اكتب مصطلحاً للبحث عبر السجلات الحالية والتاريخية.' : 'Type a term to search across current and historical records.'}
+          {t('documentControl.system.typeATermToSearchAcrossCurrentAndHistoricalRecords')}
         </p>
       ) : results.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: 60 }}>
           <Search size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: 16 }} />
-          <p style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'لا نتائج.' : 'No results.'}</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('documentControl.system.noResults')}</p>
         </div>
       ) : (
         <div className="table-container">
           <table className="table">
-            <thead><tr><th>{locale === 'ar' ? 'النوع' : 'Record'}</th><th>{locale === 'ar' ? 'الرقم' : 'Number'}</th><th>{locale === 'ar' ? 'العنوان' : 'Title'}</th><th>{locale === 'ar' ? 'الحالة' : 'Status'}</th></tr></thead>
+            <thead><tr><th>{t('documentControl.system.record')}</th><th>{t('documentControl.system.number')}</th><th>{t('documentControl.register.title')}</th><th>{t('documentControl.transmittalForm.status')}</th></tr></thead>
             <tbody>
               {results.map(r => (
                 <tr key={`${r.record_type}-${r.id}`}>
-                  <td>{r.record_type}{r.record_type === 'document' && !r.is_current ? <span className="badge badge-danger" style={{ marginLeft: 6 }}>superseded</span> : null}</td>
+                  <td>{r.record_type}{r.record_type === 'document' && !r.is_current ? <span className="badge badge-danger" style={{ marginLeft: 6 }}>{t('documentControl.system.superseded')}</span> : null}</td>
                   <td style={{ fontFamily: 'monospace', fontSize: 13 }}>{r.number || '-'}</td>
                   <td>{r.title}</td>
                   <td>{r.status || '-'}</td>
