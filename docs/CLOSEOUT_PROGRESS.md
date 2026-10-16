@@ -1337,3 +1337,7 @@ Passwords now use built-in async `crypto.scrypt` with OWASP-listed N=32768/r=8/p
 - Final frontend CI: PASS 36/36 suites, 169/169 tests. `lint:api`: PASS 1/1 direct call across one file (R5 baseline 61 call sites / 41 files). i18n check PASS; parity PASS 36 namespaces / 1,432 English keys; production build compiled successfully.
 - R5.5 optional trial-balance endpoint remains unimplemented pending owner direction. Question and read-only, company/project-scoped aggregate proposal are recorded in `STATE.md`.
 - R5.6 scorecard: `docs/R5_SCORECARD.md`. No visual layout, RTL appearance, or real-browser check was run. React Testing Library is absent; existing React DOM harness covers all area renders and shared core interactions, not individual visual behavior. R4 scrypt c=50 full-app performance and direct Windows SIGTERM transport limitations remain documented.
+# Batch 1 housekeeping - 2026-10-16
+
+Reviewed the existing lint-guards fallback and Docker-context launcher tests. Added a focused comparison of git and git-less backend script scanning. Targeted password-guard tests PASS 1 suite / 9 tests; `lint:guards` PASS. Removed only the stray root file `tatus --short`. Housekeeping commit is separate; reconciliation and pagination tickets remain open.
+

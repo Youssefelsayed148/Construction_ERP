@@ -2277,3 +2277,9 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - `npm.cmd run test:ci -- --no-colors` in `frontend` with CI=true — PASS 36/36 suites, 169/169 tests. `npm.cmd run lint:api` — PASS 1/1 call across one file. `npm.cmd run i18n:check` — PASS. `npm.cmd run i18n:parity` — PASS 36 namespaces / 1,432 English keys. `npm.cmd run build` — PASS, optimized build compiled successfully.
 - R5.3 completed in `9c7dc27`; it covers the list screens in `docs/R4_PAGINATION_UI_IMPACT.md`. R5 scorecard is `docs/R5_SCORECARD.md`. Visual layout, RTL appearance, and real-browser behavior remain NOT VERIFIED. React Testing Library is absent; existing React DOM tests cover all ten admin area renders and shared interaction cases.
 - R5.5 trial-balance proposal is recorded in `STATE.md` and awaits owner direction; no endpoint was created. R4 scrypt and Windows signal limitations remain unchanged from `docs/R4_SCORECARD.md`.
+# 2026-10-16 - Batch 1 housekeeping
+
+- `npm.cmd test -- --runInBand --no-colors src/scripts/__tests__/script-passwords.test.js` - PASS 1 suite / 9 tests, including git-less fallback parity for backend script findings.
+- `npm.cmd run lint:guards` - PASS.
+- Removed the exact stray root file `tatus --short`; left `docs/REVIEW_REPORT_2026-10-14.md` and `docs/CODEX_AUDIT_REPORT.md` unstaged.
+- No full test suite was run. Reconciliation and pagination remain in progress.

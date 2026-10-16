@@ -1,3 +1,9 @@
+## Independent R4/R5 verification - 2026-10-15 - report committed as `b9a63d5`
+
+- Read-only review of HEAD `eba2d57`; report in `docs/R45_VERIFICATION.md`. Gates re-run fresh: mock 65/1,084, PG 84/1,896 at 130 migrations, frontend 36/169, i18n 36/1,432, golden 16/16, lint guards and build PASS; registry 601 routes / 592 fixtures / 9 exemptions / 0 pending; API guard fails on a deliberate violation (reverted).
+- Not holding: pagination contract not met by ~30 legacy list endpoints plus ~14 unbounded lists; HR/payroll/maintenance Load More repeats rows (backend ignores offset); `/v1/webhooks` pages by page/per_page; 9 missing admin EN/AR label keys. See the report's gap list for next actions.
+- No code changed. This STATE.md edit is uncommitted by instruction (only the report was to be committed).
+
 ## R5.4 administrative workspaces - 2026-10-15 - committed as `b5a90f5`
 
 - Added `/admin/:area` for all ten requested screen areas using shared loading/empty/error handling, field validation, submit locking/server errors, project scoping, and list load-more metadata. `Sidebar` now has an administration entry; child routes and links filter against allowed roles and policy modules/actions.
@@ -1074,4 +1080,11 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - Frontend CI `npm.cmd run test:ci -- --no-colors` (CI=true): PASS 36/36 suites, 169/169 tests. `lint:api`: PASS 1/1 direct API call / 1 file, down from 61 call sites / 41 files. i18n check: PASS. Parity: PASS 36 namespaces / 1,432 English keys. Optimized production build: PASS. Backend lint guards: PASS.
 - R5.6 scorecard is in `docs/R5_SCORECARD.md`; R4 findings and performance limits remain in `docs/R4_SCORECARD.md`. Visual layout, RTL appearance, and real-browser behavior are NOT VERIFIED; no browser check was run. React Testing Library is absent, so tests use the existing React DOM harness. AdminWorkspace tests cover renders for each requested area and shared interaction/permission cases; they do not assert individual visual behavior.
 - R5.5 owner decision waiting (optional item): Should we add a read-only trial-balance endpoint/view? No current HTTP endpoint exists. Proposal: provide a read-only, company/project-scoped view using aggregate SQL over existing journal entries and lines, returning account opening balance, period debits and credits, and closing balance with date and account filters; reuse existing journal data and authorization scope, and add no new ledger. Confirm the desired filter and output contract before implementation. No endpoint has been built.
+
+## Batch 1 - housekeeping checkpoint - 2026-10-16
+
+- Reviewed the existing `lint-guards.js` git-less fallback and launcher-test Docker-context adjustment. Added a focused regression comparing backend tracked-script findings with the fallback scan.
+- Targeted verification: `npm.cmd test -- --runInBand --no-colors src/scripts/__tests__/script-passwords.test.js` PASS 1 suite / 9 tests; `npm.cmd run lint:guards` PASS. No full suite was run.
+- Removed the exact untracked typo file `tatus --short`. Two audit reports remain untracked and must not be staged.
+- Housekeeping commit follows; Batch 1 tickets 1.1 and 1.2 remain in progress.
 

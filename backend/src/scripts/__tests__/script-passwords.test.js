@@ -18,10 +18,20 @@ describe('R0.1 launcher credentials', () => {
   test('no tracked shell script contains a literal password assignment', () => {
     expect(scanScriptPasswords()).toEqual({});
   });
-  test.each(scripts)('%s preserves the process DB_PASSWORD instead of assigning a literal', (file) => {
+  test('git-less fallback scans backend scripts and reports the same backend violations', () => {
+    const tracked = scanScriptPasswords();
+    const fallback = scanScriptPasswords({ forceFallback: true });
+    const backendTracked = Object.fromEntries(Object.entries(tracked)
+      .filter(([file]) => file.startsWith('backend/'))
+      .map(([file, count]) => [file.slice('backend/'.length), count]));
+    expect(fallback).toEqual(backendTracked);
+  });
+  // The backend Docker build context excludes repo-root launchers; they are verified in a full checkout/CI.
+  const launcherTest = (file) => (fs.existsSync(path.join(repo, file)) ? test : test.skip);
+  scripts.forEach((file) => launcherTest(file)(`${file} preserves the process DB_PASSWORD instead of assigning a literal`, () => {
     const source = fs.readFileSync(path.join(repo, file), 'utf8');
     // Assert a boolean so failing output never includes a credential.
     const overwritesPassword = /(?:\$env:DB_PASSWORD\s*=|\bset\s+"?DB_PASSWORD\s*=)/i.test(source);
     expect(overwritesPassword).toBe(false);
-  });
+  }));
 });

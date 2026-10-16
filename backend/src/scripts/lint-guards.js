@@ -43,13 +43,38 @@ function countLiteralPasswords(text) {
   }).length;
 }
 
-function scanScriptPasswords() {
-  const files = execFileSync('git', ['ls-files', '-z', '--', '*.bat', '*.cmd', '*.ps1', '*.sh'], {
-    cwd: repoDir, encoding: 'utf8', windowsHide: true,
-  }).split('\0').filter(Boolean);
+const SCRIPT_EXT = /\.(bat|cmd|ps1|sh)$/i;
+
+function walkScripts(dir, root, out = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === 'node_modules' || entry.name === '.git') continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) walkScripts(full, root, out);
+    else if (SCRIPT_EXT.test(entry.name)) out.push(path.relative(root, full));
+  }
+  return out;
+}
+
+// Tracked scripts come from git. Inside the Docker image build there is no git binary and no
+// repository (the build context is backend/ only), so fall back to walking the backend tree.
+function listScripts({ forceFallback = false } = {}) {
+  try {
+    if (forceFallback) throw new Error('git unavailable');
+    const files = execFileSync('git', ['ls-files', '-z', '--', '*.bat', '*.cmd', '*.ps1', '*.sh'], {
+      cwd: repoDir, encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'],
+    }).split('\0').filter(Boolean);
+    return { root: repoDir, files };
+  } catch (err) {
+    const backendDir = path.resolve(srcDir, '..');
+    return { root: backendDir, files: walkScripts(backendDir, backendDir) };
+  }
+}
+
+function scanScriptPasswords(options) {
+  const { root, files } = listScripts(options);
   const violations = {};
   for (const file of files) {
-    const absolute = path.join(repoDir, file);
+    const absolute = path.join(root, file);
     if (!fs.existsSync(absolute)) continue;
     const count = countLiteralPasswords(fs.readFileSync(absolute, 'utf8'));
     if (count) violations[file] = count;
