@@ -1,12 +1,12 @@
 # Stage 1: dev dependencies and the mock-DB test suite. The image build fails if a test fails.
-# decision-record.test.js checks docs/ at the repo root, which is outside this build context; CI runs it.
+# decision-record and compose-runtime-config need repo-root files outside this build context; CI runs them.
 FROM node:20-alpine AS test
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
 ENV JWT_SECRET=image-build-test-secret-longer-than-32-characters
-RUN npm run lint:guards && npm test -- --runInBand --testPathIgnorePatterns decision-record && touch /app/.tests-passed
+RUN npm run lint:guards && npm test -- --runInBand --testPathIgnorePatterns 'decision-record|compose-runtime-config' && touch /app/.tests-passed
 
 # Stage 2: production dependencies only.
 FROM node:20-alpine

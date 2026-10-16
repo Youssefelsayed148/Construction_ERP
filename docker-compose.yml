@@ -29,6 +29,8 @@ services:
       DB_USER: ${DB_USER:?Generate .env.docker first}
       DB_PASSWORD: ${DB_PASSWORD:?Generate .env.docker first}
       JWT_SECRET: ${JWT_SECRET:?Generate .env.docker first}
+      WEBHOOK_ENCRYPTION_KEY: ${WEBHOOK_ENCRYPTION_KEY:?Set a dedicated key in .env.docker}
+      WEBHOOK_ENCRYPTION_KEY_PREVIOUS: ${WEBHOOK_ENCRYPTION_KEY_PREVIOUS:-}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8090}
       CORS_ALLOW_HTTP_LOCAL: ${CORS_ALLOW_HTTP_LOCAL:-false}
       TRUST_PROXY: "1"

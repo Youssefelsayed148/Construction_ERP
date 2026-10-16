@@ -1399,3 +1399,13 @@ Reviewed the existing lint-guards fallback and Docker-context launcher tests. Ad
 ## Batch 4 checkpoint - 2026-10-16
 
 Implemented tickets 4.1–4.5; commits and per-ticket evidence are recorded in `docs/BATCH4_SCORECARD.md` and `docs/CLOSEOUT_LOG.md`. Final requested gates passed: backend mock 65/65 suites / 1,095 tests; PG `-All` 84/84 suites / 1,934 tests at 130 migrations; golden reconcile 16/16 with zero violations; lint guards and root build pass. The two-server retention proof passed. Windows direct OS SIGTERM remains NOT VERIFIED after the real process was terminated and its in-flight request reset. Full HTTP scrypt load completed with 0 errors/timeouts at 1/10/25/50 clients; c=50 p95 was 902.5 ms. The pilot was untouched. Required owner actions are listed in the scorecard.
+
+
+## Batch 4 hotfix 2 - implementation gate checkpoint - 2026-10-16
+
+Compose runtime regression: 6 FAIL before / 6 PASS after. lint:guards PASS; full mocks 66 suites / 1,102 tests PASS (+1 suite / +6 tests); backend-only Docker test stage 64 suites / 1,075 tests PASS; throwaway image removed. Both local webhook assignment counts are 1, key length validation PASS, configuration remains ignored. Pilot read-only baseline matches backup row counts and 130 migrations. Implementation commit and authorized service rebuild/verification follow; runtime recovery NOT VERIFIED yet. See CLOSEOUT_LOG.md for commands and exact container baseline.
+
+
+## Batch 4 hotfix 2 - STOP before commit/rebuild - 2026-10-16
+
+Pre-commit staged-diff check failed twice (exit 2, CRLF trailing-whitespace/full-file additions). Request stop rule applied; no third attempt, no commit, no pilot rebuild. Task files are being unstaged while preserving working files. Regression 6/6 PASS after initial 6 failures; lint guards PASS; mocks 66/1,102 PASS; Docker test target 64/1,075 PASS and image removed. Local webhook entries appended safely and ignored. Runtime recovery, post-rebuild counts/health/HTTP, and pilot reconciliation NOT VERIFIED. See STATE.md and CLOSEOUT_LOG.md for exact blocker, baseline evidence, and next action.
