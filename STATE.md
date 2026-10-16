@@ -1124,4 +1124,5 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - Latest focused PG route gate PASS: 1 suite / 42 tests, 130 migrations, 448 mounted GET routes / 0 server failures; throwaway container `erp-r02-gate-20261016161710` removed, exit 0. `node --check` passed. The pagination page-two/no-overlap/exact-total requirement now covers all requested 4b/4c collections. No application code changed in these final test additions.
 - Required batch gates (backend mock, full PG `-All`, golden reconciliation, lint guards, API lint, root build) passed earlier in this batch. Only focused PG test code and docs changed after those gates; the full suites were not repeated.
 - Batch 1 is functionally complete. Final verification/doc slice is pending commit; audit/review reports remain excluded from staging.
+- Final pagination coverage and evidence committed as `9696238`. The required Batch 1 implementation slices are committed (`4527166`, `c19c2e6`, `46f9e85`, `9696238`; state checkpoints are recorded separately). The remaining two untracked audit reports are intentionally excluded.
 
