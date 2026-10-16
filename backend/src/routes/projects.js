@@ -66,14 +66,14 @@ router.get('/', authenticate, authorize(), async (req, res) => {
 });
 
 // -- Wizard templates (registered before /:id so "templates" is not read as an id) --
-router.get('/templates', authenticate, authorize('owner', 'admin', 'project_manager'), async (req, res) => {
+router.get('/templates', authenticate, authorize(), async (req, res) => {
   try {
     const data = await query('SELECT id, key, name, project_type, description, is_active FROM project_templates WHERE is_active = true ORDER BY name');
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.get('/templates/:key', authenticate, authorize('owner', 'admin', 'project_manager'), async (req, res) => {
+router.get('/templates/:key', authenticate, authorize(), async (req, res) => {
   try {
     const t = await query('SELECT * FROM project_templates WHERE key = $1 AND is_active = true', [req.params.key]);
     if (t.rows.length === 0) return res.status(404).json({ success: false, error: 'Template not found' });
@@ -95,7 +95,7 @@ router.get('/templates/:key', authenticate, authorize('owner', 'admin', 'project
 
 // Explicit wizard route (works regardless of the flag) — the 11-step UI posts
 // here; the same transactional provisioning backs both endpoints.
-router.post('/wizard', authenticate, authorize('owner', 'admin', 'project_manager'), async (req, res) => {
+router.post('/wizard', authenticate, authorize(), async (req, res) => {
   return wizardCreate(req, res);
 });
 
@@ -123,7 +123,7 @@ router.get('/:id', authenticate, authorize(), async (req, res) => {
 // POST /api/projects — dispatcher. Legacy single-INSERT stays available while
 // the wizard flag is off; once PROJECT_CREATION_WIZARD is enabled the wizard
 // provisioning transaction takes over the same route.
-router.post('/', authenticate, authorize('owner', 'admin', 'project_manager'), async (req, res) => {
+router.post('/', authenticate, authorize(), async (req, res) => {
   if (wizardEnabled()) return wizardCreate(req, res);
   return legacyCreate(req, res);
 });
