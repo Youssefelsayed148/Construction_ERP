@@ -3,18 +3,19 @@ const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
-    const { search, client_type, is_active, limit = 100, offset = 0 } = req.query;
+    const { search, client_type, is_active } = req.query;
     let conditions = []; let params = []; let idx = 1;
     if (client_type) { conditions.push(`client_type = $${idx++}`); params.push(client_type); }
     if (is_active !== undefined) { conditions.push(`is_active = $${idx++}`); params.push(is_active === 'true'); }
     if (search) { conditions.push(`(code ILIKE $${idx} OR name_en ILIKE $${idx} OR name_ar ILIKE $${idx} OR contact_person ILIKE $${idx})`); params.push(`%${search}%`); idx++; }
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const dataResult = await query(`SELECT * FROM clients ${where} ORDER BY name_en LIMIT $${idx++} OFFSET $${idx}`, [...params, parseInt(limit), parseInt(offset)]);
+    const dataResult = await queryPaginated(req, res, query, { sql: `SELECT * FROM clients ${where}`, params, orderBy: [{ column: 'name_en' }] });
     res.json({ success: true, data: dataResult.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

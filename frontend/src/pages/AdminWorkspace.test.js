@@ -93,10 +93,10 @@ describe('R5 administrative workspaces', () => {
         element.dispatchEvent(new Event('input', { bubbles: true })); element.dispatchEvent(new Event('change', { bubbles: true }));
       }
     });
-    window.fetch.mockResolvedValueOnce(response(409, { error_code: 'database_conflict' }));
+    window.fetch.mockResolvedValueOnce(response(409, { error: { code: 'validation_error', message: 'Invalid request' } }));
     await act(async () => container.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
     expect(container.querySelector('form')).not.toBeNull();
-    expect(container.querySelector('[role="alert"]').textContent).toBe('errors.requestFailed');
+    expect(container.querySelector('[role="alert"]').textContent).toBe('errors.validation_error');
   });
 
   test('shows a newly created API token once and clears it when dismissed', async () => {

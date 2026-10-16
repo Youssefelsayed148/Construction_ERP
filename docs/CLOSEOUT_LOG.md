@@ -2283,3 +2283,18 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - `npm.cmd run lint:guards` - PASS.
 - Removed the exact stray root file `tatus --short`; left `docs/REVIEW_REPORT_2026-10-14.md` and `docs/CODEX_AUDIT_REPORT.md` unstaged.
 - No full test suite was run. Reconciliation and pagination remain in progress.
+
+## 2026-10-16 - Batch 1 data integrity and API contract
+
+- Reproduced the PO quantity reconciliation defect in a throwaway PostgreSQL fixture. Legacy aggregation returned stored `4/1` versus computed `9/2`: it included a cancelled delivery and failed to subtract a returned posted-GRN quantity. The corrected check excludes cancelled/voided deliveries, counts posted GRNs only, and sums accepted less returned quantity. No historical rows changed; no migration was needed. Focused PG PASS 1 suite / 15 tests, 130 migrations; `erp-r02-gate-20261016153705` removed.
+- Updated all 4b/4c list endpoints to shared pagination; HR employees now honors offset. `/api/v1/webhooks` accepts `limit`/`offset` and legacy `page`/`per_page`, returns `X-Total-Count`, and v1 page metadata respects the already-paginated route response. Admin parser handles the structured v1 error object. Documented finite reference and export/PDF exemptions.
+- Replaced heuristic pagination scan with mounted Express route enumeration, including nested child routes and a temporary injected unbounded-route assertion. Focused pagination/route audit PASS 2 suites / 8 tests; admin workspace regression PASS 1 suite / 27 tests. Focused PG GET route gate PASS 1 suite / 14 tests at 130 migrations, 448 routes / 0 server failures, `erp-r02-gate-20261016153848` removed. Page-two/no-overlap/total verified for assets, clients, suppliers, HR employees, notifications, and procurement project workspace. Other touched route families remain NOT VERIFIED for page-two behavior.
+- `docs/BATCH1_SCORECARD.md` records findings, results and outstanding gates. Full backend mock, full PG `-All`, golden reconciliation, `lint:api`, and root build are still pending.
+
+## 2026-10-16 - Batch 1 required exit gates
+
+- Backend mock `npm.cmd test -- --runInBand --no-colors` - PASS 65/65 suites / 1,087/1,087 tests.
+- Full throwaway PG `scripts/r02-pg-gate.ps1 -All -NoForceExit` - first run: 83/84 suites / 1,902/1,904 tests, v1 contract page-size assertion stale at 50 and a full-run-only route-probe failure. Updated the contract to 200; focused v1 contract PG PASS 1 suite / 10 tests. Final full PG: PASS 84/84 suites / 1,904/1,904 tests, 130 migrations, `erp-r02-gate-20261016154905` removed, exit 0. The v1 suite received one additional webhook pagination test after that full pass; that focused suite separately passed 1/1 / 10 tests with no application-code changes after the full pass.
+- Golden reconciliation `scripts/r02-pg-gate.ps1 -Reconcile` - PASS 16/16, zero violations, 130 migrations, container `erp-r02-gate-20261016154840` removed, exit 0.
+- `npm.cmd run lint:guards`, frontend `npm.cmd run lint:api`, and root `npm.cmd run build` - PASS. Build compiled successfully.
+- Scorecard: `docs/BATCH1_SCORECARD.md`. Page-two/no-overlap/total proof exists for assets, clients, suppliers, HR employees, notifications, procurement project workspace, and `/v1/webhooks`. Remaining touched route families are NOT VERIFIED for that specific PG behavior; do not mark Batch 1 complete until addressed.

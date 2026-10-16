@@ -7,6 +7,7 @@ const journal = require('../utils/journal');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const { typedFail } = require('../utils/typedRoute');
@@ -25,7 +26,7 @@ function computeInvoiceStatus(invoice, totalPaid) {
 
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
-    const { project_id, client_id, status, search, limit = 100, offset = 0 } = req.query;
+    const { project_id, client_id, status, search } = req.query;
     let conditions = []; let params = []; let idx = 1;
     if (project_id) { conditions.push(`i.project_id = $${idx++}`); params.push(parseInt(project_id)); }
     if (client_id) { conditions.push(`i.client_id = $${idx++}`); params.push(parseInt(client_id)); }
@@ -33,17 +34,17 @@ router.get('/', authenticate, authorize(), async (req, res) => {
     if (search) { conditions.push(`(i.invoice_number ILIKE $${idx} OR i.description ILIKE $${idx})`); params.push(`%${search}%`); idx++; }
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    const dataResult = await query(
-      `SELECT i.*, p.name_ar as project_name_ar, p.name_en as project_name_en, p.code as project_code,
+    const dataResult = await queryPaginated(req, res, query, {
+      sql: `SELECT i.*, p.name_ar as project_name_ar, p.name_en as project_name_en, p.code as project_code,
               c.name_ar as client_name_ar, c.name_en as client_name_en, c.code as client_code,
               COALESCE((SELECT SUM(pm.amount) FROM payments pm WHERE pm.invoice_id = i.id AND pm.voided_at IS NULL), 0) as total_paid
        FROM invoices i
        LEFT JOIN projects p ON i.project_id = p.id
        LEFT JOIN clients c ON i.client_id = c.id
-       ${where}
-       ORDER BY i.created_at DESC LIMIT $${idx++} OFFSET $${idx}`,
-      [...params, parseInt(limit), parseInt(offset)]
-    );
+       ${where}`,
+      params,
+      orderBy: [{ column: 'i.created_at', direction: 'DESC' }],
+    });
 
     const invoices = dataResult.rows;
     for (const inv of invoices) {

@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
 const notificationService = require('../services/notificationService');
-const { transaction } = require('../config/database');
+const { query, transaction } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { logActivity } = require('../utils/activity');
 const { auditedMutation } = require('../utils/auditedMutation');
 const Joi = require('joi');
@@ -12,12 +13,13 @@ const { typedFail } = require('../utils/typedRoute');
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
     const unreadOnly = req.query.unread === 'true';
-    const items = await notificationService.getNotifications(req.user.id, {
-      unreadOnly,
-      limit: req.query.limit,
+    const page = await queryPaginated(req, res, query, {
+      sql: `SELECT * FROM notifications WHERE user_id = $1${unreadOnly ? " AND status = 'unread'" : ''}`,
+      params: [req.user.id],
+      orderBy: [{ column: 'created_at', direction: 'DESC' }, { column: 'id', direction: 'DESC' }],
     });
     const count = await notificationService.unreadCount(req.user.id);
-    res.json({ success: true, data: items, unread: count });
+    res.json({ success: true, data: page.rows, unread: count });
   } catch (e) {
     console.error('Error listing notifications:', e);
     res.status(500).json({ success: false, error: e.message });
@@ -41,8 +43,14 @@ router.post('/:id/read', authenticate, authorize(), async (req, res) => {
 // GET /api/notifications/deliveries — delivery status for the signed-in user.
 router.get('/deliveries', authenticate, authorize(), async (req, res) => {
   try {
-    const items = await notificationService.getDeliveries(req.user.id, { limit: req.query.limit });
-    res.json({ success: true, data: items });
+    const page = await queryPaginated(req, res, query, {
+      sql: `SELECT id, user_id, channel, event_type, entity_type, entity_id, action_item_id, provider, status,
+            attempts, max_attempts, last_error_code, next_retry_at, created_at, updated_at
+       FROM notification_deliveries WHERE user_id = $1`,
+      params: [req.user.id],
+      orderBy: [{ column: 'created_at', direction: 'DESC' }, { column: 'id', direction: 'DESC' }],
+    });
+    res.json({ success: true, data: page.rows });
   } catch (error) { return typedFail(res, error, 'NOTIFICATION_DELIVERY_LIST', req); }
 });
 

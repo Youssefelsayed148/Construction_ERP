@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
+const { queryPaginated, paginateRows } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const svc = require('../services/procurementService');
@@ -30,16 +31,24 @@ const prLineSchema = Joi.object({
 router.get('/project/:projectId', authenticate, authorize(), async (req, res) => {
   try {
     const projectId = parseInt(req.params.projectId, 10);
+    // This workspace is a six-collection read model. Apply the same requested
+    // page to each list, and report the combined number of matching rows.
+    const paged = (sql, orderBy) => queryPaginated(req, { setHeader() {} }, query, {
+      sql, params: [projectId], orderBy,
+    });
     const [purchaseRequests, rfqs, purchaseOrders, deliveries, mirs, grns] = await Promise.all([
-      query('SELECT * FROM purchase_requests WHERE project_id = $1 ORDER BY created_at DESC, id DESC LIMIT 200', [projectId]),
-      query('SELECT * FROM rfqs WHERE project_id = $1 ORDER BY created_at DESC, id DESC LIMIT 200', [projectId]),
-      query('SELECT * FROM purchase_orders WHERE project_id = $1 ORDER BY created_at DESC, id DESC LIMIT 200', [projectId]),
-      query(`SELECT d.* FROM deliveries d JOIN purchase_orders po ON po.id = d.purchase_order_id
-        WHERE po.project_id = $1 ORDER BY d.created_at DESC, d.id DESC LIMIT 200`, [projectId]),
-      query('SELECT * FROM material_inspection_requests WHERE project_id = $1 ORDER BY created_at DESC, id DESC LIMIT 200', [projectId]),
-      query(`SELECT g.* FROM goods_receipt_notes g JOIN purchase_orders po ON po.id = g.purchase_order_id
-        WHERE po.project_id = $1 ORDER BY g.created_at DESC, g.id DESC LIMIT 200`, [projectId]),
+      paged('SELECT * FROM purchase_requests WHERE project_id = $1', [{ column: 'created_at', direction: 'DESC' }, { column: 'id', direction: 'DESC' }]),
+      paged('SELECT * FROM rfqs WHERE project_id = $1', [{ column: 'created_at', direction: 'DESC' }, { column: 'id', direction: 'DESC' }]),
+      paged('SELECT * FROM purchase_orders WHERE project_id = $1', [{ column: 'created_at', direction: 'DESC' }, { column: 'id', direction: 'DESC' }]),
+      paged(`SELECT d.* FROM deliveries d JOIN purchase_orders po ON po.id = d.purchase_order_id
+        WHERE po.project_id = $1`, [{ column: 'd.created_at', direction: 'DESC' }, { column: 'd.id', direction: 'DESC' }]),
+      paged('SELECT * FROM material_inspection_requests WHERE project_id = $1', [{ column: 'created_at', direction: 'DESC' }, { column: 'id', direction: 'DESC' }]),
+      paged(`SELECT g.* FROM goods_receipt_notes g JOIN purchase_orders po ON po.id = g.purchase_order_id
+        WHERE po.project_id = $1`, [{ column: 'g.created_at', direction: 'DESC' }, { column: 'g.id', direction: 'DESC' }]),
     ]);
+    res.setHeader('X-Total-Count', String(
+      purchaseRequests.total + rfqs.total + purchaseOrders.total + deliveries.total + mirs.total + grns.total
+    ));
     res.json({ success: true, data: {
       purchase_requests: purchaseRequests.rows,
       rfqs: rfqs.rows,
@@ -217,7 +226,9 @@ router.get('/rfq/:id/quotations/vendor/:supplierId', authenticate, authorize(), 
         return res.status(404).json({ success: false, error: 'Quotation not found' });
       }
     }
-    const mine = await svc.quotationsForVendor(query, rfqId, supplierId);
+    const allMine = await svc.quotationsForVendor(query, rfqId, supplierId);
+    const page = paginateRows(req, res, allMine, { orderBy: [{ column: 'id' }] });
+    const mine = page.rows;
     const lines = [];
     for (const quotation of mine) {
       lines.push(...(await query('SELECT * FROM supplier_quotation_lines WHERE quotation_id = $1', [quotation.id])).rows);
@@ -348,14 +359,15 @@ router.get('/invoices', authenticate, authorize(), async (req, res) => {
     if (req.accessScope && !req.accessScope.companyWide && !req.accessScope.projectIds.includes(projectId)) {
       return res.status(403).json({ success: false, error: 'Insufficient permissions', error_code: 'forbidden', error_params: {} });
     }
-    const rows = (await query(
-      `SELECT si.*, s.name_en AS supplier_name, po.project_id, po.order_number
+    const page = await queryPaginated(req, res, query, {
+      sql: `SELECT si.*, s.name_en AS supplier_name, po.project_id, po.order_number
          FROM supplier_invoices si
          JOIN purchase_orders po ON po.id = si.purchase_order_id
          LEFT JOIN suppliers s ON s.id = si.supplier_id
-        WHERE po.project_id = $1 ORDER BY si.created_at DESC, si.id DESC LIMIT 200`, [projectId]
-    )).rows;
-    res.json({ success: true, data: rows });
+        WHERE po.project_id = $1`, params: [projectId],
+      orderBy: [{ column: 'si.created_at', direction: 'DESC' }, { column: 'si.id', direction: 'DESC' }],
+    });
+    res.json({ success: true, data: page.rows });
   } catch (e) { return typedFail(res, e); }
 });
 router.post('/invoices/:id/workflow/start', authenticate, authorize(), async (req, res) => {

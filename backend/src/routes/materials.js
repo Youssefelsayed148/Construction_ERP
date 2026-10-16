@@ -245,8 +245,8 @@ router.get('/requirements', authenticate, authorize(), async (req, res) => {
     if (date_from) { conds.push(`mr.source_activity_date >= $${i++}`); p.push(date_from); }
     if (date_to) { conds.push(`mr.source_activity_date <= $${i++}`); p.push(date_to); }
     const where = conds.length ? ' WHERE ' + conds.join(' AND ') : '';
-    const rows = (await query(
-      `SELECT mr.*, im.code AS material_code, im.name_en AS material_name_en, im.name_ar AS material_name_ar,
+    const page = await queryPaginated(req, res, query, {
+      sql: `SELECT mr.*, im.code AS material_code, im.name_en AS material_name_en, im.name_ar AS material_name_ar,
               pl.name AS location_name, bi.code AS boq_item_code, bi.description AS boq_item_description,
               rec.name AS recipe_name
        FROM material_requirements mr
@@ -254,10 +254,11 @@ router.get('/requirements', authenticate, authorize(), async (req, res) => {
        LEFT JOIN project_locations pl ON pl.id = mr.project_location_id
        LEFT JOIN boq_items bi ON bi.id = mr.boq_item_id
        LEFT JOIN material_recipes rec ON rec.id = mr.recipe_id
-       ${where} ORDER BY mr.source_activity_date NULLS LAST, mr.id LIMIT 500`,
-      p
-    )).rows;
-    res.json({ success: true, data: rows });
+       ${where}`,
+      params: p,
+      orderBy: [{ column: 'mr.source_activity_date', direction: 'ASC' }, { column: 'mr.id' }],
+    });
+    res.json({ success: true, data: page.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -281,11 +282,13 @@ router.get('/replenishment/alerts', authenticate, authorize(), async (req, res) 
     if (req.query.alert_type) conds.push(`a.alert_type = $${p.push(req.query.alert_type)}`);
     if (req.query.material_id) conds.push(`a.material_id = $${p.push(parseInt(req.query.material_id, 10))}`);
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
-    const rows = (await query(
-      `SELECT a.*, im.code AS material_code, im.name_en AS material_name_en, im.name_ar AS material_name_ar
-         FROM replenishment_alerts a LEFT JOIN item_master im ON im.id = a.material_id ${where}
-        ORDER BY a.created_at DESC, a.id DESC LIMIT 500`, p)).rows;
-    res.json({ success: true, data: rows });
+    const page = await queryPaginated(req, res, query, {
+      sql: `SELECT a.*, im.code AS material_code, im.name_en AS material_name_en, im.name_ar AS material_name_ar
+         FROM replenishment_alerts a LEFT JOIN item_master im ON im.id = a.material_id ${where}`,
+      params: p,
+      orderBy: [{ column: 'a.created_at', direction: 'DESC' }, { column: 'a.id', direction: 'DESC' }],
+    });
+    res.json({ success: true, data: page.rows });
   } catch (e) { console.error('[MATERIALS] alerts', e); return replFail(res, 500, 'replenishment_error', e.message); }
 });
 

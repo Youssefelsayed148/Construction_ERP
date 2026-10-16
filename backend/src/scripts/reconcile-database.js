@@ -163,12 +163,14 @@ const CHECKS = Object.freeze([
       SELECT pol.id
         FROM purchase_order_lines pol
         LEFT JOIN (
-          SELECT purchase_order_line_id, SUM(quantity) AS quantity
-            FROM delivery_lines WHERE purchase_order_line_id IS NOT NULL
+          SELECT dl.purchase_order_line_id, SUM(dl.quantity) AS quantity
+            FROM delivery_lines dl JOIN deliveries d ON d.id = dl.delivery_id
+           WHERE dl.purchase_order_line_id IS NOT NULL
+             AND COALESCE(d.status, '') NOT IN ('cancelled', 'voided')
            GROUP BY purchase_order_line_id
         ) delivered ON delivered.purchase_order_line_id = pol.id
         LEFT JOIN (
-          SELECT gl.purchase_order_line_id, SUM(gl.quantity) AS quantity
+          SELECT gl.purchase_order_line_id, SUM(GREATEST(gl.quantity - COALESCE(gl.returned_quantity, 0), 0)) AS quantity
             FROM grn_lines gl JOIN goods_receipt_notes grn ON grn.id = gl.grn_id
            WHERE gl.purchase_order_line_id IS NOT NULL AND grn.status = 'posted'
            GROUP BY gl.purchase_order_line_id

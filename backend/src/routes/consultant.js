@@ -187,7 +187,9 @@ router.get('/rfis/:id/responses', authenticate, authorize(), async (req, res) =>
     const history = (await query(
       'SELECT * FROM rfi_responses WHERE rfi_id = $1 ORDER BY revision, created_at, id', [id.value]
     )).rows;
-    res.json({ success: true, data: { record: rfi, latest_response: history.at(-1) || null, history } });
+    const latestResponse = history.at(-1) || null;
+    const page = paginateRows(req, res, history, { orderBy: [{ column: 'revision' }, { column: 'id' }] });
+    res.json({ success: true, data: { record: rfi, latest_response: latestResponse, history: page.rows } });
   } catch (error) { return typedFail(res, error, 'CONSULTANT_RFI_HISTORY', req); }
 });
 
@@ -200,7 +202,9 @@ router.get('/submittals/:id/revisions', authenticate, authorize(), async (req, r
     const history = (await query(
       'SELECT * FROM submittal_revisions WHERE submittal_id = $1 ORDER BY revision_number, created_at, id', [id.value]
     )).rows;
-    res.json({ success: true, data: { record: submittal, latest_revision: history.at(-1) || null, history } });
+    const latestRevision = history.at(-1) || null;
+    const page = paginateRows(req, res, history, { orderBy: [{ column: 'revision_number' }, { column: 'id' }] });
+    res.json({ success: true, data: { record: submittal, latest_revision: latestRevision, history: page.rows } });
   } catch (error) { return typedFail(res, error, 'CONSULTANT_SUBMITTAL_HISTORY', req); }
 });
 

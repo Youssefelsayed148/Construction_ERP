@@ -36,6 +36,10 @@ Reviewer run: 2026-10-15, branch `closeout/batch-a-to-6`, HEAD `eba2d57`. Read-o
 | 5h | R5.3 paging wired on all flagged lists | complete | 34 of 37 pages contain a pager. For HR (employees, laborers, labor payments) and Payroll the page sends `offset`, but the backend ignores it (see 4b), so a second page repeats rows 1-200. The only paging test is the component test in `FormKit.test.js`; no page-level paging test. | `HR.js:109,372,569,786`; `hr.js:23,113,201,284` | FALSE |
 | 6 | Route registry 592/601, 9 exemptions, 0 pending | yes | `R2 mutation registry: 601 routes; 592 fixtures; 9 exemptions; 0 missing fixture (pending); 0 unregistered; 0 stale; 0 redundant`. The mutation-audit suite passes 1,188 tests. No `post/put/patch/delete` was added to routes or server.js since `d448d15`, and `audit-fixtures` is unchanged. | focused PG gate; `git diff d448d15 HEAD` | HOLDS |
 
+## Batch 1 remediation status - 2026-10-16
+
+Findings 4b/4c/5g pagination implementation and 4d route-regression test have been updated in this batch; see `docs/BATCH1_SCORECARD.md` for current command evidence. This dated audit baseline remains intact above. The route table regression passes, and actual PG page-two/no-overlap/total assertions now cover assets, clients, suppliers, HR employees, notifications, the procurement project workspace, and v1 webhooks. Page-two evidence for the other changed route families is still NOT VERIFIED.
+
 ## Gaps, ordered by risk
 
 1. **Unbounded and uncapped lists (4b, 4c).** `limit` is unvalidated on about 30 legacy endpoints (a large `limit` or a non-number reaches SQL), and 14 lists have no limit at all (`inventory/lots`, `approvals/pending`, variations, revisions). R4's "default 200, max 1,000, X-Total-Count everywhere" is not met, and the test that claims to guard it cannot see these routes.

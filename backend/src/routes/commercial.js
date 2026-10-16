@@ -101,8 +101,10 @@ router.post('/contracts', authenticate, authorize(), async (req, res) => {
 
 router.get('/variations/:projectId', authenticate, authorize(), async (req, res) => {
   try {
-    const data = (await query('SELECT * FROM variations WHERE project_id = $1 ORDER BY id', [req.params.projectId])).rows;
-    res.json({ success: true, data });
+    const page = await queryPaginated(req, res, query, {
+      sql: 'SELECT * FROM variations WHERE project_id = $1', params: [req.params.projectId], orderBy: [{ column: 'id' }],
+    });
+    res.json({ success: true, data: page.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -197,11 +199,11 @@ router.get('/project/:projectId/commercial', authenticate, authorize(), async (r
 // Legacy snapshots (audit trail of the three retired formulas).
 router.get('/project/:projectId/legacy-snapshots', authenticate, authorize(), async (req, res) => {
   try {
-    const data = (await query(
-      'SELECT * FROM commercial_snapshots WHERE project_id = $1 ORDER BY snapshot_type',
-      [req.params.projectId]
-    )).rows;
-    res.json({ success: true, data });
+    const page = await queryPaginated(req, res, query, {
+      sql: 'SELECT * FROM commercial_snapshots WHERE project_id = $1', params: [req.params.projectId],
+      orderBy: [{ column: 'snapshot_type' }],
+    });
+    res.json({ success: true, data: page.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -450,7 +452,11 @@ router.get('/payment-certificates', authenticate, authorize(), async (req, res) 
     const params = []; const conds = [];
     if (req.query.project_id) conds.push(`project_id = $${params.push(parseInt(req.query.project_id, 10))}`);
     if (req.query.status) conds.push(`status = $${params.push(req.query.status)}`);
-    res.json({ success: true, data: (await query(`SELECT * FROM payment_certificates ${conds.length ? `WHERE ${conds.join(' AND ')}` : ''} ORDER BY id DESC LIMIT 200`, params)).rows });
+    const page = await queryPaginated(req, res, query, {
+      sql: `SELECT * FROM payment_certificates ${conds.length ? `WHERE ${conds.join(' AND ')}` : ''}`,
+      params, orderBy: [{ column: 'id', direction: 'DESC' }],
+    });
+    res.json({ success: true, data: page.rows });
   } catch (e) { return fail(res, e); }
 });
 router.post('/payment-certificates/:id/start', authenticate, authorize(), async (req, res) => {

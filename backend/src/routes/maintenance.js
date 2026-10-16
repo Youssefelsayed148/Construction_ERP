@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { auditedMutation } = require('../utils/auditedMutation');
@@ -10,13 +11,13 @@ const { auditedMutation } = require('../utils/auditedMutation');
 // Maintenance Reminders (linked to assets)
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
-    const { asset_id, status, project_id, limit = 100 } = req.query;
+    const { asset_id, status, project_id } = req.query;
     let conds = []; let p = []; let i = 1;
     if (asset_id) { conds.push(`mr.asset_id = $${i++}`); p.push(parseInt(asset_id)); }
     if (status) { conds.push(`mr.status = $${i++}`); p.push(status); }
     if (project_id) { conds.push(`mr.project_id = $${i++}`); p.push(parseInt(project_id, 10)); }
     const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
-    const data = await query(`SELECT mr.*, a.code as asset_code, a.name_en as asset_name FROM maintenance_reminders mr LEFT JOIN assets a ON mr.asset_id = a.id ${w} ORDER BY scheduled_date DESC LIMIT $${i++}`, [...p, parseInt(limit)]);
+    const data = await queryPaginated(req, res, query, { sql: `SELECT mr.*, a.code as asset_code, a.name_en as asset_name FROM maintenance_reminders mr LEFT JOIN assets a ON mr.asset_id = a.id ${w}`, params: p, orderBy: [{ column: 'mr.scheduled_date', direction: 'DESC' }] });
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

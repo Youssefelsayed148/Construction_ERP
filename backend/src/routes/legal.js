@@ -3,18 +3,19 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
-    const { status, document_type, project_id, limit = 100, offset = 0 } = req.query;
+    const { status, document_type, project_id } = req.query;
     let conditions = []; let params = []; let idx = 1;
     if (status) { conditions.push(`status = $${idx++}`); params.push(status); }
     if (document_type) { conditions.push(`document_type = $${idx++}`); params.push(document_type); }
     if (project_id) { conditions.push(`project_id = $${idx++}`); params.push(parseInt(project_id, 10)); }
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const dataResult = await query(`SELECT * FROM legal_documents ${where} ORDER BY created_at DESC LIMIT $${idx++} OFFSET $${idx}`, [...params, parseInt(limit), parseInt(offset)]);
+    const dataResult = await queryPaginated(req, res, query, { sql: `SELECT * FROM legal_documents ${where}`, params, orderBy: [{ column: 'created_at', direction: 'DESC' }] });
     res.json({ success: true, data: dataResult.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

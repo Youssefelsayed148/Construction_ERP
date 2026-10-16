@@ -19,16 +19,17 @@ const actionService = require('../services/actionService');
 
 router.get('/:projectId/site-reports', authenticate, authorize(), async (req, res) => {
   try {
-    const { from, to, limit = 100, offset = 0 } = req.query;
+    const { from, to } = req.query;
     let conditions = ['sdr.project_id = $1']; let params = [req.params.projectId]; let idx = 2;
     if (from) { conditions.push(`sdr.report_date >= $${idx++}`); params.push(from); }
     if (to) { conditions.push(`sdr.report_date <= $${idx++}`); params.push(to); }
-    const result = await query(
-      `SELECT sdr.*, u.name as created_by_name FROM site_daily_reports sdr
+    const result = await queryPaginated(req, res, query, {
+      sql: `SELECT sdr.*, u.name as created_by_name FROM site_daily_reports sdr
        LEFT JOIN users u ON sdr.created_by = u.id
-       WHERE ${conditions.join(' AND ')} ORDER BY sdr.report_date DESC LIMIT $${idx++} OFFSET $${idx}`,
-      [...params, parseInt(limit), parseInt(offset)]
-    );
+       WHERE ${conditions.join(' AND ')}`,
+      params,
+      orderBy: [{ column: 'sdr.report_date', direction: 'DESC' }, { column: 'sdr.id', direction: 'DESC' }],
+    });
     res.json({ success: true, data: result.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

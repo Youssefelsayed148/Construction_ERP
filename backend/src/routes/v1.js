@@ -40,6 +40,20 @@ const { healthCheck, query, transaction, pool } = require('../config/database');
 const { poolMetrics } = require('../utils/poolMetrics');
 const { auditedMutation } = require('../utils/auditedMutation');
 const buildOpenApi = require('../utils/openapi');
+const { queryPaginated } = require('../utils/pagination');
+
+function webhookPaginationRequest(req) {
+  const query = { ...req.query };
+  if (query.limit == null && query.offset == null) {
+    if (query.page != null || query.per_page != null) {
+      const page = Math.max(1, Number.parseInt(query.page, 10) || 1);
+      const perPage = Math.min(1000, Math.max(1, Number.parseInt(query.per_page, 10) || 50));
+      query.limit = perPage;
+      query.offset = (page - 1) * perPage;
+    } else query.limit = 200;
+  }
+  return { ...req, query };
+}
 
 // Internal router modules, mounted in server.js (see route-inventory comments).
 const ROUTERS = {
@@ -686,7 +700,13 @@ function buildV1Router() {
     } catch (e) { next(e); }
   });
   api.get('/webhooks', authorize('owner', 'admin'), async (req, res, next) => {
-    try { res.json({ success: true, data: await webhookService.listWebhooks() }); } catch (e) { next(e); }
+    try {
+      const page = await queryPaginated(webhookPaginationRequest(req), res, query, {
+        sql: 'SELECT id, url, events, description, project_ids, is_active, created_by, created_at FROM webhooks',
+        orderBy: [{ column: 'id' }],
+      });
+      res.json({ success: true, data: page.rows });
+    } catch (e) { next(e); }
   });
   api.get('/webhooks/:id', authorize('owner', 'admin'), async (req, res, next) => {
     try {
@@ -765,8 +785,12 @@ function buildV1Router() {
   });
   api.get('/webhooks/:id/deliveries', authorize('owner', 'admin'), async (req, res, next) => {
     try {
-      const deliveries = await webhookService.listDeliveries(parseInt(req.params.id, 10));
-      res.json({ success: true, data: deliveries });
+      const page = await queryPaginated(webhookPaginationRequest(req), res, query, {
+        sql: 'SELECT * FROM webhook_deliveries WHERE webhook_id = $1',
+        params: [parseInt(req.params.id, 10)],
+        orderBy: [{ column: 'created_at', direction: 'DESC' }, { column: 'id', direction: 'DESC' }],
+      });
+      res.json({ success: true, data: page.rows });
     } catch (e) { next(e); }
   });
   api.post('/webhooks/deliveries/:deliveryId/redrive', authorize('owner', 'admin'), async (req, res, next) => {

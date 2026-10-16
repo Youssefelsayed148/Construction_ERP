@@ -12,12 +12,12 @@ const { auditedMutation } = require('../utils/auditedMutation');
 // -- Subcontractors --
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
-    const { search, is_active, limit = 100 } = req.query;
+    const { search, is_active } = req.query;
     let conds = []; let p = []; let i = 1;
     if (is_active !== undefined) { conds.push(`is_active = $${i++}`); p.push(is_active === 'true'); }
     if (search) { conds.push(`(code ILIKE $${i} OR name ILIKE $${i} OR name_en ILIKE $${i} OR name_ar ILIKE $${i})`); p.push(`%${search}%`); i++; }
     const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
-    const data = await query(`SELECT * FROM subcontractors ${w} ORDER BY name LIMIT $${i++}`, [...p, parseInt(limit)]);
+    const data = await queryPaginated(req, res, query, { sql: `SELECT * FROM subcontractors ${w}`, params: p, orderBy: [{ column: 'name' }] });
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

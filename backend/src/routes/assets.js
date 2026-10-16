@@ -4,6 +4,7 @@ const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 
@@ -16,19 +17,20 @@ router.get('/categories', authenticate, authorize(), (req, res) => {
 
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
-    const { category, equipment_type, status, search, limit = 100, offset = 0 } = req.query;
+    const { category, equipment_type, status, search } = req.query;
     let conds = []; let params = []; let idx = 1;
     if (category && EQUIPMENT_CATEGORIES.includes(category)) { conds.push(`a.category = $${idx++}`); params.push(category); }
     if (equipment_type && EQUIPMENT_TYPES.includes(equipment_type)) { conds.push(`a.equipment_type = $${idx++}`); params.push(equipment_type); }
     if (status) { conds.push(`a.status = $${idx++}`); params.push(status); }
     if (search) { conds.push(`(a.code ILIKE $${idx} OR a.name_en ILIKE $${idx} OR a.name_ar ILIKE $${idx})`); params.push(`%${search}%`); idx++; }
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
-    const data = await query(
-      `SELECT a.*, p.name_ar as current_project_name_ar, p.name_en as current_project_name_en
+    const data = await queryPaginated(req, res, query, {
+      sql: `SELECT a.*, p.name_ar as current_project_name_ar, p.name_en as current_project_name_en
        FROM assets a LEFT JOIN projects p ON a.current_project_id = p.id
-       ${where} ORDER BY a.category, a.code LIMIT $${idx++} OFFSET $${idx}`,
-      [...params, parseInt(limit), parseInt(offset)]
-    );
+       ${where}`,
+      params,
+      orderBy: [{ column: 'a.category' }, { column: 'a.code' }],
+    });
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -113,7 +115,10 @@ router.delete('/:id', authenticate, authorize(), async (req, res) => {
 // -- Assignments --
 router.get('/:id/assignments', authenticate, authorize(), async (req, res) => {
   try {
-    const data = await query('SELECT * FROM equipment_assignments WHERE equipment_id = $1 ORDER BY assigned_from DESC', [req.params.id]);
+    const data = await queryPaginated(req, res, query, {
+      sql: 'SELECT * FROM equipment_assignments WHERE equipment_id = $1', params: [req.params.id],
+      orderBy: [{ column: 'assigned_from', direction: 'DESC' }],
+    });
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -139,7 +144,10 @@ router.post('/:id/assignments', authenticate, authorize(), async (req, res) => {
 // -- Usage Logs --
 router.get('/:id/usage-logs', authenticate, authorize(), async (req, res) => {
   try {
-    const data = await query('SELECT * FROM equipment_usage_logs WHERE equipment_id = $1 ORDER BY log_date DESC', [req.params.id]);
+    const data = await queryPaginated(req, res, query, {
+      sql: 'SELECT * FROM equipment_usage_logs WHERE equipment_id = $1', params: [req.params.id],
+      orderBy: [{ column: 'log_date', direction: 'DESC' }],
+    });
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

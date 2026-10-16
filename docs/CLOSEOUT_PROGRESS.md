@@ -1341,3 +1341,16 @@ Passwords now use built-in async `crypto.scrypt` with OWASP-listed N=32768/r=8/p
 
 Reviewed the existing lint-guards fallback and Docker-context launcher tests. Added a focused comparison of git and git-less backend script scanning. Targeted password-guard tests PASS 1 suite / 9 tests; `lint:guards` PASS. Removed only the stray root file `tatus --short`. Housekeeping commit is separate; reconciliation and pagination tickets remain open.
 
+## Batch 1 implementation - 2026-10-16
+
+- Reconciliation root cause: old delivery aggregation included cancelled/voided delivery rows and old GRN aggregation counted the full posted receipt even after returned quantities. The seeded throwaway row reproduces stored 4 delivered / 1 accepted versus legacy aggregate 9 / 2. The check now excludes cancelled/voided deliveries, filters to posted GRNs, and subtracts returned quantity. No historical write or migration was required.
+- Pagination: all 4b/4c route groups were converted to shared query/row pagination. `/api/v1/webhooks` supports `limit`/`offset` plus legacy `page`/`per_page`; the v1 structured errors are parsed by the admin UI. The route test walks mounted Express stacks and includes nested `/:id/child` collections; the injected-route detector test passes. Exempt finite catalogues and generated files have reasons in `docs/R4_PAGINATION_UI_IMPACT.md`.
+- Focused mock/API tests PASS: pagination and route audit 2 suites / 8 tests; admin workspace 1 suite / 27 tests. Throwaway PG reconciliation regression PASS 1 suite / 15 tests. Throwaway PG route smoke PASS 1 suite / 14 tests, 130 migrations, 448 GET routes / 0 server errors, container `erp-r02-gate-20261016153848` removed. Actual page-two/no-overlap/total checks cover assets, clients, suppliers, HR employees, notifications, and procurement project workspace. Page-two coverage in other touched route families remains NOT VERIFIED.
+- Scorecard: `docs/BATCH1_SCORECARD.md`. Required final gates are pending; no result should be inferred from earlier R4 runs.
+
+## Batch 1 exit gates - 2026-10-16
+
+- Backend mock PASS 65/65 suites / 1,087/1,087 tests. Full PG gate PASS 84/84 suites / 1,904/1,904 tests at 130 migrations, container `erp-r02-gate-20261016154905` removed, exit 0. The stale v1 contract expected 50 rows; the focused and full gates pass after updating that expectation to the shared default 200. A newly added webhook PG test separately passes 1 suite / 10 tests.
+- Golden reconciliation PASS 16/16 with zero violations at 130 migrations, container `erp-r02-gate-20261016154840` removed. `lint:guards`, `lint:api`, and root build PASS.
+- Page-two/no-overlap/total PG verification is present for assets, clients, suppliers, HR employees, notifications, procurement project workspace, and v1 webhooks only. Remaining touched route-family page assertions are NOT VERIFIED; Batch 1 remains incomplete until addressed. See `docs/BATCH1_SCORECARD.md`.
+

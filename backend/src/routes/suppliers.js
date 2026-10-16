@@ -3,6 +3,7 @@ const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 const { reasonFrom } = require('../utils/reason');
@@ -11,7 +12,7 @@ const SPECIALTIES = ['concrete', 'steel', 'electrical', 'plumbing', 'wood', 'pai
 
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
-    const { search, specialty, is_active, limit = 100, offset = 0 } = req.query;
+    const { search, specialty, is_active } = req.query;
     let conditions = [];
     let params = [];
     let idx = 1;
@@ -32,10 +33,7 @@ router.get('/', authenticate, authorize(), async (req, res) => {
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const dataResult = await query(
-      `SELECT * FROM suppliers ${where} ORDER BY name_en LIMIT $${idx++} OFFSET $${idx}`,
-      [...params, parseInt(limit), parseInt(offset)]
-    );
+    const dataResult = await queryPaginated(req, res, query, { sql: `SELECT * FROM suppliers ${where}`, params, orderBy: [{ column: 'name_en' }] });
     res.json({ success: true, data: dataResult.rows });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -161,14 +159,11 @@ router.post('/:id/restore', authenticate, authorize(), async (req, res) => {
 // -- Supplied Materials (supplier <-> item_master link) --
 router.get('/:id/materials', authenticate, authorize(), async (req, res) => {
   try {
-    const data = await query(
-      `SELECT sm.*, im.code as material_code, im.name_ar as material_name_ar, im.name_en as material_name_en, im.unit
-       FROM supplier_materials sm
-       JOIN item_master im ON sm.material_id = im.id
-       WHERE sm.supplier_id = $1
-       ORDER BY im.name_en`,
-      [req.params.id]
-    );
+    const data = await queryPaginated(req, res, query, {
+      sql: `SELECT sm.*, im.code as material_code, im.name_ar as material_name_ar, im.name_en as material_name_en, im.unit
+       FROM supplier_materials sm JOIN item_master im ON sm.material_id = im.id WHERE sm.supplier_id = $1`,
+      params: [req.params.id], orderBy: [{ column: 'im.name_en' }],
+    });
     res.json({ success: true, data: data.rows });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

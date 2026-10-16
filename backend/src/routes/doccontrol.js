@@ -4,7 +4,7 @@ const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
-const { queryPaginated } = require('../utils/pagination');
+const { queryPaginated, paginateRows } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
@@ -50,7 +50,7 @@ router.post('/categories', authenticate, authorize(), async (req, res) => {
 
 router.get('/documents', authenticate, authorize(), async (req, res) => {
   try {
-    const { project_id, category_id, document_type, status, search, limit = 200, offset = 0 } = req.query;
+    const { project_id, category_id, document_type, status, search } = req.query;
     let conditions = []; let params = []; let idx = 1;
     if (project_id) { conditions.push(`d.project_id = $${idx++}`); params.push(project_id); }
     if (category_id) { conditions.push(`d.category_id = $${idx++}`); params.push(category_id); }
@@ -58,15 +58,16 @@ router.get('/documents', authenticate, authorize(), async (req, res) => {
     if (status) { conditions.push(`d.status = $${idx++}`); params.push(status); }
     if (search) { conditions.push(`(d.title ILIKE $${idx} OR d.description ILIKE $${idx})`); params.push(`%${search}%`); idx++; }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const result = await query(
-      `SELECT d.*, dc.name as category_name, u.name as uploaded_by_name, au.name as approved_by_name
+    const result = await queryPaginated(req, res, query, {
+      sql: `SELECT d.*, dc.name as category_name, u.name as uploaded_by_name, au.name as approved_by_name
        FROM project_documents d
        LEFT JOIN document_categories dc ON d.category_id = dc.id
        LEFT JOIN users u ON d.uploaded_by = u.id
        LEFT JOIN users au ON d.approved_by = au.id
-       ${where} ORDER BY d.updated_at DESC LIMIT $${idx++} OFFSET $${idx}`,
-      [...params, parseInt(limit), parseInt(offset)]
-    );
+       ${where}`,
+      params,
+      orderBy: [{ column: 'd.updated_at', direction: 'DESC' }],
+    });
     res.json({ success: true, data: result.rows.map((doc) => normalizeDateFields(doc, ['issue_date', 'review_due_date'])) });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -507,12 +508,16 @@ router.get('/documents/:id/revisions', authenticate, authorize(), async (req, re
   try {
     const doc = (await query('SELECT * FROM project_documents WHERE id = $1', [req.params.id])).rows[0];
     if (!doc) return res.status(404).json({ success: false, error: 'Document not found' });
-    const versions = (await query(
-      `SELECT dv.*, u.name as uploaded_by_name FROM document_versions dv
-       LEFT JOIN users u ON dv.uploaded_by = u.id WHERE dv.document_id = $1 ORDER BY dv.version_no DESC`,
+    const currentRevisionId = (await query(
+      'SELECT id FROM document_versions WHERE document_id = $1 AND is_current = true ORDER BY version_no DESC, id DESC LIMIT 1',
       [req.params.id]
-    )).rows;
-    res.json({ success: true, data: { document: doc, revisions: versions, current_revision_id: (versions.find(v => v.is_current) || {}).id || null } });
+    )).rows[0]?.id || null;
+    const page = await queryPaginated(req, res, query, {
+      sql: `SELECT dv.*, u.name as uploaded_by_name FROM document_versions dv
+       LEFT JOIN users u ON dv.uploaded_by = u.id WHERE dv.document_id = $1`,
+      params: [req.params.id], orderBy: [{ column: 'version_no', direction: 'DESC' }],
+    });
+    res.json({ success: true, data: { document: doc, revisions: page.rows, current_revision_id: currentRevisionId } });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -886,8 +891,11 @@ router.put('/numbering/:project_id', authenticate, authorize(), async (req, res)
 
 router.get('/search', authenticate, authorize(), async (req, res) => {
   try {
-    const { project_id, q: term, limit = 50 } = req.query;
-    if (!term || !term.trim()) return res.json({ success: true, data: [] });
+    const { project_id, q: term } = req.query;
+    if (!term || !term.trim()) {
+      const page = paginateRows(req, res, [], { orderBy: [{ column: 'id' }] });
+      return res.json({ success: true, data: page.rows });
+    }
     const like = `%${term.trim()}%`;
     const externalRoles = ['consultant', 'client', 'subcontractor', 'supplier'];
     const isExternal = externalRoles.includes(req.user.role);
@@ -900,8 +908,8 @@ router.get('/search', authenticate, authorize(), async (req, res) => {
        FROM project_documents d
        WHERE ($1::text IS NULL OR d.project_id::text = $1)
          AND (d.title ILIKE $2 OR d.description ILIKE $2 OR d.doc_number ILIKE $2 OR d.revision_code ILIKE $2)
-       ORDER BY d.created_at DESC LIMIT $3`,
-      [project_id || null, like, parseInt(limit, 10)]
+       ORDER BY d.created_at DESC`,
+      [project_id || null, like]
     );
     for (const d of docs.rows) {
       if (isExternal && !canExternalViewDocument(d, req.user.role)) continue;
@@ -943,7 +951,10 @@ router.get('/search', authenticate, authorize(), async (req, res) => {
     for (const s of subs.rows) {
       results.push({ record_type: 'submittal', id: s.id, number: s.submittal_number, title: s.title, type: 'submittal', status: s.status, created_at: s.created_at, url: `/projects/documents?submittal=${s.id}` });
     }
-    res.json({ success: true, data: results.slice(0, parseInt(limit, 10)) });
+    const page = paginateRows(req, res, results, {
+      orderBy: [{ column: 'created_at', direction: 'DESC' }, { column: 'record_type' }, { column: 'id' }],
+    });
+    res.json({ success: true, data: page.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 

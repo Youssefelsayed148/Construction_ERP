@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { query, transaction } = require('../config/database');
+const { paginateRows } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const policy = require('../services/policy');
 const workflowEngine = require('../services/workflowEngine');
@@ -302,7 +303,8 @@ router.get('/pending', authenticate, authorize(
     }
 
     const enriched = await enrichApprovalRows(result.rows.map(normalizeWorkflowApproval));
-    res.json({ success: true, count: enriched.length, requests: enriched });
+    const page = paginateRows(req, res, enriched, { orderBy: [{ column: 'updated_at', direction: 'DESC' }, { column: 'id' }] });
+    res.json({ success: true, count: page.total, requests: page.rows });
   } catch (error) {
     console.error('Error fetching pending approvals:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -452,13 +454,12 @@ router.get('/my-requests', authenticate, authorize(), async (req, res) => {
 // GET /api/approvals/audit
 router.get('/audit', authenticate, authorize('owner', 'admin'), async (req, res) => {
   try {
-    const { limit = 100, module_name, status } = req.query;
+    const { module_name, status } = req.query;
     let conditions = [`${WORKFLOW_STATUS_SQL} != 'pending'`];
     const params = [];
     let idx = 1;
     if (module_name && module_name !== 'all') { conditions.push(`ar.module_name = $${idx++}`); params.push(module_name); }
     if (status && status !== 'all') { conditions.push(`${WORKFLOW_STATUS_SQL} = $${idx++}`); params.push(status); }
-    params.push(limit);
     const result = await query(`
       SELECT ar.*, ${WORKFLOW_APPROVAL_FIELDS},
              requester.name as requester_name, requester.email as requester_email, requester.role as requester_role,
@@ -469,9 +470,11 @@ router.get('/audit', authenticate, authorize('owner', 'admin'), async (req, res)
       LEFT JOIN users requester ON ar.requester_id = requester.id
       LEFT JOIN users approver ON approver.id = CASE WHEN wi.status IN ('approved', 'rejected') THEN latest_decision.user_id ELSE ar.approver_id END
       LEFT JOIN users manager ON manager.id = COALESCE(manager_action.user_id, ar.manager_id)
-      WHERE ${conditions.join(' AND ')} ORDER BY COALESCE(wi.updated_at, ar.updated_at) DESC LIMIT $${idx}
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY COALESCE(wi.updated_at, ar.updated_at) DESC, ar.id DESC
     `, params);
-    const enriched = await enrichApprovalRows(result.rows.map(normalizeWorkflowApproval));
+    const page = paginateRows(req, res, result.rows, { orderBy: [{ column: 'id' }], preserveOrder: true });
+    const enriched = await enrichApprovalRows(page.rows.map(normalizeWorkflowApproval));
     res.json({ success: true, count: enriched.length, records: enriched });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

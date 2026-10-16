@@ -9,6 +9,7 @@ const { authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
 const Joi = require('joi');
 const { query } = require('../config/database');
+const { paginateRows } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 const lots = require('../services/inventoryLots');
@@ -78,7 +79,8 @@ router.get('/lots/expiring', authenticate, authorize(), async (req, res) => {
     });
     const wh = (await query('SELECT id, project_id FROM warehouses')).rows;
     const projectOf = new Map(wh.map((w) => [w.id, w.project_id]));
-    res.json({ success: true, data: scopeRows(req, rows.map((r) => ({ ...r, project_id: projectOf.get(r.warehouse_id) ?? null }))), within_days: withinDays });
+    const scoped = scopeRows(req, rows.map((r) => ({ ...r, project_id: projectOf.get(r.warehouse_id) ?? null })));
+    res.json({ success: true, data: paginateRows(req, res, scoped, { orderBy: [{ column: 'expiry_date' }, { column: 'lot_id' }], tieBreaker: 'lot_id' }).rows, within_days: withinDays });
   } catch (e) { return fail(res, e); }
 });
 
@@ -90,7 +92,8 @@ router.get('/lots', authenticate, authorize(), async (req, res) => {
     });
     const wh = (await query('SELECT id, project_id FROM warehouses')).rows;
     const projectOf = new Map(wh.map((w) => [w.id, w.project_id]));
-    res.json({ success: true, data: scopeRows(req, rows.map((r) => ({ ...r, project_id: projectOf.get(r.warehouse_id) ?? null }))) });
+    const scoped = scopeRows(req, rows.map((r) => ({ ...r, project_id: projectOf.get(r.warehouse_id) ?? null })));
+    res.json({ success: true, data: paginateRows(req, res, scoped, { orderBy: [{ column: 'lot_id' }], tieBreaker: 'lot_id' }).rows });
   } catch (e) { return fail(res, e); }
 });
 

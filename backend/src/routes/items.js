@@ -3,6 +3,7 @@ const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 const { reasonFrom } = require('../utils/reason');
@@ -50,7 +51,7 @@ router.get('/categories', authenticate, authorize(), (req, res) => {
 
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
-    const { category, sub_category, search, is_active, limit = 100, offset = 0 } = req.query;
+    const { category, sub_category, search, is_active } = req.query;
     // Soft-deleted items are hidden unless asked for (include_deleted=true).
     let conditions = [];
     let params = [];
@@ -76,15 +77,8 @@ router.get('/', authenticate, authorize(), async (req, res) => {
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const filterParams = [...params];
-    params.push(parseInt(limit), parseInt(offset));
-
-    const [dataResult, countResult] = await Promise.all([
-      query(`SELECT * FROM item_master ${where} ORDER BY category, sub_category, code LIMIT $${idx++} OFFSET $${idx}`, params),
-      query(`SELECT COUNT(*) as total FROM item_master ${where}`, filterParams)
-    ]);
-
-    res.json({ success: true, data: dataResult.rows, meta: { total: parseInt(countResult.rows[0].total), limit: parseInt(limit), offset: parseInt(offset) } });
+    const page = await queryPaginated(req, res, query, { sql: `SELECT * FROM item_master ${where}`, params, orderBy: [{ column: 'category' }, { column: 'sub_category' }, { column: 'code' }] });
+    res.json({ success: true, data: page.rows, meta: { total: page.total, limit: page.limit, offset: page.offset } });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -102,14 +96,11 @@ router.get('/:id', authenticate, authorize(), async (req, res) => {
 
 router.get('/:id/suppliers', authenticate, authorize(), async (req, res) => {
   try {
-    const data = await query(
-      `SELECT sm.*, s.code as supplier_code, s.name_ar as supplier_name_ar, s.name_en as supplier_name_en
-       FROM supplier_materials sm
-       JOIN suppliers s ON sm.supplier_id = s.id
-       WHERE sm.material_id = $1
-       ORDER BY s.name_en`,
-      [req.params.id]
-    );
+    const data = await queryPaginated(req, res, query, {
+      sql: `SELECT sm.*, s.code as supplier_code, s.name_ar as supplier_name_ar, s.name_en as supplier_name_en
+       FROM supplier_materials sm JOIN suppliers s ON sm.supplier_id = s.id WHERE sm.material_id = $1`,
+      params: [req.params.id], orderBy: [{ column: 's.name_en' }],
+    });
     res.json({ success: true, data: data.rows });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

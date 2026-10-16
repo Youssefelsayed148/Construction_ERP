@@ -312,8 +312,8 @@ const ERROR_CODES = {
 };
 
 // Pagination/filter/sort query: ?page=1&per_page=50&sort=-created_at&filter[status]=open
-const LIST_DEFAULTS = { page: 1, per_page: 50 };
-const MAX_PER_PAGE = 200;
+const LIST_DEFAULTS = { page: 1, per_page: 200 };
+const MAX_PER_PAGE = 1000;
 
 function parseListQuery(query = {}) {
   const page = Math.max(1, parseInt(query.page, 10) || 1);
@@ -386,6 +386,17 @@ function normalizeResponses(req, res, next) {
     }
     if (req.method === 'GET' && payload && payload.success !== false && Array.isArray(payload.data)) {
       const listQuery = parseListQuery(req.query);
+      const totalHeader = typeof res.getHeader === 'function' ? res.getHeader('X-Total-Count') : null;
+      if (totalHeader != null) {
+        const total = Number(totalHeader) || 0;
+        const limit = Math.min(1000, Math.max(1, Number(req.query.limit || req.query.per_page) || listQuery.per_page));
+        const offset = req.query.offset != null
+          ? Math.max(0, Number(req.query.offset) || 0)
+          : (listQuery.page - 1) * (req.query.per_page ? listQuery.per_page : limit);
+        const page = Math.floor(offset / limit) + 1;
+        const perPage = limit;
+        return originalJson({ ...payload, meta: { page, per_page: perPage, total, total_pages: Math.ceil(total / perPage) } });
+      }
       const { data, meta } = applyListQuery(payload.data, listQuery);
       return originalJson({ ...payload, data, meta });
     }

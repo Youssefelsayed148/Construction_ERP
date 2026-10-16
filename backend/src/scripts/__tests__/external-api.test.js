@@ -678,7 +678,8 @@ describe('v1 list query: pagination / filter / sort', () => {
   test('parses and clamps page/per_page', () => {
     const lq = v1.parseListQuery({ page: '0', per_page: '9999' });
     expect(lq.page).toBe(1);
-    expect(lq.per_page).toBe(200);
+    expect(lq.per_page).toBe(1000);
+    expect(v1.parseListQuery({})).toMatchObject({ page: 1, per_page: 200 });
     const lq2 = v1.parseListQuery({ page: '3', per_page: '10', sort: '-created_at', 'filter[status]': 'open' });
     expect(lq2).toMatchObject({ page: 3, per_page: 10, sort: '-created_at', filters: { status: 'open' } });
   });
@@ -716,6 +717,19 @@ describe('v1 list query: pagination / filter / sort', () => {
     res.json({ success: true, data: [1, 2, 3, 4, 5] });
     expect(out.data).toEqual([3, 4]);
     expect(out.meta).toEqual({ page: 2, per_page: 2, total: 5, total_pages: 3 });
+  });
+
+  test('normalizeResponses preserves a route-paginated page and uses its total header', () => {
+    const req = { method: 'GET', query: { limit: '2', offset: '2' }, correlationId: 'c', headers: {} };
+    const res = makeRes();
+    res.headers['X-Total-Count'] = '9';
+    res.getHeader = (name) => res.headers[name];
+    let out = null;
+    res.json = (payload) => { out = payload; return res; };
+    v1.normalizeResponses(req, res, () => {});
+    res.json({ success: true, data: ['already-page-2-a', 'already-page-2-b'] });
+    expect(out.data).toEqual(['already-page-2-a', 'already-page-2-b']);
+    expect(out.meta).toEqual({ page: 2, per_page: 2, total: 9, total_pages: 5 });
   });
 });
 

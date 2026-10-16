@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const finance = require('../services/financeEngine');
@@ -36,25 +37,25 @@ async function recalcInvoiceStatus(q, invoiceId) {
 
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
-    const { project_id, client_id, invoice_id, limit = 100, offset = 0 } = req.query;
+    const { project_id, client_id, invoice_id } = req.query;
     let conditions = []; let params = []; let idx = 1;
     if (project_id) { conditions.push(`p.project_id = $${idx++}`); params.push(parseInt(project_id)); }
     if (client_id) { conditions.push(`p.client_id = $${idx++}`); params.push(parseInt(client_id)); }
     if (invoice_id) { conditions.push(`p.invoice_id = $${idx++}`); params.push(parseInt(invoice_id)); }
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    const dataResult = await query(
-      `SELECT p.*, c.name_ar as client_name_ar, c.name_en as client_name_en, c.code as client_code,
+    const dataResult = await queryPaginated(req, res, query, {
+      sql: `SELECT p.*, c.name_ar as client_name_ar, c.name_en as client_name_en, c.code as client_code,
               pr.name_ar as project_name_ar, pr.name_en as project_name_en, pr.code as project_code,
               COALESCE(i.invoice_number, '') as invoice_number
        FROM payments p
        LEFT JOIN clients c ON p.client_id = c.id
        LEFT JOIN projects pr ON p.project_id = pr.id
        LEFT JOIN invoices i ON p.invoice_id = i.id
-       ${where}
-       ORDER BY p.payment_date DESC, p.created_at DESC LIMIT $${idx++} OFFSET $${idx}`,
-      [...params, parseInt(limit), parseInt(offset)]
-    );
+       ${where}`,
+      params,
+      orderBy: [{ column: 'p.payment_date', direction: 'DESC' }, { column: 'p.created_at', direction: 'DESC' }],
+    });
     res.json({ success: true, data: dataResult.rows });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { isReferenceViolation, recordInUse } = require('../utils/references');
 const { logActivity } = require('../utils/activity');
@@ -11,13 +12,13 @@ const costAccrual = require('../services/costAccrual');
 
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
-    const { month, year, status, limit = 50 } = req.query;
+    const { month, year, status } = req.query;
     let conds = []; let p = []; let i = 1;
     if (month) { conds.push(`month = $${i++}`); p.push(parseInt(month)); }
     if (year) { conds.push(`year = $${i++}`); p.push(parseInt(year)); }
     if (status) { conds.push(`status = $${i++}`); p.push(status); }
     const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
-    const data = await query(`SELECT * FROM payroll_periods ${w} ORDER BY year DESC, month DESC LIMIT $${i++}`, [...p, parseInt(limit)]);
+    const data = await queryPaginated(req, res, query, { sql: `SELECT * FROM payroll_periods ${w}`, params: p, orderBy: [{ column: 'year', direction: 'DESC' }, { column: 'month', direction: 'DESC' }] });
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

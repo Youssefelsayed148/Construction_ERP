@@ -82,12 +82,16 @@ router.post('/tokens/:id/revoke', authenticate, authorize('owner', 'admin'), asy
 
 router.get('/sessions', authenticate, authorize('owner', 'admin'), async (req, res) => {
   try {
-    const sessions = await auditedTransaction((q) => q(
-      `SELECT s.id, s.user_id, u.name AS user_name, u.role AS user_role, s.client_name, s.status,
+    const sessions = await auditedTransaction(async (q) => {
+      const page = await queryPaginated(req, res, q, {
+        sql: `SELECT s.id, s.user_id, u.name AS user_name, u.role AS user_role, s.client_name, s.status,
               s.created_at, s.last_seen_at, s.expires_at, s.ended_at
        FROM agent_sessions s JOIN users u ON u.id = s.user_id
-       ORDER BY s.last_seen_at DESC LIMIT 500`
-    ), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'read', module: 'agents',
+       `,
+        orderBy: [{ column: 's.last_seen_at', direction: 'DESC' }, { column: 's.id', direction: 'DESC' }],
+      });
+      return { rows: page.rows };
+    }, (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'read', module: 'agents',
       description: 'Read agent sessions', entityType: 'agent_session' }));
     res.json({ success: true, data: sessions.rows });
   } catch (error) { return typedFail(res, error, 'AGENT_SESSION_LIST', req); }
@@ -114,13 +118,13 @@ router.post('/sessions/:id/status', authenticate, authorize('owner', 'admin'), a
 // Every tool call (audit trail) ----------------------------------------------
 router.get('/activity', authenticate, authorize('owner', 'admin'), async (req, res) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
-    const calls = (await query(
-      `SELECT c.*, u.name as user_name
+    const page = await queryPaginated(req, res, query, {
+      sql: `SELECT c.*, u.name as user_name
        FROM agent_tool_calls c LEFT JOIN users u ON c.user_id = u.id
-       ORDER BY c.created_at DESC LIMIT $1`, [limit]
-    )).rows;
-    res.json({ success: true, data: calls });
+       `,
+      orderBy: [{ column: 'c.created_at', direction: 'DESC' }, { column: 'c.id', direction: 'DESC' }],
+    });
+    res.json({ success: true, data: page.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -132,15 +136,15 @@ router.get('/requests', authenticate, authorize('owner', 'admin', 'finance_manag
     let where = ' WHERE 1 = 1'; const params = [];
     if (status === 'pending') where = " WHERE r.decision IS NULL AND r.execution_status = 'awaiting_approval'";
     else if (status === 'draft') where = " WHERE r.execution_status = 'draft' AND r.decision IS NULL";
-    params.push(Math.min(parseInt(req.query.limit, 10) || 100, 500));
-    const rows = (await query(
-      `SELECT r.*, ru.name as requesting_user_name, au.name as approver_name
+    const page = await queryPaginated(req, res, query, {
+      sql: `SELECT r.*, ru.name as requesting_user_name, au.name as approver_name
        FROM agent_action_requests r
        LEFT JOIN users ru ON r.requesting_user_id = ru.id
-       LEFT JOIN users au ON r.approver_user_id = au.id${where}
-       ORDER BY r.created_at DESC LIMIT $${params.length}`, params
-    )).rows;
-    res.json({ success: true, data: rows });
+       LEFT JOIN users au ON r.approver_user_id = au.id${where}`,
+      params,
+      orderBy: [{ column: 'r.created_at', direction: 'DESC' }, { column: 'r.id', direction: 'DESC' }],
+    });
+    res.json({ success: true, data: page.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 

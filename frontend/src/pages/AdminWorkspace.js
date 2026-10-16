@@ -74,7 +74,16 @@ export const ADMIN_AREAS = {
 async function parseResponse(response) {
   let body;
   try { body = await response.json(); } catch { body = {}; }
-  if (!response.ok) throw new ApiError({ status: response.status, code: body.error_code, message: body.error, params: body.error_params, data: body });
+  if (!response.ok) {
+    const error = body.error && typeof body.error === 'object' ? body.error : {};
+    throw new ApiError({
+      status: response.status,
+      code: body.error_code || error.error_code || error.code,
+      message: typeof body.error === 'string' ? body.error : error.message,
+      params: body.error_params || error.error_params,
+      data: body,
+    });
+  }
   return { body, totalCount: parseTotalCount(response.headers) };
 }
 

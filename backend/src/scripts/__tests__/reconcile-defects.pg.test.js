@@ -298,6 +298,96 @@ describePg('reconciliation seeded defects (real PostgreSQL)', () => {
     expect(violations).toBe(1);
   });
 
+  test('reconciles multiple partial receipts, rejected and returned quantity, excluding cancelled delivery and voided GRN', async () => {
+    const violations = await withTransaction(async (client) => {
+      const before = await violationCount(client, 'PO delivered and accepted quantities reconcile');
+      const projectId = await createProject(client, 'PARTIAL');
+      const material = (await client.query('SELECT id FROM item_master WHERE code = $1', ['RM-CONC-C35'])).rows[0];
+      const poId = (await client.query(
+        `INSERT INTO purchase_orders (order_number, project_id, material_id, quantity)
+         VALUES ($1, $2, $3, 8) RETURNING id`, [`RD-PO-P-${tag}-${sequence}`, projectId, material.id]
+      )).rows[0].id;
+      const lineId = (await client.query(
+        `INSERT INTO purchase_order_lines (purchase_order_id, material_id, quantity, delivered_quantity, accepted_quantity)
+         VALUES ($1, $2, 8, 4, 1) RETURNING id`, [poId, material.id]
+      )).rows[0].id;
+      const activeDeliveries = [];
+      for (const [suffix, quantity] of [['A', 2], ['B', 2]]) {
+        const deliveryId = (await client.query(
+          `INSERT INTO deliveries (delivery_number, purchase_order_id, status)
+           VALUES ($1, $2, 'received') RETURNING id`, [`RD-DLV-${tag}-${suffix}-${sequence}`, poId]
+        )).rows[0].id;
+        activeDeliveries.push((await client.query(
+          `INSERT INTO delivery_lines (delivery_id, purchase_order_line_id, material_id, quantity)
+           VALUES ($1, $2, $3, $4) RETURNING id`, [deliveryId, lineId, material.id, quantity]
+        )).rows[0].id);
+      }
+      const cancelledId = (await client.query(
+        `INSERT INTO deliveries (delivery_number, purchase_order_id, status)
+         VALUES ($1, $2, 'cancelled') RETURNING id`, [`RD-DLV-C-${tag}-${sequence}`, poId]
+      )).rows[0].id;
+      await client.query(
+        `INSERT INTO delivery_lines (delivery_id, purchase_order_line_id, material_id, quantity)
+         VALUES ($1, $2, $3, 5)`, [cancelledId, lineId, material.id]
+      );
+      const postedA = (await client.query(
+        `INSERT INTO goods_receipt_notes (grn_number, purchase_order_id, status)
+         VALUES ($1, $2, 'posted') RETURNING id`, [`RD-GRN-A-${tag}-${sequence}`, poId]
+      )).rows[0].id;
+      const postedB = (await client.query(
+        `INSERT INTO goods_receipt_notes (grn_number, purchase_order_id, status)
+         VALUES ($1, $2, 'posted') RETURNING id`, [`RD-GRN-B-${tag}-${sequence}`, poId]
+      )).rows[0].id;
+      await client.query(
+        `INSERT INTO grn_lines (grn_id, purchase_order_line_id, material_id, quantity, returned_quantity)
+         VALUES ($1, $2, $3, 1, 0), ($4, $2, $3, 1, 1)`, [postedA, lineId, material.id, postedB]
+      );
+      const voidedId = (await client.query(
+        `INSERT INTO goods_receipt_notes (grn_number, purchase_order_id, status)
+         VALUES ($1, $2, 'voided') RETURNING id`, [`RD-GRN-V-${tag}-${sequence}`, poId]
+      )).rows[0].id;
+      await client.query(
+        `INSERT INTO grn_lines (grn_id, purchase_order_line_id, material_id, quantity)
+         VALUES ($1, $2, $3, 4)`, [voidedId, lineId, material.id]
+      );
+      expect(activeDeliveries).toHaveLength(2);
+      // Reproduce the pre-fix aggregation: delivery rows from a cancelled
+      // delivery and returned quantities from posted GRNs were both counted.
+      const legacyViolations = (await client.query(`
+        SELECT pol.id, pol.delivered_quantity::numeric AS stored_delivered,
+               COALESCE(dl.quantity, 0)::numeric AS legacy_delivered,
+               pol.accepted_quantity::numeric AS stored_accepted,
+               COALESCE(gl.quantity, 0)::numeric AS legacy_accepted
+          FROM purchase_order_lines pol
+          LEFT JOIN (
+            SELECT delivery_line.purchase_order_line_id, SUM(delivery_line.quantity) AS quantity
+              FROM delivery_lines delivery_line
+             WHERE delivery_line.purchase_order_line_id = $1
+             GROUP BY delivery_line.purchase_order_line_id
+          ) dl ON dl.purchase_order_line_id = pol.id
+          LEFT JOIN (
+            SELECT receipt_line.purchase_order_line_id, SUM(receipt_line.quantity) AS quantity
+              FROM grn_lines receipt_line JOIN goods_receipt_notes receipt ON receipt.id = receipt_line.grn_id
+             WHERE receipt_line.purchase_order_line_id = $1 AND receipt.status = 'posted'
+             GROUP BY receipt_line.purchase_order_line_id
+          ) gl ON gl.purchase_order_line_id = pol.id
+         WHERE pol.id = $1
+           AND (pol.delivered_quantity <> COALESCE(dl.quantity, 0)
+             OR pol.accepted_quantity <> COALESCE(gl.quantity, 0))
+      `, [lineId])).rows;
+      if (legacyViolations.length) console.log(`legacy PO reconcile violating rows: ${JSON.stringify(legacyViolations)}`);
+      expect(legacyViolations).toHaveLength(1);
+      expect({
+        stored_delivered: Number(legacyViolations[0].stored_delivered),
+        legacy_delivered: Number(legacyViolations[0].legacy_delivered),
+        stored_accepted: Number(legacyViolations[0].stored_accepted),
+        legacy_accepted: Number(legacyViolations[0].legacy_accepted),
+      }).toEqual({ stored_delivered: 4, legacy_delivered: 9, stored_accepted: 1, legacy_accepted: 2 });
+      return (await violationCount(client, 'PO delivered and accepted quantities reconcile')) - before;
+    });
+    expect(violations).toBe(0);
+  });
+
   test('reports approvals without their workflow mirror', async () => {
     const violations = await withTransaction(async (client) => {
       const before = await violationCount(client, 'approvals mirror their workflow instances');

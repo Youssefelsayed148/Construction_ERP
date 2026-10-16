@@ -175,12 +175,13 @@ router.get('/retention', authenticate, authorize(), async (req, res) => {
 
 router.get('/ap-review', authenticate, authorize(), async (req, res) => {
   try {
-    const rows = (await query(
-      `SELECT q.*, si.invoice_number, si.supplier_id, si.total_amount
+    const page = await queryPaginated(req, res, query, {
+      sql: `SELECT q.*, si.invoice_number, si.supplier_id, si.total_amount
        FROM ap_review_queue q JOIN supplier_invoices si ON si.id = q.supplier_invoice_id
-       ORDER BY CASE q.status WHEN 'open' THEN 0 ELSE 1 END, q.id LIMIT 200`
-    )).rows;
-    res.json({ success: true, data: rows });
+      `,
+      orderBy: [{ column: 'q.status', direction: 'ASC' }, { column: 'q.id' }],
+    });
+    res.json({ success: true, data: page.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 

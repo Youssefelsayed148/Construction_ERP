@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
+const { queryPaginated, paginateRows } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const { auditedMutation } = require('../utils/auditedMutation');
@@ -60,7 +61,7 @@ router.get('/allocations/:boqItemId', authenticate, authorize(), async (req, res
         certified_progress: engine.certifiedProgress(sums.certified, a.planned_quantity),
       };
     });
-    res.json({ success: true, data });
+    res.json({ success: true, data: paginateRows(req, res, data, { orderBy: [{ column: 'location_name' }, { column: 'id' }] }).rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -169,15 +170,16 @@ router.get('/measurements', authenticate, authorize(), async (req, res) => {
     if (boq_item_id) { conds.push(`qm.boq_item_id = $${i++}`); p.push(parseInt(boq_item_id)); }
     if (state && APPROVAL_STATES.includes(state)) { conds.push(`qm.approval_state = $${i++}`); p.push(state); }
     const where = conds.length ? ' WHERE ' + conds.join(' AND ') : '';
-    const r = await query(
-      `SELECT qm.*, pl.name AS location_name, pl.code AS location_code,
+    const r = await queryPaginated(req, res, query, {
+      sql: `SELECT qm.*, pl.name AS location_name, pl.code AS location_code,
               bi.code AS boq_item_code, bi.description AS boq_item_description
        FROM quantity_measurements qm
        LEFT JOIN project_locations pl ON pl.id = qm.project_location_id
        LEFT JOIN boq_items bi ON bi.id = qm.boq_item_id
-       ${where} ORDER BY qm.measured_date DESC, qm.id DESC LIMIT 500`,
-      p
-    );
+       ${where}`,
+      params: p,
+      orderBy: [{ column: 'qm.measured_date', direction: 'DESC' }, { column: 'qm.id', direction: 'DESC' }],
+    });
     res.json({ success: true, data: r.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

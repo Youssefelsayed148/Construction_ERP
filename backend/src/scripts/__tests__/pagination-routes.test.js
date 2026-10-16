@@ -3,89 +3,104 @@
 const fs = require('fs');
 const path = require('path');
 
-const routesDir = path.join(__dirname, '../../routes');
+const serverFile = path.resolve(__dirname, '../../../server.js');
+const serverRoot = path.resolve(__dirname, '../../..');
+const finiteReference = new Set([
+  '/api/docs/categories',
+  '/api/documents/categories',
+  '/api/expenses/categories',
+  '/api/notifications/preferences',
+  '/api/projects/templates',
+  '/api/suppliers/specialties',
+  '/api/users/preview/roles',
+]);
+const exportOrScalar = /(?:^|\/)(?:pdf|export|download|health|openapi\.json|summary|dashboard|analytics|metrics|unread-count)(?:\/|$)/i;
 
-// Reference collections are intentionally finite and small. Keep the reason
-// beside each exemption so a growing business list cannot silently enter here.
-const referenceAllowlist = {
-  'doccontrol.js:/categories': 'Admin-managed document taxonomy used as a selector.',
-  'expenses.js:/categories': 'Static expense category codes.',
-  'notifications.js:/preferences': 'Per-user event/channel preferences are drawn from finite application registries.',
-  'projects.js:/templates': 'Versioned project starter templates, bounded by product configuration.',
-  'suppliers.js:/specialties': 'Static supplier specialty codes.',
-  'users.js:/preview/roles': 'The finite system role catalogue.',
-};
-
-function matchingBrace(source, open) {
-  let depth = 0;
-  let quote = null;
-  let escaped = false;
-  let lineComment = false;
-  let blockComment = false;
-  for (let index = open; index < source.length; index += 1) {
-    const char = source[index];
-    const next = source[index + 1];
-    if (lineComment) { if (char === '\n') lineComment = false; continue; }
-    if (blockComment) { if (char === '*' && next === '/') { blockComment = false; index += 1; } continue; }
-    if (quote) {
-      if (escaped) escaped = false;
-      else if (char === '\\') escaped = true;
-      else if (char === quote) quote = null;
-      continue;
+function walkRouter(stack, prefix, routes) {
+  for (const layer of stack) {
+    if (layer.route && layer.route.methods.get) {
+      for (const routePath of [layer.route.path].flat()) {
+        routes.push({ path: `${prefix}${routePath === '/' ? '' : routePath}`, handlers: layer.route.stack.map((entry) => entry.handle) });
+      }
+    } else if (layer.handle?.stack) {
+      if (layer.regexp.fast_slash) { walkRouter(layer.handle.stack, prefix, routes); continue; }
+      const mount = layer.regexp.source.match(/^\^\\\/(.*?)(?:\\\/)?\(\?=/);
+      if (!mount) throw new Error(`Unsupported router mount while enumerating GET routes: ${layer.regexp.source}`);
+      walkRouter(layer.handle.stack, `${prefix}/${mount[1].replace(/\\\//g, '/')}`, routes);
     }
-    if (char === '/' && next === '/') { lineComment = true; index += 1; continue; }
-    if (char === '/' && next === '*') { blockComment = true; index += 1; continue; }
-    if (char === '\'' || char === '"' || char === '`') { quote = char; continue; }
-    if (char === '{') depth += 1;
-    else if (char === '}' && --depth === 0) return index;
   }
-  return -1;
 }
 
-function listRouteKeys(source, file) {
-  const found = [];
-  const route = /router\.get\(\s*(['"`])([^'"`]+)\1\s*,/g;
-  let match;
-  while ((match = route.exec(source))) {
-    const arrow = source.indexOf('=>', route.lastIndex);
-    const open = source.indexOf('{', arrow);
-    if (arrow < 0 || open < 0) continue;
-    const close = matchingBrace(source, open);
-    if (close < 0) continue;
-    const body = source.slice(open, close + 1);
-    const endpoint = match[2];
-    if (/\/:id(?:\/|$)|\/(?:pdf|export|download|health|openapi\.json|summary|dashboard|analytics|metrics)(?:\/|$)/i.test(endpoint)) continue;
-    if (!/res\.(?:json|send)\s*\(/.test(body)) continue;
-    if (/\bdata\s*:\s*\w+\s*\.\s*rows\s*\[\s*0\s*\]/.test(body)) continue;
-    const dataValue = body.match(/\bdata\s*:\s*([\w$.]+(?:\s*\.\s*rows)?)/)?.[1]?.replace(/\s/g, '');
-    if (!dataValue || dataValue.startsWith('data.')) continue;
-    const variable = dataValue.split('.').at(-1);
-    const collection = /\.rows$|\.map$/.test(dataValue)
-      || /^(?:rows|projects|projectIds|contracts|tokens|reviews|activities|alerts|photos|notes|instructions|visits|assignments|records|items|results)$/i.test(variable)
-      || new RegExp(`(?:const|let)\\s+${variable}\\s*=\\s*\\[`).test(body)
-      || new RegExp(`(?:const|let)\\s+${variable}\\s*=\\s*await\\s+[\\w.]+(?:list|projects|reviews|photos|notes|instructions|visits)\\s*\\(`, 'i').test(body);
-    if (!collection) continue;
-    found.push({ key: `${file}:${endpoint}`, body });
+function enumerateMountedGetRoutes() {
+  // Router modules instantiate auth helpers at import time. Supply an
+  // ephemeral test-only key; this audit never creates or verifies tokens.
+  const previousJwtSecret = process.env.JWT_SECRET;
+  process.env.JWT_SECRET = 'pagination-route-audit-test-key-not-for-auth';
+  const source = fs.readFileSync(serverFile, 'utf8');
+  const mounts = [...source.matchAll(/app\.use\('([^']+)', require\('([^']+)'\)(\.buildV1Router\(\))?\);/g)];
+  const routes = [];
+  try {
+    for (const [, prefix, modulePath, buildV1] of mounts) {
+      const exported = require(path.resolve(serverRoot, modulePath));
+      const router = buildV1 ? exported.buildV1Router() : exported;
+      walkRouter(router.stack, prefix, routes);
+    }
+  } finally {
+    if (previousJwtSecret == null) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = previousJwtSecret;
   }
-  return found;
+  return routes;
 }
 
-describe('R4.4 route-enumerated pagination coverage', () => {
-  test('every collection GET is paginated or has a documented finite-reference exemption', () => {
-    const candidates = [];
-    for (const file of fs.readdirSync(routesDir).filter((name) => name.endsWith('.js'))) {
-      const source = fs.readFileSync(path.join(routesDir, file), 'utf8');
-      for (const route of listRouteKeys(source, file)) candidates.push(route);
-    }
-    const unbounded = candidates
-      .filter(({ key, body }) => !/(?:queryPaginated|paginateRows|paginatedReader|listQuery)\s*\(/.test(body) && !/\bLIMIT\b/i.test(body) && !referenceAllowlist[key])
-      .map(({ key }) => key)
-      .sort();
+function isCollection(route) {
+  const endpoint = route.path.replace(/^\/api\/v1/, '/api');
+  if (finiteReference.has(endpoint) || exportOrScalar.test(endpoint)) return false;
+  // v1 remounts the same internal handlers. Audit those registered handlers
+  // once, except webhooks: its v1 adapter has its own paging contract.
+  if (route.path.startsWith('/api/v1/') && endpoint !== '/api/webhooks') return false;
+  // A single terminal :id is a record read. Nested children of a record remain
+  // collection candidates (for example /:id/revisions).
+  if (/\/(?:\:id|\:id\([^)]*\))\/?$/.test(endpoint)) return false;
+  const source = route.handlers.map((handler) => handler.toString()).join('\n');
+  if (!/res\.(?:json|send)\s*\(/.test(source) || /\bdata\s*:\s*[\w$.]+\s*\.\s*rows\s*\[\s*0\s*\]/.test(source)) return false;
+  return /\bdata\s*:\s*[\w$.]+\s*\.\s*(?:rows|map)\b/.test(source)
+    || /\bdata\s*:\s*(?:rows|projects|projectIds|contracts|tokens|reviews|activities|alerts|photos|notes|instructions|visits|assignments|records|items|results)\b/i.test(source)
+    || /(?:const|let)\s+\w+\s*=\s*\[/.test(source)
+    || /(?:const|let)\s+\w+\s*=\s*await\s+[\w.]+(?:list|projects|reviews|photos|notes|instructions|visits)\s*\(/i.test(source);
+}
 
-    expect({ count: candidates.length, unbounded }).toEqual({
-      count: expect.any(Number),
-      unbounded: [],
+function isPaginated(route) {
+  const source = route.handlers.map((handler) => handler.toString()).join('\n');
+  return /\b(?:queryPaginated|paginateRows|paginatedReader)\s*\(/.test(source)
+    || /X-Total-Count/.test(source)
+    || /req\.query\.(?:offset|limit|per_page)/.test(source);
+}
+
+function findUnpaginated(routes) {
+  return routes.filter(isCollection).filter((route) => !isPaginated(route)).map((route) => route.path).sort();
+}
+
+describe('R4.4 mounted GET route pagination coverage', () => {
+  test('every mounted collection route is paginated or has a documented finite/export exemption', () => {
+    const routes = enumerateMountedGetRoutes();
+    const collections = routes.filter(isCollection);
+    const unpaginated = findUnpaginated(routes);
+    expect(routes.length).toBeGreaterThan(300);
+    expect(collections.length).toBeGreaterThanOrEqual(73);
+    expect(unpaginated).toEqual([]);
+  });
+
+  test('the route-table audit detects an injected unbounded child collection', () => {
+    const express = require('express');
+    const injectedRouter = express.Router();
+    injectedRouter.get('/:id/child-records', async function injectedUnbounded(req, res) {
+      const rows = await query('SELECT * FROM child_records WHERE parent_id = $1', [req.params.id]);
+      return res.json({ success: true, data: rows.rows });
     });
-    expect(candidates.length).toBeGreaterThanOrEqual(73);
+    const added = [];
+    walkRouter(injectedRouter.stack, '/api/inventory', added);
+    expect(findUnpaginated(added)).toEqual(['/api/inventory/:id/child-records']);
+    injectedRouter.stack.pop(); // Revert the temporary route after proving detection.
+    expect(injectedRouter.stack).toHaveLength(0);
   });
 });

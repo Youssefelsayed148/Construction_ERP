@@ -74,13 +74,14 @@ router.get('/:id/movements', authenticate, authorize(), async (req, res) => {
     let conds = ['warehouse_id = $1']; const p = [parseInt(req.params.id, 10)]; let i = 2;
     if (req.query.movement_type) { conds.push(`movement_type = $${i++}`); p.push(req.query.movement_type); }
     if (req.query.material_id) { conds.push(`material_id = $${i++}`); p.push(parseInt(req.query.material_id, 10)); }
-    const rows = (await query(
-      `SELECT sm.*, im.code AS material_code, im.name_en AS material_name_en, im.name_ar AS material_name_ar
+    const rows = await queryPaginated(req, res, query, {
+      sql: `SELECT sm.*, im.code AS material_code, im.name_en AS material_name_en, im.name_ar AS material_name_ar
        FROM stock_movements sm LEFT JOIN item_master im ON im.id = sm.material_id
-       WHERE ${conds.join(' AND ')} ORDER BY sm.created_at DESC, sm.id DESC LIMIT 200`,
-      p
-    )).rows;
-    res.json({ success: true, data: rows });
+       WHERE ${conds.join(' AND ')}`,
+      params: p,
+      orderBy: [{ column: 'sm.created_at', direction: 'DESC' }, { column: 'sm.id', direction: 'DESC' }],
+    });
+    res.json({ success: true, data: rows.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -219,13 +220,15 @@ router.get('/transfers', authenticate, authorize(), async (req, res) => {
     let conds = []; let p = []; let i = 1;
     if (status) { conds.push(`t.status = $${i++}`); p.push(status); }
     const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
-    const data = await query(
-      `SELECT t.*, fw.name as from_name, tw.name as to_name
+    const data = await queryPaginated(req, res, query, {
+      sql: `SELECT t.*, fw.name as from_name, tw.name as to_name
        FROM inventory_transfers t
        LEFT JOIN warehouses fw ON t.from_warehouse_id = fw.id
        LEFT JOIN warehouses tw ON t.to_warehouse_id = tw.id
-       ${w} ORDER BY t.created_at DESC LIMIT 100`, p
-    );
+       ${w}`,
+      params: p,
+      orderBy: [{ column: 't.created_at', direction: 'DESC' }],
+    });
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -346,15 +349,16 @@ router.get('/reservations', authenticate, authorize(), async (req, res) => {
     if (req.query.project_id) { conds.push(`sr.project_id = $${i++}`); p.push(parseInt(req.query.project_id, 10)); }
     if (req.query.warehouse_id) { conds.push(`sr.warehouse_id = $${i++}`); p.push(parseInt(req.query.warehouse_id, 10)); }
     if (req.query.status) { conds.push(`sr.status = $${i++}`); p.push(req.query.status); }
-    const rows = (await query(
-      `SELECT sr.*, im.code AS material_code, im.name_en AS material_name_en, p.name AS project_name
+    const rows = await queryPaginated(req, res, query, {
+      sql: `SELECT sr.*, im.code AS material_code, im.name_en AS material_name_en, p.name AS project_name
        FROM stock_reservations sr
        LEFT JOIN item_master im ON im.id = sr.material_id
        LEFT JOIN projects p ON p.id = sr.project_id
-       ${conds.length ? ' WHERE ' + conds.join(' AND ') : ''} ORDER BY sr.created_at DESC LIMIT 200`,
-      p
-    )).rows;
-    res.json({ success: true, data: rows });
+       ${conds.length ? ' WHERE ' + conds.join(' AND ') : ''}`,
+      params: p,
+      orderBy: [{ column: 'sr.created_at', direction: 'DESC' }],
+    });
+    res.json({ success: true, data: rows.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 

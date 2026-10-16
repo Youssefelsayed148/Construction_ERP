@@ -10,6 +10,7 @@
 process.env.AUTH_RATE_LIMIT_PER_15_MIN = '1000';
 process.env.V1_RATE_LIMIT_PER_MIN = '100000';
 const tokens = require('../../services/tokens');
+const { CHECKS } = require('../reconcile-database');
 
 const enabled = process.env.TEST_PG === '1';
 const describePg = enabled ? describe : describe.skip;
@@ -74,6 +75,25 @@ describePg('procurement locking (real PostgreSQL, real app)', () => {
   });
 
   describe('createDelivery', () => {
+    test('multiple partial deliveries with partial MIR acceptance reconcile to posted GRN quantities', async () => {
+      const f = await fixture('partial-reconcile', { qty: 8, tolerance: 0 });
+      const check = CHECKS.find((item) => item.name.includes('PO delivered and accepted quantities reconcile'));
+      const before = Number((await db.query(check.sql)).rows[0].violations);
+      for (const acceptedQty of [1.5, 2.25]) {
+        const { mir } = await receive(f, 3);
+        const mirLine = await one('SELECT id FROM mir_lines WHERE mir_id = $1', [mir.id]);
+        const decided = await call('POST', `/api/procurement/mir/${mir.id}/decide`, {
+          decision: 'accept', accepted: { [mirLine.id]: acceptedQty },
+        });
+        expect(decided.status).toBe(200);
+        const grn = await call('POST', `/api/procurement/mir/${mir.id}/grn`, {});
+        expect(grn.status).toBe(201);
+      }
+      const after = Number((await db.query(check.sql)).rows[0].violations);
+      expect(after - before).toBe(0);
+      expect(await poLine(f)).toEqual({ delivered: 6, accepted: 3.75 });
+    });
+
     test('10 concurrent deliveries of 20 against 100 + 5% never deliver more than 105', async () => {
       const f = await fixture('a');
       const results = await Promise.all(Array.from({ length: 10 }, () => deliver(f, 20)));

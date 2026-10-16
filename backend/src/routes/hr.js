@@ -4,6 +4,7 @@ const { nextNumber } = require('../services/numbering');
 const router = express.Router();
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
+const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
@@ -13,14 +14,14 @@ const { hasSourceCost } = require('../services/costView');
 // -- Employees --
 router.get('/employees', authenticate, authorize(), async (req, res) => {
   try {
-    const { department, status, search, is_manager, limit = 100 } = req.query;
+    const { department, status, search, is_manager } = req.query;
     let conds = []; let p = []; let i = 1;
     if (department) { conds.push(`department = $${i++}`); p.push(department); }
     if (status) { conds.push(`status = $${i++}`); p.push(status); }
     if (is_manager === 'true') { conds.push(`is_manager = true`); }
     if (search) { conds.push(`(code ILIKE $${i} OR name ILIKE $${i} OR name_en ILIKE $${i} OR name_ar ILIKE $${i})`); p.push(`%${search}%`); i++; }
     const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
-    const data = await query(`SELECT * FROM employees ${w} ORDER BY name LIMIT $${i++} OFFSET 0`, [...p, parseInt(limit)]);
+    const data = await queryPaginated(req, res, query, { sql: `SELECT * FROM employees ${w}`, params: p, orderBy: [{ column: 'name' }] });
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -104,13 +105,13 @@ router.delete('/employees/:id', authenticate, authorize('owner', 'admin'), async
 // -- Attendance --
 router.get('/attendance', authenticate, authorize(), async (req, res) => {
   try {
-    const { employee_id, date, from_date, to_date, limit = 100 } = req.query;
+    const { employee_id, date, from_date, to_date } = req.query;
     let conds = []; let p = []; let i = 1;
     if (employee_id) { conds.push(`employee_id = $${i++}`); p.push(parseInt(employee_id)); }
     if (date) { conds.push(`date = $${i++}`); p.push(date); }
     if (from_date && to_date) { conds.push(`date BETWEEN $${i++} AND $${i++}`); p.push(from_date, to_date); }
     const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
-    const data = await query(`SELECT a.*, e.name FROM attendance a LEFT JOIN employees e ON a.employee_id = e.id ${w} ORDER BY date DESC LIMIT $${i++}`, [...p, parseInt(limit)]);
+    const data = await queryPaginated(req, res, query, { sql: `SELECT a.*, e.name FROM attendance a LEFT JOIN employees e ON a.employee_id = e.id ${w}`, params: p, orderBy: [{ column: 'a.date', direction: 'DESC' }] });
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -147,7 +148,7 @@ router.get('/leaves', authenticate, authorize(), async (req, res) => {
     if (employee_id) { conds.push(`lr.employee_id = $${i++}`); p.push(parseInt(employee_id)); }
     if (status) { conds.push(`lr.status = $${i++}`); p.push(status); }
     const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
-    const data = await query(`SELECT lr.*, e.name FROM leave_requests lr LEFT JOIN employees e ON lr.employee_id = e.id ${w} ORDER BY created_at DESC LIMIT 100`, p);
+    const data = await queryPaginated(req, res, query, { sql: `SELECT lr.*, e.name FROM leave_requests lr LEFT JOIN employees e ON lr.employee_id = e.id ${w}`, params: p, orderBy: [{ column: 'lr.created_at', direction: 'DESC' }] });
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -192,13 +193,13 @@ const SKILLS = ['mason', 'carpenter', 'electrician', 'steel_fixer', 'plumber', '
 
 router.get('/laborers', authenticate, authorize(), async (req, res) => {
   try {
-    const { skill_category, is_active, search, limit = 100 } = req.query;
+    const { skill_category, is_active, search } = req.query;
     let conds = []; let p = []; let i = 1;
     if (skill_category && SKILLS.includes(skill_category)) { conds.push(`skill_category = $${i++}`); p.push(skill_category); }
     if (is_active !== undefined) { conds.push(`is_active = $${i++}`); p.push(is_active === 'true'); }
     if (search) { conds.push(`(code ILIKE $${i} OR full_name ILIKE $${i})`); p.push(`%${search}%`); i++; }
     const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
-    const data = await query(`SELECT * FROM daily_laborers ${w} ORDER BY full_name LIMIT $${i++}`, [...p, parseInt(limit)]);
+    const data = await queryPaginated(req, res, query, { sql: `SELECT * FROM daily_laborers ${w}`, params: p, orderBy: [{ column: 'full_name' }] });
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -276,12 +277,12 @@ router.delete('/laborers/:id', authenticate, authorize(), async (req, res) => {
 // -- Labor Payments --
 router.get('/labor-payments', authenticate, authorize(), async (req, res) => {
   try {
-    const { project_id, laborer_id, limit = 100 } = req.query;
+    const { project_id, laborer_id } = req.query;
     let conds = []; let p = []; let i = 1;
     if (project_id) { conds.push(`lp.project_id = $${i++}`); p.push(parseInt(project_id)); }
     if (laborer_id) { conds.push(`lp.laborer_id = $${i++}`); p.push(parseInt(laborer_id)); }
     const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
-    const data = await query(`SELECT lp.*, dl.full_name, dl.code as laborer_code FROM labor_payments lp LEFT JOIN daily_laborers dl ON lp.laborer_id = dl.id ${w} ORDER BY payment_date DESC LIMIT $${i++}`, [...p, parseInt(limit)]);
+    const data = await queryPaginated(req, res, query, { sql: `SELECT lp.*, dl.full_name, dl.code as laborer_code FROM labor_payments lp LEFT JOIN daily_laborers dl ON lp.laborer_id = dl.id ${w}`, params: p, orderBy: [{ column: 'lp.payment_date', direction: 'DESC' }] });
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

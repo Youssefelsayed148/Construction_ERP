@@ -46,7 +46,7 @@ describePg('B5 API contract: OpenAPI spec vs the live /api/v1', () => {
       "INSERT INTO users (name, email, password, role) VALUES ('contract-owner', $1, 'x', 'owner') RETURNING id, token_version", [`b5-${tag}@test.io`]
     )).rows[0];
     await db.query("INSERT INTO user_project_roles (user_id, project_id, role_id) SELECT $1, NULL, id FROM roles WHERE key = 'owner'", [row.id]);
-    owner = { token: tokens.signSession({ userId: row.id, tokenVersion: row.token_version }) };
+    owner = { id: row.id, token: tokens.signSession({ userId: row.id, tokenVersion: row.token_version }) };
     const reader = (await db.query(
       "INSERT INTO users (name, email, password, role) VALUES ('metrics-reader', $1, 'x', 'site_engineer') RETURNING id, token_version", [`b5-metrics-${tag}@test.io`]
     )).rows[0];
@@ -177,12 +177,38 @@ describePg('B5 API contract: OpenAPI spec vs the live /api/v1', () => {
     const list = await call('GET', '/api/v1/organizations');
     expect(list.status).toBe(200);
     expect(list.body.success).toBe(true);
-    expect(list.body.meta).toEqual({ page: 1, per_page: 50, total: expect.any(Number), total_pages: expect.any(Number) });
+    expect(list.body.meta).toEqual({ page: 1, per_page: 200, total: expect.any(Number), total_pages: expect.any(Number) });
 
     const bad = await call('POST', '/api/v1/webhooks', { url: 'not-a-uri' });
     expect(bad.status).toBe(400);
     expect(bad.body.error.code).toBe('validation_error');
     expect(typeof bad.body.error.message).toBe('string');
+  });
+
+  test('/v1/webhooks supports limit/offset and legacy page/per_page with totals', async () => {
+    for (let index = 0; index < 3; index += 1) await db.query(
+      `INSERT INTO webhooks (url, secret, events, description, created_by)
+       VALUES ($1, $2, '[]'::jsonb, $3, $4)`,
+      [`https://pagination-${tag}-${index}.example.test/hook`, `pagination-secret-${tag}-${index}`, `pagination-${tag}`, owner.id]
+    );
+    try {
+      const firstPage = await call('GET', '/api/v1/webhooks?limit=1&offset=0');
+      const offsetPage = await call('GET', '/api/v1/webhooks?limit=1&offset=1');
+      const legacyPage = await call('GET', '/api/v1/webhooks?page=2&per_page=1');
+      expect(firstPage.status).toBe(200);
+      expect(offsetPage.status).toBe(200);
+      expect(legacyPage.status).toBe(200);
+      expect(firstPage.body.data).toHaveLength(1);
+      expect(offsetPage.body.data).toHaveLength(1);
+      expect(legacyPage.body.data).toHaveLength(1);
+      expect(firstPage.body.data[0].id).not.toBe(offsetPage.body.data[0].id);
+      expect(offsetPage.body.data[0].id).toBe(legacyPage.body.data[0].id);
+      expect(firstPage.body.meta).toEqual({ page: 1, per_page: 1, total: 3, total_pages: 3 });
+      expect(offsetPage.body.meta).toEqual({ page: 2, per_page: 1, total: 3, total_pages: 3 });
+      expect(legacyPage.body.meta).toEqual({ page: 2, per_page: 1, total: 3, total_pages: 3 });
+    } finally {
+      await db.query('DELETE FROM webhooks WHERE description = $1 AND created_by = $2', [`pagination-${tag}`, owner.id]);
+    }
   });
 
   test('the stable error_code of an internal response passes through the v1 envelope untouched', async () => {
