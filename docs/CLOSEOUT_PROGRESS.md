@@ -1394,3 +1394,4 @@ Reviewed the existing lint-guards fallback and Docker-context launcher tests. Ad
 - Remote GitHub Actions remains NOT VERIFIED. Production remains NO-GO pending human UAT, finance sign-off, native Arabic review, and security dispositions.
 - CI follow-up `52cf9df` isolates Playwright and the Chromium install into a dedicated E2E job, separate from build/runtime image work.
 - Documentation and scorecard committed as `52962e7`; completion evidence is in `docs/BATCH3_SCORECARD.md`.
+- Scorecard correction committed as `0717699`; dedicated browser job wording now matches the workflow.

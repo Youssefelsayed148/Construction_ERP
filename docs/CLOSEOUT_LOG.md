@@ -2351,3 +2351,4 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 
 - CI's dedicated Playwright E2E job is in commit `52cf9df`; it installs Chromium through Playwright and runs `npm run test:e2e` outside the production image.
 - Documentation and scorecard commit: `52962e7`. It records the 130-migration baseline, 38 seeded keys, command forms, backup-confirmation procedure, status owners, audit totals, and local/NOT VERIFIED gate results.
+- Scorecard wording was clarified in `0717699` to identify the separate E2E job; it matches `.github/workflows/ci.yml`.

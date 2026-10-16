@@ -1160,3 +1160,4 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - NOT VERIFIED: GitHub Actions remote result and human UAT/finance/native-Arabic/security sign-offs. CI `npm ci`, parity, browser-install step, and second migration run were not executed locally. The pilot was not restarted, reseeded, or used.
 - CI follow-up `52cf9df` creates a dedicated E2E job with Playwright's Chromium install; browser binaries remain outside the production image. STATE updated after this commit.
 - Documentation/scorecard commit `52962e7` records the corrected runbook, 38 actual seed keys, GO/NO-GO evidence/owners, audit totals, and NOT VERIFIED limitations.
+- Scorecard correction `0717699` identifies Playwright as a dedicated E2E job, matching the committed workflow.
