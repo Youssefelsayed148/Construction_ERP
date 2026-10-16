@@ -2298,3 +2298,4 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - Golden reconciliation `scripts/r02-pg-gate.ps1 -Reconcile` - PASS 16/16, zero violations, 130 migrations, container `erp-r02-gate-20261016154840` removed, exit 0.
 - `npm.cmd run lint:guards`, frontend `npm.cmd run lint:api`, and root `npm.cmd run build` - PASS. Build compiled successfully.
 - Scorecard: `docs/BATCH1_SCORECARD.md`. Page-two/no-overlap/total proof exists for assets, clients, suppliers, HR employees, notifications, procurement project workspace, and `/v1/webhooks`. Remaining touched route families are NOT VERIFIED for that specific PG behavior; do not mark Batch 1 complete until addressed.
+- Implementation commit `c19c2e6`; earlier housekeeping commit `4527166`. After commit, only `docs/CODEX_AUDIT_REPORT.md` and `docs/REVIEW_REPORT_2026-10-14.md` remain untracked and unstaged.

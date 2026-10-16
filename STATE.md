@@ -1103,3 +1103,9 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - Golden reconciliation PASS 16/16 checks, all zero violations, 130 migrations, container `erp-r02-gate-20261016154840` removed, exit 0. `lint:guards`, `lint:api`, and root `npm.cmd run build` all PASS.
 - Batch 1 code/docs commit is pending. The explicit requirement for a page-two/no-overlap/total-count PostgreSQL test for every touched list family is only partially met: assets, clients, suppliers, HR employees, notifications, procurement project workspace, and `/v1/webhooks` are covered; remaining touched families are NOT VERIFIED. See `docs/BATCH1_SCORECARD.md`. Do not mark Batch 1 complete until that coverage is finished or the user accepts the documented remainder.
 
+## Batch 1 post-commit checkpoint - 2026-10-16
+
+- Implementation and scorecard committed as `c19c2e6 fix: reconcile procurement quantities and pagination contract`; housekeeping remains separate at `4527166`. Required exit gates passed as recorded above.
+- `git status --short` after the commit showed only the two prohibited untracked audit reports; neither was staged. The closeout branch remains `closeout/batch-a-to-6`.
+- Remaining work / next action: add real PostgreSQL page-two/no-overlap/total assertions for every other changed collection family, update the scorecard/log, and commit the verification slice. Batch 1 is still NOT COMPLETE while this explicit ticket requirement is unmet.
+
