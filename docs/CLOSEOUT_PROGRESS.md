@@ -1372,9 +1372,9 @@ Reviewed the existing lint-guards fallback and Docker-context launcher tests. Ad
 
 - 2.1 admin labels/CSS committed as `447e103`; `i18n:check` passed after adding the missing EN/AR keys. Human visual and RTL review NOT VERIFIED.
 - 2.2 admin write-path coverage committed as `e115053`; focused admin suite PASS 1 suite / 84 tests, including the organization paging case.
-- 2.3 smoke matrix covers the 21 named screens. Page-level paging cases are authored for all 34 source files containing `LoadMore`, including AdminWorkspace. The expanded frontend suite remains pending. Error-response cases verify page survival and no sentinel response data, not a visible error message.
+- 2.3 smoke matrix covers the 21 named screens. Page-level paging cases are authored for all 34 source files containing `LoadMore`, including AdminWorkspace. Test slice committed as `41049da`; expanded frontend suite remains pending. Error-response cases verify page survival and no sentinel response data, not a visible error message.
 - 2.4 dashboard canonical role aliases committed as `c2fbd51`; focused backend suite PASS 1 suite / 26 tests.
-- 2.5 read-only Playwright matrix PASS 1 test for 38 accounts in EN/AR, with 76 ignored screenshots. Two HIGH `/invoices` candidates for `accountant_ap` returned a data-bearing 200 response on a denied URL; visible data was not detected. No pilot access changes were made.
+- 2.5 read-only Playwright matrix PASS 1 test for 38 accounts in EN/AR, with 76 ignored screenshots. Browser test/report committed as `1cbe7bc`. Two HIGH `/invoices` candidates for `accountant_ap` returned a data-bearing 200 response on a denied URL; visible data was not detected. No pilot access changes were made.
 - Cross-project isolation is NOT VERIFIED: the owner project-list request returned one real project ID, and no out-of-scope project target was available for the 72 account/language checks. No synthetic project ID was used.
-- Next: commit the paging/smoke and browser-matrix slices, then run the frontend full suite, i18n, lints, root build, backend mock, and throwaway PostgreSQL `-All` gate once at Batch 2 close. Preserve the running pilot.
+- Next: run the frontend full suite, i18n, lints, root build, backend mock, and throwaway PostgreSQL `-All` gate once at Batch 2 close. Preserve the running pilot.
 
