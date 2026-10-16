@@ -18,6 +18,7 @@
 'use strict';
 
 const progressEngine = require('./progressEngine');
+const { CLIENT_RECEIPT } = require('./clientCollections');
 
 function parseJson(v) {
   if (v == null) return {};
@@ -40,6 +41,8 @@ function num(v) {
 
 // Row-level aggregation helper: fetch rows then aggregate in JS.
 async function agg(q, table, where = '', params = []) {
+  if (table === 'payments') where = [where, CLIENT_RECEIPT].filter(Boolean).map(part => `(${part})`).join(' AND ');
+  if (table === 'invoices') where = [where, "status NOT IN ('void', 'cancelled', 'credited')"].filter(Boolean).map(part => `(${part})`).join(' AND ');
   const rows = await rowsOf(q, `SELECT * FROM ${table}${where ? ` WHERE ${where}` : ''}`, params);
   return { rows, count: rows.length };
 }

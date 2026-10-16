@@ -3,6 +3,7 @@ const router = express.Router();
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const commercialEngine = require('../services/commercialEngine');
+const clientCollections = require('../services/clientCollections');
 
 router.get('/project/:id', authenticate, authorize(), async (req, res) => {
   try {
@@ -15,7 +16,7 @@ router.get('/project/:id', authenticate, authorize(), async (req, res) => {
       [projectId]
     );
     const totalPaid = await query(
-      'SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE project_id = $1 AND voided_at IS NULL',
+      `SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE project_id = $1 AND ${clientCollections.CLIENT_RECEIPT}`,
       [projectId]
     );
     const totalExpenses = await query(
@@ -57,23 +58,18 @@ router.get('/project/:id', authenticate, authorize(), async (req, res) => {
 
 router.get('/summary', authenticate, authorize(), async (req, res) => {
   try {
-    const totalCollected = await query('SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE voided_at IS NULL');
-    const totalInvoiced = await query("SELECT COALESCE(SUM(amount), 0) as total FROM invoices WHERE status NOT IN ('void', 'cancelled', 'credited')");
-    const totalExpenses = await query('SELECT COALESCE(SUM(amount), 0) as total FROM expenses');
-    const overdueCount = await query(
-      `SELECT COUNT(*) as cnt FROM invoices
-       WHERE status = 'overdue' OR (due_date IS NOT NULL AND due_date < CURRENT_DATE AND status NOT IN ('paid', 'void', 'cancelled', 'credited'))`
-    );
+    const result = await clientCollections.summary(query);
+    const figures = clientCollections.figures(result.rows[0]);
 
     res.json({
       success: true,
       data: {
-        total_revenue_collected: parseFloat(totalCollected.rows[0].total) || 0,
-        total_invoiced: parseFloat(totalInvoiced.rows[0].total) || 0,
-        total_expenses: parseFloat(totalExpenses.rows[0].total) || 0,
-        total_outstanding: (parseFloat(totalInvoiced.rows[0].total) || 0) - (parseFloat(totalCollected.rows[0].total) || 0),
-        net_profit: (parseFloat(totalCollected.rows[0].total) || 0) - (parseFloat(totalExpenses.rows[0].total) || 0),
-        overdue_count: parseInt(overdueCount.rows[0].cnt) || 0,
+        total_revenue_collected: figures.collected,
+        total_invoiced: figures.invoiced,
+        total_expenses: figures.expenses,
+        total_outstanding: figures.outstanding,
+        net_profit: figures.netProfit,
+        overdue_count: result.rows[0].overdue,
       }
     });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }

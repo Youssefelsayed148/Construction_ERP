@@ -1277,3 +1277,13 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - Scorecard correction `0717699` identifies Playwright as a dedicated E2E job, matching the committed workflow.
 
 - Final staging verification: `git diff --cached --check` -> exit 0; exact four documentation paths staged; `git ls-files --eol` -> all four i/lf w/lf. WIP test and both excluded reports unstaged.
+
+## Batch 5A resume - S-001 - 2026-10-17
+
+- Started at 897e823 on closeout/batch-a-to-6. No pilot, sweep clone or demo operations.
+- Schema inspected before fixture: migrate-13 invoice_number VARCHAR(20); migration 0009 voided_by FK to users and payments_void_has_reason requires actor plus nonblank reason. Existing WIP tag is 17 characters; actor now precedes the void row.
+- Failing-first fresh-PG output: collected expected 300 received 9430; outstanding expected 700 received -8430; net_profit expected 260 received 9390 (2 failed tests; fixture completed, 130 migrations).
+- Additional receivables widget red: collected expected 300 received 9480; outstanding expected 700 received -8480 (1 failed / 2 passed). Widget also counted the voided receipt.
+- Shared clientCollections helper now supplies summary SQL, exact minor-unit differences, and AR/non-supplier/live receipt predicate to finance, dashboard overview/project finance, and role widgets. Preserves invoice-linked and unallocated client receipts.
+- Focused verification: r02-pg-gate.ps1 -Suite src/scripts/__tests__/client-collections.pg.test.js -Filter '.*' -> 1 passed suite / 3 passed tests, 130 migrations, erp-r02-gate-20261017025552 removed, exit 0. All final batch gates remain pending.
+- v1 focused diagnostics at HEAD and clean ad2eaa1 both PASS 1 suite / 10 tests, 130 migrations, exit 0. Full-suite diagnostic still running; prior exact failure and regression classification remain unestablished.

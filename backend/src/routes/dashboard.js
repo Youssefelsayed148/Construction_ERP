@@ -7,6 +7,7 @@ const commercialEngine = require('../services/commercialEngine');
 const dashboardWidgets = require('../services/dashboardWidgets');
 const costView = require('../services/costView');
 const progressEngine = require('../services/progressEngine');
+const clientCollections = require('../services/clientCollections');
 
 // Closeout A2.4: no query on this page turns a failure into a zero. A failed section is logged with its name and
 // fails the request with error_code 'dashboard_section_failed' and error_params.section; the owner sees an error,
@@ -189,13 +190,7 @@ router.get('/overview', authenticate, authorize(), async (req, res) => {
              COALESCE((SELECT SUM(total_cost) FROM v_project_cost_totals), 0) AS actual_total`),
 
       // Mirrors GET /api/finance/summary exactly so the two views never disagree.
-      q('finance', `SELECT
-             COALESCE((SELECT SUM(amount) FROM payments WHERE voided_at IS NULL), 0) AS collected,
-             COALESCE((SELECT SUM(amount) FROM invoices WHERE status NOT IN ('void', 'cancelled', 'credited')), 0) AS invoiced,
-             COALESCE((SELECT SUM(amount) FROM expenses), 0) AS expenses,
-             (SELECT COUNT(*) FROM invoices
-               WHERE status = 'overdue'
-                  OR (due_date IS NOT NULL AND due_date < CURRENT_DATE AND status NOT IN ('paid', 'void', 'cancelled', 'credited')))::int AS overdue`),
+      section('finance', clientCollections.summary(query)),
 
       q('invoices', `SELECT
              COUNT(*)::int AS total,
@@ -252,7 +247,7 @@ router.get('/overview', authenticate, authorize(), async (req, res) => {
     const num = (v) => parseFloat(v) || 0;
     const p = { ...projAgg.rows[0], avg_completion: Math.round(progressEngine.weightedPortfolioProgress(projProgress.rows)) };
     const f = finance.rows[0], pf = portfolio.rows[0], ap = approvalAgg.rows[0];
-    const collected = num(f.collected), invoiced = num(f.invoiced), expenses = num(f.expenses);
+    const { collected, invoiced, expenses, outstanding, netProfit } = clientCollections.figures(f);
     const budgetTotal = num(pf.budget_total), actualTotal = num(pf.actual_total);
     const oldestDays = ap.oldest_pending_at
       ? Math.max(0, Math.floor((Date.now() - new Date(ap.oldest_pending_at).getTime()) / 86400000))
@@ -269,8 +264,8 @@ router.get('/overview', authenticate, authorize(), async (req, res) => {
           portfolio_actual: actualTotal,
           portfolio_variance: budgetTotal - actualTotal,
           revenue_collected: collected,
-          net_profit: collected - expenses,
-          total_outstanding: invoiced - collected,
+          net_profit: netProfit,
+          total_outstanding: outstanding,
           pending_approvals: ap.pending,
         },
         modules: {
@@ -280,7 +275,7 @@ router.get('/overview', authenticate, authorize(), async (req, res) => {
           },
           finance: {
             revenue_collected: collected, total_invoiced: invoiced, total_expenses: expenses,
-            outstanding: invoiced - collected, net_profit: collected - expenses,
+            outstanding, net_profit: netProfit,
             overdue_invoices: f.overdue,
           },
           invoices: invoiceAgg.rows[0],
