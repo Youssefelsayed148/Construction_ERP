@@ -1,0 +1,7 @@
+{
+  "name": "conerp-isolated-pre-uat-sweep",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": { "sweep": "node sweep-ui.js" },
+  "devDependencies": { "playwright": "1.63.0" }
+}
