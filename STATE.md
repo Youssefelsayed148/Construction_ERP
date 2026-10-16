@@ -1135,3 +1135,4 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - 2.4: A test failed because seeded canonical roles lacked a dashboard target. Added aliases for all roles exported by `seed-staging.js` and applied aliases inside `roleDashboard`. Focused backend suite passes 1/1 suite, 26/26 tests.
 - 2.3 and 2.5 remain NOT DONE. Final gates and implementation commits remain pending. No pilot restart, stop, seed, or data-changing browser action has been performed.
 - Next action: complete admin error-state coverage, then page-level paging and 21-page smoke/permission checks; proceed to the read-only pilot role matrix only if the existing Playwright browser binary is already installed.
+- Post-commit checkpoint: ticket 2.1 is committed as `447e103`; i18n check passed. The scorecard/log/state commit-reference update is pending as a docs checkpoint. Remaining tickets are still open.
