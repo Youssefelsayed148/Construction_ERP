@@ -62,6 +62,16 @@ describe('production security middleware', () => {
     expect(() => validateRuntimeConfig({ NODE_ENV: 'production', JWT_SECRET: 'x'.repeat(32), DB_PASSWORD: 'db-secret' })).not.toThrow();
   });
 
+  test('staging and production require a dedicated webhook encryption key', () => {
+    const base = { JWT_SECRET: 'j'.repeat(48), DB_PASSWORD: 'db-password' };
+    expect(() => validateRuntimeConfig({ ...base, APP_ENV: 'staging', NODE_ENV: 'production' }))
+      .toThrow('WEBHOOK_ENCRYPTION_KEY environment variable is required');
+    expect(() => validateRuntimeConfig({ ...base, APP_ENV: 'production', NODE_ENV: 'production' }))
+      .toThrow('WEBHOOK_ENCRYPTION_KEY environment variable is required');
+    expect(() => validateRuntimeConfig({ ...base, APP_ENV: 'staging', NODE_ENV: 'production', WEBHOOK_ENCRYPTION_KEY: 'w'.repeat(48) }))
+      .not.toThrow();
+  });
+
   test('TRUST_PROXY accepts explicit booleans or hop counts and rejects ambiguous values', () => {
     expect(parseTrustProxy(undefined)).toBe(false);
     expect(parseTrustProxy('true')).toBe(true);

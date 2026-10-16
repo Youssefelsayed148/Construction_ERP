@@ -4,5 +4,6 @@ module.exports = {
   testEnvironment: 'node',
   testMatch: ['**/*.pg.test.js'],
   testTimeout: 30000,
+  setupFiles: ['./jest.test-env.js'],
   globalSetup: './jest.pg.global-setup.js',
 };

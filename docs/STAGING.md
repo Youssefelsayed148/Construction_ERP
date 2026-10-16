@@ -12,6 +12,10 @@ This runbook operates only on the local Compose pilot. It uses the staging datab
 
 Run from the repository root. The env generator creates an ignored file and refuses to overwrite an existing file. Never display or commit `.env.docker`.
 
+New generated configurations include a dedicated random `WEBHOOK_ENCRYPTION_KEY`. Staging and production startup require it to be at least 32 characters. For key rotation, set `WEBHOOK_ENCRYPTION_KEY_PREVIOUS` to the former key for a temporary window; this includes the existing `JWT_SECRET` value for ciphertext created before the dedicated key existed. Webhook secrets decrypt with the current key first, then the previous key, and are re-encrypted under the current key on the next delivery read. Remove the previous key after webhook deliveries have migrated. Dev/test may explicitly opt into the documented JWT fallback with `WEBHOOK_ENCRYPTION_KEY_ALLOW_JWT_FALLBACK=true`; staging and production reject that fallback.
+
+**Running pilot owner action:** before the next pilot rebuild, manually add a new random `WEBHOOK_ENCRYPTION_KEY` and set `WEBHOOK_ENCRYPTION_KEY_PREVIOUS` to the current `JWT_SECRET` value in the existing `.env.docker`. Do not paste either value into tickets or logs. The pilot was left running and its configuration was not changed in this batch.
+
 ```powershell
 Set-Location 'D:\The Osiris Labs\Construction_ERP'
 

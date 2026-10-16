@@ -13,6 +13,7 @@ const values = {
   DB_PORT: '55440',
   DB_PASSWORD: crypto.randomBytes(48).toString('base64url'),
   JWT_SECRET: crypto.randomBytes(64).toString('base64url'),
+  WEBHOOK_ENCRYPTION_KEY: crypto.randomBytes(64).toString('base64url'),
   FRONTEND_URL: 'http://localhost:8090',
   CORS_ALLOW_HTTP_LOCAL: 'true',
   TRUST_PROXY: '1',

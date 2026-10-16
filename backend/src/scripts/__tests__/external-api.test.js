@@ -580,6 +580,31 @@ describe('webhook matching + signing', () => {
     expect(rotated).not.toHaveProperty('secret');
     expect(webhookService.decryptWebhookSecret(stub.webhooks.get(created.id).secret)).toBe('rotated-once');
   });
+
+  test('ciphertext encrypted under the previous key is re-encrypted on next load', async () => {
+    const keys = {
+      current: process.env.WEBHOOK_ENCRYPTION_KEY,
+      previous: process.env.WEBHOOK_ENCRYPTION_KEY_PREVIOUS,
+    };
+    try {
+      process.env.WEBHOOK_ENCRYPTION_KEY = 'w'.repeat(48);
+      delete process.env.WEBHOOK_ENCRYPTION_KEY_PREVIOUS;
+      const oldCiphertext = webhookService.encryptWebhookSecret('rotation-secret');
+      process.env.WEBHOOK_ENCRYPTION_KEY = 'n'.repeat(48);
+      process.env.WEBHOOK_ENCRYPTION_KEY_PREVIOUS = 'w'.repeat(48);
+      const hook = { id: 908, secret: oldCiphertext };
+      const update = jest.fn(async (_sql, params) => { hook.secret = params[1]; return { rows: [] }; });
+      expect(await webhookService.loadWebhookSecret(hook, update)).toBe('rotation-secret');
+      expect(hook.secret).not.toBe(oldCiphertext);
+      expect(webhookService.decryptWebhookSecret(hook.secret)).toBe('rotation-secret');
+      expect(update).toHaveBeenCalledTimes(1);
+    } finally {
+      if (keys.current === undefined) delete process.env.WEBHOOK_ENCRYPTION_KEY;
+      else process.env.WEBHOOK_ENCRYPTION_KEY = keys.current;
+      if (keys.previous === undefined) delete process.env.WEBHOOK_ENCRYPTION_KEY_PREVIOUS;
+      else process.env.WEBHOOK_ENCRYPTION_KEY_PREVIOUS = keys.previous;
+    }
+  });
 });
 
 describe('webhook delivery state machine', () => {

@@ -212,8 +212,7 @@ function matchesHookProject(hook, evt) {
   return projectId != null && projectIds.includes(projectId);
 }
 
-function webhookEncryptionKey() {
-  const master = process.env.WEBHOOK_ENCRYPTION_KEY || process.env.JWT_SECRET;
+function deriveWebhookEncryptionKey(master) {
   if (typeof master !== 'string' || master.length < 32) {
     const error = new Error('Webhook secret encryption is not configured');
     error.error_code = 'webhook_secret_key_missing';
@@ -223,6 +222,14 @@ function webhookEncryptionKey() {
   return Buffer.from(crypto.hkdfSync('sha256', Buffer.from(master), 'osiris-webhook-secret-v1', 'construction-erp', 32));
 }
 
+function webhookEncryptionKey() {
+  if (process.env.WEBHOOK_ENCRYPTION_KEY) return deriveWebhookEncryptionKey(process.env.WEBHOOK_ENCRYPTION_KEY);
+  const localFallbackAllowed = ['test', 'development'].includes(process.env.NODE_ENV)
+    && process.env.WEBHOOK_ENCRYPTION_KEY_ALLOW_JWT_FALLBACK === 'true';
+  if (localFallbackAllowed) return deriveWebhookEncryptionKey(process.env.JWT_SECRET);
+  return deriveWebhookEncryptionKey(null);
+}
+
 function encryptWebhookSecret(secret) {
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv('aes-256-gcm', webhookEncryptionKey(), iv);
@@ -230,25 +237,43 @@ function encryptWebhookSecret(secret) {
   return `enc:v1:${iv.toString('base64url')}:${cipher.getAuthTag().toString('base64url')}:${encrypted.toString('base64url')}`;
 }
 
-function decryptWebhookSecret(secret) {
+function decryptWebhookSecretWithRotation(secret) {
   if (typeof secret !== 'string') throw new Error('Webhook secret is unavailable');
-  if (!secret.startsWith('enc:v1:')) return secret; // legacy rows are encrypted on first delivery
+  if (!secret.startsWith('enc:v1:')) return { value: secret, needsReencrypt: true };
   const [, , ivText, tagText, encryptedText] = secret.split(':');
-  try {
-    const decipher = crypto.createDecipheriv('aes-256-gcm', webhookEncryptionKey(), Buffer.from(ivText, 'base64url'));
-    decipher.setAuthTag(Buffer.from(tagText, 'base64url'));
-    return Buffer.concat([decipher.update(Buffer.from(encryptedText, 'base64url')), decipher.final()]).toString('utf8');
-  } catch {
-    const error = new Error('Webhook secret could not be decrypted');
-    error.error_code = 'webhook_secret_decryption_failed';
-    error.status = 503;
-    throw error;
+  const candidates = [{ master: process.env.WEBHOOK_ENCRYPTION_KEY, needsReencrypt: false }];
+  if (process.env.WEBHOOK_ENCRYPTION_KEY_PREVIOUS) {
+    candidates.push({ master: process.env.WEBHOOK_ENCRYPTION_KEY_PREVIOUS, needsReencrypt: true });
   }
+  const localFallbackAllowed = ['test', 'development'].includes(process.env.NODE_ENV)
+    && process.env.WEBHOOK_ENCRYPTION_KEY_ALLOW_JWT_FALLBACK === 'true';
+  if (!process.env.WEBHOOK_ENCRYPTION_KEY && localFallbackAllowed && process.env.JWT_SECRET) {
+    candidates.push({ master: process.env.JWT_SECRET, needsReencrypt: false });
+  }
+  let failure;
+  for (const candidate of candidates) {
+    try {
+      const decipher = crypto.createDecipheriv('aes-256-gcm', deriveWebhookEncryptionKey(candidate.master), Buffer.from(ivText, 'base64url'));
+      decipher.setAuthTag(Buffer.from(tagText, 'base64url'));
+      const value = Buffer.concat([decipher.update(Buffer.from(encryptedText, 'base64url')), decipher.final()]).toString('utf8');
+      return { value, needsReencrypt: candidate.needsReencrypt };
+    } catch (error) { failure = error; }
+  }
+  const error = new Error('Webhook secret could not be decrypted; configure the current and previous encryption keys during rotation');
+  error.error_code = 'webhook_secret_decryption_failed';
+  error.status = 503;
+  error.cause = failure;
+  throw error;
+}
+
+function decryptWebhookSecret(secret) {
+  return decryptWebhookSecretWithRotation(secret).value;
 }
 
 async function loadWebhookSecret(hook, q) {
-  const rawSecret = decryptWebhookSecret(hook.secret);
-  if (!hook.secret.startsWith('enc:v1:')) {
+  const result = decryptWebhookSecretWithRotation(hook.secret);
+  const rawSecret = result.value;
+  if (result.needsReencrypt) {
     await q('UPDATE webhooks SET secret = $2 WHERE id = $1 AND secret = $3', [hook.id, encryptWebhookSecret(rawSecret), hook.secret]);
   }
   return rawSecret;
@@ -468,6 +493,7 @@ module.exports = {
   signPayload,
   encryptWebhookSecret,
   decryptWebhookSecret,
+  loadWebhookSecret,
   isBlockedAddress,
   resolveWebhookTarget,
   postWebhook,

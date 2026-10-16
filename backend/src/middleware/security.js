@@ -74,6 +74,10 @@ function validateRuntimeConfig(env = process.env) {
   if (env.NODE_ENV === 'production' && !env.DB_PASSWORD) {
     throw new Error('DB_PASSWORD environment variable is required in production');
   }
+  const productionLike = env.NODE_ENV === 'production' || ['staging', 'production'].includes(env.APP_ENV);
+  if (productionLike && (!env.WEBHOOK_ENCRYPTION_KEY || env.WEBHOOK_ENCRYPTION_KEY.length < 32)) {
+    throw new Error('WEBHOOK_ENCRYPTION_KEY environment variable is required and must be at least 32 characters in staging/production');
+  }
 }
 
 module.exports = { securityHeaders, requestId, sanitizeServerError, validateRuntimeConfig, validateCorsOrigins, parseTrustProxy };
