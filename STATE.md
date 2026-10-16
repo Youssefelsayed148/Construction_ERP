@@ -1,3 +1,11 @@
+## Batch 4 hotfix 2 resumed - 2026-10-16 - LF blocker resolved
+
+- User superseded the previous line-ending restriction. Stripped CR bytes only from the seven touched code/docs files and ignored .env.docker; all are LF. Current webhook key: count 1, 64 hex characters, no trailing CR; previous-key count 1. Values were not printed; .env.docker remains ignored.
+- Fresh commands: git diff --stat -> six tracked files, 52 insertions / 4 deletions. After adding the new 35-line Compose regression test: git diff --cached --stat -> seven files, 87 insertions / 4 deletions. git diff --cached --check -> exit 0. Exactly seven intended files staged; excluded review reports remain unstaged. git ls-files --eol reports i/lf w/lf for tracked touched files.
+- npm.cmd --prefix backend run lint:guards -> lint-guards: ok; npm.cmd --prefix backend test -- --runInBand --no-colors compose-runtime-config.test.js -> PASS 1 suite / 6 tests. Prior full mocks 66 / 1,102 and image test stage 64 / 1,075 passed in the preceding hotfix attempt; these full gates were not rerun at this checkpoint.
+- Implementation committed as 854e8bd with exact requested Claude trailers. Earlier STOP section is historical and superseded by this successful resume. Pilot rebuild/runtime checks remain pending.
+- Repository editing note: keep tracked files LF to match the index. Proposal only: add .gitattributes containing '* text=auto eol=lf' after user approval; no .gitattributes was added or changed.
+
 ## Batch 4 hotfix 2 - STOP CONDITION - 2026-10-16
 
 - Stopped before commit/rebuild because the pre-commit staged-diff check failed twice, as required by the request. Exact redacted failure: git diff --cached --check -> exit 2, STATE.md and docs/CLOSEOUT_PROGRESS.md: trailing whitespace (CRLF lines); existing lines appeared as additions. First staging used core.autocrlf=false; a second ordinary git add did not clear the broad staged representation. No third attempt was made. This is a staging/line-ending blocker introduced during this task, not a failed application test.

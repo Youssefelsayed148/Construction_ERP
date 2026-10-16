@@ -1409,3 +1409,8 @@ Compose runtime regression: 6 FAIL before / 6 PASS after. lint:guards PASS; full
 ## Batch 4 hotfix 2 - STOP before commit/rebuild - 2026-10-16
 
 Pre-commit staged-diff check failed twice (exit 2, CRLF trailing-whitespace/full-file additions). Request stop rule applied; no third attempt, no commit, no pilot rebuild. Task files are being unstaged while preserving working files. Regression 6/6 PASS after initial 6 failures; lint guards PASS; mocks 66/1,102 PASS; Docker test target 64/1,075 PASS and image removed. Local webhook entries appended safely and ignored. Runtime recovery, post-rebuild counts/health/HTTP, and pilot reconciliation NOT VERIFIED. See STATE.md and CLOSEOUT_LOG.md for exact blocker, baseline evidence, and next action.
+
+
+## Batch 4 hotfix 2 resumed - 2026-10-16
+
+LF staging blocker resolved under updated user authorization. Implementation commit 854e8bd: seven files, 87 insertions / 4 deletions including 35-line test; tracked-only pre-staging diff 52 / 4. Staged diff check, lint guards, and Compose regression 1 suite / 6 tests PASS. Both review reports unstaged and .env.docker ignored; key format/length/no-CR checks PASS. Pilot rebuild and runtime verification follow. LF .gitattributes is a proposal only, not implemented.
