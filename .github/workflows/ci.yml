@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:16
         env:
           POSTGRES_DB: construction_erp
           POSTGRES_USER: construction_erp_user
