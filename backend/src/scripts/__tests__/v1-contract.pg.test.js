@@ -186,6 +186,7 @@ describePg('B5 API contract: OpenAPI spec vs the live /api/v1', () => {
   });
 
   test('/v1/webhooks supports limit/offset and legacy page/per_page with totals', async () => {
+    const existingTotal = (await call('GET', '/api/v1/webhooks?limit=1&offset=0')).body.meta.total;
     for (let index = 0; index < 3; index += 1) await db.query(
       `INSERT INTO webhooks (url, secret, events, description, created_by)
        VALUES ($1, $2, '[]'::jsonb, $3, $4)`,
@@ -203,9 +204,9 @@ describePg('B5 API contract: OpenAPI spec vs the live /api/v1', () => {
       expect(legacyPage.body.data).toHaveLength(1);
       expect(firstPage.body.data[0].id).not.toBe(offsetPage.body.data[0].id);
       expect(offsetPage.body.data[0].id).toBe(legacyPage.body.data[0].id);
-      expect(firstPage.body.meta).toEqual({ page: 1, per_page: 1, total: 3, total_pages: 3 });
-      expect(offsetPage.body.meta).toEqual({ page: 2, per_page: 1, total: 3, total_pages: 3 });
-      expect(legacyPage.body.meta).toEqual({ page: 2, per_page: 1, total: 3, total_pages: 3 });
+      expect(firstPage.body.meta).toEqual({ page: 1, per_page: 1, total: existingTotal + 3, total_pages: existingTotal + 3 });
+      expect(offsetPage.body.meta).toEqual({ page: 2, per_page: 1, total: existingTotal + 3, total_pages: existingTotal + 3 });
+      expect(legacyPage.body.meta).toEqual({ page: 2, per_page: 1, total: existingTotal + 3, total_pages: existingTotal + 3 });
     } finally {
       await db.query('DELETE FROM webhooks WHERE description = $1 AND created_by = $2', [`pagination-${tag}`, owner.id]);
     }

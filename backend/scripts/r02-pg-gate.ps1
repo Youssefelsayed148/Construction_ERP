@@ -29,6 +29,9 @@ $port = Get-Random -Minimum 55000 -Maximum 58000
 $env:DB_HOST = '127.0.0.1'; $env:DB_PORT = "$port"; $env:DB_NAME = if ($R4Baseline) { 'erp_r04_baseline' } elseif ($R4PasswordAfter) { 'erp_r04_password_after' } elseif ($R4MultiInstance) { 'erp_r04_multi' } elseif ($R4Resilience) { 'erp_r04_resilience' } elseif ($R4MigrationUpgrade) { 'erp_r04_migration_upgrade' } elseif ($R4) { 'erp_r04_test' } else { 'erp_r02_test' }
 $env:DB_USER = if ($R4Baseline -or $R4PasswordAfter -or $R4MultiInstance -or $R4Resilience -or $R4MigrationUpgrade -or $R4) { 'erp_r04' } else { 'erp_r02' }; $env:DB_PASSWORD = $pw
 $env:JWT_SECRET = & $rand; $env:TEST_PG = '1'; $env:NODE_ENV = 'test'; $env:APP_ENV = 'test'
+# Keep the shared disposable-database auth counters from rate-limiting unrelated
+# suites in the full Jest run. Rate-limit behavior has dedicated tests.
+$env:AUTH_RATE_LIMIT_PER_15_MIN = '1000'; $env:V1_RATE_LIMIT_PER_MIN = '100000'
 $exit = 1
 try {
   docker run -d --rm --pull=never --name $name -p "127.0.0.1:${port}:5432" `

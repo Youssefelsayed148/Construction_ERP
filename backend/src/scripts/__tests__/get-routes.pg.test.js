@@ -21,7 +21,7 @@ describePg('R0.2 owner GET route smoke on migrated PostgreSQL', () => {
     }
     return result.status;
   };
-  const expectPagePair = async (route, filters = {}, idKey = 'id') => {
+  const expectPagePair = async (route, filters = {}, idKey = 'id', expectedTotal = 3) => {
     const fetchPage = async (offset) => {
       const url = new URL(route, base);
       for (const [key, value] of Object.entries(filters)) url.searchParams.set(key, String(value));
@@ -36,11 +36,20 @@ describePg('R0.2 owner GET route smoke on migrated PostgreSQL', () => {
     const second = await fetchPage(1);
     expect(first.response.status).toBe(200);
     expect(second.response.status).toBe(200);
-    expect(first.response.headers.get('x-total-count')).toBe('3');
-    expect(second.response.headers.get('x-total-count')).toBe('3');
+    expect(first.response.headers.get('x-total-count')).toBe(String(expectedTotal));
+    expect(second.response.headers.get('x-total-count')).toBe(String(expectedTotal));
     expect(first.body.data).toHaveLength(1);
     expect(second.body.data).toHaveLength(1);
     expect(first.body.data[0][idKey]).not.toBe(second.body.data[0][idKey]);
+  };
+  const getRouteTotal = async (route, filters = {}) => {
+    const url = new URL(route, base);
+    for (const [key, value] of Object.entries(filters)) url.searchParams.set(key, String(value));
+    url.searchParams.set('limit', '1');
+    url.searchParams.set('offset', '0');
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    expect(response.status).toBe(200);
+    return Number(response.headers.get('x-total-count'));
   };
   const expectNestedPagePair = async (route, key) => {
     const fetchPage = async (offset) => {
@@ -348,11 +357,12 @@ describePg('R0.2 owner GET route smoke on migrated PostgreSQL', () => {
 
   test('agent session register advances to page 2 with a correct total and no overlap', async () => {
     const clientName = `r02-pagination-${tag}`;
+    const existingTotal = await getRouteTotal('/api/agent/sessions');
     for (let n = 0; n < 3; n += 1) await db.query(
       `INSERT INTO agent_sessions (id, user_id, client_name, expires_at)
        VALUES ($1, $2, $3, NOW() + INTERVAL '1 day')`, [crypto.randomUUID(), owner.id, `${clientName}-${n}`]
     );
-    try { await expectPagePair('/api/agent/sessions'); }
+    try { await expectPagePair('/api/agent/sessions', {}, 'id', existingTotal + 3); }
     finally { await db.query('DELETE FROM agent_sessions WHERE client_name LIKE $1', [`${clientName}-%`]); }
   });
 
@@ -391,6 +401,7 @@ describePg('R0.2 owner GET route smoke on migrated PostgreSQL', () => {
 
   test('pending approval queue advances to page 2 with exact total and no overlap', async () => {
     const expenseIds = [];
+    const existingTotal = await getRouteTotal('/api/approvals/pending');
     try {
       for (let n = 0; n < 3; n += 1) {
         const expense = (await db.query(
@@ -414,8 +425,8 @@ describePg('R0.2 owner GET route smoke on migrated PostgreSQL', () => {
       const second = await fetchPage(1);
       expect(first.response.status).toBe(200);
       expect(second.response.status).toBe(200);
-      expect(first.response.headers.get('x-total-count')).toBe('3');
-      expect(second.response.headers.get('x-total-count')).toBe('3');
+      expect(first.response.headers.get('x-total-count')).toBe(String(existingTotal + 3));
+      expect(second.response.headers.get('x-total-count')).toBe(String(existingTotal + 3));
       expect(first.body.requests).toHaveLength(1);
       expect(second.body.requests).toHaveLength(1);
       expect(first.body.requests[0].id).not.toBe(second.body.requests[0].id);
@@ -448,6 +459,8 @@ describePg('R0.2 owner GET route smoke on migrated PostgreSQL', () => {
   });
 
   test('agent activity and action requests advance to page 2 with correct totals', async () => {
+    const existingActivityTotal = await getRouteTotal('/api/agent/activity');
+    const existingRequestTotal = await getRouteTotal('/api/agent/requests', { status: 'draft' });
     try {
       for (let n = 0; n < 3; n += 1) {
         await db.query(
@@ -459,8 +472,8 @@ describePg('R0.2 owner GET route smoke on migrated PostgreSQL', () => {
           [`pagination-${tag}`, owner.id, `request ${n}`]
         );
       }
-      await expectPagePair('/api/agent/activity');
-      await expectPagePair('/api/agent/requests', { status: 'draft' });
+      await expectPagePair('/api/agent/activity', {}, 'id', existingActivityTotal + 3);
+      await expectPagePair('/api/agent/requests', { status: 'draft' }, 'id', existingRequestTotal + 3);
     } finally {
       await db.query('DELETE FROM agent_action_requests WHERE requesting_user_id = $1 AND tool = $2', [owner.id, `pagination-${tag}`]);
       await db.query('DELETE FROM agent_tool_calls WHERE user_id = $1 AND tool = $2', [owner.id, `pagination-${tag}`]);
