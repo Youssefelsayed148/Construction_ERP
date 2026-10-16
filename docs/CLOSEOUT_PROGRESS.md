@@ -1414,3 +1414,8 @@ Pre-commit staged-diff check failed twice (exit 2, CRLF trailing-whitespace/full
 ## Batch 4 hotfix 2 resumed - 2026-10-16
 
 LF staging blocker resolved under updated user authorization. Implementation commit 854e8bd: seven files, 87 insertions / 4 deletions including 35-line test; tracked-only pre-staging diff 52 / 4. Staged diff check, lint guards, and Compose regression 1 suite / 6 tests PASS. Both review reports unstaged and .env.docker ignored; key format/length/no-CR checks PASS. Pilot rebuild and runtime verification follow. LF .gitattributes is a proposal only, not implemented.
+
+
+## Batch 4 hotfix 2 complete - 2026-10-16
+
+Implementation 854e8bd and LF checkpoint 855ee52 committed. Pilot migrate exited 0 (0 applied / 130 already applied); backend/frontend rebuilt, recreated, healthy. All three use rebuilt named images different from baseline; db exact ID/creation time unchanged. HTTP / and /api/health return 200; normal startup with no webhook-key error. Counts unchanged: users 77, projects 2, POs 20, GRNs 11, journals 22; migrations 130. Read-only reconcile matches expected 15/16, sole violation PO-00008 line 8. Fresh lint/regression PASS (1 suite / 6 tests); fresh image test stage PASS 64/1,075; prior full mocks PASS 66/1,102. No manual data edits or seed/smoke. Human UAT/live webhook rotation and fresh full PG/frontend/mock suites NOT VERIFIED this resume. See STATE.md / CLOSEOUT_LOG.md for exact commands, creation times and image evidence. UAT starts with storekeeper posting the GRN for PO-00008 MIR in the UI.
