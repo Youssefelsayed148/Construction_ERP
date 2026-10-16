@@ -1,6 +1,6 @@
 ## Batch 4 current position - 2026-10-16
 
-- Batch 4 Docker test-stage hotfix is implemented: root cause was `/proc/1/attr/apparmor/current` (procfs pseudo-file), reached because the backend-only build fallback scanned `/`. Failing-first unreadable-file regression now passes; scanner warns by path and continues. `backend/.dockerignore` excludes `.env*`; throwaway image confirmed clean. `lint:guards` PASS; backend mock 65 suites / 1,096 tests PASS; throwaway image test stage PASS 64 suites / 1,075 tests (84 suites / 1,939 tests skipped by filter). CI now includes the image test-stage gate. Pilot container IDs and creation times were unchanged. Evidence in `docs/CLOSEOUT_LOG.md`; commit pending.
+- Batch 4 Docker test-stage hotfix is implemented: root cause was `/proc/1/attr/apparmor/current` (procfs pseudo-file), reached because the backend-only build fallback scanned `/`. Failing-first unreadable-file regression now passes; scanner warns by path and continues. `backend/.dockerignore` excludes `.env*`; throwaway image confirmed clean. `lint:guards` PASS; backend mock 65 suites / 1,096 tests PASS; throwaway image test stage PASS 64 suites / 1,075 tests (84 suites / 1,939 tests skipped by filter). CI now includes the image test-stage gate. Pilot container IDs and creation times were unchanged. Evidence in `docs/CLOSEOUT_LOG.md`; implementation commit `9ac88c3` is committed.
 
 - Documentation checkpoint committed as 2e814b after the final gates; this State note follows that commit.
 

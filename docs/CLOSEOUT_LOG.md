@@ -1,5 +1,7 @@
 # 2026-10-16 - Batch 4 Docker test-stage hotfix
 
+- Implementation commit: `9ac88c3` (`fix: harden password guard in backend image build`), with the required co-author and session trailers; this documentation checkpoint follows.
+
 - Reproduced `docker build -f backend/Dockerfile --target test -t erp-hotfix-test backend`: `lint:guards` failed with EINVAL reading `/proc/1/attr/apparmor/current`, a procfs pseudo-file exposed because the backend-only image computed its scan root as `/`.
 - Guard regression was failing-first (1 test failed with simulated EACCES); after the fix, the focused suite passed 1/1 suite / 11/11 tests. Unreadable paths now warn by path and scanning continues; actual password matches still report only `file:line`.
 - Docker fallback scans `/app` rather than `/`; `backend/.dockerignore` excludes `.env*`. No root `.dockerignore` exists. The throwaway image contains no `.env*` files under `/app`.
