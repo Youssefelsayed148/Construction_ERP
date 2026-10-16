@@ -1,3 +1,4 @@
+import { formatNumber } from '../utils/formatters';
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -146,18 +147,18 @@ function BOQ() {
           <div>
             <h1>{t('common.nav.boq')}</h1>
             <p style={{ color: 'var(--color-text-secondary)' }}>
-              {locale === 'ar' ? 'حصر الكميات للمشروع' : 'Bill of Quantities for Project'}
+              {t('boq.system.billOfQuantitiesForProject')}
             </p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button className="btn btn-outline" onClick={() => { setEditingSection(null); setShowSectionModal(true); }}>
             <Plus size={16} />
-            {locale === 'ar' ? 'إضافة قسم' : 'Add Section'}
+            {t('boq.system.addSection')}
           </button>
           <button className="btn btn-primary" onClick={() => { setEditingItem(null); setShowItemModal(true); loadMasterItems(); }}>
             <Plus size={16} />
-            {locale === 'ar' ? 'إضافة بند' : 'Add Item'}
+            {t('boq.system.addItem')}
           </button>
         </div>
       </div>
@@ -167,19 +168,19 @@ function BOQ() {
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-value">{sections.length}</div>
-          <div className="stat-label">{locale === 'ar' ? 'الأقسام' : 'Sections'}</div>
+          <div className="stat-label">{t('boq.system.sections')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-value">{items.length}</div>
-          <div className="stat-label">{locale === 'ar' ? 'البنود' : 'Items'}</div>
+          <div className="stat-label">{t('boq.system.items')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-value" style={{ color: 'var(--color-success)' }}>{formatPercent(totalCompletion)}</div>
-          <div className="stat-label">{locale === 'ar' ? 'متوسط الإنجاز' : 'Avg. Completion'}</div>
+          <div className="stat-label">{t('boq.system.avgCompletion')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-value">{formatCurrency(grandTotal)}</div>
-          <div className="stat-label">{locale === 'ar' ? 'الإجمالي الكلي' : 'Grand Total'}</div>
+          <div className="stat-label">{t('boq.system.grandTotal')}</div>
         </div>
       </div>
 
@@ -187,7 +188,7 @@ function BOQ() {
 
       <div className="card" style={{ marginBottom: '20px' }}>
         <div className="card-header">
-          <h3 className="card-title">{locale === 'ar' ? 'ملخص التكاليف حسب النوع' : 'BOQ Summary by Type'}</h3>
+          <h3 className="card-title">{t('boq.system.boqSummaryByType')}</h3>
         </div>
         <div className="stats-grid" style={{ marginBottom: 0 }}>
           {ITEM_TYPES.map(tp => (
@@ -203,7 +204,7 @@ function BOQ() {
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <FileText size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'لا توجد أقسام بعد. أضف أول قسم.' : 'No BOQ sections yet. Add your first section.'}
+            {t('boq.system.noBoqSectionsYetAddYourFirstSection')}
           </p>
         </div>
       ) : (
@@ -316,11 +317,11 @@ function BOQSectionTree({
             {sectionName(section)}
           </span>
           <span style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}>
-            {sectionItems.length} {locale === 'ar' ? 'بنود' : 'items'}
+            {sectionItems.length} {t('boq.system.items2')}
           </span>
           <button className="btn btn-primary" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={() => onAddItem(section.id)}>
             <Plus size={12} />
-            {locale === 'ar' ? 'بند' : 'Item'}
+            {t('boq.system.item')}
           </button>
           <button className="btn" style={{ padding: '4px 8px' }} onClick={() => onEditSection(section)}>
             <Edit size={12} />
@@ -342,10 +343,10 @@ function BOQSectionTree({
                     <th>{t('common.description')}</th>
                     <th>{t('common.unit')}</th>
                     <th>{t('common.quantity')}</th>
-                    <th>{locale === 'ar' ? 'سعر الوحدة' : 'Unit Rate'}</th>
+                    <th>{t('boq.system.unitRate')}</th>
                     <th>{t('common.total')}</th>
                     <th>{t('common.type')}</th>
-                    <th>{locale === 'ar' ? 'إنجاز' : 'Completion'}</th>
+                    <th>{t('boq.system.completion')}</th>
                     <th>{t('common.actions')}</th>
                   </tr>
                 </thead>
@@ -355,7 +356,7 @@ function BOQSectionTree({
                       <td style={{ fontFamily: 'monospace', color: 'var(--color-accent)', fontSize: '12px' }}>{it.code}</td>
                       <td style={{ fontSize: '13px' }}>{itemDesc(it)}</td>
                       <td style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}>{unitLabel(it.unit)}</td>
-                      <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{it.quantity != null ? Number(it.quantity).toLocaleString('en-US') : '—'}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{it.quantity != null ? formatNumber(it.quantity, { locale, decimals: 2 }) : '—'}</td>
                       <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{formatCurrency(it.unit_rate)}</td>
                       <td style={{ fontFamily: 'monospace', color: 'var(--color-warning)', fontWeight: 600, fontSize: '12px' }}>{formatCurrency(it.total_price)}</td>
                       <td><span className={`badge ${TYPE_BADGE[it.type] || 'badge-info'}`} style={{ fontSize: '10px' }}>{typeLabel(it.type)}</span></td>
@@ -463,8 +464,8 @@ function SectionModal({ section, sections, projectId, locale, t, onClose, onSave
         <div className="modal-header">
           <h3 className="modal-title">
             {isEdit
-              ? (locale === 'ar' ? 'تعديل القسم' : 'Edit Section')
-              : (locale === 'ar' ? 'إضافة قسم جديد' : 'Add New Section')}
+              ? (t('boq.system.editSection'))
+              : (t('boq.system.addNewSection'))}
           </h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
@@ -473,7 +474,7 @@ function SectionModal({ section, sections, projectId, locale, t, onClose, onSave
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">English Name *</label>
+                  <label className="form-label">{t('boq.system.englishName')}</label>
                   <input className="form-input" value={form.name_en} onChange={e => handleChange('name_en', e.target.value)} required />
                 </div>
                 <div className="form-group">
@@ -483,16 +484,16 @@ function SectionModal({ section, sections, projectId, locale, t, onClose, onSave
               </div>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'القسم الأب' : 'Parent Section'}</label>
+                  <label className="form-label">{t('boq.system.parentSection')}</label>
                   <select className="form-select" value={form.parent_id} onChange={e => handleChange('parent_id', e.target.value)}>
-                    <option value="">{locale === 'ar' ? '— بلا أب (قسم رئيسي) —' : '— Root Section —'}</option>
+                    <option value="">{t('boq.system.rootSection')}</option>
                     {parentOptions.map(s => (
                       <option key={s.id} value={s.id}>{s.code} - {locale === 'ar' ? s.name_ar : s.name_en}</option>
                     ))}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'ترتيب الفرز' : 'Sort Order'}</label>
+                  <label className="form-label">{t('boq.system.sortOrder')}</label>
                   <input className="form-input" type="number" min="0" value={form.sort_order} onChange={e => handleChange('sort_order', e.target.value)} />
                 </div>
               </div>
@@ -572,8 +573,8 @@ function ItemModal({ item, sections, defaultSectionId, projectId, masterItems, i
         <div className="modal-header">
           <h3 className="modal-title">
             {isEdit
-              ? (locale === 'ar' ? 'تعديل البند' : 'Edit Item')
-              : (locale === 'ar' ? 'إضافة بند جديد' : 'Add New Item')}
+              ? (t('boq.system.editItem'))
+              : (t('boq.system.addNewItem'))}
           </h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
@@ -582,9 +583,9 @@ function ItemModal({ item, sections, defaultSectionId, projectId, masterItems, i
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'القسم' : 'Section'} *</label>
+                  <label className="form-label">{t('boq.system.section')} *</label>
                   <select className="form-select" value={form.section_id} onChange={e => handleChange('section_id', e.target.value)} required>
-                    <option value="">{locale === 'ar' ? '— اختر القسم —' : '— Select Section —'}</option>
+                    <option value="">{t('boq.system.selectSection')}</option>
                     {sections.map(s => (
                       <option key={s.id} value={s.id}>{s.code} - {locale === 'ar' ? s.name_ar : s.name_en}</option>
                     ))}
@@ -601,7 +602,7 @@ function ItemModal({ item, sections, defaultSectionId, projectId, masterItems, i
               </div>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">English Description *</label>
+                  <label className="form-label">{t('boq.system.englishDescription')}</label>
                   <input className="form-input" value={form.description_en} onChange={e => handleChange('description_en', e.target.value)} required />
                 </div>
                 <div className="form-group">
@@ -623,13 +624,13 @@ function ItemModal({ item, sections, defaultSectionId, projectId, masterItems, i
                   <input className="form-input" type="number" step="0.01" min="0" value={form.quantity} onChange={e => handleChange('quantity', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'سعر الوحدة' : 'Unit Rate'}</label>
+                  <label className="form-label">{t('boq.system.unitRate')}</label>
                   <input className="form-input" type="number" step="0.01" min="0" value={form.unit_rate} onChange={e => handleChange('unit_rate', e.target.value)} />
                 </div>
               </div>
 
               <div className="form-group" style={{ position: 'relative' }}>
-                <label className="form-label">{locale === 'ar' ? 'المادة الرئيسية (اختياري)' : 'Master Item (optional)'}</label>
+                <label className="form-label">{t('boq.system.masterItemOptional')}</label>
                 {isEdit && selectedMasterItem ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <input className="form-input" value={itemMasterLabel} disabled style={{ flex: 1 }} />
@@ -646,7 +647,7 @@ function ItemModal({ item, sections, defaultSectionId, projectId, masterItems, i
                         onChange={e => { setItemSearch(e.target.value); setShowItemDropdown(true); }}
                         onFocus={() => setShowItemDropdown(true)}
                         onBlur={() => setTimeout(() => setShowItemDropdown(false), 200)}
-                        placeholder={locale === 'ar' ? 'ابحث عن مادة...' : 'Search master item...'}
+                        placeholder={t('boq.system.searchMasterItem')}
                       />
                       {form.item_master_id && (
                         <button type="button" className="btn" style={{ padding: '6px 12px', flexShrink: 0 }} onClick={() => handleChange('item_master_id', '')}>

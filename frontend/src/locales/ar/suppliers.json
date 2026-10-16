@@ -8,5 +8,33 @@
     "restore": "استعادة",
     "showDeleted": "عرض الموردين المحذوفين",
     "deletedBadge": "محذوف"
+  },
+  "system": {
+    "supplierDatabase": "قاعدة بيانات الموردين",
+    "addSupplier": "إضافة مورد",
+    "searchSuppliers": "بحث عن موردين...",
+    "noSuppliersFoundAddYourFirstSupplier": "لا يوجد موردين. أضف أول مورد.",
+    "contactPerson": "الشخص المسؤول",
+    "phone": "الهاتف",
+    "city": "المدينة",
+    "edit": "تعديل: {code}",
+    "addNewSupplier": "إضافة مورد جديد",
+    "englishName": "الاسم بالإنجليزية *",
+    "email": "البريد الإلكتروني",
+    "address": "العنوان",
+    "selectCity": "اختر المدينة",
+    "taxId": "الرقم الضريبي",
+    "paymentTerms": "شروط الدفع",
+    "active": "نشط",
+    "suppliedMaterials": "المواد الموردة",
+    "noMaterialsLinkedYet": "لا توجد مواد مرتبطة بعد.",
+    "material": "المادة",
+    "unitPrice": "سعر الوحدة",
+    "leadTimeDays": "مدة التوريد (يوم)",
+    "notes": "ملاحظات",
+    "addMaterial": "إضافة مادة",
+    "selectMaterial": "اختر مادة",
+    "price": "السعر",
+    "leadTime": "مدة التوريد"
   }
 }

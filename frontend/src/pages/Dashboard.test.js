@@ -38,4 +38,9 @@ describe('role dashboard system language', () => {
     expect(container.textContent).toContain('Owner entered English note');
     expect(container.textContent).not.toContain('personal');
   });
+  test('project-manager source and nested quantity fields stay Arabic', () => {
+    act(() => root.render(<RoleDashboardSection dash={{ role: 'project_manager', widgets: [{ key: 'progress', title: 'Progress', data: { avg_percent: 25, source: 'quantities', pending: { measurements: 2, quantity: -12 } } }] }} />));
+    expect(container.textContent).not.toMatch(/[A-Za-z_]|⟦|\[object/);
+    expect(container.textContent).toContain(mockAr.widgets.fields.measurements);
+  });
 });

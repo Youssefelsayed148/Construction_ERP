@@ -1,11 +1,11 @@
 {
   "status": {
     "draft": "مسودة",
-    "pending": "قيد الانتظار",
-    "pendingApproval": "بانتظار الاعتماد",
-    "submitted": "مُرسل",
+    "pending": "معلق",
+    "pendingApproval": "بانتظار الموافقة",
+    "submitted": "مراجعة الجودة",
     "underReview": "قيد المراجعة",
-    "approved": "معتمد",
+    "approved": "مقبول",
     "rejected": "مرفوض",
     "returned": "معاد للتعديل",
     "open": "مفتوح",
@@ -14,25 +14,72 @@
     "closed": "مغلق",
     "cancelled": "ملغي",
     "onHold": "معلق",
-    "overdue": "متأخر",
+    "overdue": "متأخرة",
     "active": "نشط",
     "inactive": "غير نشط",
-    "planning": "قيد التخطيط",
+    "planning": "تخطيط",
     "verified": "تم التحقق",
     "certified": "معتمد (مستخلص)",
-    "paid": "مدفوع",
+    "paid": "مدفوعة بالكامل",
     "unpaid": "غير مدفوع",
-    "partiallyPaid": "مدفوع جزئيًا",
-    "issued": "صادر",
-    "sent": "مرسل",
-    "void": "ملغى",
+    "partiallyPaid": "مدفوعة جزئياً",
+    "issued": "صادرة",
+    "sent": "مرسلة",
+    "void": "ملغاة",
     "received": "مستلم",
-    "delivered": "تم التسليم",
+    "delivered": "مسلّم",
     "expired": "منتهي",
     "available": "متاح",
     "reserved": "محجوز",
     "blocked": "محظور",
-    "scheduled": "مجدول"
+    "scheduled": "مجدول",
+    "terminated": "منتهي",
+    "posted": "مُرحّل",
+    "onLeave": "إجازة",
+    "present": "حاضر",
+    "absent": "غائب",
+    "late": "متأخر",
+    "halfDay": "نصف يوم",
+    "leave": "إجازة",
+    "suspended": "معلق",
+    "all": "الكل",
+    "review": "قيد المراجعة",
+    "archived": "مؤرشف",
+    "answered": "تمت الإجابة",
+    "revised": "معدل",
+    "resolved": "تم الحل",
+    "passed": "ناجح",
+    "failed": "فشل",
+    "investigating": "قيد التحقيق",
+    "qaQcReview": "مراجعة الجودة",
+    "pmReview": "مراجعة مدير المشروع",
+    "consultantReview": "مراجعة الاستشاري",
+    "approvedWithComments": "معتمد بملاحظات",
+    "assigned": "مسند",
+    "rectified": "تم التصحيح",
+    "proposed": "مقترح",
+    "rework": "إعادة عمل",
+    "acknowledged": "تم الإقرار",
+    "implemented": "منفذة",
+    "contracted": "متعاقد",
+    "underConstruction": "تحت الإنشاء",
+    "planned": "مخطط",
+    "responded": "تم الرد",
+    "uploaded": "مرفوع",
+    "complete": "مكتمل",
+    "raised": "مقدمة",
+    "rectificationInProgress": "قيد التصحيح",
+    "submittedForAcceptance": "مقدم للقبول",
+    "accepted": "مقبول",
+    "ready": "جاهز",
+    "preHandover": "ما قبل التسليم",
+    "practicalCompletion": "الاستلام الابتدائي",
+    "dlp": "فترة ضمان العيوب",
+    "finalCompletion": "الاستلام النهائي",
+    "executed": "منفذ",
+    "success": "نجاح",
+    "awaitingApproval": "بانتظار الموافقة",
+    "inReview": "قيد المراجعة"
   },
   "priority": {
     "low": "منخفضة",
@@ -103,7 +150,10 @@
     "subcontractorManager": "مدير مقاول الباطن",
     "subcontractorSiteEngineer": "مهندس موقع مقاول الباطن",
     "supplierSales": "مبيعات المورد",
-    "testingLab": "مختبر الاختبارات"
+    "testingLab": "مختبر الاختبارات",
+    "safetyOfficer": "مسؤول السلامة",
+    "supervisor": "مشرف",
+    "foreman": "رئيس عمال"
   },
   "entityType": {
     "project": "مشروع",
@@ -119,7 +169,9 @@
     "document": "مستند",
     "observation": "ملاحظة",
     "permit": "تصريح",
-    "asset": "أصل"
+    "asset": "أصل",
+    "boqChange": "تغيير جدول الكميات",
+    "workflowStep": "خطوة سير العمل"
   },
   "workflowAction": {
     "submit": "إرسال",
@@ -142,5 +194,55 @@
   "boolean": {
     "yes": "نعم",
     "no": "لا"
+  },
+  "scope": {
+    "personal": "شخصي",
+    "project": "مشروع",
+    "location": "موقع",
+    "company": "الشركة"
+  },
+  "result": {
+    "pass": "ناجح",
+    "fail": "غير ناجح",
+    "pending": "معلق"
+  },
+  "direction": {
+    "incoming": "وارد",
+    "outgoing": "صادر"
+  },
+  "correspondenceType": {
+    "letter": "خطاب",
+    "notice": "إشعار",
+    "instruction": "تعليمات",
+    "claim": "مطالبة"
+  },
+  "inspectionPointType": {
+    "hold": "نقطة توقف",
+    "witness": "نقطة حضور",
+    "review": "مراجعة"
+  },
+  "discipline": {
+    "architectural": "معماري",
+    "structural": "إنشائي",
+    "civil": "مدني",
+    "mechanical": "ميكانيكي",
+    "electrical": "كهربائي",
+    "plumbing": "سباكة",
+    "hvac": "تكييف وتهوية",
+    "fire": "مكافحة حريق"
+  },
+  "documentType": {
+    "drawing": "مخطط",
+    "specification": "مواصفات",
+    "contract": "عقد",
+    "report": "تقرير",
+    "methodStatement": "بيان طريقة العمل",
+    "asBuilt": "مخطط حسب التنفيذ",
+    "oM": "التشغيل والصيانة"
+  },
+  "frequency": {
+    "daily": "يومي",
+    "weekly": "أسبوعي",
+    "monthly": "شهري"
   }
 }

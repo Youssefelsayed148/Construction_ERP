@@ -2,18 +2,18 @@
   "status": {
     "draft": "Draft",
     "pending": "Pending",
-    "pendingApproval": "Pending approval",
-    "submitted": "Submitted",
-    "underReview": "Under review",
+    "pendingApproval": "Pending Approval",
+    "submitted": "QA/QC Review",
+    "underReview": "Under Review",
     "approved": "Approved",
     "rejected": "Rejected",
     "returned": "Returned",
     "open": "Open",
-    "inProgress": "In progress",
+    "inProgress": "In Progress",
     "completed": "Completed",
     "closed": "Closed",
     "cancelled": "Cancelled",
-    "onHold": "On hold",
+    "onHold": "On Hold",
     "overdue": "Overdue",
     "active": "Active",
     "inactive": "Inactive",
@@ -22,7 +22,7 @@
     "certified": "Certified",
     "paid": "Paid",
     "unpaid": "Unpaid",
-    "partiallyPaid": "Partially paid",
+    "partiallyPaid": "Partially Paid",
     "issued": "Issued",
     "sent": "Sent",
     "void": "Void",
@@ -32,7 +32,54 @@
     "available": "Available",
     "reserved": "Reserved",
     "blocked": "Blocked",
-    "scheduled": "Scheduled"
+    "scheduled": "Scheduled",
+    "terminated": "Terminated",
+    "posted": "Posted",
+    "onLeave": "On Leave",
+    "present": "Present",
+    "absent": "Absent",
+    "late": "Late",
+    "halfDay": "Half Day",
+    "leave": "Leave",
+    "suspended": "Suspended",
+    "all": "All",
+    "review": "In Review",
+    "archived": "Archived",
+    "answered": "Answered",
+    "revised": "Revised",
+    "resolved": "Resolved",
+    "passed": "Passed",
+    "failed": "Failed",
+    "investigating": "Investigating",
+    "qaQcReview": "QA/QC Review",
+    "pmReview": "PM Review",
+    "consultantReview": "Consultant review",
+    "approvedWithComments": "Approved with comments",
+    "assigned": "Assigned",
+    "rectified": "Rectified",
+    "proposed": "Proposed",
+    "rework": "Rework",
+    "acknowledged": "Acknowledged",
+    "implemented": "Implemented",
+    "contracted": "Contracted",
+    "underConstruction": "Under Construction",
+    "planned": "Planned",
+    "responded": "Responded",
+    "uploaded": "Uploaded",
+    "complete": "Complete",
+    "raised": "Raised",
+    "rectificationInProgress": "Rectification in progress",
+    "submittedForAcceptance": "Submitted for acceptance",
+    "accepted": "Accepted",
+    "ready": "Ready",
+    "preHandover": "Pre-handover",
+    "practicalCompletion": "Practical completion",
+    "dlp": "Defects liability period",
+    "finalCompletion": "Final completion",
+    "executed": "Executed",
+    "success": "Success",
+    "awaitingApproval": "Awaiting approval",
+    "inReview": "In review"
   },
   "priority": {
     "low": "Low",
@@ -103,7 +150,10 @@
     "subcontractorManager": "Subcontractor Manager",
     "subcontractorSiteEngineer": "Subcontractor Site Engineer",
     "supplierSales": "Supplier Sales",
-    "testingLab": "Testing Laboratory"
+    "testingLab": "Testing Laboratory",
+    "safetyOfficer": "Safety Officer",
+    "supervisor": "Supervisor",
+    "foreman": "Foreman"
   },
   "entityType": {
     "project": "Project",
@@ -119,7 +169,9 @@
     "document": "Document",
     "observation": "Observation",
     "permit": "Permit",
-    "asset": "Asset"
+    "asset": "Asset",
+    "boqChange": "BOQ change",
+    "workflowStep": "Workflow step"
   },
   "workflowAction": {
     "submit": "Submit",
@@ -142,5 +194,55 @@
   "boolean": {
     "yes": "Yes",
     "no": "No"
+  },
+  "scope": {
+    "personal": "Personal",
+    "project": "Project",
+    "location": "Location",
+    "company": "Company"
+  },
+  "result": {
+    "pass": "Pass",
+    "fail": "Fail",
+    "pending": "Pending"
+  },
+  "direction": {
+    "incoming": "Incoming",
+    "outgoing": "Outgoing"
+  },
+  "correspondenceType": {
+    "letter": "Letter",
+    "notice": "Notice",
+    "instruction": "Instruction",
+    "claim": "Claim"
+  },
+  "inspectionPointType": {
+    "hold": "Hold",
+    "witness": "Witness",
+    "review": "Review"
+  },
+  "discipline": {
+    "architectural": "Architectural",
+    "structural": "Structural",
+    "civil": "Civil",
+    "mechanical": "Mechanical",
+    "electrical": "Electrical",
+    "plumbing": "Plumbing",
+    "hvac": "HVAC",
+    "fire": "Fire"
+  },
+  "documentType": {
+    "drawing": "Drawing",
+    "specification": "Specification",
+    "contract": "Contract",
+    "report": "Report",
+    "methodStatement": "Method statement",
+    "asBuilt": "As built",
+    "oM": "Operation & maintenance"
+  },
+  "frequency": {
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "monthly": "Monthly"
   }
 }

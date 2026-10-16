@@ -1,3 +1,25 @@
 {
-  "title": "المصروفات"
+  "title": "المصروفات",
+  "system": {
+    "expenseLedger": "سجل المصروفات",
+    "addExpense": "إضافة مصروف",
+    "totalExpenses": "إجمالي المصروفات",
+    "thisMonthCount": "مصروفات هذا الشهر",
+    "thisMonthTotal": "إجمالي هذا الشهر",
+    "searchExpenses": "بحث عن مصروفات...",
+    "noExpensesFoundAddYourFirstExpense": "لا توجد مصروفات. أضف أول مصروف.",
+    "amount": "المبلغ",
+    "date": "التاريخ",
+    "project": "المشروع",
+    "approved": "معتمد",
+    "rejected": "مرفوض",
+    "pending": "معلق",
+    "editExpense": "تعديل المصروف",
+    "addNewExpense": "إضافة مصروف جديد",
+    "amountEgp": "المبلغ (ج.م)",
+    "projectOptional": "المشروع (اختياري)",
+    "noProject": "بدون مشروع",
+    "paidBy": "مدفوع بواسطة",
+    "notes": "ملاحظات"
+  }
 }

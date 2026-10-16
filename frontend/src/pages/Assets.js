@@ -98,14 +98,14 @@ function Assets() {
     <div className="page-container">
       <div className="page-header">
         <div>
-          <h1>{t('assets.title') || (locale === 'ar' ? 'المعدات' : 'Equipment')}</h1>
+          <h1>{t('assets.title') || (t('assets.title'))}</h1>
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'إدارة معدات وأصول المشروع' : 'Project Equipment & Asset Management'}
+            {t('assets.system.projectEquipmentAssetManagement')}
           </p>
         </div>
         <button className="btn btn-primary" onClick={() => { setEditingAsset(null); loadProjects(); setShowModal(true); }}>
           <Plus size={16} />
-          {locale === 'ar' ? 'إضافة معدة' : 'Add Equipment'}
+          {t('assets.system.addEquipment')}
         </button>
       </div>
 
@@ -139,7 +139,7 @@ function Assets() {
             style={{ background: 'transparent', border: 'none', padding: '0', flex: 1 }}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder={locale === 'ar' ? 'بحث عن معدة...' : 'Search equipment...'}
+            placeholder={t('assets.system.searchEquipment')}
           />
           {searchQuery && (
             <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
@@ -157,7 +157,7 @@ function Assets() {
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <Wrench size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'لا توجد معدات. أضف أول معدة.' : 'No equipment found. Add your first equipment.'}
+            {t('assets.system.noEquipmentFoundAddYourFirstEquipment')}
           </p>
         </div>
       ) : (
@@ -168,9 +168,9 @@ function Assets() {
                 <th>{t('common.code')}</th>
                 <th>{t('common.name')}</th>
                 <th>{t('common.category')}</th>
-                <th>{locale === 'ar' ? 'النوع' : 'Type'}</th>
-                <th>{locale === 'ar' ? 'سعر الساعة' : 'Hourly Rate'}</th>
-                <th>{locale === 'ar' ? 'سعر اليوم' : 'Daily Rate'}</th>
+                <th>{t('assets.system.type')}</th>
+                <th>{t('assets.system.hourlyRate')}</th>
+                <th>{t('assets.system.dailyRate')}</th>
                 <th>{t('common.status')}</th>
                 <th>{t('common.actions')}</th>
               </tr>
@@ -186,9 +186,9 @@ function Assets() {
                   <td style={{ fontFamily: 'monospace' }}>{asset.daily_rate != null ? Number(asset.daily_rate).toFixed(2) : '-'}</td>
                   <td>
                     <span className={`badge ${asset.status === 'available' ? 'badge-success' : asset.status === 'in_use' ? 'badge-warning' : asset.status === 'maintenance' ? 'badge-danger' : 'badge-info'}`}>
-                      {asset.status === 'available' ? (locale === 'ar' ? 'متاحة' : 'Available')
-                        : asset.status === 'in_use' ? (locale === 'ar' ? 'قيد الاستخدام' : 'In Use')
-                        : asset.status === 'maintenance' ? (locale === 'ar' ? 'صيانة' : 'Maintenance')
+                      {asset.status === 'available' ? (t('assets.system.available'))
+                        : asset.status === 'in_use' ? (t('assets.system.inUse'))
+                        : asset.status === 'maintenance' ? (t('assets.system.maintenance'))
                         : asset.status || '—'}
                     </span>
                   </td>
@@ -274,8 +274,8 @@ function AssetModal({ asset, locale, t, projects, onClose, onSave }) {
         <div className="modal-header">
           <h3 className="modal-title">
             {isEdit
-              ? (locale === 'ar' ? `تعديل: ${asset.code}` : `Edit: ${asset.code}`)
-              : (locale === 'ar' ? 'إضافة معدة جديدة' : 'Add New Equipment')}
+              ? (t('assets.system.edit', { code: asset.code }))
+              : (t('assets.system.addNewEquipment'))}
           </h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
@@ -291,7 +291,7 @@ function AssetModal({ asset, locale, t, projects, onClose, onSave }) {
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">English Name *</label>
+                  <label className="form-label">{t('assets.system.englishName')}</label>
                   <input className="form-input" value={form.name_en} onChange={e => handleChange('name_en', e.target.value)} required />
                 </div>
                 <div className="form-group">
@@ -304,63 +304,63 @@ function AssetModal({ asset, locale, t, projects, onClose, onSave }) {
                 <div className="form-group">
                   <label className="form-label">{t('common.category')} *</label>
                   <select className="form-select" value={form.category} onChange={e => handleChange('category', e.target.value)} required>
-                    <option value="">-- {locale === 'ar' ? 'اختر الفئة' : 'Select Category'} --</option>
+                    <option value="">-- {t('assets.system.selectCategory')} --</option>
                     {CATEGORIES.map(c => (
                       <option key={c} value={c}>{CATEGORY_LABELS[locale]?.[c] || c}</option>
                     ))}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'نوع المعدة' : 'Equipment Type'} *</label>
+                  <label className="form-label">{t('assets.system.equipmentType')} *</label>
                   <select className="form-select" value={form.equipment_type} onChange={e => handleChange('equipment_type', e.target.value)} required>
-                    <option value="">-- {locale === 'ar' ? 'اختر النوع' : 'Select Type'} --</option>
-                    <option value="owned">{locale === 'ar' ? 'مملوكة' : 'Owned'}</option>
-                    <option value="rented">{locale === 'ar' ? 'مستأجرة' : 'Rented'}</option>
+                    <option value="">-- {t('assets.system.selectType')} --</option>
+                    <option value="owned">{t('assets.system.owned')}</option>
+                    <option value="rented">{t('assets.system.rented')}</option>
                   </select>
                 </div>
               </div>
 
               <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الشركة المصنعة' : 'Manufacturer'}</label>
+                  <label className="form-label">{t('assets.system.manufacturer')}</label>
                   <input className="form-input" value={form.manufacturer} onChange={e => handleChange('manufacturer', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الموديل' : 'Model'}</label>
+                  <label className="form-label">{t('assets.system.model')}</label>
                   <input className="form-input" value={form.model} onChange={e => handleChange('model', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الرقم التسلسلي' : 'Serial Number'}</label>
+                  <label className="form-label">{t('assets.system.serialNumber')}</label>
                   <input className="form-input" value={form.serial_number} onChange={e => handleChange('serial_number', e.target.value)} />
                 </div>
               </div>
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'تاريخ الشراء' : 'Purchase Date'}</label>
+                  <label className="form-label">{t('assets.system.purchaseDate')}</label>
                   <input className="form-input" type="date" value={form.purchase_date} onChange={e => handleChange('purchase_date', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'تكلفة الشراء' : 'Purchase Cost'}</label>
+                  <label className="form-label">{t('assets.system.purchaseCost')}</label>
                   <input className="form-input" type="number" step="0.01" value={form.purchase_cost} onChange={e => handleChange('purchase_cost', e.target.value)} />
                 </div>
               </div>
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'سعر الساعة' : 'Hourly Rate'}</label>
+                  <label className="form-label">{t('assets.system.hourlyRate')}</label>
                   <input className="form-input" type="number" step="0.01" value={form.hourly_rate} onChange={e => handleChange('hourly_rate', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'سعر اليوم' : 'Daily Rate'}</label>
+                  <label className="form-label">{t('assets.system.dailyRate')}</label>
                   <input className="form-input" type="number" step="0.01" value={form.daily_rate} onChange={e => handleChange('daily_rate', e.target.value)} />
                 </div>
               </div>
 
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'الموقع' : 'Location'}</label>
+                <label className="form-label">{t('assets.system.location')}</label>
                 <select className="form-select" value={form.current_project_id} onChange={e => handleChange('current_project_id', e.target.value)}>
-                  <option value="">{locale === 'ar' ? 'في المخزن (غير مخصصة)' : 'In Yard (Unassigned)'}</option>
+                  <option value="">{t('assets.system.inYardUnassigned')}</option>
                   {form.current_project_id && !projects.some(p => String(p.id) === String(form.current_project_id)) && (
                     <option value={form.current_project_id} disabled>
                       {locale === 'ar' ? (asset?.current_project_name_ar || 'مشروع غير نشط') : (asset?.current_project_name_en || asset?.current_project_name_ar || 'Inactive project')}
@@ -375,7 +375,7 @@ function AssetModal({ asset, locale, t, projects, onClose, onSave }) {
               <div className="form-group">
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                   <input type="checkbox" checked={form.operator_required} onChange={e => handleChange('operator_required', e.target.checked)} />
-                  <span className="form-label" style={{ margin: 0 }}>{locale === 'ar' ? 'تحتاج مشغل' : 'Operator Required'}</span>
+                  <span className="form-label" style={{ margin: 0 }}>{t('assets.system.operatorRequired')}</span>
                 </label>
               </div>
 

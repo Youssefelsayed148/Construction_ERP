@@ -5,5 +5,33 @@
     "itemTitle": "حذف بند جدول الكميات",
     "sectionTitle": "حذف قسم جدول الكميات",
     "message": "سيتم حذف هذا الإدخال من جدول الكميات. يُرفض الحذف إذا كانت تستخدمه قياسات أو توزيعات أو وصفات أو سجلات أخرى."
+  },
+  "system": {
+    "billOfQuantitiesForProject": "حصر الكميات للمشروع",
+    "addSection": "إضافة قسم",
+    "addItem": "إضافة بند",
+    "sections": "الأقسام",
+    "items": "البنود",
+    "avgCompletion": "متوسط الإنجاز",
+    "grandTotal": "الإجمالي الكلي",
+    "boqSummaryByType": "ملخص التكاليف حسب النوع",
+    "noBoqSectionsYetAddYourFirstSection": "لا توجد أقسام بعد. أضف أول قسم.",
+    "items2": "بنود",
+    "item": "بند",
+    "unitRate": "سعر الوحدة",
+    "completion": "إنجاز",
+    "editSection": "تعديل القسم",
+    "addNewSection": "إضافة قسم جديد",
+    "englishName": "الاسم بالإنجليزية *",
+    "parentSection": "القسم الأب",
+    "rootSection": "— بلا أب (قسم رئيسي) —",
+    "sortOrder": "ترتيب الفرز",
+    "editItem": "تعديل البند",
+    "addNewItem": "إضافة بند جديد",
+    "section": "القسم",
+    "selectSection": "— اختر القسم —",
+    "englishDescription": "الوصف بالإنجليزية *",
+    "masterItemOptional": "المادة الرئيسية (اختياري)",
+    "searchMasterItem": "ابحث عن مادة..."
   }
 }

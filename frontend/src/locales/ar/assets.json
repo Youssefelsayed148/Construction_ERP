@@ -1,4 +1,32 @@
 {
   "title": "المعدات",
-  "maintenance": "الصيانة"
+  "maintenance": "الصيانة",
+  "system": {
+    "projectEquipmentAssetManagement": "إدارة معدات وأصول المشروع",
+    "addEquipment": "إضافة معدة",
+    "searchEquipment": "بحث عن معدة...",
+    "noEquipmentFoundAddYourFirstEquipment": "لا توجد معدات. أضف أول معدة.",
+    "type": "النوع",
+    "hourlyRate": "سعر الساعة",
+    "dailyRate": "سعر اليوم",
+    "available": "متاحة",
+    "inUse": "قيد الاستخدام",
+    "maintenance": "صيانة",
+    "edit": "تعديل: {code}",
+    "addNewEquipment": "إضافة معدة جديدة",
+    "englishName": "الاسم بالإنجليزية *",
+    "selectCategory": "اختر الفئة",
+    "equipmentType": "نوع المعدة",
+    "selectType": "اختر النوع",
+    "owned": "مملوكة",
+    "rented": "مستأجرة",
+    "manufacturer": "الشركة المصنعة",
+    "model": "الموديل",
+    "serialNumber": "الرقم التسلسلي",
+    "purchaseDate": "تاريخ الشراء",
+    "purchaseCost": "تكلفة الشراء",
+    "location": "الموقع",
+    "inYardUnassigned": "في المخزن (غير مخصصة)",
+    "operatorRequired": "تحتاج مشغل"
+  }
 }

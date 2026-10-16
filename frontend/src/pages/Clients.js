@@ -1,3 +1,4 @@
+import { formatCurrency } from '../utils/formatters';
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
@@ -82,12 +83,12 @@ function Clients() {
     <div className="page-container">
       <div className="page-header">
         <div>
-          <h1>{locale === 'ar' ? 'العملاء' : 'Clients'}</h1>
-          <p style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'قاعدة بيانات العملاء' : 'Client Database'}</p>
+          <h1>{t('clients.title')}</h1>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('clients.system.clientDatabase')}</p>
         </div>
         <button className="btn btn-primary" onClick={() => { setEditingClient(null); setShowModal(true); }}>
           <Plus size={16} />
-          {locale === 'ar' ? 'إضافة عميل' : 'Add Client'}
+          {t('clients.system.addClient')}
         </button>
       </div>
 
@@ -97,23 +98,23 @@ function Clients() {
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-value">{clients.length}</div>
-          <div className="stat-label">{locale === 'ar' ? 'إجمالي العملاء' : 'Total Clients'}</div>
+          <div className="stat-label">{t('clients.system.totalClients')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-value" style={{ color: 'var(--color-success)' }}>
-            {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0 }).format(
+            {formatCurrency(
               clients.reduce((sum, c) => sum + (Number(c.credit_limit) || 0), 0)
             )}
           </div>
-          <div className="stat-label">{locale === 'ar' ? 'إجمالي الحد الائتماني' : 'Total Credit Limit'}</div>
+          <div className="stat-label">{t('clients.system.totalCreditLimit')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-value" style={{ color: 'var(--color-warning)' }}>
-            {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0 }).format(
+            {formatCurrency(
               clients.reduce((sum, c) => sum + (Number(c.current_balance) || 0), 0)
             )}
           </div>
-          <div className="stat-label">{locale === 'ar' ? 'إجمالي الأرصدة المستحقة' : 'Total Outstanding Balance'}</div>
+          <div className="stat-label">{t('clients.system.totalOutstandingBalance')}</div>
         </div>
       </div>
 
@@ -131,14 +132,14 @@ function Clients() {
           style={{ padding: '6px 16px', fontSize: '13px' }}
           onClick={() => setActiveFilter(activeFilter === 'active' ? '' : 'active')}
         >
-          {locale === 'ar' ? 'نشط' : 'Active'}
+          {t('clients.system.active')}
         </button>
         <button
           className={`btn ${activeFilter === 'inactive' ? 'btn-primary' : ''}`}
           style={{ padding: '6px 16px', fontSize: '13px' }}
           onClick={() => setActiveFilter(activeFilter === 'inactive' ? '' : 'inactive')}
         >
-          {locale === 'ar' ? 'غير نشط' : 'Inactive'}
+          {t('clients.system.inactive')}
         </button>
       </div>
 
@@ -151,7 +152,7 @@ function Clients() {
             style={{ background: 'transparent', border: 'none', padding: '0', flex: 1 }}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder={locale === 'ar' ? 'بحث عن عملاء...' : 'Search clients...'}
+            placeholder={t('clients.system.searchClients')}
           />
           {searchQuery && (
             <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
@@ -169,7 +170,7 @@ function Clients() {
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <Users size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'لا يوجد عملاء. أضف أول عميل.' : 'No clients found. Add your first client.'}
+            {t('clients.system.noClientsFoundAddYourFirstClient')}
           </p>
         </div>
       ) : (
@@ -179,11 +180,11 @@ function Clients() {
               <tr>
                 <th>{t('common.code')}</th>
                 <th>{t('common.name')}</th>
-                <th>{locale === 'ar' ? 'الشخص المسؤول' : 'Contact Person'}</th>
-                <th>{locale === 'ar' ? 'الهاتف' : 'Phone'}</th>
-                <th>{locale === 'ar' ? 'المدينة' : 'City'}</th>
-                <th>{locale === 'ar' ? 'الحد الائتماني' : 'Credit Limit'}</th>
-                <th>{locale === 'ar' ? 'الرصيد' : 'Balance'}</th>
+                <th>{t('clients.system.contactPerson')}</th>
+                <th>{t('clients.system.phone')}</th>
+                <th>{t('clients.system.city')}</th>
+                <th>{t('clients.system.creditLimit')}</th>
+                <th>{t('clients.system.balance')}</th>
                 <th>{t('common.status')}</th>
                 <th>{t('common.actions')}</th>
               </tr>
@@ -197,14 +198,14 @@ function Clients() {
                   <td style={{ fontFamily: 'monospace' }}>{c.phone || '-'}</td>
                   <td>{cityDisplay(c.city)}</td>
                   <td style={{ fontFamily: 'monospace', color: 'var(--color-success)' }}>
-                    {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0 }).format(c.credit_limit || 0)}
+                    {formatCurrency(c.credit_limit || 0)}
                   </td>
                   <td style={{ fontFamily: 'monospace', color: Number(c.current_balance) > 0 ? 'var(--color-warning)' : 'var(--color-text-secondary)' }}>
-                    {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0 }).format(c.current_balance || 0)}
+                    {formatCurrency(c.current_balance || 0)}
                   </td>
                   <td>
                     <span className={`badge ${c.is_active ? 'badge-success' : 'badge-danger'}`}>
-                      {c.is_active ? (locale === 'ar' ? 'نشط' : 'Active') : (locale === 'ar' ? 'غير نشط' : 'Inactive')}
+                      {c.is_active ? (t('clients.system.active')) : (t('clients.system.inactive'))}
                     </span>
                   </td>
                   <td>
@@ -278,8 +279,8 @@ function ClientModal({ client, locale, t, onClose, onSave }) {
         <div className="modal-header">
           <h3 className="modal-title">
             {isEdit
-              ? (locale === 'ar' ? `تعديل: ${client.code}` : `Edit: ${client.code}`)
-              : (locale === 'ar' ? 'إضافة عميل جديد' : 'Add New Client')}
+              ? (t('clients.system.edit', { code: client.code }))
+              : (t('clients.system.addNewClient'))}
           </h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
@@ -288,7 +289,7 @@ function ClientModal({ client, locale, t, onClose, onSave }) {
             <div className="modal-form" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">English Name *</label>
+                  <label className="form-label">{t('clients.system.englishName')}</label>
                   <input className="form-input" value={form.name_en} onChange={e => handleChange('name_en', e.target.value)} required />
                 </div>
                 <div className="form-group">
@@ -299,15 +300,15 @@ function ClientModal({ client, locale, t, onClose, onSave }) {
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'نوع العميل' : 'Client Type'}</label>
+                  <label className="form-label">{t('clients.system.clientType')}</label>
                   <select className="form-select" value={form.client_type} onChange={e => handleChange('client_type', e.target.value)}>
                     {clientTypes.map(t => <option key={t} value={t}>{CLIENT_TYPE_LABELS[locale]?.[t] || t}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'المدينة' : 'City'}</label>
+                  <label className="form-label">{t('clients.system.city')}</label>
                   <select className="form-select" value={form.city} onChange={e => handleChange('city', e.target.value)}>
-                    <option value="">-- {locale === 'ar' ? 'اختر المدينة' : 'Select City'} --</option>
+                    <option value="">-- {t('clients.system.selectCity')} --</option>
                     {!EGYPT_CITIES.some(c => c.en === form.city) && form.city && (
                       <option value={form.city} disabled>{form.city}</option>
                     )}
@@ -322,46 +323,46 @@ function ClientModal({ client, locale, t, onClose, onSave }) {
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الشخص المسؤول' : 'Contact Person'}</label>
+                  <label className="form-label">{t('clients.system.contactPerson')}</label>
                   <input className="form-input" value={form.contact_person} onChange={e => handleChange('contact_person', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الهاتف' : 'Phone'}</label>
+                  <label className="form-label">{t('clients.system.phone')}</label>
                   <input className="form-input" value={form.phone} onChange={e => handleChange('phone', e.target.value)} />
                 </div>
               </div>
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">Email</label>
+                  <label className="form-label">{t('clients.system.email')}</label>
                   <input className="form-input" type="email" value={form.email} onChange={e => handleChange('email', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الحد الائتماني' : 'Credit Limit'} (EGP)</label>
+                  <label className="form-label">{t('clients.system.creditLimit')}  {t('clients.system.egp')}</label>
                   <input className="form-input" type="number" min="0" value={form.credit_limit} onChange={e => handleChange('credit_limit', e.target.value)} />
                 </div>
               </div>
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'شروط الدفع' : 'Payment Terms'}</label>
+                  <label className="form-label">{t('clients.system.paymentTerms')}</label>
                   <input className="form-input" value={form.payment_terms} onChange={e => handleChange('payment_terms', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الرقم الضريبي' : 'Tax ID'}</label>
+                  <label className="form-label">{t('clients.system.taxId')}</label>
                   <input className="form-input" value={form.tax_id} onChange={e => handleChange('tax_id', e.target.value)} />
                 </div>
               </div>
 
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'العنوان' : 'Address'}</label>
+                <label className="form-label">{t('clients.system.address')}</label>
                 <input className="form-input" value={form.address} onChange={e => handleChange('address', e.target.value)} />
               </div>
 
               <div className="form-group">
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                   <input type="checkbox" checked={form.is_active} onChange={e => handleChange('is_active', e.target.checked)} />
-                  <span className="form-label" style={{ margin: 0 }}>{locale === 'ar' ? 'نشط' : 'Active'}</span>
+                  <span className="form-label" style={{ margin: 0 }}>{t('clients.system.active')}</span>
                 </label>
               </div>
 

@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import Clients from './Clients';
 
 jest.mock('../hooks/useLocale', () => ({
-  useLocale: () => ({ locale: 'en', setLocale: jest.fn(), t: (key) => key }),
+  useLocale: () => ({ locale: 'en', setLocale: jest.fn(), t: require('../testUtils/systemText').systemText }),
 }));
 global.IS_REACT_ACT_ENVIRONMENT = true;
 

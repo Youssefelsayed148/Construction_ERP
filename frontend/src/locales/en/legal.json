@@ -1,3 +1,21 @@
 {
-  "title": "Legal documents"
+  "title": "Legal documents",
+  "system": {
+    "verified": "Verified",
+    "rejected": "Rejected",
+    "pending": "Pending",
+    "legalDocuments": "Legal Documents",
+    "legalComplianceDocumentManagement": "Legal & Compliance Document Management",
+    "addDocument": "Add Document",
+    "searchDocuments": "Search documents...",
+    "noDocumentsFoundAddYourFirstDocument": "No documents found. Add your first document.",
+    "title": "Title",
+    "submittedBy": "Submitted By",
+    "date": "Date",
+    "verify": "Verify",
+    "reject": "Reject",
+    "editDocument": "Edit Document",
+    "addNewDocument": "Add New Document",
+    "documentType": "Document Type"
+  }
 }

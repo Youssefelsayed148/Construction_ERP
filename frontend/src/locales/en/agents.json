@@ -1,4 +1,32 @@
 {
   "title": "Agent activity",
-  "decisions": "Decisions"
+  "decisions": "Decisions",
+  "system": {
+    "agentActivity": "Agent Activity",
+    "refresh": "Refresh",
+    "agentRequests": "Agent requests",
+    "pending": "pending",
+    "toolCallLog": "Tool call log",
+    "tool": "Tool",
+    "user": "User",
+    "status": "Status",
+    "requiredApprover": "Required approver",
+    "reason": "Reason",
+    "noAgentRequestsYet": "No agent requests yet.",
+    "draft": "draft",
+    "awaitingApproval": "awaiting approval",
+    "apply": "Apply",
+    "approveExecute": "Approve & execute",
+    "reject": "Reject",
+    "commentOptional": "comment (optional)",
+    "tx": "tx #",
+    "time": "Time",
+    "risk": "Risk",
+    "user2": "User",
+    "authorized": "Authorized",
+    "response": "Response",
+    "session": "Session",
+    "noToolCallsYet": "No tool calls yet.",
+    "everyToolCallRunsTheSamePermissionEngineAsThe": "Every tool call runs the same permission engine as the UI; high-risk actions execute only after a human approval."
+  }
 }

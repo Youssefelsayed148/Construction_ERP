@@ -1,4 +1,30 @@
 {
   "title": "Clients",
-  "empty": "No clients yet."
+  "empty": "No clients yet.",
+  "system": {
+    "clientDatabase": "Client Database",
+    "addClient": "Add Client",
+    "totalClients": "Total Clients",
+    "totalCreditLimit": "Total Credit Limit",
+    "totalOutstandingBalance": "Total Outstanding Balance",
+    "active": "Active",
+    "inactive": "Inactive",
+    "searchClients": "Search clients...",
+    "noClientsFoundAddYourFirstClient": "No clients found. Add your first client.",
+    "contactPerson": "Contact Person",
+    "phone": "Phone",
+    "city": "City",
+    "creditLimit": "Credit Limit",
+    "balance": "Balance",
+    "edit": "Edit: {code}",
+    "addNewClient": "Add New Client",
+    "englishName": "English Name *",
+    "clientType": "Client Type",
+    "selectCity": "Select City",
+    "email": "Email",
+    "egp": "(EGP)",
+    "paymentTerms": "Payment Terms",
+    "taxId": "Tax ID",
+    "address": "Address"
+  }
 }

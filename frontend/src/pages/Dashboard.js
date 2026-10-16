@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import { dashboardApi } from '../services/api';
-import { formatNumber, formatCurrency } from '../utils/formatters';
+import { formatNumber, formatCurrency, formatDate, formatPercent } from '../utils/formatters';
 import { translateRole } from '../i18n/enums';
 import {
   Briefcase, Users, Package, Wrench, AlertTriangle, CalendarDays, MessageSquareWarning,
@@ -14,7 +14,6 @@ const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api
 
 function Dashboard() {
   const { t, locale } = useLocale();
-  const ar = locale === 'ar';
   const [stats, setStats] = useState(null);
   const [alerts, setAlerts] = useState(null);
   const [financeSummary, setFinanceSummary] = useState(null);
@@ -53,37 +52,37 @@ function Dashboard() {
   const healthCards = [
     {
       icon: Briefcase,
-      label: ar ? 'مشاريع نشطة' : 'Active Projects',
-      value: health ? `${health.projects_active} / ${health.projects_total}` : formatNumber(stats?.projects || 0),
+      label: t('dashboard.system.activeProjects'),
+      value: health ? `${formatNumber(health.projects_active)} / ${formatNumber(health.projects_total)}` : formatNumber(stats?.projects || 0),
       color: 'var(--color-accent)',
     },
     {
       icon: AlertTriangle,
-      label: ar ? 'مشاريع متعثرة' : 'Projects at Risk',
+      label: t('dashboard.system.projectsAtRisk'),
       value: formatNumber(health?.projects_at_risk || 0),
       color: (health?.projects_at_risk || 0) > 0 ? 'var(--color-danger, #e5534b)' : 'var(--color-success)',
     },
     {
       icon: TrendingUp,
-      label: ar ? 'صافي الربح' : 'Net Profit',
+      label: t('dashboard.system.netProfit'),
       value: formatCurrency(health ? health.net_profit : financeSummary?.net_profit),
       color: (health?.net_profit ?? financeSummary?.net_profit ?? 0) >= 0 ? 'var(--color-success)' : 'var(--color-danger, #e5534b)',
     },
     {
       icon: DollarSign,
-      label: ar ? 'مستحقات غير محصلة' : 'Outstanding',
+      label: t('dashboard.system.outstanding'),
       value: formatCurrency(health ? health.total_outstanding : financeSummary?.total_outstanding),
       color: 'var(--color-warning)',
     },
     {
       icon: ClipboardList,
-      label: ar ? 'موافقات معلقة' : 'Pending Approvals',
+      label: t('dashboard.system.pendingApprovals'),
       value: formatNumber(health?.pending_approvals || 0),
       color: (health?.pending_approvals || 0) > 0 ? 'var(--color-warning)' : 'var(--color-success)',
     },
     {
       icon: AlertTriangle,
-      label: ar ? 'تنبيهات' : 'Open Alerts',
+      label: t('dashboard.system.openAlerts'),
       value: formatNumber(alertCountOf(alerts)),
       color: alertCountOf(alerts) > 0 ? 'var(--color-warning)' : 'var(--color-success)',
     },
@@ -94,87 +93,87 @@ function Dashboard() {
     {
       to: '/projects', icon: Briefcase, label: t('common.nav.projects'),
       metrics: [
-        { label: ar ? 'نشط' : 'active', value: mods.projects.active },
-        { label: ar ? 'تخطيط' : 'planning', value: mods.projects.planning },
-        { label: ar ? 'متوسط الإنجاز' : 'avg done', value: `${mods.projects.avg_completion}%` },
-        { label: ar ? 'متعثر' : 'at risk', value: mods.projects.at_risk, warn: mods.projects.at_risk > 0 },
+        { label: t('dashboard.system.active'), value: mods.projects.active },
+        { label: t('dashboard.system.planning'), value: mods.projects.planning },
+        { label: t('dashboard.system.avgDone'), value: formatPercent(mods.projects.avg_completion, locale) },
+        { label: t('dashboard.system.atRisk'), value: mods.projects.at_risk, warn: mods.projects.at_risk > 0 },
       ],
     },
     {
-      to: '/invoices', icon: DollarSign, label: ar ? 'المالية' : 'Finance',
+      to: '/invoices', icon: DollarSign, label: t('dashboard.system.finance'),
       metrics: [
-        { label: ar ? 'محصّل' : 'collected', value: formatCurrency(mods.finance.revenue_collected) },
-        { label: ar ? 'مصروفات' : 'expenses', value: formatCurrency(mods.finance.total_expenses) },
-        { label: ar ? 'غير محصّل' : 'outstanding', value: formatCurrency(mods.finance.outstanding) },
-        { label: ar ? 'فواتير متأخرة' : 'overdue inv.', value: mods.finance.overdue_invoices, warn: mods.finance.overdue_invoices > 0 },
+        { label: t('dashboard.system.collected'), value: formatCurrency(mods.finance.revenue_collected) },
+        { label: t('dashboard.system.expenses'), value: formatCurrency(mods.finance.total_expenses) },
+        { label: t('dashboard.system.outstanding2'), value: formatCurrency(mods.finance.outstanding) },
+        { label: t('dashboard.system.overdueInv'), value: mods.finance.overdue_invoices, warn: mods.finance.overdue_invoices > 0 },
       ],
     },
     {
       to: '/invoices', icon: Receipt, label: t('common.nav.invoices'),
       metrics: [
-        { label: ar ? 'الكل' : 'total', value: mods.invoices.total },
-        { label: ar ? 'مرسلة' : 'sent', value: mods.invoices.sent },
-        { label: ar ? 'مدفوعة' : 'paid', value: mods.invoices.paid },
-        { label: ar ? 'متأخرة' : 'overdue', value: mods.invoices.overdue, warn: mods.invoices.overdue > 0 },
+        { label: t('dashboard.system.total'), value: mods.invoices.total },
+        { label: t('dashboard.system.sent'), value: mods.invoices.sent },
+        { label: t('dashboard.system.paid'), value: mods.invoices.paid },
+        { label: t('dashboard.system.overdue'), value: mods.invoices.overdue, warn: mods.invoices.overdue > 0 },
       ],
     },
     {
       to: '/expenses', icon: DollarSign, label: t('common.nav.expenses'),
       metrics: [
-        { label: ar ? 'هذا الشهر' : 'this month', value: formatCurrency(mods.expenses.month_total) },
-        { label: ar ? 'بانتظار الاعتماد' : 'pending', value: mods.expenses.pending, warn: mods.expenses.pending > 0 },
+        { label: t('dashboard.system.thisMonth'), value: formatCurrency(mods.expenses.month_total) },
+        { label: t('dashboard.system.pending'), value: mods.expenses.pending, warn: mods.expenses.pending > 0 },
       ],
     },
     {
       to: '/inventory', icon: Package, label: t('common.nav.inventory'),
       metrics: [
-        { label: ar ? 'أصناف' : 'items', value: mods.inventory.items },
-        { label: ar ? 'مستودعات' : 'warehouses', value: mods.inventory.warehouses },
-        { label: ar ? 'مخزون منخفض' : 'low stock', value: mods.inventory.low_stock, warn: mods.inventory.low_stock > 0 },
+        { label: t('dashboard.system.items'), value: mods.inventory.items },
+        { label: t('dashboard.system.warehouses'), value: mods.inventory.warehouses },
+        { label: t('dashboard.system.lowStock'), value: mods.inventory.low_stock, warn: mods.inventory.low_stock > 0 },
       ],
     },
     {
       to: '/hr', icon: Users, label: t('common.nav.hr'),
       metrics: [
-        { label: ar ? 'موظفون نشطون' : 'active staff', value: mods.hr.active_employees },
-        { label: ar ? 'حضور اليوم' : 'present today', value: mods.hr.present_today },
-        { label: ar ? 'إجازات معلقة' : 'pending leave', value: mods.hr.pending_leaves, warn: mods.hr.pending_leaves > 0 },
+        { label: t('dashboard.system.activeStaff'), value: mods.hr.active_employees },
+        { label: t('dashboard.system.presentToday'), value: mods.hr.present_today },
+        { label: t('dashboard.system.pendingLeave'), value: mods.hr.pending_leaves, warn: mods.hr.pending_leaves > 0 },
       ],
     },
     {
       to: '/assets', icon: Wrench, label: t('common.nav.assets'),
       metrics: [
-        { label: ar ? 'إجمالي' : 'total', value: mods.assets.total },
-        { label: ar ? 'متاح' : 'active', value: mods.assets.active },
-        { label: ar ? 'صيانة مستحقة' : 'maint. due', value: mods.assets.maintenance_due, warn: mods.assets.maintenance_due > 0 },
+        { label: t('dashboard.system.total2'), value: mods.assets.total },
+        { label: t('dashboard.system.active2'), value: mods.assets.active },
+        { label: t('dashboard.system.maintDue'), value: mods.assets.maintenance_due, warn: mods.assets.maintenance_due > 0 },
       ],
     },
     {
       to: '/suppliers', icon: Truck, label: t('common.nav.suppliers'),
       metrics: [
-        { label: ar ? 'موردون' : 'suppliers', value: mods.suppliers.suppliers },
-        { label: ar ? 'مقاولو الباطن' : 'subcontractors', value: mods.suppliers.subcontractors },
+        { label: t('dashboard.system.suppliers'), value: mods.suppliers.suppliers },
+        { label: t('dashboard.system.subcontractors'), value: mods.suppliers.subcontractors },
       ],
     },
     {
       to: '/clients', icon: Users, label: t('common.nav.clients'),
       metrics: [
-        { label: ar ? 'عملاء نشطون' : 'active clients', value: mods.clients.total },
+        { label: t('dashboard.system.activeClients'), value: mods.clients.total },
       ],
     },
     {
       to: '/legal', icon: Shield, label: t('common.nav.legal'),
       metrics: [
-        { label: ar ? 'مستندات' : 'documents', value: mods.legal.total },
-        { label: ar ? 'قيد المراجعة' : 'pending', value: mods.legal.pending, warn: mods.legal.pending > 0 },
+        { label: t('dashboard.system.documents'), value: mods.legal.total },
+        { label: t('dashboard.system.pending2'), value: mods.legal.pending, warn: mods.legal.pending > 0 },
       ],
     },
     {
       to: '/approvals', icon: ClipboardList, label: t('common.nav.approvals'),
       metrics: [
-        { label: ar ? 'معلقة' : 'pending', value: mods.approvals.pending, warn: mods.approvals.pending > 0 },
-        { label: ar ? 'بانتظار المالك' : 'awaiting owner', value: mods.approvals.awaiting_owner, warn: mods.approvals.awaiting_owner > 0 },
-        { label: ar ? 'أقدم طلب (يوم)' : 'oldest (days)', value: mods.approvals.oldest_days, warn: mods.approvals.oldest_days > 7 },
+        { label: t('dashboard.system.pending3'), value: mods.approvals.pending, warn: mods.approvals.pending > 0 },
+        { label: t('dashboard.system.awaitingOwner'), value: mods.approvals.awaiting_owner, warn: mods.approvals.awaiting_owner > 0 },
+        { label: t('dashboard.system.oldestDays'), value: mods.approvals.oldest_days, warn: mods.approvals.oldest_days > 7 },
       ],
     },
   ] : [];
@@ -198,7 +197,7 @@ function Dashboard() {
         <>
           {/* Phase 23: the per-role widget strip (all 16 roles; the owner strip
               extends /overview above). Zero records render empty cards. */}
-          <RoleDashboardSection dash={roleDash} ar={ar} />
+          <RoleDashboardSection dash={roleDash} />
 
           <div className="stats-grid">
             {healthCards.map((card, i) => (
@@ -217,7 +216,7 @@ function Dashboard() {
               <div className="card-header">
                 <h3 className="card-title">
                   <AlertTriangle size={18} style={{ color: 'var(--color-warning)', marginRight: '8px' }} />
-                  {ar ? 'تنبيهات' : 'Alerts'} ({alertCountOf(alerts)})
+                  {t('dashboard.system.alerts')} ({alertCountOf(alerts)})
                 </h3>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -226,10 +225,8 @@ function Dashboard() {
                     <div style={rowStyle}>
                       <CalendarDays size={14} style={{ color: 'var(--color-warning)', flexShrink: 0 }} />
                       <span style={{ color: 'var(--color-text-primary)' }}>
-                        {ar
-                          ? `${p.name}: لم يتم تقديم تقرير موقع منذ يومين أو أكثر`
-                          : `${p.name}: no site report filed in 2+ days`}
-                        {p.last_report_date ? ` (${ar ? 'آخر تقرير' : 'last'}: ${new Date(p.last_report_date).toLocaleDateString()})` : ''}
+                        <bdi>{p.name}</bdi>: {t('dashboard.system.noSiteReport')}
+                        {p.last_report_date && <> ({t('dashboard.system.last')}: <bdi>{formatDate(p.last_report_date, locale)}</bdi>)</>}
                       </span>
                     </div>
                   </Link>
@@ -238,26 +235,26 @@ function Dashboard() {
                   <div key={`rfi-${r.id}`} style={rowStyle}>
                     <MessageSquareWarning size={14} style={{ color: 'var(--color-danger, #e5534b)', flexShrink: 0 }} />
                     <span>
-                      {r.rfi_number} — {r.subject} ({r.project_name}): {ar ? 'متأخر عن موعده' : 'overdue'} ({new Date(r.due_date).toLocaleDateString()})
+                      {r.rfi_number} — {r.subject} ({r.project_name}): {t('dashboard.system.overdue2')} ({formatDate(r.due_date, locale)})
                     </span>
                   </div>
                 ))}
                 {(alerts.overdue_milestones || []).map((m) => (
                   <div key={`ms-${m.id}`} style={rowStyle}>
                     <AlertTriangle size={14} style={{ color: 'var(--color-warning)', flexShrink: 0 }} />
-                    <span>{m.title_en || m.title_ar || m.title} ({m.project_name}): {ar ? 'معلم متأخر' : 'milestone overdue'}</span>
+                    <span>{m.title_en || m.title_ar || m.title} ({m.project_name}): {t('dashboard.system.milestoneOverdue')}</span>
                   </div>
                 ))}
                 {(alerts.budget_overruns || []).map((p) => (
                   <div key={`bo-${p.id}`} style={rowStyle}>
                     <AlertTriangle size={14} style={{ color: 'var(--color-danger, #e5534b)', flexShrink: 0 }} />
-                    <span>{p.name}: {ar ? 'تجاوز الميزانية' : 'over budget'}</span>
+                    <span>{p.name}: {t('dashboard.system.overBudget')}</span>
                   </div>
                 ))}
                 {(alerts.low_stock || []).map((s) => (
                   <div key={`ls-${s.id}`} style={rowStyle}>
                     <Package size={14} style={{ color: 'var(--color-warning)', flexShrink: 0 }} />
-                    <span>{s.name_en || s.name_ar} ({s.warehouse_name}): {ar ? 'مخزون منخفض' : 'low stock'}</span>
+                    <span>{s.name_en || s.name_ar} ({s.warehouse_name}): {t('dashboard.system.lowStock')}</span>
                   </div>
                 ))}
               </div>
@@ -267,7 +264,7 @@ function Dashboard() {
           {stripDefs.length > 0 && (
             <div className="card" style={{ marginBottom: '20px' }}>
               <div className="card-header">
-                <h3 className="card-title">{ar ? 'ملخص الوحدات' : 'Module Summary'}</h3>
+                <h3 className="card-title">{t('dashboard.system.moduleSummary')}</h3>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {stripDefs.map((s) => (
@@ -285,7 +282,7 @@ function Dashboard() {
                       {s.metrics.map((m, i) => (
                         <span key={i} style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
                           {m.label}:{' '}
-                          <strong style={{ color: m.warn ? 'var(--color-danger, #e5534b)' : 'var(--color-text-primary)', fontFamily: 'monospace' }}>
+                          <strong style={{ color: m.warn ? 'var(--color-danger, #e5534b)' : 'var(--color-text-primary)', fontFamily: 'monospace', unicodeBidi: 'isolate' }}>
                             {typeof m.value === 'number' ? formatNumber(m.value) : m.value}
                           </strong>
                         </span>
@@ -302,32 +299,32 @@ function Dashboard() {
             <div className="card-header">
               <h3 className="card-title">
                 <DollarSign size={18} style={{ color: 'var(--color-accent)', marginRight: '8px' }} />
-                {ar ? 'الملخص المالي' : 'Finance Summary'}
+                {t('dashboard.system.financeSummary')}
               </h3>
             </div>
             {financeSummary ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxWidth: '460px' }}>
                 <div style={lineStyle}>
-                  <span>{ar ? 'الإيرادات المحصلة' : 'Revenue Collected'}</span>
-                  <span style={{ fontWeight: 600, color: 'var(--color-success)', fontFamily: 'monospace' }}>
+                  <span>{t('dashboard.system.revenueCollected')}</span>
+                  <span style={{ fontWeight: 600, color: 'var(--color-success)', fontFamily: 'monospace', unicodeBidi: 'isolate' }}>
                     {formatCurrency(financeSummary.total_revenue_collected)}
                   </span>
                 </div>
                 <div style={lineStyle}>
-                  <span>{ar ? 'المصروفات' : 'Expenses'}</span>
-                  <span style={{ fontWeight: 600, color: 'var(--color-danger)', fontFamily: 'monospace' }}>
+                  <span>{t('dashboard.system.expenses2')}</span>
+                  <span style={{ fontWeight: 600, color: 'var(--color-danger)', fontFamily: 'monospace', unicodeBidi: 'isolate' }}>
                     {formatCurrency(financeSummary.total_expenses)}
                   </span>
                 </div>
                 <div style={lineStyle}>
-                  <span>{ar ? 'المستحقات' : 'Outstanding'}</span>
-                  <span style={{ fontWeight: 600, color: 'var(--color-warning)', fontFamily: 'monospace' }}>
+                  <span>{t('dashboard.system.outstanding3')}</span>
+                  <span style={{ fontWeight: 600, color: 'var(--color-warning)', fontFamily: 'monospace', unicodeBidi: 'isolate' }}>
                     {formatCurrency(financeSummary.total_outstanding)}
                   </span>
                 </div>
                 <div className="level-line" style={{ margin: '4px 0' }} />
                 <div style={{ ...lineStyle, fontSize: '14px' }}>
-                  <span style={{ fontWeight: 600 }}>{ar ? 'صافي الربح' : 'Net Profit'}</span>
+                  <span style={{ fontWeight: 600 }}>{t('dashboard.system.netProfit')}</span>
                   <span style={{
                     fontWeight: 700, fontFamily: 'monospace',
                     color: (financeSummary.net_profit || 0) >= 0 ? 'var(--color-success)' : 'var(--color-danger)',
@@ -341,7 +338,7 @@ function Dashboard() {
               </div>
             ) : (
               <p style={{ color: 'var(--color-text-secondary)', fontSize: '13px' }}>
-                {ar ? 'لا توجد بيانات مالية بعد.' : 'No financial data yet.'}
+                {t('dashboard.system.noFinancialDataYet')}
               </p>
             )}
           </div>

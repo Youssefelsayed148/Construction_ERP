@@ -100,12 +100,12 @@ function Suppliers() {
     <div className="page-container">
       <div className="page-header">
         <div>
-          <h1>{locale === 'ar' ? 'الموردين' : 'Suppliers'}</h1>
-          <p style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'قاعدة بيانات الموردين' : 'Supplier Database'}</p>
+          <h1>{t('suppliers.title')}</h1>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('suppliers.system.supplierDatabase')}</p>
         </div>
         <button className="btn btn-primary" onClick={() => { setEditingSupplier(null); setShowModal(true); }}>
           <Plus size={16} />
-          {locale === 'ar' ? 'إضافة مورد' : 'Add Supplier'}
+          {t('suppliers.system.addSupplier')}
         </button>
       </div>
 
@@ -139,7 +139,7 @@ function Suppliers() {
             style={{ background: 'transparent', border: 'none', padding: '0', flex: 1 }}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder={locale === 'ar' ? 'بحث عن موردين...' : 'Search suppliers...'}
+            placeholder={t('suppliers.system.searchSuppliers')}
           />
           {searchQuery && (
             <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
@@ -162,7 +162,7 @@ function Suppliers() {
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <Truck size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'لا يوجد موردين. أضف أول مورد.' : 'No suppliers found. Add your first supplier.'}
+            {t('suppliers.system.noSuppliersFoundAddYourFirstSupplier')}
           </p>
         </div>
       ) : (
@@ -172,9 +172,9 @@ function Suppliers() {
               <tr>
                 <th>{t('common.code')}</th>
                 <th>{t('common.name')}</th>
-                <th>{locale === 'ar' ? 'الشخص المسؤول' : 'Contact Person'}</th>
-                <th>{locale === 'ar' ? 'الهاتف' : 'Phone'}</th>
-                <th>{locale === 'ar' ? 'المدينة' : 'City'}</th>
+                <th>{t('suppliers.system.contactPerson')}</th>
+                <th>{t('suppliers.system.phone')}</th>
+                <th>{t('suppliers.system.city')}</th>
                 <th>{t('common.category')}</th>
                 <th>{t('common.status')}</th>
                 <th>{t('common.actions')}</th>
@@ -282,8 +282,8 @@ function SupplierModal({ supplier, locale, t, onClose, onSave }) {
         <div className="modal-header">
           <h3 className="modal-title">
             {isEdit
-              ? (locale === 'ar' ? `تعديل: ${supplier.code}` : `Edit: ${supplier.code}`)
-              : (locale === 'ar' ? 'إضافة مورد جديد' : 'Add New Supplier')}
+              ? (t('suppliers.system.edit', { code: supplier.code }))
+              : (t('suppliers.system.addNewSupplier'))}
           </h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
@@ -292,7 +292,7 @@ function SupplierModal({ supplier, locale, t, onClose, onSave }) {
             <div className="modal-form" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">English Name *</label>
+                  <label className="form-label">{t('suppliers.system.englishName')}</label>
                   <input className="form-input" value={form.name_en} onChange={e => handleChange('name_en', e.target.value)} required />
                 </div>
                 <div className="form-group">
@@ -303,18 +303,18 @@ function SupplierModal({ supplier, locale, t, onClose, onSave }) {
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الشخص المسؤول' : 'Contact Person'}</label>
+                  <label className="form-label">{t('suppliers.system.contactPerson')}</label>
                   <input className="form-input" value={form.contact_person} onChange={e => handleChange('contact_person', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الهاتف' : 'Phone'}</label>
+                  <label className="form-label">{t('suppliers.system.phone')}</label>
                   <input className="form-input" value={form.phone} onChange={e => handleChange('phone', e.target.value)} />
                 </div>
               </div>
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">Email</label>
+                  <label className="form-label">{t('suppliers.system.email')}</label>
                   <input className="form-input" type="email" value={form.email} onChange={e => handleChange('email', e.target.value)} />
                 </div>
                 <div className="form-group">
@@ -327,13 +327,13 @@ function SupplierModal({ supplier, locale, t, onClose, onSave }) {
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'العنوان' : 'Address'}</label>
+                  <label className="form-label">{t('suppliers.system.address')}</label>
                   <input className="form-input" value={form.address} onChange={e => handleChange('address', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'المدينة' : 'City'}</label>
+                  <label className="form-label">{t('suppliers.system.city')}</label>
                   <select className="form-select" value={form.city} onChange={e => handleChange('city', e.target.value)}>
-                    <option value="">-- {locale === 'ar' ? 'اختر المدينة' : 'Select City'} --</option>
+                    <option value="">-- {t('suppliers.system.selectCity')} --</option>
                     {!EGYPT_CITIES.some(c => c.en === form.city) && form.city && (
                       <option value={form.city} disabled>{form.city}</option>
                     )}
@@ -348,11 +348,11 @@ function SupplierModal({ supplier, locale, t, onClose, onSave }) {
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الرقم الضريبي' : 'Tax ID'}</label>
+                  <label className="form-label">{t('suppliers.system.taxId')}</label>
                   <input className="form-input" value={form.tax_id} onChange={e => handleChange('tax_id', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'شروط الدفع' : 'Payment Terms'}</label>
+                  <label className="form-label">{t('suppliers.system.paymentTerms')}</label>
                   <input className="form-input" value={form.payment_terms} onChange={e => handleChange('payment_terms', e.target.value)} />
                 </div>
               </div>
@@ -360,7 +360,7 @@ function SupplierModal({ supplier, locale, t, onClose, onSave }) {
               <div className="form-group">
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                   <input type="checkbox" checked={form.is_active} onChange={e => handleChange('is_active', e.target.checked)} />
-                  <span className="form-label" style={{ margin: 0 }}>{locale === 'ar' ? 'نشط' : 'Active'}</span>
+                  <span className="form-label" style={{ margin: 0 }}>{t('suppliers.system.active')}</span>
                 </label>
               </div>
 
@@ -368,7 +368,7 @@ function SupplierModal({ supplier, locale, t, onClose, onSave }) {
             </div>
           </form>
 
-          {isEdit && <SuppliedMaterials supplierId={supplier.id} locale={locale} />}
+          {isEdit && <SuppliedMaterials supplierId={supplier.id} locale={locale} t={t} />}
         </div>
         <div className="modal-footer">
           <button className="btn" onClick={onClose}>{t('common.cancel')}</button>
@@ -381,7 +381,7 @@ function SupplierModal({ supplier, locale, t, onClose, onSave }) {
   );
 }
 
-function SuppliedMaterials({ supplierId, locale }) {
+function SuppliedMaterials({ supplierId, locale, t }) {
   const [links, setLinks] = useState([]);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -441,7 +441,7 @@ function SuppliedMaterials({ supplierId, locale }) {
   return (
     <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--color-surface-raised)' }}>
       <h4 style={{ marginBottom: '12px', fontSize: '14px', fontWeight: 600 }}>
-        {locale === 'ar' ? 'المواد الموردة' : 'Supplied Materials'}
+        {t('suppliers.system.suppliedMaterials')}
       </h4>
 
       {loading ? (
@@ -450,17 +450,17 @@ function SuppliedMaterials({ supplierId, locale }) {
         <>
           {links.length === 0 ? (
             <p style={{ color: 'var(--color-text-secondary)', fontSize: '13px', marginBottom: '12px' }}>
-              {locale === 'ar' ? 'لا توجد مواد مرتبطة بعد.' : 'No materials linked yet.'}
+              {t('suppliers.system.noMaterialsLinkedYet')}
             </p>
           ) : (
             <div className="table-container" style={{ marginBottom: '12px' }}>
               <table className="table">
                 <thead>
                   <tr>
-                    <th>{locale === 'ar' ? 'المادة' : 'Material'}</th>
-                    <th>{locale === 'ar' ? 'سعر الوحدة' : 'Unit Price'}</th>
-                    <th>{locale === 'ar' ? 'مدة التوريد (يوم)' : 'Lead Time (days)'}</th>
-                    <th>{locale === 'ar' ? 'ملاحظات' : 'Notes'}</th>
+                    <th>{t('suppliers.system.material')}</th>
+                    <th>{t('suppliers.system.unitPrice')}</th>
+                    <th>{t('suppliers.system.leadTimeDays')}</th>
+                    <th>{t('suppliers.system.notes')}</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -485,24 +485,24 @@ function SuppliedMaterials({ supplierId, locale }) {
 
           <div className="responsive-grid responsive-grid--five-mixed" style={{ gap: '8px', alignItems: 'end' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">{locale === 'ar' ? 'إضافة مادة' : 'Add Material'}</label>
+              <label className="form-label">{t('suppliers.system.addMaterial')}</label>
               <select className="form-select" value={form.material_id} onChange={e => setForm(f => ({ ...f, material_id: e.target.value }))}>
-                <option value="">-- {locale === 'ar' ? 'اختر مادة' : 'Select material'} --</option>
+                <option value="">-- {t('suppliers.system.selectMaterial')} --</option>
                 {availableItems.map(i => (
                   <option key={i.id} value={i.id}>{itemName(i)} ({i.code})</option>
                 ))}
               </select>
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">{locale === 'ar' ? 'السعر' : 'Price'}</label>
+              <label className="form-label">{t('suppliers.system.price')}</label>
               <input className="form-input" type="number" step="0.01" min="0" value={form.unit_price} onChange={e => setForm(f => ({ ...f, unit_price: e.target.value }))} />
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">{locale === 'ar' ? 'مدة التوريد' : 'Lead Time'}</label>
+              <label className="form-label">{t('suppliers.system.leadTime')}</label>
               <input className="form-input" type="number" min="0" value={form.lead_time_days} onChange={e => setForm(f => ({ ...f, lead_time_days: e.target.value }))} />
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">{locale === 'ar' ? 'ملاحظات' : 'Notes'}</label>
+              <label className="form-label">{t('suppliers.system.notes')}</label>
               <input className="form-input" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
             </div>
             <button type="button" className="btn btn-primary" disabled={!form.material_id || adding} onClick={handleAdd}>

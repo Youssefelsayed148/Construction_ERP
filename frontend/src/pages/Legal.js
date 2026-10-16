@@ -1,3 +1,4 @@
+import { formatDate as sharedDate } from '../utils/formatters';
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
@@ -100,35 +101,23 @@ function Legal() {
     return 'badge-warning';
   };
   const statusText = (s) => {
-    if (s === 'verified') return locale === 'ar' ? 'معتمد' : 'Verified';
-    if (s === 'rejected') return locale === 'ar' ? 'مرفوض' : 'Rejected';
-    return locale === 'ar' ? 'معلق' : 'Pending';
+    if (s === 'verified') return t('legal.system.verified');
+    if (s === 'rejected') return t('legal.system.rejected');
+    return t('legal.system.pending');
   };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '-';
-    try {
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr;
-      const day = d.getDate().toString().padStart(2, '0');
-      const month = (d.getMonth() + 1).toString().padStart(2, '0');
-      const year = d.getFullYear();
-      return `${day}/${month}/${year}`;
-    } catch {
-      return dateStr;
-    }
-  };
+  const formatDate = sharedDate;
 
   return (
     <div className="page-container">
       <div className="page-header">
         <div>
-          <h1>{locale === 'ar' ? 'المستندات القانونية' : 'Legal Documents'}</h1>
-          <p style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'إدارة المستندات القانونية والتصاريح' : 'Legal & Compliance Document Management'}</p>
+          <h1>{t('legal.system.legalDocuments')}</h1>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('legal.system.legalComplianceDocumentManagement')}</p>
         </div>
         <button className="btn btn-primary" onClick={() => { setEditingDocument(null); setShowModal(true); }}>
           <Plus size={16} />
-          {locale === 'ar' ? 'إضافة مستند' : 'Add Document'}
+          {t('legal.system.addDocument')}
         </button>
       </div>
 
@@ -157,7 +146,7 @@ function Legal() {
             style={{ background: 'transparent', border: 'none', padding: '0', flex: 1 }}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder={locale === 'ar' ? 'بحث عن مستندات...' : 'Search documents...'}
+            placeholder={t('legal.system.searchDocuments')}
           />
           {searchQuery && (
             <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
@@ -175,7 +164,7 @@ function Legal() {
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <Shield size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'لا توجد مستندات. أضف أول مستند.' : 'No documents found. Add your first document.'}
+            {t('legal.system.noDocumentsFoundAddYourFirstDocument')}
           </p>
         </div>
       ) : (
@@ -183,11 +172,11 @@ function Legal() {
           <table className="table">
             <thead>
               <tr>
-                <th>{locale === 'ar' ? 'العنوان' : 'Title'}</th>
+                <th>{t('legal.system.title')}</th>
                 <th>{t('common.category')}</th>
                 <th>{t('common.status')}</th>
-                <th>{locale === 'ar' ? 'مقدم من' : 'Submitted By'}</th>
-                <th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th>
+                <th>{t('legal.system.submittedBy')}</th>
+                <th>{t('legal.system.date')}</th>
                 <th>{t('common.actions')}</th>
               </tr>
             </thead>
@@ -212,7 +201,7 @@ function Legal() {
                           className="btn btn-success"
                           style={{ padding: '6px 10px' }}
                           onClick={() => handleStatusUpdate(doc.id, 'verified')}
-                          title={locale === 'ar' ? 'اعتماد' : 'Verify'}
+                          title={t('legal.system.verify')}
                         >
                           <CheckCircle size={14} />
                         </button>
@@ -222,7 +211,7 @@ function Legal() {
                           className="btn btn-danger"
                           style={{ padding: '6px 10px' }}
                           onClick={() => handleStatusUpdate(doc.id, 'rejected')}
-                          title={locale === 'ar' ? 'رفض' : 'Reject'}
+                          title={t('legal.system.reject')}
                         >
                           <XCircle size={14} />
                         </button>
@@ -289,8 +278,8 @@ function LegalModal({ document, locale, t, onClose, onSave }) {
         <div className="modal-header">
           <h3 className="modal-title">
             {isEdit
-              ? (locale === 'ar' ? 'تعديل المستند' : 'Edit Document')
-              : (locale === 'ar' ? 'إضافة مستند جديد' : 'Add New Document')}
+              ? (t('legal.system.editDocument'))
+              : (t('legal.system.addNewDocument'))}
           </h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
@@ -298,19 +287,19 @@ function LegalModal({ document, locale, t, onClose, onSave }) {
           <form onSubmit={handleSubmit}>
             <div className="modal-form" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'العنوان' : 'Title'} *</label>
+                <label className="form-label">{t('legal.system.title')} *</label>
                 <input className="form-input" value={form.title} onChange={e => handleChange('title', e.target.value)} required />
               </div>
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'نوع المستند' : 'Document Type'}</label>
+                  <label className="form-label">{t('legal.system.documentType')}</label>
                   <select className="form-select" value={form.document_type} onChange={e => handleChange('document_type', e.target.value)}>
                     {docTypes.map(t => <option key={t} value={t}>{DOC_TYPE_LABELS[locale]?.[t] || t}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'مقدم من' : 'Submitted By'}</label>
+                  <label className="form-label">{t('legal.system.submittedBy')}</label>
                   <input className="form-input" value={form.submitted_by} onChange={e => handleChange('submitted_by', e.target.value)} />
                 </div>
               </div>
@@ -319,9 +308,9 @@ function LegalModal({ document, locale, t, onClose, onSave }) {
                 <div className="form-group">
                   <label className="form-label">{t('common.status')}</label>
                   <select className="form-select" value={form.status} onChange={e => handleChange('status', e.target.value)}>
-                    <option value="pending">{locale === 'ar' ? 'معلق' : 'Pending'}</option>
-                    <option value="verified">{locale === 'ar' ? 'معتمد' : 'Verified'}</option>
-                    <option value="rejected">{locale === 'ar' ? 'مرفوض' : 'Rejected'}</option>
+                    <option value="pending">{t('legal.system.pending')}</option>
+                    <option value="verified">{t('legal.system.verified')}</option>
+                    <option value="rejected">{t('legal.system.rejected')}</option>
                   </select>
                 </div>
               )}

@@ -39,7 +39,7 @@ import UnitsSales from './UnitsSales';
 import WorkOrders from './WorkOrders';
 
 jest.mock('../hooks/useLocale', () => {
-  const t = (key, params) => key === 'common.pagination.showing' ? `Showing ${params.loaded} of ${params.total}` : key;
+  const t = (key, params) => key === 'common.pagination.showing' ? `Showing ${params.loaded} of ${params.total}` : require('../testUtils/systemText').systemText(key, params);
   return { useLocale: () => ({ t, locale: 'en', dir: 'ltr' }) };
 });
 jest.mock('../services/siteReportQueue', () => ({

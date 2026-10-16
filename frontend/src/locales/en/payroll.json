@@ -1,3 +1,28 @@
 {
-  "title": "Payroll"
+  "title": "Payroll",
+  "system": {
+    "monthlyPayrollManagement": "Monthly Payroll Management",
+    "createPayroll": "Create Payroll",
+    "searchPayrollPeriod": "Search payroll period...",
+    "noPayrollPeriodsFoundCreateYourFirstPayroll": "No payroll periods found. Create your first payroll.",
+    "period": "Period",
+    "employees": "Employees",
+    "totalNet": "Total Net",
+    "posted": "Posted",
+    "draft": "Draft",
+    "approved": "Approved",
+    "paid": "Paid",
+    "yes": "Yes",
+    "no": "No",
+    "employee": "Employee",
+    "basicSalary": "Basic Salary",
+    "netSalary": "Net Salary",
+    "noDetailsAvailable": "No details available.",
+    "createPayrollPeriod": "Create Payroll Period",
+    "thisWillAutoGeneratePayrollForAllActiveEmployeesFor": "This will auto-generate payroll for all active employees for the selected month and year.",
+    "month": "Month",
+    "year": "Year",
+    "payrollGeneratedSuccessfully": "Payroll generated successfully!",
+    "generate": "Generate"
+  }
 }

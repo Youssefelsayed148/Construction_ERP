@@ -2424,12 +2424,11 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - Catalog contract test now passes, including EN/AR deletion probes. Page-language guard remains intentionally RED pending slice 2 (1,095 page branches after role headings moved). No pilot commands, database access, seeds, smoke, dependency changes, or external calls.
 - Next: replace remaining system branches/literals, extend i18n:check, then recommendation codes and full requested gates. Human visual/RTL and native Arabic review NOT VERIFIED.
 
+## Batch 5A slice 2A — 2026-10-16
 
-## Batch 5A slice 1 — 2026-10-16
-
-- Read-only inventory recorded in docs/I18N_SYSTEM_STRINGS.md: 1,097 inline system-text language branches, 107 Latin JSX occurrences, 13 literal UI attributes, 22 direct enum displays, 63 widget title calls and one comparison reason. These are static occurrences; branches already containing Arabic are catalog bypasses, not all English leakage.
-- Widgets retain key/title/data and add title_key. RoleDashboardSection resolves widget/field catalogs, canonical role names, progress-source/scope labels, formats numbers with the selected locale and isolates values with bdi. Business notes remain unchanged. Coverage: 53 unique widget keys and 66 fields (including nested and handover).
-- Failing-first: backend dashboard-widgets.test.js 1 failed / 26 passed before fix, then PASS 1 suite / 27 tests. Frontend Dashboard.test.js first reached 2 failing rendering assertions before export/implementation, then PASS 1 suite / 2 tests. Initial test setup needed a Jest mock-factory correction; no application fix was credited to that setup failure.
-- Catalog contract test now passes, including EN/AR deletion probes. Page-language guard remains intentionally RED pending slice 2 (1,095 page branches after role headings moved). No pilot commands, database access, seeds, smoke, dependency changes, or external calls.
-- Next: replace remaining system branches/literals, extend i18n:check, then recommendation codes and full requested gates. Human visual/RTL and native Arabic review NOT VERIFIED.
-
+- Migrated dashboard overview, approvals, agent activity, directories, finance, inventory, payroll and HR system text into existing EN/AR namespaces. Added canonical role/status labels and reused shared date/number/currency formatters. Stored names, notes, descriptions, justifications and references remain data.
+- Failing-first page-branch guard and rendered-Latin-literal guard now pass. Existing DOM assertions were retained; affected key-only translation mocks now read migrated catalog strings. Admin role fixtures now supply a valid role key rather than undefined.
+- Current full worktree (including pending slices) gates: npm.cmd --prefix frontend run test:ci -> 40 suites / 332 tests PASS vs 37 / 323; npm.cmd --prefix backend test -- --runInBand --no-colors -> 66 / 1,103 PASS vs 66 / 1,102. npm.cmd --prefix frontend run i18n:check -> i18n:check ok; i18n:parity -> 36 namespaces, 2,709 English keys; lint:api -> Direct API calls 1/1; backend lint:guards -> lint-guards: ok.
+- npm.cmd run build initially hit sandbox spawn EPERM in concurrently. Approved local retry -> Compiled successfully; npm run build:frontend exited with code 0. Only Node dependency deprecation notices remain. No Docker/pilot build, restart, database connection, seeds or smoke.
+- Initial heuristic counts are superseded by the refined baseline inventory: 64 widget-title calls (53 keys), 99 corrupt Arabic values, 66 unique widget fields. Corrected duplicate slice-1 log entry and trailing blank lines from the documentation retry; final staged whitespace/LF verification follows each slice.
+- Remaining: commit project/field UI plus guards, then recommendation code slice. Human RTL/visual and native Arabic review remain NOT VERIFIED.

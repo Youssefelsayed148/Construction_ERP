@@ -76,14 +76,14 @@ function Payroll() {
     <div className="page-container">
       <div className="page-header">
         <div>
-          <h1>{t('payroll.title') || (locale === 'ar' ? 'الرواتب' : 'Payroll')}</h1>
+          <h1>{t('payroll.title') || (t('payroll.title'))}</h1>
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'إدارة دفعات الرواتب الشهرية' : 'Monthly Payroll Management'}
+            {t('payroll.system.monthlyPayrollManagement')}
           </p>
         </div>
         <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
           <Plus size={16} />
-          {locale === 'ar' ? 'إنشاء دفعة رواتب' : 'Create Payroll'}
+          {t('payroll.system.createPayroll')}
         </button>
       </div>
 
@@ -97,7 +97,7 @@ function Payroll() {
             style={{ background: 'transparent', border: 'none', padding: '0', flex: 1 }}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder={locale === 'ar' ? 'بحث عن فترة راتب...' : 'Search payroll period...'}
+            placeholder={t('payroll.system.searchPayrollPeriod')}
           />
           {searchQuery && (
             <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
@@ -115,7 +115,7 @@ function Payroll() {
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <DollarSign size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'لا توجد دفعات رواتب. أنشئ أول دفعة.' : 'No payroll periods found. Create your first payroll.'}
+            {t('payroll.system.noPayrollPeriodsFoundCreateYourFirstPayroll')}
           </p>
         </div>
       ) : (
@@ -124,11 +124,11 @@ function Payroll() {
             <thead>
               <tr>
                 <th style={{ width: '40px' }} />
-                <th>{locale === 'ar' ? 'الفترة' : 'Period'}</th>
-                <th>{locale === 'ar' ? 'موظفين' : 'Employees'}</th>
-                <th>{locale === 'ar' ? 'صافي الإجمالي' : 'Total Net'}</th>
+                <th>{t('payroll.system.period')}</th>
+                <th>{t('payroll.system.employees')}</th>
+                <th>{t('payroll.system.totalNet')}</th>
                 <th>{t('common.status')}</th>
-                <th>{locale === 'ar' ? 'مرحّل' : 'Posted'}</th>
+                <th>{t('payroll.system.posted')}</th>
               </tr>
             </thead>
             <tbody>
@@ -154,17 +154,17 @@ function Payroll() {
                     </td>
                     <td>
                       <span className={`badge ${period.status === 'approved' ? 'badge-success' : period.status === 'draft' ? 'badge-warning' : period.status === 'paid' ? 'badge-info' : 'badge-danger'}`}>
-                        {period.status === 'draft' ? (locale === 'ar' ? 'مسودة' : 'Draft')
-                          : period.status === 'approved' ? (locale === 'ar' ? 'معتمد' : 'Approved')
-                          : period.status === 'paid' ? (locale === 'ar' ? 'مدفوع' : 'Paid')
+                        {period.status === 'draft' ? (t('payroll.system.draft'))
+                          : period.status === 'approved' ? (t('payroll.system.approved'))
+                          : period.status === 'paid' ? (t('payroll.system.paid'))
                           : period.status || '—'}
                       </span>
                     </td>
                     <td>
                       <span className={`badge ${period.posted ? 'badge-success' : 'badge-info'}`}>
                         {period.posted
-                          ? <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle size={12} />{locale === 'ar' ? 'نعم' : 'Yes'}</span>
-                          : (locale === 'ar' ? 'لا' : 'No')}
+                          ? <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle size={12} />{t('payroll.system.yes')}</span>
+                          : (t('payroll.system.no'))}
                       </span>
                     </td>
                   </tr>
@@ -181,16 +181,16 @@ function Payroll() {
                             <table className="table" style={{ fontSize: '13px' }}>
                               <thead>
                                 <tr>
-                                  <th>{locale === 'ar' ? 'الموظف' : 'Employee'}</th>
-                                  <th>{locale === 'ar' ? 'الراتب الأساسي' : 'Basic Salary'}</th>
-                                  <th>{locale === 'ar' ? 'صافي الراتب' : 'Net Salary'}</th>
+                                  <th>{t('payroll.system.employee')}</th>
+                                  <th>{t('payroll.system.basicSalary')}</th>
+                                  <th>{t('payroll.system.netSalary')}</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {(expandedData[period.id] || []).length === 0 ? (
                                   <tr>
                                     <td colSpan="3" style={{ textAlign: 'center', color: 'var(--color-text-secondary)', padding: '20px' }}>
-                                      {locale === 'ar' ? 'لا توجد تفاصيل.' : 'No details available.'}
+                                      {t('payroll.system.noDetailsAvailable')}
                                     </td>
                                   </tr>
                                 ) : (expandedData[period.id] || []).map((item, idx) => (
@@ -267,20 +267,18 @@ function CreatePayrollModal({ locale, t, onClose, onSave }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{locale === 'ar' ? 'إنشاء دفعة رواتب' : 'Create Payroll Period'}</h3>
+          <h3 className="modal-title">{t('payroll.system.createPayrollPeriod')}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div className="modal-form" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <p style={{ color: 'var(--color-text-secondary)', fontSize: '13px', marginBottom: '8px' }}>
-                {locale === 'ar'
-                  ? 'سيتم إنشاء دفعة رواتب لجميع الموظفين النشطين للشهر والسنة المحددين.'
-                  : 'This will auto-generate payroll for all active employees for the selected month and year.'}
+                {t('payroll.system.thisWillAutoGeneratePayrollForAllActiveEmployeesFor')}
               </p>
 
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'الشهر' : 'Month'}</label>
+                <label className="form-label">{t('payroll.system.month')}</label>
                 <select className="form-select" value={form.month} onChange={e => handleChange('month', e.target.value)} required>
                   {MONTH_LABELS[locale || 'en'].map((label, idx) => (
                     <option key={idx + 1} value={idx + 1}>{label}</option>
@@ -289,7 +287,7 @@ function CreatePayrollModal({ locale, t, onClose, onSave }) {
               </div>
 
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'السنة' : 'Year'}</label>
+                <label className="form-label">{t('payroll.system.year')}</label>
                 <select className="form-select" value={form.year} onChange={e => handleChange('year', e.target.value)} required>
                   {years.map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
@@ -298,7 +296,7 @@ function CreatePayrollModal({ locale, t, onClose, onSave }) {
               {success && (
                 <div className="alert alert-success">
                   <CheckCircle size={16} />
-                  {locale === 'ar' ? 'تم إنشاء الدفعة بنجاح!' : 'Payroll generated successfully!'}
+                  {t('payroll.system.payrollGeneratedSuccessfully')}
                 </div>
               )}
               {error && <div className="alert alert-danger">{error}</div>}
@@ -308,7 +306,7 @@ function CreatePayrollModal({ locale, t, onClose, onSave }) {
         <div className="modal-footer">
           <button className="btn" onClick={onClose} disabled={creating}>{t('common.cancel')}</button>
           <button className="btn btn-primary" onClick={handleSubmit} disabled={creating}>
-            {creating ? <span className="spinner" /> : (locale === 'ar' ? 'إنشاء' : 'Generate')}
+            {creating ? <span className="spinner" /> : (t('payroll.system.generate'))}
           </button>
         </div>
       </div>

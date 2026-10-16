@@ -1,3 +1,25 @@
 {
-  "title": "Expenses"
+  "title": "Expenses",
+  "system": {
+    "expenseLedger": "Expense Ledger",
+    "addExpense": "Add Expense",
+    "totalExpenses": "Total Expenses",
+    "thisMonthCount": "This Month Count",
+    "thisMonthTotal": "This Month Total",
+    "searchExpenses": "Search expenses...",
+    "noExpensesFoundAddYourFirstExpense": "No expenses found. Add your first expense.",
+    "amount": "Amount",
+    "date": "Date",
+    "project": "Project",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "pending": "Pending",
+    "editExpense": "Edit Expense",
+    "addNewExpense": "Add New Expense",
+    "amountEgp": "Amount (EGP)",
+    "projectOptional": "Project (optional)",
+    "noProject": "No Project",
+    "paidBy": "Paid By",
+    "notes": "Notes"
+  }
 }

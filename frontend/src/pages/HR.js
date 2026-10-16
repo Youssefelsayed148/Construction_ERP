@@ -48,9 +48,9 @@ function HR() {
     <div className="page-container">
       <div className="page-header">
         <div>
-          <h1>{t('hr.title') || (locale === 'ar' ? 'الموارد البشرية' : 'Human Resources')}</h1>
+          <h1>{t('hr.title') || (t('hr.system.humanResources'))}</h1>
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'إدارة الموظفين والعمال والحضور' : 'Manage employees, laborers & attendance'}
+            {t('hr.system.manageEmployeesLaborersAttendance')}
           </p>
         </div>
       </div>
@@ -140,7 +140,7 @@ function EmployeesTab({ locale, t }) {
             style={{ background: 'transparent', border: 'none', padding: '0', flex: 1 }}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder={locale === 'ar' ? 'بحث عن موظف...' : 'Search employees...'}
+            placeholder={t('hr.system.searchEmployees')}
           />
           {searchQuery && (
             <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
@@ -150,7 +150,7 @@ function EmployeesTab({ locale, t }) {
         </div>
         <button className="btn btn-primary" onClick={() => { setEditingEmployee(null); setShowModal(true); }}>
           <Plus size={16} />
-          {locale === 'ar' ? 'إضافة موظف' : 'Add Employee'}
+          {t('hr.system.addEmployee')}
         </button>
       </div>
 
@@ -162,7 +162,7 @@ function EmployeesTab({ locale, t }) {
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <Users size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'لا يوجد موظفين. أضف أول موظف.' : 'No employees found. Add your first employee.'}
+            {t('hr.system.noEmployeesFoundAddYourFirstEmployee')}
           </p>
         </div>
       ) : (
@@ -172,9 +172,9 @@ function EmployeesTab({ locale, t }) {
               <tr>
                 <th>{t('common.code')}</th>
                 <th>{t('common.name')}</th>
-                <th>{locale === 'ar' ? 'القسم' : 'Department'}</th>
-                <th>{locale === 'ar' ? 'المسمى الوظيفي' : 'Designation'}</th>
-                <th>{locale === 'ar' ? 'الراتب' : 'Salary'}</th>
+                <th>{t('hr.system.department')}</th>
+                <th>{t('hr.system.designation')}</th>
+                <th>{t('hr.system.salary')}</th>
                 <th>{t('common.status')}</th>
                 <th>{t('common.actions')}</th>
               </tr>
@@ -187,7 +187,7 @@ function EmployeesTab({ locale, t }) {
                     {empName(emp)}
                     {emp.is_manager && (
                       <span className="badge badge-info" style={{ marginInlineStart: '8px' }}>
-                        {locale === 'ar' ? 'مدير قسم' : 'Dept. Manager'}
+                        {t('hr.system.deptManager')}
                       </span>
                     )}
                   </td>
@@ -269,8 +269,8 @@ function EmployeeModal({ employee, locale, t, onClose, onSave }) {
         <div className="modal-header">
           <h3 className="modal-title">
             {isEdit
-              ? (locale === 'ar' ? `تعديل: ${employee.code}` : `Edit: ${employee.code}`)
-              : (locale === 'ar' ? 'إضافة موظف جديد' : 'Add New Employee')}
+              ? (t('hr.system.edit', { code: employee.code }))
+              : (t('hr.system.addNewEmployee'))}
           </h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
@@ -285,7 +285,7 @@ function EmployeeModal({ employee, locale, t, onClose, onSave }) {
               )}
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">English Name *</label>
+                  <label className="form-label">{t('hr.system.englishName')}</label>
                   <input className="form-input" value={form.name_en} onChange={e => handleChange('name_en', e.target.value)} required />
                 </div>
                 <div className="form-group">
@@ -295,46 +295,46 @@ function EmployeeModal({ employee, locale, t, onClose, onSave }) {
               </div>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'القسم' : 'Department'}</label>
+                  <label className="form-label">{t('hr.system.department')}</label>
                   <input className="form-input" value={form.department} onChange={e => handleChange('department', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'المسمى الوظيفي' : 'Designation'}</label>
+                  <label className="form-label">{t('hr.system.designation')}</label>
                   <input className="form-input" value={form.designation} onChange={e => handleChange('designation', e.target.value)} />
                 </div>
               </div>
               <div className="form-group">
                 <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                   <input type="checkbox" checked={form.is_manager} onChange={e => handleChange('is_manager', e.target.checked)} />
-                  {locale === 'ar' ? 'مدير قسم' : 'Department Manager'}
+                  {t('hr.system.departmentManager')}
                 </label>
               </div>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'البريد الإلكتروني' : 'Email'}</label>
+                  <label className="form-label">{t('hr.system.email')}</label>
                   <input className="form-input" type="email" value={form.email} onChange={e => handleChange('email', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الهاتف' : 'Phone'}</label>
+                  <label className="form-label">{t('hr.system.phone')}</label>
                   <input className="form-input" value={form.phone} onChange={e => handleChange('phone', e.target.value)} />
                 </div>
               </div>
               <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'الراتب الأساسي' : 'Basic Salary'}</label>
+                  <label className="form-label">{t('hr.system.basicSalary')}</label>
                   <input className="form-input" type="number" step="0.01" value={form.salary} onChange={e => handleChange('salary', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'تاريخ التوظيف' : 'Hire Date'}</label>
+                  <label className="form-label">{t('hr.system.hireDate')}</label>
                   <input className="form-input" type="date" value={form.hire_date} onChange={e => handleChange('hire_date', e.target.value)} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">{t('common.status')}</label>
                   <select className="form-select" value={form.status} onChange={e => handleChange('status', e.target.value)}>
-                    <option value="active">{STATUS_LABELS[locale]?.active || 'Active'}</option>
-                    <option value="inactive">{STATUS_LABELS[locale]?.inactive || 'Inactive'}</option>
-                    <option value="on_leave">{STATUS_LABELS[locale]?.on_leave || 'On Leave'}</option>
-                    <option value="terminated">{STATUS_LABELS[locale]?.terminated || 'Terminated'}</option>
+                    <option value="active">{STATUS_LABELS[locale]?.active || t('hr.system.active')}</option>
+                    <option value="inactive">{STATUS_LABELS[locale]?.inactive || t('hr.system.inactive')}</option>
+                    <option value="on_leave">{STATUS_LABELS[locale]?.on_leave || t('hr.system.onLeave')}</option>
+                    <option value="terminated">{STATUS_LABELS[locale]?.terminated || t('hr.system.terminated')}</option>
                   </select>
                 </div>
               </div>
@@ -395,7 +395,7 @@ function AttendanceTab({ locale, t }) {
         </div>
         <button className="btn btn-primary" onClick={() => setShowRecordModal(true)}>
           <Clock size={16} />
-          {locale === 'ar' ? 'تسجيل حضور' : 'Record Attendance'}
+          {t('hr.system.recordAttendance')}
         </button>
       </div>
 
@@ -407,7 +407,7 @@ function AttendanceTab({ locale, t }) {
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <Calendar size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'لا توجد سجلات حضور لهذا التاريخ.' : 'No attendance records for this date.'}
+            {t('hr.system.noAttendanceRecordsForThisDate')}
           </p>
         </div>
       ) : (
@@ -415,11 +415,11 @@ function AttendanceTab({ locale, t }) {
           <table className="table">
             <thead>
               <tr>
-                <th>{locale === 'ar' ? 'الموظف' : 'Employee'}</th>
-                <th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th>
+                <th>{t('hr.system.employee')}</th>
+                <th>{t('hr.system.date')}</th>
                 <th>{t('common.status')}</th>
-                <th>{locale === 'ar' ? 'وقت الحضور' : 'Check In'}</th>
-                <th>{locale === 'ar' ? 'وقت الانصراف' : 'Check Out'}</th>
+                <th>{t('hr.system.checkIn')}</th>
+                <th>{t('hr.system.checkOut')}</th>
               </tr>
             </thead>
             <tbody>
@@ -490,16 +490,16 @@ function AttendanceModal({ locale, t, date, onClose, onSave }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{locale === 'ar' ? 'تسجيل حضور' : 'Record Attendance'}</h3>
+          <h3 className="modal-title">{t('hr.system.recordAttendance')}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div className="modal-form" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'الموظف' : 'Employee'} *</label>
+                <label className="form-label">{t('hr.system.employee')} *</label>
                 <select className="form-select" value={form.employee_id} onChange={e => handleChange('employee_id', e.target.value)} required>
-                  <option value="">{locale === 'ar' ? '— اختر —' : '— Select —'}</option>
+                  <option value="">{t('hr.system.select')}</option>
                   {employees.map(emp => (
                     <option key={emp.id} value={emp.id}>{locale === 'ar' ? emp.name_ar : emp.name_en} ({emp.code})</option>
                   ))}
@@ -507,7 +507,7 @@ function AttendanceModal({ locale, t, date, onClose, onSave }) {
               </div>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'التاريخ' : 'Date'}</label>
+                  <label className="form-label">{t('hr.system.date')}</label>
                   <input className="form-input" type="date" value={form.date} onChange={e => handleChange('date', e.target.value)} required />
                 </div>
                 <div className="form-group">
@@ -521,16 +521,16 @@ function AttendanceModal({ locale, t, date, onClose, onSave }) {
               </div>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'وقت الحضور' : 'Check In'}</label>
+                  <label className="form-label">{t('hr.system.checkIn')}</label>
                   <input className="form-input" type="time" value={form.check_in} onChange={e => handleChange('check_in', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'وقت الانصراف' : 'Check Out'}</label>
+                  <label className="form-label">{t('hr.system.checkOut')}</label>
                   <input className="form-input" type="time" value={form.check_out} onChange={e => handleChange('check_out', e.target.value)} />
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'ملاحظات' : 'Notes'}</label>
+                <label className="form-label">{t('hr.system.notes')}</label>
                 <textarea className="form-textarea" value={form.notes} onChange={e => handleChange('notes', e.target.value)} />
               </div>
               {error && <div className="alert alert-danger">{error}</div>}
@@ -599,7 +599,7 @@ function LaborersTab({ locale, t }) {
             style={{ background: 'transparent', border: 'none', padding: '0', flex: 1 }}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder={locale === 'ar' ? 'بحث عن عامل...' : 'Search laborers...'}
+            placeholder={t('hr.system.searchLaborers')}
           />
           {searchQuery && (
             <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
@@ -609,7 +609,7 @@ function LaborersTab({ locale, t }) {
         </div>
         <button className="btn btn-primary" onClick={() => { setEditingLaborer(null); setShowModal(true); }}>
           <Plus size={16} />
-          {locale === 'ar' ? 'إضافة عامل' : 'Add Laborer'}
+          {t('hr.system.addLaborer')}
         </button>
       </div>
 
@@ -621,7 +621,7 @@ function LaborersTab({ locale, t }) {
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <HardHat size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'لا يوجد عمال يومية. أضف أول عامل.' : 'No laborers found. Add your first laborer.'}
+            {t('hr.system.noLaborersFoundAddYourFirstLaborer')}
           </p>
         </div>
       ) : (
@@ -630,9 +630,9 @@ function LaborersTab({ locale, t }) {
             <thead>
               <tr>
                 <th>{t('common.code')}</th>
-                <th>{locale === 'ar' ? 'الاسم' : 'Full Name'}</th>
-                <th>{locale === 'ar' ? 'المهارة' : 'Skill'}</th>
-                <th>{locale === 'ar' ? 'سعر اليومية' : 'Daily Rate'}</th>
+                <th>{t('hr.system.fullName')}</th>
+                <th>{t('hr.system.skill')}</th>
+                <th>{t('hr.system.dailyRate')}</th>
                 <th>{t('common.status')}</th>
                 <th>{t('common.actions')}</th>
               </tr>
@@ -646,7 +646,7 @@ function LaborersTab({ locale, t }) {
                   <td style={{ fontFamily: 'monospace' }}>{lab.daily_rate ? formatCurrency(lab.daily_rate) : '—'}</td>
                   <td>
                     <span className={`badge ${lab.is_active !== false ? 'badge-success' : 'badge-danger'}`}>
-                      {lab.is_active !== false ? (locale === 'ar' ? 'نشط' : 'Active') : (locale === 'ar' ? 'غير نشط' : 'Inactive')}
+                      {lab.is_active !== false ? (t('hr.system.active')) : (t('hr.system.inactive'))}
                     </span>
                   </td>
                   <td>
@@ -716,8 +716,8 @@ function LaborerModal({ laborer, locale, t, onClose, onSave }) {
         <div className="modal-header">
           <h3 className="modal-title">
             {isEdit
-              ? (locale === 'ar' ? `تعديل: ${laborer.code}` : `Edit: ${laborer.code}`)
-              : (locale === 'ar' ? 'إضافة عامل جديد' : 'Add New Laborer')}
+              ? (t('hr.system.edit', { code: laborer.code }))
+              : (t('hr.system.addNewLaborer'))}
           </h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
@@ -731,29 +731,29 @@ function LaborerModal({ laborer, locale, t, onClose, onSave }) {
                 </div>
               )}
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'الاسم الكامل' : 'Full Name'} *</label>
+                <label className="form-label">{t('hr.system.fullName2')} *</label>
                 <input className="form-input" value={form.full_name} onChange={e => handleChange('full_name', e.target.value)} required />
               </div>
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'المهارة' : 'Skill Category'}</label>
+                  <label className="form-label">{t('hr.system.skillCategory')}</label>
                   <select className="form-select" value={form.skill_category} onChange={e => handleChange('skill_category', e.target.value)}>
                     {SKILLS.map(s => <option key={s} value={s}>{SKILL_LABELS[locale]?.[s] || s}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'سعر اليومية' : 'Daily Rate'}</label>
+                  <label className="form-label">{t('hr.system.dailyRate')}</label>
                   <input className="form-input" type="number" step="0.01" value={form.daily_rate} onChange={e => handleChange('daily_rate', e.target.value)} />
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'الهاتف' : 'Phone'}</label>
+                <label className="form-label">{t('hr.system.phone')}</label>
                 <input className="form-input" value={form.phone} onChange={e => handleChange('phone', e.target.value)} />
               </div>
               <div className="form-group">
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                   <input type="checkbox" checked={form.is_active} onChange={e => handleChange('is_active', e.target.checked)} />
-                  <span className="form-label" style={{ margin: 0 }}>{locale === 'ar' ? 'نشط' : 'Active'}</span>
+                  <span className="form-label" style={{ margin: 0 }}>{t('hr.system.active')}</span>
                 </label>
               </div>
               {error && <div className="alert alert-danger">{error}</div>}
@@ -796,7 +796,7 @@ function LaborPaymentsTab({ locale, t }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>
           <Plus size={16} />
-          {locale === 'ar' ? 'إضافة دفعة' : 'Add Payment'}
+          {t('hr.system.addPayment')}
         </button>
       </div>
 
@@ -808,7 +808,7 @@ function LaborPaymentsTab({ locale, t }) {
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <DollarSign size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'لا توجد مدفوعات. أضف أول دفعة.' : 'No payments found. Add your first payment.'}
+            {t('hr.system.noPaymentsFoundAddYourFirstPayment')}
           </p>
         </div>
       ) : (
@@ -816,12 +816,12 @@ function LaborPaymentsTab({ locale, t }) {
           <table className="table">
             <thead>
               <tr>
-                <th>{locale === 'ar' ? 'العامل' : 'Laborer'}</th>
-                <th>{locale === 'ar' ? 'المشروع' : 'Project'}</th>
-                <th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th>
-                <th>{locale === 'ar' ? 'الأيام' : 'Days'}</th>
-                <th>{locale === 'ar' ? 'سعر اليومية' : 'Daily Rate'}</th>
-                <th>{locale === 'ar' ? 'الإجمالي' : 'Total'}</th>
+                <th>{t('hr.system.laborer')}</th>
+                <th>{t('hr.system.project')}</th>
+                <th>{t('hr.system.date')}</th>
+                <th>{t('hr.system.days')}</th>
+                <th>{t('hr.system.dailyRate')}</th>
+                <th>{t('hr.system.total')}</th>
               </tr>
             </thead>
             <tbody>
@@ -898,38 +898,38 @@ function LaborPaymentModal({ locale, t, onClose, onSave }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{locale === 'ar' ? 'إضافة دفعة عامل' : 'Add Labor Payment'}</h3>
+          <h3 className="modal-title">{t('hr.system.addLaborPayment')}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
           <form onSubmit={handleSubmit}>
             <div className="modal-form" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'العامل' : 'Laborer'} *</label>
+                <label className="form-label">{t('hr.system.laborer')} *</label>
                 <select className="form-select" value={form.laborer_id} onChange={e => handleChange('laborer_id', e.target.value)} required>
-                  <option value="">{locale === 'ar' ? '— اختر —' : '— Select —'}</option>
+                  <option value="">{t('hr.system.select')}</option>
                   {laborers.map(lab => (
-                    <option key={lab.id} value={lab.id}>{lab.full_name} ({lab.code}) — {formatCurrency(lab.daily_rate)}/day</option>
+                    <option key={lab.id} value={lab.id}>{lab.full_name} ({lab.code}) — {formatCurrency(lab.daily_rate)}{t('hr.system.day')}</option>
                   ))}
                 </select>
               </div>
               <div className="responsive-grid responsive-grid--three" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'المشروع' : 'Project ID'}</label>
+                  <label className="form-label">{t('hr.system.projectId')}</label>
                   <input className="form-input" value={form.project_id} onChange={e => handleChange('project_id', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'التاريخ' : 'Date'}</label>
+                  <label className="form-label">{t('hr.system.date')}</label>
                   <input className="form-input" type="date" value={form.date} onChange={e => handleChange('date', e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'عدد الأيام' : 'Days'}</label>
+                  <label className="form-label">{t('hr.system.days2')}</label>
                   <input className="form-input" type="number" step="1" min="0" value={form.days} onChange={e => handleChange('days', e.target.value)} required />
                 </div>
               </div>
               <div className="card" style={{ background: 'var(--color-base)', padding: '16px', textAlign: 'center' }}>
                 <p style={{ color: 'var(--color-text-secondary)', fontSize: '13px', marginBottom: '4px' }}>
-                  {locale === 'ar' ? 'الإجمالي' : 'Total'}: {form.days} × {formatCurrency(dailyRate)}
+                  {t('hr.system.total')}: {form.days} × {formatCurrency(dailyRate)}
                 </p>
                 <p style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--color-warning)', fontFamily: 'monospace' }}>
                   {formatCurrency(total)}

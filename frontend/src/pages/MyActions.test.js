@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import MyActions from './MyActions';
 
 jest.mock('../hooks/useLocale', () => ({
-  useLocale: () => ({ locale: 'en', setLocale: jest.fn(), t: (key) => key }),
+  useLocale: () => ({ locale: 'en', setLocale: jest.fn(), t: require('../testUtils/systemText').systemText }),
 }));
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -44,8 +44,8 @@ describe('MyActions screen', () => {
     const rows = container.querySelectorAll('tbody tr');
     expect(rows.length).toBe(1);
     expect(rows[0].textContent).toContain('Approve BOQ change');
-    expect(rows[0].textContent).toContain('boq_change #3');
-    expect(rows[0].textContent).toContain('high');
+    expect(rows[0].textContent).toContain('BOQ change #3');
+    expect(rows[0].textContent).toContain('High');
   });
 
   test('an empty bucket shows the empty message and an empty notification inbox', async () => {

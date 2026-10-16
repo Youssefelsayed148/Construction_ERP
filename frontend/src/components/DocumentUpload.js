@@ -74,7 +74,7 @@ function DocumentUpload({ onUploaded, multiple = true, accept, label, maxFiles =
             <div key={`${file.file_url || file.original_name}-${idx}`} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', background: 'var(--color-surface)', padding: '6px 10px', borderRadius: 'var(--radius-md)' }}>
               {isImage(file) ? <Image size={14} aria-hidden="true" /> : <FileText size={14} aria-hidden="true" />}
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.original_name}</span>
-              <span style={{ color: 'var(--color-text-secondary)', fontSize: '11px' }}>{(file.file_size_bytes / 1024).toFixed(0)} KB</span>
+              <span style={{ color: 'var(--color-text-secondary)', fontSize: '11px' }}>{(file.file_size_bytes / 1024).toFixed(0)}  {t('common.system.kb')}</span>
               <button type="button" aria-label={t('common.upload.remove', { name: file.original_name })} onClick={() => removeFile(idx)}
                 style={{ background: 'none', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer', padding: 0 }}><X size={14} /></button>
             </div>

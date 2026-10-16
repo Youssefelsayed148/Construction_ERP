@@ -124,14 +124,14 @@ function Invoices() {
     <div className="page-container">
       <div className="page-header">
         <div>
-          <h1>{locale === 'ar' ? 'الفواتير والمدفوعات' : 'Invoices & Payments'}</h1>
+          <h1>{t('finance.system.invoicesPayments')}</h1>
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'إدارة الفواتير وتحصيل المدفوعات' : 'Invoice Management & Collections'}
+            {t('finance.system.invoiceManagementCollections')}
           </p>
         </div>
         <button className="btn btn-primary" onClick={() => { loadProjects(); loadClients(); setEditingInvoice(null); setShowAddModal(true); }}>
           <Plus size={16} />
-          {locale === 'ar' ? 'إضافة فاتورة' : 'Add Invoice'}
+          {t('finance.system.addInvoice')}
         </button>
       </div>
 
@@ -142,19 +142,19 @@ function Invoices() {
           <div className="stat-value" style={{ color: 'var(--color-success)' }}>
             {formatCurrency(totalCollected)}
           </div>
-          <div className="stat-label">{locale === 'ar' ? 'إجمالي المحصل' : 'Total Collected'}</div>
+          <div className="stat-label">{t('finance.system.totalCollected')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-value" style={{ color: 'var(--color-warning)' }}>
             {formatCurrency(totalOutstanding)}
           </div>
-          <div className="stat-label">{locale === 'ar' ? 'إجمالي المستحق' : 'Total Outstanding'}</div>
+          <div className="stat-label">{t('finance.system.totalOutstanding')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-value" style={{ color: overdueCount > 0 ? 'var(--color-danger)' : 'var(--color-text-primary)' }}>
             {overdueCount}
           </div>
-          <div className="stat-label">{locale === 'ar' ? 'عدد الفواتير المتأخرة' : 'Overdue Count'}</div>
+          <div className="stat-label">{t('finance.system.overdueCount')}</div>
         </div>
       </div>
 
@@ -186,7 +186,7 @@ function Invoices() {
             style={{ background: 'transparent', border: 'none', padding: '0', flex: 1 }}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder={locale === 'ar' ? 'بحث عن فواتير...' : 'Search invoices...'}
+            placeholder={t('finance.system.searchInvoices')}
           />
           {searchQuery && (
             <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
@@ -204,7 +204,7 @@ function Invoices() {
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <FileText size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'لا توجد فواتير. أضف أول فاتورة.' : 'No invoices. Add your first invoice.'}
+            {t('finance.system.noInvoicesAddYourFirstInvoice')}
           </p>
         </div>
       ) : (
@@ -212,14 +212,14 @@ function Invoices() {
           <table className="table">
             <thead>
               <tr>
-                <th>{locale === 'ar' ? 'رقم الفاتورة' : 'Invoice #'}</th>
-                <th>{locale === 'ar' ? 'المشروع' : 'Project'}</th>
-                <th>{locale === 'ar' ? 'العميل' : 'Client'}</th>
-                <th>{locale === 'ar' ? 'المبلغ' : 'Amount'}</th>
-                <th>{locale === 'ar' ? 'المدفوع' : 'Paid'}</th>
-                <th>{locale === 'ar' ? 'المتبقي' : 'Remaining'}</th>
+                <th>{t('finance.system.invoice')}</th>
+                <th>{t('finance.system.project')}</th>
+                <th>{t('finance.workbench.client')}</th>
+                <th>{t('finance.workbench.amount')}</th>
+                <th>{t('finance.system.paid')}</th>
+                <th>{t('finance.system.remaining')}</th>
                 <th>{t('common.status')}</th>
-                <th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th>
+                <th>{t('finance.system.date')}</th>
                 <th>{t('common.actions')}</th>
               </tr>
             </thead>
@@ -257,7 +257,7 @@ function Invoices() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: '6px' }}>
-                        <button className="btn" style={{ padding: '6px 10px' }} title={locale === 'ar' ? 'عرض التفاصيل' : 'View Details'} onClick={() => openDetail(inv)}>
+                        <button className="btn" style={{ padding: '6px 10px' }} title={t('finance.system.viewDetails')} onClick={() => openDetail(inv)}>
                           <Eye size={14} />
                         </button>
                         <button className="btn" style={{ padding: '6px 10px' }} onClick={() => { setEditingInvoice(inv); loadProjects(); loadClients(); setShowAddModal(true); }}>
@@ -344,8 +344,8 @@ function InvoiceModal({ invoice, locale, t, projects, clients, onClose, onSave }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.project_id) { setError(locale === 'ar' ? 'المشروع مطلوب' : 'Project is required'); return; }
-    if (!form.client_id) { setError(locale === 'ar' ? 'العميل مطلوب' : 'Client is required'); return; }
+    if (!form.project_id) { setError(t('finance.system.projectIsRequired')); return; }
+    if (!form.client_id) { setError(t('finance.system.clientIsRequired')); return; }
     setSaving(true);
     setError('');
     try {
@@ -372,8 +372,8 @@ function InvoiceModal({ invoice, locale, t, projects, clients, onClose, onSave }
         <div className="modal-header">
           <h3 className="modal-title">
             {isEdit
-              ? (locale === 'ar' ? 'تعديل الفاتورة' : 'Edit Invoice')
-              : (locale === 'ar' ? 'إضافة فاتورة جديدة' : 'Add New Invoice')}
+              ? (t('finance.system.editInvoice'))
+              : (t('finance.system.addNewInvoice'))}
           </h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
@@ -381,9 +381,9 @@ function InvoiceModal({ invoice, locale, t, projects, clients, onClose, onSave }
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'المشروع' : 'Project'} *</label>
+                <label className="form-label">{t('finance.system.project')} *</label>
                 <select className="form-select" value={form.project_id} onChange={e => handleChange('project_id', e.target.value)} required>
-                  <option value="">-- {locale === 'ar' ? 'اختر المشروع' : 'Select Project'} --</option>
+                  <option value="">-- {t('finance.system.selectProject')} --</option>
                   {projects.map(p => (
                     <option key={p.id} value={p.id}>{locale === 'ar' ? p.name_ar : (p.name_en || p.name_ar)} ({p.code})</option>
                   ))}
@@ -391,9 +391,9 @@ function InvoiceModal({ invoice, locale, t, projects, clients, onClose, onSave }
               </div>
 
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'العميل' : 'Client'} *</label>
+                <label className="form-label">{t('finance.workbench.client')} *</label>
                 <select className="form-select" value={form.client_id} onChange={e => handleChange('client_id', e.target.value)} required>
-                  <option value="">-- {locale === 'ar' ? 'اختر العميل' : 'Select Client'} --</option>
+                  <option value="">-- {t('finance.system.selectClient')} --</option>
                   {clients.map(c => (
                     <option key={c.id} value={c.id}>{locale === 'ar' ? c.name_ar : c.name_en} ({c.code})</option>
                   ))}
@@ -402,17 +402,17 @@ function InvoiceModal({ invoice, locale, t, projects, clients, onClose, onSave }
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'المبلغ (ج.م)' : 'Amount (EGP)'} *</label>
+                  <label className="form-label">{t('finance.system.amountEgp')} *</label>
                   <input className="form-input" type="number" step="0.01" min="0" value={form.amount} onChange={e => handleChange('amount', e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'تاريخ الإصدار' : 'Issue Date'} *</label>
+                  <label className="form-label">{t('finance.system.issueDate')} *</label>
                   <input className="form-input" type="date" value={form.issue_date} onChange={e => handleChange('issue_date', e.target.value)} required />
                 </div>
               </div>
 
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'تاريخ الاستحقاق' : 'Due Date'}</label>
+                <label className="form-label">{t('finance.system.dueDate')}</label>
                 <input className="form-input" type="date" value={form.due_date} onChange={e => handleChange('due_date', e.target.value)} />
               </div>
 
@@ -479,24 +479,24 @@ function InvoiceDetailModal({ invoice, locale, t, onClose, onPaymentSaved }) {
       <div className="modal modal-wide" onClick={e => e.stopPropagation()} style={{ maxWidth: '800px' }}>
         <div className="modal-header">
           <h3 className="modal-title">
-            {locale === 'ar' ? 'تفاصيل الفاتورة' : 'Invoice Detail'} — {invoice.invoice_number}
+            {t('finance.system.invoiceDetail')} — {invoice.invoice_number}
           </h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
           <div className="stats-grid" style={{ marginBottom: '20px' }}>
             <div className="stat-card">
-              <div className="stat-label">{locale === 'ar' ? 'قيمة الفاتورة' : 'Invoice Amount'}</div>
+              <div className="stat-label">{t('finance.system.invoiceAmount')}</div>
               <div className="stat-value" style={{ fontSize: '18px' }}>{formatCurrency(invoice.amount)}</div>
             </div>
             <div className="stat-card">
-              <div className="stat-label">{locale === 'ar' ? 'المدفوع' : 'Paid'}</div>
+              <div className="stat-label">{t('finance.system.paid')}</div>
               <div className="stat-value" style={{ fontSize: '18px', color: 'var(--color-success)' }}>
                 {formatCurrency(totalPaid)}
               </div>
             </div>
             <div className="stat-card">
-              <div className="stat-label">{locale === 'ar' ? 'المتبقي' : 'Remaining'}</div>
+              <div className="stat-label">{t('finance.system.remaining')}</div>
               <div className="stat-value" style={{ fontSize: '18px', color: remaining > 0 ? 'var(--color-warning)' : 'var(--color-success)' }}>
                 {formatCurrency(remaining)}
               </div>
@@ -505,19 +505,19 @@ function InvoiceDetailModal({ invoice, locale, t, onClose, onPaymentSaved }) {
 
           <div className="responsive-grid responsive-grid--two" style={{ gap: '12px', marginBottom: '20px', fontSize: '13px' }}>
             <div>
-              <span style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'المشروع:' : 'Project:'}</span>{' '}
+              <span style={{ color: 'var(--color-text-secondary)' }}>{t('finance.system.project2')}</span>{' '}
               <strong>{locale === 'ar' ? (invoice.project_name_ar || invoice.project_code) : (invoice.project_name_en || invoice.project_code)}</strong>
             </div>
             <div>
-              <span style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'العميل:' : 'Client:'}</span>{' '}
+              <span style={{ color: 'var(--color-text-secondary)' }}>{t('finance.system.client')}</span>{' '}
               <strong>{locale === 'ar' ? (invoice.client_name_ar || invoice.client_code) : (invoice.client_name_en || invoice.client_code)}</strong>
             </div>
             <div>
-              <span style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'تاريخ الإصدار:' : 'Issue Date:'}</span>{' '}
+              <span style={{ color: 'var(--color-text-secondary)' }}>{t('finance.system.issueDate2')}</span>{' '}
               <strong>{formatDate(invoice.issue_date)}</strong>
             </div>
             <div>
-              <span style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'تاريخ الاستحقاق:' : 'Due Date:'}</span>{' '}
+              <span style={{ color: 'var(--color-text-secondary)' }}>{t('finance.system.dueDate2')}</span>{' '}
               <strong>{invoice.due_date ? formatDate(invoice.due_date) : '-'}</strong>
             </div>
             <div>
@@ -534,12 +534,12 @@ function InvoiceDetailModal({ invoice, locale, t, onClose, onPaymentSaved }) {
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
-              {locale === 'ar' ? 'سجل المدفوعات' : 'Payment Records'}
+              {t('finance.system.paymentRecords')}
             </h4>
             {currentStatus !== 'paid' && (
               <button className="btn btn-primary" style={{ padding: '6px 14px', fontSize: '13px' }} onClick={() => setShowPaymentForm(true)}>
                 <CreditCard size={14} />
-                {locale === 'ar' ? 'تسجيل دفعة' : 'Record Payment'}
+                {t('finance.system.recordPayment')}
               </button>
             )}
           </div>
@@ -547,17 +547,17 @@ function InvoiceDetailModal({ invoice, locale, t, onClose, onPaymentSaved }) {
           {payments.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '30px', color: 'var(--color-text-secondary)', fontSize: '13px' }}>
               <Receipt size={32} style={{ marginBottom: '8px', opacity: 0.5 }} />
-              <p>{locale === 'ar' ? 'لا توجد دفعات مسجلة بعد.' : 'No payments recorded yet.'}</p>
+              <p>{t('finance.system.noPaymentsRecordedYet')}</p>
             </div>
           ) : (
             <div className="table-container">
               <table className="table">
                 <thead>
                   <tr>
-                    <th>{locale === 'ar' ? 'المبلغ' : 'Amount'}</th>
-                    <th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th>
-                    <th>{locale === 'ar' ? 'طريقة الدفع' : 'Method'}</th>
-                    <th>{locale === 'ar' ? 'رقم مرجعي' : 'Reference'}</th>
+                    <th>{t('finance.workbench.amount')}</th>
+                    <th>{t('finance.system.date')}</th>
+                    <th>{t('finance.system.method')}</th>
+                    <th>{t('finance.system.reference')}</th>
                     <th>{t('common.actions')}</th>
                   </tr>
                 </thead>
@@ -641,7 +641,7 @@ function PaymentForm({ invoice, locale, t, onClose, onSaved }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.amount || Number(form.amount) <= 0) {
-      setError(locale === 'ar' ? 'المبلغ مطلوب' : 'Amount is required');
+      setError(t('finance.system.amountIsRequired'));
       return;
     }
     setSaving(true);
@@ -668,7 +668,7 @@ function PaymentForm({ invoice, locale, t, onClose, onSaved }) {
     <div style={{ marginTop: '20px', padding: '16px', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-surface-raised)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
         <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>
-          {locale === 'ar' ? 'تسجيل دفعة جديدة' : 'Record New Payment'}
+          {t('finance.system.recordNewPayment')}
         </h4>
         <button className="btn" style={{ padding: '4px 10px', fontSize: '12px' }} onClick={onClose}>
           <X size={14} />
@@ -678,17 +678,17 @@ function PaymentForm({ invoice, locale, t, onClose, onSaved }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div className="responsive-grid responsive-grid--two" style={{ gap: '12px' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">{locale === 'ar' ? 'المبلغ' : 'Amount'} *</label>
+              <label className="form-label">{t('finance.workbench.amount')} *</label>
               <input className="form-input" type="number" step="0.01" min="0.01" value={form.amount} onChange={e => handleChange('amount', e.target.value)} required />
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">{locale === 'ar' ? 'تاريخ الدفع' : 'Payment Date'} *</label>
+              <label className="form-label">{t('finance.system.paymentDate')} *</label>
               <input className="form-input" type="date" value={form.payment_date} onChange={e => handleChange('payment_date', e.target.value)} required />
             </div>
           </div>
           <div className="responsive-grid responsive-grid--two" style={{ gap: '12px' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">{locale === 'ar' ? 'طريقة الدفع' : 'Payment Method'}</label>
+              <label className="form-label">{t('finance.system.paymentMethod')}</label>
               <select className="form-select" value={form.payment_method} onChange={e => handleChange('payment_method', e.target.value)}>
                 {PAYMENT_METHODS.map(m => (
                   <option key={m} value={m}>{methodLabel(m)}</option>
@@ -696,7 +696,7 @@ function PaymentForm({ invoice, locale, t, onClose, onSaved }) {
               </select>
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">{locale === 'ar' ? 'رقم مرجعي' : 'Reference Number'}</label>
+              <label className="form-label">{t('finance.system.referenceNumber')}</label>
               <input className="form-input" value={form.reference_number} onChange={e => handleChange('reference_number', e.target.value)} />
             </div>
           </div>
@@ -708,7 +708,7 @@ function PaymentForm({ invoice, locale, t, onClose, onSaved }) {
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
             <button type="button" className="btn" onClick={onClose}>{t('common.cancel')}</button>
             <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
-              {saving ? <span className="spinner" /> : (locale === 'ar' ? 'تسجيل الدفعة' : 'Record Payment')}
+              {saving ? <span className="spinner" /> : (t('finance.system.recordPayment2'))}
             </button>
           </div>
         </div>

@@ -1,5 +1,7 @@
+import { formatDateTime as sharedDateTime, formatDate as sharedDate } from '../utils/formatters';
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { formatCurrency } from '../utils/formatters';
 import { useLocale } from '../hooks/useLocale';
 import TextEntryDialog from '../components/common/TextEntryDialog';
 import { authService } from '../services/api';
@@ -170,23 +172,9 @@ const SOURCE_FIELD_MAP = {
   ],
 };
 
-function formatDate(dateStr) {
-  if (!dateStr) return '-';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
-  const day = d.getDate().toString().padStart(2, '0');
-  const month = (d.getMonth() + 1).toString().padStart(2, '0');
-  return `${day}/${month}/${d.getFullYear()}`;
-}
+const formatDate = sharedDate;
 
-function formatDateTime(dateStr) {
-  if (!dateStr) return '-';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
-  const hh = d.getHours().toString().padStart(2, '0');
-  const mm = d.getMinutes().toString().padStart(2, '0');
-  return `${formatDate(dateStr)} ${hh}:${mm}`;
-}
+const formatDateTime = sharedDateTime;
 
 function statusBadgeClass(status) {
   if (status === 'approved') return 'badge-success';
@@ -197,7 +185,7 @@ function statusBadgeClass(status) {
 function formatMoney(v, locale) {
   const n = Number(v);
   if (v === null || v === undefined || v === '' || isNaN(n)) return null;
-  return `${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${locale === 'ar' ? 'ج.م' : 'EGP'}`;
+  return formatCurrency(n, 'EGP', locale);
 }
 
 const requestTypeLabel = (type, locale) => REQUEST_TYPE_LABELS[locale]?.[type] || type;
@@ -287,9 +275,9 @@ function Approvals() {
   const statusLabel = (s) => STATUS_LABELS[locale]?.[s] || s;
 
   const tabs = [
-    canSeePending && { key: 'pending', label: locale === 'ar' ? 'الموافقات المعلقة' : 'Pending Approvals', icon: Inbox },
-    { key: 'mine', label: locale === 'ar' ? 'طلباتي' : 'My Requests', icon: ClipboardList },
-    isOwnerAdmin && { key: 'audit', label: locale === 'ar' ? 'سجل الموافقات' : 'Audit Log', icon: History },
+    canSeePending && { key: 'pending', label: t('approvals.system.pendingApprovals'), icon: Inbox },
+    { key: 'mine', label: t('approvals.system.myRequests'), icon: ClipboardList },
+    isOwnerAdmin && { key: 'audit', label: t('approvals.system.auditLog'), icon: History },
   ].filter(Boolean);
 
   const openDetail = (row) => setDetail({ id: row.id, row });
@@ -298,9 +286,9 @@ function Approvals() {
     <div className="page-container">
       <div className="page-header">
         <div>
-          <h1>{locale === 'ar' ? 'الموافقات' : 'Approvals'}</h1>
+          <h1>{t('approvals.title')}</h1>
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'مراجعة واعتماد الطلبات المعلقة' : 'Review and approve pending requests'}
+            {t('approvals.system.reviewAndApprovePendingRequests')}
           </p>
         </div>
       </div>
@@ -326,13 +314,13 @@ function Approvals() {
           <select className="form-select" style={{ maxWidth: '220px' }}
             value={auditFilters.module_name}
             onChange={e => setAuditFilters(f => ({ ...f, module_name: e.target.value }))}>
-            <option value="all">{locale === 'ar' ? 'كل الوحدات' : 'All Modules'}</option>
+            <option value="all">{t('approvals.system.allModules')}</option>
             {Object.keys(MODULE_LABELS.en).map(m => <option key={m} value={m}>{moduleLabel(m)}</option>)}
           </select>
           <select className="form-select" style={{ maxWidth: '180px' }}
             value={auditFilters.status}
             onChange={e => setAuditFilters(f => ({ ...f, status: e.target.value }))}>
-            <option value="all">{locale === 'ar' ? 'كل الحالات' : 'All Statuses'}</option>
+            <option value="all">{t('approvals.system.allStatuses')}</option>
             <option value="approved">{statusLabel('approved')}</option>
             <option value="rejected">{statusLabel('rejected')}</option>
           </select>
@@ -347,17 +335,17 @@ function Approvals() {
         </div>
       ) : tab === 'pending' ? (
         pending.length === 0 ? (
-          <EmptyState locale={locale} text={locale === 'ar' ? 'لا توجد طلبات معلقة' : 'No pending requests'} />
+          <EmptyState locale={locale} text={t('approvals.system.noPendingRequests')} />
         ) : (
           <div className="table-container">
             <table className="table">
               <thead>
                 <tr>
-                  <th>{locale === 'ar' ? 'الوحدة' : 'Module'}</th>
-                  <th>{locale === 'ar' ? 'النوع' : 'Type'}</th>
-                  <th>{locale === 'ar' ? 'مقدم الطلب' : 'Requester'}</th>
-                  <th>{locale === 'ar' ? 'المرحلة' : 'Stage'}</th>
-                  <th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th>
+                  <th>{t('approvals.system.module')}</th>
+                  <th>{t('approvals.system.type')}</th>
+                  <th>{t('approvals.system.requester')}</th>
+                  <th>{t('approvals.system.stage')}</th>
+                  <th>{t('approvals.system.date')}</th>
                   <th>{t('common.actions')}</th>
                 </tr>
               </thead>
@@ -365,25 +353,25 @@ function Approvals() {
                 {pending.map(r => (
                   <tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => openDetail(r)}>
                     <td style={{ fontWeight: 500 }}>{moduleLabel(r.module_name)}</td>
-                    <td><RequestTypeCell r={r} locale={locale} /></td>
+                    <td><RequestTypeCell r={r} locale={locale} t={t} /></td>
                     <td>{r.requester_name || '-'}</td>
                     <td><span className="badge badge-warning">{stageLabel(r.stage)}</span></td>
                     <td style={{ fontFamily: 'monospace', fontSize: '13px' }}>{formatDate(r.created_at)}</td>
                     <td onClick={e => e.stopPropagation()}>
                       {r.read_only ? (
                         <span style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}>
-                          {locale === 'ar' ? 'للعرض فقط' : 'View only'}
+                          {t('approvals.system.viewOnly')}
                         </span>
                       ) : (
                         <div style={{ display: 'flex', gap: '6px' }}>
                           <button className="btn btn-success" style={{ padding: '6px 10px' }}
                             onClick={() => handleInlineDecision(r.id, 'approve')}
-                            title={locale === 'ar' ? 'اعتماد' : 'Approve'}>
+                            title={t('approvals.system.approve')}>
                             <CheckCircle size={14} />
                           </button>
                           <button className="btn btn-danger" style={{ padding: '6px 10px' }}
                             onClick={() => handleInlineDecision(r.id, 'reject')}
-                            title={locale === 'ar' ? 'رفض' : 'Reject'}>
+                            title={t('approvals.system.reject')}>
                             <XCircle size={14} />
                           </button>
                         </div>
@@ -397,25 +385,25 @@ function Approvals() {
         )
       ) : tab === 'mine' ? (
         mine.length === 0 ? (
-          <EmptyState locale={locale} text={locale === 'ar' ? 'لا توجد طلبات مقدمة' : 'No requests submitted'} />
+          <EmptyState locale={locale} text={t('approvals.system.noRequestsSubmitted')} />
         ) : (
           <div className="table-container">
             <table className="table">
               <thead>
                 <tr>
-                  <th>{locale === 'ar' ? 'الوحدة' : 'Module'}</th>
-                  <th>{locale === 'ar' ? 'النوع' : 'Type'}</th>
+                  <th>{t('approvals.system.module')}</th>
+                  <th>{t('approvals.system.type')}</th>
                   <th>{t('common.status')}</th>
-                  <th>{locale === 'ar' ? 'المدير' : 'Manager'}</th>
-                  <th>{locale === 'ar' ? 'المعتمد' : 'Approver'}</th>
-                  <th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th>
+                  <th>{t('approvals.system.manager')}</th>
+                  <th>{t('approvals.system.approver')}</th>
+                  <th>{t('approvals.system.date')}</th>
                 </tr>
               </thead>
               <tbody>
                 {mine.map(r => (
                   <tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => openDetail(r)}>
                     <td style={{ fontWeight: 500 }}>{moduleLabel(r.module_name)}</td>
-                    <td><RequestTypeCell r={r} locale={locale} /></td>
+                    <td><RequestTypeCell r={r} locale={locale} t={t} /></td>
                     <td>
                       <span className={`badge ${statusBadgeClass(r.status)}`}>
                         {r.status === 'pending' ? stageLabel(r.stage) : statusLabel(r.status)}
@@ -432,26 +420,26 @@ function Approvals() {
         )
       ) : (
         audit.length === 0 ? (
-          <EmptyState locale={locale} text={locale === 'ar' ? 'لا توجد سجلات' : 'No records found'} />
+          <EmptyState locale={locale} text={t('approvals.system.noRecordsFound')} />
         ) : (
           <div className="table-container">
             <table className="table">
               <thead>
                 <tr>
-                  <th>{locale === 'ar' ? 'الوحدة' : 'Module'}</th>
-                  <th>{locale === 'ar' ? 'النوع' : 'Type'}</th>
-                  <th>{locale === 'ar' ? 'مقدم الطلب' : 'Requester'}</th>
+                  <th>{t('approvals.system.module')}</th>
+                  <th>{t('approvals.system.type')}</th>
+                  <th>{t('approvals.system.requester')}</th>
                   <th>{t('common.status')}</th>
-                  <th>{locale === 'ar' ? 'المدير' : 'Manager'}</th>
-                  <th>{locale === 'ar' ? 'المعتمد' : 'Approver'}</th>
-                  <th>{locale === 'ar' ? 'آخر تحديث' : 'Updated'}</th>
+                  <th>{t('approvals.system.manager')}</th>
+                  <th>{t('approvals.system.approver')}</th>
+                  <th>{t('approvals.system.updated')}</th>
                 </tr>
               </thead>
               <tbody>
                 {audit.map(r => (
                   <tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => openDetail(r)}>
                     <td style={{ fontWeight: 500 }}>{moduleLabel(r.module_name)}</td>
-                    <td><RequestTypeCell r={r} locale={locale} /></td>
+                    <td><RequestTypeCell r={r} locale={locale} t={t} /></td>
                     <td>{r.requester_name || '-'}</td>
                     <td><span className={`badge ${statusBadgeClass(r.status)}`}>{statusLabel(r.status)}</span></td>
                     <td>{r.manager_name || '-'}</td>
@@ -489,13 +477,13 @@ function Approvals() {
   );
 }
 
-function TimelineStep({ step, locale }) {
+function TimelineStep({ step, locale, t }) {
   const title = STEP_TITLES[locale]?.[step.stage] || step.stage;
   const stateMeta = {
-    done: { color: 'var(--color-success, #16a34a)', Icon: CheckCircle, label: locale === 'ar' ? 'تم' : 'Done' },
-    rejected: { color: 'var(--color-danger, #dc2626)', Icon: XCircle, label: locale === 'ar' ? 'مرفوض' : 'Rejected' },
-    current: { color: 'var(--color-warning, #d97706)', Icon: Clock, label: locale === 'ar' ? 'قيد الانتظار' : 'Awaiting' },
-    upcoming: { color: 'var(--color-text-secondary)', Icon: Circle, label: locale === 'ar' ? 'لاحقاً' : 'Upcoming' },
+    done: { color: 'var(--color-success, #16a34a)', Icon: CheckCircle, label: t('approvals.system.done') },
+    rejected: { color: 'var(--color-danger, #dc2626)', Icon: XCircle, label: t('approvals.system.rejected') },
+    current: { color: 'var(--color-warning, #d97706)', Icon: Clock, label: t('approvals.system.awaiting') },
+    upcoming: { color: 'var(--color-text-secondary)', Icon: Circle, label: t('approvals.system.upcoming') },
   }[step.state] || {};
   const Icon = stateMeta.Icon || Circle;
   return (
@@ -589,7 +577,7 @@ function ApprovalDetailModal({ detail, tab, locale, t, moduleLabel, statusLabel,
                     : statusLabel(req.status)}
                 </span>
                 <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-                  {locale === 'ar' ? 'مقدم الطلب:' : 'Requester:'} {req.requester_name || '-'}
+                  {t('approvals.system.requester2')} {req.requester_name || '-'}
                   {req.requester_email ? ` (${req.requester_email})` : ''}
                 </span>
               </div>
@@ -597,7 +585,7 @@ function ApprovalDetailModal({ detail, tab, locale, t, moduleLabel, statusLabel,
               {req.notes && (
                 <div style={{ fontSize: '13px', marginBottom: '16px' }}>
                   <div style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}>
-                    {locale === 'ar' ? 'ملاحظة الطلب' : 'Request note'}
+                    {t('approvals.system.requestNote')}
                   </div>
                   {req.notes}
                 </div>
@@ -605,23 +593,21 @@ function ApprovalDetailModal({ detail, tab, locale, t, moduleLabel, statusLabel,
 
               {/* Timeline */}
               <h4 style={{ fontSize: '13px', margin: '0 0 4px', color: 'var(--color-text-secondary)' }}>
-                {locale === 'ar' ? 'مسار الاعتماد' : 'Approval timeline'}
+                {t('approvals.system.approvalTimeline')}
               </h4>
               <div style={{ marginBottom: '18px' }}>
                 {(data?.timeline || []).map((step, i) => (
-                  <TimelineStep key={i} step={step} locale={locale} />
+                  <TimelineStep key={i} step={step} locale={locale} t={t} />
                 ))}
               </div>
 
               {/* Source record details */}
               <h4 style={{ fontSize: '13px', margin: '0 0 8px', color: 'var(--color-text-secondary)' }}>
-                {locale === 'ar' ? 'تفاصيل الطلب' : 'Request details'}
+                {t('approvals.system.requestDetails')}
               </h4>
               {!source ? (
                 <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
-                  {locale === 'ar'
-                    ? 'تعذّر العثور على السجل الأصلي لهذا النوع من الطلبات.'
-                    : 'The underlying record could not be loaded for this request type.'}
+                  {t('approvals.system.theUnderlyingRecordCouldNotBeLoadedForThisRequest')}
                 </div>
               ) : (
                 <div className="responsive-grid responsive-grid--two-minmax" style={{ gap: '6px 12px', fontSize: '13px' }}>
@@ -644,14 +630,14 @@ function ApprovalDetailModal({ detail, tab, locale, t, moduleLabel, statusLabel,
               {canAct && (
                 <div style={{ marginTop: '18px' }}>
                   <label className="form-label" style={{ fontSize: '12px' }}>
-                    {locale === 'ar' ? 'ملاحظات القرار (اختياري)' : 'Decision notes (optional)'}
+                    {t('approvals.system.decisionNotesOptional')}
                   </label>
                   <textarea
                     className="form-textarea"
                     rows={3}
                     value={notes}
                     onChange={e => setNotes(e.target.value)}
-                    placeholder={locale === 'ar' ? 'سبب الاعتماد أو الرفض…' : 'Reason for approval or rejection…'}
+                    placeholder={t('approvals.system.reasonForApprovalOrRejection')}
                   />
                 </div>
               )}
@@ -660,18 +646,18 @@ function ApprovalDetailModal({ detail, tab, locale, t, moduleLabel, statusLabel,
         </div>
 
         <div className="modal-footer">
-          <button className="btn" onClick={onClose}>{t('common.close') || (locale === 'ar' ? 'إغلاق' : 'Close')}</button>
+          <button className="btn" onClick={onClose}>{t('common.close') || (t('approvals.system.close'))}</button>
           {canAct && !loading && (
             <>
               <button className="btn btn-danger" disabled={!!acting} onClick={() => act('reject')}
                 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 {acting === 'reject' ? <span className="spinner" /> : <XCircle size={14} />}
-                {locale === 'ar' ? 'رفض' : 'Reject'}
+                {t('approvals.system.reject')}
               </button>
               <button className="btn btn-success" disabled={!!acting} onClick={() => act('approve')}
                 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 {acting === 'approve' ? <span className="spinner" /> : <CheckCircle size={14} />}
-                {locale === 'ar' ? 'اعتماد' : 'Approve'}
+                {t('approvals.system.approve')}
               </button>
             </>
           )}
@@ -681,7 +667,7 @@ function ApprovalDetailModal({ detail, tab, locale, t, moduleLabel, statusLabel,
   );
 }
 
-function RequestTypeCell({ r, locale }) {
+function RequestTypeCell({ r, locale, t }) {
   const typeLabel = requestTypeLabel(r.request_type, locale);
   const ref = `${typeLabel} #${r.request_id}`;
   const s = r.summary;
@@ -692,7 +678,7 @@ function RequestTypeCell({ r, locale }) {
       <div>
         <div>{ref}</div>
         <div style={{ fontSize: '11px', color: 'var(--color-danger, #dc2626)' }}>
-          {locale === 'ar' ? 'السجل الأصلي محذوف' : 'Source record deleted'}
+          {t('approvals.system.sourceRecordDeleted')}
         </div>
       </div>
     );

@@ -1,3 +1,21 @@
 {
-  "title": "المستندات القانونية"
+  "title": "المستندات القانونية",
+  "system": {
+    "verified": "معتمد",
+    "rejected": "مرفوض",
+    "pending": "معلق",
+    "legalDocuments": "المستندات القانونية",
+    "legalComplianceDocumentManagement": "إدارة المستندات القانونية والتصاريح",
+    "addDocument": "إضافة مستند",
+    "searchDocuments": "بحث عن مستندات...",
+    "noDocumentsFoundAddYourFirstDocument": "لا توجد مستندات. أضف أول مستند.",
+    "title": "العنوان",
+    "submittedBy": "مقدم من",
+    "date": "التاريخ",
+    "verify": "اعتماد",
+    "reject": "رفض",
+    "editDocument": "تعديل المستند",
+    "addNewDocument": "إضافة مستند جديد",
+    "documentType": "نوع المستند"
+  }
 }

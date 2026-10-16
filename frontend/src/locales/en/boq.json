@@ -5,5 +5,33 @@
     "itemTitle": "Delete BOQ item",
     "sectionTitle": "Delete BOQ section",
     "message": "This removes the entry from the BOQ. It is refused if measurements, allocations, recipes or other records use it."
+  },
+  "system": {
+    "billOfQuantitiesForProject": "Bill of Quantities for Project",
+    "addSection": "Add Section",
+    "addItem": "Add Item",
+    "sections": "Sections",
+    "items": "Items",
+    "avgCompletion": "Avg. Completion",
+    "grandTotal": "Grand Total",
+    "boqSummaryByType": "BOQ Summary by Type",
+    "noBoqSectionsYetAddYourFirstSection": "No BOQ sections yet. Add your first section.",
+    "items2": "items",
+    "item": "Item",
+    "unitRate": "Unit Rate",
+    "completion": "Completion",
+    "editSection": "Edit Section",
+    "addNewSection": "Add New Section",
+    "englishName": "English Name *",
+    "parentSection": "Parent Section",
+    "rootSection": "— Root Section —",
+    "sortOrder": "Sort Order",
+    "editItem": "Edit Item",
+    "addNewItem": "Add New Item",
+    "section": "Section",
+    "selectSection": "— Select Section —",
+    "englishDescription": "English Description *",
+    "masterItemOptional": "Master Item (optional)",
+    "searchMasterItem": "Search master item..."
   }
 }

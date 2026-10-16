@@ -1,4 +1,32 @@
 {
   "title": "نشاط الوكلاء",
-  "decisions": "القرارات"
+  "decisions": "القرارات",
+  "system": {
+    "agentActivity": "نشاط الوكلاء",
+    "refresh": "تحديث",
+    "agentRequests": "طلبات الوكلاء",
+    "pending": "معلق",
+    "toolCallLog": "سجل استدعاءات الأدوات",
+    "tool": "الأداة",
+    "user": "مستخدم",
+    "status": "الحالة",
+    "requiredApprover": "مطلوب موافقة",
+    "reason": "السبب",
+    "noAgentRequestsYet": "لا توجد طلبات وكلاء بعد.",
+    "draft": "مسودة",
+    "awaitingApproval": "بانتظار الموافقة",
+    "apply": "تطبيق",
+    "approveExecute": "اعتماد وتنفيذ",
+    "reject": "رفض",
+    "commentOptional": "تعليق (اختياري)",
+    "tx": "معاملة رقم",
+    "time": "الوقت",
+    "risk": "النوع",
+    "user2": "المستخدم",
+    "authorized": "مصرح؟",
+    "response": "الاستجابة",
+    "session": "الجلسة",
+    "noToolCallsYet": "لا توجد استدعاءات بعد.",
+    "everyToolCallRunsTheSamePermissionEngineAsThe": "كل استدعاء أداة يمر بنفس محرك الصلاحيات الذي تستخدمه الواجهة؛ الإجراءات عالية المخاطر لا تُنفذ إلا بعد موافقة بشرية."
+  }
 }

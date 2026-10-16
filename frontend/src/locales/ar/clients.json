@@ -1,4 +1,30 @@
 {
   "title": "العملاء",
-  "empty": "لا يوجد عملاء بعد."
+  "empty": "لا يوجد عملاء بعد.",
+  "system": {
+    "clientDatabase": "قاعدة بيانات العملاء",
+    "addClient": "إضافة عميل",
+    "totalClients": "إجمالي العملاء",
+    "totalCreditLimit": "إجمالي الحد الائتماني",
+    "totalOutstandingBalance": "إجمالي الأرصدة المستحقة",
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "searchClients": "بحث عن عملاء...",
+    "noClientsFoundAddYourFirstClient": "لا يوجد عملاء. أضف أول عميل.",
+    "contactPerson": "الشخص المسؤول",
+    "phone": "الهاتف",
+    "city": "المدينة",
+    "creditLimit": "الحد الائتماني",
+    "balance": "الرصيد",
+    "edit": "تعديل: {code}",
+    "addNewClient": "إضافة عميل جديد",
+    "englishName": "الاسم بالإنجليزية *",
+    "clientType": "نوع العميل",
+    "selectCity": "اختر المدينة",
+    "email": "البريد الإلكتروني",
+    "egp": "(ج.م.)",
+    "paymentTerms": "شروط الدفع",
+    "taxId": "الرقم الضريبي",
+    "address": "العنوان"
+  }
 }

@@ -1,4 +1,32 @@
 {
   "title": "Equipment",
-  "maintenance": "Maintenance"
+  "maintenance": "Maintenance",
+  "system": {
+    "projectEquipmentAssetManagement": "Project Equipment & Asset Management",
+    "addEquipment": "Add Equipment",
+    "searchEquipment": "Search equipment...",
+    "noEquipmentFoundAddYourFirstEquipment": "No equipment found. Add your first equipment.",
+    "type": "Type",
+    "hourlyRate": "Hourly Rate",
+    "dailyRate": "Daily Rate",
+    "available": "Available",
+    "inUse": "In Use",
+    "maintenance": "Maintenance",
+    "edit": "Edit: {code}",
+    "addNewEquipment": "Add New Equipment",
+    "englishName": "English Name *",
+    "selectCategory": "Select Category",
+    "equipmentType": "Equipment Type",
+    "selectType": "Select Type",
+    "owned": "Owned",
+    "rented": "Rented",
+    "manufacturer": "Manufacturer",
+    "model": "Model",
+    "serialNumber": "Serial Number",
+    "purchaseDate": "Purchase Date",
+    "purchaseCost": "Purchase Cost",
+    "location": "Location",
+    "inYardUnassigned": "In Yard (Unassigned)",
+    "operatorRequired": "Operator Required"
+  }
 }

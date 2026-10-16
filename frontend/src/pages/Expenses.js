@@ -1,3 +1,4 @@
+import { formatDate as sharedDate } from '../utils/formatters';
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
@@ -88,19 +89,7 @@ function Expenses() {
 
   const categoryLabel = (cat) => CATEGORY_LABELS[locale]?.[cat] || cat;
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '-';
-    try {
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr;
-      const day = d.getDate().toString().padStart(2, '0');
-      const month = (d.getMonth() + 1).toString().padStart(2, '0');
-      const year = d.getFullYear();
-      return `${day}/${month}/${year}`;
-    } catch {
-      return dateStr;
-    }
-  };
+  const formatDate = sharedDate;
 
   const now = new Date();
   const currentMonth = now.getMonth();
@@ -115,12 +104,12 @@ function Expenses() {
     <div className="page-container">
       <div className="page-header">
         <div>
-          <h1>{locale === 'ar' ? 'المصروفات' : 'Expenses'}</h1>
-          <p style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? 'سجل المصروفات' : 'Expense Ledger'}</p>
+          <h1>{t('expenses.title')}</h1>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('expenses.system.expenseLedger')}</p>
         </div>
         <button className="btn btn-primary" onClick={() => { setEditingExpense(null); loadProjects(); setShowModal(true); }}>
           <Plus size={16} />
-          {locale === 'ar' ? 'إضافة مصروف' : 'Add Expense'}
+          {t('expenses.system.addExpense')}
         </button>
       </div>
 
@@ -130,17 +119,17 @@ function Expenses() {
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-value">{expenses.length}</div>
-          <div className="stat-label">{locale === 'ar' ? 'إجمالي المصروفات' : 'Total Expenses'}</div>
+          <div className="stat-label">{t('expenses.system.totalExpenses')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-value">{thisMonthExpenses.length}</div>
-          <div className="stat-label">{locale === 'ar' ? 'مصروفات هذا الشهر' : 'This Month Count'}</div>
+          <div className="stat-label">{t('expenses.system.thisMonthCount')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-value" style={{ color: 'var(--color-danger)' }}>
             {formatCurrency(thisMonthTotal)}
           </div>
-          <div className="stat-label">{locale === 'ar' ? 'إجمالي هذا الشهر' : 'This Month Total'}</div>
+          <div className="stat-label">{t('expenses.system.thisMonthTotal')}</div>
         </div>
       </div>
 
@@ -174,7 +163,7 @@ function Expenses() {
             style={{ background: 'transparent', border: 'none', padding: '0', flex: 1 }}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder={locale === 'ar' ? 'بحث عن مصروفات...' : 'Search expenses...'}
+            placeholder={t('expenses.system.searchExpenses')}
           />
           {searchQuery && (
             <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
@@ -192,7 +181,7 @@ function Expenses() {
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <DollarSign size={48} style={{ color: 'var(--color-text-secondary)', marginBottom: '16px' }} />
           <p style={{ color: 'var(--color-text-secondary)' }}>
-            {locale === 'ar' ? 'لا توجد مصروفات. أضف أول مصروف.' : 'No expenses found. Add your first expense.'}
+            {t('expenses.system.noExpensesFoundAddYourFirstExpense')}
           </p>
         </div>
       ) : (
@@ -202,10 +191,10 @@ function Expenses() {
               <tr>
                 <th>{t('common.category')}</th>
                 <th>{t('common.description')}</th>
-                <th>{locale === 'ar' ? 'المبلغ' : 'Amount'}</th>
-                <th>{locale === 'ar' ? 'التاريخ' : 'Date'}</th>
+                <th>{t('expenses.system.amount')}</th>
+                <th>{t('expenses.system.date')}</th>
                 <th>{t('common.status')}</th>
-                <th>{locale === 'ar' ? 'المشروع' : 'Project'}</th>
+                <th>{t('expenses.system.project')}</th>
                 <th>{t('common.actions')}</th>
               </tr>
             </thead>
@@ -225,10 +214,10 @@ function Expenses() {
                   <td>
                     <span className={`badge ${e.status === 'approved' ? 'badge-success' : e.status === 'rejected' ? 'badge-danger' : 'badge-warning'}`}>
                       {e.status === 'approved'
-                        ? (locale === 'ar' ? 'معتمد' : 'Approved')
+                        ? (t('expenses.system.approved'))
                         : e.status === 'rejected'
-                          ? (locale === 'ar' ? 'مرفوض' : 'Rejected')
-                          : (locale === 'ar' ? 'معلق' : 'Pending')}
+                          ? (t('expenses.system.rejected'))
+                          : (t('expenses.system.pending'))}
                     </span>
                   </td>
                   <td style={{ fontFamily: 'monospace', fontSize: '13px', color: 'var(--color-accent)' }}>
@@ -302,8 +291,8 @@ function ExpenseModal({ expense, locale, t, projects, onClose, onSave }) {
         <div className="modal-header">
           <h3 className="modal-title">
             {isEdit
-              ? (locale === 'ar' ? 'تعديل المصروف' : 'Edit Expense')
-              : (locale === 'ar' ? 'إضافة مصروف جديد' : 'Add New Expense')}
+              ? (t('expenses.system.editExpense'))
+              : (t('expenses.system.addNewExpense'))}
           </h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
@@ -324,33 +313,33 @@ function ExpenseModal({ expense, locale, t, projects, onClose, onSave }) {
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'المبلغ (ج.م)' : 'Amount (EGP)'} *</label>
+                  <label className="form-label">{t('expenses.system.amountEgp')} *</label>
                   <input className="form-input" type="number" step="0.01" min="0" value={form.amount} onChange={e => handleChange('amount', e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'التاريخ' : 'Date'} *</label>
+                  <label className="form-label">{t('expenses.system.date')} *</label>
                   <input className="form-input" type="date" value={form.date} onChange={e => handleChange('date', e.target.value)} required />
                 </div>
               </div>
 
               <div className="responsive-grid responsive-grid--two" style={{ gap: '16px' }}>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'المشروع (اختياري)' : 'Project (optional)'}</label>
+                  <label className="form-label">{t('expenses.system.projectOptional')}</label>
                   <select className="form-select" value={form.project_id} onChange={e => handleChange('project_id', e.target.value)}>
-                    <option value="">-- {locale === 'ar' ? 'بدون مشروع' : 'No Project'} --</option>
+                    <option value="">-- {t('expenses.system.noProject')} --</option>
                     {projects.map(p => (
                       <option key={p.id} value={p.id}>{locale === 'ar' ? p.name_ar : (p.name_en || p.name_ar)} ({p.code})</option>
                     ))}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{locale === 'ar' ? 'مدفوع بواسطة' : 'Paid By'}</label>
+                  <label className="form-label">{t('expenses.system.paidBy')}</label>
                   <input className="form-input" value={form.paid_by} onChange={e => handleChange('paid_by', e.target.value)} />
                 </div>
               </div>
 
               <div className="form-group">
-                <label className="form-label">{locale === 'ar' ? 'ملاحظات' : 'Notes'}</label>
+                <label className="form-label">{t('expenses.system.notes')}</label>
                 <textarea className="form-textarea" value={form.notes} onChange={e => handleChange('notes', e.target.value)} />
               </div>
 

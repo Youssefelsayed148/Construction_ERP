@@ -1,3 +1,5 @@
+import { formatDate as sharedDate } from '../utils/formatters';
+import { translateEnum } from '../i18n/enums';
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
@@ -37,11 +39,7 @@ const BUCKET_ICONS = {
   recently_completed: CircleCheck,
 };
 
-function formatDate(iso, locale) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-}
+const formatDate = sharedDate;
 
 export default function MyActions() {
   const { locale, t } = useLocale();
@@ -168,7 +166,7 @@ export default function MyActions() {
       </div>
 
       {loading ? (
-        <div>{locale === 'ar' ? 'جار التحميل...' : 'Loading...'}</div>
+        <div>{t('actions.system.loading')}</div>
       ) : (
         <div className="card">
           <div className="card-header"><span className="card-title">{L[bucket]}</span></div>
@@ -180,14 +178,14 @@ export default function MyActions() {
                   <td style={{ padding: 12 }}>
                     <div style={{ fontWeight: 600 }}>{item.title}</div>
                     <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
-                      {L.source}: {item.source_type}
+                      {L.source}: {translateEnum(t, 'entityType', item.source_type)}
                       {item.source_id != null ? ` #${item.source_id}` : ''}
-                      {' · '}{L.status}: {item.status}
+                      {' · '}{L.status}: {translateEnum(t, 'status', item.status)}
                       {item.delegated_to_user_id != null && Number(item.delegated_to_user_id) !== Number(item.assigned_user_id) ? ` · ${L.delegated_to} #${item.delegated_to_user_id}` : ''}
                     </div>
                   </td>
                   <td style={{ padding: 12, whiteSpace: 'nowrap' }}>
-                    <span style={{ ...PRIORITY_STYLES[item.priority] || {}, fontWeight: 700 }}>{item.priority}</span>
+                    <span style={{ ...PRIORITY_STYLES[item.priority] || {}, fontWeight: 700 }}>{translateEnum(t, 'priority', item.priority)}</span>
                   </td>
                   <td style={{ padding: 12, whiteSpace: 'nowrap' }}>
                     {item.due_date ? `${L.due}: ${formatDate(item.due_date, locale)}` : L.noDue}

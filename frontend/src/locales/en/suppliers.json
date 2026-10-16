@@ -8,5 +8,33 @@
     "restore": "Restore",
     "showDeleted": "Show deleted suppliers",
     "deletedBadge": "Deleted"
+  },
+  "system": {
+    "supplierDatabase": "Supplier Database",
+    "addSupplier": "Add Supplier",
+    "searchSuppliers": "Search suppliers...",
+    "noSuppliersFoundAddYourFirstSupplier": "No suppliers found. Add your first supplier.",
+    "contactPerson": "Contact Person",
+    "phone": "Phone",
+    "city": "City",
+    "edit": "Edit: {code}",
+    "addNewSupplier": "Add New Supplier",
+    "englishName": "English Name *",
+    "email": "Email",
+    "address": "Address",
+    "selectCity": "Select City",
+    "taxId": "Tax ID",
+    "paymentTerms": "Payment Terms",
+    "active": "Active",
+    "suppliedMaterials": "Supplied Materials",
+    "noMaterialsLinkedYet": "No materials linked yet.",
+    "material": "Material",
+    "unitPrice": "Unit Price",
+    "leadTimeDays": "Lead Time (days)",
+    "notes": "Notes",
+    "addMaterial": "Add Material",
+    "selectMaterial": "Select material",
+    "price": "Price",
+    "leadTime": "Lead Time"
   }
 }

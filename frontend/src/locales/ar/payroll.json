@@ -1,3 +1,28 @@
 {
-  "title": "الرواتب"
+  "title": "الرواتب",
+  "system": {
+    "monthlyPayrollManagement": "إدارة دفعات الرواتب الشهرية",
+    "createPayroll": "إنشاء دفعة رواتب",
+    "searchPayrollPeriod": "بحث عن فترة راتب...",
+    "noPayrollPeriodsFoundCreateYourFirstPayroll": "لا توجد دفعات رواتب. أنشئ أول دفعة.",
+    "period": "الفترة",
+    "employees": "موظفين",
+    "totalNet": "صافي الإجمالي",
+    "posted": "مرحّل",
+    "draft": "مسودة",
+    "approved": "معتمد",
+    "paid": "مدفوع",
+    "yes": "نعم",
+    "no": "لا",
+    "employee": "الموظف",
+    "basicSalary": "الراتب الأساسي",
+    "netSalary": "صافي الراتب",
+    "noDetailsAvailable": "لا توجد تفاصيل.",
+    "createPayrollPeriod": "إنشاء دفعة رواتب",
+    "thisWillAutoGeneratePayrollForAllActiveEmployeesFor": "سيتم إنشاء دفعة رواتب لجميع الموظفين النشطين للشهر والسنة المحددين.",
+    "month": "الشهر",
+    "year": "السنة",
+    "payrollGeneratedSuccessfully": "تم إنشاء الدفعة بنجاح!",
+    "generate": "إنشاء"
+  }
 }
