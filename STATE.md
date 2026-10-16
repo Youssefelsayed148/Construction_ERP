@@ -1126,3 +1126,12 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - Batch 1 is functionally complete. Final verification/doc slice is pending commit; audit/review reports remain excluded from staging.
 - Final pagination coverage and evidence committed as `9696238`. The required Batch 1 implementation slices are committed (`4527166`, `c19c2e6`, `46f9e85`, `9696238`; state checkpoints are recorded separately). The remaining two untracked audit reports are intentionally excluded.
 
+
+## Batch 2 - initial implementation checkpoint - 2026-10-16
+
+- Current branch is `closeout/batch-a-to-6`; initial HEAD was `6a1281f`. The only untracked files observed at start were `docs/CODEX_AUDIT_REPORT.md` and `docs/REVIEW_REPORT_2026-10-14.md`; both are excluded from staging.
+- 2.1: Dynamic admin field/column keys are now checked in both locale catalogs; the baseline command exposed nine absent keys per locale. Added those labels and logical-property rules for `.table-responsive` / `.data-table`. `frontend npm.cmd run i18n:check` passes. Human visual and RTL review remains NOT VERIFIED.
+- 2.2: Harness now covers each configured admin write action and module-based denial for each area. The first broad run passed 61 tests and exposed two fixture issues; targeted rerun after fixture corrections passed the inventory document update/void cases. Full focused file verification remains pending.
+- 2.4: A test failed because seeded canonical roles lacked a dashboard target. Added aliases for all roles exported by `seed-staging.js` and applied aliases inside `roleDashboard`. Focused backend suite passes 1/1 suite, 26/26 tests.
+- 2.3 and 2.5 remain NOT DONE. Final gates and implementation commits remain pending. No pilot restart, stop, seed, or data-changing browser action has been performed.
+- Next action: complete admin error-state coverage, then page-level paging and 21-page smoke/permission checks; proceed to the read-only pilot role matrix only if the existing Playwright browser binary is already installed.

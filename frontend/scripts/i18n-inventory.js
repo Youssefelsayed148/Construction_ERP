@@ -92,6 +92,25 @@ function scanCatalog() {
   }
   result.usedKeys = used.size;
   result.dynamicKeyCalls = dynamic;
+  // AdminWorkspace builds field and column translation keys from its area
+  // config. Keep that finite config surface inside the catalog check instead
+  // of silently excluding all template-string calls.
+  const adminWorkspacePath = path.join(srcDir, 'pages', 'AdminWorkspace.js');
+  result.dynamicAdminKeysMissingFromEn = [];
+  result.dynamicAdminKeysMissingFromAr = [];
+  if (fs.existsSync(adminWorkspacePath)) {
+    const adminSource = fs.readFileSync(adminWorkspacePath, 'utf8');
+    const adminNames = new Set();
+    for (const match of adminSource.matchAll(/field\(['"]([A-Za-z][\w]*)['"]/g)) adminNames.add(match[1]);
+    for (const match of adminSource.matchAll(/columns:\s*\[([^\]]*)\]/g)) {
+      for (const key of match[1].matchAll(/['"]([A-Za-z][\w]*)['"]/g)) adminNames.add(key[1]);
+    }
+    result.dynamicAdminKeys = [...adminNames].sort().map((name) => `admin.fields.${name}`);
+    for (const key of result.dynamicAdminKeys) {
+      if (!(key in catalogs.en)) result.dynamicAdminKeysMissingFromEn.push(key);
+      if (!(key in catalogs.ar)) result.dynamicAdminKeysMissingFromAr.push(key);
+    }
+  }
   const isNamespaced = (k) => k.includes('.');
   for (const k of [...used].filter(isNamespaced).sort()) {
     if (!(k in catalogs.en)) result.usedKeysMissingFromEn.push(k);
@@ -149,6 +168,12 @@ function main() {
     if (failures.length) {
       console.error('i18n regression (counts may only go down; use translation keys and the shared helpers):');
       failures.forEach((m) => console.error('  ' + m));
+      process.exit(1);
+    }
+    if (inv.catalog.dynamicAdminKeysMissingFromEn.length || inv.catalog.dynamicAdminKeysMissingFromAr.length) {
+      console.error('missing dynamically constructed admin field/column keys:');
+      for (const key of inv.catalog.dynamicAdminKeysMissingFromEn) console.error(`  en: ${key}`);
+      for (const key of inv.catalog.dynamicAdminKeysMissingFromAr) console.error(`  ar: ${key}`);
       process.exit(1);
     }
     console.log('i18n:check ok');

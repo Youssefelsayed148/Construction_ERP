@@ -2312,3 +2312,11 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - Added and passed the final focused PostgreSQL page-two checks: inventory expiring lots, pending approvals, commercial legacy snapshots, procurement vendor quotations, warehouse movements, and agent activity/requests.
 - Latest `get-routes.pg.test.js` gate PASS 1 suite / 42 tests, 130 migrations, 448 mounted GET routes / 0 server failures; `erp-r02-gate-20261016161710` removed, exit 0. All requested 4b/4c collection routes now have real-PG page-two/no-overlap/total proof. No application code changed in this coverage expansion.
 - Required full batch gates passed earlier. Only focused PG tests and docs changed after those gates; no whole suite was rerun, per the task instruction to run related tests without repeating whole suites each time.
+
+## 2026-10-16 - Batch 2 initial remediation checkpoint
+
+- Ticket 2.1: `i18n:check` was extended to extract configured `AdminWorkspace` field and column names. The initial command failed on the nine expected missing EN/AR labels; both catalogs now have those labels. Admin table wrapper/table rules use logical CSS properties. Follow-up `npm.cmd run i18n:check` PASS (`i18n:check ok`). No human visual/RTL review was performed.
+- Ticket 2.2: Expanded the existing React DOM harness to invoke each configured admin write action and deny every area's valid role when its module grant is missing, asserting that denied access makes no API call. The first broad run found a test-fixture issue for inventory document detail data; focused inventory update/void rerun passed. The whole focused file and error-state matrix remain pending.
+- Ticket 2.4: Added a failing canonical-role resolver regression test, then aliases for every `CANONICAL_ROLES` entry in `seed-staging.js`. The resolver now selects the mapped dashboard family. Focused backend mock suite PASS 1 suite / 26 tests.
+- Tickets 2.3 and 2.5 and the requested final gates remain pending. Do not infer that the pilot browser run occurred; preserve the running pilot and use no seed/restart/stop actions.
+- No implementation commit has been made yet. The two excluded audit reports remain unstaged.

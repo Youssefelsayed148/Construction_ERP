@@ -346,6 +346,46 @@ body {
 .admin-secret { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
 .admin-secret code { direction: ltr; overflow-wrap: anywhere; }
 .admin-form { padding: 1rem; margin-block: 1rem; }
+
+.admin-workspace .table-responsive {
+  max-inline-size: 100%;
+  overflow-inline: auto;
+  border: 1px solid var(--color-surface-raised);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.admin-workspace .data-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  text-align: start;
+}
+
+.admin-workspace .data-table th,
+.admin-workspace .data-table td {
+  padding-block: 0.75rem;
+  padding-inline: 1rem;
+  border-block-end: 1px solid var(--color-surface-raised);
+  text-align: start;
+  vertical-align: middle;
+}
+
+.admin-workspace .data-table th {
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.admin-workspace .data-table tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--color-surface-raised) 35%, transparent);
+}
+
+.admin-workspace .data-table tbody tr:hover {
+  background: var(--color-surface-raised);
+}
 .admin-row-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; }
 
 .form-label {

@@ -19,6 +19,7 @@
   "numbering": { "title": "Document numbering" },
   "replenishment": { "title": "Replenishment", "views": "Replenishment views" },
   "fields": {
+    "cause": "Cause", "responsibility": "Responsibility", "time_impact_days": "Time impact (days)", "recommended_amount": "Recommended amount", "expires_in_days": "Expires in (days)", "doc_number": "Document number", "doc_type": "Document type", "id": "ID", "updated_at": "Last updated",
     "code": "Code", "org_type": "Organization type", "name_en": "Name (English)", "name_ar": "Name (Arabic)",
     "contact_person": "Contact person", "email": "Email", "phone": "Phone", "city": "City", "status": "Status",
     "name": "Name", "role": "Role", "department": "Department", "job_title": "Job title", "is_active": "Active",
