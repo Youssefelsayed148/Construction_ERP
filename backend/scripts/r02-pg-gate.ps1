@@ -88,8 +88,17 @@ try {
   }
   if ($Reconcile) {
     # Fresh seeded throwaway database -> golden reconciliation (read-only checks). Prints summary lines only.
+    $env:APP_ENV = 'test'
+    $guard = node src/scripts/seed-golden-demo.js 2>&1 | ForEach-Object { "$_" } | Out-String
+    if ($LASTEXITCODE -eq 0 -or $guard -notmatch 'APP_ENV must be exactly staging') {
+      throw 'Golden seed refused-target guard proof failed.'
+    }
+    Write-Output 'golden guard: non-staging APP_ENV refused'
+    $env:APP_ENV = 'staging'
     $env:RECONCILIATION_BACKUP_CONFIRMED = 'true'
     $seed = npm.cmd run seed:golden-demo 2>&1 | ForEach-Object { "$_" } | Out-String
+    if ($LASTEXITCODE -ne 0) { Write-Output 'golden seed: FAIL'; throw 'golden seed failed' }
+    ($seed -split "`r?`n") | Where-Object { $_ -match 'Seeded .* units, 1 BOQ, .* m3 recipe demand' } | ForEach-Object { Write-Output $_ }
     Write-Output ('seed exit=' + $LASTEXITCODE)
     $rec = node src/scripts/reconcile-database.js 2>&1 | ForEach-Object { "$_" } | Out-String
     $exit = $LASTEXITCODE

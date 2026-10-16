@@ -3,7 +3,7 @@
 const { assertSafeTarget } = require('../seed-golden-demo');
 
 const safeEnv = {
-  APP_ENV: 'test',
+  APP_ENV: 'staging',
   DB_HOST: '127.0.0.1',
   DB_PORT: '5432',
   DB_NAME: 'construction_erp_test',
@@ -17,6 +17,7 @@ describe('golden demo seed target guard', () => {
   });
 
   test.each([
+    ['non-staging app environment', { APP_ENV: 'test' }],
     ['production app environment', { APP_ENV: 'production' }],
     ['production-looking database', { DB_NAME: 'construction_erp_production' }],
     ['remote database host', { DB_HOST: 'db.example.invalid' }],

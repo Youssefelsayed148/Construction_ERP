@@ -1,7 +1,8 @@
 'use strict';
 
-// Phase 9 demo fixture. This script reads DB_* and APP_ENV only from the current
-// process; it intentionally does not load dotenv files or create user passwords.
+// Phase 9 demo fixture. Local pilot settings are loaded from the guarded staging
+// configuration; the script never prints credentials or creates user passwords.
+const path = require('path');
 const { Pool } = require('pg');
 const projectProvisioning = require('../services/projectProvisioning');
 const materialDemand = require('../services/materialDemand');
@@ -24,8 +25,8 @@ const RECIPE = Object.freeze({ code: 'OSIRIS-GOLD-C35-RECIPE', factor: 1, wastag
 const SCHEDULE = Object.freeze({ code: 'OSIRIS-GOLD-C35-POURS', plannedQuantity: 120 });
 
 function assertSafeTarget(env = process.env) {
-  if (!['staging', 'test'].includes(env.APP_ENV)) {
-    throw new Error('Refusing golden demo seed: APP_ENV must be exactly staging or test');
+  if (env.APP_ENV !== 'staging') {
+    throw new Error('Refusing golden demo seed: APP_ENV must be exactly staging');
   }
   if (!/(^|[_-])(staging|stage|test)([_-]|$)/i.test(env.DB_NAME || '')) {
     throw new Error('Refusing golden demo seed: DB_NAME must contain a staging, stage, or test segment');
@@ -165,6 +166,7 @@ async function seedGoldenDemo(client) {
 }
 
 async function main() {
+  require('dotenv').config({ path: path.resolve(__dirname, '..', '..', '..', '.env.docker') });
   assertSafeTarget();
   const pool = new Pool({
     host: process.env.DB_HOST, port: Number(process.env.DB_PORT), database: process.env.DB_NAME,
@@ -175,7 +177,7 @@ async function main() {
     await client.query('BEGIN');
     const result = await seedGoldenDemo(client);
     await client.query('COMMIT');
-    console.log(`Seeded ${PROJECT.code}: ${result.unitCount} units, C35 BOQ EGP ${result.boqTotal}, recipe demand ${result.netRequirement} m3.`);
+    console.log(`Seeded ${PROJECT.code}: ${result.unitCount} units, 1 BOQ, ${result.netRequirement.toFixed(4)} m3 recipe demand.`);
   } catch (error) {
     try { await client.query('ROLLBACK'); } catch (_) { /* preserve the source error */ }
     throw error;
