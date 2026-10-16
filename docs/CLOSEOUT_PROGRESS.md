@@ -1380,3 +1380,9 @@ Reviewed the existing lint-guards fallback and Docker-context launcher tests. Ad
 - The first full PostgreSQL run failed three suites / 11 tests; focused reruns isolated shared row totals and the disposable DB's auth-rate counters. Page assertions now compare totals to a baseline, and the gate supplies high test-only limits while dedicated rate-limit behavior tests keep their explicit thresholds. The three affected suites passed together 3/3 / 64/64 before the final `-All` pass.
 - NOT VERIFIED / next action: no project outside the tested users' recorded scope was available (one project ID in the pilot); rerun cross-project checks when a second valid project exists. Error-response smoke assertions verify page survival/no response-data leakage, not visible error UI; add visible-state assertions if UX coverage is required. Human visual and RTL review remains outstanding; inspect the 76 screenshots in the ignored artifact folder. Preserve the running pilot and do not seed it.
 
+
+## Batch 3 - 2026-10-16
+
+- CI workflow slice committed as `8c0e3b5`; includes audit, API guard, root build, and existing dedicated Playwright browser setup. Remote workflow status NOT VERIFIED.
+- Local requested gates: backend mock 65/1,089; PostgreSQL `-All` 84/1,933 at 130 migrations; golden reconciliation 16/16; frontend 37/323; i18n check, API guard, backend guard, and root build passed. Playwright local E2E: 74 passed. Production audits returned 0 vulnerabilities across all severities in both packages.
+- Golden seed source and documentation corrections are in progress. See `docs/BATCH3_SCORECARD.md` for ticket states and decisions waiting.
