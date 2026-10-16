@@ -1159,3 +1159,4 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - `docs/STAGING.md`, `docs/GO_NOGO.md`, and `docs/UAT_PILOT.md` now reflect file/command evidence, 130 migrations, 38 seed keys, cmd.exe command forms, backup confirmation, and criterion owners/statuses. Production decision remains NO-GO.
 - NOT VERIFIED: GitHub Actions remote result and human UAT/finance/native-Arabic/security sign-offs. CI `npm ci`, parity, browser-install step, and second migration run were not executed locally. The pilot was not restarted, reseeded, or used.
 - CI follow-up `52cf9df` creates a dedicated E2E job with Playwright's Chromium install; browser binaries remain outside the production image. STATE updated after this commit.
+- Documentation/scorecard commit `52962e7` records the corrected runbook, 38 actual seed keys, GO/NO-GO evidence/owners, audit totals, and NOT VERIFIED limitations.

@@ -2350,3 +2350,4 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - NOT VERIFIED: remote Actions result, workflow `npm ci` / i18n parity / explicit browser installation / second migration invocation, and human production approvals. Running pilot was not used.
 
 - CI's dedicated Playwright E2E job is in commit `52cf9df`; it installs Chromium through Playwright and runs `npm run test:e2e` outside the production image.
+- Documentation and scorecard commit: `52962e7`. It records the 130-migration baseline, 38 seeded keys, command forms, backup-confirmation procedure, status owners, audit totals, and local/NOT VERIFIED gate results.
