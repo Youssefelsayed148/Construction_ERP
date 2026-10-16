@@ -1355,3 +1355,10 @@ Reviewed the existing lint-guards fallback and Docker-context launcher tests. Ad
 - Page-two/no-overlap/total PG verification is present for assets, clients, suppliers, HR employees, notifications, procurement project workspace, and v1 webhooks only. Remaining touched route-family page assertions are NOT VERIFIED; Batch 1 remains incomplete until addressed. See `docs/BATCH1_SCORECARD.md`.
 - Implementation commit: `c19c2e6`; housekeeping commit: `4527166`. Post-commit working tree contains only the two prohibited untracked audit reports. Next action: add route-family PG page assertions for remaining touched list families, then update scorecard and commit.
 
+## 2026-10-16 - Batch 1 page-two PostgreSQL coverage expansion
+
+- Extended `get-routes.pg.test.js` with page-one/page-two, disjoint-row, and exact total-header assertions for consultant RFI/submittal history, document revisions, inventory lots, asset assignments/usage logs, HR laborers/attendance/leaves/labor-payments, BOQ allocations, item suppliers, supplier materials, quantity measurements, warehouse reservations, notification deliveries, and procurement supplier invoices.
+- Latest focused throwaway PG command: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/get-routes.pg.test.js -NoForceExit -Filter 'FAIL|PASS|Test Suites:|Tests:|●|Expected|Received|Error:|migrations:|removed'` - PASS 1 suite / 37 tests, 130 migrations, 448 mounted GET routes / 0 server failures; container `erp-r02-gate-20261016161342` removed, exit 0. Node syntax check passed.
+- The fixtures avoid writes to historical/business data; inventory lots use `include_empty=true` so the test does not insert/delete rows in the immutable stock movement ledger.
+- Seven endpoint-specific page-two checks remain NOT VERIFIED: expiring inventory lots, approvals pending, commercial legacy snapshots, procurement RFQ vendor quotations, warehouse movements, agent activity, and agent requests. `docs/BATCH1_SCORECARD.md` lists the exact routes. Batch 1 remains incomplete; no whole suite was rerun for these test-only changes.
+

@@ -2299,3 +2299,10 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - `npm.cmd run lint:guards`, frontend `npm.cmd run lint:api`, and root `npm.cmd run build` - PASS. Build compiled successfully.
 - Scorecard: `docs/BATCH1_SCORECARD.md`. Page-two/no-overlap/total proof exists for assets, clients, suppliers, HR employees, notifications, procurement project workspace, and `/v1/webhooks`. Remaining touched route families are NOT VERIFIED for that specific PG behavior; do not mark Batch 1 complete until addressed.
 - Implementation commit `c19c2e6`; earlier housekeeping commit `4527166`. After commit, only `docs/CODEX_AUDIT_REPORT.md` and `docs/REVIEW_REPORT_2026-10-14.md` remain untracked and unstaged.
+
+## 2026-10-16 - Batch 1 page-two PG coverage expansion
+
+- Added real-PostgreSQL page-one/page-two/no-overlap/total-header tests for consultant RFI responses and submittal revisions, document revisions, inventory lots, asset assignments and usage logs, HR laborers/attendance/leaves/labor payments, BOQ allocations, item suppliers, supplier materials, quantity measurements, warehouse reservations, notification deliveries, and procurement supplier invoices.
+- Focused `get-routes.pg.test.js` gate PASS 1 suite / 37 tests, 130 migrations, 448 GET routes / 0 server failures; container `erp-r02-gate-20261016161342` removed, exit 0. `node --check` passed.
+- Inventory lot fixture uses `include_empty=true`; the stock movement ledger is immutable, so no ledger rows are inserted or deleted by this fixture.
+- Seven endpoint-specific PG page-two checks remain NOT VERIFIED: inventory expiring lots, approvals pending, commercial legacy snapshots, procurement RFQ vendor quotations, warehouse movements, agent activity, and agent requests. See `docs/BATCH1_SCORECARD.md`; Batch 1 is not complete until these are covered or explicitly stopped with evidence.

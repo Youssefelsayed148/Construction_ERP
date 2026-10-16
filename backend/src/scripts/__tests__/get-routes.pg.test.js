@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const tokens = require('../../services/tokens');
 const describePg = process.env.TEST_PG === '1' ? describe : describe.skip;
 
@@ -19,6 +20,45 @@ describePg('R0.2 owner GET route smoke on migrated PostgreSQL', () => {
       catch (_) { console.log(`R0.2 server error ${route}: response body was not JSON`); }
     }
     return result.status;
+  };
+  const expectPagePair = async (route, filters = {}, idKey = 'id') => {
+    const fetchPage = async (offset) => {
+      const url = new URL(route, base);
+      for (const [key, value] of Object.entries(filters)) url.searchParams.set(key, String(value));
+      url.searchParams.set('limit', '1');
+      url.searchParams.set('offset', String(offset));
+      const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      const body = await response.json();
+      if (response.status >= 500) console.log(`pagination route error ${route}: ${String(body.error || 'internal error')}`);
+      return { response, body };
+    };
+    const first = await fetchPage(0);
+    const second = await fetchPage(1);
+    expect(first.response.status).toBe(200);
+    expect(second.response.status).toBe(200);
+    expect(first.response.headers.get('x-total-count')).toBe('3');
+    expect(second.response.headers.get('x-total-count')).toBe('3');
+    expect(first.body.data).toHaveLength(1);
+    expect(second.body.data).toHaveLength(1);
+    expect(first.body.data[0][idKey]).not.toBe(second.body.data[0][idKey]);
+  };
+  const expectNestedPagePair = async (route, key) => {
+    const fetchPage = async (offset) => {
+      const url = new URL(route, base);
+      url.searchParams.set('limit', '1');
+      url.searchParams.set('offset', String(offset));
+      const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      return { response, body: await response.json() };
+    };
+    const first = await fetchPage(0);
+    const second = await fetchPage(1);
+    expect(first.response.status).toBe(200);
+    expect(second.response.status).toBe(200);
+    expect(first.response.headers.get('x-total-count')).toBe('3');
+    expect(second.response.headers.get('x-total-count')).toBe('3');
+    expect(first.body.data[key]).toHaveLength(1);
+    expect(second.body.data[key]).toHaveLength(1);
+    expect(first.body.data[key][0].id).not.toBe(second.body.data[key][0].id);
   };
 
   beforeAll(async () => {
@@ -117,6 +157,19 @@ describePg('R0.2 owner GET route smoke on migrated PostgreSQL', () => {
     }
   });
 
+  test('notification delivery history advances to page 2 with correct total and no overlap', async () => {
+    try {
+      for (let n = 0; n < 3; n += 1) await db.query(
+        `INSERT INTO notification_deliveries (user_id, channel, event_type, idempotency_key, provider, status, payload)
+         VALUES ($1, 'email', $2, md5($3)::char(64), 'pagination-test', 'sent', '{}'::jsonb)`,
+        [owner.id, `pagination-${tag}`, `delivery-${tag}-${n}`]
+      );
+      await expectPagePair('/api/notifications/deliveries');
+    } finally {
+      await db.query('DELETE FROM notification_deliveries WHERE user_id = $1 AND event_type = $2', [owner.id, `pagination-${tag}`]);
+    }
+  });
+
   test('procurement project workspace advances the purchase-order array and reports its total', async () => {
     const material = (await db.query(
       "INSERT INTO item_master (code, category, name_en, name_ar, unit) VALUES ($1, 'pagination-test', $2, $2, 'ea') RETURNING id",
@@ -149,6 +202,36 @@ describePg('R0.2 owner GET route smoke on migrated PostgreSQL', () => {
     }
   });
 
+  test('procurement supplier invoice register advances to page 2 with correct total and no overlap', async () => {
+    const supplier = (await db.query(
+      'INSERT INTO suppliers (name_ar, name_en, code) VALUES ($1, $1, $2) RETURNING id',
+      [`r02-proc-invoice-${tag}`, `R2P-PROC-SUP-${tag}`]
+    )).rows[0].id;
+    const material = (await db.query(
+      "INSERT INTO item_master (code, category, name_en, name_ar, unit) VALUES ($1, 'pagination-test', $2, $2, 'ea') RETURNING id",
+      [`R2P-PROC-ITEM-${tag}`, `procurement invoice ${tag}`]
+    )).rows[0].id;
+    const orderNumbers = [0, 1, 2].map((n) => `R2P-PI-${tag}-${n}`);
+    try {
+      for (let n = 0; n < 3; n += 1) {
+        const order = (await db.query(
+          "INSERT INTO purchase_orders (order_number, project_id, material_id, quantity, status) VALUES ($1, $2, $3, 1, 'issued') RETURNING id",
+          [orderNumbers[n], project.id, material]
+        )).rows[0].id;
+        await db.query(
+          'INSERT INTO supplier_invoices (invoice_number, supplier_id, purchase_order_id, total_amount, created_by) VALUES ($1, $2, $3, 1, $4)',
+          [`R2P-PI-${tag}-${n}`, supplier, order, owner.id]
+        );
+      }
+      await expectPagePair('/api/procurement/invoices', { project_id: project.id });
+    } finally {
+      await db.query('DELETE FROM supplier_invoices WHERE supplier_id = $1', [supplier]);
+      await db.query('DELETE FROM purchase_orders WHERE order_number = ANY($1)', [orderNumbers]);
+      await db.query('DELETE FROM suppliers WHERE id = $1', [supplier]);
+      await db.query('DELETE FROM item_master WHERE id = $1', [material]);
+    }
+  });
+
   test('asset register advances to page 2 with a correct total and no overlap', async () => {
     for (let n = 0; n < 3; n += 1) await db.query(
       "INSERT INTO assets (code, name, name_en, name_ar, category, equipment_type) VALUES ($1, $2, $2, $2, 'other', 'owned')",
@@ -174,6 +257,354 @@ describePg('R0.2 owner GET route smoke on migrated PostgreSQL', () => {
       expect(first.body.data[0].id).not.toBe(second.body.data[0].id);
     } finally {
       await db.query('DELETE FROM assets WHERE code LIKE $1', [`R2P-ASSET-${tag}-%`]);
+    }
+  });
+
+  test('expense register advances to page 2 with a correct total and no overlap', async () => {
+    const notes = `R2P-EXP-${tag}`;
+    for (let n = 0; n < 3; n += 1) await db.query(
+      `INSERT INTO expenses (category, amount, date, project_id, created_by, notes)
+       VALUES ('other', 1, CURRENT_DATE, $1, $2, $3)`, [project.id, owner.id, `${notes}-${n}`]
+    );
+    try { await expectPagePair('/api/expenses', { project_id: project.id }); }
+    finally { await db.query('DELETE FROM expenses WHERE notes LIKE $1', [`${notes}-%`]); }
+  });
+
+  test('item register advances to page 2 with a correct total and no overlap', async () => {
+    const codePrefix = `R2P-ITEM-${tag}`;
+    for (let n = 0; n < 3; n += 1) await db.query(
+      "INSERT INTO item_master (code, category, name_en, name_ar, unit) VALUES ($1, 'pagination-test', $2, $2, 'ea')",
+      [`${codePrefix}-${n}`, `r02-page-${tag}-${n}`]
+    );
+    try { await expectPagePair('/api/items', { search: `r02-page-${tag}` }); }
+    finally { await db.query('DELETE FROM item_master WHERE code LIKE $1', [`${codePrefix}-%`]); }
+  });
+
+  test('legal document register advances to page 2 with a correct total and no overlap', async () => {
+    const titlePrefix = `R2P-LEGAL-${tag}`;
+    for (let n = 0; n < 3; n += 1) await db.query(
+      "INSERT INTO legal_documents (title, document_type, status) VALUES ($1, 'pagination-test', $2)",
+      [`${titlePrefix}-${n}`, `pagination-${tag}`]
+    );
+    try { await expectPagePair('/api/legal', { document_type: 'pagination-test' }); }
+    finally { await db.query('DELETE FROM legal_documents WHERE title LIKE $1', [`${titlePrefix}-%`]); }
+  });
+
+  test('maintenance reminder register advances to page 2 with a correct total and no overlap', async () => {
+    const status = `pagination-${tag}`;
+    for (let n = 0; n < 3; n += 1) await db.query(
+      'INSERT INTO maintenance_reminders (title, scheduled_date, status) VALUES ($1, CURRENT_DATE, $2)',
+      [`R2P-MAINT-${tag}-${n}`, status]
+    );
+    try { await expectPagePair('/api/maintenance', { status }); }
+    finally { await db.query('DELETE FROM maintenance_reminders WHERE status = $1', [status]); }
+  });
+
+  test('payroll period register advances to page 2 with a correct total and no overlap', async () => {
+    const status = `pagination-${tag}`;
+    for (let n = 1; n <= 3; n += 1) await db.query(
+      'INSERT INTO payroll_periods (period_name, month, year, status, created_by) VALUES ($1, $2, 2099, $3, $4)',
+      [`R2P-PAYROLL-${tag}-${n}`, n, status, owner.id]
+    );
+    try { await expectPagePair('/api/payroll', { year: 2099, status }); }
+    finally { await db.query('DELETE FROM payroll_periods WHERE status = $1 AND created_by = $2', [status, owner.id]); }
+  });
+
+  test('invoice and payment registers each advance to page 2 with correct totals and no overlap', async () => {
+    const client = (await db.query(
+      'INSERT INTO clients (code, name_ar, name_en, client_type) VALUES ($1, $2, $2, $3) RETURNING id',
+      [`R2P-FIN-${tag}`, `r02-fin-${tag}`, `pagination-${tag}`]
+    )).rows[0].id;
+    const compactTag = tag.replace(/\D/g, '').slice(-8);
+    const invoiceNumbers = [0, 1, 2].map((n) => `I${compactTag}${n}`);
+    const paymentNotes = [0, 1, 2].map((n) => `R2P-P-${tag}-${n}`);
+    try {
+      for (const invoiceNumber of invoiceNumbers) await db.query(
+        `INSERT INTO invoices (invoice_number, project_id, client_id, amount, issue_date, status, description)
+         VALUES ($1, $2, $3, 1, CURRENT_DATE, 'draft', 'pagination test')`, [invoiceNumber, project.id, client]
+      );
+      for (const notes of paymentNotes) await db.query(
+        `INSERT INTO payments (project_id, client_id, amount, payment_date, notes)
+         VALUES ($1, $2, 1, CURRENT_DATE, $3)`, [project.id, client, notes]
+      );
+      await expectPagePair('/api/invoices', { project_id: project.id, client_id: client });
+      await expectPagePair('/api/payments', { project_id: project.id, client_id: client });
+    } finally {
+      await db.query('DELETE FROM payments WHERE client_id = $1', [client]);
+      await db.query('DELETE FROM invoices WHERE invoice_number = ANY($1)', [invoiceNumbers]);
+      await db.query('DELETE FROM clients WHERE id = $1', [client]);
+    }
+  });
+
+  test('document-control register advances to page 2 with a correct total and no overlap', async () => {
+    const titlePrefix = `R2P-DOC-${tag}`;
+    for (let n = 0; n < 3; n += 1) await db.query(
+      `INSERT INTO project_documents (project_id, title, document_type, uploaded_by)
+       VALUES ($1, $2, 'pagination-test', $3)`, [project.id, `${titlePrefix}-${n}`, owner.id]
+    );
+    try { await expectPagePair('/api/docs/documents', { project_id: project.id }); }
+    finally { await db.query('DELETE FROM project_documents WHERE title LIKE $1', [`${titlePrefix}-%`]); }
+  });
+
+  test('agent session register advances to page 2 with a correct total and no overlap', async () => {
+    const clientName = `r02-pagination-${tag}`;
+    for (let n = 0; n < 3; n += 1) await db.query(
+      `INSERT INTO agent_sessions (id, user_id, client_name, expires_at)
+       VALUES ($1, $2, $3, NOW() + INTERVAL '1 day')`, [crypto.randomUUID(), owner.id, `${clientName}-${n}`]
+    );
+    try { await expectPagePair('/api/agent/sessions'); }
+    finally { await db.query('DELETE FROM agent_sessions WHERE client_name LIKE $1', [`${clientName}-%`]); }
+  });
+
+  test('subcontractor register advances to page 2 with a correct total and no overlap', async () => {
+    const codePrefix = `R2P-SUB-${tag}`;
+    for (let n = 0; n < 3; n += 1) await db.query(
+      'INSERT INTO subcontractors (code, name, name_en, name_ar) VALUES ($1, $2, $2, $2)',
+      [`${codePrefix}-${n}`, `r02-page-${tag}-${n}`]
+    );
+    try { await expectPagePair('/api/subcontractors', { search: `r02-page-${tag}` }); }
+    finally { await db.query('DELETE FROM subcontractors WHERE code LIKE $1', [`${codePrefix}-%`]); }
+  });
+
+  test('commercial variations advance to page 2 with a correct total and no overlap', async () => {
+    const numberPrefix = `R2P-VAR-${tag}`;
+    for (let n = 0; n < 3; n += 1) await db.query(
+      `INSERT INTO variations (variation_number, project_id, title, created_by)
+       VALUES ($1, $2, $3, $4)`, [`${numberPrefix}-${n}`, project.id, `pagination ${tag} ${n}`, owner.id]
+    );
+    try { await expectPagePair(`/api/commercial/variations/${project.id}`); }
+    finally { await db.query('DELETE FROM variations WHERE variation_number LIKE $1', [`${numberPrefix}-%`]); }
+  });
+
+  test('site report register advances to page 2 with a correct total and no overlap', async () => {
+    const reportDates = ['2099-01-01', '2099-01-02', '2099-01-03'];
+    for (const reportDate of reportDates) await db.query(
+      `INSERT INTO site_daily_reports (project_id, report_date, work_summary, created_by)
+       VALUES ($1, $2, $3, $4)`, [project.id, reportDate, `R2P-SITE-${tag}`, owner.id]
+    );
+    try { await expectPagePair(`/api/projects/${project.id}/site-reports`); }
+    finally { await db.query('DELETE FROM site_daily_reports WHERE project_id = $1 AND work_summary = $2', [project.id, `R2P-SITE-${tag}`]); }
+  });
+
+  test('warehouse transfer register advances to page 2 with a correct total and no overlap', async () => {
+    const status = `pagination-${tag}`;
+    const warehouseIds = [];
+    for (let n = 0; n < 2; n += 1) warehouseIds.push((await db.query(
+      "INSERT INTO warehouses (name, type, project_id) VALUES ($1, 'site', $2) RETURNING id",
+      [`R2P-WH-${tag}-${n}`, project.id]
+    )).rows[0].id);
+    try {
+      for (let n = 0; n < 3; n += 1) await db.query(
+        `INSERT INTO inventory_transfers (from_warehouse_id, to_warehouse_id, status, requested_by)
+         VALUES ($1, $2, $3, $4)`, [warehouseIds[0], warehouseIds[1], status, owner.id]
+      );
+      await expectPagePair('/api/warehouses/transfers', { status });
+    } finally {
+      await db.query('DELETE FROM inventory_transfers WHERE status = $1 AND requested_by = $2', [status, owner.id]);
+      await db.query('DELETE FROM warehouses WHERE id = ANY($1)', [warehouseIds]);
+    }
+  });
+
+  test('consultant RFI responses and submittal revisions advance with stable page totals', async () => {
+    const rfiNumber = `R2P-RFI-${tag}`;
+    const submittalNumber = `R2P-SUBM-${tag}`;
+    const rfi = (await db.query(
+      'INSERT INTO project_rfis (rfi_number, project_id, subject) VALUES ($1, $2, $3) RETURNING id',
+      [rfiNumber, project.id, `Pagination ${tag}`]
+    )).rows[0].id;
+    const submittal = (await db.query(
+      'INSERT INTO project_submittals (submittal_number, project_id, title) VALUES ($1, $2, $3) RETURNING id',
+      [submittalNumber, project.id, `Pagination ${tag}`]
+    )).rows[0].id;
+    try {
+      for (let n = 1; n <= 3; n += 1) {
+        await db.query('INSERT INTO rfi_responses (rfi_id, revision, stage, body) VALUES ($1, $2, $3, $4)', [rfi, n, 'coordinator', `response ${n}`]);
+        await db.query('INSERT INTO submittal_revisions (submittal_id, revision_number, stage, comments) VALUES ($1, $2, $3, $4)', [submittal, n, 'reviewer', `revision ${n}`]);
+      }
+      await expectNestedPagePair(`/api/consultant/rfis/${rfi}/responses`, 'history');
+      await expectNestedPagePair(`/api/consultant/submittals/${submittal}/revisions`, 'history');
+    } finally {
+      await db.query('DELETE FROM project_rfis WHERE id = $1', [rfi]);
+      await db.query('DELETE FROM project_submittals WHERE id = $1', [submittal]);
+    }
+  });
+
+  test('document revision history advances to page 2 with the correct total and no overlap', async () => {
+    const title = `R2P-DOCREV-${tag}`;
+    const document = (await db.query(
+      'INSERT INTO project_documents (project_id, title, document_type, uploaded_by) VALUES ($1, $2, $3, $4) RETURNING id',
+      [project.id, title, 'pagination-test', owner.id]
+    )).rows[0].id;
+    try {
+      for (let n = 1; n <= 3; n += 1) await db.query(
+        'INSERT INTO document_versions (document_id, version_no, file_url, uploaded_by, is_current) VALUES ($1, $2, $3, $4, $5)',
+        [document, n, `/r02-${tag}-${n}.pdf`, owner.id, n === 3]
+      );
+      await expectNestedPagePair(`/api/docs/documents/${document}/revisions`, 'revisions');
+    } finally {
+      await db.query('DELETE FROM project_documents WHERE id = $1', [document]);
+    }
+  });
+
+  test('inventory lot list advances to page 2 with correct total and no overlap', async () => {
+    const warehouseIds = [];
+    for (let n = 0; n < 2; n += 1) warehouseIds.push((await db.query(
+      "INSERT INTO warehouses (name, type, project_id) VALUES ($1, 'site', $2) RETURNING id",
+      [`R2P-LOT-WH-${tag}-${n}`, project.id]
+    )).rows[0].id);
+    const itemIds = [];
+    for (let n = 0; n < 3; n += 1) itemIds.push((await db.query(
+      "INSERT INTO item_master (code, category, name_en, name_ar, unit) VALUES ($1, 'pagination-test', $2, $2, 'ea') RETURNING id",
+      [`R2P-LOT-ITEM-${tag}-${n}`, `lot item ${tag} ${n}`]
+    )).rows[0].id);
+    try {
+      for (let n = 0; n < 3; n += 1) await db.query(
+        'INSERT INTO stock_lots (warehouse_id, material_id, lot_number, expiry_date, created_by) VALUES ($1, $2, $3, CURRENT_DATE + 10, $4) RETURNING id',
+        [warehouseIds[n % warehouseIds.length], itemIds[n], `R2P-LOT-${tag}-${n}`, owner.id]
+      );
+      await expectPagePair('/api/inventory/lots', { project_id: project.id, include_empty: true }, 'lot_id');
+    } finally {
+      await db.query('DELETE FROM stock_lots WHERE lot_number LIKE $1', [`R2P-LOT-${tag}-%`]);
+      await db.query('DELETE FROM item_master WHERE id = ANY($1)', [itemIds]);
+      await db.query('DELETE FROM warehouses WHERE id = ANY($1)', [warehouseIds]);
+    }
+  });
+
+  test('asset assignment and usage-log child lists advance without overlap', async () => {
+    const asset = (await db.query(
+      "INSERT INTO assets (code, name, name_en, name_ar, category, equipment_type) VALUES ($1, $2, $2, $2, 'other', 'owned') RETURNING id",
+      [`R2P-ASSET-CHILD-${tag}`, `r02-asset-child-${tag}`]
+    )).rows[0].id;
+    try {
+      for (let n = 0; n < 3; n += 1) {
+        await db.query('INSERT INTO equipment_assignments (equipment_id, project_id, assigned_from) VALUES ($1, $2, CURRENT_DATE + $3::int)', [asset, project.id, n]);
+        await db.query('INSERT INTO equipment_usage_logs (equipment_id, project_id, log_date, notes) VALUES ($1, $2, CURRENT_DATE + $3::int, $4)', [asset, project.id, n, `usage ${n}`]);
+      }
+      await expectPagePair(`/api/assets/${asset}/assignments`);
+      await expectPagePair(`/api/assets/${asset}/usage-logs`);
+    } finally {
+      await db.query('DELETE FROM equipment_assignments WHERE equipment_id = $1', [asset]);
+      await db.query('DELETE FROM equipment_usage_logs WHERE equipment_id = $1', [asset]);
+      await db.query('DELETE FROM assets WHERE id = $1', [asset]);
+    }
+  });
+
+  test('HR laborers, attendance, leaves, and labor-payments advance to page 2', async () => {
+    const employee = (await db.query(
+      'INSERT INTO employees (code, name, name_en, name_ar) VALUES ($1, $2, $2, $2) RETURNING id',
+      [`R2P-HR-CHILD-${tag}`, `r02-hr-child-${tag}`]
+    )).rows[0].id;
+    const laborerIds = [];
+    try {
+      for (let n = 0; n < 3; n += 1) {
+        const laborer = (await db.query(
+          'INSERT INTO daily_laborers (code, full_name) VALUES ($1, $2) RETURNING id',
+          [`R2P-LAB-${tag}-${n}`, `r02-laborer-${tag}-${n}`]
+        )).rows[0].id;
+        laborerIds.push(laborer);
+        await db.query('INSERT INTO attendance (employee_id, date, status) VALUES ($1, CURRENT_DATE + $2::int, $3)', [employee, n, `pagination-${tag}`]);
+        await db.query('INSERT INTO leave_requests (employee_id, leave_type, start_date, end_date, reason) VALUES ($1, $2, CURRENT_DATE + $3::int, CURRENT_DATE + $3::int, $4)', [employee, `pagination-${tag}`, n, `leave-${n}`]);
+        await db.query('INSERT INTO labor_payments (project_id, laborer_id, payment_date, total_amount) VALUES ($1, $2, CURRENT_DATE + $3::int, 1)', [project.id, laborer, n]);
+      }
+      await expectPagePair('/api/hr/laborers', { search: `r02-laborer-${tag}` });
+      await expectPagePair('/api/hr/attendance', { employee_id: employee });
+      await expectPagePair('/api/hr/leaves', { employee_id: employee });
+      await expectPagePair('/api/hr/labor-payments', { project_id: project.id });
+    } finally {
+      await db.query('DELETE FROM labor_payments WHERE laborer_id = ANY($1)', [laborerIds]);
+      await db.query('DELETE FROM leave_requests WHERE employee_id = $1', [employee]);
+      await db.query('DELETE FROM attendance WHERE employee_id = $1', [employee]);
+      await db.query('DELETE FROM daily_laborers WHERE id = ANY($1)', [laborerIds]);
+      await db.query('DELETE FROM employees WHERE id = $1', [employee]);
+    }
+  });
+
+  test('BOQ allocation list advances to page 2 with correct total and no overlap', async () => {
+    const item = (await db.query(
+      'INSERT INTO boq_items (project_id, code, description, quantity) VALUES ($1, $2, $3, 10) RETURNING id',
+      [project.id, `R2P-BOQ-${tag}`, `pagination allocations ${tag}`]
+    )).rows[0].id;
+    const locations = [];
+    try {
+      for (let n = 0; n < 3; n += 1) {
+        const location = (await db.query(
+          'INSERT INTO project_locations (project_id, code, name) VALUES ($1, $2, $3) RETURNING id',
+          [project.id, `R2P-LOC-${tag}-${n}`, `allocation ${tag} ${n}`]
+        )).rows[0].id;
+        locations.push(location);
+        await db.query('INSERT INTO boq_location_allocations (boq_item_id, project_location_id, planned_quantity) VALUES ($1, $2, 1)', [item, location]);
+      }
+      await expectPagePair(`/api/quantities/allocations/${item}`);
+    } finally {
+      await db.query('DELETE FROM boq_location_allocations WHERE boq_item_id = $1', [item]);
+      await db.query('DELETE FROM project_locations WHERE id = ANY($1)', [locations]);
+      await db.query('DELETE FROM boq_items WHERE id = $1', [item]);
+    }
+  });
+
+  test('item suppliers and supplier materials child lists advance to page 2', async () => {
+    const supplierIds = [];
+    const materialIds = [];
+    for (let n = 0; n < 3; n += 1) {
+      supplierIds.push((await db.query(
+        'INSERT INTO suppliers (name_ar, name_en, code) VALUES ($1, $1, $2) RETURNING id',
+        [`r02-link-supplier-${tag}-${n}`, `R2P-LINK-SUP-${tag}-${n}`]
+      )).rows[0].id);
+      materialIds.push((await db.query(
+        "INSERT INTO item_master (code, category, name_en, name_ar, unit) VALUES ($1, 'pagination-test', $2, $2, 'ea') RETURNING id",
+        [`R2P-LINK-ITEM-${tag}-${n}`, `link material ${tag} ${n}`]
+      )).rows[0].id);
+    }
+    try {
+      for (let n = 0; n < 3; n += 1) {
+        await db.query('INSERT INTO supplier_materials (supplier_id, material_id, unit_price) VALUES ($1, $2, 1)', [supplierIds[0], materialIds[n]]);
+        if (n > 0) await db.query('INSERT INTO supplier_materials (supplier_id, material_id, unit_price) VALUES ($1, $2, 1)', [supplierIds[n], materialIds[0]]);
+      }
+      await expectPagePair(`/api/items/${materialIds[0]}/suppliers`);
+      await expectPagePair(`/api/suppliers/${supplierIds[0]}/materials`);
+    } finally {
+      await db.query('DELETE FROM supplier_materials WHERE supplier_id = ANY($1) OR material_id = ANY($2)', [supplierIds, materialIds]);
+      await db.query('DELETE FROM suppliers WHERE id = ANY($1)', [supplierIds]);
+      await db.query('DELETE FROM item_master WHERE id = ANY($1)', [materialIds]);
+    }
+  });
+
+  test('quantity measurement register advances to page 2 with correct total and no overlap', async () => {
+    const item = (await db.query(
+      'INSERT INTO boq_items (project_id, code, description, quantity) VALUES ($1, $2, $3, 10) RETURNING id',
+      [project.id, `R2P-MEAS-${tag}`, `pagination measurement ${tag}`]
+    )).rows[0].id;
+    const location = (await db.query(
+      'INSERT INTO project_locations (project_id, code, name) VALUES ($1, $2, $3) RETURNING id',
+      [project.id, `R2P-MEAS-LOC-${tag}`, `measurement ${tag}`]
+    )).rows[0].id;
+    try {
+      for (let n = 0; n < 3; n += 1) await db.query(
+        'INSERT INTO quantity_measurements (project_id, project_location_id, boq_item_id, measured_date, quantity, measured_by) VALUES ($1, $2, $3, CURRENT_DATE + $4::int, 1, $5)',
+        [project.id, location, item, n, owner.id]
+      );
+      await expectPagePair('/api/quantities/measurements', { project_id: project.id, boq_item_id: item });
+    } finally {
+      await db.query('DELETE FROM quantity_measurements WHERE boq_item_id = $1', [item]);
+      await db.query('DELETE FROM project_locations WHERE id = $1', [location]);
+      await db.query('DELETE FROM boq_items WHERE id = $1', [item]);
+    }
+  });
+
+  test('warehouse reservation list advances to page 2 with correct total and no overlap', async () => {
+    const material = (await db.query(
+      "INSERT INTO item_master (code, category, name_en, name_ar, unit) VALUES ($1, 'pagination-test', $2, $2, 'ea') RETURNING id",
+      [`R2P-RES-${tag}`, `reservation ${tag}`]
+    )).rows[0].id;
+    try {
+      for (let n = 0; n < 3; n += 1) await db.query(
+        "INSERT INTO stock_reservations (material_id, project_id, quantity, status) VALUES ($1, $2, 1, $3)",
+        [material, project.id, `pagination-${tag}`]
+      );
+      await expectPagePair('/api/warehouses/reservations', { project_id: project.id, status: `pagination-${tag}` });
+    } finally {
+      await db.query('DELETE FROM stock_reservations WHERE material_id = $1 AND project_id = $2', [material, project.id]);
+      await db.query('DELETE FROM item_master WHERE id = $1', [material]);
     }
   });
 

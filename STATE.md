@@ -1109,3 +1109,11 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - `git status --short` after the commit showed only the two prohibited untracked audit reports; neither was staged. The closeout branch remains `closeout/batch-a-to-6`.
 - Remaining work / next action: add real PostgreSQL page-two/no-overlap/total assertions for every other changed collection family, update the scorecard/log, and commit the verification slice. Batch 1 is still NOT COMPLETE while this explicit ticket requirement is unmet.
 
+## Batch 1 page-two verification checkpoint - 2026-10-16
+
+- Expanded `backend/src/scripts/__tests__/get-routes.pg.test.js` to prove page 2 differs from page 1, rows do not overlap, and both requests return the exact `X-Total-Count` for additional collection routes: consultant RFI responses/submittal revisions, doc-control revisions, inventory lots, asset assignments/usage logs, HR laborers/attendance/leaves/labor payments, BOQ allocations, item suppliers/supplier materials, quantity measurements, warehouse reservations, notification deliveries, and procurement supplier invoices.
+- Latest focused gate PASS: 1 suite / 37 tests, 130 migrations, 448 mounted GET routes / 0 server failures; throwaway container `erp-r02-gate-20261016161342` removed, exit 0. `node --check backend/src/scripts/__tests__/get-routes.pg.test.js` passed. No whole suite was rerun for these test-only changes.
+- Inventory fixture uses `include_empty=true`; no stock movements are inserted/deleted because that ledger is immutable.
+- Seven endpoint-specific PG page-two cases remain NOT VERIFIED: `/api/inventory/lots/expiring`, `/api/approvals/pending`, `/api/commercial/legacy-snapshots`, `/api/procurement/rfq/:id/quotations/vendor/:supplierId`, `/api/warehouses/:id/movements`, `/api/agent/activity`, `/api/agent/requests`. The focused route smoke still reports 448 GET routes / 0 server failures, but this does not establish offset behavior for those collections.
+- Batch 1 remains NOT COMPLETE. Next action: add passing focused PG page-two cases for those seven lists, or document an exact blocker and stop condition. Verification slice and updated closeout docs are pending commit; excluded review reports remain unstaged.
+
