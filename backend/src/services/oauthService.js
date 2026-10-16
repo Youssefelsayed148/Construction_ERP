@@ -25,7 +25,6 @@
 
 'use strict';
 
-const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const Joi = require('joi');
 const { query, transaction } = require('../config/database');
@@ -164,9 +163,13 @@ async function issueForClientCredentials(body) {
     'SELECT * FROM service_accounts WHERE client_id = $1 AND is_active = true',
     [value.client_id]
   )).rows[0];
-  if (!acct || !(await bcrypt.compare(value.client_secret, acct.client_secret_hash))) {
+  if (!acct || !(await passwords.verifyPassword(value.client_secret, acct.client_secret_hash))) {
     throw Object.assign(new Error('Invalid client credentials'), { code: 'invalid_grant', status: 401 });
   }
+
+  const upgradedSecretHash = passwords.needsRehash(acct.client_secret_hash)
+    ? await passwords.hashPassword(value.client_secret)
+    : null;
 
   const granted = acct.scopes || [];
   const requested = parseScopeParam(value.scope);
@@ -193,6 +196,13 @@ async function issueForClientCredentials(body) {
   });
   await transaction(async client => {
     const q = client.query.bind(client);
+    // Compare-and-swap makes concurrent legacy logins safe: only the first
+    // request replaces the bcrypt value, while later requests leave its
+    // already-upgraded scrypt hash intact.
+    if (upgradedSecretHash) {
+      await q('UPDATE service_accounts SET client_secret_hash = $1 WHERE id = $2 AND client_secret_hash = $3',
+        [upgradedSecretHash, acct.id, acct.client_secret_hash]);
+    }
     await q('UPDATE service_accounts SET last_used_at = NOW() WHERE id = $1', [acct.id]);
     await auditIssuance({ subject: `service:${acct.id}`, kind: 'client_credentials', scopes, userId: user.id }, q);
   });

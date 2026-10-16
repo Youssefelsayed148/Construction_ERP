@@ -1,13 +1,13 @@
 'use strict';
 
 const crypto = require('crypto');
-const bcrypt = require('bcryptjs');
+const passwords = require('../../services/passwords');
 const { group } = require('./util');
 const token = async ctx => ctx.api('POST', '/api/agent/tokens', { name: `r02 token ${ctx.n()}`, scopes: ['projects:read'], expires_in_days: 30 });
 const authUser = async (ctx, password = 'r02-valid-password-123') => {
   const who = await ctx.actor('owner');
   const email = `r02-${ctx.n()}@example.com`;
-  await ctx.db.query('UPDATE users SET password = $1, email = $2 WHERE id = $3', [await bcrypt.hash(password, 4), email, who.userId]);
+  await ctx.db.query('UPDATE users SET password = $1, email = $2 WHERE id = $3', [await passwords.hashPassword(password), email, who.userId]);
   return { ...who, password, email };
 };
 
@@ -25,7 +25,7 @@ module.exports = {
     const who = await ctx.actor('owner');
     const secret = crypto.randomBytes(24).toString('hex');
     const clientId = `r02-oauth-${ctx.n()}`;
-    await ctx.db.query("INSERT INTO service_accounts (name, client_id, client_secret_hash, user_id, scopes) VALUES ('r02 registry', $1, $2, $3, $4::jsonb)", [clientId, await bcrypt.hash(secret, 4), who.userId, JSON.stringify(['api:read'])]);
+    await ctx.db.query("INSERT INTO service_accounts (name, client_id, client_secret_hash, user_id, scopes) VALUES ('r02 registry', $1, $2, $3, $4::jsonb)", [clientId, await passwords.hashPassword(secret), who.userId, JSON.stringify(['api:read'])]);
     return { body: { grant_type: 'client_credentials', client_id: clientId, client_secret: secret }, actor: who };
   }),
   ...group(['POST /api/agent/tokens'], async ctx => ({ body: { name: `r02 token ${ctx.n()}`, scopes: ['projects:read'], expires_in_days: 30 }, status: 201 })),

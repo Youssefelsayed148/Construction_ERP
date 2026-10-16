@@ -2,6 +2,7 @@
 
 process.env.AUTH_RATE_LIMIT_PER_15_MIN = '100000';
 const bcrypt = require('bcryptjs');
+const passwords = require('../../services/passwords');
 const crypto = require('crypto');
 const tokens = require('../../services/tokens');
 const describePg = process.env.TEST_PG === '1' ? describe : describe.skip;
@@ -37,7 +38,7 @@ describePg('R2b audit atomicity', () => {
     requester = await makeOwner('r2b-requester');
     project = await one("INSERT INTO projects (name, code, status) VALUES ('r2b atomic', $1, 'active') RETURNING id", [`R2B-${tag}`]);
     client = await one("INSERT INTO clients (name_ar, name_en) VALUES ('r2b', 'r2b') RETURNING id");
-    account = await one("INSERT INTO service_accounts (name, client_id, client_secret_hash, user_id, scopes, last_used_at) VALUES ('r2b', $1, $2, $3, $4::jsonb, '2000-01-01') RETURNING *", [`r2b-${tag}`, await bcrypt.hash(secret, 4), owner.id, JSON.stringify(['api:read'])]);
+    account = await one("INSERT INTO service_accounts (name, client_id, client_secret_hash, user_id, scopes, last_used_at) VALUES ('r2b', $1, $2, $3, $4::jsonb, '2000-01-01') RETURNING *", [`r2b-${tag}`, await passwords.hashPassword(secret), owner.id, JSON.stringify(['api:read'])]);
     const { app } = require('../../../server');
     await new Promise(resolve => { server = app.listen(0, '127.0.0.1', resolve); });
     base = `http://127.0.0.1:${server.address().port}`;

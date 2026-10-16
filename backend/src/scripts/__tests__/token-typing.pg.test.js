@@ -4,6 +4,7 @@
 // the refresh TTL was 30 seconds, and a session token survived a password change for 7 days.
 process.env.AUTH_RATE_LIMIT_PER_15_MIN = '1000'; // many logins in one run
 const bcrypt = require('bcryptjs');
+const passwords = require('../../services/passwords');
 const jwt = require('jsonwebtoken');
 
 const enabled = process.env.TEST_PG === '1';
@@ -11,7 +12,7 @@ const describePg = enabled ? describe : describe.skip;
 
 describePg('token typing (real PostgreSQL, real app)', () => {
   let app; let server; let base; let db;
-  let userId; let serviceAccountId; let clientId; let clientSecret;
+  let userId; let serviceAccountId; let clientId; let clientSecret; let legacyClientId;
   const email = `tok-${Date.now()}@test.io`;
   const password = 'correct horse battery staple';
 
@@ -52,12 +53,19 @@ describePg('token typing (real PostgreSQL, real app)', () => {
     serviceAccountId = (await db.query(
       `INSERT INTO service_accounts (name, client_id, client_secret_hash, user_id, scopes, is_active)
        VALUES ('tok', $1, $2, $3, $4, true) RETURNING id`,
-      [clientId, await bcrypt.hash(clientSecret, 4), userId, JSON.stringify(['api:read', 'api:write'])]
+      [clientId, await passwords.hashPassword(clientSecret), userId, JSON.stringify(['api:read', 'api:write'])]
     )).rows[0].id;
+    legacyClientId = `tok-legacy-${Date.now()}`;
+    await db.query(
+      `INSERT INTO service_accounts (name, client_id, client_secret_hash, user_id, scopes, is_active)
+       VALUES ('tok legacy', $1, $2, $3, $4, true)`,
+      [legacyClientId, await bcrypt.hash('tok-legacy-secret', 4), userId, JSON.stringify(['api:read'])]
+    );
   });
 
   afterAll(async () => {
     await db.query('DELETE FROM service_accounts WHERE id = $1', [serviceAccountId]);
+    await db.query('DELETE FROM service_accounts WHERE client_id = $1', [legacyClientId]);
     // audit_events is append-only, so the user (who owns preview audit rows) is deactivated, not deleted.
     await db.query('UPDATE users SET is_active = false WHERE id = $1', [userId]);
     await new Promise((resolve) => server.close(resolve));
@@ -68,6 +76,18 @@ describePg('token typing (real PostgreSQL, real app)', () => {
     const { access_token: access } = await v1Token('projects:read');
     const r = await call('GET', '/api/projects', { token: access });
     expect(r.status).toBe(401);
+  });
+
+  test('concurrent real HTTP client grants upgrade a legacy service secret once', async () => {
+    const body = { grant_type: 'client_credentials', client_id: legacyClientId, client_secret: 'tok-legacy-secret' };
+    const results = await Promise.all([
+      call('POST', '/api/v1/oauth/token', { body }),
+      call('POST', '/api/v1/oauth/token', { body }),
+    ]);
+    expect(results.map(result => result.status)).toEqual([200, 200]);
+    const stored = (await db.query('SELECT client_secret_hash FROM service_accounts WHERE client_id = $1', [legacyClientId])).rows[0].client_secret_hash;
+    expect(stored).toMatch(/^scrypt\$/);
+    expect(await passwords.verifyPassword('tok-legacy-secret', stored)).toBe(true);
   });
 
   test('a refresh token is rejected as a bearer on internal, v1 and MCP', async () => {

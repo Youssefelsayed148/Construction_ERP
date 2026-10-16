@@ -31,6 +31,7 @@ jest.mock('../../config/database', () => ({
 const { query, transaction } = require('../../config/database');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const passwords = require('../../services/passwords');
 const express = require('express');
 
 const oauthService = require('../../services/oauthService');
@@ -135,6 +136,11 @@ query.mockImplementation(async (sql, params = []) => {
     return { rows: [] };
   }
   if (/UPDATE service_accounts SET last_used_at/i.test(s)) return { rows: [] };
+  if (/UPDATE service_accounts SET client_secret_hash/i.test(s)) {
+    const acct = [...stub.serviceAccounts.values()].find((a) => a.id === params[1]);
+    if (acct && acct.client_secret_hash === params[2]) acct.client_secret_hash = params[0];
+    return { rows: [] };
+  }
   // OAuth password-grant tests exercise the R4 legacy-hash upgrade transaction.
   if (/UPDATE users SET password\s*=\s*\$1/i.test(s)) return { rows: [] };
   if (/INSERT INTO webhooks/i.test(s)) {
@@ -324,7 +330,7 @@ describe('oauth scope model', () => {
 
 describe('oauth client_credentials (service accounts)', () => {
   test('valid secret issues a scoped access token + refresh token', async () => {
-    const secretHash = await bcrypt.hash('super-secret', 10);
+    const secretHash = await passwords.hashPassword('super-secret');
     stub.serviceAccounts.set('ci-bot', {
       id: 1, client_id: 'ci-bot', client_secret_hash: secretHash, user_id: 1,
       scopes: ['projects:read', 'procurement:write'], is_active: true,
@@ -340,6 +346,49 @@ describe('oauth client_credentials (service accounts)', () => {
     expect(decoded.userId).toBe(1);
     expect(decoded.serviceAccountId).toBe(1);
     expect(result.refresh_token).toBeTruthy();
+  });
+
+  test('legacy bcrypt secret is verified and upgraded to scrypt on use', async () => {
+    const secretHash = await bcrypt.hash('legacy-service-secret', 4);
+    stub.serviceAccounts.set('legacy-bot', {
+      id: 2, client_id: 'legacy-bot', client_secret_hash: secretHash, user_id: 1,
+      scopes: ['projects:read'], is_active: true,
+    });
+    await oauthService.issueForClientCredentials({
+      grant_type: 'client_credentials', client_id: 'legacy-bot', client_secret: 'legacy-service-secret',
+    });
+    expect(stub.serviceAccounts.get('legacy-bot').client_secret_hash).toMatch(/^scrypt\$/);
+    expect(await passwords.verifyPassword('legacy-service-secret', stub.serviceAccounts.get('legacy-bot').client_secret_hash)).toBe(true);
+  });
+
+  test('wrong legacy secret is rejected without changing its hash', async () => {
+    const secretHash = await bcrypt.hash('legacy-service-secret', 4);
+    stub.serviceAccounts.set('wrong-bot', {
+      id: 3, client_id: 'wrong-bot', client_secret_hash: secretHash, user_id: 1,
+      scopes: ['projects:read'], is_active: true,
+    });
+    await expect(oauthService.issueForClientCredentials({
+      grant_type: 'client_credentials', client_id: 'wrong-bot', client_secret: 'wrong',
+    })).rejects.toMatchObject({ code: 'invalid_grant' });
+    expect(stub.serviceAccounts.get('wrong-bot').client_secret_hash).toBe(secretHash);
+  });
+
+  test('concurrent legacy use converges to one valid scrypt hash', async () => {
+    const secretHash = await bcrypt.hash('concurrent-service-secret', 4);
+    stub.serviceAccounts.set('concurrent-bot', {
+      id: 4, client_id: 'concurrent-bot', client_secret_hash: secretHash, user_id: 1,
+      scopes: ['projects:read'], is_active: true,
+    });
+    const grant = {
+      grant_type: 'client_credentials', client_id: 'concurrent-bot', client_secret: 'concurrent-service-secret',
+    };
+    const results = await Promise.all([
+      oauthService.issueForClientCredentials(grant),
+      oauthService.issueForClientCredentials(grant),
+    ]);
+    expect(results).toHaveLength(2);
+    expect(stub.serviceAccounts.get('concurrent-bot').client_secret_hash).toMatch(/^scrypt\$/);
+    expect(await passwords.verifyPassword('concurrent-service-secret', stub.serviceAccounts.get('concurrent-bot').client_secret_hash)).toBe(true);
   });
 
   test('wrong secret is rejected with invalid_grant', async () => {

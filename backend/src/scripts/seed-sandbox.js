@@ -8,7 +8,7 @@
 //   --url additionally registers a sample webhook subscription.
 
 require('dotenv').config();
-const bcrypt = require('bcryptjs');
+const passwords = require('../services/passwords');
 const { query, healthCheck } = require('../config/database');
 
 const CLIENT_ID = 'sandbox-client';
@@ -21,7 +21,7 @@ const CLIENT_SECRET = 'sandbox-secret-' + require('crypto').randomBytes(12).toSt
   const owner = (await query("SELECT id FROM users WHERE role = 'owner' AND is_active = true ORDER BY id LIMIT 1")).rows[0];
   if (!owner) { console.error('No active owner user found — create one first'); process.exit(1); }
 
-  const hash = await bcrypt.hash(CLIENT_SECRET, 10);
+  const hash = await passwords.hashPassword(CLIENT_SECRET);
   const scopes = ['api:read', 'projects:write', 'procurement:write', 'invoices:write', 'payments:write'];
   const r = await query(
     `INSERT INTO service_accounts (name, client_id, client_secret_hash, user_id, scopes, created_by)
