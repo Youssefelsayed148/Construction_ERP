@@ -2,9 +2,249 @@
   "title": "Dashboard",
   "welcome": "Welcome back, {name}",
   "widgets": {
-    "title": "Overview"
+    "title": "Overview",
+    "baseline_vs_actual": {
+      "title": "Baseline vs actual"
+    },
+    "boq_measurements": {
+      "title": "BOQ & measurements"
+    },
+    "budget_eac": {
+      "title": "Budget & commitments"
+    },
+    "capa": {
+      "title": "Corrective actions"
+    },
+    "commercial_risk": {
+      "title": "Commercial risk"
+    },
+    "consultant_comments": {
+      "title": "Consultant observations"
+    },
+    "cost_invoices": {
+      "title": "Cost & invoices"
+    },
+    "critical_activities": {
+      "title": "Critical activities"
+    },
+    "delays": {
+      "title": "Delays"
+    },
+    "deliveries": {
+      "title": "Deliveries pending MIR"
+    },
+    "financial_position": {
+      "title": "Financial position"
+    },
+    "handover_readiness": {
+      "title": "Handover readiness"
+    },
+    "incidents": {
+      "title": "Incidents"
+    },
+    "incoming_outgoing": {
+      "title": "Transmittals"
+    },
+    "inspections": {
+      "title": "Inspections"
+    },
+    "low_stock": {
+      "title": "Low stock"
+    },
+    "materials": {
+      "title": "Materials"
+    },
+    "milestones": {
+      "title": "Milestones"
+    },
+    "my_actions": {
+      "title": "My open actions"
+    },
+    "ncrs": {
+      "title": "NCRs"
+    },
+    "near_misses": {
+      "title": "Near misses"
+    },
+    "overdue": {
+      "title": "Overdue invoices"
+    },
+    "overdue_actions": {
+      "title": "Overdue corrective actions"
+    },
+    "payables": {
+      "title": "Payables (open commitments)"
+    },
+    "pending_quantities": {
+      "title": "Quantities pending review"
+    },
+    "permits": {
+      "title": "Permits"
+    },
+    "photos": {
+      "title": "Photos"
+    },
+    "pm_actions": {
+      "title": "PM actions"
+    },
+    "portfolio": {
+      "title": "Portfolio"
+    },
+    "procurement_exposure": {
+      "title": "Procurement exposure"
+    },
+    "progress": {
+      "title": "Progress"
+    },
+    "project_health": {
+      "title": "Project health"
+    },
+    "projects": {
+      "title": "My projects"
+    },
+    "purchase_orders": {
+      "title": "Purchase orders"
+    },
+    "quality_safety_risks": {
+      "title": "Quality & safety risks"
+    },
+    "receivables": {
+      "title": "Receivables"
+    },
+    "receiving": {
+      "title": "GRNs this week"
+    },
+    "requisitions": {
+      "title": "Purchase requisitions"
+    },
+    "reviews": {
+      "title": "My reviews"
+    },
+    "reviews_due": {
+      "title": "Reviews due"
+    },
+    "revisions": {
+      "title": "Revisions"
+    },
+    "rfis_submittals": {
+      "title": "RFIs & submittals"
+    },
+    "schedule_risk": {
+      "title": "Schedule risk"
+    },
+    "scope": {
+      "title": "My scope"
+    },
+    "stock": {
+      "title": "Stock"
+    },
+    "subcontracts": {
+      "title": "Subcontracts"
+    },
+    "superseded_control": {
+      "title": "Superseded control"
+    },
+    "tests": {
+      "title": "Tests"
+    },
+    "todays_work": {
+      "title": "Today's work"
+    },
+    "todays_works": {
+      "title": "Works"
+    },
+    "valuations": {
+      "title": "Valuations"
+    },
+    "variations": {
+      "title": "Variations"
+    },
+    "wir_mir": {
+      "title": "WIR / MIR"
+    },
+    "fields": {
+      "achieved": "achieved",
+      "active": "active",
+      "active_permits": "active permits",
+      "alerts": "alerts",
+      "approved_measurements": "approved measurements",
+      "approved_qty": "approved qty",
+      "at_risk": "at risk",
+      "available": "available",
+      "avg_completion": "avg completion",
+      "avg_percent": "avg percent",
+      "avg_progress": "avg progress",
+      "awaiting": "awaiting",
+      "awaiting_rectification": "awaiting rectification",
+      "baselines": "baselines",
+      "budgets": "budgets",
+      "collected": "collected",
+      "commitments": "commitments",
+      "completed": "completed",
+      "count": "count",
+      "delayed": "delayed",
+      "documents": "documents",
+      "due": "due",
+      "expiring_today": "expiring today",
+      "failed": "failed",
+      "in_progress": "in progress",
+      "incoming_open": "incoming open",
+      "invoiced": "invoiced",
+      "issued": "issued",
+      "issued_pos": "issued pos",
+      "items": "items",
+      "items_complete": "items complete",
+      "items_total": "items total",
+      "lines": "lines",
+      "low_stock": "low stock",
+      "measurements": "measurements",
+      "mirs_pending": "mirs pending",
+      "open": "open",
+      "open_commitment": "open commitment",
+      "open_incidents": "open incidents",
+      "open_ncrs": "open ncrs",
+      "open_punch": "open punch",
+      "open_punch_items": "open punch items",
+      "open_rfis": "open rfis",
+      "open_submittals": "open submittals",
+      "open_variations": "open variations",
+      "open_wirs": "open wirs",
+      "outgoing_open": "outgoing open",
+      "outstanding": "outstanding",
+      "overdue": "overdue",
+      "payable": "payable",
+      "pending": "pending",
+      "pending_mirs": "pending mirs",
+      "percent": "percent",
+      "planned": "planned",
+      "projects": "projects",
+      "quantity": "quantity",
+      "recent": "recent",
+      "rfis_to_answer": "rfis to answer",
+      "source": "source",
+      "superseded": "superseded",
+      "total": "total",
+      "upcoming": "upcoming",
+      "value": "value",
+      "wirs_open": "wirs open",
+      "wirs_to_decide": "wirs to decide",
+      "work_orders": "work orders"
+    }
   },
   "alerts": {
     "title": "Alerts"
+  },
+  "roleTitle": "My role dashboard",
+  "stickyNotes": "Sticky notes",
+  "noteScopes": {
+    "personal": "Personal",
+    "project": "Project",
+    "location": "Location",
+    "company": "Company"
+  },
+  "progressSources": {
+    "none": "None",
+    "schedule": "Schedule",
+    "quantities": "Quantities"
   }
 }

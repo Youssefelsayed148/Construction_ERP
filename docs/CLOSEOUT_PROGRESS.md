@@ -1419,3 +1419,12 @@ LF staging blocker resolved under updated user authorization. Implementation com
 ## Batch 4 hotfix 2 complete - 2026-10-16
 
 Implementation 854e8bd and LF checkpoint 855ee52 committed. Pilot migrate exited 0 (0 applied / 130 already applied); backend/frontend rebuilt, recreated, healthy. All three use rebuilt named images different from baseline; db exact ID/creation time unchanged. HTTP / and /api/health return 200; normal startup with no webhook-key error. Counts unchanged: users 77, projects 2, POs 20, GRNs 11, journals 22; migrations 130. Read-only reconcile matches expected 15/16, sole violation PO-00008 line 8. Fresh lint/regression PASS (1 suite / 6 tests); fresh image test stage PASS 64/1,075; prior full mocks PASS 66/1,102. No manual data edits or seed/smoke. Human UAT/live webhook rotation and fresh full PG/frontend/mock suites NOT VERIFIED this resume. See STATE.md / CLOSEOUT_LOG.md for exact commands, creation times and image evidence. UAT starts with storekeeper posting the GRN for PO-00008 MIR in the UI.
+
+## Batch 5A slice 1 — 2026-10-16
+
+- Read-only inventory recorded in docs/I18N_SYSTEM_STRINGS.md: 1,097 inline system-text language branches, 107 Latin JSX occurrences, 13 literal UI attributes, 22 direct enum displays, 63 widget title calls and one comparison reason. These are static occurrences; branches already containing Arabic are catalog bypasses, not all English leakage.
+- Widgets retain key/title/data and add title_key. RoleDashboardSection resolves widget/field catalogs, canonical role names, progress-source/scope labels, formats numbers with the selected locale and isolates values with bdi. Business notes remain unchanged. Coverage: 53 unique widget keys and 66 fields (including nested and handover).
+- Failing-first: backend dashboard-widgets.test.js 1 failed / 26 passed before fix, then PASS 1 suite / 27 tests. Frontend Dashboard.test.js first reached 2 failing rendering assertions before export/implementation, then PASS 1 suite / 2 tests. Initial test setup needed a Jest mock-factory correction; no application fix was credited to that setup failure.
+- Catalog contract test now passes, including EN/AR deletion probes. Page-language guard remains intentionally RED pending slice 2 (1,095 page branches after role headings moved). No pilot commands, database access, seeds, smoke, dependency changes, or external calls.
+- Next: replace remaining system branches/literals, extend i18n:check, then recommendation codes and full requested gates. Human visual/RTL and native Arabic review NOT VERIFIED.
+

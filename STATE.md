@@ -1,3 +1,11 @@
+## Batch 5A slice 1 — 2026-10-16
+
+- Read-only inventory recorded in docs/I18N_SYSTEM_STRINGS.md: 1,097 inline system-text language branches, 107 Latin JSX occurrences, 13 literal UI attributes, 22 direct enum displays, 63 widget title calls and one comparison reason. These are static occurrences; branches already containing Arabic are catalog bypasses, not all English leakage.
+- Widgets retain key/title/data and add title_key. RoleDashboardSection resolves widget/field catalogs, canonical role names, progress-source/scope labels, formats numbers with the selected locale and isolates values with bdi. Business notes remain unchanged. Coverage: 53 unique widget keys and 66 fields (including nested and handover).
+- Failing-first: backend dashboard-widgets.test.js 1 failed / 26 passed before fix, then PASS 1 suite / 27 tests. Frontend Dashboard.test.js first reached 2 failing rendering assertions before export/implementation, then PASS 1 suite / 2 tests. Initial test setup needed a Jest mock-factory correction; no application fix was credited to that setup failure.
+- Catalog contract test now passes, including EN/AR deletion probes. Page-language guard remains intentionally RED pending slice 2 (1,095 page branches after role headings moved). No pilot commands, database access, seeds, smoke, dependency changes, or external calls.
+- Next: replace remaining system branches/literals, extend i18n:check, then recommendation codes and full requested gates. Human visual/RTL and native Arabic review NOT VERIFIED.
+
 ## Batch 4 hotfix 2 complete - 2026-10-16 - pilot recovered
 
 - Implementation 854e8bd; LF/gate checkpoint 855ee52. Exact requested Claude trailers are present. Pre-staging tracked diff was 6 files / 52 insertions / 4 deletions; implementation including the new test was 7 files / 87 insertions / 4 deletions. Staged whitespace check PASS. All seven touched tracked files are i/lf w/lf; ignored .env.docker is LF, current key is 64 hex characters with no CR, both key counts are 1; no values printed. Keep tracked files LF. Proposal only: .gitattributes with '* text=auto eol=lf'; none added.

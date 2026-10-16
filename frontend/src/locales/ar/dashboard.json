@@ -2,9 +2,249 @@
   "title": "لوحة التحكم",
   "welcome": "مرحبًا بعودتك، {name}",
   "widgets": {
-    "title": "نظرة عامة"
+    "title": "نظرة عامة",
+    "baseline_vs_actual": {
+      "title": "الخط الأساس مقابل الفعلي"
+    },
+    "boq_measurements": {
+      "title": "جدول الكميات والقياسات"
+    },
+    "budget_eac": {
+      "title": "الميزانية والالتزامات"
+    },
+    "capa": {
+      "title": "الإجراءات التصحيحية"
+    },
+    "commercial_risk": {
+      "title": "المخاطر التجارية"
+    },
+    "consultant_comments": {
+      "title": "ملاحظات الاستشاري"
+    },
+    "cost_invoices": {
+      "title": "التكاليف والفواتير"
+    },
+    "critical_activities": {
+      "title": "الأنشطة الحرجة"
+    },
+    "delays": {
+      "title": "التأخيرات"
+    },
+    "deliveries": {
+      "title": "توريدات بانتظار فحص المواد"
+    },
+    "financial_position": {
+      "title": "المركز المالي"
+    },
+    "handover_readiness": {
+      "title": "جاهزية التسليم"
+    },
+    "incidents": {
+      "title": "الحوادث"
+    },
+    "incoming_outgoing": {
+      "title": "المراسلات"
+    },
+    "inspections": {
+      "title": "الفحوصات"
+    },
+    "low_stock": {
+      "title": "المخزون المنخفض"
+    },
+    "materials": {
+      "title": "المواد"
+    },
+    "milestones": {
+      "title": "المعالم"
+    },
+    "my_actions": {
+      "title": "إجراءاتي المفتوحة"
+    },
+    "ncrs": {
+      "title": "حالات عدم المطابقة"
+    },
+    "near_misses": {
+      "title": "الحوادث الوشيكة"
+    },
+    "overdue": {
+      "title": "الفواتير المتأخرة"
+    },
+    "overdue_actions": {
+      "title": "الإجراءات التصحيحية المتأخرة"
+    },
+    "payables": {
+      "title": "المستحقات الدائنة والالتزامات المفتوحة"
+    },
+    "pending_quantities": {
+      "title": "كميات بانتظار المراجعة"
+    },
+    "permits": {
+      "title": "التصاريح"
+    },
+    "photos": {
+      "title": "الصور"
+    },
+    "pm_actions": {
+      "title": "إجراءات مدير المشروع"
+    },
+    "portfolio": {
+      "title": "محفظة المشاريع"
+    },
+    "procurement_exposure": {
+      "title": "التزامات المشتريات"
+    },
+    "progress": {
+      "title": "الإنجاز"
+    },
+    "project_health": {
+      "title": "حالة المشاريع"
+    },
+    "projects": {
+      "title": "مشاريعي"
+    },
+    "purchase_orders": {
+      "title": "أوامر الشراء"
+    },
+    "quality_safety_risks": {
+      "title": "مخاطر الجودة والسلامة"
+    },
+    "receivables": {
+      "title": "المستحقات المدينة"
+    },
+    "receiving": {
+      "title": "إشعارات الاستلام هذا الأسبوع"
+    },
+    "requisitions": {
+      "title": "طلبات الشراء"
+    },
+    "reviews": {
+      "title": "مراجعاتي"
+    },
+    "reviews_due": {
+      "title": "المراجعات المستحقة"
+    },
+    "revisions": {
+      "title": "المراجعات"
+    },
+    "rfis_submittals": {
+      "title": "طلبات المعلومات والاعتمادات"
+    },
+    "schedule_risk": {
+      "title": "مخاطر الجدول الزمني"
+    },
+    "scope": {
+      "title": "نطاق أعمالي"
+    },
+    "stock": {
+      "title": "المخزون"
+    },
+    "subcontracts": {
+      "title": "عقود الباطن"
+    },
+    "superseded_control": {
+      "title": "ضبط المستندات المستبدلة"
+    },
+    "tests": {
+      "title": "الاختبارات"
+    },
+    "todays_work": {
+      "title": "أعمال اليوم"
+    },
+    "todays_works": {
+      "title": "الأعمال"
+    },
+    "valuations": {
+      "title": "المستخلصات"
+    },
+    "variations": {
+      "title": "الأوامر التغييرية"
+    },
+    "wir_mir": {
+      "title": "طلبات فحص الأعمال والمواد"
+    },
+    "fields": {
+      "achieved": "المتحقق",
+      "active": "النشط",
+      "active_permits": "التصاريح النشطة",
+      "alerts": "التنبيهات",
+      "approved_measurements": "القياسات المعتمدة",
+      "approved_qty": "الكمية المعتمدة",
+      "at_risk": "المعرض للخطر",
+      "available": "المتاح",
+      "avg_completion": "متوسط الإنجاز",
+      "avg_percent": "متوسط نسبة الإنجاز",
+      "avg_progress": "متوسط التقدم",
+      "awaiting": "بانتظار الإجراء",
+      "awaiting_rectification": "بانتظار التصحيح",
+      "baselines": "خطوط الأساس",
+      "budgets": "الميزانيات",
+      "collected": "المحصل",
+      "commitments": "الالتزامات",
+      "completed": "المكتمل",
+      "count": "العدد",
+      "delayed": "المتأخر",
+      "documents": "المستندات",
+      "due": "المستحق",
+      "expiring_today": "ينتهي اليوم",
+      "failed": "غير الناجح",
+      "in_progress": "قيد التنفيذ",
+      "incoming_open": "الوارد المفتوح",
+      "invoiced": "المفوتر",
+      "issued": "الصادر",
+      "issued_pos": "أوامر الشراء الصادرة",
+      "items": "البنود",
+      "items_complete": "البنود المكتملة",
+      "items_total": "إجمالي البنود",
+      "lines": "البنود",
+      "low_stock": "المخزون المنخفض",
+      "measurements": "القياسات",
+      "mirs_pending": "فحوصات المواد المعلقة",
+      "open": "المفتوح",
+      "open_commitment": "الالتزام المفتوح",
+      "open_incidents": "الحوادث المفتوحة",
+      "open_ncrs": "حالات عدم المطابقة المفتوحة",
+      "open_punch": "ملاحظات الاستلام المفتوحة",
+      "open_punch_items": "بنود ملاحظات الاستلام المفتوحة",
+      "open_rfis": "طلبات المعلومات المفتوحة",
+      "open_submittals": "طلبات الاعتماد المفتوحة",
+      "open_variations": "الأوامر التغييرية المفتوحة",
+      "open_wirs": "فحوصات الأعمال المفتوحة",
+      "outgoing_open": "الصادر المفتوح",
+      "outstanding": "غير المحصل",
+      "overdue": "المتأخر",
+      "payable": "المستحق للدفع",
+      "pending": "المعلق",
+      "pending_mirs": "فحوصات المواد المعلقة",
+      "percent": "النسبة المئوية",
+      "planned": "المخطط",
+      "projects": "المشاريع",
+      "quantity": "الكمية",
+      "recent": "الحديث",
+      "rfis_to_answer": "طلبات معلومات بانتظار الرد",
+      "source": "مصدر الإنجاز",
+      "superseded": "المستبدل",
+      "total": "الإجمالي",
+      "upcoming": "القادم",
+      "value": "القيمة",
+      "wirs_open": "فحوصات الأعمال المفتوحة",
+      "wirs_to_decide": "فحوصات أعمال بانتظار القرار",
+      "work_orders": "أوامر العمل"
+    }
   },
   "alerts": {
     "title": "التنبيهات"
+  },
+  "roleTitle": "لوحة دوري",
+  "stickyNotes": "الملاحظات السريعة",
+  "noteScopes": {
+    "personal": "شخصي",
+    "project": "مشروع",
+    "location": "موقع",
+    "company": "الشركة"
+  },
+  "progressSources": {
+    "none": "لا يوجد",
+    "schedule": "الجدول الزمني",
+    "quantities": "الكميات"
   }
 }

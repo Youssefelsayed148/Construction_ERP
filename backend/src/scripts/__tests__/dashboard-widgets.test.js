@@ -11,6 +11,19 @@ const { CANONICAL_ROLES } = require('../seed-staging');
 const db = new MockDb();
 const q = (sql, params) => db.query(sql, params);
 
+test('every role widget has a stable key and additive translation key, preserving its English fallback', async () => {
+  const emptyQuery = async () => ({ rows: [] });
+  for (const role of [...Object.keys(widgets.DASHBOARDS), ...Object.keys(widgets.ROLE_ALIASES)]) {
+    const dashboard = await widgets.roleDashboard(emptyQuery, { id: 1, role });
+    expect(dashboard.widgets.length).toBeGreaterThan(0);
+    for (const widget of dashboard.widgets) {
+      expect(widget.key).toMatch(/^[a-z][a-z0-9_]*$/);
+      expect(widget.title_key).toBe(`dashboard.widgets.${widget.key}.title`);
+      expect(widget.title).toMatch(/[A-Za-z]/);
+    }
+  }
+});
+
 const OWNER = { id: 1, name: 'Owner', role: 'owner' };
 const PM = { id: 4, name: 'PM', role: 'project_manager' };
 const ENGINEER = { id: 7, name: 'Engineer', role: 'engineer' };

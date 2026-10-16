@@ -30,7 +30,7 @@ async function rowsOf(q, sql, params) {
   return (await q(sql, params)).rows;
 }
 
-function w(key, title, data) { return { key, title, data }; }
+function w(key, title, data) { return { key, title, title_key: `dashboard.widgets.${key}.title`, data }; }
 
 function num(v) {
   if (v == null || v === '') return 0;

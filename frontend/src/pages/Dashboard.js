@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import { dashboardApi } from '../services/api';
 import { formatNumber, formatCurrency } from '../utils/formatters';
+import { translateRole } from '../i18n/enums';
 import {
   Briefcase, Users, Package, Wrench, AlertTriangle, CalendarDays, MessageSquareWarning,
   DollarSign, TrendingUp, TrendingDown, Receipt, Truck, Shield, ClipboardList, ChevronRight,
@@ -354,15 +355,16 @@ function Dashboard() {
 // Phase 23 — per-role widget strip + sticky notes + location dashboard widget
 // ---------------------------------------------------------------------------
 
-function RoleDashboardSection({ dash, ar }) {
+export function RoleDashboardSection({ dash }) {
+  const { t, locale, dir } = useLocale();
   if (!dash) return null;
   const widgets = dash.widgets || [];
   const sticky = dash.sticky_notes || [];
   return (
-    <>
+    <section dir={dir}>
       <div className="card" style={{ marginBottom: 20, padding: 12 }}>
         <h3 className="card-title" style={{ fontSize: 14, marginBottom: 10 }}>
-          {ar ? 'لوحة دوري' : 'My role dashboard'} ({dash.role})
+          {t('dashboard.roleTitle')} ({translateRole(t, dash.role)})
         </h3>
         <div className="stats-grid responsive-grid responsive-grid--auto-160">
           {widgets.map((wgt) => {
@@ -370,16 +372,21 @@ function RoleDashboardSection({ dash, ar }) {
             const headline = entries[0];
             return (
               <div className="stat-card" key={wgt.key}>
-                <div className="stat-label">{wgt.title}</div>
+                <div className="stat-label">{t(`dashboard.widgets.${wgt.key}.title`, { defaultValue: wgt.title })}</div>
                 {headline ? (
                   <div className="stat-value" style={{ fontSize: 20 }}>
-                    {typeof headline[1] === 'number' ? formatNumber(headline[1]) : (headline[1] ?? '—')}
+                    <WidgetValue field={headline[0]} value={headline[1]} t={t} locale={locale} />
                   </div>
                 ) : (
                   <div className="stat-value" style={{ fontSize: 20 }}>—</div>
                 )}
                 <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
-                  {entries.slice(1, 3).map(([k, v]) => `${k}: ${typeof v === 'number' ? formatNumber(v) : (v ?? '—')}`).join(' · ')}
+                  {entries.slice(1).map(([field, value]) => (
+                    <div key={field}>
+                      <span>{t(`dashboard.widgets.fields.${field}`)}: </span>
+                      <WidgetValue field={field} value={value} t={t} locale={locale} />
+                    </div>
+                  ))}
                 </div>
               </div>
             );
@@ -389,21 +396,30 @@ function RoleDashboardSection({ dash, ar }) {
       {(sticky.length > 0) && (
         <div className="card" style={{ marginBottom: 20, padding: 12 }}>
           <h3 className="card-title" style={{ fontSize: 14, marginBottom: 8 }}>
-            {ar ? 'الملاحظات السريعة' : 'Sticky notes'} ({sticky.length})
+            {t('dashboard.stickyNotes')} ({formatNumber(sticky.length, { locale })})
           </h3>
           <div style={{ display: 'grid', gap: 6 }}>
             {sticky.map(n => (
               <div key={n.id} style={rowStyle}>
                 <span style={{ width: 12, height: 12, borderRadius: 3, background: n.color || 'yellow', flexShrink: 0 }} />
                 <span style={{ fontSize: 13 }}>{n.text}</span>
-                <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--color-text-secondary)' }}>{n.scope}</span>
+                <span style={{ marginInlineStart: 'auto', fontSize: 11, color: 'var(--color-text-secondary)' }}>{t(`dashboard.noteScopes.${n.scope}`)}</span>
               </div>
             ))}
           </div>
         </div>
       )}
-    </>
+    </section>
   );
+}
+
+function WidgetValue({ field, value, t, locale }) {
+  if (value && typeof value === 'object') return Object.entries(value).map(([key, entry]) => (
+    <span key={key} style={{ display: 'block' }}>{t(`dashboard.widgets.fields.${key}`)}: <WidgetValue field={key} value={entry} t={t} locale={locale} /></span>
+  ));
+  const display = typeof value === 'number' ? formatNumber(value, { locale })
+    : field === 'source' ? t(`dashboard.progressSources.${value}`) : (value ?? '—');
+  return <bdi>{display}</bdi>;
 }
 
 const rowStyle = {
