@@ -21,6 +21,9 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
         working-directory: backend
+      - name: Production dependency audit
+        run: npm audit --omit=dev
+        working-directory: backend
       - name: Guards (no new silent migration catches or COUNT+1 numbering)
         run: npm run lint:guards
         working-directory: backend
@@ -80,6 +83,9 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
         working-directory: frontend
+      - name: Production dependency audit
+        run: npm audit --omit=dev
+        working-directory: frontend
       - name: Localization baseline (inline branches / hard-coded English may only go down)
         run: npm run i18n:check
         working-directory: frontend
@@ -88,6 +94,9 @@ jobs:
         working-directory: frontend
       - name: Frontend unit tests
         run: npm run test:ci
+        working-directory: frontend
+      - name: API client guard
+        run: npm run lint:api
         working-directory: frontend
       - name: Frontend production build
         run: npm run build
@@ -98,3 +107,7 @@ jobs:
       - name: Browser and mobile viewport tests
         run: npm run test:e2e
         working-directory: frontend
+      - name: Root production build
+        run: |
+          npm ci
+          npm run build
