@@ -1116,4 +1116,5 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - Inventory fixture uses `include_empty=true`; no stock movements are inserted/deleted because that ledger is immutable.
 - Seven endpoint-specific PG page-two cases remain NOT VERIFIED: `/api/inventory/lots/expiring`, `/api/approvals/pending`, `/api/commercial/legacy-snapshots`, `/api/procurement/rfq/:id/quotations/vendor/:supplierId`, `/api/warehouses/:id/movements`, `/api/agent/activity`, `/api/agent/requests`. The focused route smoke still reports 448 GET routes / 0 server failures, but this does not establish offset behavior for those collections.
 - Batch 1 remains NOT COMPLETE. Next action: add passing focused PG page-two cases for those seven lists, or document an exact blocker and stop condition. Verification slice and updated closeout docs are pending commit; excluded review reports remain unstaged.
+- Verification test/documentation slice committed as `46f9e85`. `git status --short` after the commit should show only `docs/CODEX_AUDIT_REPORT.md` and `docs/REVIEW_REPORT_2026-10-14.md` untracked; neither report was staged.
 
