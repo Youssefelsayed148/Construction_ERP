@@ -1,21 +1,24 @@
 const path = require('path');
 process.env.PLAYWRIGHT_BROWSERS_PATH ||= path.join(__dirname, '.playwright-browsers');
 const { defineConfig, devices } = require('@playwright/test');
+const pilotRoleMatrix = process.env.E2E_PILOT_ROLE_MATRIX === '1';
 
 module.exports = defineConfig({
   testDir: './e2e',
   timeout: 30000,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',
-  use: { baseURL: 'http://localhost:3000', trace: 'retain-on-failure' },
-  webServer: {
+  use: { baseURL: pilotRoleMatrix ? 'http://127.0.0.1:8090' : 'http://localhost:3000', trace: 'retain-on-failure' },
+  webServer: pilotRoleMatrix ? undefined : {
     command: 'npm start',
     url: 'http://localhost:3000/',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
     env: { BROWSER: 'none' },
   },
-  projects: [
+  projects: pilotRoleMatrix ? [
+    { name: 'pilot-role-matrix', testMatch: /role-matrix\.spec\.js/, use: { ...devices['Desktop Chrome'] } },
+  ] : [
     { name: 'desktop-chromium', testIgnore: /i18n-baseline/, use: { ...devices['Desktop Chrome'] } },
     { name: 'mobile-chromium', testIgnore: /i18n-baseline/, use: { ...devices['Pixel 7'] } },
     // Baseline screenshots (Phase 10 L0); run on demand with `npm run i18n:screenshots`.
