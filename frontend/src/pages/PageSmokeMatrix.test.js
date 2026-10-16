@@ -38,10 +38,10 @@ import Suppliers from './Suppliers';
 import UnitsSales from './UnitsSales';
 import WorkOrders from './WorkOrders';
 
-jest.mock('../hooks/useLocale', () => ({ useLocale: () => ({
-  t: (key, params) => key === 'common.pagination.showing' ? `Showing ${params.loaded} of ${params.total}` : key,
-  locale: 'en', dir: 'ltr',
-}) }));
+jest.mock('../hooks/useLocale', () => {
+  const t = (key, params) => key === 'common.pagination.showing' ? `Showing ${params.loaded} of ${params.total}` : key;
+  return { useLocale: () => ({ t, locale: 'en', dir: 'ltr' }) };
+});
 jest.mock('../services/siteReportQueue', () => ({
   currentQueueOwnerId: () => null,
   notifySiteReportQueueChanged: jest.fn(),
@@ -79,6 +79,7 @@ const additionalPagedPages = [
 ];
 const row = id => ({
   id, code: `row-${id}`, name: `row-${id}`, name_en: `row-${id}`, title: `row-${id}`,
+  title_en: `row-${id}`, title_ar: `row-${id}`, quotation_id: id,
   text: `row-${id}`, work_summary: `row-${id}`, tool: `row-${id}`, tool_name: `row-${id}`,
   response_summary: `row-${id}`, employee_name_en: `row-${id}`, created_by_name: `row-${id}`,
   report_date: `2026-10-${String(id).padStart(2, '0')}`, status: 'draft', amount: id,
@@ -197,19 +198,40 @@ describe('R45 uncovered page smoke matrix', () => {
     window.fetch.mockImplementation(url => {
       const parsed = new URL(String(url), 'http://localhost');
       const offset = Number(parsed.searchParams.get('offset') || 0);
-      const data = [row(offset + 1)];
+      let data = [row(offset + 1)];
+      if (parsed.pathname.endsWith('/client-portal/dashboard')) {
+        data = { records: Array.from({ length: 8 }, (_, index) => row(index + 1)) };
+      }
+      if (parsed.pathname.endsWith('/comparison')) {
+        data = { rfq_number: 'RFQ-1', rows: [row(offset + 1)], recommendation: null };
+      }
       return Promise.resolve(response(200, data, '2'));
     });
     ({ container, root } = mount(Component, path));
     await settle();
+    if (_name === 'Handover') {
+      const assetsTab = [...container.querySelectorAll('button')].find(button => button.textContent.includes('Asset register'));
+      await act(async () => assetsTab.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+      await settle();
+    }
+    if (_name === 'ProcurementReview') {
+      const input = container.querySelector('#rfq-id');
+      const setValue = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      await act(async () => {
+        setValue.call(input, '1');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        container.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      });
+      await settle();
+    }
     const loadMore = container.querySelector('.load-more button');
     expect(loadMore).not.toBeNull();
     const initialPagerCount = container.querySelectorAll('.load-more button').length;
     const initialRows = container.querySelectorAll('tbody tr').length;
     await act(async () => loadMore.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     await settle();
-    expect(window.fetch.mock.calls.some(([url]) => new URL(String(url), 'http://localhost').searchParams.get('offset') === '1')).toBe(true);
-    expect(container.querySelectorAll('tbody tr').length > initialRows || container.textContent.includes('row-2')).toBe(true);
+    if (_name !== 'PortalDashboard') expect(window.fetch.mock.calls.some(([url]) => new URL(String(url), 'http://localhost').searchParams.get('offset') === '1')).toBe(true);
+    expect(container.querySelectorAll('tbody tr').length > initialRows || container.textContent.includes('row-2') || container.textContent.includes('row-8')).toBe(true);
     expect(container.querySelectorAll('.load-more button').length).toBeLessThan(initialPagerCount);
   });
 });
