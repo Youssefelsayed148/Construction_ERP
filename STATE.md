@@ -1118,3 +1118,10 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 - Batch 1 remains NOT COMPLETE. Next action: add passing focused PG page-two cases for those seven lists, or document an exact blocker and stop condition. Verification slice and updated closeout docs are pending commit; excluded review reports remain unstaged.
 - Verification test/documentation slice committed as `46f9e85`. `git status --short` after the commit should show only `docs/CODEX_AUDIT_REPORT.md` and `docs/REVIEW_REPORT_2026-10-14.md` untracked; neither report was staged.
 
+## Batch 1 pagination completion - 2026-10-16
+
+- Resolved the seven remaining page-two cases: `/api/inventory/lots/expiring`, `/api/approvals/pending`, `/api/commercial/project/:projectId/legacy-snapshots`, `/api/procurement/rfq/:id/quotations/vendor/:supplierId`, `/api/warehouses/:id/movements`, `/api/agent/activity`, and `/api/agent/requests`.
+- Latest focused PG route gate PASS: 1 suite / 42 tests, 130 migrations, 448 mounted GET routes / 0 server failures; throwaway container `erp-r02-gate-20261016161710` removed, exit 0. `node --check` passed. The pagination page-two/no-overlap/exact-total requirement now covers all requested 4b/4c collections. No application code changed in these final test additions.
+- Required batch gates (backend mock, full PG `-All`, golden reconciliation, lint guards, API lint, root build) passed earlier in this batch. Only focused PG test code and docs changed after those gates; the full suites were not repeated.
+- Batch 1 is functionally complete. Final verification/doc slice is pending commit; audit/review reports remain excluded from staging.
+

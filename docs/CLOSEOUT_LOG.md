@@ -2306,3 +2306,9 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - Focused `get-routes.pg.test.js` gate PASS 1 suite / 37 tests, 130 migrations, 448 GET routes / 0 server failures; container `erp-r02-gate-20261016161342` removed, exit 0. `node --check` passed.
 - Inventory lot fixture uses `include_empty=true`; the stock movement ledger is immutable, so no ledger rows are inserted or deleted by this fixture.
 - Seven endpoint-specific PG page-two checks remain NOT VERIFIED: inventory expiring lots, approvals pending, commercial legacy snapshots, procurement RFQ vendor quotations, warehouse movements, agent activity, and agent requests. See `docs/BATCH1_SCORECARD.md`; Batch 1 is not complete until these are covered or explicitly stopped with evidence.
+
+## 2026-10-16 - Batch 1 pagination page-two coverage complete
+
+- Added and passed the final focused PostgreSQL page-two checks: inventory expiring lots, pending approvals, commercial legacy snapshots, procurement vendor quotations, warehouse movements, and agent activity/requests.
+- Latest `get-routes.pg.test.js` gate PASS 1 suite / 42 tests, 130 migrations, 448 mounted GET routes / 0 server failures; `erp-r02-gate-20261016161710` removed, exit 0. All requested 4b/4c collection routes now have real-PG page-two/no-overlap/total proof. No application code changed in this coverage expansion.
+- Required full batch gates passed earlier. Only focused PG tests and docs changed after those gates; no whole suite was rerun, per the task instruction to run related tests without repeating whole suites each time.

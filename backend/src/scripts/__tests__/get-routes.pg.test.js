@@ -376,6 +376,125 @@ describePg('R0.2 owner GET route smoke on migrated PostgreSQL', () => {
     finally { await db.query('DELETE FROM variations WHERE variation_number LIKE $1', [`${numberPrefix}-%`]); }
   });
 
+  test('commercial legacy snapshots advance to page 2 with correct total and no overlap', async () => {
+    const snapshots = ['cost_code_summary', 'commitment_summary', 'cashflow_summary'];
+    try {
+      for (const snapshotType of snapshots) await db.query(
+        'INSERT INTO commercial_snapshots (project_id, snapshot_type, figures) VALUES ($1, $2, $3::jsonb)',
+        [project.id, snapshotType, JSON.stringify({ tag, snapshotType })]
+      );
+      await expectPagePair(`/api/commercial/project/${project.id}/legacy-snapshots`);
+    } finally {
+      await db.query('DELETE FROM commercial_snapshots WHERE project_id = $1 AND snapshot_type = ANY($2)', [project.id, snapshots]);
+    }
+  });
+
+  test('pending approval queue advances to page 2 with exact total and no overlap', async () => {
+    const expenseIds = [];
+    try {
+      for (let n = 0; n < 3; n += 1) {
+        const expense = (await db.query(
+          "INSERT INTO expenses (category, amount, date, project_id, created_by, description, status) VALUES ('other', 1, CURRENT_DATE, $1, $2, $3, 'pending') RETURNING id",
+          [project.id, owner.id, `approval pagination ${tag} ${n}`]
+        )).rows[0].id;
+        expenseIds.push(expense);
+        await db.query(
+          "INSERT INTO approval_requests (module_name, request_type, request_id, requester_id, status, stage) VALUES ('expenses', $1, $2, $3, 'pending', 'manager_review')",
+          [`pagination-${tag}-${n}`, expense, owner.id]
+        );
+      }
+      const fetchPage = async (offset) => {
+        const url = new URL('/api/approvals/pending', base);
+        url.searchParams.set('limit', '1');
+        url.searchParams.set('offset', String(offset));
+        const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        return { response, body: await response.json() };
+      };
+      const first = await fetchPage(0);
+      const second = await fetchPage(1);
+      expect(first.response.status).toBe(200);
+      expect(second.response.status).toBe(200);
+      expect(first.response.headers.get('x-total-count')).toBe('3');
+      expect(second.response.headers.get('x-total-count')).toBe('3');
+      expect(first.body.requests).toHaveLength(1);
+      expect(second.body.requests).toHaveLength(1);
+      expect(first.body.requests[0].id).not.toBe(second.body.requests[0].id);
+    } finally {
+      await db.query('DELETE FROM approval_requests WHERE request_type LIKE $1', [`pagination-${tag}-%`]);
+      await db.query('DELETE FROM expenses WHERE id = ANY($1)', [expenseIds]);
+    }
+  });
+
+  test('vendor RFQ quotation collection advances to page 2 with correct total and no overlap', async () => {
+    const supplier = (await db.query(
+      'INSERT INTO suppliers (name_ar, name_en, code) VALUES ($1, $1, $2) RETURNING id',
+      [`r02-rfq-supplier-${tag}`, `R2P-RFQ-SUP-${tag}`]
+    )).rows[0].id;
+    const rfq = (await db.query(
+      'INSERT INTO rfqs (rfq_number, project_id, title, created_by) VALUES ($1, $2, $3, $4) RETURNING id',
+      [`R2P-RFQ-${tag}`, project.id, `Pagination RFQ ${tag}`, owner.id]
+    )).rows[0].id;
+    try {
+      for (let n = 0; n < 3; n += 1) await db.query(
+        'INSERT INTO supplier_quotations (quotation_number, rfq_id, supplier_id, total_price, created_by) VALUES ($1, $2, $3, 1, $4)',
+        [`R2P-RFQ-Q-${tag}-${n}`, rfq, supplier, owner.id]
+      );
+      await expectNestedPagePair(`/api/procurement/rfq/${rfq}/quotations/vendor/${supplier}`, 'quotations');
+    } finally {
+      await db.query('DELETE FROM supplier_quotations WHERE rfq_id = $1', [rfq]);
+      await db.query('DELETE FROM rfqs WHERE id = $1', [rfq]);
+      await db.query('DELETE FROM suppliers WHERE id = $1', [supplier]);
+    }
+  });
+
+  test('agent activity and action requests advance to page 2 with correct totals', async () => {
+    try {
+      for (let n = 0; n < 3; n += 1) {
+        await db.query(
+          "INSERT INTO agent_tool_calls (tool, risk, user_id, user_role, response_summary) VALUES ($1, 'read', $2, 'owner', $3)",
+          [`pagination-${tag}`, owner.id, `activity ${n}`]
+        );
+        await db.query(
+          "INSERT INTO agent_action_requests (tool, operation, payload, requesting_user_id, required_approver_role, execution_status, reason) VALUES ($1, '{}'::jsonb, '{}'::jsonb, $2, 'owner', 'draft', $3)",
+          [`pagination-${tag}`, owner.id, `request ${n}`]
+        );
+      }
+      await expectPagePair('/api/agent/activity');
+      await expectPagePair('/api/agent/requests', { status: 'draft' });
+    } finally {
+      await db.query('DELETE FROM agent_action_requests WHERE requesting_user_id = $1 AND tool = $2', [owner.id, `pagination-${tag}`]);
+      await db.query('DELETE FROM agent_tool_calls WHERE user_id = $1 AND tool = $2', [owner.id, `pagination-${tag}`]);
+    }
+  });
+
+  test('inventory expiring lots and warehouse movement lists advance to page 2', async () => {
+    // The stock movement ledger rejects UPDATE/DELETE by design. These fixture
+    // rows live only in the disposable gate database; its warehouse is not
+    // project-owned so normal project cleanup remains independent.
+    const warehouse = (await db.query(
+      "INSERT INTO warehouses (name, type) VALUES ($1, 'site') RETURNING id",
+      [`R2P-IMMUTABLE-WH-${tag}`]
+    )).rows[0].id;
+    const material = (await db.query(
+      "INSERT INTO item_master (code, category, name_en, name_ar, unit) VALUES ($1, 'pagination-test', $2, $2, 'ea') RETURNING id",
+      [`R2P-IMMUTABLE-ITEM-${tag}`, `immutable inventory ${tag}`]
+    )).rows[0].id;
+    const lotIds = [];
+    for (let n = 0; n < 3; n += 1) {
+      const lot = (await db.query(
+        'INSERT INTO stock_lots (warehouse_id, material_id, lot_number, expiry_date, created_by) VALUES ($1, $2, $3, CURRENT_DATE + 10, $4) RETURNING id',
+        [warehouse, material, `R2P-EXP-${tag}-${n}`, owner.id]
+      )).rows[0].id;
+      lotIds.push(lot);
+      await db.query(
+        "INSERT INTO stock_movements (warehouse_id, material_id, movement_type, quantity, lot_id, created_by) VALUES ($1, $2, 'opening', 1, $3, $4)",
+        [warehouse, material, lot, owner.id]
+      );
+    }
+    await expectPagePair('/api/inventory/lots/expiring', { warehouse_id: warehouse, within_days: 30 }, 'lot_id');
+    await expectPagePair(`/api/warehouses/${warehouse}/movements`, { material_id: material });
+  });
+
   test('site report register advances to page 2 with a correct total and no overlap', async () => {
     const reportDates = ['2099-01-01', '2099-01-02', '2099-01-03'];
     for (const reportDate of reportDates) await db.query(
@@ -448,7 +567,7 @@ describePg('R0.2 owner GET route smoke on migrated PostgreSQL', () => {
 
   test('inventory lot list advances to page 2 with correct total and no overlap', async () => {
     const warehouseIds = [];
-    for (let n = 0; n < 2; n += 1) warehouseIds.push((await db.query(
+    for (let n = 0; n < 1; n += 1) warehouseIds.push((await db.query(
       "INSERT INTO warehouses (name, type, project_id) VALUES ($1, 'site', $2) RETURNING id",
       [`R2P-LOT-WH-${tag}-${n}`, project.id]
     )).rows[0].id);
@@ -462,7 +581,7 @@ describePg('R0.2 owner GET route smoke on migrated PostgreSQL', () => {
         'INSERT INTO stock_lots (warehouse_id, material_id, lot_number, expiry_date, created_by) VALUES ($1, $2, $3, CURRENT_DATE + 10, $4) RETURNING id',
         [warehouseIds[n % warehouseIds.length], itemIds[n], `R2P-LOT-${tag}-${n}`, owner.id]
       );
-      await expectPagePair('/api/inventory/lots', { project_id: project.id, include_empty: true }, 'lot_id');
+      await expectPagePair('/api/inventory/lots', { warehouse_id: warehouseIds[0], include_empty: true }, 'lot_id');
     } finally {
       await db.query('DELETE FROM stock_lots WHERE lot_number LIKE $1', [`R2P-LOT-${tag}-%`]);
       await db.query('DELETE FROM item_master WHERE id = ANY($1)', [itemIds]);

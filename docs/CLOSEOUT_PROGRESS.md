@@ -1362,3 +1362,9 @@ Reviewed the existing lint-guards fallback and Docker-context launcher tests. Ad
 - The fixtures avoid writes to historical/business data; inventory lots use `include_empty=true` so the test does not insert/delete rows in the immutable stock movement ledger.
 - Seven endpoint-specific page-two checks remain NOT VERIFIED: expiring inventory lots, approvals pending, commercial legacy snapshots, procurement RFQ vendor quotations, warehouse movements, agent activity, and agent requests. `docs/BATCH1_SCORECARD.md` lists the exact routes. Batch 1 remains incomplete; no whole suite was rerun for these test-only changes.
 
+## 2026-10-16 - Batch 1 pagination page-two coverage complete
+
+- Added and passed page-two/no-overlap/total checks for the final seven collections: inventory expiring lots, pending approvals, commercial legacy snapshots, procurement vendor quotations, warehouse movements, and agent activity/requests. Immutable ledger fixtures use the throwaway PG database only.
+- Latest focused route gate PASS 1 suite / 42 tests, 130 migrations, 448 mounted GET routes / 0 server failures; container `erp-r02-gate-20261016161710` removed, exit 0. The endpoint-specific page-two requirement in ticket 1.2 is now VERIFIED for each requested 4b/4c collection route. No application code changed in this coverage expansion.
+- The full batch gates had passed earlier; only this targeted PostgreSQL route test and its documentation changed afterward. The entire PG suite was not rerun per the instruction to run task-related tests rather than whole suites repeatedly.
+
