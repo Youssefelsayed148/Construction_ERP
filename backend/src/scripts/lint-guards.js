@@ -88,7 +88,7 @@ function containsLegacyDbPassword(text) {
 
 function findLegacyDbPasswordReferences() {
   const ignoredDirs = new Set(['.git', '.aws', '.codex', '.agents', 'node_modules', 'build', 'coverage', '.next']);
-  const ignoredFiles = new Set(['.staging-users.json', 'REVIEW_REPORT_2026-10-14.md', 'CODEX_AUDIT_REPORT.md']);
+  const ignoredFiles = new Set(['.staging-users.json']);
   const found = [];
   const walk = (dir) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
