@@ -217,6 +217,22 @@ describe('R5 administrative workspaces', () => {
     expect(container.textContent).not.toContain('once-only-token');
   });
 
+  test('organization Load More appends a distinct row and stops at X-Total-Count', async () => {
+    window.fetch.mockImplementation(url => {
+      const offset = Number(new URL(String(url), 'http://localhost').searchParams.get('offset') || 0);
+      return Promise.resolve(response(200, { success: true, data: [{ id: offset + 1, code: `ORG-${offset + 1}`, name_en: `Organization ${offset + 1}`, org_type: 'supplier', status: 'active' }] }, '2'));
+    });
+    ({ container, root } = mount());
+    await act(async () => Promise.resolve());
+    const button = [...container.querySelectorAll('button')].find(item => item.textContent === 'common.pagination.loadMore');
+    expect(button).not.toBeNull();
+    await act(async () => button.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(container.textContent).toContain('Organization 2');
+    expect(window.fetch.mock.calls.some(([url]) => new URL(String(url), 'http://localhost').searchParams.get('offset') === '1')).toBe(true);
+    expect([...container.querySelectorAll('button')].some(item => item.textContent === 'common.pagination.loadMore')).toBe(false);
+  });
+
   test.each([
     ['organizations', 'create'], ['organizations', 'update'], ['organizations', 'deactivate'],
     ['users', 'update'], ['users', 'deactivate'], ['delegations', 'create'], ['delegations', 'deactivate'],
