@@ -175,7 +175,7 @@ async function stopBackgroundServices() {
 
 function startServer() {
   const timeouts = httpServerTimeouts(process.env);
-  startBackgroundServices();
+  if (!process.env.R4_SWEEP_PROOF_NAME) startBackgroundServices();
   const server = app.listen(PORT, () => {
     logger.info(`Construction ERP Server running on port ${PORT}`);
     logger.info(`Database: ${process.env.DB_NAME || 'construction_erp'}`);
@@ -192,10 +192,24 @@ function registerShutdown(server) {
 }
 
 if (require.main === module) {
-  registerShutdown(startServer());
-  if (process.env.APP_ENV === 'test' && typeof process.send === 'function') {
-    process.on('message', (message) => {
-      if (message === 'R4_TEST_SIGTERM') process.emit('SIGTERM');
+  const server = startServer();
+  const shutdown = registerShutdown(server);
+  if (process.env.R4_SWEEP_PROOF_NAME) {
+    if (process.env.APP_ENV !== 'test' || process.env.DB_NAME !== 'erp_r04_multi') {
+      throw new Error('R4 sweep proof is restricted to the erp_r04_multi throwaway database');
+    }
+    const sweep = process.env.R4_SWEEP_PROOF_NAME;
+    const retentionDays = Number(process.env.R4_SWEEP_PROOF_RETENTION_DAYS || 30);
+    const delayMs = Number(process.env.R4_SWEEP_PROOF_DELAY_MS || 0);
+    new Promise(resolve => setTimeout(resolve, delayMs)).then(() => require('./src/services/sweepLeader').runSweepAsLeader(sweep, async () => {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }, { minIntervalMs: 60_000, retentionDays })).then(async result => {
+      console.log(`server_sweep_proof ran=${result.ran} status=${result.record?.status || 'none'} reason=${result.record?.reason || 'none'} retention_deleted=${result.retentionDeleted}`);
+      await shutdown('R4 proof complete');
+    }).catch(async error => {
+      console.error('server_sweep_proof failed');
+      process.exitCode = 1;
+      await shutdown('R4 proof failed');
     });
   }
 }

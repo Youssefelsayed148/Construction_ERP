@@ -22,6 +22,7 @@ async function runSweepAsLeader(sweep, fn, { query: q = query, minIntervalMs = 0
   const client = await pool.connect();
   let record = null;
   let ran = false;
+  let retentionDeleted = 0;
   try {
     const name = lockName(sweep);
     const got = (await client.query('SELECT pg_try_advisory_lock(hashtext($1)) AS ok', [name])).rows[0].ok;
@@ -33,10 +34,11 @@ async function runSweepAsLeader(sweep, fn, { query: q = query, minIntervalMs = 0
         // The ledger row is observability, not the sweep: report and move on (the run itself still skipped).
         console.error(`[SWEEP] ${sweep}: could not record the skipped run: ${e.message}`);
       }
-      record = { sweep, status: 'skipped' };
-      return { ran, record };
+      record = { sweep, status: 'skipped', reason: 'leader_lock' };
+      return { ran, record, retentionDeleted };
     }
-    await client.query("DELETE FROM background_sweep_runs WHERE started_at < NOW() - ($1 * INTERVAL '1 day')", [retentionDays]);
+    const pruned = await client.query("DELETE FROM background_sweep_runs WHERE started_at < NOW() - ($1 * INTERVAL '1 day') RETURNING id", [retentionDays]);
+    retentionDeleted = pruned.rowCount;
     if (minIntervalMs > 0) {
       const previous = (await client.query(
         `SELECT started_at FROM background_sweep_runs
@@ -48,7 +50,7 @@ async function runSweepAsLeader(sweep, fn, { query: q = query, minIntervalMs = 0
           'INSERT INTO background_sweep_runs (sweep, status, finished_at) VALUES ($1, $2, now())', [sweep, 'skipped']
         );
         record = { sweep, status: 'skipped', reason: 'minimum_interval' };
-        return { ran, record };
+        return { ran, record, retentionDeleted };
       }
     }
     ran = true;
@@ -83,7 +85,7 @@ async function runSweepAsLeader(sweep, fn, { query: q = query, minIntervalMs = 0
     }
     client.release();
   }
-  return { ran, record };
+  return { ran, record, retentionDeleted };
 }
 
 // Interval wrapper used by the init functions: returns the timer; the sweep never double-runs with

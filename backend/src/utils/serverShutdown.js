@@ -29,6 +29,7 @@ function createShutdownHandler({ server, stopBackground = async () => {}, pool, 
         ]);
         clearTimeout(poolTimer);
         clearTimeout(deadlineTimer);
+        logger.info?.(`[shutdown] complete graceful=${graceful} pool_closed=${poolClosed}`);
         if (!poolClosed) logger.error?.('[shutdown] database pool did not close before the deadline');
         exit(graceful && poolClosed ? 0 : 1);
       } catch (error) {

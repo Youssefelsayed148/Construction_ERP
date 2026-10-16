@@ -67,6 +67,47 @@ async function multiInstanceProof() {
   const minimumIntervalSkipped = /status=skipped reason=minimum_interval/.test(repeat);
   if (!minimumIntervalSkipped) throw new Error('immediate repeat sweep was not suppressed by minimum interval');
   console.log(`two_process_sweep processes=2 actual_runs=${actualRuns} lock_skipped=${results.filter((r) => r.skipped).length} immediate_rerun=skipped minimum_interval_ms=60000`);
+
+  const retentionSweep = `r4_retention_proof_${Date.now()}`;
+  const db = new Client({ host: process.env.DB_HOST, port: Number(process.env.DB_PORT), database: process.env.DB_NAME, user: process.env.DB_USER, password: process.env.DB_PASSWORD });
+  await db.connect();
+  let retentionCounts;
+  try {
+    await db.query("INSERT INTO background_sweep_runs (sweep,status,started_at,finished_at) SELECT $1,'failed',NOW()-INTERVAL '31 days',NOW()-INTERVAL '31 days' FROM generate_series(1,3)", [retentionSweep]);
+    await db.query("INSERT INTO background_sweep_runs (sweep,status,started_at,finished_at) SELECT $1,'failed',NOW()-INTERVAL '29 days',NOW()-INTERVAL '29 days' FROM generate_series(1,2)", [retentionSweep]);
+    const before = await db.query("SELECT count(*)::int total, count(*) FILTER (WHERE status='failed' AND started_at < NOW()-INTERVAL '30 days')::int old, count(*) FILTER (WHERE status='failed' AND started_at >= NOW()-INTERVAL '30 days')::int inside FROM background_sweep_runs WHERE sweep=$1", [retentionSweep]);
+    const ports = [18000 + Math.floor(Math.random() * 9000), 28000 + Math.floor(Math.random() * 9000)];
+    const launch = (index) => {
+      const child = startServer(ports[index], `retention-${index}`, {
+        R4_SWEEP_PROOF_NAME: retentionSweep,
+        R4_SWEEP_PROOF_RETENTION_DAYS: '30',
+        R4_SWEEP_PROOF_DELAY_MS: '1000',
+      });
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => { child.kill('SIGKILL'); reject(new Error('retention proof server timed out')); }, 15000);
+        child.once('error', error => { clearTimeout(timer); reject(error); });
+        child.once('exit', code => {
+          clearTimeout(timer);
+          const match = child.output.match(/server_sweep_proof ran=(true|false) status=(\w+) reason=(\w+) retention_deleted=(\d+)/);
+          if (code !== 0 || !match) return reject(new Error(`retention proof server exit=${code}`));
+          resolve({ ran: match[1] === 'true', status: match[2], reason: match[3], deleted: Number(match[4]) });
+        });
+      });
+    };
+    const servers = await Promise.all([launch(0), launch(1)]);
+    const after = await db.query("SELECT count(*)::int total, count(*) FILTER (WHERE status='failed' AND started_at < NOW()-INTERVAL '30 days')::int old, count(*) FILTER (WHERE status='failed' AND started_at >= NOW()-INTERVAL '30 days')::int inside FROM background_sweep_runs WHERE sweep=$1", [retentionSweep]);
+    retentionCounts = { before: before.rows[0], after: after.rows[0], servers };
+  } finally { await db.end(); }
+  const { before, after, servers } = retentionCounts;
+  const deletionCounts = servers.map(server => server.deleted).sort((a, b) => b - a);
+  console.log(`two_server_retention_probe before_rows=${before.total} old_before=${before.old} inside_before=${before.inside} after_rows=${after.total} old_after=${after.old} inside_after=${after.inside} server_a_ran=${servers[0].ran} server_a_reason=${servers[0].reason} server_a_deleted=${servers[0].deleted} server_b_ran=${servers[1].ran} server_b_reason=${servers[1].reason} server_b_deleted=${servers[1].deleted}`);
+  if (before.total !== 5 || before.old !== 3 || before.inside !== 2 || after.old !== 0 || after.inside !== 2
+    || deletionCounts[0] !== 3 || deletionCounts[1] !== 0
+    || servers.filter(server => server.ran).length !== 1
+    || servers.filter(server => server.reason === 'leader_lock').length !== 1) {
+    throw new Error('two-server retention proof did not prune old rows exactly once or preserve the configured window');
+  }
+  console.log(`two_server_retention processes=2 days=30 before_rows=${before.total} after_rows=${after.total} old_before=${before.old} old_after=${after.old} inside_before=${before.inside} inside_after=${after.inside} pruned_once=${deletionCounts[0]} leader_lock_skipped=1`);
 }
 
 async function resilienceProof() {
@@ -76,21 +117,60 @@ async function resilienceProof() {
   try {
     await waitReady(port, child);
     const inFlight = request(port, '/api/auth/login', { email: 'r4-sigterm-drain@example.com', password: 'invalid-password-for-proof' });
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const killReturned = child.kill('SIGTERM');
     const processExit = await new Promise((resolve, reject) => {
       child.once('error', reject);
       child.once('exit', (code, signal) => resolve(code ?? signal));
-      child.send('R4_TEST_SIGTERM', (error) => { if (error) reject(error); });
     });
     const response = await inFlight;
-    console.log(`sigterm_drain signal_handler=SIGTERM trigger=test_ipc process_exit=${processExit} request_status=${response.status ?? 'none'} request_error=${response.error || 'none'}`);
-    if (processExit !== 0 || response.status !== 401) throw new Error('SIGTERM shutdown handler did not drain the in-flight login request cleanly');
+    const graceful = processExit === 0 && response.status === 401 && /\[shutdown\] complete graceful=true pool_closed=true/.test(child.output);
+    console.log(`sigterm_drain trigger=os_child.kill_SIGTERM platform=${process.platform} kill_returned=${killReturned} process_exit=${processExit} request_status=${response.status ?? 'none'} request_error=${response.error || 'none'} pool_closed=${graceful ? 'true' : 'NOT_VERIFIED'} result=${graceful ? 'PASS' : 'NOT VERIFIED'}`);
+    if (process.platform !== 'win32' && !graceful) throw new Error('OS SIGTERM did not drain the in-flight request and close the pool');
   } finally {
     if (child.exitCode === null) await stopChild(child, 'SIGKILL');
   }
+  await concurrentLoginLoadProof();
 }
 
-function request(port, pathname, body, { abortAfterMs } = {}) {
+async function concurrentLoginLoadProof() {
+  assertSafeTarget();
+  const { hashPassword } = require('../services/passwords');
+  const db = new Client({ host: process.env.DB_HOST, port: Number(process.env.DB_PORT), database: process.env.DB_NAME, user: process.env.DB_USER, password: process.env.DB_PASSWORD });
+  await db.connect();
+  const email = `r4-load-${Date.now()}@example.com`;
+  const password = 'r4-concurrent-login-proof-password';
+  let userId;
+  let child;
+  try {
+    const hash = await hashPassword(password);
+    userId = (await db.query("INSERT INTO users (name,email,password,role) VALUES ('R4 Load Proof',$1,$2,'owner') RETURNING id", [email, hash])).rows[0].id;
+    const port = 18000 + Math.floor(Math.random() * 10000);
+    child = startServer(port, 'login-load-proof', { AUTH_RATE_LIMIT_PER_15_MIN: '1000' });
+    await waitReady(port, child);
+    for (const concurrency of [1, 10, 25, 50]) {
+      const started = performance.now();
+      const samples = await Promise.all(Array.from({ length: concurrency }, async () => {
+        const requestStarted = performance.now();
+        const result = await request(port, '/api/auth/login', { email, password }, { timeoutMs: 60000 });
+        return { ...result, latency: performance.now() - requestStarted };
+      }));
+      const elapsed = performance.now() - started;
+      const latencies = samples.map(sample => sample.latency).sort((a, b) => a - b);
+      const percentile = p => latencies[Math.max(0, Math.ceil(p * latencies.length) - 1)];
+      const errors = samples.filter(sample => sample.status !== 200).length;
+      const timeouts = samples.filter(sample => /timeout/i.test(sample.error || '')).length;
+      console.log(`login_load concurrency=${concurrency} requests=${samples.length} throughput_per_s=${(samples.length / (elapsed / 1000)).toFixed(2)} p50_ms=${percentile(0.50).toFixed(1)} p95_ms=${percentile(0.95).toFixed(1)} errors=${errors} timeouts=${timeouts}`);
+      if (errors > 0) throw new Error(`concurrent login load had request errors at concurrency=${concurrency}`);
+    }
+  } finally {
+    if (child && child.exitCode === null) await stopChild(child);
+    if (userId) await db.query('UPDATE users SET is_active=false WHERE id=$1', [userId]);
+    await db.end();
+  }
+}
+
+function request(port, pathname, body, { abortAfterMs, timeoutMs } = {}) {
   return new Promise((resolve) => {
     const payload = body ? Buffer.from(JSON.stringify(body)) : null;
     const req = http.request({ hostname: '127.0.0.1', port, path: pathname, method: body ? 'POST' : 'GET', headers: payload ? { 'content-type': 'application/json', 'content-length': payload.length } : {} }, (res) => {
@@ -98,6 +178,7 @@ function request(port, pathname, body, { abortAfterMs } = {}) {
       res.on('end', () => resolve({ status: res.statusCode, error: null }));
     });
     req.on('error', (error) => resolve({ status: null, error: error.code || error.message }));
+    if (timeoutMs) req.setTimeout(timeoutMs, () => req.destroy(new Error('request timeout')));
     if (abortAfterMs) setTimeout(() => req.destroy(), abortAfterMs).unref();
     if (payload) req.write(payload);
     req.end();
@@ -114,10 +195,10 @@ async function waitReady(port, child) {
   throw new Error('server child readiness timed out');
 }
 
-function startServer(port, baselineId) {
+function startServer(port, baselineId, extraEnv = {}) {
   const passwordAfter = process.argv.includes('--password-after');
   const child = spawn(process.execPath, [path.resolve(__dirname, '../../server.js')], {
-    env: { ...process.env, PORT: String(port), AUTH_RATE_LIMIT_PER_15_MIN: '20', R4_BASELINE_ID: baselineId,
+    env: { ...process.env, PORT: String(port), AUTH_RATE_LIMIT_PER_15_MIN: '20', R4_BASELINE_ID: baselineId, ...extraEnv,
       ...(passwordAfter ? { UV_THREADPOOL_SIZE: '16', R4_PASSWORD_AFTER: '1' } : {}) },
     stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
   });
