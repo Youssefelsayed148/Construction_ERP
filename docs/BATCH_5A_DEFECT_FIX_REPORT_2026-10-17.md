@@ -1,3 +1,94 @@
+# Verification-only resume - full-PG run 3 FAIL / STOP - 2026-10-17
+
+Resumed after the user restored Docker. Branch closeout/batch-a-to-6; starting HEAD 8dac539 (documentation checkpoint); implementation/test source is unchanged from cc1a3ea. Initial working tree clean. No source, test, timeout, dependency, schema or environment-file change. This section supersedes the earlier blocked recovery and historical gate counts below.
+
+## Docker recovery, pilot and exact cleanup
+
+docker info --format '{{.ServerVersion}}' returned 28.3.2, exit 0. No Desktop/backend restart by the agent in this resume. The earlier attempt's pre-recovery pilot status was unavailable. Permitted compose ps -a now showed pilot db/backend/frontend all healthy, Up 50 seconds; final permitted status showed all three healthy, Up 15 minutes. The migrate container stayed Exited (0). HTTP http://127.0.0.1:8090 returned 200. No start needed or executed; no pilot seed/build/recreate/SQL/exec operation. Sweep clone and demo received no direct operations.
+
+Name-only inventory before tests: 25 containers / 595 volumes / 8 networks. No container matched prior-attempt erp-r02-gate-202610170344*. All pre-existing containers, anonymous/named volumes and networks were left in place because further ownership was not proven. Protected pilot/sweep names were preserved; no demo-named resource appeared in the inventory. Full names are in ignored .batch5a-verify-docker-inventory.log.
+
+Each new runner removed its own exact container: erp-r02-gate-20261017043817, erp-r02-gate-20261017044252, erp-r02-gate-20261017044637. Final inventory confirmed all three absent. Container cleanup left three new anonymous volumes (598 volumes before explicit cleanup). These were absent from baseline, had the anonymous-volume label and exact matching creation timestamps, and were verified unattached before removal:
+
+| Owned volume removed by exact name | Created UTC / matching disposable run |
+|---|---|
+| a55d9ae63435e5012beaff626550ab1d0c8f05ad3134722e973bff974f206fbe | 01:38:17 / run 1 |
+| 58ca7958293aa9863462934a4c8c4426b0454cabb57d5179e72329e19bf7ea9c | 01:42:52 / run 2 |
+| a3026efb94977003396cc2af99f7b237f0cfd9e90efbec331e17c094604e9875 | 01:46:37 / run 3 |
+
+All three docker volume rm operations exited 0; final volume count returned to 595. No other resources removed; all original 25 containers / 595 volumes / 8 networks retained. The saved .batch5a-verify-docker-final-inventory.log was captured BEFORE explicit volume cleanup and therefore lists the three subsequently removed volumes. An intermediate tool-output claim that --rm had also cleaned the volumes was incorrect; the inventory exposed them and explicit cleanup above corrected it. No prune/down command.
+
+Post-cleanup exact-name comparison confirmed ZERO differences from the pre-test container, volume and network inventories (25 / 595 / 8). Final names saved in .batch5a-verify-docker-postcleanup-inventory.log; this is the authoritative final inventory.
+
+## Full unfiltered PG and v1 repetition results
+
+Each run used powershell.exe -NoProfile -File backend/scripts/r02-pg-gate.ps1 -All -Filter '.*' on its own new disposable loopback PG database. All 130 migrations applied on EACH run. Unfiltered emitted output was saved independently; no failure filter hid the timeout details. The loop stopped after the first nonzero exit.
+
+| Full-suite run | Suites passed / failed | Tests passed / failed | Jest time | v1-contract within full suite | Exit |
+|---|---|---|---|---|---|
+| 1 | 93 / 0 | 1,982 / 0 | 225.674 s | PASS, 10/10; suite 30.371 s | 0 |
+| 2 | 93 / 0 | 1,982 / 0 | 201.179 s | PASS, 10/10; suite 28.959 s | 0 |
+| 3 | 92 / 1 | 1,981 / 1 | 297.801 s | FAIL, 9/10 plus afterAll timeout; suite 60.718 s | 1 |
+| 4 | NOT RUN | NOT RUN | - | NOT RUN after stop | - |
+| 5 | NOT RUN | NOT RUN | - | NOT RUN after stop | - |
+
+The latest batch5a-last-scope pagination refinements, aggregate-scope and batch5a-directory-scope passed in ALL THREE full runs. There were no new fixture setup failures. Only 2/5 requested v1 full-suite repetitions passed; three were executed and two remain unrun. A failure plus its teardown timeout counts as one failed test, not two failed PG attempts. No retry after this failure.
+
+Raw full logs: .batch5a-verify-pg-run-1.log, .batch5a-verify-pg-run-2.log, .batch5a-verify-pg-run-3.log (ignored, retained locally). SHA256 respectively: 5656D37561EAAFB5DB46CB733688C1804D0DC91DE1D70FB6CF57E590E07B020E; 9B697BA403B2A4C17B25E1CEE383E143A2793653760A59BDFF5776C501B68B06; 0E35EEA5DFE4BE53513EB59BD40A8BF47290BD59B6D8200AB16C2060CF479F81.
+
+## Complete failure text and source/schema diagnosis
+
+The unique Jest failure summary below preserves both complete errors and stack/source locations. Only PowerShell's repetitive System.Management.Automation.RemoteException wrapper lines and blank lines are omitted; the unfiltered raw log is retained. No Expected/Received assertion diff exists because the test never reached its final envelope assertions. Also saved as .batch5a-verify-v1-failure.log.
+
+```text
+Summary of all failing tests
+FAIL src/scripts/__tests__/v1-contract.pg.test.js (60.718 s)
+  ● B5 API contract: OpenAPI spec vs the live /api/v1 › every documented (method, path) answers with a JSON envelope when called
+    thrown: "Exceeded timeout of 30000 ms for a test.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+      69 |   });
+      70 |
+    > 71 |   test('every documented (method, path) answers with a JSON envelope when called', async () => {
+         |   ^
+      72 |     // Health + openapi are public GETs; oauth/token is exercised separately.
+      73 |     const skip = new Set(['/health', '/openapi.json', '/oauth/token']);
+      74 |     const unanswerable = [];
+      at test (src/scripts/__tests__/v1-contract.pg.test.js:71:3)
+      at Object.describePg (src/scripts/__tests__/v1-contract.pg.test.js:18:1)
+  ● Test suite failed to run
+    thrown: "Exceeded timeout of 30000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+      56 |   });
+      57 |
+    > 58 |   afterAll(async () => {
+         |   ^
+      59 |     await db.query('DELETE FROM user_project_roles WHERE user_id = (SELECT id FROM users WHERE email = $1)', [`b5-${tag}@test.io`]);
+      60 |     await db.query('UPDATE users SET is_active = false WHERE email = $1', [`b5-${tag}@test.io`]);
+      61 |     await db.query('UPDATE users SET is_active = false WHERE email = $1', [`b5-metrics-${tag}@test.io`]);
+      at afterAll (src/scripts/__tests__/v1-contract.pg.test.js:58:3)
+      at Object.describePg (src/scripts/__tests__/v1-contract.pg.test.js:18:1)
+```
+
+Confirmed trace: the route-loop's last request was POST /api/v1/materials/replenishment/sweep at 2026-10-17T01:48:29.572Z; following health test began at 01:48:57.877Z, after the route-loop's deadline. v1.js:249 maps it to materials.js:360; that handler awaits sweepLeader.runSweepAsLeader and replenishment.runReplenishmentSweep before returning. replenishment.js:610 selects all active item_master rows and evaluates them sequentially, then evaluates other alerts, querying warehouse_stock, stock_movements, purchase orders/lines, material_requirements, business_rules and replenishment_alerts. This is a database-wide synchronous job in the contract loop.
+
+Schema inspection: replenishment-migration.js defines replenishment_alerts.material_id -> item_master and purchase_order_id -> purchase_orders, with material/type indexes; 0020_event_outbox.sql defines background_sweep_runs and its sweep/started_at index. policy-migration.js defines the teardown's indexed user_project_roles.user_id FK and nullable project_id. All 130 migrations and the global migration inventory check succeeded. The failed v1 section contains NO Database query error, missing relation/column, violated constraint or deadlock diagnostic. There is no evidence for a schema mismatch.
+
+Confirmed failure mechanism is the 30-second test budget exceeded while that sweep request was outstanding. call() has no AbortSignal/deadline; afterAll awaits server.close at line 62, consistent with an uncancelled in-flight request keeping teardown open. This is a source-based inference about teardown, not a captured hook await stack. Exact slow query, workload/cardinality, lock wait or other underlying sweep cause is UNPROVEN: no live query/lock snapshot was captured before the disposable DB was removed. No schema cause is invented. The previously uncaptured historic v1 failure cannot be conclusively equated with this timeout; this run now provides concrete failure evidence.
+
+## Remaining gates and stop
+
+| Requested gate after PG repetitions | This resume |
+|---|---|
+| Docker test-stage build | NOT RUN |
+| Disposable golden verification | NOT RUN; 0 checks |
+| Backend mock / frontend | NOT RUN |
+| i18n check/parity | NOT RUN |
+| lint:guards / API lint / root build | NOT RUN |
+
+Stopped on the FIRST failure under the explicit stop rule; no second attempt, speculative fix, timeout increase or assertion change. No product acceptance or all-green claim. Next action requires separate authorization to diagnose/fix the replenishment sweep using request/query timing and lock evidence on a new disposable DB, then rerun all five full suites and remaining gates. This verification-only task made documentation changes to STATE.md, CLOSEOUT_PROGRESS.md, CLOSEOUT_LOG.md and this report. Both excluded review reports preserved, ignored and unstaged. No external messages, paid adapters, legacy role switch, push, PR or deploy. Batch 5A remains incomplete.
+
+# Historical recovery stop at 8dac539 (superseded above)
+
 # Verification-only resume at cc1a3ea - Docker recovery STOP - 2026-10-17
 
 Starting branch closeout/batch-a-to-6, HEAD cc1a3ea08e2f5a85f93ff46d838d5aad6a99d856, clean working tree. This attempt changed documentation only. Results below supersede historical gate counts for this resume.

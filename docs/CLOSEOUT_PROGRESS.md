@@ -1,3 +1,13 @@
+# 2026-10-17 - Batch 5A verification resumed; STOP on full-PG run 3
+
+Docker healthy after user recovery (28.3.2); no agent restart this resume. Pilot db/backend/frontend healthy, Up 50 seconds initially / Up 15 minutes at final check; HTTP 8090 returned 200; migrate remained Exited (0). No pilot start or other mutation. Inventory 25 containers / 595 volumes / 8 networks; all pre-existing resources retained. Three newly created PG containers removed by runners; their three anonymous volumes survived and were subsequently verified unattached, matched by exact creation timestamps and removed by exact name. Volume count returned to 595; no network removed or protected-stack operation.
+
+Verification of unchanged cc1a3ea source: full PG run 1 PASS 93 suites / 1,982 tests, 225.674 s; run 2 PASS 93 / 1,982, 201.179 s; run 3 FAIL 92 passed / 1 failed suites and 1,981 passed / 1 failed tests, 297.801 s. Each applied 130 migrations. v1 full-suite results: PASS (30.371 s), PASS (28.959 s), FAIL (60.718 s), NOT RUN, NOT RUN. Latest scope/pagination refinements passed all three times. Failure is the 30-second route-contract test timeout at :71 plus 30-second afterAll timeout at :58; last route-loop request is POST /api/v1/materials/replenishment/sweep. Source/schema trace identifies the synchronous database-wide sweep and uncancelled request; exact query/lock cause not captured, no SQL schema error observed. Complete failure text and limits are in the defect-fix report; raw outputs are in ignored .batch5a-verify-pg-run-{1,2,3}.log.
+
+Stopped on first failed run without retry or code changes. Runs 4-5, Docker test stage, golden and all requested host gates NOT RUN in this resume. Batch 5A remains incomplete. Next: separately authorized disposable diagnosis/fix, then all five full suites and remaining gates. STATE.md and CLOSEOUT_LOG.md updated; excluded reports untouched/unstaged; documentation-only checkpoint.
+
+# Historical recovery stop at 8dac539
+
 # 2026-10-17 - Batch 5A verification stopped at Docker recovery
 
 Verification-only resume at cc1a3ea on closeout/batch-a-to-6. Initial working tree clean. Docker info outside the sandbox did not answer within 30 seconds. Per the explicit recovery authorization, stopped Docker Desktop and com.docker.backend processes and launched the default Desktop executable. Recovery polling produced no successful docker info result within three minutes: poll 1 had no usable exit status, polls 2-11 timed out; final recovery exit 1, manual Docker Desktop/WSL restart required. No second restart or WSL command executed.
