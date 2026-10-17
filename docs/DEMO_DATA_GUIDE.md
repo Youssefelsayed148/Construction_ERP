@@ -181,3 +181,44 @@ The low-stock state is now present. The approved C-INVENTORY-001 SQL exception c
 | Retention readback | Project B client: held 10,000 EGP, released 0, balance 10,000 EGP |
 
 Created through real authenticated contract, valuation, invoice-transition, retention and payment APIs. The issue lifecycle was draft -> approved -> issued; invoice settlement is separate from the held retention. The seed helper rerun returned all four records reused with no new rows.
+
+
+## RUN C2 final census - 2026-10-18
+
+The back-dated demo seed now passes its five-module idempotency rerun: masters/procurement/finance/HR/site-QHSE each report created=0. Project progress remains A 55%, B 90%, C 5%.
+
+| Record | Count | Current demo document number / state |
+|---|---:|---|
+| Clients / projects | 3 / 3 | DEMO-PRJ-A 55%; DEMO-PRJ-B 90%; DEMO-PRJ-C 5% |
+| Suppliers / subcontractors | 6 / 2 | Demo masters |
+| Materials / warehouses / cost codes | 30 / 2 / 12 | 25 demo materials + 5 pre-existing catalog rows |
+| Phases / milestones / locations | 12 / 9 / 9 | Four phases and three milestones/locations per project |
+| BOQ sections / items | 3 / 15 | Five BOQ items per project |
+| Team seats | 32 | Current API count after procurement checker/finance seats |
+| PR / RFQ / quotations / PO | 12 / 4 / 3 / 10 | PR-00001 remains draft; RFQ-00001 has 3 quotes and award is pending |
+| Delivery / MIR / GRN / supplier return | 3 / 3 / 2 / 1 | DLV-00001/02 partial on PO-00001; DLV-00003 rejected with MIR-00003; GRN-00001/02; SRN-00001 is linked to GRN-00002, not DLV-00003 |
+| Client invoices / AR receipts | 5 / 3 | INV-0001 paid, INV-0002 partially paid, INV-0003 sent/unpaid, INV-0004 overdue, INV-0005 paid retention valuation; AR receipts total 240,000 EGP |
+| Project B retention | 1 contract / 10,000 EGP held | CC-00001 (10%); INV-0005 (100,000 gross, 10,000 retention, 90,000 net); released 0; balance 10,000 |
+| Supplier invoice / AP payment | 1 / 1 | DEMO-AP-001 approved, 43,000 EGP; DEMO-AP-PAY-001, direction=ap, separate from AR receipts |
+| Employees / attendance / leave | 25 / 25 / 4 | DEMO-EMP-001..025; 2 approved, 2 pending leaves |
+| Payroll / inductions | 1 period / 25 lines; 3 | DEMO-PAYROLL-2026-02; one induction per project |
+| Reports / inspections | 3 / 3 | DEMO-SITE-REPORT-A/B/C; two inspections passed, one failed with follow-up |
+| Open NCR / incident / permit / RFI / variation | 1 / 1 / 1 / 1 / 1 | NCR-2026-0001 open; DEMO-HSE-INCIDENT-001; HW-2026-0001; RFI-1-001; VAR-0001 workflow-linked |
+| Project settings / company profile | 3 / 1 | demo.admin_setup on A/B/C; ERP Demo Construction Company |
+
+### Walkthrough states and accepted gaps
+
+| State | Census |
+|---|---|
+| Overdue client invoice | Present: INV-0004 |
+| Partially paid client invoice | Present: INV-0002, 50,000 of 200,000 EGP received |
+| PO with two partial deliveries | Present: PO-00001 / DLV-00001 and DLV-00002 (40 units each) |
+| RFQ award pending | Present: RFQ-00001, three quotations |
+| Owner_ceo approval wait | Unavailable: `role_action_approval_limits` only governs gated agent actions; `issue_purchase_order` requires finance_manager. PR-00001 remains draft. |
+| Low-stock alerts | Present: DEMO-MAT-023 in Project A (75/100); DEMO-MAT-021 in Project B (0/1) |
+| Open NCR | Present: NCR-2026-0001 |
+| Pending variation | VAR-0001 has a workflow instance; stored variation status is `change_event` |
+| Project B retention pending release | Present: CC-00001 / INV-0005; held 10,000 EGP, released 0 |
+| Rejected delivery return | Accepted limitation C-PROC-002: DLV-00003 / MIR-00003 remains rejected without a return. SRN-00001 belongs to accepted GRN-00002. |
+
+Census command: `node .scratch-company-demo/c2-census.js` (exit 0); module totals from master-total-counts, procurement-counts, finance-counts, hr-counts and site-counts (all exit 0). Full current evidence and Gate D/E status: [RUN C2 verification report](DEMO_VERIFICATION_REPORT_2026-10-18.md).

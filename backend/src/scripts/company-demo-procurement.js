@@ -145,8 +145,9 @@ async function seedProcurement({ target, request, accounts, projects, suppliers,
 
   // Two POs are approved through distinct maker/checker accounts so receipt APIs can accept their partial deliveries.
   const receiptPlans = [
-    { po: poRows[0], warehouse: warehouses.find(row => Number(row.project_id) === Number(poRows[0].project_id)), deliveryDates: ['2026-10-18', '2026-10-21'], quantities: [40, 40], decision: 'accept' },
-    { po: poRows[1], warehouse: warehouses.find(row => Number(row.project_id) === Number(poRows[1].project_id)), deliveryDates: ['2026-10-19'], quantities: [20], decision: 'reject' },
+    // Keep the date-based stable keys aligned with the date-only demo back-date.
+    { po: poRows[0], warehouse: warehouses.find(row => Number(row.project_id) === Number(poRows[0].project_id)), deliveryDates: ['2026-04-10', '2026-03-10'], quantities: [40, 40], decision: 'accept' },
+    { po: poRows[1], warehouse: warehouses.find(row => Number(row.project_id) === Number(poRows[1].project_id)), deliveryDates: ['2026-10-07'], quantities: [20], decision: 'reject' },
   ];
   const delivered = [];
   for (const plan of receiptPlans) {

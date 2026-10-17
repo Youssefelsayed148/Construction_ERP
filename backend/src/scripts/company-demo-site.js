@@ -63,7 +63,8 @@ async function seedSite({ target, request, accounts, projects }) {
     bump('admin_company_profile');
   }
 
-  for (const [project, date] of [[projectA, '2026-02-16'], [projectB, '2026-02-17'], [projectC, '2026-02-18']]) {
+  // Preserve the report-date stable keys after the approved demo timestamp back-date.
+  for (const [project, date] of [[projectA, '2026-06-12'], [projectB, '2026-05-12'], [projectC, '2026-10-08']]) {
     const key = `DEMO-SITE-REPORT-${project.code.slice(-1)}`;
     const body = { report_date: date, weather: 'Clear', temperature: '22 C', workers_count: 18,
       work_summary: key, material_received: 'Fictional demo materials received', equipment_on_site: 'Tower crane, mixer',
