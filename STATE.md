@@ -1,4 +1,35 @@
-# Current checkpoint - STOP after two diff-audit failures; A4 PG1 passed - 2026-10-17
+# Current checkpoint - 5A functionally complete, gates deferred - 2026-10-17
+
+- Owner replacement A4/GATE A supersedes the historical full-gate requirements below. Gate A MET under that replacement only: whole-diff audit done, no unresolved HIGH finding, DEFERRED_GATES recorded. Production remains NO-GO. Application/test source remains feb2e49; this checkpoint changes documentation only.
+- Native `git diff --no-ext-diff --no-color 897e823 HEAD` reviewed: 58 files, 3,652 insertions / 92 deletions; backend/frontend portion 48 files, 1,655 insertions / 69 deletions. `git diff --check 897e823 HEAD` exit 0. Plain diff plus PowerShell Select-String (native grep equivalent), no Node child-process audit helper. No removed assertions, skip/only call changes or raised timeout calls matched. Nine new conditional TEST_PG describe declarations disclosed; historical aggregate allowlist adds 17 justified entries, no further exemptions in this continuation. Saved local ignored evidence: .scratch-5a-resume/a4-owner-{whole-diff,test-audit,locales}.log.
+- One `npm.cmd --prefix backend run lint:guards`: `lint-guards: ok`, exit 0. `CI=true npm.cmd run build`: `Compiled successfully`, exit 0, within about two minutes; first sandbox invocation failed immediately on concurrently spawn EPERM, then the authorized local build passed outside the process sandbox. Deprecation notices only. No implementation changes, so no changed-file focused tests required at this checkpoint. No full suite, Docker test stage or golden command executed.
+- Historical flaky suites remain UNEXPLAINED: v1-contract and token-typing; 1 clean full run (93 suites / 1,986 tests, 130 migrations, 209.927s) and 50 clean focused loop runs (590 tests). Cause unproven; diagnostic logging is not a behavior fix. This evidence does not satisfy the deferred five-run gate.
+- S-006: original 81 absent-header arrays = 38 class (a) register/pagination candidates + 43 class (b) intended lookup/aggregate shapes. Header parity fixed 23 v1 shapes; latest historical inventory 448 GETs / 254 arrays / 58 absent headers. Remaining 15 internal register headers and capped-service true totals are LOW candidates; named in docs/BATCH_5A_HEADER_CLASSIFICATION_2026-10-17.md. S-001 9,130 vs 9,130,000 discrepancy remains undetermined/non-blocking.
+- Phase B requirements now supplied in the two owner attachments: isolated erp-demo-20261017, UI8092/PG55442, construction_erp_demo, seven checkpointed stages. Phase C follows Gate B only, report-only. In B/C run only new safety tests (guard, idempotency, arithmetic) and focused tests for changed code; never weaken or skip any guard test, never run full suites. No pilot/clone mutation, external sends, production deploy, PR or main push authorized.
+- Next: commit this replacement-policy checkpoint and push only closeout/batch-a-to-6, then Phase B bounded Docker preflight, exact-name inventory, environment/guard/tests/accounts stage. Ports8092/55442 checked against current Windows exclusions: neither excluded. .env.demo and .demo-users.json are not yet ignored: add exact ignore entries before creating either; never print their contents. Preserve all existing scratch evidence and STOP.log; do not launch old controllers.
+- Needs owner decision: tracked scratch_pdf.txt remains untouched CRLF. No UAT/finance/production sign-off. Native Arabic/RTL/export acceptance remains unverified.
+
+## DEFERRED_GATES
+
+Every gate below **must pass before any UAT sign-off, finance sign-off or production move; production remains NO-GO**. Deferred by explicit owner decision on 2026-10-17; none is represented as passed by this continuation.
+
+- FIVE consecutive complete fresh-DB PG runs: `powershell.exe -NoProfile -File backend/scripts/r02-pg-gate.ps1 -All -Filter '.*'` (PG1 through PG5 acceptance sequence; historical PG1 is evidence only, PG2-5 were not run).
+- Backend Docker test-stage build (`docker build --target test ... backend`).
+- Disposable golden verification (`backend/scripts/r02-pg-gate.ps1 -Reconcile`).
+- Full backend mocks (`npm.cmd --prefix backend test -- --runInBand`).
+- Full frontend CI tests (`npm.cmd --prefix frontend run test:ci`).
+- Full i18n inventory check (`i18n:check`).
+- Full EN/AR catalog parity (`i18n:parity`).
+- Full repeated guards sweep (the separately permitted single `lint:guards` run passed; all guard tests remain enabled and mandatory when applicable).
+- API lint (`lint:api`).
+- Full repeated root CI build sweep (the separately permitted single root build passed).
+- Full combined mocks/frontend/i18n/guards/lint/build acceptance sweep and repeated broad gates during Phases B/C.
+
+The unexplained v1-contract/token-typing failures (1 clean full run, 50 clean loop runs, cause unproven), S-006 LOW classifications, and unverified UAT/finance acceptance remain visible risks while these gates are deferred.
+
+# Historical checkpoint - superseded by owner replacement above
+
+# STOP after two diff-audit failures; A4 PG1 passed - 2026-10-17
 
 - Phase reached A4 full PG1, with partial A5 source review. Gate A NOT MET / Batch5A INCOMPLETE. Mandatory operational STOP: final diff-audit attempt1 inline PowerShell ParserError/IncompleteDollarSubexpressionReference; replacement file attempt2 failed spawnSync git EPERM (errno-4048) inside sandbox. No third audit attempt. First failure was avoidable: inline helper violated the requested script-file method. This was not an auto-review rejection and not a PG test failure. Errors retained .scratch-5a-resume/audit-errors.log.
 - In-flight PG1 was allowed to finish and clean up: exact r02 -All -Filter '.*',130 migrations,93/93 suites and1,986/1,986 tests passed,209.927s,exit0; v1-contract PASS10 declared cases (suite7.694s), token-typing PASS13 declared cases. Zero new unavailability diagnostics. Final application source feb2e49 unchanged before/after run. Consecutive full passes1/5; PG2-5 NOT RUN. No PG2 log exists. STOP marker prevented the next gate; remaining owned controller PIDs11600/14620 were stopped only after PG1 cleanup. Unified controller session ended-1; distinguish from actual PG gate exit0.

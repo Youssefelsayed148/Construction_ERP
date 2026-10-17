@@ -1,4 +1,31 @@
-# CURRENT - Operational STOP; full PG1 PASS, Gate A NOT MET - 2026-10-17
+# CURRENT - 5A functionally complete, gates deferred - 2026-10-17
+
+Owner replacement A4/GATE A is authoritative over the historical sections below. **Gate A MET under the replacement: audit done, no unresolved HIGH finding, DEFERRED_GATES recorded in root STATE.md. Production remains NO-GO.** This is not UAT, finance or production sign-off. Phase A implementation is not being repeated.
+
+Actual commands in this continuation:
+
+```text
+git diff --no-ext-diff --no-color 897e823 HEAD
+58 files changed, 3652 insertions(+), 92 deletions(-)
+git diff --shortstat 897e823 HEAD -- backend frontend
+48 files changed, 1655 insertions(+), 69 deletions(-)
+git diff --check 897e823 HEAD
+audit_diff_check_exit=0
+npm.cmd --prefix backend run lint:guards
+lint-guards: ok [exit 0]
+CI=true npm.cmd run build
+Compiled successfully. npm run build:frontend exited with code 0 [exit 0]
+```
+
+Native Git plus Select-String (PowerShell grep equivalent) replaced the failed custom audit helpers. Full source diff reviewed, including the S-001..S-007 and team-leak file:line table below. No unresolved HIGH identified; no removed assertions or changed skip/only/timeout calls matched. Nine new TEST_PG conditional suite declarations and 17 historical aggregate allowlist additions are explicitly disclosed, not hidden or described as zero exemptions. The earlier partial A5 scan is superseded by this audit. Local evidence: `.scratch-5a-resume/a4-owner-{whole-diff,test-audit,locales}.log`. No application/test source changed since feb2e49, and this checkpoint is documentation only; no changed-code focused tests apply.
+
+The build first encountered sandbox `spawn EPERM` in concurrently; its one execution outside the process sandbox passed within about two minutes with only existing Node deprecation notices. No full PG run, Docker test-stage build, golden verification, full mocks/frontend/i18n/API-lint sweep or repeated gates were run. Every skipped gate is named in STATE.md DEFERRED_GATES: **must pass before any UAT sign-off, finance sign-off or production move; production remains NO-GO**.
+
+Unexplained flaky suites: **v1-contract, token-typing; 1 clean full run, 50 clean loop runs, cause unproven** (93/1,986 full suites/tests; 50/590 focused loops/tests). Neither failure is called fixed. S-006 remains original38(a)/43(b), 23 v1 shapes fixed; historical latest448 GET/254 arrays/58 absent headers, including15 internal register LOW candidates plus capped-service true-total limits. Full route names remain in the classification document. S-001 units discrepancy remains undetermined/non-blocking.
+
+Next: commit and authorized branch-only push, then Phase B's seven staged demo-company checkpoints per supplied owner attachments. Phase C starts only at Gate B. B/C retain only new safety tests (guard, idempotency, arithmetic) plus focused changed-file tests; no guard weakening/skipping and no full suites. Full UAT/finance/native Arabic acceptance remains unverified. scratch_pdf.txt unchanged, needs owner decision.
+
+# HISTORICAL - Operational STOP; full PG1 PASS, Gate A NOT MET - 2026-10-17
 
 Started d7c7664 on closeout/batch-a-to-6, with no initial changes. Current implementation feb2e49 includes A1 diagnostics, required S-003 warning and a trivial S-006 header fix. Phase reached A4 full run1 and partial A5 review. **Batch5A INCOMPLETE; GateA NOT MET; B/C NOT STARTED; no push/PR/deploy.** The stop was caused by two audit-helper operational failures, not by a failing PG assertion. This section supersedes all historical sections below.
 

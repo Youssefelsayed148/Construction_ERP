@@ -1,3 +1,12 @@
+# 2026-10-17 - Owner-replaced A4 / Gate A checkpoint
+
+- 5A status: **functionally complete, gates deferred**. Gate A met under explicit replacement only: native whole-diff audit done, no unresolved HIGH finding, STATE.md DEFERRED_GATES recorded. Production remains NO-GO; all deferred gates must pass before UAT/finance sign-off or production move.
+- Actual native Git output: `git diff --shortstat 897e823 HEAD` ->58 files/+3652/-92; backend/frontend48/+1655/-69. `git diff --check 897e823 HEAD` ->exit0. Plain diff + Select-String audit found no removed assertions or changed skip/only/timeout calls;9 conditional TEST_PG declarations and17 historical allowlist entries disclosed. Scratch audit logs preserved, previous STOP history retained.
+- Actual permitted commands: `npm.cmd --prefix backend run lint:guards` ->`lint-guards: ok`,exit0. `CI=true npm.cmd run build` ->`Compiled successfully`,exit0 within about two minutes after initial sandbox concurrently spawn EPERM and authorized execution outside sandbox. Node deprecation notices only. No implementation source changes, no focused changed-code tests needed; no deferred full commands run.
+- v1-contract/token-typing historical failures unexplained:1 clean full run93/1986,50 clean loop runs/590, cause unproven. S-006 classification and LOW route candidates retained; S-001 discrepancy undetermined. Authorized branch-only push next; B/C requirements now supplied. Ports8092/55442 not excluded by current netsh output. No pilot/clone mutations, external sends or production moves. B/C new safety/focused tests only; guards remain mandatory.
+
+# Historical checkpoint
+
 # 2026-10-17 - Last Batch 5A scope blocker: HIGH fix; infrastructure stop
 
 - Starting revision e5cd943, branch closeout/batch-a-to-6. Read aggregate-scope's equality oracle: it rejects unexplained nonempty byte-identical owner/scoped bodies, not every shared record. Distinct own/foreign supplier/client fixtures replace the shared counterparty ambiguity. No allowlist, skip or assertion relaxation.
