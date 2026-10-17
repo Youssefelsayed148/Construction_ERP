@@ -301,7 +301,8 @@ async function procurementWidgets(q, { userId, projectId = null }) {
   const [prs, pos, deliveries] = await Promise.all([
     agg(q, 'purchase_requests', wp ? `project_id = $1 AND status NOT IN ('approved','rejected')` : `status NOT IN ('approved','rejected')`, pp),
     agg(q, 'purchase_orders', wp ? `project_id = $1 AND status = 'issued'` : `status = 'issued'`, pp),
-    agg(q, 'deliveries', wp ? `project_id = $1 AND status = 'pending'` : `status = 'pending'`, pp),
+    // deliveries has no project_id; ownership comes from its purchase order.
+    agg(q, 'deliveries', wp ? `purchase_order_id IN (SELECT id FROM purchase_orders WHERE project_id = $1) AND status = 'pending'` : `status = 'pending'`, pp),
   ]);
   return [
     w('requisitions', 'Purchase requisitions', { open: prs.rows.length }),
