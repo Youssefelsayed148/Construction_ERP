@@ -62,6 +62,24 @@ async function scopedQuery(req, q) {
       ? employeeSources.map(([table]) => `SELECT employee_id FROM public.${table} WHERE ${projectFilter('project_id')}`).join(' UNION ')
       : 'SELECT NULL::int WHERE false';
     predicates.set('employees', `id IN (${employeeIds})`);
+    const laborerSources = [...tables].filter(([, columns]) => columns.has('laborer_id') && columns.has('project_id'));
+    const laborerIds = laborerSources.length
+      ? laborerSources.map(([table]) => `SELECT laborer_id FROM public.${table} WHERE ${projectFilter('project_id')}`).join(' UNION ')
+      : 'SELECT NULL::int WHERE false';
+    predicates.set('daily_laborers', `id IN (${laborerIds})`);
+    // Period headers carry COMPANY totals. A project seat may read a header
+    // only when its entire salary is allocated to that seat's project set;
+    // mixed, unallocated and partially allocated company totals stay hidden.
+    const payrollIds = `SELECT p.id FROM public.payroll_periods p
+      JOIN public.payroll_cost_allocations a ON a.payroll_id = p.id
+      GROUP BY p.id, p.total_net_salary
+      HAVING COUNT(*) FILTER (WHERE a.project_id IS NULL OR NOT (${projectFilter('a.project_id')})) = 0
+        AND SUM(a.amount) = p.total_net_salary`;
+    predicates.set('payroll_periods', `id IN (${payrollIds})`);
+    predicates.set('payroll_details', `payroll_id IN (${payrollIds})`);
+    // Material-wide alert snapshots aggregate company stock. Only alerts
+    // linked to an authorized PO have a provable project owner.
+    predicates.set('replenishment_alerts', `purchase_order_id IN (SELECT id FROM public.purchase_orders WHERE ${projectFilter('project_id')})`);
     predicates.set('leave_requests', `employee_id IN (${employeeIds})`);
     if (!tables.get('attendance')?.has('project_id')) predicates.set('attendance', `employee_id IN (${employeeIds})`);
     predicates.set('warehouse_stock', `warehouse_id IN (SELECT id FROM public.warehouses WHERE ${projectFilter('project_id')})`);
