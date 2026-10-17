@@ -1,3 +1,10 @@
+# 2026-10-17 - RUN 1b-3 STOP at Gate C safety tests
+
+- Gate B remains PASS and its docs checkpoint is committed as `a9b39bc`. Gate C FAIL/STOP at the focused seed-helper test step; D and E are NOT RUN.
+- Failing-first attempt 1: `npm.cmd --prefix backend test -- --runInBand --runTestsByPath src/scripts/__tests__/company-demo-business.test.js` exited 1 before tests ran (1 failed suite, 0 tests). The test imports the not-yet-created helper; this was not valid assertion-level red evidence. Redacted error: module not found (`MODULE_NOT_FOUND`; no application/API call).
+- Attempt 2, after adding the helper: same command exited 1; 1 suite, 1 passed / 1 failed. The target guard passed. The idempotency test recorder threw `TypeError` because it dereferenced missing options on a GET call (no error code). Stop after two failed attempts at this step; no third test run, helper correction, or business-seed attempt.
+- No business data writes, reset, or other mutations occurred. Target health remains read-only evidence from Gate B. New local files `backend/src/scripts/company-demo-business.js` and `backend/src/scripts/__tests__/company-demo-business.test.js` are incomplete and uncommitted; preserve them for continuation. Scratch digest helper remains under `.scratch-company-demo/` and uncommitted.
+- Next action in a new continuation: inspect and correct the test recorder with safe GET handling, rerun only this focused test, then continue C implementation only after both guard and stable-key idempotency assertions pass. Do not start D/E before C passes.
 # 2026-10-17 - RUN 1b-3 Gate B account idempotency checkpoint
 
 - Start: `f3e92a9a0144852caa5425d969cce77ec0de6f1c`, branch `closeout/batch-a-to-6`; working tree was clean. Only target: `erp-demo-20261017` / `construction_erp_demo`.
