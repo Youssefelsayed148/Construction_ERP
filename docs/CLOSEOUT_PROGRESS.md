@@ -1,3 +1,13 @@
+# 2026-10-17 - STOP after two audit-helper failures; full PG1 passed
+
+GateA NOT MET /5A incomplete. Audit attempt1 inline PowerShell ParserError (avoidable deviation from script-file instruction), attempt2 replacement file Node spawnSync git EPERM inside sandbox. No third audit attempt; operational STOP, not a PG failure. In-flight PG1 finished on feb2e49:130 migrations,93/93 suites/1,986/1,986 tests passed,209.927s,exit0; v1 PASS10/token PASS13, new diagnostics0. Controller prevented PG2, then two exact owned controller PIDs stopped after cleanup; no PG2 log. A4 streak1/5; PG2-5 and every later Docker/golden/mocks/frontend/i18n/guards/lint/build gate NOT RUN. Final A5 whole-diff scan incomplete; do not infer it passed from earlier scan.
+
+A1 logs verified4 suites/68 tests; A2 all50 fresh idle/load runs/590 tests passed without reproducing failures (causes UNPROVEN); S003 warning4109a01 unit9/PG32 green; headerfeb2e49 unit63/PG35 green. Fresh GET448/254 arrays/58 absent headers, down23; original81 classified38(a)/43(b),15 internal missing-header/capped-service totals remain LOW candidates. S001 discrepancy undetermined/non-blocking. Current file:line table/limits and exact errors in report.
+
+Final exact names25 containers/595 volumes/8 networks match baseline, differences0 each;54 owned PG/anonymous volumes removed, no prune/protected mutation. Pilot healthy/HTTP200; finalRAM2,233MiB/CPU9%, loads/controllers stopped. B/C not started: demo counts/states unmeasured;5B tested0 chains,0 isolation routes,0of38 accounts and0of2 languages; no severity totals. No push/PR/deploy. STATE exact resume: repair audit in file/native Git under new continuation, remove STOP only intentionally; resume PG2 only with identical feb2e49 source, otherwise restart0. scratch_pdf.txt untouched CRLF; excluded reports ignored/unstaged. Six-doc stop checkpoint only.
+
+# Prior implementation checkpoint
+
 # 2026-10-17 - A3/A3b focused green; A4 full gates next
 
 A3 warning4109a01 verified. A3b header parity:3 new tests red first, one-line fix; unit2 suites/63 tests and PG3 suites/35 tests passed,130 migrations,exit0. Full GET inventory448/zero5xx, directory exact totals preserved. Original81 missing arrays classified38(a)/43(b);23v1 shapes share header fix,15 internal registers plus capped-service true totals remain named LOW candidates. S-001 discrepancy undetermined. All broad gates unrun on final source; next A4 FULL PG1 of5 consecutive fresh DBs, no heavy parallel work, stop first failure. A2 50/590 does not count for A4. STATE exact resume; B/C not started/no push; source/env/deps safety preserved.

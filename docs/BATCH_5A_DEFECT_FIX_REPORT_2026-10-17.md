@@ -1,4 +1,123 @@
-# CURRENT - A3/A3b focused checks green; A4 five full runs next - 2026-10-17
+# CURRENT - Operational STOP; full PG1 PASS, Gate A NOT MET - 2026-10-17
+
+Started d7c7664 on closeout/batch-a-to-6, with no initial changes. Current implementation feb2e49 includes A1 diagnostics, required S-003 warning and a trivial S-006 header fix. Phase reached A4 full run1 and partial A5 review. **Batch5A INCOMPLETE; GateA NOT MET; B/C NOT STARTED; no push/PR/deploy.** The stop was caused by two audit-helper operational failures, not by a failing PG assertion. This section supersedes all historical sections below.
+
+## Exact stop and responsibility
+
+While full PG1 was running, final whole-5A diff audit attempt1 used inline PowerShell and failed parsing before Git executed. I should have used a script file as requested; that avoidable quoting error was mine. After diagnosing it, attempt2 used a script file (.scratch-5a-resume/audit-diff.js) but Node's child-process spawn of Git was denied by the sandbox. Applying the user's two-attempt rule: **STOP, no third audit attempt**. No automatic approval-review rejection occurred; EPERM was a sandbox process-creation error.
+
+```text
+Attempt1:
+$(subexpression) is missing the closing ')'.
+CategoryInfo: ParserError / ParentContainsErrorRecordException
+FullyQualifiedErrorId: IncompleteDollarSubexpressionReference
+
+Attempt2:
+Error: spawnSync git EPERM
+errno: -4048
+code: EPERM
+syscall: spawnSync git
+spawnargs: diff --unified=0 897e823 HEAD -- backend frontend
+status: null; pid:0; stdout/ stderr:undefined
+at .scratch-5a-resume/audit-diff.js:4:15
+```
+
+The in-flight PG1 finished normally before cleanup; no new gate was started. A scratch STOP marker was checked before the controller could launch PG2. After PG1/volume removal, only the two owned PowerShell controller processes identified by this exact scratch invocation (PIDs11600/14620) were stopped. Unified controller session ended-1; actual PG1 gate exit was0. There is no pg-full-2.log. No source fix, audit retry or later gate followed the stop.
+
+## Real current gate results
+
+Exact PG command: `powershell.exe -NoProfile -File backend/scripts/r02-pg-gate.ps1 -All -Filter '.*'`. Source before/after remained feb2e49; report-generation flag retained fresh GET/coarse tables without changing application/test source.
+
+```text
+disposable erp-r02-gate-20261017174050 mapped to loopback port 65222
+migrations: [migrate] all migrations completed (130 applied, 0 already applied)
+PASS src/scripts/__tests__/token-typing.pg.test.js
+PASS src/scripts/__tests__/v1-contract.pg.test.js (7.694 s)
+Test Suites: 93 passed, 93 total
+Tests:       1986 passed, 1986 total
+Time:        209.927 s, estimated 228 s
+container erp-r02-gate-20261017174050 removed; exit=0
+END full-PG-1 exit=0
+STOP: two diff-audit operational failures; do not start another PG run.
+```
+
+| A4 gate | Real current numbers | Result |
+|---|---|---|
+| Full PG1 | 93 suites/1,986 tests passed;0 failures;130 migrations;209.927s;exit0 | PASS; v1 PASS10 cases, token PASS13 cases |
+| Full PG2 | 0 suites/0 tests | NOT RUN; v1/token NOT RUN |
+| Full PG3 | 0 suites/0 tests | NOT RUN; v1/token NOT RUN |
+| Full PG4 | 0 suites/0 tests | NOT RUN; v1/token NOT RUN |
+| Full PG5 | 0 suites/0 tests | NOT RUN; v1/token NOT RUN |
+| Backend Docker test-stage build | 0 builds/0 tests | NOT RUN; no cache/skip result claimed |
+| Disposable golden -Reconcile | 0 seeds/0 checks | NOT RUN |
+| Full backend mocks | 0 full gate runs | NOT RUN; focused unit evidence separately below |
+| Frontend CI | 0 suites/0 tests | NOT RUN |
+| i18n check/parity | 0 commands | NOT RUN |
+| lint:guards / API lint | 0 commands each | NOT RUN |
+| Root CI build | 0 builds | NOT RUN |
+
+Consecutive full passes **1/5**, no failed full run in this resume; acceptance is incomplete. Default Jest reporter provides overall totals and per-file status, not individual file totals. v1 has10 and token13 declared cases, with no failure/skip reported. PG1 unavailability diagnostic count0. No A4 failure snapshot was needed because its gate exited0; A2 periodic snapshots and expected-red PG pre-teardown snapshots are retained. Neither historical timeout nor503 cause is proven; do not describe logging or this one passing full run as a fix.
+
+## A1/A2 and implementation evidence
+
+| Work | Actual result |
+|---|---|
+| A1 logging | 30 production changed lines; sanitized code/name/fixed messageClass; responses unchanged. Intended red6 assertions, green4 suites/68 tests,8.034s. Initial zero-test mock setup error diagnosed separately. |
+| A2 token idle | 15 fresh DBs;15/15 suites;195/195 tests;0 failures/diagnostics |
+| A2 token12-worker load | 15 fresh DBs;15/15 suites;195/195 tests;0 failures/diagnostics |
+| A2 v1 idle | 10 fresh DBs;10/10 suites;100/100 tests;0 failures/diagnostics |
+| A2 v1 load | 10 fresh DBs;10/10 suites;100/100 tests;0 failures/diagnostics |
+| A2 total | 50 unique DBs;50/50 suites;590/590 tests;130 migrations per DB;all exits0 |
+| A3 warning red/green | PG red5 failed/5 passed due absent notices; green3 PG suites/32 tests,6.156s; unit9 tests,0.449s |
+| A3b header red/green | 3 assertions red first; green2 unit suites/63 tests,2.533s;3 PG suites/35 tests,10.818s;GET448/zero5xx |
+
+**NOT REPRODUCED in any A2 mode.** No503 path/SQLSTATE/error class fired in current reproduction logs; the historical failure had no underlying-error log. Possible pool acquisition timeout is a source-level mechanism, not an observed cause. oauthService.js:170 hashes before transaction at:197, compare-and-swap at:203 and last_used_at/audit at:206 prevent duplicate legacy hash replacement without holding the transaction during KDF. passwords.js:6 uses N32768/r8/p3/keyLength64/maxmem64MiB; async crypto.scrypt at:15. database.js:11 pool max20/:16 default5000ms acquisition/connect/:54 finally release. Installed pg-pool/index.js:190-225 has a queued-checkout timer and generic Error at:224, potentially with no SQLSTATE. No proven concurrency defect, no speculative fix, no timeout/assertion relaxation.
+
+Single two-operation KDF samples with no PG gate active: bcrypt verification pair107ms idle/141ms loaded; scrypt hash pair141ms idle/243ms loaded. These are single samples, not production latency estimates. Loaded mode used12 busy workers with10-minute maximum duration and explicit termination after each run. Valid samples: token CPU82%/freeRAM1,803MiB; v1 CPU93%/freeRAM1,350MiB. Initial sandbox WMI sample was denied and its zero value marked INVALID; excluded from evidence. No unrelated heavy agent task ran with PG.
+
+## A5 self-review: available file:line evidence, final scan INCOMPLETE
+
+| Item | Evidence | Finding / limit |
+|---|---|---|
+| S-001 | services/clientCollections.js:7,:9,:18; routes/dashboard.js:193,:250; routes/finance.js:19,:61; scripts/__tests__/client-collections.pg.test.js:43 | Shared AR/non-supplier/live predicate and exact minor-unit figures used by BOTH routes/widgets; mixed AR/AP regression passed in PG1.9,130 vs9,130,000 remains UNDETERMINED: frontend/src/utils/formatters.js:8 performs no x1,000 conversion; seed/code scan found no matching scaler/constant. No pilot/clone SQL inspection; non-blocking per request. |
+| S-002 | routes/projects.js:69,:98,:126; migrations/0031_organizations_rbac.sql:28,:590; scripts/__tests__/batch5a-project-create.pg.test.js:18; scripts/__tests__/batch5a-inventory.pg.test.js:12 | authorize() uses grants including owner_ceo creation; five-role create/audit regression passed. Inventory compares73 coarse lists/1,048 mounted method-routes with grants; it records mismatches, not proof that all unrelated restrictions should be removed. |
+| S-004 | services/dashboardWidgets.js:304; services/apiResources.js:63,:66,:97,:113 | Deliveries resolve project ownership via purchase_orders; resource expression covers list/detail. Regression passed. No deliveries.project_id assumed in query execution. |
+| S-005 | middleware/auth.js:39; frontend/src/utils/formatters.js:32,:47; frontend/src/pages/MyActions.js:44,:61 | Root cause Date timestamp traversed into {}, then invalid React child (#31). Date serialization preserved, formatter rejects malformed objects; localized retry boundary exists. Backend regression passed; frontend gate/UI not rerun. |
+| S-006 | routes/procurement.js:288; services/procurementDocuments.js:35; middleware/v1.js:391,:403; scripts/__tests__/external-api.test.js:796 | RFQ exact scoped totals plus normalized header parity verified. Fresh generated table448 GET/254 array responses/58 absent headers, down from81. Original81 classified38(a)/43(b);15 internal missing-header registers and capped-service true totals remain LOW candidates, named in classification doc.58 is NOT58 asserted defects. |
+| S-007 | frontend/src/pages/MyActions.js:183,:208; frontend/src/pages/ProjectWizard.js:566; frontend/src/pages/Reports.js:150,:157,:184; frontend/scripts/report-contract.js:6 | EN/AR priority/severity-level/channel/report-module keys present. Current frontend/i18n gates NOT RUN; native Arabic/narrative/export acceptance not claimed. |
+| S-003 | scripts/reconcile-database.js:161,:176,:191,:268,:282,:291,:298,:311; scripts/__tests__/batch5a-reconcile.pg.test.js:43,:53,:81 | Decided MIR acceptance plus applicable legacy receipts minus returns once; no GRN double count. Required config default72h INFO<=threshold/WARNING>threshold identifies MIR/PO/age; posting GRN resolves; warning never changes violations. PG/unit coverage green including PO-00008 pattern and net4 after return2 from6. Configuration doc committed. |
+| Team leak | services/teamService.js:104; routes/organizations.js:313; routes/team-assignments.js:34; services/projectReadScope.js:91,:95; scripts/__tests__/batch5a-last-scope.pg.test.js:61,:77 | Five routes x four roles20 exact-ID/status/total assertions, plus both team pagination/foreign-filter checks; focused and PG1 passed. No blanket company/foreign seat exemption. |
+
+Backend references above are relative to backend/src; frontend paths are explicit. No new HIGH finding was proven in this review; this is not completion of A5 or security clearance. Earlier preliminary scan through A1 ed94887 recorded0 removed assertion lines/0 skip-only-timeout call changes;9 conditional TEST_PG declarations and17 historical aggregate allowlist additions were disclosed. The required final897e823..feb2e49 full-diff scan did NOT complete: two operational errors above. Do not promote the earlier scan to a final pass. No third scan or assertion/allowlist/timeout change followed the stop.
+
+## Docker, artifacts, scope and resume
+
+Docker28.3.2 passed the bounded preflight. Initial resource sample freeRAM1,354/16,005MiB,16 logical CPUs,CPU18%; before PG1 freeRAM1,808MiB/CPU10%; final freeRAM2,233MiB/CPU9%. Initial/final exact names:
+
+```text
+containers 25 ->25; exact_name_differences=0
+volumes   595->595; exact_name_differences=0
+networks  8  ->8; exact_name_differences=0
+pilot HTTP8090=200 before/after; db/backend/frontend healthy; migrate Exited(0)
+```
+
+54 owned disposable PGs were created across50 A2 runs, expected-red1/focused-green2 and full1; their containers/anonymous volumes removed by exact owned runner. No prune, uncertain resource removal, engine/WSL restart, pilot start/build/up/recreate/down/rm/seed/exec/SQL, or direct sweep/demo operation. All test ports Docker-assigned and checked against current netsh exclusions/protected55440/55441/55442. Full PG1 used65222. No current gate/controller remains running.
+
+Raw evidence .scratch-5a-resume: all50 A2 logs/CPU logs/snapshots + a2-summary.log; a1/a3/a3b red-green logs; pg-full-1.log; audit-errors.log; STOP.log; before/a2/a4/final inventory/resources/pilot logs. No raw PG log was filtered or rewritten. SHA256 pg-full-1.log=`3C305620E835EAEC337AB499FB0C67AC4E0E9F124A6543B2118789EA11E87D58`; a2-summary.log=`59390CE2C44DD72C48407B10F8610CAA9C43AC1F334C48F43E2E485141548DEC`; audit-errors.log=`38657B271C0C2BC7CC67DFE1160B6528D13079418F8CA31D77B4593DB7F4D11C`. Helpers remain local/untracked; *.log evidence ignored. No runtime credentials, account credential files or .env files printed/edited; no deps/migrations/external sends/paid adapters/legacy switch.
+
+Source commits: ed94887 diagnostics;4109a01 warning;feb2e49 header. Evidence checkpoints: ad167b5,1b53c64,90899af,a21e391. This final checkpoint changes only four tracking docs, classification and freshly generated GET table; mandatory LF/staged whitespace/scope checks before commit. Excluded review files remain ignored and unstaged. scratch_pdf.txt remains tracked i/crlf w/crlf untouched and needs user decision. Native Arabic/RTL/export/deployed UAT remain unverified.
+
+Actual stop-document checks: `cached_whitespace_exit=0 scoped_docs=6 excluded_review_staged=0`; each of the six documents `CR_bytes=0`, and git ls-files --eol showed i/lf w/lf. Final restage/cached check precedes commit. These checks do not retry or substitute for the incomplete whole-source A5 audit.
+
+PhaseB:0 stages/records/accounts created; module counts/interesting states NOT MEASURED; no seed defect candidates collected. PhaseC:0 chains/0 isolation routes/0of38 accounts/0of2 languages; all38 accounts and both languages missing because GateA not met; no5B defect/severity totals claimed. No phase complete/no push.
+
+Next authorized continuation: inspect STOP/evidence, replace the failed final audit with a script-file/native-Git approach that avoids Node child-process EPERM, and complete the final diff review. No blind retry. Remove STOP marker only when intentionally resuming. With identical application/test source feb2e49, the next full acceptance run is PG2 of5; any source change resets count0/run1. Finish remaining full PG, Docker/golden/host gates/A5/A6 before marking5A complete or pushing/startingB. No automatic retry remains pending.
+
+---
+
+# Prior implementation checkpoint (superseded above)
+
+# A3/A3b focused checks green; A4 five full runs next - 2026-10-17
 
 S-003 warning committed4109a01 with unit9/PG32-test evidence below. A3b now adds one header assignment in normalizeResponses, echoing its existing filtered meta.total; route-provided total headers and response bodies are preserved. Three first/second/empty-page/filter tests failed before the line was added. Focused green: **2 unit suites/63 tests**,2.533s; **3 PG suites/35 tests**,10.818s,130 migrations,exit0 (batch5a-lists, batch5a-last-scope, v1-contract). Actual inventory command output: `S006 full GET table: 448 routes; server failures=0`. Exact directory IDs/header totals and v1 contract remain green. No source fix beyond the tested warning/header/logging slices.
 

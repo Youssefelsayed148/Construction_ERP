@@ -2,6 +2,8 @@
 
 Static classification of all 81 observed array-bearing GET responses with no X-Total-Count in the existing 448-GET inventory: **class (a) 38; class (b) 43**. This is not a fresh sweep or a declaration that capped financial registers are small lookups.
 
+Fresh observation after feb2e49, from the first complete PG acceptance run: **448 GET routes /254 array-bearing responses /58 absent headers**, a reduction of23 from the original81. PG1 passed93 suites/1,986 tests. The remaining58 observations include43 intended lookup/aggregate shapes plus15 internal missing-header registers; this is not58 asserted defects. Final whole-diff audit stopped after two operational helper failures; no broad phase completion is claimed.
+
 Class (a): a paginated/growing register with a missing header/count contract in the original snapshot. v1 top-level arrays are classified (a) because middleware/v1.js actually paginates them, even when the internal lookup returns a complete catalog. Class (b): bounded lookups/settings, or nested arrays/analytics in a single response where a single count header is not intended.
 
 Evidence: middleware/v1.js normalizeResponses/applyListQuery; services/inventoryDocuments.js:125 (limit/offset); services/awardService.js:53 (cap 200); services/commercialRecords.js:84,128,171,210 (register caps); services/budgeting.js:59,145,181; services/financeDocuments.js:48,163 (cap 200); services/financeReleases.js:66 (cap 200); services/orgService.js:305 (delegation list); routes/organizations.js:108 (single-company settings).

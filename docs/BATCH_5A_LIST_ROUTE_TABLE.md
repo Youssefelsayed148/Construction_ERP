@@ -6,13 +6,13 @@ Every mounted GET is included (including non-list, missing-record, denied, aggre
 |---|---|---|---|---|---|
 | /uploads/:fileName | uploads | handler-specific | 404 | no array observed | ABSENT |
 | /api/auth/me | auth | handler-specific | 200 | no array observed | ABSENT |
-| /api/users | users | shared pagination | 200 | data[] | 2 |
+| /api/users | users | shared pagination | 200 | data[] | 135 |
 | /api/users/preview/roles | users | handler-specific | 200 | data[] | ABSENT |
 | /api/users/:id | users | handler-specific | 404 | no array observed | ABSENT |
-| /api/approvals/pending | approvals | shared pagination | 200 | no array observed | 0 |
+| /api/approvals/pending | approvals | shared pagination | 200 | no array observed | 6 |
 | /api/approvals/stale | approvals | handler-specific | 200 | data.rows[] | ABSENT |
 | /api/approvals/my-requests | approvals | handler-specific | 200 | no array observed | ABSENT |
-| /api/approvals/audit | approvals | shared pagination | 200 | no array observed | 0 |
+| /api/approvals/audit | approvals | shared pagination | 200 | no array observed | 3 |
 | /api/approvals/check/:module/:requestId | approvals | handler-specific | 200 | no array observed | ABSENT |
 | /api/approvals/:id/details | approvals | handler-specific | 404 | no array observed | ABSENT |
 | /api/approval-limits | approval-limits | handler-specific | 400 | no array observed | ABSENT |
@@ -24,7 +24,7 @@ Every mounted GET is included (including non-list, missing-record, denied, aggre
 | /api/dashboard/overview | dashboard | handler-specific | 200 | no array observed | ABSENT |
 | /api/dashboard/role | dashboard | handler-specific | 200 | data.widgets[], data.sticky_notes[] | ABSENT |
 | /api/items/categories | items | handler-specific | 200 | data.categories[], data.units[] | ABSENT |
-| /api/items | items | shared pagination | 200 | data[] | 5 |
+| /api/items | items | shared pagination | 200 | data[] | 279 |
 | /api/items/:id | items | handler-specific | 404 | no array observed | ABSENT |
 | /api/items/:id/suppliers | items | shared pagination | 200 | data[] | 0 |
 | /api/suppliers | suppliers | shared pagination | 200 | data[] | 0 |
@@ -67,11 +67,11 @@ Every mounted GET is included (including non-list, missing-record, denied, aggre
 | /api/projects/:id | projects | handler-specific | 400 | no array observed | ABSENT |
 | /api/warehouses | warehouses | shared pagination | 200 | data[] | 0 |
 | /api/warehouses/:id/movements | warehouses | shared pagination | 403 | no array observed | ABSENT |
-| /api/warehouses/transfers | warehouses | shared pagination | 200 | data[] | 0 |
+| /api/warehouses/transfers | warehouses | shared pagination | 200 | data[] | 7 |
 | /api/warehouses/reservations | warehouses | shared pagination | 200 | data[] | 0 |
 | /api/warehouses/:id | warehouses | handler-specific | 403 | no array observed | ABSENT |
-| /api/inventory/lots/expiring | inventory | shared pagination | 200 | data[] | 0 |
-| /api/inventory/lots | inventory | shared pagination | 200 | data[] | 0 |
+| /api/inventory/lots/expiring | inventory | shared pagination | 200 | data[] | 6 |
+| /api/inventory/lots | inventory | shared pagination | 200 | data[] | 13 |
 | /api/inventory/lots/:id | inventory | handler-specific | 403 | no array observed | ABSENT |
 | /api/inventory/conversions/convert | inventory | handler-specific | 400 | no array observed | ABSENT |
 | /api/inventory/conversions | inventory | handler-specific | 200 | data[] | ABSENT |
@@ -95,7 +95,7 @@ Every mounted GET is included (including non-list, missing-record, denied, aggre
 | /api/subcontractors/contracts/:projectId | subcontractors | shared pagination | 200 | data[] | 0 |
 | /api/subcontractors/verifications/:contractId | subcontractors | shared pagination | 403 | no array observed | ABSENT |
 | /api/subcontractors/certificates/:contractId | subcontractors | shared pagination | 403 | no array observed | ABSENT |
-| /api/costing/codes | costing | shared pagination | 200 | data[] | 12 |
+| /api/costing/codes | costing | shared pagination | 200 | data[] | 14 |
 | /api/costing/project/:projectId | costing | handler-specific | 200 | data.costs[], data.summary_by_type[] | ABSENT |
 | /api/costing/project/:projectId/summary | costing | handler-specific | 200 | data[] | ABSENT |
 | /api/costing/project/:projectId/profitability | costing | handler-specific | 200 | no array observed | ABSENT |
@@ -221,7 +221,7 @@ Every mounted GET is included (including non-list, missing-record, denied, aggre
 | /api/materials/recipes/:id | materials | handler-specific | 403 | no array observed | ABSENT |
 | /api/materials/requirements | materials | shared pagination | 200 | data[] | 0 |
 | /api/materials/replenishment/alerts | materials | shared pagination | 200 | data[] | 0 |
-| /api/materials/replenishment/policies | materials | shared pagination | 200 | data[] | 1 |
+| /api/materials/replenishment/policies | materials | shared pagination | 200 | data[] | 24 |
 | /api/materials/replenishment/open-requirements | materials | shared pagination | 200 | data[] | 0 |
 | /api/procurement/project/:projectId | procurement | shared pagination | 200 | data.purchase_requests[], data.rfqs[], data.purchase_orders[], data.deliveries[], data.material_inspection_requests[], data.goods_receipt_notes[] | 3 |
 | /api/procurement/rfq/:id/comparison | procurement | handler-specific | 403 | no array observed | ABSENT |
@@ -288,13 +288,13 @@ Every mounted GET is included (including non-list, missing-record, denied, aggre
 | /api/portal/supplier/dashboard | portal | handler-specific | 200 | data.setup_actions[], data.setup_action_keys[] | ABSENT |
 | /api/portal/supplier/rfqs/:id | portal | handler-specific | 404 | no array observed | ABSENT |
 | /api/portal/supplier/purchase-orders/:id | portal | handler-specific | 404 | no array observed | ABSENT |
-| /api/organizations | organizations | service list; inspect service | 200 | data[] | 1 |
+| /api/organizations | organizations | service list; inspect service | 200 | data[] | 42 |
 | /api/organizations/company | organizations | service list; inspect service | 200 | data[] | ABSENT |
-| /api/organizations/departments | organizations | service list; inspect service | 200 | data[] | 0 |
-| /api/organizations/job-positions | organizations | service list; inspect service | 200 | data[] | 0 |
+| /api/organizations/departments | organizations | service list; inspect service | 200 | data[] | 4 |
+| /api/organizations/job-positions | organizations | service list; inspect service | 200 | data[] | 3 |
 | /api/organizations/qualifications | organizations | service list; inspect service | 200 | data[] | 0 |
-| /api/organizations/bank-accounts | organizations | service list; inspect service | 200 | data[] | 0 |
-| /api/organizations/performance-scores | organizations | service list; inspect service | 200 | data[] | 0 |
+| /api/organizations/bank-accounts | organizations | service list; inspect service | 200 | data[] | 5 |
+| /api/organizations/performance-scores | organizations | service list; inspect service | 200 | data[] | 1 |
 | /api/organizations/team | team | service list; inspect service | 200 | data[] | 1 |
 | /api/organizations/:id | organizations | handler-specific | 404 | no array observed | ABSENT |
 | /api/delegations | delegations | service list; inspect service | 200 | data[] | ABSENT |
@@ -302,26 +302,26 @@ Every mounted GET is included (including non-list, missing-record, denied, aggre
 | /api/v1/health | v1 | v1 envelope | 200 | no array observed | ABSENT |
 | /api/v1/openapi.json | v1 | v1 envelope | 200 | no array observed | ABSENT |
 | /api/v1/ops/metrics | v1 | v1 envelope | 200 | no array observed | ABSENT |
-| /api/v1/webhooks | v1 | shared pagination | 200 | data[] | 0 |
+| /api/v1/webhooks | v1 | shared pagination | 200 | data[] | 7 |
 | /api/v1/webhooks/:id | v1 | v1 envelope | 404 | no array observed | ABSENT |
 | /api/v1/webhooks/:id/deliveries | v1 | shared pagination | 200 | data[] | 0 |
-| /api/v1/organizations | v1 | v1 envelope | 200 | data[] | ABSENT |
+| /api/v1/organizations | v1 | v1 envelope | 200 | data[] | 42 |
 | /api/v1/organizations/:id | v1 | v1 envelope | 404 | no array observed | ABSENT |
-| /api/v1/purchase-requisitions | v1 | v1 envelope | 200 | data[] | ABSENT |
+| /api/v1/purchase-requisitions | v1 | v1 envelope | 200 | data[] | 91 |
 | /api/v1/purchase-requisitions/:id | v1 | v1 envelope | 404 | no array observed | ABSENT |
-| /api/v1/purchase-orders | v1 | v1 envelope | 200 | data[] | ABSENT |
+| /api/v1/purchase-orders | v1 | v1 envelope | 200 | data[] | 68 |
 | /api/v1/purchase-orders/:id | v1 | v1 envelope | 404 | no array observed | ABSENT |
-| /api/v1/deliveries | v1 | v1 envelope | 200 | data[] | ABSENT |
+| /api/v1/deliveries | v1 | v1 envelope | 200 | data[] | 27 |
 | /api/v1/deliveries/:id | v1 | v1 envelope | 404 | no array observed | ABSENT |
-| /api/v1/grns | v1 | v1 envelope | 200 | data[] | ABSENT |
+| /api/v1/grns | v1 | v1 envelope | 200 | data[] | 6 |
 | /api/v1/grns/:id | v1 | v1 envelope | 404 | no array observed | ABSENT |
-| /api/v1/payment-certificates | v1 | v1 envelope | 200 | data[] | ABSENT |
+| /api/v1/payment-certificates | v1 | v1 envelope | 200 | data[] | 20 |
 | /api/v1/payment-certificates/:id | v1 | v1 envelope | 404 | no array observed | ABSENT |
-| /api/v1/observations | v1 | v1 envelope | 200 | data[] | ABSENT |
+| /api/v1/observations | v1 | v1 envelope | 200 | data[] | 10 |
 | /api/v1/assistants/:assistant/summary | v1 | v1 envelope | 404 | no array observed | ABSENT |
 | /api/v1/companies/ | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/companies/:id | v1 | v1 envelope | 404 | no array observed | ABSENT |
-| /api/v1/users/ | v1 | v1 envelope | 200 | data[] | 2 |
+| /api/v1/users/ | v1 | v1 envelope | 200 | data[] | 135 |
 | /api/v1/users/:id | v1 | v1 envelope | 404 | no array observed | ABSENT |
 | /api/v1/projects/ | v1 | v1 envelope | 200 | data[] | 1 |
 | /api/v1/projects/portfolio | v1 | v1 envelope | 200 | data[] | 1 |
@@ -340,25 +340,25 @@ Every mounted GET is included (including non-list, missing-record, denied, aggre
 | /api/v1/quantities/progress/project/:projectId | v1 | v1 envelope | 200 | data.items[] | ABSENT |
 | /api/v1/quantities/progress/location/:locationId | v1 | v1 envelope | 403 | no array observed | ABSENT |
 | /api/v1/quantities/locations/:locationId/dashboard | v1 | v1 envelope | 403 | no array observed | ABSENT |
-| /api/v1/materials/ | v1 | v1 envelope | 200 | data[] | 5 |
+| /api/v1/materials/ | v1 | v1 envelope | 200 | data[] | 279 |
 | /api/v1/materials/categories | v1 | v1 envelope | 200 | data.categories[], data.units[] | ABSENT |
 | /api/v1/materials/recipes | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/materials/requirements | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/materials/replenishment/alerts | v1 | v1 envelope | 200 | data[] | 0 |
-| /api/v1/materials/replenishment/policies | v1 | v1 envelope | 200 | data[] | 1 |
+| /api/v1/materials/replenishment/policies | v1 | v1 envelope | 200 | data[] | 24 |
 | /api/v1/materials/replenishment/open-requirements | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/materials/:id | v1 | v1 envelope | 404 | no array observed | ABSENT |
 | /api/v1/materials/:id/suppliers | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/materials/recipes/:id | v1 | v1 envelope | 403 | no array observed | ABSENT |
-| /api/v1/inventory/lots | v1 | v1 envelope | 200 | data[] | 0 |
-| /api/v1/inventory/lots/expiring | v1 | v1 envelope | 200 | data[] | 0 |
-| /api/v1/inventory/conversions | v1 | v1 envelope | 200 | data[] | ABSENT |
+| /api/v1/inventory/lots | v1 | v1 envelope | 200 | data[] | 13 |
+| /api/v1/inventory/lots/expiring | v1 | v1 envelope | 200 | data[] | 6 |
+| /api/v1/inventory/conversions | v1 | v1 envelope | 200 | data[] | 8 |
 | /api/v1/inventory/conversions/convert | v1 | v1 envelope | 400 | no array observed | ABSENT |
-| /api/v1/inventory/issues | v1 | v1 envelope | 200 | data[] | ABSENT |
-| /api/v1/inventory/returns | v1 | v1 envelope | 200 | data[] | ABSENT |
-| /api/v1/inventory/adjustments | v1 | v1 envelope | 200 | data[] | ABSENT |
+| /api/v1/inventory/issues | v1 | v1 envelope | 200 | data[] | 0 |
+| /api/v1/inventory/returns | v1 | v1 envelope | 200 | data[] | 0 |
+| /api/v1/inventory/adjustments | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/inventory/warehouses | v1 | v1 envelope | 200 | data[] | 0 |
-| /api/v1/inventory/transfers | v1 | v1 envelope | 200 | data[] | 0 |
+| /api/v1/inventory/transfers | v1 | v1 envelope | 200 | data[] | 7 |
 | /api/v1/inventory/reservations | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/inventory/lots/:id | v1 | v1 envelope | 403 | no array observed | ABSENT |
 | /api/v1/inventory/issues/:id | v1 | v1 envelope | 403 | no array observed | ABSENT |
@@ -366,7 +366,7 @@ Every mounted GET is included (including non-list, missing-record, denied, aggre
 | /api/v1/inventory/adjustments/:id | v1 | v1 envelope | 403 | no array observed | ABSENT |
 | /api/v1/inventory/warehouses/:id | v1 | v1 envelope | 403 | no array observed | ABSENT |
 | /api/v1/inventory/warehouses/:id/movements | v1 | v1 envelope | 403 | no array observed | ABSENT |
-| /api/v1/rfqs/award-recommendations | v1 | v1 envelope | 200 | data[] | ABSENT |
+| /api/v1/rfqs/award-recommendations | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/rfqs/ | v1 | v1 envelope | 200 | data[] | 3 |
 | /api/v1/rfqs/award-recommendations/:id | v1 | v1 envelope | 403 | no array observed | ABSENT |
 | /api/v1/rfqs/:id | v1 | v1 envelope | 403 | no array observed | ABSENT |
@@ -379,23 +379,23 @@ Every mounted GET is included (including non-list, missing-record, denied, aggre
 | /api/v1/contracts/:projectId | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/contracts/projects/:projectId | v1 | v1 envelope | 200 | no array observed | ABSENT |
 | /api/v1/contracts/:contractId/parties | v1 | v1 envelope | 403 | no array observed | ABSENT |
-| /api/v1/guarantees/ | v1 | v1 envelope | 200 | data[] | ABSENT |
+| /api/v1/guarantees/ | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/guarantees/:id | v1 | v1 envelope | 403 | no array observed | ABSENT |
-| /api/v1/insurances/ | v1 | v1 envelope | 200 | data[] | ABSENT |
+| /api/v1/insurances/ | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/insurances/:id | v1 | v1 envelope | 403 | no array observed | ABSENT |
 | /api/v1/currency-rates/convert | v1 | v1 envelope | 400 | no array observed | ABSENT |
-| /api/v1/currency-rates/ | v1 | v1 envelope | 200 | data[] | ABSENT |
-| /api/v1/payment-applications/ | v1 | v1 envelope | 200 | data[] | ABSENT |
+| /api/v1/currency-rates/ | v1 | v1 envelope | 200 | data[] | 4 |
+| /api/v1/payment-applications/ | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/payment-applications/:id | v1 | v1 envelope | 403 | no array observed | ABSENT |
-| /api/v1/budgets/projects/:projectId | v1 | v1 envelope | 200 | data[] | ABSENT |
+| /api/v1/budgets/projects/:projectId | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/budgets/:id | v1 | v1 envelope | 403 | no array observed | ABSENT |
-| /api/v1/forecasts/projects/:projectId | v1 | v1 envelope | 200 | data[] | ABSENT |
+| /api/v1/forecasts/projects/:projectId | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/forecasts/:id | v1 | v1 envelope | 403 | no array observed | ABSENT |
-| /api/v1/commitments/projects/:projectId | v1 | v1 envelope | 200 | data[] | ABSENT |
+| /api/v1/commitments/projects/:projectId | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/commitments/:id | v1 | v1 envelope | 403 | no array observed | ABSENT |
-| /api/v1/credit-notes/ | v1 | v1 envelope | 200 | data[] | ABSENT |
+| /api/v1/credit-notes/ | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/credit-notes/:id | v1 | v1 envelope | 403 | no array observed | ABSENT |
-| /api/v1/payment-batches/ | v1 | v1 envelope | 200 | data[] | ABSENT |
+| /api/v1/payment-batches/ | v1 | v1 envelope | 200 | data[] | 21 |
 | /api/v1/payment-batches/:id | v1 | v1 envelope | 404 | no array observed | ABSENT |
 | /api/v1/subcontracts/subcontractor/submissions | v1 | v1 envelope | 400 | no array observed | ABSENT |
 | /api/v1/subcontracts/:projectId | v1 | v1 envelope | 200 | data[] | 0 |
@@ -432,7 +432,7 @@ Every mounted GET is included (including non-list, missing-record, denied, aggre
 | /api/v1/schedule/lookahead | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/schedule/delayed | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/schedule/kpis | v1 | v1 envelope | 200 | data.per_activity[] | ABSENT |
-| /api/v1/schedule/s-curve | v1 | v1 envelope | 200 | data[] | ABSENT |
+| /api/v1/schedule/s-curve | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/schedule/alerts | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/schedule/milestones | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/schedule/baselines | v1 | v1 envelope | 200 | data[] | 0 |
@@ -440,7 +440,7 @@ Every mounted GET is included (including non-list, missing-record, denied, aggre
 | /api/v1/actions/my | v1 | v1 envelope | 200 | no array observed | ABSENT |
 | /api/v1/actions/:id/comments | v1 | v1 envelope | 403 | no array observed | ABSENT |
 | /api/v1/notifications/ | v1 | v1 envelope | 200 | data[] | 0 |
-| /api/v1/notifications/preferences | v1 | v1 envelope | 200 | data[] | ABSENT |
+| /api/v1/notifications/preferences | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/reports/catalog | v1 | v1 envelope | 200 | data.reports[] | ABSENT |
 | /api/v1/reports/saved-views | v1 | v1 envelope | 200 | data[] | 0 |
 | /api/v1/reports/scheduled | v1 | v1 envelope | 200 | data[] | 0 |
@@ -448,7 +448,7 @@ Every mounted GET is included (including non-list, missing-record, denied, aggre
 | /api/v1/reports/:reportKey/export | v1 | v1 envelope | 200 | no array observed | ABSENT |
 | /api/mcp | mcp | handler-specific | 405 | no array observed | ABSENT |
 | /api/agent/tokens | agent | shared pagination | 200 | data[] | 0 |
-| /api/agent/sessions | agent | shared pagination | 200 | data[] | 1 |
-| /api/agent/activity | agent | shared pagination | 200 | data[] | 0 |
+| /api/agent/sessions | agent | shared pagination | 200 | data[] | 8 |
+| /api/agent/activity | agent | shared pagination | 200 | data[] | 3 |
 | /api/agent/requests | agent | shared pagination | 200 | data[] | 0 |
 | /api/health | root | handler-specific | 200 | no array observed | ABSENT |
