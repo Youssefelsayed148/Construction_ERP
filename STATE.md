@@ -1,4 +1,12 @@
-# Current checkpoint - A2 token idle/load 30/30 passed; v1 idle next - 2026-10-17
+# Current checkpoint - A2 token30 + v1 idle10 passed; v1 load next - 2026-10-17
+
+- A2 v1 idle group passed10/10 fresh DBs,10 suites/100 tests,130 migrations each, exits0. Jest times5.066,4.896,4.684,5.851,4.883,4.805,4.998,4.745,5.760,4.608s. Token15 idle+15 load also passed: total completed40 suites/490 tests, zero failures/unavailability diagnostic logs. Root causes remain unproven.
+- Source review installed pg-pool/index.js:190-225 confirms pending acquisition can fail at connectionTimeoutMillis with generic Error (no SQLSTATE); app bound5000ms at database.js:16. This is a possible mechanism, NOT an observed failure. Single no-PG KDF sample: two concurrent bcrypt verifications107ms idle/141ms load, two concurrent scrypt hashes141ms idle/243ms load (N32768/r8/p3);12-worker load explicitly stopped. No credential/hash values output. Timing samples do not establish production latency/cause.
+- NEXT RESUME: A2 v1-contract LOAD iteration1, up to10 fresh disposable runs. Then A2 report/no speculative fix if unreproduced; run drafted A3/A3b tests RED before implementation, then focused green and A4 full gates from0/5. Three test drafts unrun/unstaged; source remains A1 ed94887. B/C not started/no push.
+
+# Prior token-mode checkpoint
+
+# A2 token idle/load 30/30 passed; v1 idle next - 2026-10-17
 
 - Token A2 modes complete: idle 15/15 and load 15/15; each fresh disposable PG / 130 migrations / 1 passed suite / 13 passed tests / exit0. Total 30 suites, 390 tests, zero failures. New unavailability diagnostics emitted zero times in both modes; historic OAuth503 not reproduced. No proven concurrency/connection source defect and no speculative fix.
 - Loaded mode used 12 worker threads during each run, with a 10-minute auto-stop bound plus explicit owned-process termination after each run. Valid elevated in-load sample: CPU82%, free RAM1,803MiB. First sandbox WMI sample was denied and its zero-RAM output is marked INVALID; never use it as a measurement. Fifteen CPU stderr logs empty. All helpers/observers are script files; PostgreSQL credentials remained process-only.

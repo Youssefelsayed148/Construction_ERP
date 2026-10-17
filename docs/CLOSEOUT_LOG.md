@@ -2587,6 +2587,14 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - Final Docker proof: post-cleanup inventory 25 containers / 595 volumes / 8 networks; exact-name Compare-Object differences from pre-test inventory=0 for each resource type. Saved .batch5a-verify-docker-postcleanup-inventory.log. All pre-existing resources retained. Documentation verification: git diff --check exit 0; four files CR_bytes=0; both excluded reports returned by git check-ignore; implementation-path git diff from cc1a3ea empty.
 - Staging verification: git diff --cached --check -> exit 0; exactly four documentation files staged, all i/lf w/lf; git diff --cached --name-only for both excluded review reports -> empty. User requested stop after committing/report completion and a clean-session rerun/closeout prompt; no more gates or diagnosis after this checkpoint. Final restage/whitespace check precedes commit with required trailers.
 
+## 2026-10-17 - A2 v1 idle checkpoint
+
+- V1 idle10 fresh disposable DBs:10 suites/100 tests passed,130 migrations each, exits0. A2 completed40 suites/490 tests including token modes, no failures/unavailability diagnostics. Current cause unproven, no concurrency fix.
+- Primary installed pg-pool/index.js:224 shows queued acquisition timeout governed by connectionTimeoutMillis (app5000ms); possible, not observed. Single KDF sample with no PG gate active: concurrent bcrypt pair107ms idle/141ms loaded, scrypt pair141ms idle/243ms loaded, N32768/r8/p3;12-worker load stopped, no credentials/hashes output.
+- Next exact resume v1 LOAD1..10; then required A3/header red tests before implementation, all A4 gates from0/5. Three drafted test files remain unrun/unstaged. Four-doc checkpoint only, LF/cached check/required trailers. B/C not started/no push; protected files/resources preserved.
+
+## Prior token-mode checkpoint
+
 ## 2026-10-17 - A2 token idle/load checkpoint
 
 - Token idle15 + load15 all passed:30 fresh throwaway DBs,130 migrations each,30 suites/390 tests, zero failures/exits0. Underlying unavailability diagnostics0. No reproduced503 or proven concurrency/connection defect; source remains ed94887. Full per-run timings in current report/parsed scratch summary.

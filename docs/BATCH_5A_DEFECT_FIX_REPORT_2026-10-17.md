@@ -1,4 +1,16 @@
-# CURRENT - A2 token idle/load 30/30 PASS; v1 idle next - 2026-10-17
+# CURRENT - A2 token30 + v1 idle10 PASS; v1 loaded next - 2026-10-17
+
+V1 idle command diagnose.ps1 -SuiteName v1 -Mode idle -Count10 completed **10/10 suites,100/100 tests**,130 migrations per fresh DB, all exits0. Jest times5.066,4.896,4.684,5.851,4.883,4.805,4.998,4.745,5.760,4.608s. Together with both token modes, A2 has40 passed suites/490 passed tests and zero unavailability diagnostics; no timeout/503 reproduced yet. Remaining mode: v1 LOAD1..10; A2 not complete before that mode.
+
+Installed primary code evidence: backend/node_modules/pg-pool/index.js:190-225 places a timer on pending checkout using connectionTimeoutMillis and raises a generic Error with the fixed connection-timeout message at :224. Thus the configured5000ms applies to queued pool acquisition as well as connection setup; no SQLSTATE is guaranteed. This possible mechanism was NOT observed in current runs. OAuth CAS/scrypt/pool app-source references remain below. Between PG groups (no PG gate active), a single2-operation timing sample measured bcrypt verification pair107ms idle/141ms loaded and scrypt hash pair141ms idle/243ms loaded, N32768/r8/p3.12 busy workers used only in loaded sample and terminated; no credentials/hashes printed. These samples are not production latency estimates or root-cause proof.
+
+Next exact resume v1 LOAD1. A4 remains0/5; S-003/header test drafts unrun/uncommitted. No app behavior fix, no B/C/push. Scratch kdf-{idle,load}.log and v1-idle-{1..10}*.log retain evidence.
+
+---
+
+# Prior token-mode checkpoint
+
+# A2 token idle/load 30/30 PASS; v1 idle next - 2026-10-17
 
 Token reproduction groups completed: **idle15/15 + load15/15 = 30 passed suites / 390 passed tests, zero failures**. Each iteration used its own new disposable PG, applied130 migrations and exited0 with13/13 tests. Loaded Jest times: 6.571, 6.679, 6.976, 7.190, 7.616, 7.120, 7.636, 7.177, 7.285, 7.477, 7.302, 7.607, 7.814, 7.637, 7.963s. New rate-limit/auth-unavailable diagnostics count0; the historical503 was NOT reproduced in either token mode. This does not prove absence of an intermittent failure or eliminate full-suite shared-state/environment effects. No concurrency fix justified.
 
