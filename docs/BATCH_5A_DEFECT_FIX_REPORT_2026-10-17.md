@@ -1,3 +1,44 @@
+# Verification-only resume at cc1a3ea - Docker recovery STOP - 2026-10-17
+
+Starting branch closeout/batch-a-to-6, HEAD cc1a3ea08e2f5a85f93ff46d838d5aad6a99d856, clean working tree. This attempt changed documentation only. Results below supersede historical gate counts for this resume.
+
+Docker recovery (approximately 03:54-03:58 Cairo): sandbox docker info failed with named-pipe Access is denied. The outside-sandbox health check then failed to answer within 30 seconds; its client was terminated. Stopped the four Docker Desktop processes (18420, 18852, 21944, 24864) and both com.docker.backend processes (3932, 17104), then started C:\Program Files\Docker\Docker\Docker Desktop.exe with a hidden window. Replacement Desktop/backend processes were observed. No second restart occurred.
+
+The bounded three-minute polling command emitted:
+
+```text
+Docker Desktop launched from default install path.
+docker info poll 1 exit=
+docker info poll 2 timed out
+docker info poll 3 timed out
+docker info poll 4 timed out
+docker info poll 5 timed out
+docker info poll 6 timed out
+docker info poll 7 timed out
+docker info poll 8 timed out
+docker info poll 9 timed out
+docker info poll 10 timed out
+docker info poll 11 timed out
+STOP: Docker did not recover within 3 minutes. Manual Docker Desktop/WSL restart required.
+```
+
+Recovery exit 1. Poll 1 provided no usable successful result; later probes did not answer. A separate unresponsive info client was also terminated. No test, migration or schema assertion ran, so the underlying daemon/WSL cause is unestablished; this is an infrastructure blocker, not evidence of a schema defect.
+
+Pilot before/after container status and uptime are UNAVAILABLE. Step 0c was not reached: no compose ps, start, or HTTP check. Step 0d was not reached: no daemon inventory, no container/volume/network removal. Removed: NONE. Left: ALL Docker resources, including every protected pilot/sweep/demo resource and any old disposable PG resources; exact old disposable inventory remains unconfirmed. The authorized Desktop/backend restart may affect existing container availability, which could not be checked. No direct protected-stack operation, seed, build, recreation or cleanup ran.
+
+| Requested gate | This attempt's result |
+|---|---|
+| Full PostgreSQL suite, unfiltered | NOT RUN; 0 suites / 0 tests executed; no test failure count available |
+| v1-contract inside full PG, runs 1 / 2 / 3 / 4 / 5 | ALL NOT RUN; 0/5 completed; no assertion failure |
+| Docker test-stage build | NOT RUN |
+| Disposable golden verification | NOT RUN; 0 checks executed |
+| Backend mock / frontend | NOT RUN; 0 suites/tests executed |
+| i18n check/parity / lint:guards / API lint / build | NOT RUN |
+
+STOP as instructed at step 0b. User action required: restart Docker Desktop manually; if necessary run wsl --shutdown, then reopen Docker Desktop. No automatic WSL shutdown or further verification attempt. After manual recovery, resume health check, the permitted pilot status/start and HTTP check, exact-name disposable cleanup and every requested gate. Batch 5A remains incomplete. Excluded review reports preserved, ignored and unstaged; no feature/source/test/dependency/migration/environment-file changes, external messages, push, PR or deployment.
+
+# Historical report at cc1a3ea (superseded above for this resume)
+
 # Last Batch 5A scope blocker - fixed; final verification BLOCKED - 2026-10-17
 
 Resume source: e5cd943 on closeout/batch-a-to-6. Application fix has focused real-PG evidence. Batch closure is blocked by Docker engine availability; five full-PG runs and final Docker verification are incomplete. Earlier report sections below are historical and do not establish final gate status.

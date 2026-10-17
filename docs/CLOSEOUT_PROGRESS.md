@@ -1,3 +1,11 @@
+# 2026-10-17 - Batch 5A verification stopped at Docker recovery
+
+Verification-only resume at cc1a3ea on closeout/batch-a-to-6. Initial working tree clean. Docker info outside the sandbox did not answer within 30 seconds. Per the explicit recovery authorization, stopped Docker Desktop and com.docker.backend processes and launched the default Desktop executable. Recovery polling produced no successful docker info result within three minutes: poll 1 had no usable exit status, polls 2-11 timed out; final recovery exit 1, manual Docker Desktop/WSL restart required. No second restart or WSL command executed.
+
+STOP before steps 0c/0d and all verification gates. Pilot before/after status and uptime unavailable; no compose command or pilot HTTP check. No container, volume or network removed; all resources left in place, prior disposable cleanup still unconfirmed. No direct pilot/sweep/demo operation; availability after the authorized daemon restart is unverified. Full PG executed 0 suites/tests; v1 full-suite runs 1-5 all NOT RUN (0/5); Docker/golden/backend/frontend/i18n/guards/API lint/build all NOT RUN in this attempt. No historic pass is carried forward. Next action: user restarts Docker Desktop manually, or wsl --shutdown then reopens Desktop; resume the bounded health check and remaining requested steps. Documentation-only checkpoint; Batch 5A remains incomplete. See STATE.md and the defect-fix report for command evidence.
+
+# Historical checkpoint at cc1a3ea
+
 # 2026-10-17 - Batch 5A last scope fix; final verification blocked
 
 HIGH team listing defect reproduced (18 passed / 4 failed), reported, and fixed in SQL before counting/pagination on both team routes. Distinct supplier/client fixtures remove equality ambiguity without changing the aggregate assertion or allowlist. Focused real PG: 3 suites / 28 tests passed, 130 migrations; aggregate unexplained=0 and server failures=0. Application source unchanged since that pass; later test-only pagination refinements remain pending PG verification.
