@@ -5,6 +5,13 @@
 - Static route inspection confirms the mounted warehouse API has no create route: `/api/warehouses` exposes GET collection/detail and POST movement/transfer/reservation operations only; v1 aliases the same route set. Project provisioning also contains no warehouse creation. The two required warehouses cannot be created through the permitted services/API. Direct SQL is disallowed for creation, and product changes are disallowed, so masters cannot satisfy its required entities.
 - C-MASTER-001 remains MEDIUM (broken flow/capability): no authorized warehouse-creation endpoint/service. Gate C is BLOCKED before module execution; masters module created 0 records and its module-specific idempotency test was not written/run. Procurement, finance, HR, site/QHSE, second full run, document-number list, and nine-state check are NOT RUN. Gate D and E are NOT RUN. No business rows were changed.
 - Next action: resume masters only after a supported warehouse create API/service path is made available or scope changes to authorize its implementation. Continue with masters idempotency tests/count/commit before procurement.
+# 2026-10-18 - RUN 1b-3 Gate C finance module checkpoint
+
+- Added finance seeder/test/entrypoint and `seed:company-demo:finance`; no product source changes. Initial focused red was diagnosed `MODULE_NOT_FOUND` because helper module was not yet created. Green focused run: 1 suite/1 test/0 skipped, 0.363 s, exit0; no assertion-level pre-fix behavior red claimed.
+- First real module run exit0/~1.70 s created9. Second full finance rerun exit0/~1.39 s created0. Read-only API census exit0/0.530 s: 4 client invoices, 2 AR receipts, 1 AP supplier payment, 1 supplier invoice.
+- Real numbers/statuses: INV-0001 paid; INV-0002 partially paid; INV-0003 unpaid/sent; INV-0004 overdue; DEMO-AP-001 approved; AR references DEMO-AR-RCPT-PAID-001 and DEMO-AR-RCPT-PARTIAL-001; AP reference DEMO-AP-PAY-001. Receipt and supplier payment directions were verified separately.
+- No unexplained failures. Updated STATE, progress, log, and demo guide. HR/site-QHSE, final whole seed rerun, nine states, Gate D/E remain pending. No push.
+
 # 2026-10-18 - RUN 1b-3 Gate C procurement module checkpoint
 
 - Procurement module committed separately after the masters checkpoint. Focused helper test red was a diagnosed MODULE_NOT_FOUND before the module existed; green: 1 suite/1 test/0 skipped, 0.270 s, exit0. No assertion-level pre-fix red is claimed. Full real procurement module rerun returned `created=0`.

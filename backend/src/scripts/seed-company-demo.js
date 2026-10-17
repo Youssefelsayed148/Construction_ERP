@@ -212,6 +212,42 @@ async function main() {
     console.log(JSON.stringify(result));
     return;
   }
+  if (action === '--finance') {
+    const credentials = JSON.parse(fs.readFileSync(path.join(ROOT, '.demo-users.json'), 'utf8'));
+    assertDemoTarget(credentials.target);
+    const { seedFinance, TARGET: financeTarget } = require('./company-demo-finance');
+    if (JSON.stringify(financeTarget) !== JSON.stringify(target)) throw new Error('Refusing demo: finance target mismatch');
+    const tokens = new Map();
+    const request = async (account, route, options = {}) => {
+      let session = tokens.get(account.key);
+      if (!session) { session = await login(target, account); tokens.set(account.key, session); }
+      return demoRequest(target, route, { ...options, token: session.token });
+    };
+    const owner = credentials.accounts.find(row => row.key === 'workflow_owner');
+    const list = async route => {
+      const response = await request(owner, route);
+      if (response.status !== 200 || !Array.isArray(response.body?.data)) throw new Error(`Demo list ${route}: HTTP ${response.status}`);
+      return response.body.data;
+    };
+    const projects = (await list('/api/projects?limit=200')).filter(row => String(row.code || '').startsWith('DEMO-PRJ-'));
+    const [clients, suppliers, materials] = await Promise.all([
+      list('/api/clients?limit=200'), list('/api/suppliers?limit=200'), list('/api/items?limit=200'),
+    ]);
+    const purchaseOrders = [];
+    for (const project of projects) {
+      const response = await request(owner, `/api/procurement/project/${project.id}?limit=200`);
+      if (response.status !== 200) throw new Error(`Demo list /api/procurement/project/${project.id}: HTTP ${response.status}`);
+      for (const row of response.body?.data?.purchase_orders || []) purchaseOrders.push({ ...row, project_id: project.id });
+    }
+    const result = await seedFinance({ target, request, accounts: credentials.accounts, projects,
+      clients: clients.filter(row => String(row.code || '').startsWith('DEMO-CLI-')),
+      suppliers: suppliers.filter(row => String(row.code || '').startsWith('DEMO-SUP-')),
+      materials: materials.filter(row => String(row.code || '').startsWith('DEMO-MAT-')),
+      purchaseOrders: purchaseOrders.filter(row => String(row.order_number || '').startsWith('PO-')) });
+    saveReport('stage-4-finance.json', result);
+    console.log(JSON.stringify(result));
+    return;
+  }
   if (action !== '--accounts') throw new Error('Refusing demo: unknown stage');
   console.log(JSON.stringify(await seedAccounts()));
 }

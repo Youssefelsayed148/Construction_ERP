@@ -1,3 +1,10 @@
+# 2026-10-18 - RUN 1b-3 Gate C finance module checkpoint
+
+- Focused command `npm.cmd --prefix backend test -- --runInBand --runTestsByPath src/scripts/__tests__/company-demo-finance.test.js`: first red exit1 because `company-demo-finance.js` was not yet present (`MODULE_NOT_FOUND`); after implementation PASS 1 suite/1 test/0 skipped, 0.363 s, exit0. The red was import-level, not assertion-level; no behavior-red claim.
+- `npm.cmd --prefix backend run seed:company-demo:finance`: first execution exit0/~1.70 s/created9 (client invoices4, AR receipts2, supplier invoices1, supplier approval1, AP supplier payment1); complete second execution exit0/~1.39 s/created0. Read-only `node .scratch-company-demo/finance-counts.js` exit0/0.530 s: client invoices4, AR receipts2, AP payments1, supplier invoices1.
+- Real finance records: client invoices INV-0001 paid, INV-0002 partially_paid (50,000/200,000 EGP), INV-0003 unpaid/sent, INV-0004 overdue; supplier invoice DEMO-AP-001 approved; receipts DEMO-AR-RCPT-PAID-001 and DEMO-AR-RCPT-PARTIAL-001 are direction=ar; DEMO-AP-PAY-001 is a separate direction=ap supplier payment. Maker/checker accounts are distinct. No raw SQL and no product-code change.
+- Finance module proceeded with no unexplained failure. HR and site/QHSE, full all-module rerun, and remaining interesting states are pending; Gate D/E not run.
+
 # 2026-10-18 - RUN 1b-3 Gate C procurement module checkpoint
 
 - Procurement focused test red was a diagnosed missing-module import before implementation; green `npm.cmd --prefix backend test -- --runInBand --runTestsByPath src/scripts/__tests__/company-demo-procurement.test.js` -> PASS, 1 suite/1 test/0 skipped, 0.270 s, exit0. No assertion-level pre-fix red is claimed. Real module rerun returned `created=0`.
