@@ -182,6 +182,36 @@ async function main() {
     console.log(JSON.stringify(result));
     return;
   }
+  if (action === '--procurement') {
+    const credentials = JSON.parse(fs.readFileSync(path.join(ROOT, '.demo-users.json'), 'utf8'));
+    assertDemoTarget(credentials.target);
+    const { seedProcurement, TARGET: procurementTarget } = require('./company-demo-procurement');
+    if (JSON.stringify(procurementTarget) !== JSON.stringify(target)) throw new Error('Refusing demo: procurement target mismatch');
+    const tokens = new Map();
+    const request = async (account, route, options = {}) => {
+      let session = tokens.get(account.key);
+      if (!session) { session = await login(target, account); tokens.set(account.key, session); }
+      return demoRequest(target, route, { ...options, token: session.token });
+    };
+    const list = async (account, route) => {
+      const response = await request(account, route);
+      if (response.status !== 200 || !Array.isArray(response.body?.data)) throw new Error(`Demo list ${route}: HTTP ${response.status}`);
+      return response.body.data;
+    };
+    const owner = credentials.accounts.find(row => row.key === 'workflow_owner');
+    const [projects, suppliers, materials, warehouses] = await Promise.all([
+      list(owner, '/api/projects?limit=200'), list(owner, '/api/suppliers?limit=200'),
+      list(owner, '/api/items?limit=200'), list(owner, '/api/warehouses?limit=200'),
+    ]);
+    const result = await seedProcurement({ target, request, accounts: credentials.accounts,
+      projects: projects.filter(row => String(row.code || '').startsWith('DEMO-PRJ-')),
+      suppliers: suppliers.filter(row => String(row.code || '').startsWith('DEMO-SUP-')),
+      materials: materials.filter(row => String(row.code || '').startsWith('DEMO-MAT-')),
+      warehouses: warehouses.filter(row => String(row.name || '').startsWith('DEMO-2026-')) });
+    saveReport('stage-3-procurement.json', result);
+    console.log(JSON.stringify(result));
+    return;
+  }
   if (action !== '--accounts') throw new Error('Refusing demo: unknown stage');
   console.log(JSON.stringify(await seedAccounts()));
 }

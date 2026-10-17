@@ -1,3 +1,10 @@
+# 2026-10-18 - RUN 1b-3 Gate C procurement module checkpoint
+
+- Procurement focused test red was a diagnosed missing-module import before implementation; green `npm.cmd --prefix backend test -- --runInBand --runTestsByPath src/scripts/__tests__/company-demo-procurement.test.js` -> PASS, 1 suite/1 test/0 skipped, 0.270 s, exit0. No assertion-level pre-fix red is claimed. Real module rerun returned `created=0`.
+- Seed command `npm.cmd --prefix backend run seed:company-demo:procurement` first complete receipts execution -> exit0/~2.22 s/created8; return follow-up -> exit0/~1.58 s/created1; complete rerun -> exit0/~1.53 s/created0. Read-only count command `node .scratch-company-demo/procurement-counts.js` -> exit0/0.454 s. Counts: PR12, RFQ4, quotes3 on RFQ-00001, PO10, delivery3, MIR3, GRN2, supplier return1. Numbers: PR-00001..12, RFQ-00001..04, PO-00001..10, DLV-00001..03, MIR-00001..03, GRN-00001..02, SRN-00001.
+- Verified states: RFQ-00001 is draft/award pending with three quotes; PO-00001 has two accepted partial receipts DLV-00001/00002; DLV-00003 on PO-00002 is rejected. SRN-00001 is linked to accepted GRN-00001, not rejected DLV-00003. PR-00001 remains draft. Read-only active template evidence shows purchase_requisition has no owner_ceo step. Defects C-PROC-001 and C-PROC-002 are MEDIUM and recorded in STATE: absent CEO approval step, and no supplier-return path for a fully rejected MIR without GRN. No product change.
+- Documented maker/checker role corrections and corrected response mappings in STATE. User requested “READY FOR PROCURE-TO-PAY UI TESTING”; note recorded with exact document numbers and explicit unavailable paths. Continue module c; the whole-seed rerun and all nine states remain pending.
+
 # 2026-10-18 - RUN 1b-3 Gate C masters module checkpoint
 
 - Start verified at `4a297ce` on `closeout/batch-a-to-6`; exact demo API was healthy. Owner decisions recorded in STATE: two guarded warehouse inserts only; use the existing 12 cost codes; create employees through workflow_owner; C-MASTER-001/002 MEDIUM. No product-code changes.

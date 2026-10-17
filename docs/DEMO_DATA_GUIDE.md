@@ -43,11 +43,11 @@ See [current verification report](DEMO_VERIFICATION_REPORT_2026-10-17.md). Execu
 
 Historical guide follows; account status is superseded above.
 
-# Company demo guide - Gate C in progress
+# Company demo guide - Gate C in progress (masters and procurement)
 
-**The masters module is loaded; the company dataset is incomplete and is not ready for UI testing.** UI: `http://127.0.0.1:8092`; database: `construction_erp_demo` on loopback `55442`; Compose project: `erp-demo-20261017`. No pilot/clone environment was contacted.
+**Masters and procurement records are loaded; the full company dataset is incomplete.** UI: `http://127.0.0.1:8092`; database: `construction_erp_demo` on loopback `55442`; Compose project: `erp-demo-20261017`. No pilot/clone environment was contacted.
 
-The account stage remains 38 verified logins from Gate B. Credentials remain in ignored demo-only files and are not included here. Gate C modules b-e, final whole-seed rerun, all nine walkthrough states and document-number register are still pending. No document numbers exist yet.
+The account stage remains 38 verified logins from Gate B. Credentials remain in ignored demo-only files and are not included here. Finance, HR and site/QHSE, the final whole-seed rerun, and full nine-state verification are still pending. Procurement has real document numbers below. C-PROC-001/002 leave the owner_ceo PR state and a return directly linked to the rejected delivery unavailable.
 
 ## Masters counts (2026-10-18)
 
@@ -64,25 +64,38 @@ The account stage remains 38 verified logins from Gate B. Credentials remain in 
 | Warehouses | 2 | Approved guarded inserts; project-bound to A and B |
 | Project locations | 9 | Three per project |
 
+## Procurement counts and document numbers (2026-10-18)
+
+| Record | Count | Real document numbers / state |
+|---|---:|---|
+| Purchase requests | 12 | PR-00001 through PR-00012; PR-00001 remains draft because the active template has no owner_ceo step |
+| RFQs | 4 | RFQ-00001 through RFQ-00004; RFQ-00001 has 3 quotations and no award |
+| Purchase orders | 10 | PO-00001 through PO-00010; PO-00001 and PO-00002 are partially delivered |
+| Deliveries | 3 | DLV-00001 and DLV-00002 are 40-unit partial receipts on PO-00001; DLV-00003 on PO-00002 was rejected |
+| MIRs | 3 | MIR-00001 and MIR-00002 accepted; MIR-00003 rejected |
+| GRNs | 2 | GRN-00001 and GRN-00002 for accepted deliveries |
+| Supplier returns | 1 | SRN-00001 linked to GRN-00001; it is not a return from rejected DLV-00003 |
+| Client invoices / receipts / NCRs | 0 | Finance and site/QHSE modules not run |
+
 Masters focused test: `npm.cmd --prefix backend test -- --runInBand --runTestsByPath src/scripts/__tests__/company-demo-masters.test.js` -> 1 suite / 2 tests PASS, 0 skipped, exit 0. Seed command `npm.cmd --prefix backend run seed:company-demo:masters` -> exit 0; complete rerun -> `created=0`. See `STATE.md` for timings, diagnosed intermediate seed corrections and test-red limitation.
 
 Defects logged: C-MASTER-001 MEDIUM (no supported warehouse-create route for real users; demo used the owner-approved narrow SQL exception); C-MASTER-002 MEDIUM (`hr_manager` cannot create employees; use `workflow_owner`). Product code has not been changed.
 
 | Interesting state | Present | Intended role key after seeding |
 |---|---|---|
-| Overdue client invoice |Not checked; finance not run|accountant_ar / owner_ceo|
-| Partially paid invoice |Not checked; finance not run|accountant_ar|
-| PO with two partial deliveries |Not checked; procurement not run|procurement_officer / storekeeper|
-| RFQ award pending |Not checked; procurement not run|procurement_manager|
-| PR waiting on CEO |Not checked; procurement not run|owner_ceo|
-| Low-stock alert |Not checked; inventory not run|storekeeper|
-| Open NCR |Not checked; site/QHSE not run|qa_qc_manager|
-| Pending variation |Not checked; site/QHSE not run|commercial_manager|
-| Project B retention pending |Not checked; finance not run|finance_manager|
+| Overdue client invoice |Not run|accountant_ar / owner_ceo|
+| Partially paid invoice |Not run|accountant_ar|
+| PO with two partial deliveries |Present: PO-00001 / DLV-00001, DLV-00002|procurement_officer / storekeeper|
+| RFQ award pending |Present: RFQ-00001, 3 quotations|procurement_manager|
+| PR waiting on CEO |Missing: PR-00001 is draft; workflow has no owner_ceo step|owner_ceo|
+| Low-stock alert |Not run|storekeeper|
+| Open NCR |Not run|qa_qc_manager|
+| Pending variation |Not run|commercial_manager|
+| Project B retention pending |Not run|finance_manager|
 
 ### Document numbers
 
-No PR, RFQ, PO, GRN, invoice, receipt, or NCR numbers have been generated. The table will be populated from real API responses after the corresponding modules run.
+Client invoice, receipt and NCR numbers have not been generated; those modules remain pending. The procurement numbers above were read from real API responses.
 
 ---
 
