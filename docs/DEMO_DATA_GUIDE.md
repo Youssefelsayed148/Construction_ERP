@@ -45,9 +45,9 @@ Historical guide follows; account status is superseded above.
 
 # Company demo guide - Gate C in progress (masters, procurement and finance)
 
-**Masters, procurement, finance and HR records are loaded; the full company dataset is incomplete.** UI: `http://127.0.0.1:8092`; database: `construction_erp_demo` on loopback `55442`; Compose project: `erp-demo-20261017`. No pilot/clone environment was contacted.
+**Masters, procurement, finance, HR and site/QHSE records are loaded; the full company dataset is incomplete.** UI: `http://127.0.0.1:8092`; database: `construction_erp_demo` on loopback `55442`; Compose project: `erp-demo-20261017`. No pilot/clone environment was contacted.
 
-The account stage remains 38 verified logins from Gate B. Credentials remain in ignored demo-only files and are not included here. Site/QHSE, the final whole-seed rerun, and full nine-state verification are still pending. Masters, procurement, finance and HR have records below. C-PROC-001/002 leave the owner_ceo PR state and a return directly linked to the rejected delivery unavailable.
+The account stage remains 38 verified logins from Gate B. Credentials remain in ignored demo-only files and are not included here. The final whole-seed rerun and full nine-state verification are still pending. Masters, procurement, finance, HR and site/QHSE have records below. C-PROC-001/002 leave the owner_ceo PR state and a return directly linked to the rejected delivery unavailable.
 
 ## Masters counts (2026-10-18)
 
@@ -85,7 +85,23 @@ The finance seed uses the invoice, supplier invoice and payment service routes. 
 | Site inductions | 3 | One real HSE induction record per demo project |
 | Payroll | 1 period / 25 lines | DEMO-PAYROLL-2026-02, Feb 2026, 25 employees |
 
-`npm.cmd --prefix backend run seed:company-demo:hr` created 60 counted rows/actions initially and 0 on the complete rerun. `node .scratch-company-demo/hr-counts.js` verified the totals. Focused test passed 1 suite/1 test; its first red was a diagnosed missing-module import, not an assertion-level behavior red. Site/QHSE records and final whole-seed rerun are still pending.
+`npm.cmd --prefix backend run seed:company-demo:hr` created 60 counted rows/actions initially and 0 on the complete rerun. `node .scratch-company-demo/hr-counts.js` verified the totals. Focused test passed 1 suite/1 test; its first red was a diagnosed missing-module import, not an assertion-level behavior red. Final whole-seed rerun is still pending.
+
+## Site, QHSE and admin counts (2026-10-18)
+
+| Record | Count | Real document numbers / state |
+|---|---:|---|
+| Company profile | 1 | ERP Demo Construction Company; Alexandria, EGP |
+| Project admin settings | 3 | `demo.admin_setup` set on projects A/B/C |
+| Site reports | 3 | DEMO-SITE-REPORT-A/B/C for projects A/B/C |
+| HSE inspections | 3 | One per project; two passed and one failed with follow-up |
+| Open NCR | 1 | NCR-2026-0001, major, open |
+| HSE incident | 1 | DEMO-HSE-INCIDENT-001, minor, no lost time |
+| Permit | 1 | HW-2026-0001, hot work |
+| RFI | 1 | RFI-1-001, open |
+| Variation | 1 | VAR-0001, workflow started; workflow_instance_id present. Variation row remains `change_event`; active step is not exposed by a public read route found in this run. |
+
+Initial site command reported `created=13` because the counter grouped three project-setting rows as one. Read-only API census `node .scratch-company-demo/site-counts.js` verified the 15 initial setup/business rows above. A JSONB key-order comparison also caused an intermediate settings rewrite; canonical-key comparison corrected it. Site module rerun after the workflow start returned `created=0`. The first focused red was the diagnosed missing-helper import; green was 1 suite/1 test. No product code changed.
 
 ## Procurement counts and document numbers (2026-10-18)
 
@@ -115,10 +131,11 @@ Defects logged: C-MASTER-001 MEDIUM (no supported warehouse-create route for rea
 | Open NCR |Not run|qa_qc_manager|
 | Pending variation |Not run|commercial_manager|
 | Project B retention pending |Not run|finance_manager|
+| Rejected delivery with its own return |Missing: C-PROC-002, rejected DLV-00003 has no GRN and supplier-return API requires GRN|storekeeper|
 
 ### Document numbers
 
-Client invoice numbers are INV-0001..INV-0004. Receipt identifiers are the real API reference numbers DEMO-AR-RCPT-PAID-001 and DEMO-AR-RCPT-PARTIAL-001. NCR remains pending. All listed identifiers and statuses were read from the demo API.
+Client invoice numbers are INV-0001..INV-0004. Receipt identifiers are the real API reference numbers DEMO-AR-RCPT-PAID-001 and DEMO-AR-RCPT-PARTIAL-001. NCR is NCR-2026-0001; permit HW-2026-0001; RFI RFI-1-001; variation VAR-0001. All listed identifiers and statuses were read from the demo API.
 
 ---
 

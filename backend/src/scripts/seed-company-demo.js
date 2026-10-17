@@ -268,6 +268,26 @@ async function main() {
     console.log(JSON.stringify(result));
     return;
   }
+  if (action === '--site-qhse') {
+    const credentials = JSON.parse(fs.readFileSync(path.join(ROOT, '.demo-users.json'), 'utf8'));
+    assertDemoTarget(credentials.target);
+    const { seedSite, TARGET: siteTarget } = require('./company-demo-site');
+    if (JSON.stringify(siteTarget) !== JSON.stringify(target)) throw new Error('Refusing demo: site/QHSE target mismatch');
+    const tokens = new Map();
+    const request = async (account, route, options = {}) => {
+      let session = tokens.get(account.key);
+      if (!session) { session = await login(target, account); tokens.set(account.key, session); }
+      return demoRequest(target, route, { ...options, token: session.token });
+    };
+    const owner = credentials.accounts.find(row => row.key === 'workflow_owner');
+    const projectsResponse = await request(owner, '/api/projects?limit=200');
+    if (projectsResponse.status !== 200 || !Array.isArray(projectsResponse.body?.data)) throw new Error(`Demo list /api/projects: HTTP ${projectsResponse.status}`);
+    const projects = projectsResponse.body.data.filter(row => String(row.code || '').startsWith('DEMO-PRJ-'));
+    const result = await seedSite({ target, request, accounts: credentials.accounts, projects });
+    saveReport('stage-6-site-qhse.json', result);
+    console.log(JSON.stringify(result));
+    return;
+  }
   if (action !== '--accounts') throw new Error('Refusing demo: unknown stage');
   console.log(JSON.stringify(await seedAccounts()));
 }

@@ -20,7 +20,7 @@ function composeArguments(target) {
 }
 function resetArguments(target) { return [...composeArguments(target), 'down', '-v']; }
 
-async function demoRequest(target, route, { method = 'GET', token, body, fetchImpl = fetch } = {}) {
+async function demoRequest(target, route, { method = 'GET', token, body, headers = {}, fetchImpl = fetch } = {}) {
   assertDemoTarget(target);
   if (!route.startsWith('/api/') || route.includes('..') || route.includes('\\')) throw new Error('Refusing demo: API route required');
   const url = new URL(route, target.baseUrl);
@@ -28,6 +28,7 @@ async function demoRequest(target, route, { method = 'GET', token, body, fetchIm
   const response = await fetchImpl(url, { method, redirect: 'error', signal: AbortSignal.timeout(20000), headers: {
     Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+    ...headers,
   }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
   let data = null;
   try { data = await response.json(); } catch (_) { /* HTTP status remains evidence for non-JSON responses. */ }

@@ -1,3 +1,9 @@
+# 2026-10-18 - RUN 1b-3 Gate C site/QHSE module checkpoint
+
+- Focused command `npm.cmd --prefix backend test -- --runInBand --runTestsByPath src/scripts/__tests__/company-demo-site.test.js`: import red `MODULE_NOT_FOUND` before helper implementation; green PASS 1 suite/1 test/0 skipped, 0.372 s, exit0. No assertion-level behavior red claimed.
+- Site command first run exit0/~1.96 s printed created13; API census established 15 initial profile/project-settings/business rows (3 settings were grouped into one counter bucket). A JSONB key-order compare caused an intermediate rerun to rewrite 3 settings; canonical comparison corrected it. Variation workflow follow-up exit0/~2.61 s created1 active workflow; full module rerun exit0/~1.66 s created0. Census `node .scratch-company-demo/site-counts.js` exit0/0.616 s.
+- Counts: company profile1, project settings3, site reports3, inspections3, open NCR1, incident1, permit1, RFI1, variation1; VAR-0001 has workflow_instance_id, while row status remains change_event and active step has no public read route found. Numbers NCR-2026-0001, HW-2026-0001, RFI-1-001, VAR-0001. Other required states low stock, Project B retention pending, direct return from rejected DLV-00003 and PR owner_ceo remain absent/unverified. No product changes.
+
 # 2026-10-18 - RUN 1b-3 Gate C HR module checkpoint
 
 - Focused command `npm.cmd --prefix backend test -- --runInBand --runTestsByPath src/scripts/__tests__/company-demo-hr.test.js`: initial red exit1 was `MODULE_NOT_FOUND` because helper did not yet exist; green PASS 1 suite/1 test/0 skipped, 0.367 s, exit0. No assertion-level behavior red claimed.
