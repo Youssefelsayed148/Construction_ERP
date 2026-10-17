@@ -1,3 +1,13 @@
+# 2026-10-17 - Phase B stage 1 STOP; Gate B failed; C not started
+
+5A policy5912917 pushed after exact GitHub-destination approval; 5A remains functionally complete, gates deferred, production NO-GO. New demo scaffold uses guarded UI8092/PG55442/construction_erp_demo, local images/current built UI, internal-only backend/db and credential-free nginx ingress. No full suite, Docker test stage or broad verification rerun. New safety tests:1 suite/33 tests PASS/0 skipped (0.327s); guarded reset was not executed.
+
+Two account-step failures require STOP:1)ECONNREFUSED from host mappings on internal-only network, diagnosed mappings`:0`, fixed/tested via ingress; post-fix demo DB read users1 and HTTPhealth200;2)bootstrap loginHTTP400. Local Joi.email proves `.invalid` is rejected, reserved`demo.example.com` accepted. No third login or seed attempt; no SQL bypass or auth-validation change. D-001 MEDIUM demo configuration blocker. API account creation0; actual users1/38, projects/clients/suppliers/procurement/finance/employees0;130 migrations;251 public-table counts exported. All9 interesting states missing; Gate B failed, C0 chains/0 isolation routes/0of38 accounts/0of2 languages, severities unmeasured.
+
+Docker before/after25->29 containers,595->597 volumes,8->10 networks; baseline removals0 each, additions only4 demo services/2 named volumes/2 networks. Demo retained, db/backend healthy, frontend running, migrate exit0; pilotHTTP200, protected stacks untouched. Reports and proposed exact resume in STATE.md and DEMO_ENVIRONMENT_VERIFICATION_2026-10-17.md. Preserve generated ignored credentials/evidence. No automatic retry; no additional push while Gate B failed.
+
+# Prior checkpoint
+
 # 2026-10-17 - Owner replacement Gate A met; 5A functionally complete, gates deferred
 
 Whole-diff audit now done with native Git/grep-equivalent only: 897e823..a0dbca7, 58 files / +3652 -92 (backend/frontend48 / +1655 -69); whitespace exit0; no unresolved HIGH finding, no removed assertions or changed skip/only/timeout calls matched. Disclosed9 conditional TEST_PG suites and17 historical allowlist additions. `lint:guards` -> ok/exit0; permitted single CI root build -> Compiled successfully/exit0 within about two minutes (initial sandbox spawn EPERM, execution outside sandbox passed). Documentation-only continuation; focused changed-code tests not applicable. Full gates not run.

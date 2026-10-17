@@ -1,3 +1,15 @@
+# 2026-10-17 - Phase B environment/account checkpoint STOP
+
+- Owner supplied B/C attachments; Phase A implementation skipped. Policy5912917 pushed to explicitly approved github.com/Youssefelsayed148/Construction_ERP (`afb2525..5912917`); initial auto-review rejection resolved by destination approval. 5A functionally complete, gates deferred; no sign-off/production move.
+- Read-only Docker preflight28.3.2,25containers/595volumes/8networks,freeRAM2032MiB/CPU2%,ports8092/55442 not excluded. One wrapper false failure from null ExitCode corrected after version28.3.2/empty-stderr evidence; subsequent preflight exit0. Only local node20/postgres16-alpine/nginx images used; no build/pull/full tests.
+- Initialized exactly ignored demo config and38 generated credential entries, no values printed. Guard/reset/request/idempotency/new ingress safety focused run:PASS1/33,0skips,0.327s. Expected red evidence:missing new module;2 initializer assertions;1 ingress-safety assertion. No test assertion/timeout/skip weakening.
+- Demo startup succeeded but account attempt1 failed at host connection:read-only diagnosticsECONNREFUSED for DB+HTTP; owned Compose mappings`:0`, internal APIHTTP200 ready. Added tested credential-free nginx ingress; db/backend remain internal-only. Second startup succeeded; read-only diagnosticsusers1/HTTP200 ready.
+- Account attempt2 actual output:`Demo login workflow_owner: HTTP 400`,exit1. STOP after two failures; no third attempt. Local-only Joi.email validation returns`"value" must be a valid email` for the configured `.invalid` address; reserved`demo.example.com` accepted. Proposed correction/test/reset sequence recorded, not executed. D-001MEDIUM configuration blocker, not proven app regression.
+- Final read-only counts:251 public tables;schema_migrations130,users1,organizations1;projects/clients/suppliers/employees/PR/RFQ/PO/deliveries/MIR/GRN/invoices/payments/expenses/journals0. All9 interesting states absent; API idempotency/financial arithmetic unverified. GateB failed; C not started (0chains/0routes/0of38accounts/0of2languages), no severity totals claimed.
+- Final exact-name inventory29containers/597volumes/10networks;baseline removals0 each;only4 demo service containers,2 named volumes,2 networks added. Backend/db healthy,frontend running,migrateexit0,pilotHTTP200. No protected mutation,external sends,raw SQL seed/back-date,reset/prune/deploy/PR. Demo retained. Scoped stop checkpoint; no additional push while GateB failed. Reports/counts/guide/STATE capture exact resume; scratch_pdf.txt untouched/needs decision.
+
+# Prior checkpoint
+
 # 2026-10-17 - Owner-replaced A4 / Gate A checkpoint
 
 - 5A status: **functionally complete, gates deferred**. Gate A met under explicit replacement only: native whole-diff audit done, no unresolved HIGH finding, STATE.md DEFERRED_GATES recorded. Production remains NO-GO; all deferred gates must pass before UAT/finance sign-off or production move.
