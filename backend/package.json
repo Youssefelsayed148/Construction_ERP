@@ -14,6 +14,7 @@
     "seed:pilot-data": "node src/scripts/seed-pilot-data.js",
     "seed:golden-demo": "node src/scripts/seed-golden-demo.js",
     "seed:company-demo": "node src/scripts/seed-company-demo.js",
+      "seed:company-demo:masters": "node src/scripts/seed-company-demo.js --masters",
     "seed:company-demo:reset": "node src/scripts/seed-company-demo.js --reset",
     "smoke:staging": "node src/scripts/smoke-staging.js",
     "backup:rehearse": "node src/scripts/backup-restore-rehearsal.js",

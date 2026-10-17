@@ -78,6 +78,25 @@ async function withDemoDatabase(work) {
   }
 }
 
+async function withDemoWriteDatabase(work) {
+  const { target, env } = configuration();
+  assertDemoTarget(target);
+  const pool = new Pool({ host: target.dbHost, port: Number(target.dbPort), database: target.dbName,
+    user: env.DB_USER, password: env.DB_PASSWORD, connectionTimeoutMillis: 5000 });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const identity = (await client.query('SELECT current_database() AS name')).rows[0];
+    if (identity.name !== TARGET.dbName) throw new Error('Refusing demo: database identity mismatch');
+    const result = await work(client.query.bind(client));
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    try { await client.query('ROLLBACK'); } catch (_) { /* preserve original failure */ }
+    throw error;
+  } finally { client.release(); await pool.end(); }
+}
+
 function saveReport(name, result) {
   ignored('.demo/results.json');
   fs.mkdirSync(path.join(ROOT, '.demo'), { recursive: true });
@@ -146,6 +165,22 @@ async function main() {
     credentials.accounts = credentials.accounts.map(account => ({ ...account, email: `demo-${account.key}@demo.example.com` }));
     fs.writeFileSync(file, JSON.stringify(credentials, null, 2) + '\n', { mode: 0o600 });
     console.log('Only erp-demo-20261017 stopped and its volumes removed; demo email roster corrected, passwords preserved.'); return;
+  }
+  if (action === '--masters') {
+    const credentials = JSON.parse(fs.readFileSync(path.join(ROOT, '.demo-users.json'), 'utf8'));
+    assertDemoTarget(credentials.target);
+    const { seedMasters, TARGET: mastersTarget } = require('./company-demo-masters');
+    if (JSON.stringify(mastersTarget) !== JSON.stringify(target)) throw new Error('Refusing demo: masters target mismatch');
+    const tokens = new Map();
+    const request = async (account, route, options = {}) => {
+      let session = tokens.get(account.key);
+      if (!session) { session = await login(target, account); tokens.set(account.key, session); }
+      return demoRequest(target, route, { ...options, token: session.token });
+    };
+    const result = await withDemoWriteDatabase((dbQuery) => seedMasters({ target, request, accounts: credentials.accounts, dbQuery }));
+    saveReport('stage-2-masters.json', result);
+    console.log(JSON.stringify(result));
+    return;
   }
   if (action !== '--accounts') throw new Error('Refusing demo: unknown stage');
   console.log(JSON.stringify(await seedAccounts()));

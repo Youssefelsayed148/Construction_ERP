@@ -43,13 +43,54 @@ See [current verification report](DEMO_VERIFICATION_REPORT_2026-10-17.md). Execu
 
 Historical guide follows; account status is superseded above.
 
+# Company demo guide - Gate C in progress
+
+**The masters module is loaded; the company dataset is incomplete and is not ready for UI testing.** UI: `http://127.0.0.1:8092`; database: `construction_erp_demo` on loopback `55442`; Compose project: `erp-demo-20261017`. No pilot/clone environment was contacted.
+
+The account stage remains 38 verified logins from Gate B. Credentials remain in ignored demo-only files and are not included here. Gate C modules b-e, final whole-seed rerun, all nine walkthrough states and document-number register are still pending. No document numbers exist yet.
+
+## Masters counts (2026-10-18)
+
+| Record | Count | Notes |
+|---|---:|---|
+| Clients | 3 | Demo target |
+| Projects | 3 | A 55%, B 90%, C 5% |
+| Phases / milestones | 12 / 9 | Four phases and three milestones per project |
+| Team assignments | 26 | Includes scoped, external and expired assignment rows; unassigned user remains without project seat |
+| Cost codes | 12 | Existing seeded catalog; no new codes |
+| BOQ sections / items | 3 / 15 | Five items per project |
+| Suppliers / subcontractors | 6 / 2 | Demo target |
+| Materials | 30 | 25 demo materials plus 5 pre-existing catalog rows |
+| Warehouses | 2 | Approved guarded inserts; project-bound to A and B |
+| Project locations | 9 | Three per project |
+
+Masters focused test: `npm.cmd --prefix backend test -- --runInBand --runTestsByPath src/scripts/__tests__/company-demo-masters.test.js` -> 1 suite / 2 tests PASS, 0 skipped, exit 0. Seed command `npm.cmd --prefix backend run seed:company-demo:masters` -> exit 0; complete rerun -> `created=0`. See `STATE.md` for timings, diagnosed intermediate seed corrections and test-red limitation.
+
+Defects logged: C-MASTER-001 MEDIUM (no supported warehouse-create route for real users; demo used the owner-approved narrow SQL exception); C-MASTER-002 MEDIUM (`hr_manager` cannot create employees; use `workflow_owner`). Product code has not been changed.
+
+| Interesting state | Present | Intended role key after seeding |
+|---|---|---|
+| Overdue client invoice |Not checked; finance not run|accountant_ar / owner_ceo|
+| Partially paid invoice |Not checked; finance not run|accountant_ar|
+| PO with two partial deliveries |Not checked; procurement not run|procurement_officer / storekeeper|
+| RFQ award pending |Not checked; procurement not run|procurement_manager|
+| PR waiting on CEO |Not checked; procurement not run|owner_ceo|
+| Low-stock alert |Not checked; inventory not run|storekeeper|
+| Open NCR |Not checked; site/QHSE not run|qa_qc_manager|
+| Pending variation |Not checked; site/QHSE not run|commercial_manager|
+| Project B retention pending |Not checked; finance not run|finance_manager|
+
+### Document numbers
+
+No PR, RFQ, PO, GRN, invoice, receipt, or NCR numbers have been generated. The table will be populated from real API responses after the corresponding modules run.
+
+---
+
+Historical guide follows; superseded by the current masters status above.
+
 # Company demo guide - environment only; dataset not loaded
 
-**STOP at Phase B stage1. Gate B failed; do not present this as a running-company demo.** UI:http://127.0.0.1:8092; database:construction_erp_demo on loopback55442; Compose project:erp-demo-20261017. Existing pilot/clone environments were not changed.
-
-Only the bootstrap owner exists (1of38 actual accounts); 38 generated credential entries are preserved in the ignored demo credential file. No password, token or environment value belongs in this guide. The bootstrap `workflow_owner` login is currently blocked by the generated email domain failing the real email validator; see D-001 in [verification report](DEMO_ENVIRONMENT_VERIFICATION_2026-10-17.md). Other account keys are planned, not verified logins.
-
-Actual company records:projects0,clients0,suppliers0,employees0,PR0,RFQ0,PO0,deliveries0,MIR0,GRN0,invoices0,payments0,expenses0,journals0. One default organization and130 migrations are present. [All251 public-table row counts](DEMO_TABLE_COUNTS_2026-10-17.md) include migration defaults. Demo document numbers: **none**.
+**Historical status only.** The account/bootstrap status and empty dataset counts below predate the 2026-10-18 masters module and must not be treated as current.
 
 | Interesting state | Present | Intended role key after seeding |
 |---|---|---|
