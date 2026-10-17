@@ -13,7 +13,7 @@ param(
   [switch]$R4Resilience,
   [switch]$R4MigrationUpgrade,
   [switch]$NoForceExit,
-  [string]$Filter = '^(FAIL|PASS) |Test Suites:|Tests:|^\s+R2 (mutation registry|fixture error|no audit row|rollback leak)|^\s+● .*›'
+  [string]$Filter = '.*'
 )
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8

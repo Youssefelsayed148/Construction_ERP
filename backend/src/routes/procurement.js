@@ -284,7 +284,12 @@ const auditedProc = (req, work, describe) => auditedTransaction(work, (row) => (
 }));
 
 router.get('/rfq', authenticate, authorize(), async (req, res) => {
-  try { res.json({ success: true, data: await docsSvc.listRfqs(query, req.query) }); } catch (e) { return typedFail(res, e); }
+  try {
+    const page = await queryPaginated(req, res, query, {
+      ...docsSvc.rfqListQuery(req.query), orderBy: [{ column: 'r.id', direction: 'DESC' }], tieBreaker: 'r.id',
+    });
+    res.json({ success: true, data: page.rows });
+  } catch (e) { return typedFail(res, e); }
 });
 
 router.get('/rfq/:id', authenticate, authorize(), async (req, res) => {

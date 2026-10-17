@@ -32,17 +32,21 @@ const reasonOf = (r) => {
 
 // --- RFQ reads --------------------------------------------------------------------------------------
 
-async function listRfqs(q, { project_id = null, status = null, limit = 100, offset = 0 } = {}) {
+function rfqListQuery({ project_id = null, status = null } = {}) {
   const conds = []; const params = [];
   if (project_id != null) conds.push(`r.project_id = $${params.push(toInt(project_id))}`);
   if (status) conds.push(`r.status = $${params.push(status)}`);
   const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
-  params.push(Math.min(toInt(limit) || 100, 500)); params.push(toInt(offset) || 0);
-  return (await q(
-    `SELECT r.*, (SELECT count(*)::int FROM rfq_lines l WHERE l.rfq_id = r.id) AS line_count,
+  return { sql: `SELECT r.*, (SELECT count(*)::int FROM rfq_lines l WHERE l.rfq_id = r.id) AS line_count,
             (SELECT count(*)::int FROM rfq_vendors v WHERE v.rfq_id = r.id) AS vendor_count,
             (SELECT count(*)::int FROM supplier_quotations sq WHERE sq.rfq_id = r.id) AS quotation_count
-       FROM rfqs r ${where} ORDER BY r.id DESC LIMIT $${params.length - 1} OFFSET $${params.length}`, params)).rows;
+       FROM rfqs r ${where}`, params };
+}
+
+async function listRfqs(q, { limit = 100, offset = 0, ...filters } = {}) {
+  const { sql, params } = rfqListQuery(filters);
+  params.push(Math.max(1, Math.min(toInt(limit) || 100, 500)), Math.max(0, toInt(offset) || 0));
+  return (await q(`${sql} ORDER BY r.id DESC LIMIT $${params.length - 1} OFFSET $${params.length}`, params)).rows;
 }
 
 async function getRfq(q, id) {
@@ -200,7 +204,7 @@ async function cancelPurchaseOrder(q, id, user, reason) {
 }
 
 module.exports = {
-  DocumentError, listRfqs, getRfq,
+  DocumentError, rfqListQuery, listRfqs, getRfq,
   getPurchaseRequest, updatePurchaseRequest, cancelPurchaseRequest,
   getPurchaseOrder, updatePurchaseOrder, cancelPurchaseOrder,
 };
