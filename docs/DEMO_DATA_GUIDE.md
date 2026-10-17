@@ -1,3 +1,17 @@
+# Current demo status - 2026-10-17 continuation
+
+UI: http://127.0.0.1:8092. Compose: erp-demo-20261017. Database: construction_erp_demo, loopback 55442 via nginx stream proxy. Demo db/backend are healthy; frontend is running. No pilot or clone operation was performed.
+
+Current accounts: **38 real accounts; 38/38 logins successful; zero registrations on rerun**. Addresses follow demo-<rolekey>@demo.example.com. Credentials stay in the ignored demo-only file; none are included here. The earlier email blocker below is superseded. Project-only/unassigned/expired role assignments remain pending; successful login does not establish business access.
+
+**Company dataset is not complete.** No business seed ran during this continuation; document numbers remain unavailable. Earlier empty-dataset counts below are historical and were not freshly recounted. The three-project Alexandria story, suppliers/subcontractors, materials, procurement, finance, HR/payroll and QHSE records and all walkthrough states remain unverified. Do not present this environment as a completed company demo.
+
+See [current verification report](DEMO_VERIFICATION_REPORT_2026-10-17.md). Execution stopped after two failures reconstructing baseline regression evidence, per the requested stop rule. Resume instructions are in STATE.md.
+
+---
+
+Historical guide follows; account status is superseded above.
+
 # Company demo guide - environment only; dataset not loaded
 
 **STOP at Phase B stage1. Gate B failed; do not present this as a running-company demo.** UI:http://127.0.0.1:8092; database:construction_erp_demo on loopback55442; Compose project:erp-demo-20261017. Existing pilot/clone environments were not changed.

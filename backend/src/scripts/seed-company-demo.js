@@ -23,7 +23,7 @@ function initializeDemo({ root = ROOT, ignored: checkIgnored = ignored, exists =
   }
   const secret = () => crypto.randomBytes(36).toString('base64url');
   const accounts = accountDefinitions().map(definition => ({ ...definition,
-    email: `demo-${definition.key}@demo.invalid`, password: secret() }));
+    email: `demo-${definition.key}@demo.example.com`, password: secret() }));
   const env = { APP_ENV: 'staging', DB_HOST: TARGET.dbHost, DB_PORT: TARGET.dbPort, DB_NAME: TARGET.dbName,
     DB_USER: 'company_demo', DB_PASSWORD: secret(), JWT_SECRET: secret(), WEBHOOK_ENCRYPTION_KEY: secret(),
     FRONTEND_URL: TARGET.baseUrl, DEFAULT_OWNER_PASSWORD: accounts.find(row => row.key === 'workflow_owner').password };
@@ -116,9 +116,11 @@ async function seedAccounts() {
     } });
   }
   const rows = await list();
-  const demoRows = rows.filter(row => row.email.endsWith('@demo.invalid'));
+  const demoRows = rows.filter(row => row.email.endsWith('@demo.example.com'));
   if (demoRows.length !== 38) throw new Error('Demo account count invariant failed');
-  const result = { stage: 1, accounts: demoRows.length, created, canonical: 33, compatibilityAndSafety: 5,
+  let logins = 0;
+  for (const account of credentials.accounts) { await login(target, account); logins += 1; }
+  const result = { stage: 1, accounts: demoRows.length, created, logins, canonical: 33, compatibilityAndSafety: 5,
     assignments: 'Initial internal company seats; project-only/unassigned/expired seats configured in stage 2.',
     externalSends: 0, rawSqlWrites: 0 };
   saveReport('stage-1.json', result);
@@ -136,7 +138,14 @@ async function main() {
   }
   if (action === '--reset') {
     execFileSync('docker', resetArguments(target), { cwd: ROOT, stdio: 'pipe', windowsHide: true, timeout: 60000 });
-    console.log('Only erp-demo-20261017 stopped and its volumes removed; credential files preserved.'); return;
+    // The old checkpoint used .invalid addresses. Change only the demo roster after
+    // its database has been removed; preserve passwords and the bootstrap secret.
+    const file = path.join(ROOT, '.demo-users.json');
+    const credentials = JSON.parse(fs.readFileSync(file, 'utf8'));
+    assertDemoTarget(credentials.target);
+    credentials.accounts = credentials.accounts.map(account => ({ ...account, email: `demo-${account.key}@demo.example.com` }));
+    fs.writeFileSync(file, JSON.stringify(credentials, null, 2) + '\n', { mode: 0o600 });
+    console.log('Only erp-demo-20261017 stopped and its volumes removed; demo email roster corrected, passwords preserved.'); return;
   }
   if (action !== '--accounts') throw new Error('Refusing demo: unknown stage');
   console.log(JSON.stringify(await seedAccounts()));

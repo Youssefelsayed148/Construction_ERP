@@ -1,3 +1,17 @@
+# Current continuation - 2026-10-17
+
+The historical account blocker below is corrected in the inherited working tree. Current command output verifies 38 accounts, 38 successful logins and zero registrations on rerun. The demo services were restarted only within erp-demo-20261017; db/backend healthy, frontend running, migrate exited 0. Focused safety tests: 34/34 passed, exit 0. No reset or business seed was executed in this session.
+
+Port 55442 belongs on the frontend container by design: backend/scripts/company-demo-nginx.conf declares an nginx stream listener on 5432 forwarding to db:5432; docker-compose.demo.yml publishes loopback 55442 there. The database/backend retain the internal-only demo network. Historical ECONNREFUSED came from the missing host-facing ingress on that internal-only layout, whose published mappings were reported as :0. The current proxy mapping is the correction, not a new Compose defect. No attempt was made to recreate the old connectivity failure by breaking the working demo; its original reproduction remains historical evidence.
+
+Accounts use POST /api/auth/register authenticated as the bootstrap owner, never direct SQL. Registration and login both use Joi.string().email().required() in backend/src/routes/auth.js. Registration hashes passwords and transactionally writes the user, internal company role seat and activity audit. External roles intentionally receive no company-wide seat and still need project assignments. New accounts use demo-<rolekey>@demo.example.com without changing login validation.
+
+Continuation STOP: baseline regression-evidence reconstruction failed twice during setup (Windows inline quoting SyntaxError, then suppressed helper failure). No valid expected-red result was obtained. Current gate B evidence is partial; C/D/E remain unrun. Full details and exact next action: [new verification report](DEMO_VERIFICATION_REPORT_2026-10-17.md) and STATE.md.
+
+---
+
+Historical checkpoint follows; its one-account/failed-login statements are superseded above.
+
 # Demo environment verification - STOP at Phase B stage 1
 
 Date: 2026-10-17. Target: `erp-demo-20261017`, `construction_erp_demo`, UI `http://127.0.0.1:8092`, PG loopback55442. **Gate B FAILED; Phase C NOT STARTED.** 5A is **functionally complete, gates deferred** under the owner's replacement; production remains NO-GO. Deferred gates remain listed in STATE.md and must pass before any UAT sign-off, finance sign-off or production move.

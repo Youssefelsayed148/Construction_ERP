@@ -66,6 +66,21 @@ describe('company demo idempotency and account roster', () => {
 });
 
 describe('demo credentials and startup safety', () => {
+  test('generated emails and bootstrap use addresses accepted by the login Joi email validator', () => {
+    const { initializeDemo } = require('../seed-company-demo');
+    const Joi = require('joi');
+    const writes = new Map();
+    initializeDemo({ root: '/unused', ignored: () => {}, exists: () => false,
+      write: (file, value) => writes.set(require('path').basename(file), value) });
+    const { accounts } = JSON.parse(writes.get('.demo-users.json'));
+    expect(accounts).toHaveLength(38);
+    for (const account of accounts) {
+      expect(Joi.string().email().required().validate(account.email).error).toBeUndefined();
+      expect(account.email).toBe(`demo-${account.key}@demo.example.com`);
+    }
+    const compose = require('fs').readFileSync(require('path').resolve(__dirname, '../../../../docker-compose.demo.yml'), 'utf8');
+    expect(compose).toContain('DEFAULT_OWNER_EMAIL: demo-workflow_owner@demo.example.com');
+  });
   test('host ingress is confined to the credential-free nginx proxy; execution services keep an internal-only network', () => {
     const fs = require('fs'); const path = require('path');
     const compose = fs.readFileSync(path.resolve(__dirname, '../../../../docker-compose.demo.yml'), 'utf8');

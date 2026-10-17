@@ -53,7 +53,7 @@ services:
     environment:
       <<: *environment
       SEED_DEFAULT_OWNER: "true"
-      DEFAULT_OWNER_EMAIL: demo-workflow_owner@demo.invalid
+      DEFAULT_OWNER_EMAIL: demo-workflow_owner@demo.example.com
       DEFAULT_OWNER_PASSWORD: ${DEFAULT_OWNER_PASSWORD:?demo bootstrap secret required}
     command: [node, src/scripts/run-all-migrations.js]
     depends_on:
