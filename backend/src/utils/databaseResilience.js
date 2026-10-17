@@ -43,4 +43,12 @@ function decorateDatabaseError(error) {
   return error;
 }
 
-module.exports = { timeoutValue, pgPoolOptions, httpServerTimeouts, decorateDatabaseError };
+function databaseErrorDiagnostic(error) {
+  return {
+    code: /^[A-Z0-9_]{2,40}$/.test(error?.code) ? error.code : 'unknown',
+    name: ['Error', 'error', 'TypeError', 'RangeError', 'DatabaseError', 'AggregateError', 'TimeoutError'].includes(error?.name) ? error.name : 'Error',
+    messageClass: /timeout.*connect|connect.*timeout/i.test(error?.message || '') ? 'connection_timeout' : 'other',
+  };
+}
+
+module.exports = { timeoutValue, pgPoolOptions, httpServerTimeouts, decorateDatabaseError, databaseErrorDiagnostic };

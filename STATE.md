@@ -1,4 +1,15 @@
-# Current checkpoint - controlled A/B/C run STOP at Gate A - 2026-10-17
+# Current checkpoint - Phase A1 complete; A2 reproduction next - 2026-10-17
+
+- Controlled resume starts d7c7664 on closeout/batch-a-to-6 with no working-tree changes. Phase A1 diagnostic logging implemented; Batch 5A INCOMPLETE, Gate A not evaluated on this source. B/C NOT STARTED. No push/PR/deployment.
+- A1 test-first evidence: one mock fixture setup failure (incomplete tokens stub loaded oauthService, zero tests); isolated OAuth dependency, then intended red 1 failed suite / 6 failed tests. After implementation plus metadata/timeout redaction coverage: npm.cmd test -- --runInBand infrastructure-diagnostics.test.js postgres-rate-limit.test.js auth-infrastructure.test.js external-api.test.js -> 4 passed suites / 68 passed tests, 8.034 s, exit 0. Full commands/logs retained under .scratch-5a-resume/a1-{red,green}.log. No response/assertion/timeout changes.
+- A1 production diff: 22 added / 8 removed lines across auth, shared/v1 rate limits, idempotency diagnostics and databaseResilience helper (30 changed lines). Logs contain only sanitized code/name and fixed messageClass; never message, params, tokens or credentials. Existing idempotency persistence/release diagnostics also use the helper.
+- Bounded Docker info 28.3.2, exit 0, 0.723 s outside sandbox. Baseline 25 containers / 595 volumes / 8 networks. Six running containers (names only saved in running-before.log): protected pilot/sweep db/backend/frontend. Host: free RAM 1,354 MiB / 16,005 MiB, 16 logical CPUs, CPU load 18%. Pilot allowed ps healthy, migrate Exited (0), HTTP 8090=200. No restart or protected mutation.
+- NEXT RESUME POINT: A2 token-typing idle iteration 1, then bounded token/v1 idle/load modes on fresh disposable DBs; save full logs and snapshots before teardown on failure. No heavy agent process in parallel except the explicitly requested A2 CPU workload. Examine OAuth compare-and-swap/scrypt/pool source with file:line. No A2 run has started at this checkpoint. Source changes reset A4 consecutive passes to 0/5; no current full PG or later gate is green.
+- After A2, implement required S-003 warning test-first; classify S-006 missing headers and investigate S-001 code only. Then all A4 gates and A5 self-review. Stop rules remain in force. scratch_pdf.txt untouched, tracked CRLF; excluded review files ignored/unstaged. Checkpoint scoped to five implementation/test files and these four closeout documents; LF/cached whitespace check required, with both requested trailers.
+
+# Historical checkpoint at d7c7664 (superseded above)
+
+# Controlled A/B/C run STOP at Gate A - 2026-10-17
 
 - Phase reached: A2, full PG run 1. Start branch closeout/batch-a-to-6, HEAD 2264ab1, initially no working-tree changes. Gate A FAILED; Batch 5A INCOMPLETE. Phases B and C NOT STARTED; no push, PR or deployment.
 - Bounded Docker preflight outside sandbox: 28.3.2, exit 0, 0.520 s; initial sandbox pipe access denied. No engine/WSL restart. Initial/final name inventories: 25/25 containers, 595/595 volumes, 8/8 networks; exact-name differences 0 in each category. Permitted pilot ps shows db/backend/frontend healthy, migrate Exited (0); HTTP 8090 returned 200 before and after. No pilot start or protected-stack mutation.

@@ -1,3 +1,11 @@
+# 2026-10-17 - A1 diagnostics complete; controlled A2 reproduction next
+
+Resume d7c7664, initially no working-tree changes. A1 production change 22 additions / 8 removals (30 lines): sanitized error-code/name/message-class logging for internal auth, shared/v1 limiters and idempotency; responses unchanged. Intended red 6 failures after one diagnosed zero-test fixture setup error; focused green 4 suites / 68 tests, 8.034 s, exit 0 (logs .scratch-5a-resume/a1-{red,green}.log). No assertions, timeouts, deps or env files changed.
+
+Docker 28.3.2 within 0.723 s; names baseline 25 containers / 595 volumes / 8 networks. Six protected pilot/sweep containers running (names only). Host free RAM 1,354/16,005 MiB, logical CPUs 16, CPU load 18%. Permitted pilot ps healthy, HTTP 8090=200, no start or other protected mutation. Exact next checkpoint/resume point in STATE: A2 token-typing idle iteration 1, then bounded idle/load token/v1 reproduction. A4 counters 0/5 after source changes; all broad gates and S-003/S-006 classification pending. B/C not started; no push/PR/deploy; scratch_pdf.txt untouched CRLF.
+
+# Historical checkpoint at d7c7664
+
 # 2026-10-17 - Controlled A/B/C run: Gate A FAILED, STOP
 
 Started at 2264ab1 on closeout/batch-a-to-6. A2 full PG run 1 applied 130 migrations, then FAILED: 91 passed / 2 failed suites, 1,980 passed / 2 failed tests, 287.199 s, exit 1. v1-contract timed out at 30,000 ms (9/10 tests passed, suite 57.198 s); token-typing concurrent grants expected [200,200], received [200,503]. No afterAll timeout in this run. Consecutive complete passes = 0; runs 2-5 NOT RUN. All remaining A2 gates NOT RUN after the first failure. Batch 5A remains incomplete; Gate A failed; demo Phase B and testing Phase C not started; no push/PR/deploy.

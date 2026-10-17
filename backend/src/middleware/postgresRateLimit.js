@@ -2,6 +2,7 @@
 
 const crypto = require('crypto');
 const { query: defaultQuery } = require('../config/database');
+const { databaseErrorDiagnostic } = require('../utils/databaseResilience');
 
 let cleanupCounter = 0;
 
@@ -52,7 +53,8 @@ function createPostgresRateLimit({ scope, windowMs, limit, applies = () => true,
         });
       }
       return next();
-    } catch (_) {
+    } catch (error) {
+      console.error('[RATE_LIMIT] unavailable', databaseErrorDiagnostic(error));
       res.setHeader('Retry-After', '5');
       if (onUnavailable) return onUnavailable(req, res, next);
       return res.status(503).json({

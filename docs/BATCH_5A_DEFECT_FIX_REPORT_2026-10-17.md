@@ -1,4 +1,18 @@
-# CURRENT - Controlled A/B/C run: Gate A FAILED / STOP - 2026-10-17
+# CURRENT - Controlled resume from d7c7664: A1 diagnostics complete; A2 next - 2026-10-17
+
+Phase A1 implemented with unchanged responses: shared/public limiter, authenticated v1 limiter, internal authentication and idempotency lookup/persistence/release paths log sanitized `{code,name,messageClass}`. `connection_timeout` is a fixed classification derived from the message without printing it; other messages classify as `other`. No SQL parameters, error detail, tokens or runtime credentials are logged. A1 production diff: 22 added / 8 removed lines (30 changed), under the requested ~40-line limit.
+
+Test-first: fixture setup initially loaded oauthService with an incomplete tokens stub (zero tests); diagnosed and isolated that dependency. Intended red then reached 6 failing assertions. Green command in backend: `npm.cmd test -- --runInBand src/scripts/__tests__/infrastructure-diagnostics.test.js src/scripts/__tests__/postgres-rate-limit.test.js src/scripts/__tests__/auth-infrastructure.test.js src/scripts/__tests__/external-api.test.js` -> **4 suites / 68 tests passed**, 8.034 s, exit 0. New coverage verifies exact 503/504 bodies/headers and forwarded errors, optional idempotency behavior, logging, metadata redaction and connection-timeout classification. Existing OAuth/middleware tests remain green. Logs `.scratch-5a-resume/a1-red.log` and `a1-green.log`; no existing assertions/timeouts relaxed.
+
+Docker preflight bounded at 30 s: 28.3.2, exit 0 in 0.723 s outside sandbox. Baseline names saved: 25 containers / 595 volumes / 8 networks. Six running containers are protected pilot/sweep frontend/backend/db; only names inventoried, no sweep operations. Host before PG runs: 1,354 MiB free of 16,005 MiB RAM; 16 logical CPUs; CPU load 18%. Pilot permitted ps shows three healthy services, migrate Exited (0); HTTP 8090=200. No restart/mutation or test DB created yet.
+
+Current gates: A1 focused checks PASS above; A2 NOT STARTED; S-003/S-006 classification pending; A4 full PG **0/5**, Docker/golden/mocks/frontend/i18n/guards/lint/build NOT RUN on this source. A5 review pending. No phase complete, no push. Exact next resume: A2 token-typing idle iteration 1, followed by bounded idle/load reproductions for both suites and guarded disposable-only snapshots/cleanup. A4 counters reset after any source change. B/C remain gated. STATE.md records the checkpoint and protected files.
+
+---
+
+# Historical checkpoint at d7c7664 (superseded above)
+
+# Controlled A/B/C run: Gate A FAILED / STOP - 2026-10-17
 
 Start: closeout/batch-a-to-6 at 2264ab1; initial working tree had no changes. This section supersedes the historical sections below. Phase reached A2, complete PG run 1; it failed. Batch 5A remains INCOMPLETE. Gate A FAILED; Gates B/C NOT EVALUATED, both phases NOT STARTED. No push, PR, deployment, application fix, or production acceptance. Established A1 diagnosis was not extended or repeated; environmental pressure remains an unproven hypothesis, and five consecutive complete passing runs were NOT obtained.
 

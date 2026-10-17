@@ -2587,6 +2587,15 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - Final Docker proof: post-cleanup inventory 25 containers / 595 volumes / 8 networks; exact-name Compare-Object differences from pre-test inventory=0 for each resource type. Saved .batch5a-verify-docker-postcleanup-inventory.log. All pre-existing resources retained. Documentation verification: git diff --check exit 0; four files CR_bytes=0; both excluded reports returned by git check-ignore; implementation-path git diff from cc1a3ea empty.
 - Staging verification: git diff --cached --check -> exit 0; exactly four documentation files staged, all i/lf w/lf; git diff --cached --name-only for both excluded review reports -> empty. User requested stop after committing/report completion and a clean-session rerun/closeout prompt; no more gates or diagnosis after this checkpoint. Final restage/whitespace check precedes commit with required trailers.
 
+## 2026-10-17 - A1 redacted infrastructure diagnostics checkpoint
+
+- Resume d7c7664 on closeout/batch-a-to-6, no initial changes. A1 tests first: zero-test mock fixture error (incomplete tokens stub pulling OAuth constants), diagnosed and isolated; intended 6 failing assertions; green focused command across infrastructure-diagnostics, postgres-rate-limit, auth-infrastructure and external-api -> 4 passed suites / 68 passed tests, 8.034 s, exit 0. Full local logs .scratch-5a-resume/a1-{red,green}.log.
+- Production diff 22 added / 8 removed lines (30 changed): sanitized error code/name/fixed messageClass for shared/v1 rate limit, internal auth and idempotency. No response behavior, existing assertions, timeouts, deps, migrations or env files changed. No runtime secret/message/SQL parameters logged.
+- Bounded Docker 28.3.2, exit 0, 0.723 s. Baseline 25/595/8 containers/volumes/networks. Six running protected containers inventoried by names only; no sweep operation. Free RAM 1,354/16,005 MiB, logical CPUs 16, load 18%. Pilot permitted ps healthy, migrate Exited (0), HTTP 8090=200; no start/restart/other mutation. No disposable created at this checkpoint.
+- Current phase A1 complete, A2 next at token-typing idle iteration 1. A4 count 0/5; all broad gates unrun on this source. S-003 warning, S-006 classification and A5 review pending. B/C not started, no push/PR/deploy. STATE gives resume sequence; scratch_pdf.txt and excluded reports untouched. Scoped checkpoint five implementation/test files plus four closeout docs; LF/cached check and requested contiguous attribution/session trailers before commit.
+
+## Historical checkpoint at d7c7664
+
 ## 2026-10-17 - Controlled A/B/C run stopped at first PG failure
 
 - Start: closeout/batch-a-to-6 at 2264ab1, no initial working-tree changes. User hard gate applied: no retry or later phase after the first full-suite failure.

@@ -29,6 +29,7 @@ const crypto = require('crypto');
 const oauthService = require('../services/oauthService');
 const { query: defaultQuery } = require('../config/database');
 const { createPostgresRateLimit } = require('./postgresRateLimit');
+const { databaseErrorDiagnostic } = require('../utils/databaseResilience');
 
 // ---------------------------------------------------------------------------
 // 1. Correlation IDs
@@ -95,7 +96,8 @@ function createAuthenticatedRateLimit(q = defaultQuery, limit = RATE_LIMIT_PER_M
         return next(err);
       }
       return next();
-    } catch (_) {
+    } catch (error) {
+      console.error('[V1_RATE_LIMIT] unavailable', databaseErrorDiagnostic(error));
       const err = new Error('Rate limit service unavailable'); err.status = 503; err.code = 'rate_limit_unavailable';
       return next(err);
     }
@@ -234,7 +236,7 @@ async function idempotency(req, res, next) {
     }
   } catch (e) {
     // Storage failure must not block the request; idempotency degrades.
-    console.error('[V1] idempotency lookup failed:', e.message);
+    console.error('[V1] idempotency lookup failed:', databaseErrorDiagnostic(e));
     if (required) {
       const err = new Error('Idempotency storage is unavailable');
       err.status = 503; err.code = 'idempotency_unavailable';
@@ -263,13 +265,13 @@ async function idempotency(req, res, next) {
         );
         if (required) {
           persist.then(() => originalJson(payload)).catch((e) => {
-            console.error('[V1] required idempotency store failed:', e.message);
+            console.error('[V1] required idempotency store failed:', databaseErrorDiagnostic(e));
             res.status(503);
             originalJson({ success: false, error: 'Idempotency storage is unavailable', error_code: 'idempotency_unavailable' });
           });
           return res;
         }
-        persist.catch((e) => console.error('[V1] idempotency store failed:', e.message));
+        persist.catch((e) => console.error('[V1] idempotency store failed:', databaseErrorDiagnostic(e)));
       } else if (status >= 400 && status < 500) {
         const release = poolQuery(
           'DELETE FROM idempotency_keys WHERE key = $1 AND subject = $2 AND method = $3 AND path = $4 AND status = \'in_flight\'',
@@ -277,12 +279,12 @@ async function idempotency(req, res, next) {
         );
         if (required) {
           release.then(() => originalJson(payload)).catch((e) => {
-            console.error('[V1] required idempotency claim release failed:', e.message);
+            console.error('[V1] required idempotency claim release failed:', databaseErrorDiagnostic(e));
             originalJson(payload);
           });
           return res;
         }
-        release.catch((e) => console.error('[V1] idempotency claim release failed:', e.message));
+        release.catch((e) => console.error('[V1] idempotency claim release failed:', databaseErrorDiagnostic(e)));
       }
     }
     return originalJson(payload);

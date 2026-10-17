@@ -2,6 +2,7 @@ const { query } = require('../config/database');
 const policy = require('../services/policy');
 const tokens = require('../services/tokens');
 const projectReadScope = require('../services/projectReadScope');
+const { databaseErrorDiagnostic } = require('../utils/databaseResilience');
 
 const READ_ONLY_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const EXTERNAL_PORTAL_PATHS = {
@@ -127,6 +128,7 @@ const authenticate = async (req, res, next) => {
 
     next();
   } catch (error) {
+    console.error('[AUTH] unavailable', databaseErrorDiagnostic(error));
     if (error.error_code) {
       res.setHeader('Retry-After', String(error.retryAfter || 5));
       return res.status(error.status || 503).json({
