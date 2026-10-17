@@ -793,6 +793,17 @@ describe('v1 list query: pagination / filter / sort', () => {
     expect(out.meta).toEqual({ page: 2, per_page: 2, total: 5, total_pages: 3 });
   });
 
+  test.each([1, 2, 9])('normalized list page %s reports the filtered total independently of its page length', page => {
+    const req = { method: 'GET', query: { per_page: '1', page: String(page), 'filter[status]': 'open' } };
+    const res = makeRes(); let out;
+    res.json = payload => { out = payload; return res; };
+    v1.normalizeResponses(req, res, () => {});
+    res.json({ success: true, data: [{ id: 1, status: 'open' }, { id: 2, status: 'closed' }, { id: 3, status: 'open' }] });
+    expect(out.meta.total).toBe(2);
+    expect(out.data.map(row => row.id)).toEqual(page === 1 ? [1] : page === 2 ? [3] : []);
+    expect(res.setHeader).toHaveBeenCalledWith('X-Total-Count', '2');
+  });
+
   test('normalizeResponses preserves a route-paginated page and uses its total header', () => {
     const req = { method: 'GET', query: { limit: '2', offset: '2' }, correlationId: 'c', headers: {} };
     const res = makeRes();

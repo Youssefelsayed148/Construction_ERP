@@ -400,6 +400,7 @@ function normalizeResponses(req, res, next) {
         return originalJson({ ...payload, meta: { page, per_page: perPage, total, total_pages: Math.ceil(total / perPage) } });
       }
       const { data, meta } = applyListQuery(payload.data, listQuery);
+      res.setHeader('X-Total-Count', String(meta.total));
       return originalJson({ ...payload, data, meta });
     }
     return originalJson(payload);

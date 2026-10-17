@@ -2587,6 +2587,14 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - Final Docker proof: post-cleanup inventory 25 containers / 595 volumes / 8 networks; exact-name Compare-Object differences from pre-test inventory=0 for each resource type. Saved .batch5a-verify-docker-postcleanup-inventory.log. All pre-existing resources retained. Documentation verification: git diff --check exit 0; four files CR_bytes=0; both excluded reports returned by git check-ignore; implementation-path git diff from cc1a3ea empty.
 - Staging verification: git diff --cached --check -> exit 0; exactly four documentation files staged, all i/lf w/lf; git diff --cached --name-only for both excluded review reports -> empty. User requested stop after committing/report completion and a clean-session rerun/closeout prompt; no more gates or diagnosis after this checkpoint. Final restage/whitespace check precedes commit with required trailers.
 
+## 2026-10-17 - A3b header parity checkpoint; A4 next
+
+- One-line v1 fallback header assignment from existing filtered meta.total; new3 tests red first. Green external-api/diagnostics2 suites/63 tests,2.533s; PG lists/last-scope/v1-contract3 suites/35 tests,10.818s,130 migrations,exit0. GET448 routes/zero5xx; exact directory IDs/totals preserved. No response body/assertion/timeout change.
+- Original81 missing-header shapes:38(a)/43(b).23v1 arrays share header parity;15 internal registers and capped-service true totals remain LOW candidates named in classification. S-001 discrepancy undetermined; S-003 required warning4109a01 green. No unresolved HIGH finding proven in narrow review; A5 still pending.
+- Next A4 FULL PG1..5 fresh DBs, no other heavy workload, stop first failed run/reset0; unfiltered logs + A1 diagnostic/snapshot capture. Counter0/5; all later broad gates unrun; A2 focused50/590 not acceptance. Seven scoped files for header/tests/classification/four tracking docs; normalize LF/cached check/trailers before commit. B/C not started/no push; STATE updated.
+
+## Prior A3 checkpoint
+
 ## 2026-10-17 - A3 stale-receipt warning implementation checkpoint
 
 - Added read-only receipt notices/config default72h, positive finite validation, decided_at/created_at age, INFO <=threshold/WARNING >threshold, MIR/PO/age rendering, posted-GRN resolution. Acceptance/returns arithmetic unchanged. Config docs/STALE_RECEIPT_WARNING.md; production19 additions/4 removals.

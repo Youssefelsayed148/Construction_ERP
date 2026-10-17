@@ -1,3 +1,9 @@
+# 2026-10-17 - A3/A3b focused green; A4 full gates next
+
+A3 warning4109a01 verified. A3b header parity:3 new tests red first, one-line fix; unit2 suites/63 tests and PG3 suites/35 tests passed,130 migrations,exit0. Full GET inventory448/zero5xx, directory exact totals preserved. Original81 missing arrays classified38(a)/43(b);23v1 shapes share header fix,15 internal registers plus capped-service true totals remain named LOW candidates. S-001 discrepancy undetermined. All broad gates unrun on final source; next A4 FULL PG1 of5 consecutive fresh DBs, no heavy parallel work, stop first failure. A2 50/590 does not count for A4. STATE exact resume; B/C not started/no push; source/env/deps safety preserved.
+
+# Prior A3 checkpoint
+
 # 2026-10-17 - A3 stale-receipt warning verified; A3b next
 
 S-003 required warning now implemented: configurable RECONCILIATION_STALE_RECEIPT_HOURS default72; INFO below/at threshold, WARNING above with MIR/PO/age; posted GRN resolves; no age-only integrity violations, quantities unchanged. New operator doc. Test-first unit red9 failures incl3 header cases; PG red5 failed/5 passed (missing notices). Warning green unit1 suite/9 tests and PG warning/reconciliation/golden3 suites/32 tests,130 migrations,exit0. Timings/raw logs in report. Next implement already-red v1 header parity, checkpoint, then A4 counter0/5/broad gates. A2 50/590 passed, original causes unproven. B/C not started/no push; STATE updated; header test draft unstaged.

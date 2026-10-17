@@ -1,4 +1,16 @@
-# CURRENT - A3 warning implemented/verified; A3b count header next - 2026-10-17
+# CURRENT - A3/A3b focused checks green; A4 five full runs next - 2026-10-17
+
+S-003 warning committed4109a01 with unit9/PG32-test evidence below. A3b now adds one header assignment in normalizeResponses, echoing its existing filtered meta.total; route-provided total headers and response bodies are preserved. Three first/second/empty-page/filter tests failed before the line was added. Focused green: **2 unit suites/63 tests**,2.533s; **3 PG suites/35 tests**,10.818s,130 migrations,exit0 (batch5a-lists, batch5a-last-scope, v1-contract). Actual inventory command output: `S006 full GET table: 448 routes; server failures=0`. Exact directory IDs/header totals and v1 contract remain green. No source fix beyond the tested warning/header/logging slices.
+
+Classification retains the original81-row baseline:38(a),43(b). Shared v1 fallback header parity covers23(a) v1 shapes by code path;15 internal register routes still need header/count integration (LOW candidates, named in the table). Capped/offset services also retain LOW true-total/pagination candidates; a matching meta/header value does not prove full SQL totals after upstream truncation. Those require service-specific count/filter/page work and were not bypassed with a page-length header. Complete scope/route names in docs/BATCH_5A_HEADER_CLASSIFICATION_2026-10-17.md. S-001 screenshot discrepancy remains undetermined/non-blocking.
+
+Next exact action A4 full PG run1..5, separate fresh DB per run, no heavy parallel process. A2 focused50/590 successes do not count toward full acceptance. Counter0/5; every broad gate still NOT RUN on final source. Fresh generated GET/coarse tables may be retained via BATCH5A_WRITE_REPORTS=1 during A4. Source changes restart counter; any failed full run STOPs before later gates. All other gates and A5/A6 remain pending; no phase completion/B/C/push.
+
+---
+
+# Prior A3 checkpoint
+
+# A3 warning implemented/verified; A3b count header next - 2026-10-17
 
 Required S-003 warning is implemented read-only. Configuration `RECONCILIATION_STALE_RECEIPT_HOURS`, default72 positive finite hours; uses decided_at, fallback created_at, future age clamps0. Accepted MIR with positive lines and no posted GRN: age at/below threshold INFO, strictly older WARNING. Notices include MIR/PO numbers and age; posted GRN resolves them. New structured fields stale_receipt_hours/receipt_notices are separate from integrity results and never change ok/violation/exit solely because of age. Existing acceptance-minus-returns computation is unchanged. Operator/config reference: docs/STALE_RECEIPT_WARNING.md. Production diff19 added/4 removed lines.
 
