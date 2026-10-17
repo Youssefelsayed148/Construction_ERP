@@ -45,9 +45,9 @@ Historical guide follows; account status is superseded above.
 
 # Company demo guide - Gate C in progress (masters, procurement and finance)
 
-**Masters and procurement records are loaded; the full company dataset is incomplete.** UI: `http://127.0.0.1:8092`; database: `construction_erp_demo` on loopback `55442`; Compose project: `erp-demo-20261017`. No pilot/clone environment was contacted.
+**Masters, procurement, finance and HR records are loaded; the full company dataset is incomplete.** UI: `http://127.0.0.1:8092`; database: `construction_erp_demo` on loopback `55442`; Compose project: `erp-demo-20261017`. No pilot/clone environment was contacted.
 
-The account stage remains 38 verified logins from Gate B. Credentials remain in ignored demo-only files and are not included here. HR and site/QHSE, the final whole-seed rerun, and full nine-state verification are still pending. Procurement and finance have real document numbers below. C-PROC-001/002 leave the owner_ceo PR state and a return directly linked to the rejected delivery unavailable.
+The account stage remains 38 verified logins from Gate B. Credentials remain in ignored demo-only files and are not included here. Site/QHSE, the final whole-seed rerun, and full nine-state verification are still pending. Masters, procurement, finance and HR have records below. C-PROC-001/002 leave the owner_ceo PR state and a return directly linked to the rejected delivery unavailable.
 
 ## Masters counts (2026-10-18)
 
@@ -74,6 +74,18 @@ The account stage remains 38 verified logins from Gate B. Credentials remain in 
 | Supplier payments (AP only) | 1 | DEMO-AP-PAY-001, 43,000 EGP, direction=ap; separate from client receipts |
 
 The finance seed uses the invoice, supplier invoice and payment service routes. AR receipts are created with direction=ar; AP payment uses direction=ap and supplier_id without client invoice_id. `npm.cmd --prefix backend run seed:company-demo:finance` created 9 on its initial execution and 0 on its second complete execution. Readback command `node .scratch-company-demo/finance-counts.js` returned client invoices=4, AR receipts=2, AP supplier payments=1, supplier invoices=1, and confirmed statuses paid/partially_paid/sent/overdue. Focused helper test passed 1 suite/1 test; its first red was the diagnosed missing-module import, not an assertion-level behavior red.
+
+## HR counts (2026-10-18)
+
+| Record | Count | Document numbers / state |
+|---|---:|---|
+| Employees | 25 | DEMO-EMP-001 through DEMO-EMP-025; created as workflow_owner |
+| Attendance | 25 | 2026-02-16; one row per demo employee |
+| Leave requests | 4 | Two approved and two pending; approval actor differs from hr_manager maker |
+| Site inductions | 3 | One real HSE induction record per demo project |
+| Payroll | 1 period / 25 lines | DEMO-PAYROLL-2026-02, Feb 2026, 25 employees |
+
+`npm.cmd --prefix backend run seed:company-demo:hr` created 60 counted rows/actions initially and 0 on the complete rerun. `node .scratch-company-demo/hr-counts.js` verified the totals. Focused test passed 1 suite/1 test; its first red was a diagnosed missing-module import, not an assertion-level behavior red. Site/QHSE records and final whole-seed rerun are still pending.
 
 ## Procurement counts and document numbers (2026-10-18)
 

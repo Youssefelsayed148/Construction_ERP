@@ -5,6 +5,12 @@
 - Static route inspection confirms the mounted warehouse API has no create route: `/api/warehouses` exposes GET collection/detail and POST movement/transfer/reservation operations only; v1 aliases the same route set. Project provisioning also contains no warehouse creation. The two required warehouses cannot be created through the permitted services/API. Direct SQL is disallowed for creation, and product changes are disallowed, so masters cannot satisfy its required entities.
 - C-MASTER-001 remains MEDIUM (broken flow/capability): no authorized warehouse-creation endpoint/service. Gate C is BLOCKED before module execution; masters module created 0 records and its module-specific idempotency test was not written/run. Procurement, finance, HR, site/QHSE, second full run, document-number list, and nine-state check are NOT RUN. Gate D and E are NOT RUN. No business rows were changed.
 - Next action: resume masters only after a supported warehouse create API/service path is made available or scope changes to authorize its implementation. Continue with masters idempotency tests/count/commit before procurement.
+# 2026-10-18 - RUN 1b-3 Gate C HR module checkpoint
+
+- Added HR seeder/test/CLI action and package script; no product source changes. Focused red was diagnosed `MODULE_NOT_FOUND` before helper creation; green 1 suite/1 test/0 skipped, 0.367 s, exit0.
+- `npm.cmd --prefix backend run seed:company-demo:hr` first run exit0/~2.05 s created60 (25 employees, 25 attendance rows, 4 leave requests, 2 approvals, 3 inductions, 1 payroll period). Complete rerun exit0/~1.42 s created0. Census `node .scratch-company-demo/hr-counts.js` exit0/0.504 s: 25 employees, 25 matching attendance, leaves 2 approved/2 pending, 3 inductions, 1 Feb 2026 payroll / 25 lines.
+- Employee codes DEMO-EMP-001..025; payroll DEMO-PAYROLL-2026-02. Correct API roles used, with distinct hr_manager leave maker and workflow_owner reviewer. No raw SQL. Site/QHSE and later steps remain pending; no push.
+
 # 2026-10-18 - RUN 1b-3 Gate C finance module checkpoint
 
 - Added finance seeder/test/entrypoint and `seed:company-demo:finance`; no product source changes. Initial focused red was diagnosed `MODULE_NOT_FOUND` because helper module was not yet created. Green focused run: 1 suite/1 test/0 skipped, 0.363 s, exit0; no assertion-level pre-fix behavior red claimed.

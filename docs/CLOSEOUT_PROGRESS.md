@@ -1,3 +1,9 @@
+# 2026-10-18 - RUN 1b-3 Gate C HR module checkpoint
+
+- Focused command `npm.cmd --prefix backend test -- --runInBand --runTestsByPath src/scripts/__tests__/company-demo-hr.test.js`: initial red exit1 was `MODULE_NOT_FOUND` because helper did not yet exist; green PASS 1 suite/1 test/0 skipped, 0.367 s, exit0. No assertion-level behavior red claimed.
+- `npm.cmd --prefix backend run seed:company-demo:hr`: first run exit0/~2.05 s/created60 (employees25, attendance25, leave4, leave approvals2, inductions3, payroll period1); full rerun exit0/~1.42 s/created0. Read-only `node .scratch-company-demo/hr-counts.js` exit0/0.504 s verified employees25, attendance25, approved leaves2, pending leaves2, inductions3, payroll lines25.
+- Payroll period DEMO-PAYROLL-2026-02, February 2026, 25 employees. Employee codes DEMO-EMP-001..025. Attendance date 2026-02-16. Employee creation used workflow_owner; leave requests used hr_manager with workflow_owner approval; payroll creation used finance_manager. No raw SQL/product changes. Site/QHSE, final full rerun, remaining interesting states and D/E pending.
+
 # 2026-10-18 - RUN 1b-3 Gate C finance module checkpoint
 
 - Focused command `npm.cmd --prefix backend test -- --runInBand --runTestsByPath src/scripts/__tests__/company-demo-finance.test.js`: first red exit1 because `company-demo-finance.js` was not yet present (`MODULE_NOT_FOUND`); after implementation PASS 1 suite/1 test/0 skipped, 0.363 s, exit0. The red was import-level, not assertion-level; no behavior-red claim.

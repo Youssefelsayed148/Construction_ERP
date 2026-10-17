@@ -17,6 +17,7 @@
       "seed:company-demo:masters": "node src/scripts/seed-company-demo.js --masters",
       "seed:company-demo:procurement": "node src/scripts/seed-company-demo.js --procurement",
       "seed:company-demo:finance": "node src/scripts/seed-company-demo.js --finance",
+      "seed:company-demo:hr": "node src/scripts/seed-company-demo.js --hr",
     "seed:company-demo:reset": "node src/scripts/seed-company-demo.js --reset",
     "smoke:staging": "node src/scripts/smoke-staging.js",
     "backup:rehearse": "node src/scripts/backup-restore-rehearsal.js",
