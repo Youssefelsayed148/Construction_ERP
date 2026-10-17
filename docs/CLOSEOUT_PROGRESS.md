@@ -1,3 +1,9 @@
+# 2026-10-17 - Batch 5A last scope fix; final verification blocked
+
+HIGH team listing defect reproduced (18 passed / 4 failed), reported, and fixed in SQL before counting/pagination on both team routes. Distinct supplier/client fixtures remove equality ambiguity without changing the aggregate assertion or allowlist. Focused real PG: 3 suites / 28 tests passed, 130 migrations; aggregate unexplained=0 and server failures=0. Application source unchanged since that pass; later test-only pagination refinements remain pending PG verification.
+
+S-002 before/after snapshots give identical exact results for all 20 route/role observations; team leak predates S-002, which does not widen these five routes. Post-final-edit host gates pass: backend 67/1110, frontend 42/341, i18n 36 namespaces/2871 keys, API lint 1/1, guards, CI build. Full-PG migration connection terminated, then Docker engine /_ping timed out twice. Docker test stage and golden stalled and were interrupted; no pass claims. v1 full-suite runs: first never reached Jest, remaining four not run (0/5 complete). No protected environment touched or restarted. Stop recorded in STATE.md; engine recovery, disposable cleanup and all final gates/five full-PG runs remain required. See docs/BATCH_5A_DEFECT_FIX_REPORT_2026-10-17.md for exact IDs, evidence and limits.
+
 # 2026-10-15 — R3.2 aggregate ageing
 
 AR/AP ageing now aggregates allocations and buckets in SQL; the focused old-vs-new reference plus existing finance-flow PG tests pass 2/2 suites / 10/10 tests. Existing finance mock suite passes 14/14. Fresh golden reconcile passes 16/16 at 127 migrations. On the expanded 150k invoice + 150k payment + 150k allocation workload, AR ageing is 300.63 ms and the four-query cash-flow data path is 309.87 ms. Container `erp-r3-perf-20261015051206` removed. See `docs/R3_EVIDENCE.md`.

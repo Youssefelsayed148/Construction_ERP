@@ -18,10 +18,12 @@ describePg('R1.2 project-scoped aggregate isolation', () => {
   beforeAll(async () => {
     db = require('../../config/database');
     await db.transaction(client => require('../seed-golden-demo').seedGoldenDemo(client));
-    const client = (await db.query("INSERT INTO clients (name_ar, name_en) VALUES ('R12 Client', 'R12 Client') RETURNING id")).rows[0];
-    const supplier = (await db.query('SELECT id FROM suppliers ORDER BY id LIMIT 1')).rows[0];
     const material = (await db.query('SELECT id FROM item_master ORDER BY id LIMIT 1')).rows[0];
     for (const [suffix, invoice, payment, expense] of [['A', 10, 2, 1], ['B', 90, 20, 7]]) {
+      // Distinct counterparties make equality meaningful: a shared supplier/client
+      // can legitimately be visible from either project and from the company.
+      const client = (await db.query('INSERT INTO clients (name_ar, name_en) VALUES ($1,$1) RETURNING id', [`R12 Client ${suffix} ${tag}`])).rows[0];
+      const supplier = (await db.query('INSERT INTO suppliers (code, name_ar, name_en) VALUES ($1,$1,$1) RETURNING id', [`R12SUP-${tag}-${suffix}`])).rows[0];
       const project = (await db.query("INSERT INTO projects (name, name_en, code, status, client_id, budget) VALUES ($1,$1,$2,'active',$3,$4) RETURNING id", [`R12 ${suffix}`, `R12-${tag}-${suffix}`, client.id, invoice * 100])).rows[0];
       if (suffix === 'A') own = project; else foreign = project;
       await db.query("INSERT INTO invoices (invoice_number, project_id, client_id, amount, issue_date, status) VALUES ($1,$2,$3,$4,CURRENT_DATE,'draft')", [`R12-${tag.slice(-10)}-${suffix}`, project.id, client.id, invoice]);

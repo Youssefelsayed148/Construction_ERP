@@ -1,3 +1,87 @@
+# Last Batch 5A scope blocker - fixed; final verification BLOCKED - 2026-10-17
+
+Resume source: e5cd943 on closeout/batch-a-to-6. Application fix has focused real-PG evidence. Batch closure is blocked by Docker engine availability; five full-PG runs and final Docker verification are incomplete. Earlier report sections below are historical and do not establish final gate status.
+
+## Assertion and failing-first proof
+
+aggregate-scope.pg.test.js's unexplained=[] assertion finds byte-identical nonempty owner/one-project responses outside the documented shared/zero responses. Equality is a discovery oracle, not ownership proof. Original R12 fixtures attached both projects to one client and supplier, so those directory results could legitimately match. Each project now has a distinct supplier and client. The assertion, route discovery, allowlist and timeouts are unchanged.
+
+New batch5a-last-scope.pg.test.js inserts two projects, distinct clients/suppliers and POs, own/foreign team members, a NULL-project owner_ceo seat, an unassigned actor and client_reviewer. It independently checks exact IDs/statuses/totals on all five routes for all four requested roles, including v1 meta.total. Team checks cover pagination and explicit authorized/foreign project selection.
+
+Failing-first disposable PG: 130 migrations; **18 passed / 4 failed**; erp-r02-gate-20261017034208 removed, exit 1. Full assertion output is in ignored .batch5a-last-scope-red.log. Initial Docker pipe access denial was an infrastructure failure before this executed regression.
+
+**HIGH data-leak defect:** GET /api/team and GET /api/organizations/team, project_manager assigned only project 1. Expected seat IDs [1,2,5], total 3; received [1,2,3,5], total 5. Seat 3 is the company-wide owner_ceo assignment (NULL project), exposing identity fields. Foreign project 2 seat 4 was pruned from the response, but contributed to total 5. No foreign seat row content was returned in this reproduction; confidentiality failure is company identity plus out-of-scope totals. Reported before applying the fix.
+
+Schema diagnosis: user_project_roles.project_id is nullable (policy-migration.js); projectReadScope intentionally excludes this table because policy needs complete identity rows. Response pruning runs after COUNT/LIMIT and preserves NULL-project seats. Both GET handlers now pass authorized project_ids into teamService's listing predicate before COUNT/LIMIT. It excludes foreign and NULL-project seats for scoped callers while company-wide callers retain their directory. No identity query or RBAC grant changed.
+
+## Exact before/after S-002 comparison
+
+Isolated source snapshots: **90a024d** immediately before S-002 and **0222817** immediately after it. Used git archive under ignored .claude/worktrees, existing dependencies, the same new regression and independent throwaway migrated DBs; no historical checkout or protected environment. Both runs: 130 migrations; 18 passed / 4 expected failed; respective containers ...20261017034314 and ...34315 removed. PowerShell compared all 20 JSON observations: **20/20 identical**, including exact IDs/totals/statuses.
+
+The following results apply at BOTH snapshots (own project 1, foreign project 2). IDs are sorted for comparison; total is X-Total-Count, with the same meta.total on v1. Forbidden responses have no total header or meta total.
+
+| Route | project_manager actual IDs / total | unassigned | client_reviewer | owner_ceo IDs / total |
+|---|---|---|---|---|
+| /api/suppliers | [1] / 1 | 403, [] / absent | 403, [] / absent | [1,2] / 2 |
+| /api/clients | [1] / 1 | 403, [] / absent | 403, [] / absent | [1,2] / 2 |
+| /api/organizations/team | [1,2,3,5] / 5 (defect; expected [1,2,5] / 3) | 403, [] / absent | 403, [] / absent | [1,2,3,4,5] / 5 |
+| /api/team | [1,2,3,5] / 5 (same defect) | 403, [] / absent | 403, [] / absent | [1,2,3,4,5] / 5 |
+| /api/v1/companies/ | [1] / 1; meta.total=1 | 403, [] / absent | 403, [] / absent | [1,2] / 2; meta.total=2 |
+
+**S-002 did not widen access on any of the five routes.** Its application diff changes only authorize role lists on GET /api/projects/templates, GET /api/projects/templates/:key, POST /api/projects/wizard and POST /api/projects. Those four routes intentionally permit RBAC-granted canonical roles previously blocked by the coarse owner/admin/project_manager list (e.g. owner_ceo); policy grants and project scoping remain enforced. This is an intentional entry-route widening, not a change to these five directory/team routes. No assertion of universal safety of every other route is made.
+
+## Focused fix verification
+
+r02-pg-gate.ps1 -Suite batch5a-last-scope.pg.test.js,aggregate-scope.pg.test.js,batch5a-directory-scope.pg.test.js (full source paths under src/scripts/__tests__) -> **3 suites / 28 tests passed**, 130 migrations, exit 0; erp-r02-gate-20261017034316 removed. Discovery: 238 parameterless GETs, 26 identical documented responses, unexplained=0, server failures=0. Application source unchanged thereafter. Later test-only changes add third/empty-page assertions and owner default-page handling; they have NOT run on PG because the engine became unavailable.
+
+In this combined run own/foreign project IDs were 4/5:
+
+| Route | project_manager exact IDs / total | owner_ceo exact IDs / total |
+|---|---|---|
+| /api/suppliers | [4] / 1 | [1,2,3,4,5] / 5 |
+| /api/clients | [3] / 1 | [1,2,3,4] / 4 |
+| /api/organizations/team | [3,4,7] / 3 | [3,4,5,6,7] / 5 |
+| /api/team | [3,4,7] / 3 | [3,4,5,6,7] / 5 |
+| /api/v1/companies/ | [3] / 1; meta.total=1 | [1,2,3,4] / 4; meta.total=4 |
+
+Unassigned and client_reviewer: all five returned exactly 403, [] IDs, no total header/meta total. Expected owner IDs are independently queried from the disposable DB, including earlier suites' fixture rows. No response-derived oracle.
+
+## Gates after final source/test edits
+
+| Gate / command | Actual result |
+|---|---|
+| npm.cmd --prefix backend test -- --runInBand --no-colors | PASS 67 suites / 1,110 tests; 15.241s |
+| CI=true npm.cmd --prefix frontend run test:ci -- --no-colors | PASS 42 suites / 341 tests; 10.625s |
+| frontend i18n:check and i18n:parity | PASS; 36 namespaces / 2,871 English keys |
+| frontend lint:api | PASS; direct-call baseline 1/1 |
+| backend lint:guards | PASS |
+| CI=true npm.cmd run build | PASS; Compiled successfully; exit 0. First sandbox attempt spawn EPERM; authorized retry passed. |
+| docker build --target test --tag erp-batch5a-last-test:20261017 --progress=plain backend | BLOCKED; stalled with no build output; interrupted. No tests counted. |
+| r02-pg-gate.ps1 -Reconcile | BLOCKED; stalled with no gate output; interrupted. No checks counted. |
+| r02-pg-gate.ps1 -All -Filter '.*' | BLOCKED during migration; Connection terminated unexpectedly after output for migration 0067. Jest not reached. No suite/test counts. |
+
+Full emitted failure output remains in .batch5a-last-pg-run-1.log. No filtering was applied to the captured run. The runner emits only its existing last-1500-character migration error block on migration failure; this is not a Jest assertion failure. The default unfiltered Jest path never ran. Docker's engine named pipe accepted connections but both bounded GET /_ping probes timed out after 5 seconds. Docker processes remained present. No restart or protected-container query was attempted. Pending commands were interrupted; cleanup of this attempt's disposable ...202610170344* containers is unconfirmed.
+
+| Requested full-PG run | Full suite | v1-contract |
+|---|---|---|
+| 1 | Migration connection failed; Jest not reached | NOT REACHED; no assertion |
+| 2 | NOT RUN after infrastructure stop | NOT RUN |
+| 3 | NOT RUN | NOT RUN |
+| 4 | NOT RUN | NOT RUN |
+| 5 | NOT RUN | NOT RUN |
+
+**0/5 completed full-suite v1 runs.** Historic v1 instability remains unresolved. No v1 assertion failed in this attempt; no unavailable assertion is reconstructed or claimed captured.
+
+## Files, limits and resume
+
+Application files: routes/organizations.js, routes/team-assignments.js, services/teamService.js. Tests: aggregate-scope.pg.test.js, new batch5a-last-scope.pg.test.js. Reporting: STATE.md, CLOSEOUT_LOG.md, CLOSEOUT_PROGRESS.md and this report. No new dependencies or migrations; no allowlist, policy grant, authentication identity lookup or v1 contract-test edits.
+
+STOP at Docker availability. Restore availability without agent restarts of protected environments, clean only this attempt's throwaways, rerun focused tests and EVERY final gate including at least five complete unfiltered full-PG runs. Capture any full v1 assertion; after two failures, diagnose the schema before retry. Final Batch 5A completion is not claimed. Human UAT and deployed behavior remain unverified. Pilot, clone and existing demo were not queried, rebuilt, restarted or seeded. In-process golden seeding occurred only inside new disposable test databases. No env values read/printed, external message/service, legacy role switch, push, PR or deploy. Excluded review reports remain untouched/unstaged. LF and staged whitespace checks apply to the checkpoint.
+
+---
+
+# Historical e5cd943 report (superseded by the current status above)
+
 # Batch 5A defect-fix resume - STOPPED - 2026-10-17
 
 Resumed from 897e823 on closeout/batch-a-to-6. Eight implementation/hygiene slices are committed through f06a7a3. The full PG gate and one focused integration attempt failed; stopped under the two-failed-attempt rule. This batch is incomplete. No pilot, sweep clone or existing demo environment was accessed. No environment file, dependency, migration, deployment or external service changed.

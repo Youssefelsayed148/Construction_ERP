@@ -101,9 +101,13 @@ async function removeTeamMember(q, userProjectRoleId) {
 }
 
 // Listing a project's team, optionally scoped "within its window" (expired seats labelled).
-async function listTeamMembers(q, { project_id = null, organization_id = null, role_key = null } = {}) {
+async function listTeamMembers(q, { project_id = null, organization_id = null, role_key = null, project_ids = null } = {}) {
   const params = [];
   const conds = [];
+  // Scope the listing before both COUNT and LIMIT. Identity/policy queries
+  // still need the full assignment table and must never be globally rewritten.
+  // ANY also excludes company-wide (NULL) seats from a project-bound listing.
+  if (project_ids != null) conds.push(`upr.project_id = ANY($${params.push(project_ids)}::int[])`);
   if (project_id != null) conds.push(`upr.project_id = $${params.push(toNum(project_id))}`);
   if (organization_id != null) conds.push(`upr.organization_id = $${params.push(toNum(organization_id))}`);
   if (role_key != null) conds.push(`r.key = $${params.push(role_key)}`);

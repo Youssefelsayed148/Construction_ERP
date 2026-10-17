@@ -33,6 +33,7 @@ router.get('/', authenticate, authorize(), async (req, res) => {
   try {
     const listQuery = (sql, params) => queryPaginated(req, res, query, { sql, params, orderBy: [{ column: 'id' }] });
     const rows = await team.listTeamMembers(listQuery, {
+      project_ids: req.accessScope.companyWide ? null : req.accessScope.projectIds,
       project_id: req.query.project_id || null,
       organization_id: req.query.organization_id || null,
       role_key: req.query.role_key || null,
