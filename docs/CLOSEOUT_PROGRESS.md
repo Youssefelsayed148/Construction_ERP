@@ -1,3 +1,9 @@
+# 2026-10-17 - A2 all50 reproductions passed; A3 red tests next
+
+A2 complete: token idle15/load15 and v1 idle10/load10,50 fresh DBs/50 suites/590 tests passed, zero failures/new unavailability diagnostics,130 migrations per DB. Neither historical timeout/503 reproduced in any mode; causes unproven, no speculative fix. V1 load valid sample CPU93%/RAM1,350MiB; post-group CPU5%/RAM2,013MiB. Exact post-A2 inventory25/595/8 containers/volumes/networks, zero name differences from baseline; pilot healthy/HTTP200; all owned PG/anonymous volumes removed, no protected mutation. Next run drafted A3/A3b tests RED, then implement/verify focused GREEN; A4 counter0/5 and broad gates unrun on final source. B/C not started/no push. Full table/timings/evidence in current report; STATE resume updated.
+
+# Prior v1-idle checkpoint
+
 # 2026-10-17 - A2 v1 idle10 passed; final loaded mode next
 
 V1 idle10/10 suites,100/100 tests passed on10 fresh DBs/130 migrations each; A2 aggregate40 suites/490 tests with token modes, zero failures/unavailability diagnostics. Root causes still unproven. Installed pg-pool:224 proves queued acquisition can time out at configured5000ms, not that it did. Single no-PG timing sample: bcrypt pair107/141ms idle/load, scrypt pair141/243ms;12-worker workload terminated. Next v1 LOAD1..10. A4 count0/5; three A3/header test drafts unrun, app remains ed94887. B/C not started/no push. STATE exact resume; timings/logs in current report.

@@ -1,4 +1,12 @@
-# Current checkpoint - A2 token30 + v1 idle10 passed; v1 load next - 2026-10-17
+# Current checkpoint - A2 complete, failures NOT reproduced; A3 red tests next - 2026-10-17
+
+- A2 finished all four modes: token idle15/15 (195 tests), token load15/15 (195), v1 idle10/10 (100), v1 load10/10 (100). Total50 suites/590 tests, zero failures, each on a unique fresh disposable PG with130 migrations/exit0. Zero new rate-limit/auth/idempotency unavailability diagnostics. Neither historic failure reproduced; causes remain UNPROVEN, no speculative behavior fix.
+- V1 load Jest times7.087,7.164,8.236,7.209,7.583,8.347,7.226,7.245,6.475,6.335s. Valid v1-load sample CPU93%/RAM1,350MiB. All CPU stderr logs empty. End-A2 resource sample CPU5%/freeRAM2,013MiB; workload stopped. Exact Docker inventories match baseline:25 containers/595 volumes/8 networks, zero name differences each; pilot healthy/HTTP200, no start/mutation. Source A1 ed94887; raw/CPU/snapshot logs and a2-summary.log in scratch.
+- NEXT RESUME POINT: execute the three drafted A3/A3b test files RED before changing implementation (unit reconcile + external-api, and focused real-PG batch5a-reconcile). Then implement configurable stale-receipt warning (default72h/key documented) and trivial v1 count-header parity, verify focused GREEN, checkpoint each slice. A4 count0/5; all broad gates unrun. Preserve test drafts; do not treat them as passing. B/C not started/no push.
+
+# Prior v1-idle checkpoint
+
+# A2 token30 + v1 idle10 passed; v1 load next - 2026-10-17
 
 - A2 v1 idle group passed10/10 fresh DBs,10 suites/100 tests,130 migrations each, exits0. Jest times5.066,4.896,4.684,5.851,4.883,4.805,4.998,4.745,5.760,4.608s. Token15 idle+15 load also passed: total completed40 suites/490 tests, zero failures/unavailability diagnostic logs. Root causes remain unproven.
 - Source review installed pg-pool/index.js:190-225 confirms pending acquisition can fail at connectionTimeoutMillis with generic Error (no SQLSTATE); app bound5000ms at database.js:16. This is a possible mechanism, NOT an observed failure. Single no-PG KDF sample: two concurrent bcrypt verifications107ms idle/141ms load, two concurrent scrypt hashes141ms idle/243ms load (N32768/r8/p3);12-worker load explicitly stopped. No credential/hash values output. Timing samples do not establish production latency/cause.

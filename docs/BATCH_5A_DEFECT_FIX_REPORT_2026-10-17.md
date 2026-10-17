@@ -1,4 +1,24 @@
-# CURRENT - A2 token30 + v1 idle10 PASS; v1 loaded next - 2026-10-17
+# CURRENT - A2 complete: neither failure reproduced; A3 red tests next - 2026-10-17
+
+| A2 mode | Fresh databases / suites passed | Tests passed / failed | New unavailability diagnostics |
+|---|---|---|---|
+| token idle | 15/15 | 195/0 | 0 |
+| token CPU load | 15/15 | 195/0 | 0 |
+| v1 idle | 10/10 | 100/0 | 0 |
+| v1 CPU load | 10/10 | 100/0 | 0 |
+| Total | 50 unique DBs / 50 suites | 590/0 | 0 |
+
+Each database applied130 migrations and each gate exited0. No skipped suite/timeout/assertion changes. V1 loaded Jest times7.087,7.164,8.236,7.209,7.583,8.347,7.226,7.245,6.475,6.335s. Twelve CPU workers during each loaded run; valid sampled CPU93%/free RAM1,350MiB. Rate-limit store, authenticated limiter, internal auth and idempotency failure log count0 in all50 logs. **NOT REPRODUCED in any requested mode.** No root cause or source defect is proven, and none was speculatively fixed. These passes do not establish full-suite stability, eliminate shared-state effects, or prove the earlier environment hypothesis. Continue with A1 logging in place, as requested.
+
+Post-A2 inventory:25 containers/595 volumes/8 networks, exact-name differences0 in every category from the baseline. All50 disposable containers/anonymous volumes removed by their owned runner; no uncertain resource cleanup. Pilot permitted ps: db/backend/frontend healthy, migrate Exited(0), HTTP8090=200. No protected mutation. End sample CPU5%/freeRAM2,013MiB confirms controlled workload ended. Full names/resources retained in inventory-a2.log/resources-a2.log/pilot-a2.log; parsed50-run summary a2-summary.log, full logs/snapshots retained. CPU stderr files empty.
+
+Next exact resume: run drafted warning/header tests RED, implement and verify A3/A3b, then all A4 gates from0/5. All full PG repetitions/Docker/golden/mocks/frontend/i18n/guards/lint/build remain NOT RUN on final source. Gate A not passed; 5A incomplete; B/C not started; no push. Existing S-006 classification38(a)/43(b) and S-001 undetermined remain non-blocking. Three drafted test files remain unstaged/unrun at this docs checkpoint.
+
+---
+
+# Prior v1-idle checkpoint
+
+# A2 token30 + v1 idle10 PASS; v1 loaded next - 2026-10-17
 
 V1 idle command diagnose.ps1 -SuiteName v1 -Mode idle -Count10 completed **10/10 suites,100/100 tests**,130 migrations per fresh DB, all exits0. Jest times5.066,4.896,4.684,5.851,4.883,4.805,4.998,4.745,5.760,4.608s. Together with both token modes, A2 has40 passed suites/490 passed tests and zero unavailability diagnostics; no timeout/503 reproduced yet. Remaining mode: v1 LOAD1..10; A2 not complete before that mode.
 

@@ -2587,6 +2587,14 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - Final Docker proof: post-cleanup inventory 25 containers / 595 volumes / 8 networks; exact-name Compare-Object differences from pre-test inventory=0 for each resource type. Saved .batch5a-verify-docker-postcleanup-inventory.log. All pre-existing resources retained. Documentation verification: git diff --check exit 0; four files CR_bytes=0; both excluded reports returned by git check-ignore; implementation-path git diff from cc1a3ea empty.
 - Staging verification: git diff --cached --check -> exit 0; exactly four documentation files staged, all i/lf w/lf; git diff --cached --name-only for both excluded review reports -> empty. User requested stop after committing/report completion and a clean-session rerun/closeout prompt; no more gates or diagnosis after this checkpoint. Final restage/whitespace check precedes commit with required trailers.
 
+## 2026-10-17 - A2 complete, no reproduction
+
+- All requested caps executed: token idle15/load15, v1 idle10/load10;50 fresh DBs/50 suites/590 tests passed, zero failures;130 migrations each, exits0. New rate-limit/auth/idempotency diagnostics0. Neither historic failure reproduced; causes unproven, no speculative source fix. Full raw logs/snapshots/CPU logs/parsed summary under scratch.
+- V1 load valid CPU93%/RAM1,350MiB; after group CPU5%/RAM2,013MiB. Exact Docker inventory25 containers/595 volumes/8 networks, differences0 vs baseline each. All50 owned throwaways/anonymous volumes removed; pilot healthy/HTTP200, migrate Exited0, no protected mutations. No external sends/paid service/legacy switch/push.
+- Next execute drafted A3/A3b RED tests, implement only after red, focused green/checkpoint each slice; A4 count0/5 with all broad gates pending. Three draft test files unrun/unstaged. Four-doc checkpoint, LF/cached check/trailers, STATE exact resume. B/C not started.
+
+## Prior v1-idle checkpoint
+
 ## 2026-10-17 - A2 v1 idle checkpoint
 
 - V1 idle10 fresh disposable DBs:10 suites/100 tests passed,130 migrations each, exits0. A2 completed40 suites/490 tests including token modes, no failures/unavailability diagnostics. Current cause unproven, no concurrency fix.
