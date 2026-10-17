@@ -1,3 +1,125 @@
+# CURRENT - Batch 5A diagnosis STOP; timeout root cause unproven - 2026-10-17
+
+Started clean at 7d15806643fa361a36fa6983b6e02fb3d16ed0ae on closeout/batch-a-to-6. This section supersedes historical status below. No application, test, assertion, timeout, dependency, migration or environment-file change. Batch 5A is INCOMPLETE. No push, PR or deployment.
+
+## Diagnosis in the requested order
+
+1. **Leader advisory lock:** sweepLeader.js:28 uses SELECT pg_try_advisory_lock(hashtext($1)), with lockName('replenishment') = conerp-sweep:replenishment. Contention skips; this acquisition cannot block waiting for that advisory lock. materials.js:363 and replenishment.js:759 share that key. inventory-5-3.pg.test.js:480 deliberately takes the same key with blocking pg_advisory_lock, then releases it and its client in finally. sweep-leader.pg.test.js uses tagged leader keys; concurrency.pg.test.js uses its own names. Migration serialization uses a separate key, 7240100. This does not exclude other lock waits inside the sweep.
+2. **Blocking transaction lock / connections:** replenishment.js:395-424 uses pg_advisory_xact_lock(hashtext(sourceKey)) for sourceKey replenishment:<materialId> or replenishment:<materialId>:p<projectId>, within database.transaction when q is defaultQuery. database.js commits or rolls back, then releases in finally. sweepLeader holds a pooled client for its run and unlocks/releases in finally; its comments calling it unpooled do not match pool.connect(). No missing release/rollback was proven in these inspected paths. afterAll awaits server.close BEFORE pool.end, so the old afterAll timeout does not prove pool.end was hanging. The new passing run completed teardown. A transient migration idle-in-transaction sample is not evidence of an application connection leak.
+3. **Jest isolation:** r02-pg-gate.ps1:109 explicitly passes --runInBand; backend test:pg also does. jest.pg.config.js does not override maxWorkers. Files in these gates are serial, not parallel. jest.pg.global-setup.js documents migration once per run with uniquely tagged rows, without transaction-per-suite isolation. State/cardinality leakage across suites remains possible and unproven; a fresh standalone pass cannot rule it out. server.js:194 gates startup under require.main === module; v1-contract imports the app and calls app.listen, so that import does not start the scheduled sweeps.
+4. **Environment:** do not attribute the historic intermittent timeout to Docker/WSL pressure: hypotheses above have not all been eliminated by a reproduced failure. Docker stats on this disposable container showed 4.27% CPU and 82.13 MiB / 7.57 GiB at one instant; that is not a resource-pressure diagnosis. A separate, proven Windows excluded-port conflict prevented diagnostic attempt 2 from starting, as detailed below.
+
+## Fresh standalone reproduction and exact stop
+
+The temporary observer invoked powershell.exe -NoProfile -File backend/scripts/r02-pg-gate.ps1 -Suite src/scripts/__tests__/v1-contract.pg.test.js -Filter '.*', alongside a separate job sampling pg_stat_activity and pg_locks on only the new disposable DB at a nominal 3-second cadence. Captured fields include state, wait_event_type, wait_event, query, xact_start, query_start, pg_blocking_pids and lock identities/modes/granted. A successful sample can take longer than the cadence. The observer source is retained locally as .batch5a-closeout-observer-source.log, not committed.
+
+Actual gate output for standalone iteration 1:
+
+```text
+migrations: [migrate] all migrations completed (130 applied, 0 already applied)
+PASS src/scripts/__tests__/v1-contract.pg.test.js (14.85 s)
+  every documented (method, path) answers with a JSON envelope when called (3914 ms)
+Test Suites: 1 passed, 1 total
+Tests:       10 passed, 10 total
+Time:        15.456 s, estimated 61 s
+container erp-r02-gate-20261017150911 removed; exit=0
+```
+
+There were 19 samples, 12:09:15.036468 through 12:10:09.621997 UTC. No sampled activity had blockers or a Lock wait; no sampled lock was ungranted. Six granted advisory-lock observations occurred during migrations, before the 12:10:07.300Z manual-sweep request. One migration session was briefly idle in transaction on SELECT pg_get_serial_sequence($1, $2) AS seq; the migrations completed. The last sample shows an idle session whose last query selects open expiring-material alerts and an active rate-limit insert waiting on WALSync. No hung query was reproduced or terminated. Expected route-probe validation SQL errors (for example invalid date '1') appear in the passing log; they are not evidence of the historic timeout.
+
+**Two operational attempts failed, so STOP; no third attempt.** Attempt 1's actual suite passed, but my temporary observer's Docker Go-template quoting was wrong: the native command interpreted volume as an undefined template function. That error surfaced at Receive-Job after Jest completed and interrupted observer cleanup. The activity log was still captured; I inspected the exact container mount separately, corrected only the temporary helper's mount query to parse JSON, and removed the owned volume. Attempt 2 then failed before migration/Jest because the gate selected Windows-excluded port 55930. The wrapper's stop-on-native-stderr behavior left its second output log empty; the full tool-emitted errors are preserved verbatim below and in .batch5a-closeout-errors.log. Both are operational failures, not two failed v1 assertions. Conservatively applying the user stop condition means no further diagnostic or full-suite attempt in this session.
+
+```text
+Attempt 1 observer failure AFTER a passing PG suite:
+template parsing error: template: :1: function "volume" not defined
+At D:\The Osiris Labs\Construction_ERP\.batch5a-closeout-tools.ps1:55 char:5
++     Receive-Job $sampler
++     ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (template parsin...me" not defined:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+    + PSComputerName        : localhost
+
+Attempt 2 startup failure BEFORE migrations or Jest:
+START diagnose-2 2026-10-17T12:10:30.2924087Z
+powershell.exe : docker: Error response from daemon: ports are not available: exposing port TCP 127.0.0.1:55930 ->
+127.0.0.1:0: listen tcp4 127.0.0.1:55930: bind: An attempt was made to access a socket in a way forbidden by its
+access permissions.
+At D:\The Osiris Labs\Construction_ERP\.batch5a-closeout-tools.ps1:49 char:5
++     & powershell.exe @args2 2>&1 | ForEach-Object { "$_" } | Out-File ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (docker: Error r...ss permissions.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+```
+
+Read-only diagnosis command netsh interface ipv4 show excludedportrange protocol=tcp returned:
+
+```text
+Start Port    End Port
+27339         27339
+50000         50059 *
+55916         56015
+56143         56242
+56243         56342
+56432         56531
+56532         56631
+* - Administered port exclusions.
+```
+
+55930 is within 55916-56015. r02-pg-gate.ps1 selects an unchecked random port in 55000-57999. This proves the startup conflict only; it does not explain the historic running-test timeout. No host port reservation was changed, and no runner/source fix or further retry was made after the stop.
+
+Standalone iterations: 1 PASS (1 suite / 10 tests); 2 SETUP FAILURE (0 migrations/suites/tests executed); 3-10 NOT RUN. The requested ten-iteration reproduction is incomplete. Exact historic timeout root cause remains UNPROVEN; no source/test defect causing that timeout was proven, and no source/test fix was made. The requested fix-size threshold was not reached.
+
+## Current gate table (historical results do not count)
+
+| Gate | Suites / tests / checks executed in this session | Result / v1-contract |
+|---|---|---|
+| Full PG 1 | 0 / 0 | NOT RUN; v1 NOT RUN |
+| Full PG 2 | 0 / 0 | NOT RUN; v1 NOT RUN |
+| Full PG 3 | 0 / 0 | NOT RUN; v1 NOT RUN |
+| Full PG 4 | 0 / 0 | NOT RUN; v1 NOT RUN |
+| Full PG 5 | 0 / 0 | NOT RUN; v1 NOT RUN |
+| Docker backend test stage | 0 / 0 | NOT RUN; no cache-hit or PG-skip result claimed |
+| Disposable golden -Reconcile | 0 checks | NOT RUN; no fixture seed executed |
+| Backend mocks | 0 / 0 | NOT RUN |
+| Frontend CI tests | 0 / 0 | NOT RUN |
+| i18n:check / i18n:parity | 0 checks | NOT RUN |
+| Backend lint:guards | 0 checks | NOT RUN |
+| Frontend lint:api | 0 checks | NOT RUN |
+| Root CI build | 0 builds | NOT RUN |
+
+The preceding checkpoint's full-PG results (93/1982 PASS, 93/1982 PASS, 92 passed + 1 failed suites / 1981 passed + 1 failed tests, then two unrun) remain historical. This session has zero consecutive complete full-PG passes. No post-diagnosis gate is green by inference.
+
+## Docker, pilot, cleanup and evidence
+
+Initial sandbox info failed with pipe access denied; outside-sandbox docker info --format '{{.ServerVersion}}' returned 28.3.2, exit 0, within the 30-second bound (0.275 s). No Docker/WSL restart. Permitted pilot compose ps -a showed db/backend/frontend healthy, Up 15 minutes initially and Up 18 minutes finally; migrate Exited (0). HTTP 127.0.0.1:8090 returned 200 before and after. No start was needed. No pilot build/up/down/rm/recreate/seed/exec; no direct sweep-clone/demo operation.
+
+Before: 25 containers / 595 volumes / 8 networks. Successful diagnostic container erp-r02-gate-20261017150911 removed by the runner. Its mount ae24e16beb2fa27818e4a005d237644b5b199bbd93de4913c7a02c0ec5ea2eb4 was inspected on that exact container, then removed by exact name. The failed startup left no new container but one anonymous volume a9fd534be2e47d4e8fd031107c48741cf3f89f15bd45b806792c95ca6fae5b6e: absent from baseline, CreatedAt 2026-10-17T12:10:31Z matching attempt 2, anonymous label, no attachments. Removed by exact name after those checks. No uncertain pre-existing resource removed; no prune or network removal.
+
+Final command output:
+
+```text
+containers before=25 after=25 exact_name_differences=0
+volumes before=595 after=595 exact_name_differences=0
+networks before=8 after=8 exact_name_differences=0
+HTTP status: 200
+```
+
+Local ignored evidence: .batch5a-closeout-diagnose-1.log (unfiltered gate); .batch5a-closeout-diagnose-1-activity.log (full SQL snapshots); .batch5a-closeout-diagnostic-summary.log; .batch5a-closeout-errors.log; .batch5a-closeout-port-exclusions.log; .batch5a-closeout-inventory-{before,stop,after}.log; .batch5a-closeout-pilot-final.log. The empty diagnose-2.log is explicitly not a passing result. Reconstructed error log contains the complete tool-emitted failure text, with no credentials present. SHA256: gate E020B3503F987AE9A2DCBF238B50BC2F642690F095067FA7A62353AD63230E9B; activity F6510DE5ADBDBFC035178A496518C5669B4E1931FA29A5E42F4A2D7B3B0D6C6B; errors 57C1EB52F7B7812817AB5BA319E70617A49CA57A81332F27D3F5342B32A47B49.
+
+## Modified files, limits and next action
+
+Only STATE.md, docs/CLOSEOUT_PROGRESS.md, docs/CLOSEOUT_LOG.md and this report are changed for the checkpoint. Temporary helper was removed after preserving its source as an ignored log. git diff cc1a3ea -- backend frontend package.json package-lock.json docker-compose.yml returned empty. No new dependency, external adapter/service, external message, environment-file read/edit or secret output. Both excluded review reports remain ignored, untouched and unstaged. Branch push is not authorized by the gate condition because all gates have not passed.
+
+Documentation verification output: git diff --check -> exit 0; git diff --cached --check -> exit 0; staged name list exactly the four scoped documents; staged name list for the two excluded review reports -> empty; git ls-files --eol -> all four i/lf w/lf; byte check -> CR_bytes=0 for each. git check-ignore returned both excluded review paths. Final restage and cached whitespace check precede commit. These checks are not product gates.
+
+Needs your decision: scratch_pdf.txt remains tracked with i/crlf w/crlf; it was neither read, modified nor deleted. Native Arabic/human RTL review, exports, deployed UAT and production GO are not established by these checks.
+
+Next authorized resume: correct the temporary observer's native-error capture; select a known available, non-excluded loopback port for each disposable runner (a narrowly scoped runner correction may be proposed from the proven port conflict). Do not change Windows reservations. Finish the standalone sampled reproduction before any full-suite rerun, then make a failing-first narrow timeout fix only if evidence proves one. With no proven timeout defect, change no source/test. Run FIVE consecutive complete PG gates on separate disposable DBs, Docker test stage, disposable golden and all requested host gates; stop on any failure and diagnose, with two failed attempts requiring STOP. Commit scoped evidence with the supplied trailers, and push only after every required gate passes.
+
+---
+
+# Historical checkpoint at 7d15806 (superseded above)
+
 # Verification-only resume - full-PG run 3 FAIL / STOP - 2026-10-17
 
 Resumed after the user restored Docker. Branch closeout/batch-a-to-6; starting HEAD 8dac539 (documentation checkpoint); implementation/test source is unchanged from cc1a3ea. Initial working tree clean. No source, test, timeout, dependency, schema or environment-file change. This section supersedes the earlier blocked recovery and historical gate counts below.

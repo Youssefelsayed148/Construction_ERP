@@ -1,3 +1,15 @@
+# 2026-10-17 - Batch 5A diagnosis STOP; no completion or push
+
+Started clean at 7d15806; implementation/tests unchanged from cc1a3ea. Docker info -> 28.3.2 (0.275 s); permitted pilot status healthy, Up 15 -> 18 minutes, HTTP 8090 -> 200 twice. Leader lock is nonblocking pg_try_advisory_lock(hashtext('conerp-sweep:replenishment')); a separate per-material/project transaction advisory lock can block. Inspected connection cleanup uses finally. Gate explicitly --runInBand; shared-state leakage and exact historic timeout cause remain unproven.
+
+Fresh standalone actual output: 130 migrations; PASS v1-contract.pg.test.js (14.85 s); Test Suites: 1 passed, 1 total; Tests: 10 passed, 10 total; Time: 15.456 s; route loop 3914 ms; erp-r02-gate-20261017150911 removed; exit=0. 19 activity/lock samples; zero blocked sessions/ungranted locks. The temporary observer then failed on its mount-format quoting. After correcting that helper, attempt 2 failed before migration/Jest on port 55930; netsh exclusion 55916-56015 proves this setup conflict. Two operational failures -> STOP, no third attempt; one successful suite is not ten successful iterations. Full failure text and exact evidence appear in the current defect report and ignored .batch5a-closeout-errors.log.
+
+All FIVE complete PG runs, Docker test stage, golden, mocks, frontend CI, i18n check/parity, guards, API lint and build NOT RUN in this session (0 suites/tests/checks). No source/test fix; no timeout/assertion relaxation. Batch 5A INCOMPLETE; no push/PR/deploy. Exact-name final inventory equals baseline: 25 containers / 595 volumes / 8 networks, zero name differences; only two owned anonymous volumes removed. No protected environment mutation. scratch_pdf.txt untouched, tracked CRLF, needs user decision. Next authorized resume: reliable observer/available ports, finish sampled reproduction, then narrow proven fix if needed and every requested gate. Four documentation files only; excluded reports ignored/unstaged.
+
+Documentation checks: git diff --check and git diff --cached --check -> exit 0; exactly four scoped documents staged; excluded-review staged name list empty; all four i/lf w/lf and CR_bytes=0. These checks do not substitute for the unrun product gates.
+
+# Historical checkpoint at 7d15806 (superseded above)
+
 # 2026-10-17 - Batch 5A verification resumed; STOP on full-PG run 3
 
 Docker healthy after user recovery (28.3.2); no agent restart this resume. Pilot db/backend/frontend healthy, Up 50 seconds initially / Up 15 minutes at final check; HTTP 8090 returned 200; migrate remained Exited (0). No pilot start or other mutation. Inventory 25 containers / 595 volumes / 8 networks; all pre-existing resources retained. Three newly created PG containers removed by runners; their three anonymous volumes survived and were subsequently verified unattached, matched by exact creation timestamps and removed by exact name. Volume count returned to 595; no network removed or protected-stack operation.
