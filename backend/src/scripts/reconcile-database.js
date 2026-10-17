@@ -158,7 +158,7 @@ const CHECKS = Object.freeze([
          OR COALESCE(lines.debit_total, 0) <> COALESCE(je.total_amount, 0)`,
   },
   {
-    name: 'PO delivered and accepted quantities reconcile with delivery and GRN lines',
+    name: 'PO delivered and accepted quantities reconcile with deliveries, MIR decisions and returns',
     sql: `SELECT COUNT(*)::int AS violations FROM (
       SELECT pol.id
         FROM purchase_order_lines pol
@@ -170,14 +170,62 @@ const CHECKS = Object.freeze([
            GROUP BY purchase_order_line_id
         ) delivered ON delivered.purchase_order_line_id = pol.id
         LEFT JOIN (
-          SELECT gl.purchase_order_line_id, SUM(GREATEST(gl.quantity - COALESCE(gl.returned_quantity, 0), 0)) AS quantity
-            FROM grn_lines gl JOIN goods_receipt_notes grn ON grn.id = gl.grn_id
-           WHERE gl.purchase_order_line_id IS NOT NULL AND grn.status = 'posted'
-           GROUP BY gl.purchase_order_line_id
+          -- Acceptance happens at MIR decision, before receipt posting. A
+          -- linked GRN documents that same acceptance and must not add it twice.
+          SELECT purchase_order_line_id, SUM(quantity) AS quantity FROM (
+            SELECT ml.purchase_order_line_id, ml.accepted_quantity AS quantity
+              FROM mir_lines ml JOIN material_inspection_requests mir ON mir.id = ml.mir_id
+              LEFT JOIN deliveries d ON d.id = mir.delivery_id
+             WHERE mir.status IN ('accepted', 'partially_accepted')
+               AND COALESCE(d.status, '') NOT IN ('cancelled', 'voided')
+            UNION ALL
+            -- Historical receipts with no MIR link remain supported.
+            SELECT gl.purchase_order_line_id, gl.quantity
+              FROM grn_lines gl JOIN goods_receipt_notes grn ON grn.id = gl.grn_id
+             WHERE grn.status = 'posted' AND grn.mir_id IS NULL AND gl.mir_line_id IS NULL
+            UNION ALL
+            SELECT gl.purchase_order_line_id, -COALESCE(gl.returned_quantity, 0)
+              FROM grn_lines gl JOIN goods_receipt_notes grn ON grn.id = gl.grn_id
+             WHERE grn.status = 'posted'
+          ) sources GROUP BY purchase_order_line_id
         ) accepted ON accepted.purchase_order_line_id = pol.id
        WHERE COALESCE(pol.delivered_quantity, 0) <> COALESCE(delivered.quantity, 0)
           OR COALESCE(pol.accepted_quantity, 0) <> COALESCE(accepted.quantity, 0)
     ) violations`,
+  },
+  {
+    name: 'posted GRN quantities match MIR acceptance',
+    // Missing GRNs are workflow work, not corrupt accepted stock. Once a
+    // receipt is posted, its complete source snapshot must still match.
+    sql: `SELECT COUNT(*)::int AS violations FROM goods_receipt_notes grn
+      LEFT JOIN material_inspection_requests mir ON mir.id = grn.mir_id
+      WHERE grn.status = 'posted' AND grn.mir_id IS NOT NULL AND (
+        mir.id IS NULL OR mir.status NOT IN ('accepted', 'partially_accepted')
+        OR grn.purchase_order_id IS DISTINCT FROM mir.purchase_order_id
+        OR grn.delivery_id IS DISTINCT FROM mir.delivery_id
+        OR EXISTS (
+          SELECT 1 FROM mir_lines ml
+          WHERE ml.mir_id = mir.id AND ml.accepted_quantity <> COALESCE((
+            SELECT SUM(gl.quantity) FROM grn_lines gl WHERE gl.grn_id = grn.id AND gl.mir_line_id = ml.id
+          ), 0)
+        )
+        OR EXISTS (
+          SELECT 1 FROM grn_lines gl LEFT JOIN mir_lines ml ON ml.id = gl.mir_line_id
+          WHERE gl.grn_id = grn.id AND (ml.id IS NULL OR ml.mir_id <> grn.mir_id
+            OR gl.purchase_order_line_id IS DISTINCT FROM ml.purchase_order_line_id
+            OR gl.material_id IS DISTINCT FROM ml.material_id)
+        )
+      )`,
+  },
+  {
+    name: 'GRN returned quantities reconcile with supplier returns',
+    sql: `SELECT COUNT(*)::int AS violations FROM grn_lines gl
+      JOIN goods_receipt_notes grn ON grn.id = gl.grn_id
+      WHERE grn.status = 'posted' AND COALESCE(gl.returned_quantity, 0) <> COALESCE((
+        SELECT SUM(srl.quantity) FROM supplier_return_lines srl
+        JOIN supplier_returns sr ON sr.id = srl.supplier_return_id
+        WHERE srl.grn_line_id = gl.id AND sr.status = 'returned'
+      ), 0)`,
   },
   {
     name: 'approvals mirror their workflow instances',
@@ -217,6 +265,11 @@ const CHECKS = Object.freeze([
   },
 ]);
 
+const PENDING_RECEIPTS_SQL = `SELECT COUNT(*)::int AS pending FROM material_inspection_requests mir
+  WHERE mir.status IN ('accepted', 'partially_accepted')
+    AND EXISTS (SELECT 1 FROM mir_lines ml WHERE ml.mir_id = mir.id AND ml.accepted_quantity > 0)
+    AND NOT EXISTS (SELECT 1 FROM goods_receipt_notes grn WHERE grn.mir_id = mir.id AND grn.status = 'posted')`;
+
 function quoteIdentifier(value) {
   return `"${String(value).replace(/"/g, '""')}"`;
 }
@@ -228,7 +281,8 @@ async function runReconciliation(q = query) {
     const violations = Number(result.rows?.[0]?.violations || 0);
     results.push({ name: check.name, violations, ok: violations === 0 });
   }
-  return { ok: results.every((result) => result.ok), results };
+  const pendingReceipts = Number((await q(PENDING_RECEIPTS_SQL)).rows?.[0]?.pending || 0);
+  return { ok: results.every((result) => result.ok), results, pending_receipts: pendingReceipts };
 }
 
 async function main() {
@@ -239,6 +293,7 @@ async function main() {
   for (const result of report.results) {
     console.log(`${result.ok ? '[OK]' : '[FAIL]'} ${result.name}: ${result.violations}`);
   }
+  console.log(`[PENDING] accepted MIRs awaiting posted GRN (workflow check): ${report.pending_receipts}`);
   if (!report.ok) process.exitCode = 1;
 }
 
@@ -248,4 +303,4 @@ if (require.main === module) {
     .finally(() => pool.end());
 }
 
-module.exports = { CHECKS, runReconciliation };
+module.exports = { CHECKS, PENDING_RECEIPTS_SQL, runReconciliation };
