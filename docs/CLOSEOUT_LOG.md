@@ -2520,3 +2520,9 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - Focused fresh PG PASS 1 suite / 3 tests: exact scoped totals, page-two no overlap, empty-page totals, status filters and implicit project scope. Full mounted GET table includes 448 routes / zero 5xx, actual array shapes and header values. 130 migrations; erp-r02-gate-20261017030435 removed; exit 0.
 - docs/BATCH_5A_LIST_ROUTE_TABLE.md includes every GET, rather than a sampled list subset. It explicitly records other absent-header array responses and missing-record/denied cases as additional coverage gaps; it does not claim all lists have correct pagination or SQL totals.
 - PG gate default is now unfiltered, preserving assertion detail automatically. The successful focused command used the new default without -Filter.
+## Batch 5A resume - S-007 and Arabic report labels - 2026-10-17
+
+- Failing-first UI: 3 tests failed with raw critical/high/medium/low, in_app/email/sms/whatsapp and English report tab/column labels. Dynamic report/enum contract initially found 320 missing locale keys.
+- Priority and channel controls now use translateEnum without changing machine values. Added EN/AR labels for all 22 report definitions, their catalog columns, three packs and 19 automatic-report section titles; report tabs, headers, saved-view module labels and section headings resolve catalog keys while preserving business data.
+- New report-contract guard is included in i18n:check: 164 report/enum keys x 2 locales, zero missing. Focused Arabic UI PASS 1 suite / 3 tests; i18n:check PASS; i18n:parity PASS 36 namespaces / 2,871 English keys.
+- Native Arabic review and localization of generated narrative report lines/export documents remain unverified; this slice addresses labels and controls, not a claim of complete Arabic reports content.

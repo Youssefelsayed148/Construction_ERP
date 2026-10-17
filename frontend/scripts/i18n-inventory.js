@@ -13,6 +13,7 @@
 const fs = require('fs');
 const path = require('path');
 const { widgetContract, missingWidgetKeys } = require('./widget-contract');
+const { missingReportKeys } = require('./report-contract');
 const { pageViolations, visibleLiteralViolations } = require('./system-strings');
 
 const root = path.join(__dirname, '..');
@@ -159,6 +160,7 @@ function main() {
   if (process.argv.includes('--check')) {
     const base = JSON.parse(fs.readFileSync(outFile, 'utf8'));
     const failures = [];
+    failures.push(...missingReportKeys());
     const dashboards = Object.fromEntries(['en', 'ar'].map(locale => [locale, JSON.parse(fs.readFileSync(path.join(srcDir, 'locales', locale, 'dashboard.json'), 'utf8'))]));
     failures.push(...missingWidgetKeys(widgetContract(), dashboards));
     failures.push(...pageViolations().map(location => `${location}: inline system text must use the catalog`));

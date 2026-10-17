@@ -563,7 +563,7 @@ function ProjectWizard() {
                         : (f.notification_channels || []).filter(x => x !== ch),
                     }))}
                   />
-                  {ch}
+                  {translateEnum(t, 'channel', ch)}
                 </label>
               ))}
             </div>

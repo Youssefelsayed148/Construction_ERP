@@ -11,5 +11,254 @@
     "scheduledReports": "Scheduled reports",
     "runs": ") · runs:",
     "automaticProjectReport": "Automatic project report"
+  },
+  "catalog": {
+    "projects": {
+      "title": "Projects register",
+      "columns": {
+        "id": "ID",
+        "name_en": "Project",
+        "status": "Status",
+        "completion_percentage": "Progress %",
+        "budget": "Budget",
+        "contract_value": "Contract value"
+      }
+    },
+    "quality_tests": {
+      "title": "Quality tests",
+      "columns": {
+        "id": "ID",
+        "test_type": "Test type",
+        "test_date": "Date",
+        "result": "Result"
+      }
+    },
+    "ncrs": {
+      "title": "NCRs",
+      "columns": {
+        "id": "ID",
+        "ncr_number": "NCR",
+        "severity": "Severity",
+        "status": "Status",
+        "cost_impact": "Cost impact"
+      }
+    },
+    "wirs": {
+      "title": "Work inspection requests",
+      "columns": {
+        "id": "ID",
+        "wir_number": "WIR",
+        "status": "Stage",
+        "result": "Result",
+        "inspection_date": "Date"
+      }
+    },
+    "punch_items": {
+      "title": "Punch list",
+      "columns": {
+        "id": "ID",
+        "punch_number": "Item",
+        "discipline": "Discipline",
+        "status": "Status",
+        "due_date": "Due"
+      }
+    },
+    "incidents": {
+      "title": "Incidents",
+      "columns": {
+        "id": "ID",
+        "incident_date": "Date",
+        "incident_category": "Category",
+        "severity": "Severity",
+        "status": "Status",
+        "lost_days": "Lost days"
+      }
+    },
+    "near_misses": {
+      "title": "Near misses",
+      "columns": {
+        "id": "ID",
+        "near_miss_number": "Ref",
+        "incident_date": "Date",
+        "severity": "Severity",
+        "status": "Status"
+      }
+    },
+    "permits": {
+      "title": "Permits to work",
+      "columns": {
+        "id": "ID",
+        "permit_number": "Permit",
+        "permit_type": "Type",
+        "status": "Status",
+        "valid_from": "Valid from",
+        "valid_to": "Valid to"
+      }
+    },
+    "corrective_actions": {
+      "title": "Corrective actions",
+      "columns": {
+        "id": "ID",
+        "description": "Description",
+        "status": "Status",
+        "due_date": "Due"
+      }
+    },
+    "schedule_activities": {
+      "title": "Schedule activities",
+      "columns": {
+        "id": "ID",
+        "activity_code": "Code",
+        "name": "Activity",
+        "planned_start": "Planned start",
+        "planned_finish": "Planned finish",
+        "percent_complete": "% complete",
+        "critical": "Critical"
+      }
+    },
+    "project_documents": {
+      "title": "Document register",
+      "columns": {
+        "id": "ID",
+        "doc_number": "Doc number",
+        "title": "Title",
+        "doc_type": "Type",
+        "discipline": "Discipline",
+        "doc_status": "Status",
+        "revision_code": "Rev"
+      }
+    },
+    "transmittals": {
+      "title": "Transmittals",
+      "columns": {
+        "id": "ID",
+        "transmittal_number": "Transmittal",
+        "direction": "Direction",
+        "status": "Status",
+        "created_at": "Created"
+      }
+    },
+    "correspondence": {
+      "title": "Correspondence",
+      "columns": {
+        "id": "ID",
+        "corr_number": "Ref",
+        "corr_type": "Type",
+        "subject": "Subject",
+        "status": "Status",
+        "revision": "Rev"
+      }
+    },
+    "purchase_requests": {
+      "title": "Purchase requisitions",
+      "columns": {
+        "id": "ID",
+        "pr_number": "PR",
+        "status": "Status",
+        "total_amount": "Value"
+      }
+    },
+    "purchase_orders": {
+      "title": "Purchase orders",
+      "columns": {
+        "id": "ID",
+        "po_number": "PO",
+        "status": "Status",
+        "total_amount": "Value"
+      }
+    },
+    "deliveries": {
+      "title": "Deliveries",
+      "columns": {
+        "id": "ID",
+        "delivery_number": "Delivery",
+        "status": "Status",
+        "delivery_date": "Date"
+      }
+    },
+    "sub_contracts": {
+      "title": "Subcontracts",
+      "columns": {
+        "id": "ID",
+        "sub_contract_number": "Contract",
+        "status": "Status",
+        "contract_value": "Value"
+      }
+    },
+    "variations": {
+      "title": "Variations",
+      "columns": {
+        "id": "ID",
+        "variation_number": "Ref",
+        "title": "Title",
+        "status": "Status",
+        "amount": "Amount"
+      }
+    },
+    "invoices": {
+      "title": "Client invoices",
+      "columns": {
+        "id": "ID",
+        "invoice_number": "Invoice",
+        "status": "Status",
+        "amount": "Amount",
+        "due_date": "Due"
+      }
+    },
+    "expenses": {
+      "title": "Expenses",
+      "columns": {
+        "id": "ID",
+        "description": "Description",
+        "date": "Date",
+        "status": "Status",
+        "amount": "Amount"
+      }
+    },
+    "employees": {
+      "title": "Employees",
+      "columns": {
+        "id": "ID",
+        "name": "Name",
+        "position": "Position",
+        "status": "Status"
+      }
+    },
+    "inductions": {
+      "title": "Inductions",
+      "columns": {
+        "id": "ID",
+        "person_name": "Person",
+        "induction_date": "Date",
+        "induction_type": "Type",
+        "status": "Status"
+      }
+    }
+  },
+  "packs": {
+    "commercial": "Commercial pack",
+    "procurement": "Procurement pack",
+    "management": "Management pack"
+  },
+  "sections": {
+    "executive_summary": "Executive Summary",
+    "progress": "Progress",
+    "schedule": "Schedule",
+    "milestones": "Milestones",
+    "manpower": "Manpower (today)",
+    "equipment": "Equipment on site",
+    "quantities": "Approved quantities",
+    "procurement": "Procurement",
+    "materials": "Material inspections",
+    "quality": "Quality",
+    "safety": "Safety",
+    "rfis": "RFIs",
+    "submittals": "Submittals",
+    "consultant_observations": "Consultant observations",
+    "variations": "Variations",
+    "financial_status": "Financial status",
+    "photos": "Photos",
+    "key_risks": "Key risks",
+    "actions": "Open actions"
   }
 }

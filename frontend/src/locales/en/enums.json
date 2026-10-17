@@ -244,5 +244,12 @@
     "daily": "Daily",
     "weekly": "Weekly",
     "monthly": "Monthly"
+  },
+  "channel": {
+    "inApp": "In app",
+    "email": "Email",
+    "push": "Push notification",
+    "sms": "SMS",
+    "whatsapp": "WhatsApp"
   }
 }

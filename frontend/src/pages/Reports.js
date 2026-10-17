@@ -147,14 +147,14 @@ export default function Reports() {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
               {(catalog.reports || []).map(r => (
                 <button key={r.key} className={`btn ${reportKey === r.key ? 'btn-primary' : ''}`} style={{ padding: '4px 12px', fontSize: 12 }} onClick={() => loadData(r.key)}>
-                  {r.label}
+                  {t(`reports.catalog.${r.key}.title`, { defaultValue: r.label })}
                 </button>
               ))}
             </div>
             {reportSpec && (
               <div className="table-container">
                 <table className="table">
-                  <thead><tr>{columns.map(c => <th key={c.key}>{c.label}</th>)}</tr></thead>
+                  <thead><tr>{columns.map(c => <th key={c.key}>{t(`reports.catalog.${reportKey}.columns.${c.key}`, { defaultValue: c.label })}</th>)}</tr></thead>
                   <tbody>
                     {rows.length === 0 ? (
                       <tr><td colSpan={columns.length || 1} style={{ textAlign: 'center', color: 'var(--color-text-secondary)' }}>
@@ -181,7 +181,7 @@ export default function Reports() {
             {savedViews.length > 0 && (
               <div style={{ marginTop: 10 }}>
                 <h4 style={{ fontSize: 13, marginBottom: 6 }}>{t('reports.system.savedViews')}</h4>
-                {savedViews.map(v => <div key={v.id} style={{ fontSize: 13, padding: '3px 0' }}>{v.name} · {v.module}</div>)}
+                {savedViews.map(v => <div key={v.id} style={{ fontSize: 13, padding: '3px 0' }}>{v.name} · {t(`reports.catalog.${v.module}.title`, { defaultValue: v.module })}</div>)}
               </div>
             )}
             {scheduled.length > 0 && (
@@ -205,7 +205,7 @@ export default function Reports() {
               <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
                 {(projectReport?.sections || []).map(s => (
                   <div key={s.key} style={{ borderBottom: '1px solid var(--color-surface-raised)', paddingBottom: 6 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{s.title}</div>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{t(`reports.sections.${s.key}`, { defaultValue: s.title })}</div>
                     <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{(s.lines || []).join(' · ')}</div>
                   </div>
                 ))}

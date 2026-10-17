@@ -11,5 +11,254 @@
     "scheduledReports": "التقارير المجدولة",
     "runs": ") · مرات التشغيل:",
     "automaticProjectReport": "تقرير المشروع التلقائي"
+  },
+  "catalog": {
+    "projects": {
+      "title": "سجل المشاريع",
+      "columns": {
+        "id": "المعرف",
+        "name_en": "المشروع",
+        "status": "الحالة",
+        "completion_percentage": "نسبة الإنجاز",
+        "budget": "الميزانية",
+        "contract_value": "قيمة العقد"
+      }
+    },
+    "quality_tests": {
+      "title": "اختبارات الجودة",
+      "columns": {
+        "id": "المعرف",
+        "test_type": "نوع الاختبار",
+        "test_date": "التاريخ",
+        "result": "النتيجة"
+      }
+    },
+    "ncrs": {
+      "title": "تقارير عدم المطابقة",
+      "columns": {
+        "id": "المعرف",
+        "ncr_number": "تقرير عدم المطابقة",
+        "severity": "الخطورة",
+        "status": "الحالة",
+        "cost_impact": "الأثر المالي"
+      }
+    },
+    "wirs": {
+      "title": "طلبات فحص الأعمال",
+      "columns": {
+        "id": "المعرف",
+        "wir_number": "طلب فحص الأعمال",
+        "status": "المرحلة",
+        "result": "النتيجة",
+        "inspection_date": "التاريخ"
+      }
+    },
+    "punch_items": {
+      "title": "قائمة الملاحظات",
+      "columns": {
+        "id": "المعرف",
+        "punch_number": "البند",
+        "discipline": "التخصص",
+        "status": "الحالة",
+        "due_date": "تاريخ الاستحقاق"
+      }
+    },
+    "incidents": {
+      "title": "الحوادث",
+      "columns": {
+        "id": "المعرف",
+        "incident_date": "التاريخ",
+        "incident_category": "الفئة",
+        "severity": "الخطورة",
+        "status": "الحالة",
+        "lost_days": "أيام العمل المفقودة"
+      }
+    },
+    "near_misses": {
+      "title": "الحوادث الوشيكة",
+      "columns": {
+        "id": "المعرف",
+        "near_miss_number": "المرجع",
+        "incident_date": "التاريخ",
+        "severity": "الخطورة",
+        "status": "الحالة"
+      }
+    },
+    "permits": {
+      "title": "تصاريح العمل",
+      "columns": {
+        "id": "المعرف",
+        "permit_number": "التصريح",
+        "permit_type": "النوع",
+        "status": "الحالة",
+        "valid_from": "ساري من",
+        "valid_to": "ساري حتى"
+      }
+    },
+    "corrective_actions": {
+      "title": "الإجراءات التصحيحية",
+      "columns": {
+        "id": "المعرف",
+        "description": "الوصف",
+        "status": "الحالة",
+        "due_date": "تاريخ الاستحقاق"
+      }
+    },
+    "schedule_activities": {
+      "title": "أنشطة الجدول الزمني",
+      "columns": {
+        "id": "المعرف",
+        "activity_code": "الرمز",
+        "name": "النشاط",
+        "planned_start": "البداية المخططة",
+        "planned_finish": "النهاية المخططة",
+        "percent_complete": "نسبة الإكمال",
+        "critical": "حرج"
+      }
+    },
+    "project_documents": {
+      "title": "سجل المستندات",
+      "columns": {
+        "id": "المعرف",
+        "doc_number": "رقم المستند",
+        "title": "العنوان",
+        "doc_type": "النوع",
+        "discipline": "التخصص",
+        "doc_status": "الحالة",
+        "revision_code": "المراجعة"
+      }
+    },
+    "transmittals": {
+      "title": "الإرساليات",
+      "columns": {
+        "id": "المعرف",
+        "transmittal_number": "الإرسالية",
+        "direction": "الاتجاه",
+        "status": "الحالة",
+        "created_at": "تاريخ الإنشاء"
+      }
+    },
+    "correspondence": {
+      "title": "المراسلات",
+      "columns": {
+        "id": "المعرف",
+        "corr_number": "المرجع",
+        "corr_type": "النوع",
+        "subject": "الموضوع",
+        "status": "الحالة",
+        "revision": "المراجعة"
+      }
+    },
+    "purchase_requests": {
+      "title": "طلبات الشراء",
+      "columns": {
+        "id": "المعرف",
+        "pr_number": "طلب الشراء",
+        "status": "الحالة",
+        "total_amount": "القيمة"
+      }
+    },
+    "purchase_orders": {
+      "title": "أوامر الشراء",
+      "columns": {
+        "id": "المعرف",
+        "po_number": "أمر الشراء",
+        "status": "الحالة",
+        "total_amount": "القيمة"
+      }
+    },
+    "deliveries": {
+      "title": "التوريدات",
+      "columns": {
+        "id": "المعرف",
+        "delivery_number": "التوريد",
+        "status": "الحالة",
+        "delivery_date": "التاريخ"
+      }
+    },
+    "sub_contracts": {
+      "title": "عقود المقاولين من الباطن",
+      "columns": {
+        "id": "المعرف",
+        "sub_contract_number": "العقد",
+        "status": "الحالة",
+        "contract_value": "القيمة"
+      }
+    },
+    "variations": {
+      "title": "التغييرات",
+      "columns": {
+        "id": "المعرف",
+        "variation_number": "المرجع",
+        "title": "العنوان",
+        "status": "الحالة",
+        "amount": "المبلغ"
+      }
+    },
+    "invoices": {
+      "title": "فواتير العملاء",
+      "columns": {
+        "id": "المعرف",
+        "invoice_number": "الفاتورة",
+        "status": "الحالة",
+        "amount": "المبلغ",
+        "due_date": "تاريخ الاستحقاق"
+      }
+    },
+    "expenses": {
+      "title": "المصروفات",
+      "columns": {
+        "id": "المعرف",
+        "description": "الوصف",
+        "date": "التاريخ",
+        "status": "الحالة",
+        "amount": "المبلغ"
+      }
+    },
+    "employees": {
+      "title": "الموظفون",
+      "columns": {
+        "id": "المعرف",
+        "name": "الاسم",
+        "position": "الوظيفة",
+        "status": "الحالة"
+      }
+    },
+    "inductions": {
+      "title": "التعريف بالسلامة",
+      "columns": {
+        "id": "المعرف",
+        "person_name": "الشخص",
+        "induction_date": "التاريخ",
+        "induction_type": "النوع",
+        "status": "الحالة"
+      }
+    }
+  },
+  "packs": {
+    "commercial": "حزمة التقارير التجارية",
+    "procurement": "حزمة تقارير المشتريات",
+    "management": "حزمة تقارير الإدارة"
+  },
+  "sections": {
+    "executive_summary": "الملخص التنفيذي",
+    "progress": "الإنجاز",
+    "schedule": "الجدول الزمني",
+    "milestones": "المراحل الرئيسية",
+    "manpower": "القوى العاملة اليوم",
+    "equipment": "المعدات في الموقع",
+    "quantities": "الكميات المعتمدة",
+    "procurement": "المشتريات",
+    "materials": "فحص المواد",
+    "quality": "الجودة",
+    "safety": "السلامة",
+    "rfis": "طلبات المعلومات",
+    "submittals": "التقديمات",
+    "consultant_observations": "ملاحظات الاستشاري",
+    "variations": "التغييرات",
+    "financial_status": "الوضع المالي",
+    "photos": "الصور",
+    "key_risks": "المخاطر الرئيسية",
+    "actions": "المهام المفتوحة"
   }
 }

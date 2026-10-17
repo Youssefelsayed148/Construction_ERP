@@ -180,7 +180,7 @@ function MyActionsContent() {
             onClick={() => setPriorityFilter(p)}
             className={priorityFilter === p ? 'btn btn-primary' : 'btn btn-outline'}
           >
-            {p === 'all' ? L.all : p}
+            {p === 'all' ? L.all : translateEnum(t, 'priority', p)}
           </button>
         ))}
       </div>
