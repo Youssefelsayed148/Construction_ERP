@@ -1,4 +1,18 @@
-# CURRENT - Controlled resume from d7c7664: A1 diagnostics complete; A2 next - 2026-10-17
+# CURRENT - A2 token idle 15/15 PASS; loaded mode next - 2026-10-17
+
+A1 committed at ed94887 after LF normalization and successful cached whitespace check (initial attempt exposed v1.js CRLF; corrected before retry). A2 command: `powershell.exe -NoProfile -File .scratch-5a-resume/diagnose.ps1 -SuiteName token -Mode idle -Count 15`. Each iteration invokes the unchanged r02 gate with `-Suite src/scripts/__tests__/token-typing.pg.test.js -Filter '.*'` on a separate Docker-assigned-port throwaway database; 130 migrations each. Result: **15/15 suites, 195/195 tests passed, zero failures**, all exits 0. Per-run Jest times: 7.782, 4.488, 4.417, 4.362, 4.562, 4.237, 4.590, 4.349, 4.157, 4.254, 4.349, 4.262, 4.332, 4.356, 4.352 seconds. Unfiltered logs and sampled activity/locks are retained as `.scratch-5a-resume/token-idle-{1..15}*.log`. No 503 reproduced; neither a path/SQLSTATE nor root cause has been established by idle success.
+
+Static OAuth findings: oauthService.js:170 derives the replacement scrypt hash BEFORE transaction at :197; :203 compare-and-swap updates the legacy hash; :206 updates last_used_at inside the same transaction and issuance audit. passwords.js:6 uses N=32768/r=8/p=3, keyLength=64/maxmem=64 MiB; :15 uses asynchronous crypto.scrypt, legacy bcrypt compare at :43. database.js:11 pool max=20, :16 acquisition/connect timeout default=5000 ms, :44 connects and :54 releases in finally. No crypto work holds that upgrade transaction open. These facts do not exclude host/pool pressure or prove a race caused the historic 503; no concurrency fix made on inference.
+
+A3b static route classification: **38 class (a), 43 class (b)** across all 81 missing-header observations; full route names/reasons in docs/BATCH_5A_HEADER_CLASSIFICATION_2026-10-17.md. Growing/capped financial registers remain class (a), not automatically treated as bounded lookups. No fix claimed yet. S-001 code/seed scan found neither 9,130 nor 9,130,000 constant or x1,000 money scaling in seed-pilot-data/formatter; discrepancy remains undetermined, non-blocking. Draft S-003 tests are unrun/uncommitted; implementation pending.
+
+Exact next resume: token loaded iteration 1, then v1 idle/load groups. A2 is not complete until both modes for both suites are covered or the stop condition applies. A4 count remains 0/5; all broad gates unrun on current source. B/C remain not started. This is a docs checkpoint, not phase completion/push authorization.
+
+---
+
+# A1 checkpoint history
+
+# Controlled resume from d7c7664: A1 diagnostics complete; A2 next - 2026-10-17
 
 Phase A1 implemented with unchanged responses: shared/public limiter, authenticated v1 limiter, internal authentication and idempotency lookup/persistence/release paths log sanitized `{code,name,messageClass}`. `connection_timeout` is a fixed classification derived from the message without printing it; other messages classify as `other`. No SQL parameters, error detail, tokens or runtime credentials are logged. A1 production diff: 22 added / 8 removed lines (30 changed), under the requested ~40-line limit.
 

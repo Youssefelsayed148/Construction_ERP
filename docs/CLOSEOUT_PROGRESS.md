@@ -1,3 +1,11 @@
+# 2026-10-17 - A2 token idle 15/15 passed; loaded mode next
+
+A1 ed94887 checkpoint committed after a diagnosed CRLF cached-check failure was corrected to LF; required trailers present. A2 idle token loop: 15 separate disposable DBs, 130 migrations each, 15/15 suites and 195/195 tests passed, all exits 0; raw unfiltered logs and sampled locks retained under .scratch-5a-resume/token-idle-{1..15}*.log. 503 not reproduced idle; cause unproven. Compare-and-swap protects legacy hash replacement; scrypt occurs before transaction; pool max20/default connect bound5000ms. File:line evidence and actual timings in 5A report.
+
+Next: A2 token load (12 workers, up to15), then v1 idle/load up to10 each. No unrelated heavy parallel work. A4 counter0/5; A3 drafted tests unrun/uncommitted. Static S-006 classification: 38 LOW register/pagination candidates, 43 intended lookups/aggregates; full81-route document added, no fixes claimed. S-001 discrepancy undetermined. B/C not started/no push. STATE records exact resume point and draft test preservation.
+
+# A1 checkpoint history
+
 # 2026-10-17 - A1 diagnostics complete; controlled A2 reproduction next
 
 Resume d7c7664, initially no working-tree changes. A1 production change 22 additions / 8 removals (30 lines): sanitized error-code/name/message-class logging for internal auth, shared/v1 limiters and idempotency; responses unchanged. Intended red 6 failures after one diagnosed zero-test fixture setup error; focused green 4 suites / 68 tests, 8.034 s, exit 0 (logs .scratch-5a-resume/a1-{red,green}.log). No assertions, timeouts, deps or env files changed.

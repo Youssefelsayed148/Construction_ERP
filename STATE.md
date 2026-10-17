@@ -1,4 +1,14 @@
-# Current checkpoint - Phase A1 complete; A2 reproduction next - 2026-10-17
+# Current checkpoint - A2 token idle 15/15 passed; loaded mode next - 2026-10-17
+
+- A1 checkpoint ed94887 committed with both contiguous required trailers; initial cached whitespace failure was diagnosed as CRLF in v1.js, all nine scoped files normalized to LF, cached check then exited 0 before commit. No test behavior changed by normalization.
+- A2 idle token-typing complete: 15/15 fresh disposable PG runs, each 1 passed suite / 13 passed tests, 130 migrations, exit 0; aggregate 15 suites / 195 tests, zero failures. Jest times per iteration: 7.782, 4.488, 4.417, 4.362, 4.562, 4.237, 4.590, 4.349, 4.157, 4.254, 4.349, 4.262, 4.332, 4.356, 4.352 s. Original 503 NOT reproduced idle; no underlying cause established. Raw logs/snapshots .scratch-5a-resume/token-idle-{1..15}*.log.
+- NEXT RESUME: A2 token-typing LOAD iteration 1 (up to 15, controlled 12 busy workers only during each disposable run); then v1 idle/load (up to 10 each). No A4 runs yet; count 0/5. Do not run unrelated heavy work alongside PG.
+- A3b preliminary static classification documented in docs/BATCH_5A_HEADER_CLASSIFICATION_2026-10-17.md: all 81 rows, class (a) 38 LOW register/pagination candidates / class (b) 43 bounded lookup or aggregate responses. No header fixes claimed yet. S-001 seed-pilot source has no matching 9,130/9,130,000 constant or money scaler; formatter does no x1,000 conversion; discrepancy remains undetermined.
+- Working tree also contains drafted S-003 tests in batch5a-reconcile.pg.test.js and reconcile-database.test.js; NOT RUN and NOT implemented yet. Preserve them, exclude from this docs checkpoint. A1 application source remains ed94887 throughout the current A2 reproductions. B/C not started; no push. scratch_pdf.txt and excluded reviews untouched.
+
+# A1 checkpoint history (superseded by current A2 status above)
+
+# Phase A1 complete; A2 reproduction next - 2026-10-17
 
 - Controlled resume starts d7c7664 on closeout/batch-a-to-6 with no working-tree changes. Phase A1 diagnostic logging implemented; Batch 5A INCOMPLETE, Gate A not evaluated on this source. B/C NOT STARTED. No push/PR/deployment.
 - A1 test-first evidence: one mock fixture setup failure (incomplete tokens stub loaded oauthService, zero tests); isolated OAuth dependency, then intended red 1 failed suite / 6 failed tests. After implementation plus metadata/timeout redaction coverage: npm.cmd test -- --runInBand infrastructure-diagnostics.test.js postgres-rate-limit.test.js auth-infrastructure.test.js external-api.test.js -> 4 passed suites / 68 passed tests, 8.034 s, exit 0. Full commands/logs retained under .scratch-5a-resume/a1-{red,green}.log. No response/assertion/timeout changes.

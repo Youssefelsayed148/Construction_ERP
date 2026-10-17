@@ -2587,6 +2587,14 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - Final Docker proof: post-cleanup inventory 25 containers / 595 volumes / 8 networks; exact-name Compare-Object differences from pre-test inventory=0 for each resource type. Saved .batch5a-verify-docker-postcleanup-inventory.log. All pre-existing resources retained. Documentation verification: git diff --check exit 0; four files CR_bytes=0; both excluded reports returned by git check-ignore; implementation-path git diff from cc1a3ea empty.
 - Staging verification: git diff --cached --check -> exit 0; exactly four documentation files staged, all i/lf w/lf; git diff --cached --name-only for both excluded review reports -> empty. User requested stop after committing/report completion and a clean-session rerun/closeout prompt; no more gates or diagnosis after this checkpoint. Final restage/whitespace check precedes commit with required trailers.
 
+## 2026-10-17 - A2 idle token checkpoint
+
+- A1 ed94887: cached check initially caught CRLF in middleware/v1.js; normalized only nine scoped files, second cached check exit0, committed with both contiguous trailers. No timeout/assertion changes.
+- A2 idle token group command diagnose.ps1 -SuiteName token -Mode idle -Count15: 15 fresh disposable PG containers, 130 migrations each, 15 passed suites / 195 passed tests, zero failures, all exits0. Per-run times and logs in report. No 503/path/SQLSTATE reproduced; cause remains unproven. Source inspection confirms compare-and-swap at oauthService:203, scrypt before transaction at :170 vs :197, pool20/connect5000ms/release finally. No speculative source fix.
+- Preliminary S-006 classification document: 81/81 routes, class(a)38 LOW candidates/class(b)43 intended lookup/aggregate responses; no header fixes yet. S-001 code/seed scan inconclusive. Draft S-003 tests unrun/uncommitted and excluded from docs checkpoint. Next exact resume token LOAD1, then v1 idle/load. A4 count0/5, B/C not started, no push/PR/deploy. Protected resources untouched; scratch_pdf.txt unchanged. Scoped five-doc checkpoint, LF/cached check before commit.
+
+## A1 checkpoint history
+
 ## 2026-10-17 - A1 redacted infrastructure diagnostics checkpoint
 
 - Resume d7c7664 on closeout/batch-a-to-6, no initial changes. A1 tests first: zero-test mock fixture error (incomplete tokens stub pulling OAuth constants), diagnosed and isolated; intended 6 failing assertions; green focused command across infrastructure-diagnostics, postgres-rate-limit, auth-infrastructure and external-api -> 4 passed suites / 68 passed tests, 8.034 s, exit 0. Full local logs .scratch-5a-resume/a1-{red,green}.log.
