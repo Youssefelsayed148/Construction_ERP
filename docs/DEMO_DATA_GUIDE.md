@@ -164,3 +164,8 @@ Distinct stored demo city strings: **none** (no client/supplier/project records)
 The 20-minute CEO walkthrough is unavailable until stages2-7 and Gate B pass. Planned order only:portfolio3min;project A/progress3min;procurement/partial receipts4min;finance/collections4min;quality/HSE2min;CEO approvals/My Actions2min;project B retention and project C mobilization2min. None of those business states has been loaded or verified.
 
 Resume only in a new authorized continuation after the stop:email-contract test/correction, exact demo-only reset/reinitialization, accounts/idempotency, then seven stage checkpoints. Do not run seed:staging or repair business data with SQL. No back-dating SQL used. Keep external adapters disabled and backend/database on the internal-only network. Reset command exists and has negative target tests; it has not been executed.
+
+
+## RUN C2 interim update - 2026-10-18
+
+The low-stock state is now present. The approved C-INVENTORY-001 SQL exception changed only `warehouse_stock.reorder_level` for two demo rows: `DEMO-MAT-023` in Project A (75 units, threshold 100) and `DEMO-MAT-021` in Project B (0 units, threshold 1). The `/api/dashboard/alerts` readback reports the demo low-stock alert. Project B retention and final date/reseed/census checks are still pending. The owner_ceo wait state is unavailable: monetary approval limits apply to gated agent actions and `issue_purchase_order` routes to `finance_manager`. DLV-00003 remains rejected without a return per accepted C-PROC-002.
