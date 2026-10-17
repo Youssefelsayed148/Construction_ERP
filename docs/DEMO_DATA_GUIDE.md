@@ -169,3 +169,15 @@ Resume only in a new authorized continuation after the stop:email-contract test/
 ## RUN C2 interim update - 2026-10-18
 
 The low-stock state is now present. The approved C-INVENTORY-001 SQL exception changed only `warehouse_stock.reorder_level` for two demo rows: `DEMO-MAT-023` in Project A (75 units, threshold 100) and `DEMO-MAT-021` in Project B (0 units, threshold 1). The `/api/dashboard/alerts` readback reports the demo low-stock alert. Project B retention and final date/reseed/census checks are still pending. The owner_ceo wait state is unavailable: monetary approval limits apply to gated agent actions and `issue_purchase_order` routes to `finance_manager`. DLV-00003 remains rejected without a return per accepted C-PROC-002.
+
+
+## Project B retention walkthrough - RUN C2
+
+| Record | Number / state |
+|---|---|
+| Client contract | CC-00001, DEMO-CONTRACT-B-RETENTION-001, retention 10% |
+| Client valuation invoice | INV-0005, DEMO-RETENTION-B-001, 100,000 EGP gross, 10,000 EGP held, 90,000 EGP net |
+| Client receipt | DEMO-RETENTION-B-RCPT-001, 90,000 EGP, direction=ar; invoice is paid |
+| Retention readback | Project B client: held 10,000 EGP, released 0, balance 10,000 EGP |
+
+Created through real authenticated contract, valuation, invoice-transition, retention and payment APIs. The issue lifecycle was draft -> approved -> issued; invoice settlement is separate from the held retention. The seed helper rerun returned all four records reused with no new rows.
