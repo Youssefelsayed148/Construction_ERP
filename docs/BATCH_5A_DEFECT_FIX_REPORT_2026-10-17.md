@@ -1,4 +1,14 @@
-# CURRENT - A2 token idle 15/15 PASS; loaded mode next - 2026-10-17
+# CURRENT - A2 token idle/load 30/30 PASS; v1 idle next - 2026-10-17
+
+Token reproduction groups completed: **idle15/15 + load15/15 = 30 passed suites / 390 passed tests, zero failures**. Each iteration used its own new disposable PG, applied130 migrations and exited0 with13/13 tests. Loaded Jest times: 6.571, 6.679, 6.976, 7.190, 7.616, 7.120, 7.636, 7.177, 7.285, 7.477, 7.302, 7.607, 7.814, 7.637, 7.963s. New rate-limit/auth-unavailable diagnostics count0; the historical503 was NOT reproduced in either token mode. This does not prove absence of an intermittent failure or eliminate full-suite shared-state/environment effects. No concurrency fix justified.
+
+CPU mode used12 busy worker threads, bounded10 minutes per process and explicitly stopped after each gate; all15 CPU stderr logs empty. Valid elevated host sample during load: CPU82%, free RAM1,803MiB. An earlier sandbox WMI sample was denied; its zero value is explicitly marked INVALID and excluded from evidence. Full gate/CPU/snapshot logs and parsed a2-summary.log retained under .scratch-5a-resume. Next: v1 idle1..10, then v1 load1..10. No broad A4 gate executed; count0/5. Three drafted S-003/header test files are unrun and excluded from this docs checkpoint. B/C not started, no push.
+
+---
+
+# Prior A2 idle checkpoint
+
+# A2 token idle 15/15 PASS; loaded mode next - 2026-10-17
 
 A1 committed at ed94887 after LF normalization and successful cached whitespace check (initial attempt exposed v1.js CRLF; corrected before retry). A2 command: `powershell.exe -NoProfile -File .scratch-5a-resume/diagnose.ps1 -SuiteName token -Mode idle -Count 15`. Each iteration invokes the unchanged r02 gate with `-Suite src/scripts/__tests__/token-typing.pg.test.js -Filter '.*'` on a separate Docker-assigned-port throwaway database; 130 migrations each. Result: **15/15 suites, 195/195 tests passed, zero failures**, all exits 0. Per-run Jest times: 7.782, 4.488, 4.417, 4.362, 4.562, 4.237, 4.590, 4.349, 4.157, 4.254, 4.349, 4.262, 4.332, 4.356, 4.352 seconds. Unfiltered logs and sampled activity/locks are retained as `.scratch-5a-resume/token-idle-{1..15}*.log`. No 503 reproduced; neither a path/SQLSTATE nor root cause has been established by idle success.
 

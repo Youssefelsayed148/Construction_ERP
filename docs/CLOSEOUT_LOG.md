@@ -2587,6 +2587,14 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - Final Docker proof: post-cleanup inventory 25 containers / 595 volumes / 8 networks; exact-name Compare-Object differences from pre-test inventory=0 for each resource type. Saved .batch5a-verify-docker-postcleanup-inventory.log. All pre-existing resources retained. Documentation verification: git diff --check exit 0; four files CR_bytes=0; both excluded reports returned by git check-ignore; implementation-path git diff from cc1a3ea empty.
 - Staging verification: git diff --cached --check -> exit 0; exactly four documentation files staged, all i/lf w/lf; git diff --cached --name-only for both excluded review reports -> empty. User requested stop after committing/report completion and a clean-session rerun/closeout prompt; no more gates or diagnosis after this checkpoint. Final restage/whitespace check precedes commit with required trailers.
 
+## 2026-10-17 - A2 token idle/load checkpoint
+
+- Token idle15 + load15 all passed:30 fresh throwaway DBs,130 migrations each,30 suites/390 tests, zero failures/exits0. Underlying unavailability diagnostics0. No reproduced503 or proven concurrency/connection defect; source remains ed94887. Full per-run timings in current report/parsed scratch summary.
+- Controlled load12 workers per iteration, bounded10min and explicitly terminated;15 CPU stderr logs empty. Valid elevated metric CPU82%/freeRAM1,803MiB. Initial sandbox WMI denied; invalid zero sample marked and excluded. No unrelated heavy parallel work or protected mutations.
+- Next v1 IDLE1..10 then LOAD1..10. A4 count0/5; three drafted warning/header test files unrun/unstaged. B/C not started/no push. Four-doc checkpoint only; STATE exact resume point, LF/cached check, required trailers.
+
+## Prior A2 idle checkpoint
+
 ## 2026-10-17 - A2 idle token checkpoint
 
 - A1 ed94887: cached check initially caught CRLF in middleware/v1.js; normalized only nine scoped files, second cached check exit0, committed with both contiguous trailers. No timeout/assertion changes.

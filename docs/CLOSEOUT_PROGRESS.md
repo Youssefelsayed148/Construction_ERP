@@ -1,3 +1,9 @@
+# 2026-10-17 - A2 token idle/load 30/30 passed; v1 next
+
+Token modes: idle15/15 plus CPU-load15/15, total30 suites /390 tests passed, zero failures;130 migrations per fresh disposable DB. Underlying503 diagnostic paths emitted0 times. Historical OAuth failure not reproduced; no cause or source fix proven.12-worker workload per loaded run; valid sample CPU82%/freeRAM1,803MiB; CPU stderr logs empty. Invalid sandbox WMI sample excluded. Exact next resume v1 IDLE1 (up to10), then v1 LOAD (up to10). A4 counter0/5; A3/header test drafts unrun/uncommitted. No B/C/push. Timings and evidence paths in current report; STATE updated.
+
+# Prior A2 idle checkpoint
+
 # 2026-10-17 - A2 token idle 15/15 passed; loaded mode next
 
 A1 ed94887 checkpoint committed after a diagnosed CRLF cached-check failure was corrected to LF; required trailers present. A2 idle token loop: 15 separate disposable DBs, 130 migrations each, 15/15 suites and 195/195 tests passed, all exits 0; raw unfiltered logs and sampled locks retained under .scratch-5a-resume/token-idle-{1..15}*.log. 503 not reproduced idle; cause unproven. Compare-and-swap protects legacy hash replacement; scrypt occurs before transaction; pool max20/default connect bound5000ms. File:line evidence and actual timings in 5A report.

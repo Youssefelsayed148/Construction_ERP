@@ -1,4 +1,12 @@
-# Current checkpoint - A2 token idle 15/15 passed; loaded mode next - 2026-10-17
+# Current checkpoint - A2 token idle/load 30/30 passed; v1 idle next - 2026-10-17
+
+- Token A2 modes complete: idle 15/15 and load 15/15; each fresh disposable PG / 130 migrations / 1 passed suite / 13 passed tests / exit0. Total 30 suites, 390 tests, zero failures. New unavailability diagnostics emitted zero times in both modes; historic OAuth503 not reproduced. No proven concurrency/connection source defect and no speculative fix.
+- Loaded mode used 12 worker threads during each run, with a 10-minute auto-stop bound plus explicit owned-process termination after each run. Valid elevated in-load sample: CPU82%, free RAM1,803MiB. First sandbox WMI sample was denied and its zero-RAM output is marked INVALID; never use it as a measurement. Fifteen CPU stderr logs empty. All helpers/observers are script files; PostgreSQL credentials remained process-only.
+- NEXT RESUME POINT: A2 v1-contract IDLE iteration1 (up to10), then LOAD up to10 with the same controlled workload. Token source remained ed94887; A3 warning and A3b header tests are drafted but unrun/uncommitted. Preserve those three modified test files; no A3/A3b application implementation yet. A4 count remains0/5. B/C not started; no push.
+
+# Prior A2 idle checkpoint (superseded above)
+
+# A2 token idle 15/15 passed; loaded mode next - 2026-10-17
 
 - A1 checkpoint ed94887 committed with both contiguous required trailers; initial cached whitespace failure was diagnosed as CRLF in v1.js, all nine scoped files normalized to LF, cached check then exited 0 before commit. No test behavior changed by normalization.
 - A2 idle token-typing complete: 15/15 fresh disposable PG runs, each 1 passed suite / 13 passed tests, 130 migrations, exit 0; aggregate 15 suites / 195 tests, zero failures. Jest times per iteration: 7.782, 4.488, 4.417, 4.362, 4.562, 4.237, 4.590, 4.349, 4.157, 4.254, 4.349, 4.262, 4.332, 4.356, 4.352 s. Original 503 NOT reproduced idle; no underlying cause established. Raw logs/snapshots .scratch-5a-resume/token-idle-{1..15}*.log.
