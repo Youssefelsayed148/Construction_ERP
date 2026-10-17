@@ -1,3 +1,12 @@
+# 2026-10-17 - RUN 1b-3 Gate B account idempotency checkpoint
+
+- Start: `f3e92a9a0144852caa5425d969cce77ec0de6f1c`, branch `closeout/batch-a-to-6`; working tree was clean. Only target: `erp-demo-20261017` / `construction_erp_demo`.
+- Focused command `npm.cmd --prefix backend test -- --runInBand --runTestsByPath src/scripts/__tests__/company-demo-safety.test.js`: PASS, 1 suite / 34 tests, 0 skipped, 0.564 s, exit 0.
+- Read-only `GET http://127.0.0.1:8092/api/health`: HTTP 200, database healthy. `docker compose ... ps --format json` could not inspect service state because Docker Desktop denied its engine pipe (exit 1); no retry or Docker mutation followed.
+- Scratch-only digest helper queried the 38 `demo-*@demo.example.com` users ordered by id and SHA-256 hashed ordered `(id,password,token_version)` tuples. Before seed: accounts=38, digest=`73ff43c906bdcea9b2219daa158df48c23caed6a66a3e481c383c247078e06bc`. Seed command `npm.cmd --prefix backend run seed:company-demo` ran twice; each exit 0, about 7.4 s, accounts=38, created=0, logins=38. Post-run digest after each: same 38 and same digest. Hashes, token versions, credentials and environment values were not printed. The current roster's total is 38, including its bootstrap `workflow_owner` entry.
+- Owner-run failing-first evidence supplied with this request: at `e1a6adb`, 1 failed / 33 passed and only the email-validation test failed; at `f3e92a9`, 34 / 34 passed. Current 34-test focused suite also passed. No baseline replay was needed or performed in this run.
+- Gate B: PASS for the defined 38-account roster, two idempotent reruns and current safety suite. Gate C, D and E: NOT RUN. No company business records were seeded. Docker inspection denial was bypassed with a successful read-only health check; it did not block Gate B.
+- No source/test edits, reset, raw SQL writes, pilot/clone access, external sends, product fixes, or review-report staging. `.scratch-company-demo/account-digest.js` is local scratch only.
 # Current demo status - 2026-10-17 continuation
 
 UI: http://127.0.0.1:8092. Compose: erp-demo-20261017. Database: construction_erp_demo, loopback 55442 via nginx stream proxy. Demo db/backend are healthy; frontend is running. No pilot or clone operation was performed.
