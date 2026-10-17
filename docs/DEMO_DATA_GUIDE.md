@@ -127,11 +127,13 @@ Defects logged: C-MASTER-001 MEDIUM (no supported warehouse-create route for rea
 | PO with two partial deliveries |Present: PO-00001 / DLV-00001, DLV-00002|procurement_officer / storekeeper|
 | RFQ award pending |Present: RFQ-00001, 3 quotations|procurement_manager|
 | PR waiting on CEO |Missing: PR-00001 is draft; workflow has no owner_ceo step|owner_ceo|
-| Low-stock alert |Not run|storekeeper|
-| Open NCR |Not run|qa_qc_manager|
-| Pending variation |Not run|commercial_manager|
-| Project B retention pending |Not run|finance_manager|
+| Low-stock alert |Missing: both demo warehouse stock rows have reorder_level=0; no API setter found|storekeeper|
+| Open NCR |Present: NCR-2026-0001, major, open|qa_qc_manager|
+| Pending variation |Present: VAR-0001 workflow started, workflow_instance_id set; row status is `change_event`, active step not publicly readable|commercial_manager|
+| Project B retention pending |Missing: no Project B contract; retention held/released/balance are 0|finance_manager|
 | Rejected delivery with its own return |Missing: C-PROC-002, rejected DLV-00003 has no GRN and supplier-return API requires GRN|storekeeper|
+
+The ordered whole-seed rerun ran each module command after e. Masters/procurement/finance/HR/site-QHSE returned `created=0` with exit 0; timings were 2.390/1.528/1.238/1.292/1.594 seconds, total 8.042 seconds. `node .scratch-company-demo/final-states.js` exited 0 and verified five of the nine requested states present. Gate C is incomplete/FAIL until four missing states are addressed. D/E were not run.
 
 ### Document numbers
 

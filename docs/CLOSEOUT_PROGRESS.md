@@ -1,3 +1,10 @@
+# 2026-10-18 - RUN 1b-3 final Gate C whole-seed rerun and state census
+
+- After e, the five modules were rerun in order; all commands exited 0 and reported `created=0`: `seed:company-demo:masters` 2.390 s, `seed:company-demo:procurement` 1.528 s, `seed:company-demo:finance` 1.238 s, `seed:company-demo:hr` 1.292 s, `seed:company-demo:site-qhse` 1.594 s. Total 8.042 s.
+- Read-only `node .scratch-company-demo/final-states.js` exit0/0.543 s: requested states present=5/9 (overdue invoice, partially paid invoice, open NCR, started variation workflow, RFQ award pending); missing=4 (owner_ceo PR, low stock, Project B retention, return linked to rejected delivery). Gate C remains FAIL/incomplete; no unexplained module failure.
+- C-INVENTORY-001 MEDIUM logged: warehouse stock API movement insert sets `reorder_level=0`; no API setter found; demo dashboard alerts consequently has no low-stock row. No SQL used for stock. Project B contracts=0 and retention totals held/released/balance=0; no retention records seeded. C-PROC-001/002 remain.
+- Gate D/E not run. No product changes or push.
+
 # 2026-10-18 - RUN 1b-3 Gate C site/QHSE module checkpoint
 
 - Focused command `npm.cmd --prefix backend test -- --runInBand --runTestsByPath src/scripts/__tests__/company-demo-site.test.js`: import red `MODULE_NOT_FOUND` before helper implementation; green PASS 1 suite/1 test/0 skipped, 0.372 s, exit0. No assertion-level behavior red claimed.

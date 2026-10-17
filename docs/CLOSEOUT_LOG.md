@@ -5,6 +5,12 @@
 - Static route inspection confirms the mounted warehouse API has no create route: `/api/warehouses` exposes GET collection/detail and POST movement/transfer/reservation operations only; v1 aliases the same route set. Project provisioning also contains no warehouse creation. The two required warehouses cannot be created through the permitted services/API. Direct SQL is disallowed for creation, and product changes are disallowed, so masters cannot satisfy its required entities.
 - C-MASTER-001 remains MEDIUM (broken flow/capability): no authorized warehouse-creation endpoint/service. Gate C is BLOCKED before module execution; masters module created 0 records and its module-specific idempotency test was not written/run. Procurement, finance, HR, site/QHSE, second full run, document-number list, and nine-state check are NOT RUN. Gate D and E are NOT RUN. No business rows were changed.
 - Next action: resume masters only after a supported warehouse create API/service path is made available or scope changes to authorize its implementation. Continue with masters idempotency tests/count/commit before procurement.
+# 2026-10-18 - RUN 1b-3 final Gate C whole-seed rerun and state census
+
+- Ordered post-e rerun: masters exit0/2.390s/created0; procurement exit0/1.528s/created0; finance exit0/1.238s/created0; HR exit0/1.292s/created0; site/QHSE exit0/1.594s/created0. Total 8.042 s.
+- `node .scratch-company-demo/final-states.js` exit0/0.543s: 5/9 states present; missing PR owner_ceo, low-stock alert, Project B retention and rejected-delivery-linked return. Gate C remains incomplete/FAIL; D/E NOT RUN.
+- C-INVENTORY-001 MEDIUM: no warehouse stock reorder_level write API; movement-created stock uses 0, so dashboard low stock remains empty. No raw SQL stock writes. Project B contract/retention readback is zero. Known C-PROC-001/002 remain. No product changes or push.
+
 # 2026-10-18 - RUN 1b-3 Gate C site/QHSE module checkpoint
 
 - Added site/QHSE/admin demo seeder and focused idempotency test; extended only the demo HTTP helper to send the route-required idempotency header. No product source changes. Focused test import red was diagnosed before helper creation; green PASS 1 suite/1 test, 0.372 s, exit0.
