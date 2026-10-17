@@ -17,3 +17,7 @@ db_dump/
 
 # Local agent worktrees (never part of the repository)
 .claude/worktrees/
+
+# Local review copies are preserved but must never be staged.
+/docs/REVIEW_REPORT_2026-10-14.md
+/docs/CODEX_AUDIT_REPORT.md
