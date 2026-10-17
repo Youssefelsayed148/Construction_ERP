@@ -1,3 +1,9 @@
+# 2026-10-17 - A3 stale-receipt warning verified; A3b next
+
+S-003 required warning now implemented: configurable RECONCILIATION_STALE_RECEIPT_HOURS default72; INFO below/at threshold, WARNING above with MIR/PO/age; posted GRN resolves; no age-only integrity violations, quantities unchanged. New operator doc. Test-first unit red9 failures incl3 header cases; PG red5 failed/5 passed (missing notices). Warning green unit1 suite/9 tests and PG warning/reconciliation/golden3 suites/32 tests,130 migrations,exit0. Timings/raw logs in report. Next implement already-red v1 header parity, checkpoint, then A4 counter0/5/broad gates. A2 50/590 passed, original causes unproven. B/C not started/no push; STATE updated; header test draft unstaged.
+
+# Prior A2 completion checkpoint
+
 # 2026-10-17 - A2 all50 reproductions passed; A3 red tests next
 
 A2 complete: token idle15/load15 and v1 idle10/load10,50 fresh DBs/50 suites/590 tests passed, zero failures/new unavailability diagnostics,130 migrations per DB. Neither historical timeout/503 reproduced in any mode; causes unproven, no speculative fix. V1 load valid sample CPU93%/RAM1,350MiB; post-group CPU5%/RAM2,013MiB. Exact post-A2 inventory25/595/8 containers/volumes/networks, zero name differences from baseline; pilot healthy/HTTP200; all owned PG/anonymous volumes removed, no protected mutation. Next run drafted A3/A3b tests RED, then implement/verify focused GREEN; A4 counter0/5 and broad gates unrun on final source. B/C not started/no push. Full table/timings/evidence in current report; STATE resume updated.

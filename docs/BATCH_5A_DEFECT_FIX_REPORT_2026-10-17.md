@@ -1,4 +1,16 @@
-# CURRENT - A2 complete: neither failure reproduced; A3 red tests next - 2026-10-17
+# CURRENT - A3 warning implemented/verified; A3b count header next - 2026-10-17
+
+Required S-003 warning is implemented read-only. Configuration `RECONCILIATION_STALE_RECEIPT_HOURS`, default72 positive finite hours; uses decided_at, fallback created_at, future age clamps0. Accepted MIR with positive lines and no posted GRN: age at/below threshold INFO, strictly older WARNING. Notices include MIR/PO numbers and age; posted GRN resolves them. New structured fields stale_receipt_hours/receipt_notices are separate from integrity results and never change ok/violation/exit solely because of age. Existing acceptance-minus-returns computation is unchanged. Operator/config reference: docs/STALE_RECEIPT_WARNING.md. Production diff19 added/4 removed lines.
+
+Failing-first: combined unit warning/header tests **9 failed /56 passed** (2 suites,2.765s); real-PG warning test **5 failed /5 passed**,1.618s,130 migrations, caused by absent receipt_notices, not fixture setup. After warning code: unit **1 suite/9 passed tests**,0.449s; PG warning/reconcile-defects/golden-chain **3 suites/32 passed tests**,6.156s,130 migrations,exit0. Cases cover71h/72h INFO,73h WARNING for PO-00008 pattern, posted GRN resolution, config override/invalid input, warning rendering and net accepted4 after return2 from gross6. Logs a3-unit-{red,green}.log / a3-pg-{red,green}.log. Owned PGs/anonymous volumes removed.
+
+Next A3b: three prepared header parity assertions already red; implement the trivial normalized-header emission and verify. Broader register count/page changes remain LOW candidates in the81-route classification. A4 counter0/5; no final full-suite gate yet. A2 all50 runs/590 tests passed without reproducing historic failures, causes still unproven; B/C not started/no push. External-api.test.js draft remains unstaged for the next slice.
+
+---
+
+# Prior A2 completion checkpoint
+
+# A2 complete: neither failure reproduced; A3 red tests next - 2026-10-17
 
 | A2 mode | Fresh databases / suites passed | Tests passed / failed | New unavailability diagnostics |
 |---|---|---|---|

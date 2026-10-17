@@ -2587,6 +2587,14 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - Final Docker proof: post-cleanup inventory 25 containers / 595 volumes / 8 networks; exact-name Compare-Object differences from pre-test inventory=0 for each resource type. Saved .batch5a-verify-docker-postcleanup-inventory.log. All pre-existing resources retained. Documentation verification: git diff --check exit 0; four files CR_bytes=0; both excluded reports returned by git check-ignore; implementation-path git diff from cc1a3ea empty.
 - Staging verification: git diff --cached --check -> exit 0; exactly four documentation files staged, all i/lf w/lf; git diff --cached --name-only for both excluded review reports -> empty. User requested stop after committing/report completion and a clean-session rerun/closeout prompt; no more gates or diagnosis after this checkpoint. Final restage/whitespace check precedes commit with required trailers.
 
+## 2026-10-17 - A3 stale-receipt warning implementation checkpoint
+
+- Added read-only receipt notices/config default72h, positive finite validation, decided_at/created_at age, INFO <=threshold/WARNING >threshold, MIR/PO/age rendering, posted-GRN resolution. Acceptance/returns arithmetic unchanged. Config docs/STALE_RECEIPT_WARNING.md; production19 additions/4 removals.
+- First red unit2 suites:9 failed/56 passed (warning6/header3),2.765s. PG warning red5 failed/5 passed,1.618s,130 migrations, missing notices; no setup failure. Green warning unit1 suite/9 tests,0.449s; PG batch5a-reconcile/reconcile-defects/golden-chain3 suites/32 tests,6.156s,130 migrations,exit0; owned PG/volumes removed. All raw logs retained under scratch.
+- Next already-red A3b header parity, then full A4 from0/5. A2 50 runs/590 tests passed without reproduction; no timeout/503 fix claim. Eight scoped files incl4 tracking docs; external-api.test.js draft remains unstaged. LF/cached check/trailers before commit; B/C not started/no push; STATE exact resume.
+
+## Prior A2 completion checkpoint
+
 ## 2026-10-17 - A2 complete, no reproduction
 
 - All requested caps executed: token idle15/load15, v1 idle10/load10;50 fresh DBs/50 suites/590 tests passed, zero failures;130 migrations each, exits0. New rate-limit/auth/idempotency diagnostics0. Neither historic failure reproduced; causes unproven, no speculative source fix. Full raw logs/snapshots/CPU logs/parsed summary under scratch.

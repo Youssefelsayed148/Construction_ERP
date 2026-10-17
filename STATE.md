@@ -1,4 +1,12 @@
-# Current checkpoint - A2 complete, failures NOT reproduced; A3 red tests next - 2026-10-17
+# Current checkpoint - A3 stale-receipt warning verified; A3b header next - 2026-10-17
+
+- A3 implemented: RECONCILIATION_STALE_RECEIPT_HOURS defaults72, positive finite hours; age from decided_at (legacy fallback created_at). Missing posted GRN is INFO at/below threshold, WARNING above, with MIR/PO numbers and age. Never changes integrity violations/ok/exit solely due to age. Posting GRN resolves notice; returns still subtracted once. Config/output documented docs/STALE_RECEIPT_WARNING.md. Production diff19 added/4 removed lines, read-only.
+- Test-first unit red (combined warning/header)9 failed/56 passed across2 suites,2.765s; focused PG warning red5 failed/5 passed,1.618s,130 migrations, expected missing receipt_notices. No fixture/setup failure. After warning implementation: unit1 suite/9 tests passed,0.449s; focused PG batch5a-reconcile + reconcile-defects + golden-chain3 suites/32 tests passed,6.156s,130 migrations,exit0. Raw logs a3-unit-{red,green}.log and a3-pg-{red,green}.log; own PGs/volumes removed.
+- NEXT RESUME: A3b implement one matching X-Total-Count emission in the v1 normalizer; three pagination tests already failed first in a3-unit-red.log. Preserve uncommitted external-api.test.js draft; run focused green and route regressions after header change, update classification/report, checkpoint. Then A4 five full runs from0/5 and all later gates. A2 all50/590 passed but no historical cause proven; do not call timeout/503 fixed. B/C not started/no push.
+
+# Prior A2 completion checkpoint
+
+# A2 complete, failures NOT reproduced; A3 red tests next - 2026-10-17
 
 - A2 finished all four modes: token idle15/15 (195 tests), token load15/15 (195), v1 idle10/10 (100), v1 load10/10 (100). Total50 suites/590 tests, zero failures, each on a unique fresh disposable PG with130 migrations/exit0. Zero new rate-limit/auth/idempotency unavailability diagnostics. Neither historic failure reproduced; causes remain UNPROVEN, no speculative behavior fix.
 - V1 load Jest times7.087,7.164,8.236,7.209,7.583,8.347,7.226,7.245,6.475,6.335s. Valid v1-load sample CPU93%/RAM1,350MiB. All CPU stderr logs empty. End-A2 resource sample CPU5%/freeRAM2,013MiB; workload stopped. Exact Docker inventories match baseline:25 containers/595 volumes/8 networks, zero name differences each; pilot healthy/HTTP200, no start/mutation. Source A1 ed94887; raw/CPU/snapshot logs and a2-summary.log in scratch.

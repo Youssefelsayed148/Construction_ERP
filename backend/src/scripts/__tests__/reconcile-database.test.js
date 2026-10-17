@@ -1,6 +1,35 @@
-const { CHECKS, runReconciliation } = require('../reconcile-database');
+const { CHECKS, runReconciliation, formatReceiptNotice } = require('../reconcile-database');
 
 describe('staging database reconciliation', () => {
+  let configuredReceiptAge;
+  beforeEach(() => { configuredReceiptAge = process.env.RECONCILIATION_STALE_RECEIPT_HOURS; delete process.env.RECONCILIATION_STALE_RECEIPT_HOURS; });
+  afterEach(() => {
+    if (configuredReceiptAge === undefined) delete process.env.RECONCILIATION_STALE_RECEIPT_HOURS;
+    else process.env.RECONCILIATION_STALE_RECEIPT_HOURS = configuredReceiptAge;
+  });
+  test('receipt age reads the documented configuration key', async () => {
+    process.env.RECONCILIATION_STALE_RECEIPT_HOURS = '100';
+    const report = await runReconciliation(async () => ({ rows: [] }));
+    expect(report.stale_receipt_hours).toBe(100);
+  });
+  test('receipt age is configurable, defaults to 72h, and warning output identifies MIR and age', async () => {
+    const q = async sql => ({ rows: sql.includes('AS age_hours')
+      ? [{ mir_id: 8, mir_number: 'MIR-00008', order_number: 'PO-00008', age_hours: '73' }]
+      : [{ violations: 0, pending: 1 }] });
+    const report = await runReconciliation(q);
+    expect(report.stale_receipt_hours).toBe(72);
+    expect(report.ok).toBe(true);
+    expect(report.receipt_notices).toEqual([{ mir_id: 8, mir_number: 'MIR-00008', order_number: 'PO-00008', age_hours: 73, level: 'warning' }]);
+    expect(formatReceiptNotice(report.receipt_notices[0])).toBe('[WARNING] MIR MIR-00008 / PO PO-00008: accepted receipt awaiting posted GRN; age=73.00h');
+    const younger = await runReconciliation(q, { staleReceiptHours: 100 });
+    expect(younger.receipt_notices[0].level).toBe('info');
+    expect(formatReceiptNotice(younger.receipt_notices[0])).toMatch(/^\[INFO\]/);
+  });
+  test.each([0, -1, NaN, Infinity])('invalid receipt threshold %s refuses before querying', async staleReceiptHours => {
+    const q = jest.fn();
+    await expect(runReconciliation(q, { staleReceiptHours })).rejects.toThrow('stale receipt threshold');
+    expect(q).not.toHaveBeenCalled();
+  });
   test('covers financial, retention, project, inventory and workflow invariants', () => {
     const source = CHECKS.map((check) => `${check.name} ${check.sql}`).join('\n');
     for (const term of ['payment_allocations', 'retention_ledger', 'project', 'inventory_transfers', 'workflow_instances']) {

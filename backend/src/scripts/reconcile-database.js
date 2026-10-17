@@ -265,16 +265,22 @@ const CHECKS = Object.freeze([
   },
 ]);
 
-const PENDING_RECEIPTS_SQL = `SELECT COUNT(*)::int AS pending FROM material_inspection_requests mir
+const PENDING_RECEIPT_FROM_SQL = `FROM material_inspection_requests mir
   WHERE mir.status IN ('accepted', 'partially_accepted')
     AND EXISTS (SELECT 1 FROM mir_lines ml WHERE ml.mir_id = mir.id AND ml.accepted_quantity > 0)
     AND NOT EXISTS (SELECT 1 FROM goods_receipt_notes grn WHERE grn.mir_id = mir.id AND grn.status = 'posted')`;
+const PENDING_RECEIPTS_SQL = `SELECT COUNT(*)::int AS pending ${PENDING_RECEIPT_FROM_SQL}`;
+const PENDING_RECEIPT_DETAILS_SQL = `SELECT mir.id AS mir_id, mir.mir_number,
+  (SELECT po.order_number FROM purchase_orders po WHERE po.id = mir.purchase_order_id) AS order_number,
+  GREATEST(0, EXTRACT(EPOCH FROM (NOW() - COALESCE(mir.decided_at, mir.created_at))) / 3600)::float AS age_hours
+  ${PENDING_RECEIPT_FROM_SQL} ORDER BY mir.id`;
 
 function quoteIdentifier(value) {
   return `"${String(value).replace(/"/g, '""')}"`;
 }
 
-async function runReconciliation(q = query) {
+async function runReconciliation(q = query, { staleReceiptHours = Number(process.env.RECONCILIATION_STALE_RECEIPT_HOURS || 72) } = {}) {
+  if (!Number.isFinite(staleReceiptHours) || staleReceiptHours <= 0) throw new TypeError('Invalid stale receipt threshold (hours)');
   const results = [];
   for (const check of CHECKS) {
     const result = check.run ? await check.run(q) : await q(check.sql);
@@ -282,7 +288,15 @@ async function runReconciliation(q = query) {
     results.push({ name: check.name, violations, ok: violations === 0 });
   }
   const pendingReceipts = Number((await q(PENDING_RECEIPTS_SQL)).rows?.[0]?.pending || 0);
-  return { ok: results.every((result) => result.ok), results, pending_receipts: pendingReceipts };
+  const receiptNotices = (await q(PENDING_RECEIPT_DETAILS_SQL)).rows.filter(row => row.mir_id != null).map(row => ({
+    ...row, age_hours: Number(row.age_hours), level: Number(row.age_hours) > staleReceiptHours ? 'warning' : 'info',
+  }));
+  return { ok: results.every((result) => result.ok), results, pending_receipts: pendingReceipts,
+    stale_receipt_hours: staleReceiptHours, receipt_notices: receiptNotices };
+}
+
+function formatReceiptNotice(row) {
+  return `[${row.level === 'warning' ? 'WARNING' : 'INFO'}] MIR ${row.mir_number || `#${row.mir_id}`} / PO ${row.order_number || '-'}: accepted receipt awaiting posted GRN; age=${row.age_hours.toFixed(2)}h`;
 }
 
 async function main() {
@@ -294,6 +308,7 @@ async function main() {
     console.log(`${result.ok ? '[OK]' : '[FAIL]'} ${result.name}: ${result.violations}`);
   }
   console.log(`[PENDING] accepted MIRs awaiting posted GRN (workflow check): ${report.pending_receipts}`);
+  for (const notice of report.receipt_notices) console.log(formatReceiptNotice(notice));
   if (!report.ok) process.exitCode = 1;
 }
 
@@ -303,4 +318,4 @@ if (require.main === module) {
     .finally(() => pool.end());
 }
 
-module.exports = { CHECKS, PENDING_RECEIPTS_SQL, runReconciliation };
+module.exports = { CHECKS, PENDING_RECEIPTS_SQL, runReconciliation, formatReceiptNotice };

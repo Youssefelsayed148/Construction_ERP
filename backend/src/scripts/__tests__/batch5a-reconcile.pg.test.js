@@ -1,4 +1,4 @@
-const { CHECKS, PENDING_RECEIPTS_SQL } = require('../reconcile-database');
+const { CHECKS, PENDING_RECEIPTS_SQL, runReconciliation } = require('../reconcile-database');
 const describePg = process.env.TEST_PG === '1' ? describe : describe.skip;
 
 describePg('Batch 5A MIR, receipts and supplier-return reconciliation', () => {
@@ -40,6 +40,27 @@ describePg('Batch 5A MIR, receipts and supplier-return reconciliation', () => {
     expect(await count('PO delivered and accepted quantities reconcile')).toBe(before);
     expect(Number((await one(PENDING_RECEIPTS_SQL)).pending)).toBe(pendingBefore + 1);
   });
+  test.each([[71, 'info'], [72, 'info'], [73, 'warning']])('PO-00008 receipt aged %s hours is %s without an integrity violation', async (age, level) => {
+    const before = await count('PO delivered and accepted quantities reconcile');
+    const f = await fixture();
+    const number = `MIR-PO-00008-${tag}-${age}`;
+    await client.query('UPDATE material_inspection_requests SET mir_number=$1,decided_at=NOW()-($2::numeric * INTERVAL \'1 hour\') WHERE id=$3', [number, age, f.mir.id]);
+    await client.query('UPDATE purchase_orders SET order_number=$1 WHERE id=$2', [`PO-00008-${tag}-${age}`, f.po.id]);
+    const report = await runReconciliation(client.query.bind(client), { staleReceiptHours: 72 });
+    expect(report.receipt_notices.find(row => row.mir_id === f.mir.id)).toMatchObject({ mir_number: number, age_hours: age, level });
+    expect(await count('PO delivered and accepted quantities reconcile')).toBe(before);
+  });
+  test('a posted GRN resolves an aged receipt notice without changing MIR acceptance', async () => {
+    const f = await fixture();
+    await client.query("UPDATE material_inspection_requests SET decided_at=NOW()-INTERVAL '120 hours' WHERE id=$1", [f.mir.id]);
+    const pending = await runReconciliation(client.query.bind(client));
+    expect(pending.receipt_notices.find(row => row.mir_id === f.mir.id)?.level).toBe('warning');
+    const grn = await one("INSERT INTO goods_receipt_notes (purchase_order_id,delivery_id,mir_id,status) VALUES ($1,$2,$3,'posted') RETURNING id", [f.po.id, f.delivery.id, f.mir.id]);
+    await client.query('INSERT INTO grn_lines (grn_id,mir_line_id,purchase_order_line_id,material_id,quantity) VALUES ($1,$2,$3,$4,6)', [grn.id, f.ml.id, f.line.id, f.material.id]);
+    const posted = await runReconciliation(client.query.bind(client));
+    expect(posted.receipt_notices.some(row => row.mir_id === f.mir.id)).toBe(false);
+    expect((await one('SELECT accepted_quantity FROM purchase_order_lines WHERE id=$1', [f.line.id])).accepted_quantity).toBe('6.000');
+  });
   test('one posted partial receipt plus its pending MIR peer are counted once each', async () => {
     const before = await count('PO delivered and accepted quantities reconcile');
     const f = await fixture({ posted: true });
@@ -67,6 +88,9 @@ describePg('Batch 5A MIR, receipts and supplier-return reconciliation', () => {
     await client.query('UPDATE purchase_order_lines SET accepted_quantity=4 WHERE id=$1', [f.line.id]);
     expect(await count('PO delivered and accepted quantities reconcile')).toBe(acceptedBefore);
     expect(await count('GRN returned quantities reconcile with supplier returns')).toBe(returnsBefore);
+    const report = await runReconciliation(client.query.bind(client));
+    expect(report.receipt_notices.some(row => row.mir_id === f.mir.id)).toBe(false);
+    expect((await one('SELECT accepted_quantity FROM purchase_order_lines WHERE id=$1', [f.line.id])).accepted_quantity).toBe('4.000');
     await client.query('UPDATE grn_lines SET returned_quantity=1 WHERE id=$1', [f.gl.id]);
     expect(await count('GRN returned quantities reconcile with supplier returns')).toBe(returnsBefore + 1);
   });
