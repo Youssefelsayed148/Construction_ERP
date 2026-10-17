@@ -2,6 +2,8 @@
   "title": "My actions",
   "empty": "You have no open actions.",
   "system": {
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "displayFailed": "Unable to display actions. Please try again.",
+    "retry": "Try again"
   }
 }

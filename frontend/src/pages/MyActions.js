@@ -41,7 +41,27 @@ const BUCKET_ICONS = {
 
 const formatDate = sharedDate;
 
+class ActionsBoundary extends React.Component {
+  state = { failed: false, attempt: 0 };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() {
+    if (this.state.failed) return <div className="page-container" role="alert">
+      <h1>{this.props.t('actions.title')}</h1>
+      <p>{this.props.t('actions.system.displayFailed')}</p>
+      <button className="btn btn-primary" onClick={() => this.setState(state => ({ failed: false, attempt: state.attempt + 1 }))}>
+        {this.props.t('actions.system.retry')}
+      </button>
+    </div>;
+    return <React.Fragment key={this.state.attempt}>{this.props.children}</React.Fragment>;
+  }
+}
+
 export default function MyActions() {
+  const { t } = useLocale();
+  return <ActionsBoundary t={t}><MyActionsContent /></ActionsBoundary>;
+}
+
+function MyActionsContent() {
   const { locale, t } = useLocale();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);

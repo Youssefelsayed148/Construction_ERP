@@ -29,6 +29,7 @@ const formatNumber = (num, options = {}) => {
 
 const formatDate = (dateStr, locale) => {
   if (!dateStr) return '-';
+  if (typeof dateStr === 'object' && !(dateStr instanceof Date)) return '-';
   try {
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
@@ -43,6 +44,7 @@ const formatDate = (dateStr, locale) => {
 
 const formatDateTime = (dateValue, locale) => {
   if (!dateValue) return '-';
+  if (typeof dateValue === 'object' && !(dateValue instanceof Date)) return '-';
   try {
     const date = new Date(dateValue);
     if (isNaN(date.getTime())) return dateValue;

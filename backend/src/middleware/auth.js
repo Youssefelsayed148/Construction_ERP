@@ -35,6 +35,8 @@ function filterScopedPayload(value, allowedProjectIds) {
       return node.map((item) => visit(item)).filter((item) => item !== OMIT);
     }
     if (!node || typeof node !== 'object' || Buffer.isBuffer(node)) return node;
+    // pg timestamps must retain Date.toJSON() instead of becoming empty objects.
+    if (node instanceof Date) return node;
     const projectId = node.project_id ?? node.projectId;
     if (projectId != null && !allowed.has(Number(projectId))) return OMIT;
     const output = {};
