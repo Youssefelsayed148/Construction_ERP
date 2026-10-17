@@ -1,4 +1,126 @@
-# CURRENT - Batch 5A diagnosis STOP; timeout root cause unproven - 2026-10-17
+# CURRENT - Controlled A/B/C run: Gate A FAILED / STOP - 2026-10-17
+
+Start: closeout/batch-a-to-6 at 2264ab1; initial working tree had no changes. This section supersedes the historical sections below. Phase reached A2, complete PG run 1; it failed. Batch 5A remains INCOMPLETE. Gate A FAILED; Gates B/C NOT EVALUATED, both phases NOT STARTED. No push, PR, deployment, application fix, or production acceptance. Established A1 diagnosis was not extended or repeated; environmental pressure remains an unproven hypothesis, and five consecutive complete passing runs were NOT obtained.
+
+## Execution and hard stop
+
+The existing runner selected unchecked random ports and removed the database without collecting a failure snapshot. A narrow prerequisite implements the user's explicit port/evidence/cleanup requirements: Docker-assigned loopback binding, excluded-range/protected-port rejection, activity/lock capture before teardown and owned anonymous-volume removal. Implementation is 19 added / 3 removed runner lines plus 8 SQL lines; the separate test has 26 lines. No existing application/test assertion, timeout, migration, dependency or environment file changed.
+
+Failing-first test command: `npm.cmd test -- --runInBand src/scripts/__tests__/r02-runner-safety.test.js` in backend. First fixture setup used one too many parent path segments, resolving to root scripts instead of backend/scripts (ENOENT; zero tests); corrected after inspecting the actual location. Intended red then executed 2 tests, both failed on absent safety behavior. After implementation: 1 passed suite / 2 passed tests, 0.237 s, exit 0. These are source-contract checks, not behavioral proof on their own. The real disposable run below additionally exercised assigned-port allocation, failure SQL and cleanup. No intentional red test is counted as a completed PG run.
+
+Exact full gate command:
+
+```text
+powershell.exe -NoProfile -File backend/scripts/r02-pg-gate.ps1 -All -Filter '.*'
+disposable erp-r02-gate-20261017161730 mapped to loopback port 61067
+migrations: [migrate] all migrations completed (130 applied, 0 already applied)
+Test Suites: 2 failed, 91 passed, 93 total
+Tests:       2 failed, 1980 passed, 1982 total
+Snapshots:   0 total
+Time:        287.199 s
+container erp-r02-gate-20261017161730 removed; exit=1
+full PG run 1 exit=1
+```
+
+Stopped on the FIRST failing complete run, with no retry, assertion relaxation, allowlist addition, timeout increase, source diagnosis experiment or speculative application fix. Jest completed all 93 suites within this one command before returning the failing result. Consecutive complete passing count reset to ZERO. No A2 item after the PG repetitions was run.
+
+## Current gate table
+
+| Gate | Actual current output / numbers | Result |
+|---|---|---|
+| Full PG 1 | 91 passed / 2 failed suites; 1,980 passed / 2 failed tests; 130 migrations; 287.199 s; exit 1 | FAIL; v1 9 passed / 1 failed of 10, suite 57.198 s |
+| Full PG 2 | 0 suites / 0 tests executed | NOT RUN; v1 NOT RUN |
+| Full PG 3 | 0 suites / 0 tests executed | NOT RUN; v1 NOT RUN |
+| Full PG 4 | 0 suites / 0 tests executed | NOT RUN; v1 NOT RUN |
+| Full PG 5 | 0 suites / 0 tests executed | NOT RUN; v1 NOT RUN |
+| Backend Docker test-stage build | 0 builds / 0 test executions | NOT RUN; no cache hits or PG skips counted |
+| Disposable golden -Reconcile | 0 fixture seeds / 0 checks | NOT RUN |
+| Full backend mocks | 0 full-gate suites/tests | NOT RUN; separate focused harness check above was 1 suite / 2 tests |
+| Frontend CI tests | 0 suites / 0 tests | NOT RUN |
+| i18n check / parity | 0 commands | NOT RUN |
+| lint:guards | 0 commands | NOT RUN |
+| API lint | 0 commands | NOT RUN |
+| Root CI build | 0 builds | NOT RUN |
+
+v1's 9/10 is obtained from the ten declared test cases and the single failing case in Jest's complete failure summary; Jest's default reporter prints overall totals, not a separate per-file passed count. Its other nine tests and teardown had no reported failure. Unlike the earlier historical run, this run reports no afterAll timeout. The second failed suite is token-typing (6.082 s), with one failed test.
+
+## Failure text and snapshot limits
+
+The full failure-summary text is retained locally in `.scratch-controlled-run/failures-redacted.log`; only native PowerShell wrapper-only lines and fixture-secret text are removed/redacted. The unfiltered original remains `.scratch-controlled-run/pg-1.log`. No .env file, account credential file or runtime secret was read or printed. Relevant complete exception/assertion messages:
+
+```text
+FAIL src/scripts/__tests__/v1-contract.pg.test.js (57.198 s)
+  B5 API contract: OpenAPI spec vs the live /api/v1
+  every documented (method, path) answers with a JSON envelope when called
+  thrown: "Exceeded timeout of 30000 ms for a test.
+  Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+  at test (src/scripts/__tests__/v1-contract.pg.test.js:71:3)
+  at Object.describePg (src/scripts/__tests__/v1-contract.pg.test.js:18:1)
+
+FAIL src/scripts/__tests__/token-typing.pg.test.js (6.082 s)
+  token typing (real PostgreSQL, real app)
+  concurrent real HTTP client grants upgrade a legacy service secret once
+  expect(received).toEqual(expected) // deep equality
+  - Expected  - 1
+  + Received  + 1
+    Array [
+      200,
+  -   200,
+  +   503,
+    ]
+  at Object.toEqual (src/scripts/__tests__/token-typing.pg.test.js:87:50)
+```
+
+The v1 route-loop's last logged request before the next test was `POST /api/v1/materials/replenishment/sweep` at 13:19:37.179 UTC; the next test's health call was at 13:20:05.782 UTC. The later sweep request at 13:20:41.301 belongs elsewhere in the complete log; do not confuse it with the failed loop. No new timeout root cause is established. The OAuth response body was not retained by that test's failure assertion; its 503 cause is unproven, not evidence of wrong authorization. No source fix is proposed as proven from these outputs.
+
+Failure SQL was executed on ONLY the new disposable container BEFORE `docker rm -fv`, at 13:22:46.711619 UTC (16:22:46.711619 Cairo). Actual snapshot: one active observer session, zero other sessions in that database, two granted observer locks, zero ungranted locks, empty blocker list. Jest had already force-exited, so this is a valid pre-teardown snapshot but NOT a live snapshot of the timed-out request. It cannot rule out earlier locks, slow work, pool pressure or environmental instability. No blocking session was killed. SQL string literals are redacted by the observer query.
+
+## A3 self-review evidence (897e823..cc1a3ea)
+
+This is static review of the implementation diff plus current full-run output, not a new pilot/clone query or UI acceptance. No new HIGH source finding was proven; the failed gates prevent sign-off regardless. The age-warning requirement below is unresolved.
+
+| Item | Current file:line evidence | Finding / limits |
+|---|---|---|
+| S-001 | backend/src/services/clientCollections.js:7, :9, :18; backend/src/routes/dashboard.js:193, :250; backend/src/routes/finance.js:19, :61; backend/src/services/dashboardWidgets.js:44; backend/src/scripts/__tests__/client-collections.pg.test.js:21, :43 | One shared helper/predicate excludes supplier_id, AP direction and voided receipts; shared exact minor-unit figures feed both main routes. Mixed AR 300 / AP 9,130 fixture expects outstanding 700 and profit 260; suite PASS in current full run. Clone 9,130 versus screenshot 9,130,000 remains NOT DETERMINED: frontend/src/utils/formatters.js:8 formats the supplied amount without x1,000 conversion. No pilot DB/screenshot inspection permitted/performed; neither units nor different source data can be asserted as the cause. |
+| S-002 | backend/src/routes/projects.js:69, :98, :126; backend/src/migrations/0031_organizations_rbac.sql:28, :590; backend/src/scripts/__tests__/batch5a-project-create.pg.test.js:18; backend/src/scripts/__tests__/batch5a-inventory.pg.test.js:12 | Entry routes use authorize() and migrated per-action grants. Five-role create/audit test derives expected 201/403 from grants, including owner_ceo. Inventory compares explicit coarse lists with grants and records blocked roles; it does NOT assert zero mismatches across unrelated routes. Current output/table: 1,048 mounted method/routes; 73 coarse lists. Both suites PASS. |
+| S-004 | backend/src/services/dashboardWidgets.js:301, :305; backend/src/services/apiResources.js:63, :66, :97, :113; backend/src/scripts/__tests__/batch5a-dashboard.pg.test.js:1 | Widget ownership resolves deliveries.purchase_order_id through purchase_orders.project_id; v1 resource projectExpression does the same for list/detail, overriding its generic projectColumn. Regression suite PASS; static schema contains no deliveries.project_id. |
+| S-005 | backend/src/middleware/auth.js:38; frontend/src/utils/formatters.js:32, :47; frontend/src/pages/MyActions.js:44, :60; backend/src/scripts/__tests__/batch5a-my-actions.pg.test.js:1; frontend/src/pages/MyActions.recovery.test.js:1 | pg TIMESTAMPTZ returns Date; scoped traversal converted it to {}, formatter returned that object and React rejected it as a child (#31). Preserve Date serialization; reject malformed objects; localized ActionsBoundary with retry wraps the page. Backend regression PASS in current PG run. Frontend tests/UI not rerun in this stop. |
+| S-006 | backend/src/routes/procurement.js:288; backend/src/services/procurementDocuments.js:35; backend/src/scripts/__tests__/batch5a-lists.pg.test.js:1; docs/BATCH_5A_LIST_ROUTE_TABLE.md:5 | RFQ uses shared SQL pagination/count; exact scoped totals, offsets and empty pages tested. Suite PASS. Current table recount: 448 GET routes, 254 array-bearing responses, 81 of those have ABSENT count headers. This includes nested arrays/catalogs; no claim that all lists have correct totals or that all 81 are defects. Inventory is the existing generated table, not a fresh all-role UI/API crawl. |
+| S-007 | frontend/src/pages/MyActions.js:183, :208; frontend/src/pages/ProjectWizard.js:566; frontend/src/pages/Reports.js:150, :157, :184; frontend/scripts/report-contract.js:6; frontend/src/pages/Batch5ALabels.ar.test.js:27 | Priority/severity-level filters, notification channels and report catalog/module/column labels use keys. AR catalogs contain priority low/medium/high/urgent/critical, severity minor/moderate/major/critical/low/medium/high, channels inApp/email/push/sms/whatsapp. Current localization gates and native Arabic review NOT RUN; no broader narrative/export translation claim. |
+| S-003 | backend/src/scripts/reconcile-database.js:161, :176, :191, :267; backend/src/scripts/__tests__/batch5a-reconcile.pg.test.js:36, :43, :60, :84 | Accepted projection uses decided MIR acceptance (plus legacy GRNs without a MIR), subtracts returns once and does not double-count linked GRNs. Pending accepted MIR without GRN does not fail integrity. Six-case suite PASS. REQUIRED AGE-THRESHOLD WARNING IS MISSING: PENDING_RECEIPTS_SQL counts all ages; CLI says [PENDING], not a stale-age WARNING. Unresolved MEDIUM requirement; do not label it implemented. Stale posted-GRN projection test is a different check. |
+| Team/directory leak (cc1a3ea) | backend/src/services/teamService.js:104; backend/src/routes/organizations.js:313; backend/src/routes/team-assignments.js:34; backend/src/services/projectReadScope.js:91, :95; backend/src/scripts/__tests__/batch5a-last-scope.pg.test.js:3, :65, :83 | Five explicit routes x four roles = 20 exact-ID/status/header-total assertions; both team routes add page/empty/foreign-filter assertions. Owner page expected IDs derive independently from SQL; scoped users cannot see foreign/company seats. Suite PASS, as did directory-scope/aggregate-scope suites. These cases are not all-role/all-GET direct-ID acceptance. |
+
+Diff scan saved as `.scratch-controlled-run/batch5a-diff.log`: `git diff --unified=0 897e823 cc1a3ea -- backend frontend`. Added/removed `.skip(`, `.only(`, setTimeout/testTimeout/jest.setTimeout or allowlist lines: no matches. Removed expect/toEqual/toBe/toHave assertion lines: no matches. Nine added `describePg = TEST_PG ? describe : describe.skip` declarations explicitly gate new PG suites; TEST_PG=1 in this run, so they ran. These are disclosed rather than described as no skipped syntax anywhere. Separately, `git diff 897e823 cc1a3ea -- docs/R1_AGGREGATE_ALLOWLIST.json` shows SEVENTEEN historical new exemptions for shared catalogs and organization-scope resources. No new allowlist was added in this session. Their existence prevents a blanket claim of no allowlist changes; route-specific justifications are present, not universal coverage proof. Aggregate fixture change makes clients/suppliers distinct; no assertion was removed. No unrun guard is counted green.
+
+## Docker, pilot and retained evidence
+
+Bounded Docker info: sandbox named-pipe access denied; outside-sandbox command returned 28.3.2, exit 0 in 0.520 s, below 30 s. The scratch preflight initially propagated no reliable exit code from Start-Process despite the sandbox stderr; it was corrected to require a version result and no stderr before the successful outside-sandbox check. No Docker/WSL restart. Port exclusions inspected with the required netsh command before allocation: 27339; 50000-50059; 55916-56015; 56143-56242; 56243-56342; 56432-56531; 56532-56631. Docker assigned 61067; protected PG ports 55440/55441/55442 were not bound.
+
+```text
+container before=25 after=25 exact_name_differences=0
+volume before=595 after=595 exact_name_differences=0
+network before=8 after=8 exact_name_differences=0
+pilot HTTP status=200   (before)
+pilot HTTP status=200   (after)
+```
+
+Only erp-r02-gate-20261017161730 was created and removed, with its attached anonymous volume via `docker rm -fv` on that exact owned name. No orphan volume or network remains by exact-name comparison, not counts alone. No other pre-existing resource was removed; no prune. Pilot received only the explicitly allowed compose ps -a and loopback HTTP checks. db/backend/frontend were healthy before and after (Up About an hour -> Up 2 hours); migrate Exited (0), so no start was needed. No pilot build/up/recreate/down/rm/seed/exec/SQL, no direct sweep operation and no demo operation.
+
+Ignored local evidence under `.scratch-controlled-run/`: pg-1.log (unfiltered, 55,895 lines), failures-redacted.log, snapshot.log, inventory-before.log, inventory-after.log, pilot-before.log, pilot-after.log, batch5a-diff.log, and helper-source logs. Original gate SHA256: `00EB92E288C2FE9469F99912B09269E66293C98C10325D13C801FC0C07A1F3D4`. Scratch helpers were script files, not inline shell programs; their sources are retained as ignored logs. The summary helper's broad Exception match emitted noisy native wrapper lines; the full original log remains intact and the saved redacted summary omits only those wrappers. No claim is based on filtered failure-free output.
+
+## Scope, decisions and exact resume
+
+Seven checkpoint files: backend/scripts/r02-pg-gate.ps1, backend/scripts/r02-pg-failure.sql, backend/src/scripts/__tests__/r02-runner-safety.test.js, STATE.md, docs/CLOSEOUT_PROGRESS.md, docs/CLOSEOUT_LOG.md and this report. No dependencies, environment files, application routes/services, migrations, external adapters or legacy role switch changed. Verification: git diff --check and git diff --cached --check exit 0; staged names exactly these seven files; excluded-review staged names empty; all seven i/lf w/lf and CR_bytes=0. Git staging initially hit sandbox index.lock permission denial, then succeeded outside the sandbox; no approval-review rejection. Final restage/cached check must precede commit. Required Claude trailers apply.
+
+Demo Phase B: 0 stages/records/accounts created by this run; module counts and interesting states are NOT MEASURED, no demo defect candidates collected. These zeros mean no seeding was attempted, not an assertion about any existing environment. Phase C: 0 chains, 0 isolation routes, 0/38 accounts and 0/2 languages crawled; all 38 accounts and both languages untested because Gate A failed. No 5B defect log or severity totals are claimed. The OAuth failure is a new MEDIUM broken-flow candidate with no proven cause; v1 timeout is a recurring MEDIUM broken-flow blocker. No data leak, wrong-money or wrong-role finding was proven by this failed run; that is not security clearance.
+
+Needs your decision: scratch_pdf.txt remains tracked i/crlf w/crlf, untouched. Native Arabic/human RTL, export and deployed UAT acceptance remain unverified. Next authorized follow-up starts with the two current failure repros and the missing S-003 age-threshold warning; use this evidence and the user's test-first/~30-line limit. If no narrow proven fix exists, report the proposed fix. Restart all five complete PG runs from zero, then Docker test stage, disposable golden and every requested host gate. Gate A must pass before branch push or Phase B. No automatic retry or later-phase work remains running.
+
+---
+
+# Historical checkpoint at 2264ab1 (superseded above)
+
+# Batch 5A diagnosis STOP; timeout root cause unproven - 2026-10-17
 
 Started clean at 7d15806643fa361a36fa6983b6e02fb3d16ed0ae on closeout/batch-a-to-6. This section supersedes historical status below. No application, test, assertion, timeout, dependency, migration or environment-file change. Batch 5A is INCOMPLETE. No push, PR or deployment.
 

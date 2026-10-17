@@ -25,7 +25,9 @@ $stamp = Get-Date -Format 'yyyyMMddHHmmss'
 $name = if ($R4Baseline) { "erp-r04-baseline-$stamp" } elseif ($R4PasswordAfter) { "erp-r04-password-after-$stamp" } elseif ($R4MultiInstance) { "erp-r04-multi-$stamp" } elseif ($R4Resilience) { "erp-r04-resilience-$stamp" } elseif ($R4MigrationUpgrade) { "erp-r04-migration-upgrade-$stamp" } elseif ($R4) { "erp-r04-gate-$stamp" } else { "erp-r02-gate-$stamp" }
 $rand = { -join ((48..57 + 97..122) | Get-Random -Count 24 | ForEach-Object { [char]$_ }) }
 $pw = & $rand
-$port = Get-Random -Minimum 55000 -Maximum 58000
+$exclusions = netsh interface ipv4 show excludedportrange protocol=tcp
+if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect excluded TCP ports.' }
+$port = 0
 $env:DB_HOST = '127.0.0.1'; $env:DB_PORT = "$port"; $env:DB_NAME = if ($R4Baseline) { 'erp_r04_baseline' } elseif ($R4PasswordAfter) { 'erp_r04_password_after' } elseif ($R4MultiInstance) { 'erp_r04_multi' } elseif ($R4Resilience) { 'erp_r04_resilience' } elseif ($R4MigrationUpgrade) { 'erp_r04_migration_upgrade' } elseif ($R4) { 'erp_r04_test' } else { 'erp_r02_test' }
 $env:DB_USER = if ($R4Baseline -or $R4PasswordAfter -or $R4MultiInstance -or $R4Resilience -or $R4MigrationUpgrade -or $R4) { 'erp_r04' } else { 'erp_r02' }; $env:DB_PASSWORD = $pw
 $env:JWT_SECRET = & $rand; $env:WEBHOOK_ENCRYPTION_KEY = (& $rand) + (& $rand); $env:TEST_PG = '1'; $env:NODE_ENV = 'test'; $env:APP_ENV = 'test'
@@ -34,8 +36,18 @@ $env:JWT_SECRET = & $rand; $env:WEBHOOK_ENCRYPTION_KEY = (& $rand) + (& $rand); 
 $env:AUTH_RATE_LIMIT_PER_15_MIN = '1000'; $env:V1_RATE_LIMIT_PER_MIN = '100000'
 $exit = 1
 try {
-  docker run -d --rm --pull=never --name $name -p "127.0.0.1:${port}:5432" `
+  docker run -d --rm --pull=never --name $name -p "127.0.0.1::5432" `
     -e "POSTGRES_PASSWORD=$pw" -e "POSTGRES_USER=$($env:DB_USER)" -e "POSTGRES_DB=$($env:DB_NAME)" postgres:16 | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw 'Disposable Postgres creation failed.' }
+  $mapping = docker port $name 5432/tcp
+  if ($LASTEXITCODE -ne 0 -or $mapping -notmatch '^127\.0\.0\.1:(\d+)$') { throw 'Invalid disposable port mapping.' }
+  $port = [int]$matches[1]
+  if ($port -in @(55440, 55441, 55442)) { throw 'Protected database port assigned.' }
+  foreach ($line in $exclusions) {
+    if ($line -match '^\s*(\d+)\s+(\d+)' -and $port -ge [int]$matches[1] -and $port -le [int]$matches[2]) { throw 'Excluded database port assigned.' }
+  }
+  $env:DB_PORT = "$port"
+  Write-Output "disposable $name mapped to loopback port $port"
   $ready = $false
   for ($i = 0; $i -lt 60; $i++) {
     docker exec $name pg_isready -U $env:DB_USER -d $env:DB_NAME 2>$null | Out-Null
@@ -116,7 +128,11 @@ try {
   ($out -split "`r?`n") | Where-Object { $_ -match $Filter } | ForEach-Object { Write-Output $_ }
   Pop-Location
 } finally {
-  docker rm -f $name 2>$null | Out-Null
+  $ErrorActionPreference = 'Continue'
+  if ($exit -ne 0) {
+    Get-Content (Join-Path $PSScriptRoot 'r02-pg-failure.sql') -Raw | docker exec -i $name psql -X -U $env:DB_USER -d $env:DB_NAME
+  }
+  docker rm -fv $name 2>$null | Out-Null
   Write-Output "container $name removed; exit=$exit"
 }
 exit $exit

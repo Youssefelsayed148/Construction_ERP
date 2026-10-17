@@ -1,3 +1,15 @@
+# 2026-10-17 - Controlled A/B/C run: Gate A FAILED, STOP
+
+Started at 2264ab1 on closeout/batch-a-to-6. A2 full PG run 1 applied 130 migrations, then FAILED: 91 passed / 2 failed suites, 1,980 passed / 2 failed tests, 287.199 s, exit 1. v1-contract timed out at 30,000 ms (9/10 tests passed, suite 57.198 s); token-typing concurrent grants expected [200,200], received [200,503]. No afterAll timeout in this run. Consecutive complete passes = 0; runs 2-5 NOT RUN. All remaining A2 gates NOT RUN after the first failure. Batch 5A remains incomplete; Gate A failed; demo Phase B and testing Phase C not started; no push/PR/deploy.
+
+Harness safety prerequisite now uses Docker-assigned loopback ports, validates exclusions/protected ports, captures activity/locks before teardown and removes only the owned container with its anonymous volume. Failing-first source-contract test: 2 failed -> 2 passed (an earlier path-setup error executed zero tests). No application, assertion, timeout, migration, dependency or env-file changes. Failure snapshot after Jest exit: one observer session / two granted locks / no other sessions; cannot establish the live timeout cause. Root causes remain unproven; no claim of a timeout fix.
+
+Docker 28.3.2 available within 30 s; no restart. Exact-name inventories before/after: containers 25/25, volumes 595/595, networks 8/8, differences 0 each. Pilot permitted ps: db/backend/frontend healthy, migrate Exited (0); HTTP 8090 = 200 twice. Only erp-r02-gate-20261017161730 on mapped port 61067 was created/removed. No pilot/sweep mutation. Full evidence and A3 file:line table are in the current 5A report; raw log SHA256 00EB92E288C2FE9469F99912B09269E66293C98C10325D13C801FC0C07A1F3D4.
+
+A3 limits: S-003 lacks the required age-threshold stale-receipt warning (MEDIUM); historical diff adds 17 aggregate allowlist entries and nine TEST_PG suite conditionals; no removed assertions/raised timeouts found. Existing list table: 448 GET rows, 254 array responses, 81 missing count headers; not a claim of 81 defects. S-001 screenshot unit discrepancy unproven. Next resume: the two failed tests and missing S-003 warning, then all five fresh full suites and remaining gates; STATE.md records the exact point. scratch_pdf.txt untouched, tracked CRLF, needs user decision.
+
+# Historical checkpoint at 2264ab1 (superseded above)
+
 # 2026-10-17 - Batch 5A diagnosis STOP; no completion or push
 
 Started clean at 7d15806; implementation/tests unchanged from cc1a3ea. Docker info -> 28.3.2 (0.275 s); permitted pilot status healthy, Up 15 -> 18 minutes, HTTP 8090 -> 200 twice. Leader lock is nonblocking pg_try_advisory_lock(hashtext('conerp-sweep:replenishment')); a separate per-material/project transaction advisory lock can block. Inspected connection cleanup uses finally. Gate explicitly --runInBand; shared-state leakage and exact historic timeout cause remain unproven.
