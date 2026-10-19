@@ -6,7 +6,8 @@ import LoadMore from '../components/common/LoadMore';
 import { ArrowLeft, Edit, Plus, Users, Calendar, Flag, MapPin, X, Briefcase, TrendingUp, TrendingDown } from 'lucide-react';
 import { formatCurrency, formatDate, formatPercent } from '../utils/formatters';
 import { authService } from '../services/api';
-import { canSeeFinancials } from '../utils/projectNav';
+import { canSeeFinancials, hasProjectPermission } from '../utils/projectNav';
+import ProjectCalendars from '../components/project/ProjectCalendars';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
@@ -183,6 +184,8 @@ function ProjectDetail() {
 
   // Presentation only: the API still decides what each role may read (utils/projectNav.js).
   const showFinancials = canSeeFinancials(authService.getCurrentUser(), Number(id));
+  const canManageCalendars = hasProjectPermission(authService.getCurrentUser(), 'projects', 'edit', Number(id))
+    || hasProjectPermission(authService.getCurrentUser(), 'projects', 'create', Number(id));
   const infoCards = [
     { icon: Briefcase, label: t('projects.system.client'), value: clientName() },
     { icon: Users, label: t('projects.system.projectManager'), value: (locale === 'ar' ? project.project_manager_name : (project.project_manager_name_en || project.project_manager_name)) || '-' },
@@ -450,6 +453,9 @@ function ProjectDetail() {
           </div>
         )}
       </div>
+
+      {/* Calendars (project setup) */}
+      <ProjectCalendars projectId={id} locale={locale} t={t} canManage={canManageCalendars} />
 
       {/* Phase Modal */}
       {phaseModal && (

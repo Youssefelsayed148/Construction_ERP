@@ -1,3 +1,13 @@
+# 2026-10-19 - Screen 5 (project calendars) implemented; PG suite not rerun (no Docker)
+
+- Resume base `db5920a` on `closeout/batch-a-to-6`; worktree carried pre-existing uncommitted changes from earlier demo sessions (migrations/config/locale files); Screen 5 touched only `frontend/src/components/project/ProjectCalendars.js{,.test.js}`, `frontend/src/pages/ProjectDetail.js` and the two `projects.json` locale files.
+- API verified before implementation: calendars live at `/api/projects/:id/calendars` (GET/POST/PUT/DELETE in `backend/src/routes/project-setup.js:64-94`, service `projectSetupService.js:70-136`, mount `v1.js:62`) with one-default protection (`calendar_default_required`), off-day validation (`calendar_off_days_invalid`), per-project scoping (`calendar_not_found` for foreign ids) and a dedicated PG suite (`backend/src/scripts/__tests__/project-setup-5-2.pg.test.js`, committed at `78e52a3`). No new backend test was required.
+- Placement decision: ProjectDetail.js (existing project setup area). ProjectWizard.js is creation-time only; Schedule.js operates on a different entity (`calendars` with work_days/exceptions at `/api/schedule/calendars`).
+- Screen behavior: list default-first with EN/AR localized names, timezone, weekday off-day chips and holiday count; create/edit modal (bilingual names, timezone, off days 0-6, holiday rows, set-default switch); inline confirm delete; loading/empty/error states; write actions gated on the `projects` edit/create policy grant; backend still authorizes regardless of UI.
+- Deviation recorded: the request asked for "deactivate"; `project_calendars` has no is_active column and DELETE is protected for the default, so the screen exposes delete-with-confirm instead. Backend data model otherwise unchanged.
+- Evidence this session: focused frontend test 9/9 PASS (`CI=true npm test -- --watchAll=false --runInBand --testPathPattern="components/project/ProjectCalendars"`, exit 0); regression 4 suites/104 tests PASS (PageSmokeMatrix, Batch5ALabels, ProjectDocuments, ProjectOperations); `npm run i18n:check` ok; `npm run i18n:parity` ok (36 namespaces, 2898 en keys); `CI=true npm run build` compiled successfully, exit 0.
+- NOT RUN: the existing backend PG calendar suite could not execute because the Docker engine is unavailable in this sandbox (`docker info` fails with "protocol not available"); no PG pass is claimed. Next action: run `npm.cmd --prefix backend run test:pg` focused on `project-setup-5-2.pg.test.js` in an environment with Docker before the batch gates.
+
 # 2026-10-18 - RUN 1b-3 Gate C owner decisions and resume
 
 - Resume base verified: `4a297ce`, branch `closeout/batch-a-to-6`; worktree clean at start. Target remains only `erp-demo-20261017` / `construction_erp_demo`.

@@ -1,3 +1,11 @@
+# 2026-10-19 - Screen 5 project calendars section
+
+- Placement: ProjectDetail.js project setup area (above Phases). New component `frontend/src/components/project/ProjectCalendars.js` mounted with locale/t props; ProjectWizard.js rejected (creation-time only) and Schedule.js rejected (different `calendars` entity at `/api/schedule/calendars`).
+- Backend contract confirmed against existing code and the existing dedicated PG suite `project-setup-5-2.pg.test.js`; no backend change, no new PG test.
+- Frontend evidence: focused suite 9/9 PASS; regression 4 suites/104 tests PASS; `i18n:check` ok; `i18n:parity` ok 36 namespaces / 2898 en keys; `CI=true npm run build` compiled successfully, exit 0. Write actions gated behind the `projects` edit/create policy grant; loading/empty/error/EN-AR/RTL-safe states.
+- Deactivate deviation: no is_active column; screen uses inline-confirmed DELETE protected by `calendar_default_required`.
+- Backend PG rerun NOT executed this session: Docker engine unavailable (`docker info` -> "protocol not available"). No pass claimed.
+
 # 2026-10-18 - RUN D2+E demo verification
 
 - Start at `39162efc` on `closeout/batch-a-to-6`; target only `erp-demo-20261017` / `construction_erp_demo`. Product source unchanged; no push or pilot/clone contact.
