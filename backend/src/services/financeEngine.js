@@ -280,16 +280,22 @@ async function transitionInvoice(q, invoiceId, newStatus, user, extra = {}) {
 }
 
 // Overdue detection (used by the reminder sweep and reads).
+// B1 (C-FIN-AR-001): the ONE lifecycle derivation, shared by routes and services. Only the
+// issued family (issued, sent, partially_paid, overdue) can derive paid / partially_paid /
+// overdue; draft and approved invoices keep their lifecycle status no matter how past their
+// due date is, so a read never promotes an unissued invoice into the money lifecycle.
+const ISSUED_FAMILY_STATUSES = new Set(['issued', 'sent', 'partially_paid', 'overdue']);
+
 function computeLifecycleStatus(invoice, totalPaid, now = new Date()) {
   // Phase 5.5: issued credit notes reduce what the client owes (invoices.credited_amount).
   const net = (invoice.net_amount != null ? toNum(invoice.net_amount) : toNum(invoice.amount)) - toNum(invoice.credited_amount);
   const paid = toNum(totalPaid);
   if (invoice.status === 'credited' || invoice.status === 'void' || invoice.status === 'cancelled') return invoice.status;
+  if (!ISSUED_FAMILY_STATUSES.has(invoice.status)) return invoice.status;
   if (paid >= net && net > 0) return 'paid';
   if (invoice.due_date != null && new Date(invoice.due_date) < new Date(now) && paid < net) return 'overdue';
   if (paid > 0) return 'partially_paid';
-  const legacy = invoice.status === 'sent' ? 'issued' : invoice.status;
-  return legacy;
+  return invoice.status;
 }
 
 // ---------------------------------------------------------------------------
@@ -725,6 +731,7 @@ module.exports = {
   writeInvoiceLines,
   valuationLineItems,
   INVOICE_LIFECYCLE,
+  ISSUED_FAMILY_STATUSES,
   REMINDER_STAGES,
   DEFAULT_REMINDER_ROLES,
   toNum,

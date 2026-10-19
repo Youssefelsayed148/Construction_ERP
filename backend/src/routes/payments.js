@@ -12,24 +12,15 @@ const glPosting = require('../services/glPosting');
 
 const PAYMENT_METHODS = ['cash', 'bank_transfer', 'check', 'other'];
 
-function computeInvoiceStatus(invoice, totalPaid) {
-  if (['void', 'cancelled', 'credited'].includes(invoice.status)) return invoice.status;
-  const paid = parseFloat(totalPaid) || 0;
-  const amount = (parseFloat(invoice.net_amount) > 0 ? parseFloat(invoice.net_amount) : (parseFloat(invoice.amount) || 0)) - (parseFloat(invoice.credited_amount) || 0);
-  if (paid >= amount) return 'paid';
-  if (invoice.due_date && new Date(invoice.due_date) < new Date() && paid < amount) return 'overdue';
-  if (paid > 0) return 'partially_paid';
-  return ['paid', 'partially_paid'].includes(invoice.status)
-    ? (invoice.gross_current_work ? 'issued' : 'sent') : invoice.status;
-}
-
+// B1 (C-FIN-AR-001): one shared lifecycle derivation (financeEngine.computeLifecycleStatus).
+// The local copy that ignored net_amount/credited_amount is gone.
 async function recalcInvoiceStatus(q, invoiceId) {
   const inv = await q('SELECT * FROM invoices WHERE id = $1', [invoiceId]);
   if (inv.rows.length === 0) return;
   const invoice = inv.rows[0];
   const paid = await q("SELECT COALESCE(SUM(amount), 0) as total FROM payment_allocations WHERE invoice_id = $1 AND target_type = 'client_invoice' AND voided_at IS NULL", [invoiceId]);
   const totalPaid = parseFloat(paid.rows[0].total) || 0;
-  const newStatus = computeInvoiceStatus(invoice, totalPaid);
+  const newStatus = finance.computeLifecycleStatus(invoice, totalPaid);
   if (newStatus !== invoice.status) {
     await q('UPDATE invoices SET status = $1, updated_at = NOW() WHERE id = $2', [newStatus, invoiceId]);
   }
@@ -97,6 +88,16 @@ router.post('/', authenticate, authorize(), async (req, res) => {
           throw new Error('Invoice does not belong to the selected project and client');
         }
         if (['void', 'cancelled', 'credited'].includes(inv.status)) throw new Error('Invoice is not payable');
+        // B1 (C-FIN-AR-001): money only lands on an issued invoice. A draft or approved
+        // invoice must never accept a payment — otherwise the GL gets a client_payment with
+        // no matching client_invoice entry and AR and the ledger diverge.
+        if (!finance.ISSUED_FAMILY_STATUSES.has(inv.status) && inv.status !== 'paid') {
+          const notIssued = new Error(`Invoice ${inv.invoice_number || inv.id} is not issued (${inv.status}); it cannot receive a payment`);
+          notIssued.status = 409;
+          notIssued.error_code = 'invoice_not_issued';
+          notIssued.error_params = { invoice_id: inv.id, status: inv.status, invoice_number: inv.invoice_number || null };
+          throw notIssued;
+        }
         const balance = await finance.invoiceOutstanding(q, value.invoice_id);
         if (value.amount > balance.outstanding + 1e-9) throw new Error('Payment exceeds invoice outstanding balance');
       }
@@ -125,7 +126,14 @@ router.post('/', authenticate, authorize(), async (req, res) => {
       return row;
     });
     res.status(201).json({ success: true, data: payment });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) {
+    // Typed service errors (stable error_code + params) keep their contract; everything
+    // else keeps the plain 400 message answer this route has always given.
+    if (error && error.error_code) {
+      return res.status(error.status || 400).json({ success: false, error: error.message, error_code: error.error_code, error_params: error.error_params || {} });
+    }
+    return res.status(400).json({ success: false, error: error.message });
+  }
 });
 
 // Void, never delete: the payment row, its allocations and its history stay; the money stops counting.

@@ -1,6 +1,6 @@
 const { authorizedProjectId, authorizeProjectPayload } = require('../services/authorizedProject');
 const express = require('express');
-const { createInvoiceRecord, writeAuditEvent } = require('../services/financeEngine');
+const { createInvoiceRecord, writeAuditEvent, computeLifecycleStatus } = require('../services/financeEngine');
 const { reasonFrom } = require('../utils/reason');
 const glPosting = require('../services/glPosting');
 const journal = require('../utils/journal');
@@ -14,14 +14,12 @@ const { typedFail } = require('../utils/typedRoute');
 
 const INVOICE_STATUSES = ['draft', 'sent', 'partially_paid', 'paid', 'overdue', 'void'];
 
-function computeInvoiceStatus(invoice, totalPaid) {
-  if (['void', 'cancelled', 'credited'].includes(invoice.status)) return invoice.status;
-  const paid = parseFloat(totalPaid) || 0;
-  const amount = parseFloat(invoice.amount) || 0;
-  if (paid >= amount) return 'paid';
-  if (invoice.due_date && new Date(invoice.due_date) < new Date() && paid < amount) return 'overdue';
-  if (paid > 0) return 'partially_paid';
-  return invoice.status;
+// B1 (C-FIN-AR-001): reads are pure. The money-lifecycle status is DERIVED for the response
+// only — no UPDATE, no audit event, no GL posting on a GET. The derivation is the shared
+// financeEngine.computeLifecycleStatus, so a past-due draft or approved invoice is never
+// shown (or stored) as overdue.
+function displayStatus(invoice, totalPaid) {
+  return computeLifecycleStatus(invoice, totalPaid);
 }
 
 router.get('/', authenticate, authorize(), async (req, res) => {
@@ -48,11 +46,7 @@ router.get('/', authenticate, authorize(), async (req, res) => {
 
     const invoices = dataResult.rows;
     for (const inv of invoices) {
-      const newStatus = computeInvoiceStatus(inv, inv.total_paid);
-      if (newStatus !== inv.status) {
-        await query('UPDATE invoices SET status = $1, updated_at = NOW() WHERE id = $2', [newStatus, inv.id]);
-        inv.status = newStatus;
-      }
+      inv.status = displayStatus(inv, inv.total_paid);
     }
 
     res.json({ success: true, data: invoices });
@@ -74,11 +68,7 @@ router.get('/:id', authenticate, authorize(), async (req, res) => {
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Invoice not found' });
 
     const invoice = result.rows[0];
-    const newStatus = computeInvoiceStatus(invoice, invoice.total_paid);
-    if (newStatus !== invoice.status) {
-      await query('UPDATE invoices SET status = $1, updated_at = NOW() WHERE id = $2', [newStatus, invoice.id]);
-      invoice.status = newStatus;
-    }
+    invoice.status = displayStatus(invoice, invoice.total_paid);
 
     const payments = await query(
       'SELECT * FROM payments WHERE invoice_id = $1 ORDER BY payment_date DESC, created_at DESC',

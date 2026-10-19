@@ -12,7 +12,7 @@ async function summary(query) {
     COALESCE((SELECT SUM(amount) FROM invoices WHERE status NOT IN ('void', 'cancelled', 'credited')), 0) AS invoiced,
     COALESCE((SELECT SUM(amount) FROM expenses), 0) AS expenses,
     (SELECT COUNT(*) FROM invoices WHERE status = 'overdue'
-      OR (due_date IS NOT NULL AND due_date < CURRENT_DATE AND status NOT IN ('paid', 'void', 'cancelled', 'credited')))::int AS overdue`);
+      OR (due_date IS NOT NULL AND due_date < CURRENT_DATE AND status NOT IN ('paid', 'void', 'cancelled', 'credited', 'draft', 'approved')))::int AS overdue`);
 }
 
 function figures(row) {

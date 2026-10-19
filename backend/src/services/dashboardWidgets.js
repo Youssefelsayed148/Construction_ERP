@@ -433,7 +433,8 @@ async function financeWidgets(q, { userId, projectId = null }) {
     w('receivables', 'Receivables', { invoiced, collected, outstanding: invoiced - collected }),
     w('payables', 'Payables (open commitments)', { payable: pos.rows.reduce((s, p) => s + num(p.total_amount), 0) }),
     w('overdue', 'Overdue invoices', {
-      overdue: invoices.rows.filter((i) => i.status === 'overdue' || (i.due_date && new Date(i.due_date) < new Date() && i.status !== 'paid')).length,
+      // B1: a draft or approved invoice is never overdue, however past its due date is.
+      overdue: invoices.rows.filter((i) => i.status === 'overdue' || (i.due_date && new Date(i.due_date) < new Date() && !['draft', 'approved', 'paid'].includes(i.status))).length,
     }),
   ];
 }

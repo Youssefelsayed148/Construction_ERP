@@ -197,7 +197,7 @@ router.get('/overview', authenticate, authorize(), async (req, res) => {
              COUNT(*) FILTER (WHERE status = 'sent')::int AS sent,
              COUNT(*) FILTER (WHERE status = 'paid')::int AS paid,
              COUNT(*) FILTER (WHERE status = 'overdue'
-                OR (due_date IS NOT NULL AND due_date < CURRENT_DATE AND status NOT IN ('paid', 'void', 'cancelled', 'credited')))::int AS overdue
+                OR (due_date IS NOT NULL AND due_date < CURRENT_DATE AND status NOT IN ('paid', 'void', 'cancelled', 'credited', 'draft', 'approved')))::int AS overdue
            FROM invoices`),
 
       q('expenses', `SELECT
