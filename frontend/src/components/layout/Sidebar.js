@@ -37,6 +37,29 @@ const portalMenuItems = {
   supplier: [{ path: '/supplier-portal', icon: Truck, labelKey: 'portals.supplier', module: 'portal', action: 'view' }],
 };
 
+// The canonical external roles of migration 0031 are project-bound mirrors of
+// the four legacy alias roles, so each one maps to the portal menu of its
+// alias family: the same single entry and the same path the legacy role
+// already gets - nothing is added beyond what those legacy roles reach.
+// The mapping is role-authoritative (the legacy keys only pass the grant
+// filter because their own grants include their portal module); the backend
+// policy remains the enforcement point for every portal API.
+const CANONICAL_PORTAL_FAMILY = {
+  client_executive: 'client',
+  client_reviewer: 'client',
+  // 0031 describes pmc_manager as client-side supervision reads with the
+  // see_client_value lens and grants it no consultant-module permissions.
+  pmc_manager: 'client',
+  consultant_coordinator: 'consultant',
+  consultant_reviewer: 'consultant',
+  subcontractor_manager: 'subcontractor',
+  subcontractor_site_engineer: 'subcontractor',
+  // An external service provider mirroring the supplier shape: ('portal','view')
+  // plus its own domain module.
+  testing_lab: 'supplier',
+  supplier_sales: 'supplier',
+};
+
 const labelFor = (t, item) => t(item.labelKey.startsWith('portals.') ? `navigation.${item.labelKey}` : `navigation.items.${item.labelKey}`);
 
 function Sidebar({ mobileOpen = false, onNavigate }) {
@@ -44,7 +67,9 @@ function Sidebar({ mobileOpen = false, onNavigate }) {
   const navigate = useNavigate();
   const { t, setLocale, locale } = useLocale();
   const user = authService.getCurrentUser();
-  const base = portalMenuItems[user?.role] || mainMenuItems;
+  const portalFamily = CANONICAL_PORTAL_FAMILY[user?.role];
+  const portalMenu = portalMenuItems[user?.role] || (portalFamily ? portalMenuItems[portalFamily] : null);
+  const base = portalMenu || mainMenuItems;
   const modules = Array.isArray(user?.policy_modules) ? user.policy_modules : user?.module_permissions;
   const permissions = user?.policy_permissions;
   const hasModule = (module) => !module || (Array.isArray(modules)
@@ -56,8 +81,10 @@ function Sidebar({ mobileOpen = false, onNavigate }) {
     // Compatibility for sessions created before the API returned effective policy grants.
     return action === 'view' && hasModule(module);
   };
+  // Portally mapped canonical external roles get their alias's menu verbatim;
+  // every other session keeps the grant-filtered menu.
   const menuItems = base.filter((item) => (!item.roles || item.roles.includes(user?.role))
-    && hasModule(item.module) && hasPermission(item.module, item.action));
+    && (Boolean(portalFamily) || (hasModule(item.module) && hasPermission(item.module, item.action))));
 
   const handleLogout = () => {
     logout();

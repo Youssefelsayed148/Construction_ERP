@@ -73,14 +73,21 @@ describe('C5 canonical role map: rendered sidebar entries', () => {
     site_engineer: ['projects', 'boq', 'locations', 'quantities', 'schedule', 'site', 'work-orders', 'qhse', 'hse', 'actions', 'notifications'],
     hr_manager: ['hr', 'payroll', 'users', 'organizations', 'delegations', 'projects', 'dashboard', 'reports', 'actions', 'notifications'],
     client_executive: ['projects', 'docs', 'qhse', 'boq'],
+    client_reviewer: ['projects', 'docs', 'qhse', 'boq'],
+    pmc_manager: ['projects', 'boq', 'locations', 'quantities', 'site', 'schedule', 'docs', 'documents', 'qhse', 'reports'],
+    consultant_coordinator: ['projects', 'consultant', 'documents'],
+    consultant_reviewer: ['projects', 'consultant', 'documents'],
+    subcontractor_manager: ['portal', 'subcontractors', 'documents'],
+    subcontractor_site_engineer: ['portal', 'documents'],
     supplier_sales: ['portal', 'items', 'warehouses'],
+    testing_lab: ['portal', 'qhse'],
   };
   const permissionsOf = (mods) => mods.map((m) => ({ module: m, action: 'view' }))
     // The bid-comparison entry additionally requires see_supplier_value.
     .concat([{ module: '*', action: 'see_supplier_value' }]);
 
-  const renderFor = (role) => {
-    const mods = Grants[role];
+  const renderFor = (role, explicitMods) => {
+    const mods = explicitMods || Grants[role];
     localStorage.clear();
     authService.setSession('fixture-token', { id: 9, name: `Demo ${role}`, role,
       policy_modules: [...mods], policy_permissions: permissionsOf(mods) });
@@ -148,17 +155,43 @@ describe('C5 canonical role map: rendered sidebar entries', () => {
     view.unmount();
   });
 
-  test('FINDING C5: canonical external roles render an empty or portal-less sidebar - the portal menu is keyed by legacy roles', () => {
-    const client = renderFor('client_executive');
-    expect(client.links).toEqual(['/projects']);
-    client.unmount();
-    const supplier = renderFor('supplier_sales');
-    // The portal entry is still keyed by the LEGACY 'supplier' role, so
-    // supplier_sales still has no portal link; the new warehouses reservation
-    // entry shows up because the role's real migration-0031 grants include
-    // ('warehouses','view'). The portal-keying fix is the next closeout slice.
-    expect(supplier.links).toEqual(['/reservations']);
-    supplier.unmount();
+  test('FINDING C5 (fixed): every canonical external role renders its alias family portal menu', () => {
+    // The 0031 canonical external roles map to the portal menu of their legacy
+    // alias family: same path, nothing beyond what the legacy roles reach.
+    const expected = {
+      client_executive: ['/client-portal'],
+      client_reviewer: ['/client-portal'],
+      pmc_manager: ['/client-portal'],
+      consultant_coordinator: ['/consultant-portal'],
+      consultant_reviewer: ['/consultant-portal'],
+      subcontractor_manager: ['/subcontractor-portal'],
+      subcontractor_site_engineer: ['/subcontractor-portal'],
+      supplier_sales: ['/supplier-portal'],
+      testing_lab: ['/supplier-portal'],
+    };
+    for (const [role, links] of Object.entries(expected)) {
+      const view = renderFor(role);
+      expect(view.links).toEqual(links);
+      view.unmount();
+    }
+  });
+
+  test('legacy external roles keep their existing portal menus verbatim', () => {
+    // Legacy grant fixtures: their own grants include their portal module.
+    const legacyGrants = {
+      client: ['client-portal', 'projects', 'docs', 'qhse', 'boq'],
+      consultant: ['consultant', 'projects', 'boq', 'qhse', 'docs', 'work-orders', 'documents'],
+      subcontractor: ['portal', 'subcontractors'],
+      supplier: ['portal', 'items', 'warehouses'],
+    };
+    for (const [role, links] of Object.entries({
+      client: ['/client-portal'], consultant: ['/consultant-portal'],
+      subcontractor: ['/subcontractor-portal'], supplier: ['/supplier-portal'],
+    })) {
+      const view = renderFor(role, legacyGrants[role]);
+      expect(view.links).toEqual(links);
+      view.unmount();
+    }
   });
 });
 
