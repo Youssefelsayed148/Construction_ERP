@@ -288,6 +288,22 @@ async function main() {
     console.log(JSON.stringify(result));
     return;
   }
+  if (action === '--approval-limits') {
+    const credentials = JSON.parse(fs.readFileSync(path.join(ROOT, '.demo-users.json'), 'utf8'));
+    assertDemoTarget(credentials.target);
+    const { seedApprovalLimits, TARGET: limitsTarget } = require('./company-demo-approval-limits');
+    if (JSON.stringify(limitsTarget) !== JSON.stringify(target)) throw new Error('Refusing demo: approval-limits target mismatch');
+    const tokens = new Map();
+    const request = async (account, route, options = {}) => {
+      let session = tokens.get(account.key);
+      if (!session) { session = await login(target, account); tokens.set(account.key, session); }
+      return demoRequest(target, route, { ...options, token: session.token });
+    };
+    const result = await seedApprovalLimits({ target, request, accounts: credentials.accounts });
+    saveReport('stage-7-approval-limits.json', result);
+    console.log(JSON.stringify(result));
+    return;
+  }
   if (action !== '--accounts') throw new Error('Refusing demo: unknown stage');
   console.log(JSON.stringify(await seedAccounts()));
 }
