@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
 import { errorMessage } from '../utils/errorMessage';
 import { Search, Plus, DollarSign, CheckCircle, ChevronDown, ChevronRight, X } from 'lucide-react';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, localizedName } from '../utils/formatters';
 import LoadMore from '../components/common/LoadMore';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;

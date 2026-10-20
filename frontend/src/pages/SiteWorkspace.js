@@ -156,7 +156,7 @@ function SiteWorkspace() {
   };
 
   if (error) return <div className="page-container"><div className="alert alert-danger">{errorMessage(error, translate)}</div></div>;
-  if (!data) return <div className="page-container"><p>{translate('site.system.loadingWorkspace')}</p></div>;
+  if (!data || !data.activities) return <div className="page-container"><p>{translate('site.system.loadingWorkspace')}</p></div>;
 
   return (
     <div className="page-container">

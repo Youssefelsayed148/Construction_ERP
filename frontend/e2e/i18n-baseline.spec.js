@@ -24,29 +24,40 @@ const ROUTES = [
   { name: 'schedule', path: '/projects/1/schedule' },
   { name: 'invoices', path: '/invoices' },
   { name: 'agent-activity', path: '/agent-activity' },
-  { name: 'portal-consultant', path: '/consultant-portal', role: 'consultant' },
-  { name: 'portal-client', path: '/client-portal', role: 'client' },
-  { name: 'portal-subcontractor', path: '/subcontractor-portal', role: 'subcontractor' },
-  { name: 'portal-supplier', path: '/supplier-portal', role: 'supplier' },
+  // C3 demo-path screens
+  { name: 'items', path: '/inventory' },
+  { name: 'hr', path: '/hr' },
+  { name: 'payroll', path: '/hr/payroll' },
+  { name: 'my-actions', path: '/my-actions' },
+  { name: 'site-workspace', path: '/projects/1/site-workspace' },
+  { name: 'admin-workspace', path: '/admin/organizations' },
+];
+
+const VIEWPORTS = [
+  { name: 'desktop', viewport: { width: 1280, height: 800 } },
+  { name: 'mobile', viewport: { width: 390, height: 844 } },
 ];
 
 for (const locale of ['en', 'ar']) {
   for (const route of ROUTES) {
-    test(`baseline ${route.name} ${locale}`, async ({ page }) => {
-      test.skip(!process.env.I18N_SCREENSHOTS, 'on demand: npm run i18n:screenshots');
-      await page.addInitScript(({ jwt, loc, role, anon }) => {
-        localStorage.setItem('locale', loc);
-        if (!anon) {
-          localStorage.setItem('token', jwt);
-          localStorage.setItem('user', JSON.stringify({ id: 1, name: 'Baseline User', role: role || 'owner', policy_modules: ['*'] }));
-        }
-      }, { jwt: token(), loc: locale, role: route.role, anon: route.anon });
-      await page.route('**/api/**', (r) => r.fulfill({
-        status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, data: [] }),
-      }));
-      await page.goto(route.path);
-      await page.waitForTimeout(800);
-      await page.screenshot({ path: path.join(outDir, `${route.name}.${locale}.png`), fullPage: false });
-    });
+    for (const { name: vpName, viewport } of VIEWPORTS) {
+      test(`baseline ${route.name} ${locale} ${vpName}`, async ({ page }) => {
+        test.skip(!process.env.I18N_SCREENSHOTS, 'on demand: npm run i18n:screenshots');
+        await page.setViewportSize(viewport);
+        await page.addInitScript(({ jwt, loc, role, anon }) => {
+          localStorage.setItem('locale', loc);
+          if (!anon) {
+            localStorage.setItem('token', jwt);
+            localStorage.setItem('user', JSON.stringify({ id: 1, name: 'Baseline User', role: role || 'owner', policy_modules: ['*'] }));
+          }
+        }, { jwt: token(), loc: locale, role: route.role, anon: route.anon });
+        await page.route('**/api/**', (r) => r.fulfill({
+          status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, data: [] }),
+        }));
+        await page.goto(route.path);
+        await page.waitForTimeout(800);
+        await page.screenshot({ path: path.join(outDir, `${route.name}.${locale}.${vpName}.png`), fullPage: false });
+      });
+    }
   }
 }

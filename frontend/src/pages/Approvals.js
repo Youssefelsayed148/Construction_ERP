@@ -1,7 +1,7 @@
 import { formatDateTime as sharedDateTime, formatDate as sharedDate } from '../utils/formatters';
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, localizedName } from '../utils/formatters';
 import { useLocale } from '../hooks/useLocale';
 import { errorMessage } from '../utils/errorMessage';
 import TextEntryDialog from '../components/common/TextEntryDialog';
