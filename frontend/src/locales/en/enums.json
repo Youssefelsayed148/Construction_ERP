@@ -8,6 +8,7 @@
     "approved": "Approved",
     "rejected": "Rejected",
     "returned": "Returned",
+    "released": "Released",
     "open": "Open",
     "inProgress": "In Progress",
     "completed": "Completed",

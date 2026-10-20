@@ -25,5 +25,25 @@
     "selectSubCategory": "Select Sub Category",
     "englishName": "English Name *",
     "active": "Active"
+  },
+  "reservations": {
+    "title": "Stock reservations",
+    "description": "Reserved stock subtracts from available, never from physical.",
+    "refresh": "Refresh",
+    "statusFilter": "Status",
+    "newReservation": "New reservation",
+    "material": "Material",
+    "quantity": "Quantity",
+    "warehouse": "Warehouse (optional)",
+    "noWarehouse": "No warehouse scope",
+    "expiresAt": "Expires",
+    "noExpiry": "No expiry",
+    "reserve": "Reserve",
+    "release": "Release",
+    "project": "Project",
+    "noProject": "Company-wide",
+    "createdAt": "Created",
+    "footnote": "A reservation reserves availability until it is released or expires.",
+    "empty": "No stock reservations match this filter."
   }
 }

@@ -16,7 +16,8 @@
     "agentActivity": "نشاط الوكلاء",
     "settings": "الإعدادات",
     "adminWorkspaces": "الإدارة",
-    "cashFlow": "التدفق النقدي"
+    "cashFlow": "التدفق النقدي",
+    "reservations": "حجوزات المخزون"
   },
   "portals": {
     "consultant": "بوابة الاستشاري",

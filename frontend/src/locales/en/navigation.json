@@ -16,7 +16,8 @@
     "agentActivity": "Agent Activity",
     "settings": "Settings",
     "adminWorkspaces": "Administration",
-    "cashFlow": "Cash flow"
+    "cashFlow": "Cash flow",
+    "reservations": "Stock reservations"
   },
   "portals": {
     "consultant": "Consultant Portal",

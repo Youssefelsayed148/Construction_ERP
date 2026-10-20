@@ -13,6 +13,7 @@ import LocationDashboard from './pages/LocationDashboard';
 import Expenses from './pages/Expenses';
 import Invoices from './pages/Invoices';
 import CashFlow from './pages/CashFlow';
+import Reservations from './pages/Reservations';
 import Assets from './pages/Assets';
 import HR from './pages/HR';
 import Payroll from './pages/Payroll';
@@ -106,6 +107,7 @@ function App() {
           <Route path="expenses" element={<Expenses />} />
           <Route path="invoices" element={<Invoices />} />
           <Route path="cash-flow" element={<CashFlow />} />
+          <Route path="reservations" element={<Reservations />} />
           <Route path="assets" element={<Assets />} />
           <Route path="hr" element={<HR />} />
           <Route path="hr/payroll" element={<Payroll />} />

@@ -25,5 +25,25 @@
     "selectSubCategory": "اختر الفئة الفرعية",
     "englishName": "الاسم بالإنجليزية *",
     "active": "نشط"
+  },
+  "reservations": {
+    "title": "حجوزات المخزون",
+    "description": "المخزون المحجوز يُخصم من المتاح وليس من الرصيد الفعلي.",
+    "refresh": "تحديث",
+    "statusFilter": "الحالة",
+    "newReservation": "حجز جديد",
+    "material": "المادة",
+    "quantity": "الكمية",
+    "warehouse": "المخزن (اختياري)",
+    "noWarehouse": "بدون مخزن محدد",
+    "expiresAt": "ينتهي في",
+    "noExpiry": "بدون تاريخ انتهاء",
+    "reserve": "حجز",
+    "release": "إفلات الحجز",
+    "project": "المشروع",
+    "noProject": "على مستوى الشركة",
+    "createdAt": "أُنشئ في",
+    "footnote": "يبقى الحجز محتجزًا من المتاح حتى يُفلت أو ينتهي.",
+    "empty": "لا توجد حجوزات مخزون مطابقة لهذا الفلتر."
   }
 }
