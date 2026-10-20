@@ -1830,3 +1830,10 @@ Implementation 854e8bd and LF checkpoint 855ee52 committed. Pilot migrate exited
 - B6: analysis-only entry in STATE.md; no code change (C-PROC-002 rejected-delivery return needs an owner decision first).
 - B7: commit `b1cf4de` (approvalLimits contract test + company-demo-approval-limits.js + --approval-limits seed stage). Helper tests 5/5. Demo stage NOT RUN (demo stack down: 127.0.0.1:55442 refused; Docker engine unavailable). Production limits: owner decision, not configured.
 - Standing deferrals: B1 repair-script dry run and `--apply` (awaiting owner approval + demo stack), all PG suites, lint:api this session, full PG gate.
+
+## 2026-10-20 - Phase C closeout
+
+- Before/after: raw-error-message 485 -> 374 (scope files 103 -> 0); inlineBranches 82 -> 53 (C3 screens 31 -> 0); hardcodedEnglish 0 -> 0; hardcodedFormat 0 -> 0; rawEnumRendering 1 -> 1 (Handover.js, out of scope); prompts 68 unchanged (Phase 6).
+- Commits: c783004 (C2 backend), 3a66e3d (C2 frontend), 901c573 (C3), 0ba4a98+56d5b7e (C4 + build-gate fix), 30d23a5 (C5), f3ccf23 (C6 review pack).
+- Defects found by the screenshot gate and fixed in-scope: Approvals/Payroll missing localizedName imports (compile-error overlay); SiteWorkspace crash on non-object workspace payload; unused-locale build failure on the 8092 demo build.
+- Open after Phase C: full PG gate (all .pg suites incl. the new C5 matrix), B1 repair-script dry run/--apply on construction_erp_demo, --approval-limits demo stage, owner visual review, native Arabic review, C5 external-portal role-map decision.
