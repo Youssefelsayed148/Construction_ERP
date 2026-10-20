@@ -437,13 +437,16 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     // Project scope through the central check when the body names a project.
     authorizeProjectPayload(req, value);
+    // The project id always comes from the authorized helper (lint guard
+    // direct-project-id); an omitted project_id means a company-level warehouse.
+    const projectId = Object.prototype.hasOwnProperty.call(value, 'project_id') ? authorizedProjectId(req, value) : null;
 
     const created = await auditedTransaction(
       (q) => q(
         `INSERT INTO warehouses (name, name_en, name_ar, type, warehouse_type, project_id, storage_capacity)
          VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
         [value.name, value.name_en || value.name, value.name_ar || value.name_en || value.name,
-         value.warehouse_type, value.warehouse_type, value.project_id ?? null, value.storage_capacity ?? null]
+         value.warehouse_type, value.warehouse_type, projectId, value.storage_capacity ?? null]
       ).then((r) => r.rows[0]),
       (result) => ({
         userId: req.user.id, userName: req.user.name, userRole: req.user.role,
