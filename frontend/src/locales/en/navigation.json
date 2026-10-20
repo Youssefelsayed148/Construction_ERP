@@ -15,7 +15,8 @@
     "myActions": "My Actions",
     "agentActivity": "Agent Activity",
     "settings": "Settings",
-    "adminWorkspaces": "Administration"
+    "adminWorkspaces": "Administration",
+    "cashFlow": "Cash flow"
   },
   "portals": {
     "consultant": "Consultant Portal",

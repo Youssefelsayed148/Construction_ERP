@@ -15,7 +15,8 @@
     "myActions": "مهامي",
     "agentActivity": "نشاط الوكلاء",
     "settings": "الإعدادات",
-    "adminWorkspaces": "الإدارة"
+    "adminWorkspaces": "الإدارة",
+    "cashFlow": "التدفق النقدي"
   },
   "portals": {
     "consultant": "بوابة الاستشاري",

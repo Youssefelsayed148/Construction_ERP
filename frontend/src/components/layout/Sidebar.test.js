@@ -153,9 +153,11 @@ describe('C5 canonical role map: rendered sidebar entries', () => {
     expect(client.links).toEqual(['/projects']);
     client.unmount();
     const supplier = renderFor('supplier_sales');
-    // supplier_sales holds portal/items/warehouses but the portal entry is keyed 'supplier'
-    // and no main-menu module matches, so the sidebar renders without any portal link.
-    expect(supplier.links).toEqual([]);
+    // The portal entry is still keyed by the LEGACY 'supplier' role, so
+    // supplier_sales still has no portal link; the new warehouses reservation
+    // entry shows up because the role's real migration-0031 grants include
+    // ('warehouses','view'). The portal-keying fix is the next closeout slice.
+    expect(supplier.links).toEqual(['/reservations']);
     supplier.unmount();
   });
 });

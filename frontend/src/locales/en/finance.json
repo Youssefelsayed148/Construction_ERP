@@ -118,5 +118,18 @@
     "paymentMethod": "Payment Method",
     "referenceNumber": "Reference Number",
     "recordPayment2": "Record Payment"
+  },
+  "cashFlow": {
+    "title": "Cash flow",
+    "description": "Company-wide receivable and payable aging with retention balances.",
+    "refresh": "Refresh",
+    "arAging": "Receivables aging (AR)",
+    "apAging": "Payables aging (AP)",
+    "bucket": "Aging bucket",
+    "outstanding": "Outstanding",
+    "buckets": { "current": "Current", "1_30": "1-30 days", "31_60": "31-60 days", "61_90": "61-90 days", "90_plus": "90+ days" },
+    "retentionReceivable": "Retention held from clients",
+    "retentionPayable": "Retention held for subcontractors",
+    "empty": "No outstanding receivables, payables or retention balances."
   }
 }

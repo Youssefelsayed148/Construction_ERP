@@ -4,13 +4,14 @@ import { useAuth } from '../../store';
 import { authService } from '../../services/api';
 import { useLocale } from '../../hooks/useLocale';
 import { translateRole } from '../../i18n/enums';
-import { LayoutDashboard, Briefcase, Users, Package, Truck, Wrench, Shield, DollarSign, Receipt, ClipboardList, ListChecks, LogOut, Globe, HardHat, Bot, Settings as SettingsIcon } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Users, Package, Truck, Wrench, Shield, DollarSign, Receipt, ClipboardList, ListChecks, LogOut, Globe, HardHat, Bot, Settings as SettingsIcon, Warehouse, Bell, TrendingUp } from 'lucide-react';
 
 // Labels are catalog keys (navigation.items.*), never literal text.
 const mainMenuItems = [
   { path: '/dashboard', icon: LayoutDashboard, labelKey: 'dashboard', module: 'dashboard' },
   { path: '/projects', icon: Briefcase, labelKey: 'projects', module: 'projects' },
   { path: '/inventory', icon: Package, labelKey: 'inventory', module: 'inventory' },
+  { path: '/reservations', icon: Warehouse, labelKey: 'reservations', module: 'warehouses' },
   { path: '/procurement/comparison', icon: ClipboardList, labelKey: 'procurementComparison', module: 'procurement', action: 'see_supplier_value' },
   { path: '/clients', icon: Users, labelKey: 'clients', module: 'clients' },
   { path: '/suppliers', icon: Truck, labelKey: 'suppliers', module: 'suppliers' },
@@ -18,9 +19,11 @@ const mainMenuItems = [
   { path: '/hr', icon: Users, labelKey: 'hr', module: 'hr' },
   { path: '/expenses', icon: DollarSign, labelKey: 'expenses', module: 'expenses' },
   { path: '/invoices', icon: Receipt, labelKey: 'invoices', module: 'invoices' },
+  { path: '/cash-flow', icon: TrendingUp, labelKey: 'cashFlow', module: 'finance-ledger' },
   { path: '/legal', icon: Shield, labelKey: 'legal', module: 'legal' },
   { path: '/approvals', icon: ClipboardList, labelKey: 'approvals', module: 'approvals' },
   { path: '/my-actions', icon: ListChecks, labelKey: 'myActions', module: 'actions' },
+  { path: '/notification-preferences', icon: Bell, labelKey: 'notificationPreferences', module: 'notifications' },
   { path: '/settings', icon: SettingsIcon, labelKey: 'settings', module: 'settings', roles: ['owner', 'admin'] },
   { path: '/admin/organizations', icon: SettingsIcon, labelKey: 'adminWorkspaces', roles: ['owner', 'admin', 'owner_ceo', 'coo'] },
   // Phase 27 — owner/admin only (filtered below).
