@@ -34,7 +34,7 @@ router.get('/employees/:id', authenticate, authorize(), async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.post('/employees', authenticate, authorize('owner', 'admin'), async (req, res) => {
+router.post('/employees', authenticate, authorize('owner', 'admin', 'hr_manager'), async (req, res) => {
   try {
     const schema = Joi.object({
       code: Joi.string().optional(), name_ar: Joi.string().required(), name_en: Joi.string().allow(''),
@@ -61,7 +61,7 @@ router.post('/employees', authenticate, authorize('owner', 'admin'), async (req,
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.put('/employees/:id', authenticate, authorize('owner', 'admin'), async (req, res) => {
+router.put('/employees/:id', authenticate, authorize('owner', 'admin', 'hr_manager'), async (req, res) => {
   try {
     const existing = await query('SELECT * FROM employees WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Employee not found' });
@@ -174,7 +174,7 @@ router.post('/leaves', authenticate, authorize(), async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-router.put('/leaves/:id', authenticate, authorize('owner', 'admin'), async (req, res) => {
+router.put('/leaves/:id', authenticate, authorize('owner', 'admin', 'hr_manager'), async (req, res) => {
   try {
     const { status } = req.body;
     if (!['approved', 'rejected'].includes(status)) return res.status(400).json({ success: false, error: 'Invalid status' });

@@ -99,10 +99,16 @@ describe('every guarded route carries authorize() (static check)', () => {
 });
 
 describe('existing role guards are untouched (coarse filter preserved)', () => {
-  test('hr.js retains owner|admin guards on employee CRUD and leave approval', () => {
+  test('hr.js guards: employee create/edit and leave approval carry hr_manager (B2 audit); deletion stays owner|admin', () => {
     const content = fs.readFileSync(path.join(ROUTES_DIR, 'hr.js'), 'utf8');
-    const ownerAdminCount = (content.match(/authorize\(\s*['"]owner['"]\s*,\s*['"]admin['"]\s*\)/g) || []).length;
-    expect(ownerAdminCount).toBe(4); // POST/PUT/DELETE /employees + PUT /leaves/:id
+    // B2: the canonical hr_manager holds hr create/edit (0031), so the coarse lists on
+    // POST/PUT /employees and PUT /leaves/:id gained it; employee deletion has no
+    // canonical hr delete grant and stays a bare owner|admin list.
+    expect(content).toMatch(/router\.post\('\/employees',\s*authenticate,\s*authorize\(\s*['"]owner['"]\s*,\s*['"]admin['"]\s*,\s*['"]hr_manager['"]\s*\)/);
+    expect(content).toMatch(/router\.put\('\/employees\/:id',\s*authenticate,\s*authorize\(\s*['"]owner['"]\s*,\s*['"]admin['"]\s*,\s*['"]hr_manager['"]\s*\)/);
+    expect(content).toMatch(/router\.put\('\/leaves\/:id',\s*authenticate,\s*authorize\(\s*['"]owner['"]\s*,\s*['"]admin['"]\s*,\s*['"]hr_manager['"]\s*\)/);
+    const bareOwnerAdminCount = (content.match(/authorize\(\s*['"]owner['"]\s*,\s*['"]admin['"]\s*\)/g) || []).length;
+    expect(bareOwnerAdminCount).toBe(1); // DELETE /employees/:id only
   });
 
   test('payroll.js retains owner|admin|finance_manager on POST and owner|admin on DELETE', () => {

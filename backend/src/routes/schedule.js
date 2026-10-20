@@ -266,7 +266,7 @@ router.post('/activities', authenticate, authorize(), async (req, res) => {
 
 // Set the activity BAC independently so the change has its own authorization,
 // project-scope check, and transactional audit entry.
-router.put('/activities/:id/budgeted-cost', authenticate, authorize('owner', 'admin', 'project_manager', 'planning'), async (req, res) => {
+router.put('/activities/:id/budgeted-cost', authenticate, authorize('owner', 'admin', 'project_manager', 'planning_engineer', 'projects_director', 'construction_manager', 'site_manager', 'site_engineer'), async (req, res) => {
   try {
     const schema = Joi.object({ budgeted_cost: Joi.number().min(0).precision(2).allow(null).required() });
     const { error, value } = schema.validate(req.body);
@@ -357,7 +357,7 @@ router.delete('/activities/:id', authenticate, authorize(), async (req, res) => 
 
 // Progress update — quantity-derived when the activity is quantity-driven;
 // manual override is role-gated (PM and above) on top of the policy engine.
-router.post('/activities/:id/progress', authenticate, authorize('owner', 'admin', 'project_manager', 'planning'), async (req, res) => {
+router.post('/activities/:id/progress', authenticate, authorize('owner', 'admin', 'project_manager', 'planning_engineer'), async (req, res) => {
   try {
     const schema = Joi.object({
       percent_complete: Joi.number().min(0).max(100).optional(),
@@ -437,7 +437,7 @@ router.get('/activities/:id/assignments', authenticate, authorize(), async (req,
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/activities/:id/assignments', authenticate, authorize('owner', 'admin', 'project_manager', 'planning'), async (req, res) => {
+router.post('/activities/:id/assignments', authenticate, authorize('owner', 'admin', 'project_manager', 'planning_engineer'), async (req, res) => {
   const schema = Joi.object({
     employee_id: Joi.number().integer().positive().allow(null),
     asset_register_id: Joi.number().integer().positive().allow(null),
@@ -497,7 +497,7 @@ router.post('/activities/:id/assignments', authenticate, authorize('owner', 'adm
   }
 });
 
-router.put('/assignments/:id/status', authenticate, authorize('owner', 'admin', 'project_manager', 'planning'), async (req, res) => {
+router.put('/assignments/:id/status', authenticate, authorize('owner', 'admin', 'project_manager', 'planning_engineer', 'projects_director', 'construction_manager', 'site_manager', 'site_engineer'), async (req, res) => {
   const schema = Joi.object({ status: Joi.string().valid('active', 'completed', 'cancelled').required() });
   const { error, value } = schema.validate(req.body);
   if (error) return scheduleFailure(res, 400, 'invalid_schedule_assignment_status');
@@ -821,7 +821,7 @@ function csvField(v) {
 
 // Import CSV text: rows after the header create/update activities; an
 // optional second section creates relationships by activity code.
-router.post('/activities/import', authenticate, authorize('owner', 'admin', 'project_manager', 'planning'), async (req, res) => {
+router.post('/activities/import', authenticate, authorize('owner', 'admin', 'project_manager', 'planning_engineer'), async (req, res) => {
   try {
     const schema = Joi.object({
       project_id: Joi.number().integer().required(),
