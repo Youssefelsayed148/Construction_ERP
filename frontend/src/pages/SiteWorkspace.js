@@ -46,7 +46,7 @@ function Section({ icon: Icon, label, count, children }) {
 function SiteWorkspace() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { locale, t: translate } = useLocale();
+  const { t: translate } = useLocale();
   const [data, setData] = useState(null);
   const [notes, setNotes] = useState([]);
   const notesLength = useRef(0); notesLength.current = notes.length;
