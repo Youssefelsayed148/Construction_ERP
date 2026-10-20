@@ -515,8 +515,18 @@ function ProjectDetail() {
   );
 }
 
-function EditProjectModal({ project, locale, t, onClose, onSave, clients, managers, lookupCounts, loadingLookup, loadMoreLookup }) {
-  const [form, setForm] = useState({
+// B4: the client change only autofills EMPTY address/city fields. A value an
+// existing project already carries or one the user typed is never replaced.
+export function clientAddressAutofill(current, selectedClient) {
+  const next = {};
+  if (selectedClient) {
+    if (!current.address && selectedClient.address) next.address = selectedClient.address;
+    if (!current.city && selectedClient.city) next.city = selectedClient.city;
+  }
+  return next;
+}
+
+function EditProjectModal({ project, locale, t, onClose, onSave, clients, managers, lookupCounts, loadingLookup, loadMoreLookup }) {  const [form, setForm] = useState({
     name_en: project.name_en || '', name_ar: project.name_ar || '',
     address: project.address || '', city: project.city || '',
     project_type: project.project_type || 'residential',
@@ -534,10 +544,7 @@ function EditProjectModal({ project, locale, t, onClose, onSave, clients, manage
       const next = { ...f, [field]: value };
       if (field === 'client_id' && value) {
         const selectedClient = clients.find(c => c.id === Number(value));
-        if (selectedClient) {
-          next.address = selectedClient.address || '';
-          next.city = selectedClient.city || '';
-        }
+        Object.assign(next, clientAddressAutofill(next, selectedClient));
       }
       return next;
     });
