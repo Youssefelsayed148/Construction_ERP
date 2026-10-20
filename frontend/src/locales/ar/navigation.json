@@ -17,7 +17,8 @@
     "settings": "الإعدادات",
     "adminWorkspaces": "الإدارة",
     "cashFlow": "التدفق النقدي",
-    "reservations": "حجوزات المخزون"
+    "reservations": "حجوزات المخزون",
+    "notificationPreferences": "تفضيلات الإشعارات"
   },
   "portals": {
     "consultant": "بوابة الاستشاري",

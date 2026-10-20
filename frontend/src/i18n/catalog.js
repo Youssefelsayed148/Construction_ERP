@@ -6,7 +6,7 @@ export const NAMESPACES = [
   'common', 'auth', 'navigation', 'admin', 'dashboard', 'projects', 'projectWizard', 'locations', 'boq', 'workorders',
   'subcontractors', 'costing', 'site', 'inventory', 'procurement', 'commercial', 'finance', 'clients', 'suppliers',
   'portals', 'qhse', 'hse', 'documentControl', 'schedule', 'reports', 'handover', 'actions', 'approvals', 'agents',
-  'hr', 'payroll', 'assets', 'expenses', 'legal', 'errors', 'enums',
+  'hr', 'payroll', 'assets', 'expenses', 'legal', 'errors', 'enums', 'notifications',
 ];
 
 const cache = {};      // locale -> catalog

@@ -17,7 +17,8 @@
     "settings": "Settings",
     "adminWorkspaces": "Administration",
     "cashFlow": "Cash flow",
-    "reservations": "Stock reservations"
+    "reservations": "Stock reservations",
+    "notificationPreferences": "Notification preferences"
   },
   "portals": {
     "consultant": "Consultant Portal",

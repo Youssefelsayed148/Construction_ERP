@@ -1,0 +1,29 @@
+{
+  "preferences": {
+    "title": "تفضيلات الإشعارات",
+    "description": "اختر كيفية وصول كل حدث إشعار إليك.",
+    "refresh": "تحديث",
+    "event": "الحدث",
+    "toggle": "تبديل التفضيل",
+    "defaultsNote": "لا توجد تخصيصات شخصية بعد: الإشعارات داخل التطبيق مفعّلة لكل حدث والقنوات الأخرى معطّلة.",
+    "footnote": "القنوات بدون تخصيص شخصي تتبع الافتراضي: داخل التطبيق مفعّل، وقنوات أخرى معطّلة حتى يُهيأ مزود لها.",
+    "events": {
+      "observationCreated": "رفع ملاحظة",
+      "rfiSubmitted": "إرسال طلب معلومات (RFI)",
+      "purchaseRequisitionApproved": "اعتماد طلب شراء",
+      "approvalRequested": "طلب اعتماد",
+      "actionOverdue": "تجاوز موعد إجراء",
+      "invoiceCreated": "إنشاء فاتورة",
+      "invoiceOverdue": "فاتورة متأخرة",
+      "invoiceDue": "فاتورة مستحقة",
+      "paymentReceived": "استلام دفعة",
+      "purchaseOrderIssued": "إصدار أمر شراء",
+      "purchaseOrderApproved": "اعتماد أمر شراء",
+      "purchaseOrderRejected": "رفض أمر شراء",
+      "deliveryReceived": "استلام بضاعة",
+      "variationApproved": "اعتماد أمر تغيير",
+      "handoverAdvanced": "تقدم التسليم",
+      "wirSubmitted": "إرسال طلب فحص أعمال"
+    }
+  }
+}

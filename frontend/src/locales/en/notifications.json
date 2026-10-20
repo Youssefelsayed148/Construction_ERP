@@ -1,0 +1,29 @@
+{
+  "preferences": {
+    "title": "Notification preferences",
+    "description": "Choose how each notification event reaches you.",
+    "refresh": "Refresh",
+    "event": "Event",
+    "toggle": "Toggle preference",
+    "defaultsNote": "No personal overrides yet: in-app notifications are on for every event and the other channels are off.",
+    "footnote": "Channels without a personal switch follow the defaults: in-app on, everything else off until a provider is configured.",
+    "events": {
+      "observationCreated": "Observation raised",
+      "rfiSubmitted": "RFI submitted",
+      "purchaseRequisitionApproved": "Purchase requisition approved",
+      "approvalRequested": "Approval requested",
+      "actionOverdue": "Action item overdue",
+      "invoiceCreated": "Invoice created",
+      "invoiceOverdue": "Invoice overdue",
+      "invoiceDue": "Invoice due",
+      "paymentReceived": "Payment received",
+      "purchaseOrderIssued": "Purchase order issued",
+      "purchaseOrderApproved": "Purchase order approved",
+      "purchaseOrderRejected": "Purchase order rejected",
+      "deliveryReceived": "Goods received",
+      "variationApproved": "Variation approved",
+      "handoverAdvanced": "Handover advanced",
+      "wirSubmitted": "Work inspection request submitted"
+    }
+  }
+}
