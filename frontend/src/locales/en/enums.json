@@ -160,6 +160,7 @@
     "project": "Project",
     "invoice": "Invoice",
     "purchaseOrder": "Purchase order",
+    "subContract": "Subcontract",
     "purchaseRequest": "Purchase request",
     "rfi": "RFI",
     "submittal": "Submittal",

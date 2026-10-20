@@ -56,6 +56,7 @@ export const SNAKE_CASE_ERROR_CODES = new Set([
   'business_rule_violation', 'ledger_account_not_mapped', 'database_conflict',
   'database_reference_violation', 'database_check_violation', 'invalid_notification_preference',
   'supplier_invoice_duplicate', 'supplier_invoice_not_approvable', 'cancel_reason_required',
+  'reason_required', 'commitment_not_found', 'commitment_cancelled', 'commitment_unchanged',
 ]);
 
 function withAuthHeaders(options) {

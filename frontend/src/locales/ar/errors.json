@@ -107,5 +107,9 @@
   "database_conflict": "يوجد سجل بهذه القيم بالفعل.",
   "database_reference_violation": "السجل المُشار إليه غير موجود أو لا يزال قيد الاستخدام.",
   "database_check_violation": "السجل يخالف قاعدة بيانات.",
-  "invalid_notification_preference": "قيم تفضيلات الإشعارات غير صحيحة."
+  "invalid_notification_preference": "قيم تفضيلات الإشعارات غير صحيحة.",
+  "reason_required": "أدخل سببًا من ثلاثة أحرف على الأقل.",
+  "commitment_not_found": "هذا الالتزام لم يعد موجودًا.",
+  "commitment_cancelled": "لا يمكن تعديل التزام ملغى.",
+  "commitment_unchanged": "المبلغ الملغى لم يتغير."
 }

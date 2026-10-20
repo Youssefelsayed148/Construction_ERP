@@ -107,5 +107,9 @@
   "database_conflict": "A record with these values already exists.",
   "database_reference_violation": "A referenced record does not exist or is still in use.",
   "database_check_violation": "The record violates a data rule.",
-  "invalid_notification_preference": "The notification preference values are invalid."
+  "invalid_notification_preference": "The notification preference values are invalid.",
+  "reason_required": "Enter a reason with at least three characters.",
+  "commitment_not_found": "This commitment no longer exists.",
+  "commitment_cancelled": "A cancelled commitment cannot be adjusted.",
+  "commitment_unchanged": "The cancelled amount is unchanged."
 }

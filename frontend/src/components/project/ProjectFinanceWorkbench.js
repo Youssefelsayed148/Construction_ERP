@@ -2,7 +2,9 @@ import { apiFetch } from '../../services/apiClient';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useLocale } from '../../hooks/useLocale';
 import { formatCurrency } from '../../utils/formatters';
-import { translateStatus } from '../../i18n/enums';
+import { translateStatus, translateEnum } from '../../i18n/enums';
+import { authService } from '../../services/api';
+import { canSeeFinancials, hasProjectPermission } from '../../utils/projectNav';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 const headers = () => ({
@@ -21,11 +23,17 @@ async function request(path, method = 'GET', payload) {
   return body.data;
 }
 
-const EMPTY = { applications: [], certificates: [], budgets: [], forecasts: [], creditNotes: [], batches: [], releases: [], supplierInvoices: [] };
+const EMPTY = { applications: [], certificates: [], budgets: [], forecasts: [], creditNotes: [], batches: [], releases: [], supplierInvoices: [], commitments: [] };
 const numberValue = (value) => value === '' ? null : Number(value);
 
 export default function ProjectFinanceWorkbench({ projectId, invoices = [] }) {
   const { t } = useLocale();
+  // Commitment figures are internal cost: the GET route itself answers 403
+  // without the see_internal_cost flag (policy.js), so the tab follows that
+  // grant; the API still enforces everything.
+  const user = authService.getCurrentUser();
+  const canSeeCommitments = canSeeFinancials(user, Number(projectId));
+  const canAdjustCommitments = hasProjectPermission(user, 'commercial', 'approve', Number(projectId));
   const [tab, setTab] = useState('applications');
   const [data, setData] = useState(EMPTY);
   const [loading, setLoading] = useState(true);
@@ -41,6 +49,7 @@ export default function ProjectFinanceWorkbench({ projectId, invoices = [] }) {
   const [retentionRelease, setRetentionRelease] = useState({ party_type: 'client', amount: '' });
   const [retentionKey, setRetentionKey] = useState('');
   const [voidReason, setVoidReason] = useState('');
+  const [adjustment, setAdjustment] = useState({ commitment_id: '', cancelled_amount: '', reason: '' });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,6 +62,7 @@ export default function ProjectFinanceWorkbench({ projectId, invoices = [] }) {
       batches: '/finance-ledger/payment-batches',
       releases: `/finance-ledger/retention/releases?project_id=${projectId}`,
       supplierInvoices: `/procurement/invoices?project_id=${projectId}`,
+      ...(canSeeCommitments ? { commitments: `/commercial/project/${projectId}/commitments` } : {}),
     };
     const results = await Promise.all(Object.entries(paths).map(async ([key, path]) => {
       try { return [key, await request(path), null]; } catch (error) { return [key, [], error.message]; }
@@ -60,7 +70,7 @@ export default function ProjectFinanceWorkbench({ projectId, invoices = [] }) {
     const next = { ...EMPTY }; const nextErrors = {};
     results.forEach(([key, value, error]) => { next[key] = value || []; if (error) nextErrors[key] = error; });
     setData(next); setErrors(nextErrors); setLoading(false);
-  }, [projectId]);
+  }, [projectId, canSeeCommitments]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -137,7 +147,22 @@ export default function ProjectFinanceWorkbench({ projectId, invoices = [] }) {
     } finally { setBusy(''); }
   };
 
-  const tabs = ['applications', 'versions', 'creditNotes', 'batches', 'retention'];
+  const adjustCommitment = async (event) => {
+    event.preventDefault();
+    setBusy('commitment:adjust'); setErrors((old) => ({ ...old, action: '' })); setNotice('');
+    try {
+      await request(`/commercial/commitments/${adjustment.commitment_id}/adjust`, 'POST', {
+        cancelled_amount: Number(adjustment.cancelled_amount),
+        reason: adjustment.reason,
+      });
+      setAdjustment({ commitment_id: '', cancelled_amount: '', reason: '' });
+      setNotice(t('finance.workbench.saved')); await load();
+    } catch (error) {
+      setErrors((old) => ({ ...old, action: t(`errors.${error.message}`, { defaultValue: t('finance.workbench.actionError') }) }));
+    } finally { setBusy(''); }
+  };
+
+  const tabs = ['applications', 'versions', 'creditNotes', 'batches', 'retention', ...(canSeeCommitments ? ['commitments'] : [])];
   if (loading) return <div className="card" role="status" aria-busy="true" style={{ padding: 32, textAlign: 'center' }}><span className="spinner" /></div>;
 
   return (
@@ -267,6 +292,32 @@ export default function ProjectFinanceWorkbench({ projectId, invoices = [] }) {
             </td></tr>)}
           </tbody></table>{!data.releases.length && <p className="empty-state">{t('finance.workbench.empty')}</p>}{errors.releases && <p role="alert">{t('finance.workbench.projectDataUnavailable')}</p>}
         </div>
+      </div>}
+
+      {tab === 'commitments' && <div className="finance-record-grid">
+        {canAdjustCommitments && <form className="card form-grid" onSubmit={adjustCommitment}><h3>{t('finance.workbench.adjustCommitment')}</h3>
+          <p>{t('finance.workbench.adjustHelp')}</p>
+          <label>{t('finance.workbench.commitment')}<select required value={adjustment.commitment_id}
+            onChange={(event) => setAdjustment({ ...adjustment, commitment_id: event.target.value })}>
+            <option value="">{t('finance.workbench.selectCommitment')}</option>
+            {data.commitments.filter((row) => row.status !== 'cancelled').map((row) => (
+              <option key={row.id} value={row.id}>{row.commitment_number} · {translateEnum(t, 'entityType', row.source_type)} · {formatCurrency((row.original_amount || 0) - (row.cancelled_amount || 0))}</option>
+            ))}
+          </select></label>
+          <label>{t('finance.workbench.cancelledAmount')}<input required type="number" min="0" step="0.01" value={adjustment.cancelled_amount}
+            onChange={(event) => setAdjustment({ ...adjustment, cancelled_amount: event.target.value })} /></label>
+          <label>{t('finance.workbench.reason')}<input required minLength="3" value={adjustment.reason}
+            onChange={(event) => setAdjustment({ ...adjustment, reason: event.target.value })} /></label>
+          <button className="btn btn-primary" disabled={busy === 'commitment:adjust'}>{t('finance.workbench.saveAdjustment')}</button>
+        </form>}
+        <div className="table-container"><h3>{t('finance.workbench.commitments')}</h3><table className="table"><thead><tr>
+          <th>{t('finance.workbench.number')}</th><th>{t('finance.workbench.source')}</th><th>{t('finance.workbench.original')}</th>
+          <th>{t('finance.workbench.cancelledAmount')}</th><th>{t('finance.workbench.net')}</th><th>{t('common.status')}</th>
+        </tr></thead><tbody>{data.commitments.map((row) => <tr key={row.id}>
+          <td>{row.commitment_number}</td><td>{translateEnum(t, 'entityType', row.source_type)}</td>
+          <td>{formatCurrency(row.original_amount || 0)}</td><td>{formatCurrency(row.cancelled_amount || 0)}</td>
+          <td>{formatCurrency((row.original_amount || 0) - (row.cancelled_amount || 0))}</td><td>{translateStatus(t, row.status)}</td>
+        </tr>)}</tbody></table>{!data.commitments.length && <p className="empty-state">{t('finance.workbench.empty')}</p>}{errors.commitments && <p role="alert">{t('finance.workbench.projectDataUnavailable')}</p>}</div>
       </div>}
 
       <button className="btn" type="button" onClick={load} disabled={loading}>{t('finance.workbench.refresh')}</button>

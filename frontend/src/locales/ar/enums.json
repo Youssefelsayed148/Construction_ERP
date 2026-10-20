@@ -160,6 +160,7 @@
     "project": "مشروع",
     "invoice": "فاتورة",
     "purchaseOrder": "أمر شراء",
+    "subContract": "عقد باطن",
     "purchaseRequest": "طلب شراء",
     "rfi": "RFI",
     "submittal": "مستند للاعتماد",
