@@ -61,7 +61,12 @@ const REJECTED_STATUS = {
   sub_contracts: ['sub_contracts', 'terminated'],
 };
 
-const PRIVILEGED_ROLES = ['owner', 'admin'];
+// Privileged workflow actors: the legacy blanket pair plus their canonical
+// per-module mirrors (migration 0031: owner_ceo mirrors owner, coo mirrors
+// admin). B5 (C-PROC-001): without the canonical keys an owner_ceo user was
+// refused at every step of a purchase requisition despite holding the
+// procurement and approvals grants.
+const PRIVILEGED_ROLES = ['owner', 'admin', 'owner_ceo', 'coo'];
 
 // ---------------------------------------------------------------------------
 // Internals
@@ -337,13 +342,13 @@ async function recordDecision(instanceId, stepId, userId, decision, comment, opt
   // requester of any other role was refused at their own Draft step.
   const requesterStep = Boolean(templateStep && templateStep.resolver_type === 'requester');
   const ownRequest = instance.requester_id != null && num(instance.requester_id) === num(userId);
-  if (!system && ownRequest && !requesterStep && role !== 'owner' && role !== 'admin') {
+  if (!system && ownRequest && !requesterStep && !PRIVILEGED_ROLES.includes(role)) {
     return { ok: false, statusCode: 403, error: 'You cannot approve or reject your own request' };
   }
 
   // Authorization — mirrors the legacy stage checks (module manager map at the
   // manager stage; owner/admin only at the owner stage; privileged bypass).
-  const allowed = role === 'owner' || role === 'admin' ||
+  const allowed = PRIVILEGED_ROLES.includes(role) ||
     (system && requesterStep) ||
     (requesterStep && ownRequest) ||
     allowedRolesFor(templateStep, context).includes(role);
@@ -502,7 +507,7 @@ async function getPendingFor(userId, opts = {}) {
     const stepInstances = await loadStepInstances(client, instance.id);
     const current = stepInstances.find((s) => s.step_key === instance.current_step_key && s.status === 'pending');
     if (!current) continue;
-    const isPrivileged = role === 'owner' || role === 'admin';
+    const isPrivileged = PRIVILEGED_ROLES.includes(role);
     const roleMatch = current.assigned_role != null && roleSet.has(current.assigned_role);
     const userMatch = current.assigned_user_id != null && num(current.assigned_user_id) === num(userId);
     const isRequester = instance.requester_id != null && num(instance.requester_id) === num(userId);
