@@ -64,6 +64,44 @@ const MATRIX = {
   BLOCKED_UNTIL_5_1: ['owner', 'admin', 'manager', 'staff', 'engineer', 'accountant', 'finance_manager', 'purchasing_mgr', 'project_manager', 'site_supervisor', 'legal_mgr', 'maintenance_mgr'],
 };
 
+// C5: the Phase A routes (cash flow, stock reservations, notification
+// preferences, project calendars) against the canonical role map (migration
+// 0031 + 0006). Same rule: hidden ⇒ the API refuses for that role.
+const C5_MATRIX = {
+  owner_ceo: {
+    allowed: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/warehouses/reservations'], ['GET', '/api/notifications/preferences'], ['GET', '/api/projects/:projectId/calendars']],
+    denied: [],
+  },
+  accountant_ar: {
+    allowed: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/notifications/preferences']],
+    denied: [['GET', '/api/warehouses/reservations'], ['GET', '/api/projects/:projectId/calendars']],
+  },
+  storekeeper: {
+    allowed: [['GET', '/api/warehouses/reservations'], ['GET', '/api/notifications/preferences'], ['GET', '/api/projects/:projectId/calendars']],
+    denied: [['GET', '/api/finance-ledger/cash-flow']],
+  },
+  site_engineer: {
+    allowed: [['GET', '/api/notifications/preferences'], ['GET', '/api/projects/:projectId/calendars']],
+    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/warehouses/reservations']],
+  },
+  hr_manager: {
+    allowed: [['GET', '/api/notifications/preferences'], ['GET', '/api/projects/:projectId/calendars']],
+    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/warehouses/reservations']],
+  },
+  procurement_manager: {
+    allowed: [['GET', '/api/warehouses/reservations'], ['GET', '/api/notifications/preferences'], ['GET', '/api/projects/:projectId/calendars']],
+    denied: [['GET', '/api/finance-ledger/cash-flow']],
+  },
+  client_executive: {
+    allowed: [['GET', '/api/projects/:projectId/calendars']],
+    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/warehouses/reservations'], ['GET', '/api/notifications/preferences']],
+  },
+  supplier_sales: {
+    allowed: [['GET', '/api/warehouses/reservations']],
+    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/projects/:projectId/calendars'], ['GET', '/api/notifications/preferences']],
+  },
+};
+
 describePg('B7 navigation visibility: hidden group ⇒ API 403 for that role (internal surface)', () => {
   let app; let server; let base; let db; let project;
   const tag = String(Date.now()).slice(-7);
@@ -123,6 +161,25 @@ describePg('B7 navigation visibility: hidden group ⇒ API 403 for that role (in
           const res = await call(method, path.replace(':projectId', project.id), token);
           expect([403, 404, 401]).toContain(res.status);
           // The record-scope layer may answer 404 (scoped out) rather than 403 — never 2xx.
+        });
+      }
+      for (const [method, path] of allowed) {
+        test(`200-3xx (visible): ${method} ${path}`, async () => {
+          const token = await tokenFor(roleKey);
+          const res = await call(method, path.replace(':projectId', project.id), token);
+          expect(res.status).toBeLessThan(400);
+        });
+      }
+    });
+  }
+
+  for (const [roleKey, { denied, allowed }] of Object.entries(C5_MATRIX)) {
+    describe(`C5 canonical: ${roleKey}`, () => {
+      for (const [method, path] of denied) {
+        test(`403 (hidden): ${method} ${path}`, async () => {
+          const token = await tokenFor(roleKey);
+          const res = await call(method, path.replace(':projectId', project.id), token);
+          expect([403, 404, 401]).toContain(res.status);
         });
       }
       for (const [method, path] of allowed) {

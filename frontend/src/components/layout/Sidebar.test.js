@@ -60,4 +60,104 @@ describe('R0.8 context auth and sidebar preserve session behavior', () => {
     expect(auth.isAuthenticated).toBe(true);
     expect(auth.error).toBe('fixture failure');
   });
+
+// C5: the canonical role map (migration 0031) against the rendered sidebar.
+// Menu entries are module-gated by the session's effective policy grants;
+// adminWorkspaces/settings/agent-activity are additionally role-gated.
+describe('C5 canonical role map: rendered sidebar entries', () => {
+  const Grants = {
+    owner_ceo: ['dashboard', 'projects', 'inventory', 'clients', 'suppliers', 'assets', 'hr', 'invoices', 'legal', 'approvals', 'actions'],
+    procurement_manager: ['dashboard', 'projects', 'inventory', 'procurement', 'suppliers', 'invoices'],
+    storekeeper: ['projects', 'items', 'warehouses', 'inventory', 'actions', 'notifications'],
+    accountant_ar: ['dashboard', 'clients', 'invoices', 'payments', 'finance', 'finance-ledger', 'approvals', 'actions'],
+    site_engineer: ['projects', 'boq', 'locations', 'quantities', 'schedule', 'site', 'work-orders', 'qhse', 'hse', 'actions', 'notifications'],
+    hr_manager: ['hr', 'payroll', 'users', 'organizations', 'delegations', 'projects', 'dashboard', 'reports', 'actions', 'notifications'],
+    client_executive: ['projects', 'docs', 'qhse', 'boq'],
+    supplier_sales: ['portal', 'items', 'warehouses'],
+  };
+  const permissionsOf = (mods) => mods.map((m) => ({ module: m, action: 'view' }))
+    // The bid-comparison entry additionally requires see_supplier_value.
+    .concat([{ module: '*', action: 'see_supplier_value' }]);
+
+  const renderFor = (role) => {
+    const mods = Grants[role];
+    localStorage.clear();
+    authService.setSession('fixture-token', { id: 9, name: `Demo ${role}`, role,
+      policy_modules: [...mods], policy_permissions: permissionsOf(mods) });
+    let c = document.createElement('div');
+    document.body.appendChild(c);
+    let r = createRoot(c);
+    act(() => r.render(<AuthProvider><MemoryRouter initialEntries={['/dashboard']}>
+      <Sidebar />
+    </MemoryRouter></AuthProvider>));
+    return { get links() { return [...c.querySelectorAll('a.nav-item')].map((a) => a.getAttribute('href')); },
+      unmount() { act(() => r.unmount()); c.remove(); } };
+  };
+
+  test('owner_ceo: full internal menu plus admin workspaces; settings and agent activity stay owner/admin', () => {
+    const view = renderFor('owner_ceo');
+    expect(view.links).toEqual(expect.arrayContaining(['/dashboard', '/projects', '/inventory', '/hr', '/invoices', '/my-actions', '/admin/organizations']));
+    expect(view.links).not.toContain('/settings');
+    expect(view.links).not.toContain('/agent-activity');
+    view.unmount();
+  });
+
+  test('procurement_manager: comparison, suppliers and invoices; no hr, clients, expenses or legal', () => {
+    const view = renderFor('procurement_manager');
+    expect(view.links).toEqual(expect.arrayContaining(['/procurement/comparison', '/suppliers', '/invoices', '/inventory']));
+    expect(view.links).not.toContain('/hr');
+    expect(view.links).not.toContain('/clients');
+    expect(view.links).not.toContain('/expenses');
+    expect(view.links).not.toContain('/legal');
+    view.unmount();
+  });
+
+  test('storekeeper: inventory and projects; no invoices, procurement comparison or hr (no prices, no money)', () => {
+    const view = renderFor('storekeeper');
+    expect(view.links).toEqual(expect.arrayContaining(['/inventory', '/projects']));
+    expect(view.links).not.toContain('/invoices');
+    expect(view.links).not.toContain('/procurement/comparison');
+    expect(view.links).not.toContain('/hr');
+    view.unmount();
+  });
+
+  test('accountant_ar: invoices and my actions; no inventory, hr or suppliers', () => {
+    const view = renderFor('accountant_ar');
+    expect(view.links).toEqual(expect.arrayContaining(['/invoices', '/my-actions', '/approvals']));
+    expect(view.links).not.toContain('/inventory');
+    expect(view.links).not.toContain('/hr');
+    expect(view.links).not.toContain('/suppliers');
+    view.unmount();
+  });
+
+  test('site_engineer: projects and my actions; no invoices, inventory or admin workspaces', () => {
+    const view = renderFor('site_engineer');
+    expect(view.links).toEqual(expect.arrayContaining(['/projects', '/my-actions']));
+    expect(view.links).not.toContain('/invoices');
+    expect(view.links).not.toContain('/inventory');
+    expect(view.links).not.toContain('/admin/organizations');
+    view.unmount();
+  });
+
+  test('hr_manager: hr; no invoices, inventory or admin workspaces', () => {
+    const view = renderFor('hr_manager');
+    expect(view.links).toEqual(expect.arrayContaining(['/hr', '/projects']));
+    expect(view.links).not.toContain('/invoices');
+    expect(view.links).not.toContain('/inventory');
+    expect(view.links).not.toContain('/admin/organizations');
+    view.unmount();
+  });
+
+  test('FINDING C5: canonical external roles render an empty or portal-less sidebar - the portal menu is keyed by legacy roles', () => {
+    const client = renderFor('client_executive');
+    expect(client.links).toEqual(['/projects']);
+    client.unmount();
+    const supplier = renderFor('supplier_sales');
+    // supplier_sales holds portal/items/warehouses but the portal entry is keyed 'supplier'
+    // and no main-menu module matches, so the sidebar renders without any portal link.
+    expect(supplier.links).toEqual([]);
+    supplier.unmount();
+  });
+});
+
 });
