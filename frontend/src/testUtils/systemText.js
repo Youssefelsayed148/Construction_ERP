@@ -38,4 +38,4 @@ const en = {
   suppliers: require('../locales/en/suppliers.json'),
   workorders: require('../locales/en/workorders.json'),
 };
-export const systemText = (key, params) => (key.includes('.system.') || key === 'hse.incidents' || key.startsWith('enums.') || key.startsWith('errors.')) ? translate({ en }, 'en', key, params) : key;
+export const systemText = (key, params) => (key.includes('.system.') || key === 'hse.incidents' || key.startsWith('enums.') || key.startsWith('errors.') || key.startsWith('actions.myActions.')) ? translate({ en }, 'en', key, params) : key;

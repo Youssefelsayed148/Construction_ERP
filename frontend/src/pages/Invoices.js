@@ -5,7 +5,7 @@ import { errorMessage } from '../utils/errorMessage';
 import ReasonDialog from '../components/common/ReasonDialog';
 import LoadMore from '../components/common/LoadMore';
 import { Search, Plus, Edit, Trash2, FileText, Receipt, Eye, X, CreditCard } from 'lucide-react';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatCurrency, formatDate, localizedName } from '../utils/formatters';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
@@ -234,10 +234,10 @@ function Invoices() {
                       {inv.invoice_number}
                     </td>
                     <td style={{ fontSize: '13px' }}>
-                      {locale === 'ar' ? (inv.project_name_ar || inv.project_code) : (inv.project_name_en || inv.project_code)}
+                      {localizedName(inv, locale, ['project_name']) || inv.project_code}
                     </td>
                     <td style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
-                      {locale === 'ar' ? (inv.client_name_ar || inv.client_code) : (inv.client_name_en || inv.client_code)}
+                      {localizedName(inv, locale, ['client_name']) || inv.client_code}
                     </td>
                     <td style={{ fontFamily: 'monospace', fontWeight: 500 }}>
                       {formatCurrency(inv.amount)}
@@ -386,7 +386,7 @@ function InvoiceModal({ invoice, locale, t, projects, clients, onClose, onSave }
                 <select className="form-select" value={form.project_id} onChange={e => handleChange('project_id', e.target.value)} required>
                   <option value="">-- {t('finance.system.selectProject')} --</option>
                   {projects.map(p => (
-                    <option key={p.id} value={p.id}>{locale === 'ar' ? p.name_ar : (p.name_en || p.name_ar)} ({p.code})</option>
+                    <option key={p.id} value={p.id}>{localizedName(p, locale)} ({p.code})</option>
                   ))}
                 </select>
               </div>
@@ -396,7 +396,7 @@ function InvoiceModal({ invoice, locale, t, projects, clients, onClose, onSave }
                 <select className="form-select" value={form.client_id} onChange={e => handleChange('client_id', e.target.value)} required>
                   <option value="">-- {t('finance.system.selectClient')} --</option>
                   {clients.map(c => (
-                    <option key={c.id} value={c.id}>{locale === 'ar' ? c.name_ar : c.name_en} ({c.code})</option>
+                    <option key={c.id} value={c.id}>{localizedName(c, locale)} ({c.code})</option>
                   ))}
                 </select>
               </div>
@@ -507,11 +507,11 @@ function InvoiceDetailModal({ invoice, locale, t, onClose, onPaymentSaved }) {
           <div className="responsive-grid responsive-grid--two" style={{ gap: '12px', marginBottom: '20px', fontSize: '13px' }}>
             <div>
               <span style={{ color: 'var(--color-text-secondary)' }}>{t('finance.system.project2')}</span>{' '}
-              <strong>{locale === 'ar' ? (invoice.project_name_ar || invoice.project_code) : (invoice.project_name_en || invoice.project_code)}</strong>
+              <strong>{localizedName(invoice, locale, ['project_name']) || invoice.project_code}</strong>
             </div>
             <div>
               <span style={{ color: 'var(--color-text-secondary)' }}>{t('finance.system.client')}</span>{' '}
-              <strong>{locale === 'ar' ? (invoice.client_name_ar || invoice.client_code) : (invoice.client_name_en || invoice.client_code)}</strong>
+              <strong>{localizedName(invoice, locale, ['client_name']) || invoice.client_code}</strong>
             </div>
             <div>
               <span style={{ color: 'var(--color-text-secondary)' }}>{t('finance.system.issueDate2')}</span>{' '}

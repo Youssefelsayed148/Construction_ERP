@@ -5,7 +5,7 @@ import { errorMessage } from '../utils/errorMessage';
 import LoadMore from '../components/common/LoadMore';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import { Search, Plus, Edit, Trash2, Users, Calendar, Clock, HardHat, DollarSign, X } from 'lucide-react';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, localizedName } from '../utils/formatters';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
@@ -75,7 +75,7 @@ function HR() {
               }}
             >
               <Icon size={16} />
-              <span>{locale === 'ar' ? tab.label_ar : tab.label_en}</span>
+              <span>{localizedName(tab, locale, ['label'])}</span>
             </button>
           );
         })}
@@ -128,7 +128,7 @@ function EmployeesTab({ locale, t }) {
     } catch (e) { alert(e.message); }
   };
 
-  const empName = (emp) => locale === 'ar' ? emp.name_ar : emp.name_en;
+  const empName = (emp) => localizedName(emp, locale);
   const statusLabel = (s) => STATUS_LABELS[locale]?.[s] || s;
 
   return (
@@ -225,7 +225,7 @@ function EmployeesTab({ locale, t }) {
         onClose={() => setShowModal(false)}
         onSave={loadEmployees}
       />}
-      <ConfirmDialog open={Boolean(deleteTarget)} title={t('common.dialogs.confirmTitle')} message={t('common.dialogs.confirmDelete')} confirmLabel={t('common.delete')} destructive requireText={locale === 'ar' ? deleteTarget?.name_ar || deleteTarget?.name_en || '' : deleteTarget?.name_en || deleteTarget?.name_ar || ''} onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
+      <ConfirmDialog open={Boolean(deleteTarget)} title={t('common.dialogs.confirmTitle')} message={t('common.dialogs.confirmDelete')} confirmLabel={t('common.delete')} destructive requireText={localizedName(deleteTarget, locale)} onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
     </>
   );
 }
@@ -426,7 +426,7 @@ function AttendanceTab({ locale, t }) {
             <tbody>
               {records.map(rec => (
                 <tr key={rec.id}>
-                  <td>{locale === 'ar' ? rec.employee_name_ar || rec.employee_name_en : rec.employee_name_en || rec.employee_name_ar}</td>
+                  <td>{localizedName(rec, locale, ['employee_name'])}</td>
                   <td>{rec.date ? rec.date.slice(0, 10) : '—'}</td>
                   <td>
                     <span className={`badge ${rec.status === 'present' ? 'badge-success' : rec.status === 'absent' ? 'badge-danger' : rec.status === 'late' ? 'badge-warning' : 'badge-info'}`}>
@@ -502,7 +502,7 @@ function AttendanceModal({ locale, t, date, onClose, onSave }) {
                 <select className="form-select" value={form.employee_id} onChange={e => handleChange('employee_id', e.target.value)} required>
                   <option value="">{t('hr.system.select')}</option>
                   {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>{locale === 'ar' ? emp.name_ar : emp.name_en} ({emp.code})</option>
+                    <option key={emp.id} value={emp.id}>{localizedName(emp, locale)} ({emp.code})</option>
                   ))}
                 </select>
               </div>

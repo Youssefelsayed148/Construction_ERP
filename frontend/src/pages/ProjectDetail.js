@@ -5,7 +5,7 @@ import { useLocale } from '../hooks/useLocale';
 import { errorMessage } from '../utils/errorMessage';
 import LoadMore from '../components/common/LoadMore';
 import { ArrowLeft, Edit, Plus, Users, Calendar, Flag, MapPin, X, Briefcase, TrendingUp, TrendingDown } from 'lucide-react';
-import { formatCurrency, formatDate, formatPercent } from '../utils/formatters';
+import { formatCurrency, formatDate, formatPercent, localizedName } from '../utils/formatters';
 import { authService } from '../services/api';
 import { canSeeFinancials, hasProjectPermission } from '../utils/projectNav';
 import ProjectCalendars from '../components/project/ProjectCalendars';
@@ -147,7 +147,7 @@ function ProjectDetail() {
 
   const projectName = () => {
     if (!project) return '';
-    return locale === 'ar' ? project.name_ar : project.name_en;
+    return localizedName(project, locale);
   };
 
   const statusLabel = (s) => STATUS_LABELS[locale]?.[s] || s;
@@ -156,7 +156,10 @@ function ProjectDetail() {
   const teamRoleLabel = (r) => TEAM_ROLES[locale]?.[r] || r;
   const clientName = () => {
     if (!project) return '-';
-    return locale === 'ar' ? (project.client_name_ar || project.client?.name_ar || project.client_name_en || project.client?.name_en || '-') : (project.client_name_en || project.client?.name_en || project.client_name_ar || project.client?.name_ar || '-');
+    return localizedName({
+      client_name_en: project.client_name_en || project.client?.name_en,
+      client_name_ar: project.client_name_ar || project.client?.name_ar,
+    }, locale, ['client_name']) || '-';
   };
 
   if (loading) {
@@ -189,7 +192,7 @@ function ProjectDetail() {
     || hasProjectPermission(authService.getCurrentUser(), 'projects', 'create', Number(id));
   const infoCards = [
     { icon: Briefcase, label: t('projects.system.client'), value: clientName() },
-    { icon: Users, label: t('projects.system.projectManager'), value: (locale === 'ar' ? project.project_manager_name : (project.project_manager_name_en || project.project_manager_name)) || '-' },
+    { icon: Users, label: t('projects.system.projectManager'), value: localizedName(project, locale, ['project_manager_name']) || '-' },
     { icon: MapPin, label: t('projects.system.address'), value: project.address || '-' },
     { icon: Flag, label: t('projects.system.contractValue'), value: formatCurrency(project.contract_value), accent: true, financial: true },
     { icon: Flag, label: t('projects.system.budget'), value: formatCurrency(project.budget), accent: true, financial: true },
@@ -292,7 +295,7 @@ function ProjectDetail() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {phases.map(ph => {
-              const phaseName = locale === 'ar' ? (ph.name_ar || ph.name) : (ph.name_en || ph.name);
+              const phaseName = localizedName(ph, locale);
               return (
                 <div key={ph.id} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                   <div style={{ minWidth: '140px' }}>
@@ -352,9 +355,7 @@ function ProjectDetail() {
               </thead>
               <tbody>
                 {team.map(tm => {
-                  const memberName = (locale === 'ar'
-                    ? (tm.employee_name_ar || tm.employee_name)
-                    : (tm.employee_name_en || tm.employee_name)) || '-';
+                  const memberName = localizedName(tm, locale, ['employee_name']) || '-';
                   return (
                   <tr key={tm.id}>
                     <td>
@@ -421,7 +422,7 @@ function ProjectDetail() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
                       <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--color-text-primary)' }}>
-                        {locale === 'ar' ? (m.title_ar || m.title) : (m.title_en || m.title)}
+                        {localizedName(m, locale, ['title'])}
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
                         <Calendar size={12} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
@@ -627,7 +628,7 @@ function EditProjectModal({ project, locale, t, onClose, onSave, clients, manage
                   <select className="form-select" value={form.client_id} onChange={e => handleChange('client_id', e.target.value)}>
                     <option value="">-- {t('projects.system.selectClient')} --</option>
                     {clients.map(c => (
-                      <option key={c.id} value={c.id}>{locale === 'ar' ? c.name_ar : c.name_en} ({c.code})</option>
+                      <option key={c.id} value={c.id}>{localizedName(c, locale)} ({c.code})</option>
                     ))}
                   </select>
                   <LoadMore loadedCount={clients.length} totalCount={lookupCounts.clients} loading={loadingLookup.clients} onLoadMore={() => loadMoreLookup('clients')} t={t} />
@@ -643,7 +644,7 @@ function EditProjectModal({ project, locale, t, onClose, onSave, clients, manage
                     }, {})).map(([dept, deptManagers]) => (
                       <optgroup key={dept} label={dept}>
                         {deptManagers.map(m => (
-                          <option key={m.id} value={m.id}>{locale === 'ar' ? m.name_ar : (m.name_en || m.name_ar)}</option>
+                          <option key={m.id} value={m.id}>{localizedName(m, locale)}</option>
                         ))}
                       </optgroup>
                     ))}
@@ -820,9 +821,7 @@ function TeamModal({ locale, t, employees, totalCount, loadingMore, onLoadMore, 
                 <select className="form-select" value={form.employee_id} onChange={e => handleChange('employee_id', e.target.value)} required>
                   <option value="">-- {t('projects.system.selectEmployee')} --</option>
                   {employees.map(emp => {
-                    const nm = locale === 'ar'
-                      ? (emp.name_ar || emp.name || emp.name_en)
-                      : (emp.name_en || emp.name || emp.name_ar);
+                    const nm = localizedName(emp, locale);
                     return (
                       <option key={emp.id} value={emp.id}>
                         {nm}{emp.designation ? ` — ${emp.designation}` : ''}

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import { Search, Plus, Briefcase, ArrowRight, MapPin, DollarSign, Calendar, TrendingUp, TrendingDown, Receipt, X } from 'lucide-react';
-import { formatCurrency, formatDate, formatPercent } from '../utils/formatters';
+import { formatCurrency, formatDate, formatPercent, localizedName } from '../utils/formatters';
 import LoadMore from '../components/common/LoadMore';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
@@ -100,11 +100,14 @@ function Projects() {
   // (pages/ProjectWizard.js), which provisions the project transactionally.
   const handleOpenWizard = () => navigate('/projects/new');
 
-  const projectName = (p) => locale === 'ar' ? p.name_ar : p.name_en;
+  const projectName = (p) => localizedName(p, locale);
   const statusLabel = (s) => STATUS_LABELS[locale]?.[s] || s;
   const typeLabel = (tp) => TYPE_LABELS[locale]?.[tp] || tp;
-  const clientName = (p) => locale === 'ar' ? (p.client_name_ar || p.client?.name_ar || p.client_name_en || p.client?.name_en || '-') : (p.client_name_en || p.client?.name_en || p.client_name_ar || p.client?.name_ar || '-');
-  const pmName = (p) => (locale === 'ar' ? p.project_manager_name : (p.project_manager_name_en || p.project_manager_name)) || '-';
+  const clientName = (p) => localizedName({
+    client_name_en: p.client_name_en || p.client?.name_en,
+    client_name_ar: p.client_name_ar || p.client?.name_ar,
+  }, locale, ['client_name']) || '-';
+  const pmName = (p) => localizedName(p, locale, ['project_manager_name']) || '-';
 
   return (
     <div className="page-container">

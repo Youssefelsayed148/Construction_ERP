@@ -5,5 +5,27 @@
     "loading": "Loading...",
     "displayFailed": "Unable to display actions. Please try again.",
     "retry": "Try again"
+  },
+  "myActions": {
+    "title": "My Actions",
+    "overdue": "Overdue",
+    "dueToday": "Due Today",
+    "dueSoon": "Due Soon",
+    "awaitingMe": "Awaiting Me",
+    "delegated": "Delegated",
+    "recentlyCompleted": "Recently Completed",
+    "priority": "Priority",
+    "all": "All",
+    "due": "Due",
+    "noDue": "No due date",
+    "acknowledge": "Acknowledge",
+    "complete": "Complete",
+    "empty": "Nothing here.",
+    "source": "Source",
+    "status": "Status",
+    "delegatedTo": "Delegated to",
+    "notifications": "Notifications",
+    "markRead": "Mark read",
+    "noNotifs": "No notifications."
   }
 }

@@ -1,11 +1,15 @@
 {
   "title": "إدارة الموقع",
   "dailyReport": "تقرير يومي",
-  "instructions": "تعليمات الموقع"
-,
+  "instructions": "تعليمات الموقع",
   "offline": {
     "title": "تقارير يومية بانتظار المزامنة",
-    "status": { "queued": "بانتظار المزامنة", "syncing": "جارٍ المزامنة", "conflict": "تحتاج إلى مراجعة", "failed": "فشلت المزامنة" },
+    "status": {
+      "queued": "بانتظار المزامنة",
+      "syncing": "جارٍ المزامنة",
+      "conflict": "تحتاج إلى مراجعة",
+      "failed": "فشلت المزامنة"
+    },
     "retry": "إعادة المزامنة",
     "remove": "حذف",
     "removeTitle": "حذف التقرير غير المرسل؟",
@@ -98,5 +102,19 @@
     "stickyNotesAreNotFormalCorrespondenceUseTheOfficialDocument": "الملاحظات اللاصقة ليست مراسلات رسمية — استخدم مسار المستندات الرسمية.",
     "uploading": "جارٍ الرفع…",
     "photo": "صورة"
+  },
+  "workspace": {
+    "sections": {
+      "activities": "أنشطة اليوم",
+      "manpower": "العمالة",
+      "equipment": "المعدات",
+      "deliveries": "التوريدات (GRN)",
+      "executedQuantities": "الكميات المنفذة",
+      "inspections": "الفحوصات",
+      "safety": "السلامة",
+      "materialReadiness": "جاهزية المواد",
+      "instructions": "تعليمات مفتوحة",
+      "photos": "صور اليوم"
+    }
   }
 }

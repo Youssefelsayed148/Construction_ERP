@@ -1,6 +1,7 @@
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
+import { localizedName } from '../utils/formatters';
 import { errorMessage } from '../utils/errorMessage';
 import { Search, Plus, Edit, Trash2, Package, X, RotateCcw } from 'lucide-react';
 import ReasonDialog from '../components/common/ReasonDialog';
@@ -124,7 +125,7 @@ function Items() {
 
   const categoryLabel = (cat) => CATEGORY_LABELS[locale]?.[cat] || cat;
   const unitLabel = (unit) => UNIT_LABELS[locale]?.[unit] || unit;
-  const itemName = (item) => locale === 'ar' ? item.name_ar : item.name_en;
+  const itemName = (item) => localizedName(item, locale);
 
   const categories = ['raw_material', 'finished_material', 'equipment_rental', 'consumable', 'tool', 'safety', 'other'];
 

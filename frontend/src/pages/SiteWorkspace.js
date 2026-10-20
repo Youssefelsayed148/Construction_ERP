@@ -26,20 +26,6 @@ const fetchApi = (url, options) => apiFetch(url, { headers: headers(), ...option
   return apiResponseJson(r);
 });
 
-const SECTION_LABELS = {
-  en: {
-    activities: "Today's Activities", manpower: 'Manpower', equipment: 'Equipment',
-    deliveries: 'Deliveries (GRNs)', executed_quantities: 'Executed Quantities',
-    inspections: 'Inspections', safety: 'Safety', material_readiness: 'Material Readiness',
-    instructions: 'Open Engineer Instructions', photos: 'Today\'s Photos',
-  },
-  ar: {
-    activities: 'أنشطة اليوم', manpower: 'العمالة', equipment: 'المعدات',
-    deliveries: 'التوريدات (GRN)', executed_quantities: 'الكميات المنفذة',
-    inspections: 'الفحوصات', safety: 'السلامة', material_readiness: 'جاهزية المواد',
-    instructions: 'تعليمات مفتوحة', photos: 'صور اليوم',
-  },
-};
 
 function Section({ icon: Icon, label, count, children }) {
   return (
@@ -76,7 +62,18 @@ function SiteWorkspace() {
   const photoInput = useRef(null);
 
   const today = new Date().toISOString().slice(0, 10);
-  const t = SECTION_LABELS[locale === 'ar' ? 'ar' : 'en'];
+  const t = {
+    activities: translate('site.workspace.sections.activities'),
+    manpower: translate('site.workspace.sections.manpower'),
+    equipment: translate('site.workspace.sections.equipment'),
+    deliveries: translate('site.workspace.sections.deliveries'),
+    executed_quantities: translate('site.workspace.sections.executedQuantities'),
+    inspections: translate('site.workspace.sections.inspections'),
+    safety: translate('site.workspace.sections.safety'),
+    material_readiness: translate('site.workspace.sections.materialReadiness'),
+    instructions: translate('site.workspace.sections.instructions'),
+    photos: translate('site.workspace.sections.photos'),
+  };
 
   const load = useCallback(() => {
     fetchApi(`${API_URL}/projects/${id}/workspace?date=${today}`)

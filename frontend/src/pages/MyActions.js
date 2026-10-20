@@ -128,25 +128,14 @@ function MyActionsContent() {
   );
 
   const L = {
-    en: {
-      title: 'My Actions',
-      overdue: 'Overdue', due_today: 'Due Today', due_soon: 'Due Soon',
-      awaiting_me: 'Awaiting Me', delegated: 'Delegated', recently_completed: 'Recently Completed',
-      priority: 'Priority', all: 'All', due: 'Due', noDue: 'No due date',
-      acknowledge: 'Acknowledge', complete: 'Complete', empty: 'Nothing here.',
-      source: 'Source', status: 'Status', delegated_to: 'Delegated to',
-      notifications: 'Notifications', markRead: 'Mark read', noNotifs: 'No notifications.',
-    },
-    ar: {
-      title: 'مهامي',
-      overdue: 'متأخرة', due_today: 'تستحق اليوم', due_soon: 'تستحق قريباً',
-      awaiting_me: 'بانتظاري', delegated: 'مُوكلة', recently_completed: 'منجزة حديثاً',
-      priority: 'الأولوية', all: 'الكل', due: 'تستحق', noDue: 'بدون موعد',
-      acknowledge: 'إقرار', complete: 'إنجاز', empty: 'لا يوجد شيء هنا.',
-      source: 'المصدر', status: 'الحالة', delegated_to: 'مُوكلة إلى',
-      notifications: 'الإشعارات', markRead: 'تحديد كمقروء', noNotifs: 'لا إشعارات.',
-    },
-  }[locale === 'ar' ? 'ar' : 'en'];
+    title: t('actions.myActions.title'),
+    overdue: t('actions.myActions.overdue'), due_today: t('actions.myActions.dueToday'), due_soon: t('actions.myActions.dueSoon'),
+    awaiting_me: t('actions.myActions.awaitingMe'), delegated: t('actions.myActions.delegated'), recently_completed: t('actions.myActions.recentlyCompleted'),
+    priority: t('actions.myActions.priority'), all: t('actions.myActions.all'), due: t('actions.myActions.due'), noDue: t('actions.myActions.noDue'),
+    acknowledge: t('actions.myActions.acknowledge'), complete: t('actions.myActions.complete'), empty: t('actions.myActions.empty'),
+    source: t('actions.myActions.source'), status: t('actions.myActions.status'), delegated_to: t('actions.myActions.delegatedTo'),
+    notifications: t('actions.myActions.notifications'), markRead: t('actions.myActions.markRead'), noNotifs: t('actions.myActions.noNotifs'),
+  };
 
   return (
     <div className="page-container">

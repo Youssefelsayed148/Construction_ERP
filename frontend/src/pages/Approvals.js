@@ -102,74 +102,74 @@ const STATUS_LABELS = {
 // Module-aware field maps for the detail modal. `project_label` is computed from joined columns.
 const SOURCE_FIELD_MAP = {
   expenses: [
-    { k: 'category', en: 'Category', ar: 'الفئة' },
-    { k: 'description', en: 'Description', ar: 'الوصف' },
-    { k: 'amount', en: 'Amount', ar: 'المبلغ', type: 'currency' },
-    { k: 'date', en: 'Date', ar: 'التاريخ', type: 'date' },
-    { k: 'project_label', en: 'Project', ar: 'المشروع' },
-    { k: 'paid_by', en: 'Paid By', ar: 'مدفوع بواسطة' },
-    { k: 'status', en: 'Record Status', ar: 'حالة السجل', type: 'status' },
-    { k: 'created_by_name', en: 'Created By', ar: 'أنشئ بواسطة' },
-    { k: 'notes', en: 'Notes', ar: 'ملاحظات' },
+    { k: 'category', label_en: 'Category', label_ar: 'الفئة' },
+    { k: 'description', label_en: 'Description', label_ar: 'الوصف' },
+    { k: 'amount', label_en: 'Amount', label_ar: 'المبلغ', type: 'currency' },
+    { k: 'date', label_en: 'Date', label_ar: 'التاريخ', type: 'date' },
+    { k: 'project_label', label_en: 'Project', label_ar: 'المشروع' },
+    { k: 'paid_by', label_en: 'Paid By', label_ar: 'مدفوع بواسطة' },
+    { k: 'status', label_en: 'Record Status', label_ar: 'حالة السجل', type: 'status' },
+    { k: 'created_by_name', label_en: 'Created By', label_ar: 'أنشئ بواسطة' },
+    { k: 'notes', label_en: 'Notes', label_ar: 'ملاحظات' },
   ],
   payroll: [
-    { k: 'period_name', en: 'Period', ar: 'الفترة' },
-    { k: 'month', en: 'Month', ar: 'الشهر' },
-    { k: 'year', en: 'Year', ar: 'السنة' },
-    { k: 'total_employees', en: 'Employees', ar: 'عدد الموظفين' },
-    { k: 'employee_lines', en: 'Payroll Lines', ar: 'بنود الرواتب' },
-    { k: 'total_basic_salary', en: 'Total Basic Salary', ar: 'إجمالي الراتب الأساسي', type: 'currency' },
-    { k: 'total_net_salary', en: 'Total Net Salary', ar: 'إجمالي صافي الراتب', type: 'currency' },
-    { k: 'status', en: 'Record Status', ar: 'حالة السجل', type: 'status' },
-    { k: 'created_by_name', en: 'Created By', ar: 'أنشئ بواسطة' },
+    { k: 'period_name', label_en: 'Period', label_ar: 'الفترة' },
+    { k: 'month', label_en: 'Month', label_ar: 'الشهر' },
+    { k: 'year', label_en: 'Year', label_ar: 'السنة' },
+    { k: 'total_employees', label_en: 'Employees', label_ar: 'عدد الموظفين' },
+    { k: 'employee_lines', label_en: 'Payroll Lines', label_ar: 'بنود الرواتب' },
+    { k: 'total_basic_salary', label_en: 'Total Basic Salary', label_ar: 'إجمالي الراتب الأساسي', type: 'currency' },
+    { k: 'total_net_salary', label_en: 'Total Net Salary', label_ar: 'إجمالي صافي الراتب', type: 'currency' },
+    { k: 'status', label_en: 'Record Status', label_ar: 'حالة السجل', type: 'status' },
+    { k: 'created_by_name', label_en: 'Created By', label_ar: 'أنشئ بواسطة' },
   ],
   legal: [
-    { k: 'title', en: 'Title', ar: 'العنوان' },
-    { k: 'document_type', en: 'Document Type', ar: 'نوع المستند' },
-    { k: 'description', en: 'Description', ar: 'الوصف' },
-    { k: 'status', en: 'Record Status', ar: 'حالة السجل', type: 'status' },
-    { k: 'submitted_by', en: 'Submitted By', ar: 'قدمه' },
+    { k: 'title', label_en: 'Title', label_ar: 'العنوان' },
+    { k: 'document_type', label_en: 'Document Type', label_ar: 'نوع المستند' },
+    { k: 'description', label_en: 'Description', label_ar: 'الوصف' },
+    { k: 'status', label_en: 'Record Status', label_ar: 'حالة السجل', type: 'status' },
+    { k: 'submitted_by', label_en: 'Submitted By', label_ar: 'قدمه' },
   ],
   project_budgets: [
-    { k: 'project_label', en: 'Project', ar: 'المشروع' },
-    { k: 'cost_code', en: 'Cost Code', ar: 'كود التكلفة' },
-    { k: 'cost_code_name', en: 'Cost Code Name', ar: 'اسم كود التكلفة' },
-    { k: 'budget_amount', en: 'Budget Amount', ar: 'مبلغ الميزانية', type: 'currency' },
-    { k: 'revised_amount', en: 'Revised Amount', ar: 'المبلغ المعدل', type: 'currency' },
-    { k: 'status', en: 'Record Status', ar: 'حالة السجل', type: 'status' },
+    { k: 'project_label', label_en: 'Project', label_ar: 'المشروع' },
+    { k: 'cost_code', label_en: 'Cost Code', label_ar: 'كود التكلفة' },
+    { k: 'cost_code_name', label_en: 'Cost Code Name', label_ar: 'اسم كود التكلفة' },
+    { k: 'budget_amount', label_en: 'Budget Amount', label_ar: 'مبلغ الميزانية', type: 'currency' },
+    { k: 'revised_amount', label_en: 'Revised Amount', label_ar: 'المبلغ المعدل', type: 'currency' },
+    { k: 'status', label_en: 'Record Status', label_ar: 'حالة السجل', type: 'status' },
   ],
   sub_contracts: [
-    { k: 'contract_number', en: 'Contract Number', ar: 'رقم العقد' },
-    { k: 'project_label', en: 'Project', ar: 'المشروع' },
-    { k: 'subcontractor_name', en: 'Subcontractor', ar: 'مقاول الباطن' },
-    { k: 'scope', en: 'Scope', ar: 'نطاق العمل' },
-    { k: 'contract_value', en: 'Contract Value', ar: 'قيمة العقد', type: 'currency' },
-    { k: 'start_date', en: 'Start Date', ar: 'تاريخ البداية', type: 'date' },
-    { k: 'end_date', en: 'End Date', ar: 'تاريخ النهاية', type: 'date' },
-    { k: 'retention_percent', en: 'Retention %', ar: 'نسبة الاحتجاز %' },
-    { k: 'status', en: 'Record Status', ar: 'حالة السجل', type: 'status' },
+    { k: 'contract_number', label_en: 'Contract Number', label_ar: 'رقم العقد' },
+    { k: 'project_label', label_en: 'Project', label_ar: 'المشروع' },
+    { k: 'subcontractor_name', label_en: 'Subcontractor', label_ar: 'مقاول الباطن' },
+    { k: 'scope', label_en: 'Scope', label_ar: 'نطاق العمل' },
+    { k: 'contract_value', label_en: 'Contract Value', label_ar: 'قيمة العقد', type: 'currency' },
+    { k: 'start_date', label_en: 'Start Date', label_ar: 'تاريخ البداية', type: 'date' },
+    { k: 'end_date', label_en: 'End Date', label_ar: 'تاريخ النهاية', type: 'date' },
+    { k: 'retention_percent', label_en: 'Retention %', label_ar: 'نسبة الاحتجاز %' },
+    { k: 'status', label_en: 'Record Status', label_ar: 'حالة السجل', type: 'status' },
   ],
   assets: [
-    { k: 'name', en: 'Name', ar: 'الاسم' },
-    { k: 'code', en: 'Code', ar: 'الكود' },
-    { k: 'asset_type', en: 'Asset Type', ar: 'نوع الأصل' },
-    { k: 'category', en: 'Category', ar: 'الفئة' },
-    { k: 'manufacturer', en: 'Manufacturer', ar: 'الشركة المصنعة' },
-    { k: 'model', en: 'Model', ar: 'الموديل' },
-    { k: 'serial_number', en: 'Serial Number', ar: 'الرقم التسلسلي' },
-    { k: 'purchase_date', en: 'Purchase Date', ar: 'تاريخ الشراء', type: 'date' },
-    { k: 'purchase_cost', en: 'Purchase Cost', ar: 'تكلفة الشراء', type: 'currency' },
-    { k: 'status', en: 'Record Status', ar: 'حالة السجل', type: 'status' },
+    { k: 'name', label_en: 'Name', label_ar: 'الاسم' },
+    { k: 'code', label_en: 'Code', label_ar: 'الكود' },
+    { k: 'asset_type', label_en: 'Asset Type', label_ar: 'نوع الأصل' },
+    { k: 'category', label_en: 'Category', label_ar: 'الفئة' },
+    { k: 'manufacturer', label_en: 'Manufacturer', label_ar: 'الشركة المصنعة' },
+    { k: 'model', label_en: 'Model', label_ar: 'الموديل' },
+    { k: 'serial_number', label_en: 'Serial Number', label_ar: 'الرقم التسلسلي' },
+    { k: 'purchase_date', label_en: 'Purchase Date', label_ar: 'تاريخ الشراء', type: 'date' },
+    { k: 'purchase_cost', label_en: 'Purchase Cost', label_ar: 'تكلفة الشراء', type: 'currency' },
+    { k: 'status', label_en: 'Record Status', label_ar: 'حالة السجل', type: 'status' },
   ],
   maintenance: [
-    { k: 'title', en: 'Title', ar: 'العنوان' },
-    { k: 'asset_name', en: 'Asset', ar: 'الأصل' },
-    { k: 'maintenance_type', en: 'Maintenance Type', ar: 'نوع الصيانة' },
-    { k: 'priority', en: 'Priority', ar: 'الأولوية' },
-    { k: 'scheduled_date', en: 'Scheduled Date', ar: 'التاريخ المجدول', type: 'date' },
-    { k: 'next_due_date', en: 'Next Due', ar: 'الاستحقاق التالي', type: 'date' },
-    { k: 'estimated_cost', en: 'Estimated Cost', ar: 'التكلفة المقدرة', type: 'currency' },
-    { k: 'status', en: 'Record Status', ar: 'حالة السجل', type: 'status' },
+    { k: 'title', label_en: 'Title', label_ar: 'العنوان' },
+    { k: 'asset_name', label_en: 'Asset', label_ar: 'الأصل' },
+    { k: 'maintenance_type', label_en: 'Maintenance Type', label_ar: 'نوع الصيانة' },
+    { k: 'priority', label_en: 'Priority', label_ar: 'الأولوية' },
+    { k: 'scheduled_date', label_en: 'Scheduled Date', label_ar: 'التاريخ المجدول', type: 'date' },
+    { k: 'next_due_date', label_en: 'Next Due', label_ar: 'الاستحقاق التالي', type: 'date' },
+    { k: 'estimated_cost', label_en: 'Estimated Cost', label_ar: 'التكلفة المقدرة', type: 'currency' },
+    { k: 'status', label_en: 'Record Status', label_ar: 'حالة السجل', type: 'status' },
   ],
 };
 
@@ -496,7 +496,7 @@ function TimelineStep({ step, locale, t }) {
           <span style={{ fontSize: '12px', color: stateMeta.color }}>{stateMeta.label}</span>
         </div>
         <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
-          {step.actor_name ? step.actor_name : (step.state === 'current' ? (locale === 'ar' ? '—' : '—') : '')}
+          {step.actor_name ? step.actor_name : (step.state === 'current' ? '—' : '')}
           {step.actor_role ? ` · ${ROLE_LABELS[locale]?.[step.actor_role] || step.actor_role}` : ''}
           {step.at ? `  ·  ${formatDateTime(step.at)}` : ''}
         </div>
@@ -615,7 +615,7 @@ function ApprovalDetailModal({ detail, tab, locale, t, moduleLabel, statusLabel,
                   {fields
                     ? fields.map(f => (
                         <React.Fragment key={f.k}>
-                          <div style={{ color: 'var(--color-text-secondary)' }}>{locale === 'ar' ? f.ar : f.en}</div>
+                          <div style={{ color: 'var(--color-text-secondary)' }}>{localizedName(f, locale, ['label'])}</div>
                           <div style={{ wordBreak: 'break-word' }}>{sourceFieldValue(f, source, locale)}</div>
                         </React.Fragment>
                       ))

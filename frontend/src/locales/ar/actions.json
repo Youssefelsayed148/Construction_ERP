@@ -5,5 +5,27 @@
     "loading": "جار التحميل...",
     "displayFailed": "تعذر عرض المهام. يرجى المحاولة مرة أخرى.",
     "retry": "حاول مرة أخرى"
+  },
+  "myActions": {
+    "title": "مهامي",
+    "overdue": "متأخرة",
+    "dueToday": "تستحق اليوم",
+    "dueSoon": "تستحق قريباً",
+    "awaitingMe": "بانتظاري",
+    "delegated": "مُوكلة",
+    "recentlyCompleted": "منجزة حديثاً",
+    "priority": "الأولوية",
+    "all": "الكل",
+    "due": "تستحق",
+    "noDue": "بدون موعد",
+    "acknowledge": "إقرار",
+    "complete": "إنجاز",
+    "empty": "لا يوجد شيء هنا.",
+    "source": "المصدر",
+    "status": "الحالة",
+    "delegatedTo": "مُوكلة إلى",
+    "notifications": "الإشعارات",
+    "markRead": "تحديد كمقروء",
+    "noNotifs": "لا إشعارات."
   }
 }

@@ -196,7 +196,7 @@ function Payroll() {
                                   </tr>
                                 ) : (expandedData[period.id] || []).map((item, idx) => (
                                   <tr key={`${period.id}-detail-${idx}`}>
-                                    <td>{locale === 'ar' ? (item.name_ar || item.employee_name_ar || item.employee_name) : (item.name_en || item.employee_name_en || item.employee_name)}</td>
+                                    <td>{localizedName(item, locale, ['name', 'employee_name'])}</td>
                                     <td style={{ fontFamily: 'monospace' }}>{item.basic_salary ? formatCurrency(item.basic_salary) : '—'}</td>
                                     <td style={{ fontFamily: 'monospace', color: 'var(--color-accent)', fontWeight: 500 }}>{item.net_salary ? formatCurrency(item.net_salary) : '—'}</td>
                                   </tr>

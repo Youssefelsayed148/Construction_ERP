@@ -4,7 +4,12 @@
   "instructions": "Site instructions",
   "offline": {
     "title": "Daily reports waiting to sync",
-    "status": { "queued": "Waiting to sync", "syncing": "Syncing", "conflict": "Needs review", "failed": "Sync failed" },
+    "status": {
+      "queued": "Waiting to sync",
+      "syncing": "Syncing",
+      "conflict": "Needs review",
+      "failed": "Sync failed"
+    },
     "retry": "Retry sync",
     "remove": "Remove",
     "removeTitle": "Remove offline report?",
@@ -97,5 +102,19 @@
     "stickyNotesAreNotFormalCorrespondenceUseTheOfficialDocument": "Sticky notes are not formal correspondence — use the official document registers for anything contractual.",
     "uploading": "Uploading…",
     "photo": "photo"
+  },
+  "workspace": {
+    "sections": {
+      "activities": "Today's Activities",
+      "manpower": "Manpower",
+      "equipment": "Equipment",
+      "deliveries": "Deliveries (GRNs)",
+      "executedQuantities": "Executed Quantities",
+      "inspections": "Inspections",
+      "safety": "Safety",
+      "materialReadiness": "Material Readiness",
+      "instructions": "Open Engineer Instructions",
+      "photos": "Today's Photos"
+    }
   }
 }
