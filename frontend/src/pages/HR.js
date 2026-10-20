@@ -1,6 +1,7 @@
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
+import { errorMessage } from '../utils/errorMessage';
 import LoadMore from '../components/common/LoadMore';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import { Search, Plus, Edit, Trash2, Users, Calendar, Clock, HardHat, DollarSign, X } from 'lucide-react';
@@ -259,7 +260,7 @@ function EmployeeModal({ employee, locale, t, onClose, onSave }) {
       const res = await fetchApi(url, { method, body: JSON.stringify(payload) });
       if (res.success) { onSave(); onClose(); }
       else { setError(res.error || 'Save failed'); }
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e); }
     finally { setSaving(false); }
   };
 
@@ -338,7 +339,7 @@ function EmployeeModal({ employee, locale, t, onClose, onSave }) {
                   </select>
                 </div>
               </div>
-              {error && <div className="alert alert-danger">{error}</div>}
+              {error && <div className="alert alert-danger">{errorMessage(error, t)}</div>}
             </div>
           </form>
         </div>
@@ -482,7 +483,7 @@ function AttendanceModal({ locale, t, date, onClose, onSave }) {
       const res = await fetchApi(`${API_URL}/hr/attendance`, { method: 'POST', body: JSON.stringify(form) });
       if (res.success) { onSave(); onClose(); }
       else { setError(res.error || 'Save failed'); }
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e); }
     finally { setSaving(false); }
   };
 
@@ -533,7 +534,7 @@ function AttendanceModal({ locale, t, date, onClose, onSave }) {
                 <label className="form-label">{t('hr.system.notes')}</label>
                 <textarea className="form-textarea" value={form.notes} onChange={e => handleChange('notes', e.target.value)} />
               </div>
-              {error && <div className="alert alert-danger">{error}</div>}
+              {error && <div className="alert alert-danger">{errorMessage(error, t)}</div>}
             </div>
           </form>
         </div>
@@ -704,7 +705,7 @@ function LaborerModal({ laborer, locale, t, onClose, onSave }) {
       const res = await fetchApi(url, { method, body: JSON.stringify(payload) });
       if (res.success) { onSave(); onClose(); }
       else { setError(res.error || 'Save failed'); }
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e); }
     finally { setSaving(false); }
   };
 
@@ -756,7 +757,7 @@ function LaborerModal({ laborer, locale, t, onClose, onSave }) {
                   <span className="form-label" style={{ margin: 0 }}>{t('hr.system.active')}</span>
                 </label>
               </div>
-              {error && <div className="alert alert-danger">{error}</div>}
+              {error && <div className="alert alert-danger">{errorMessage(error, t)}</div>}
             </div>
           </form>
         </div>
@@ -890,7 +891,7 @@ function LaborPaymentModal({ locale, t, onClose, onSave }) {
       const res = await fetchApi(`${API_URL}/hr/labor-payments`, { method: 'POST', body: JSON.stringify(payload) });
       if (res.success) { onSave(); onClose(); }
       else { setError(res.error || 'Save failed'); }
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e); }
     finally { setSaving(false); }
   };
 
@@ -935,7 +936,7 @@ function LaborPaymentModal({ locale, t, onClose, onSave }) {
                   {formatCurrency(total)}
                 </p>
               </div>
-              {error && <div className="alert alert-danger">{error}</div>}
+              {error && <div className="alert alert-danger">{errorMessage(error, t)}</div>}
             </div>
           </form>
         </div>

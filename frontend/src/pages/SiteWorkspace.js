@@ -3,6 +3,7 @@ import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
+import { errorMessage } from '../utils/errorMessage';
 import TextEntryDialog from '../components/common/TextEntryDialog';
 import LoadMore from '../components/common/LoadMore';
 import { ArrowLeft, Camera, Sun, Users, Truck, HardHat, ClipboardList, AlertTriangle, StickyNote, Play } from 'lucide-react';
@@ -80,7 +81,7 @@ function SiteWorkspace() {
   const load = useCallback(() => {
     fetchApi(`${API_URL}/projects/${id}/workspace?date=${today}`)
       .then(r => setData(r.data))
-      .catch(e => setError(e.message));
+      .catch(e => setError(e));
     fetchApi(`${API_URL}/projects/${id}/sticky-notes?limit=200&offset=0`)
       .then(r => { setNotes(r.data || []); setNotesTotalCount(r.totalCount ?? null); })
       .catch(() => {});
@@ -92,7 +93,7 @@ function SiteWorkspace() {
       const r = await fetchApi(`${API_URL}/projects/${id}/sticky-notes?limit=200&offset=${notesLength.current}`);
       setNotes(current => [...current, ...(r.data || [])]);
       setNotesTotalCount(r.totalCount ?? null);
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e); }
     finally { setLoadingMoreNotes(false); }
   };
 
@@ -128,7 +129,7 @@ function SiteWorkspace() {
       setPhotoFile(null);
       load();
     } catch (e) {
-      setError(e.message);
+      setError(e);
       throw e;
     } finally {
       setUploadingPhoto(false);
@@ -140,13 +141,13 @@ function SiteWorkspace() {
     fetchApi(`${API_URL}/projects/${id}/sticky-notes`, {
       method: 'POST', body: JSON.stringify({ text: newNote, scope }),
     }).then(() => { setNewNote(''); load(); })
-      .catch(e => setError(e.message));
+      .catch(e => setError(e));
   };
 
   const convertNote = (noteId) => {
     fetchApi(`${API_URL}/projects/${id}/sticky-notes/${noteId}/convert-to-action`, {
       method: 'POST', body: JSON.stringify({}),
-    }).then(load).catch(e => setError(e.message));
+    }).then(load).catch(e => setError(e));
   };
 
   const assembleReport = () => {
@@ -154,10 +155,10 @@ function SiteWorkspace() {
       method: 'POST',
       body: JSON.stringify({ report_date: today, narrative, issues_blockers: issues, next_day_plan: plan }),
     }).then(() => navigate(`/projects/${id}/site`))
-      .catch(e => setError(e.message));
+      .catch(e => setError(e));
   };
 
-  if (error) return <div className="page-container"><div className="alert alert-danger">{error}</div></div>;
+  if (error) return <div className="page-container"><div className="alert alert-danger">{errorMessage(error, translate)}</div></div>;
   if (!data) return <div className="page-container"><p>{translate('site.system.loadingWorkspace')}</p></div>;
 
   return (

@@ -1,6 +1,7 @@
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
+import { errorMessage } from '../utils/errorMessage';
 import ReasonDialog from '../components/common/ReasonDialog';
 import LoadMore from '../components/common/LoadMore';
 import { Search, Plus, Edit, Trash2, FileText, Receipt, Eye, X, CreditCard } from 'lucide-react';
@@ -362,7 +363,7 @@ function InvoiceModal({ invoice, locale, t, projects, clients, onClose, onSave }
       const res = await fetchApi(url, { method, body: JSON.stringify(body) });
       if (res.success) { onSave(); }
       else { setError(res.error || 'Save failed'); }
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e); }
     finally { setSaving(false); }
   };
 
@@ -421,7 +422,7 @@ function InvoiceModal({ invoice, locale, t, projects, clients, onClose, onSave }
                 <textarea className="form-textarea" value={form.description} onChange={e => handleChange('description', e.target.value)} rows={3} />
               </div>
 
-              {error && <div className="alert alert-danger">{error}</div>}
+              {error && <div className="alert alert-danger">{errorMessage(error, t)}</div>}
             </div>
           </form>
         </div>
@@ -660,7 +661,7 @@ function PaymentForm({ invoice, locale, t, onClose, onSaved }) {
       const res = await fetchApi(`${API_URL}/payments`, { method: 'POST', body: JSON.stringify(body) });
       if (res.success) { onSaved(); }
       else { setError(res.error || 'Save failed'); }
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e); }
     finally { setSaving(false); }
   };
 
@@ -704,7 +705,7 @@ function PaymentForm({ invoice, locale, t, onClose, onSaved }) {
             <label className="form-label">{t('common.notes')}</label>
             <input className="form-input" value={form.notes} onChange={e => handleChange('notes', e.target.value)} />
           </div>
-          {error && <div className="alert alert-danger">{error}</div>}
+          {error && <div className="alert alert-danger">{errorMessage(error, t)}</div>}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
             <button type="button" className="btn" onClick={onClose}>{t('common.cancel')}</button>
             <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={saving}>

@@ -3,6 +3,7 @@ import { translateEnum } from '../i18n/enums';
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
+import { errorMessage } from '../utils/errorMessage';
 import LoadMore from '../components/common/LoadMore';
 import {
   AlertTriangle, CalendarClock, Clock, CircleCheck, Forward,
@@ -85,7 +86,7 @@ function MyActionsContent() {
       setNotificationsTotalCount(notifRes.totalCount ?? null);
       setError(null);
     } catch (e) {
-      setError(e.message);
+      setError(e);
     } finally {
       setLoading(false);
     }
@@ -97,7 +98,7 @@ function MyActionsContent() {
       const result = await fetchApi(`${API_URL}/notifications?limit=200&offset=${notificationsLength.current}`);
       setNotifications(current => [...current, ...(result.data || [])]);
       setNotificationsTotalCount(result.totalCount ?? null);
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e); }
     finally { setLoadingMoreNotifications(false); }
   };
 
@@ -108,7 +109,7 @@ function MyActionsContent() {
       await fetchApi(`${API_URL}/actions/${id}/${action}`, { method: 'POST', body: JSON.stringify(body || {}) });
       await load();
     } catch (e) {
-      setError(e.message);
+      setError(e);
     }
   };
 
@@ -117,7 +118,7 @@ function MyActionsContent() {
       await fetchApi(`${API_URL}/notifications/${id}/read`, { method: 'POST' });
       await load();
     } catch (e) {
-      setError(e.message);
+      setError(e);
     }
   };
 
@@ -150,7 +151,7 @@ function MyActionsContent() {
   return (
     <div className="page-container">
       <h1>{L.title}</h1>
-      {error && <div style={{ color: '#b91c1c', marginBottom: 12 }}>{error}</div>}
+      {error && <div style={{ color: '#b91c1c', marginBottom: 12 }}>{errorMessage(error, t)}</div>}
 
       {/* Bucket tabs */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>

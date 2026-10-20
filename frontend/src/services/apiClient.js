@@ -28,8 +28,35 @@ export function errorCodeToTranslationKey(code, status) {
     project_id_mismatch: 'errors.projectIdMismatch',
     invalid_project_id: 'errors.invalidProjectId',
   };
+  // C2: snake_case backend error codes map by convention to errors.<code> keys
+  // (locales/en/errors.json + locales/ar/errors.json). Only codes with a
+  // catalog entry resolve specifically; anything else keeps the generic
+  // localized status fallback so no raw server English is ever rendered.
+  if (!known[code] && typeof code === 'string' && /^[a-z][a-z0-9_]*$/.test(code) && SNAKE_CASE_ERROR_CODES.has(code)) {
+    return `errors.${code}`;
+  }
   return known[code] || (status === 503 ? 'errors.databaseUnavailable' : status === 504 ? 'errors.databaseTimeout' : status === 401 ? 'errors.unauthorized' : status === 403 ? 'errors.forbidden' : status >= 500 ? 'errors.serverError' : 'errors.requestFailed');
 }
+
+// The C2 error contract catalog (locales/*/errors.json). Kept explicit so an
+// unknown or misspelled code falls back to the generic localized message
+// instead of a missing key.
+export const SNAKE_CASE_ERROR_CODES = new Set([
+  'invoice_not_found', 'invoice_posted', 'void_reason_required', 'invoice_already_terminal',
+  'invoice_has_live_payments', 'invoice_not_issued', 'payment_not_found', 'payment_already_void',
+  'purchase_request_not_found', 'purchase_order_not_found', 'invalid_document_id',
+  'no_compliant_quotation', 'supplier_return_not_found', 'unknown_document_type',
+  'grn_requires_accepted_mir', 'unit_cost_not_accepted', 'stock_movement_not_found',
+  'movement_not_quarantined_receipt', 'transfer_not_found', 'transfer_already_processed',
+  'warehouse_not_found', 'warehouse_stock_not_found', 'employee_not_found', 'attendance_duplicate',
+  'invalid_status', 'leave_request_not_found', 'laborer_not_found', 'labor_payment_not_found',
+  'project_not_found', 'project_template_not_found', 'phase_not_found', 'team_member_duplicate',
+  'team_member_not_found', 'milestone_not_found', 'project_provisioning_rolled_back',
+  'unknown_approval_module', 'approval_not_found', 'agent_request_not_found', 'agent_request_forbidden',
+  'business_rule_violation', 'ledger_account_not_mapped', 'database_conflict',
+  'database_reference_violation', 'database_check_violation', 'invalid_notification_preference',
+  'supplier_invoice_duplicate', 'supplier_invoice_not_approvable', 'cancel_reason_required',
+]);
 
 function withAuthHeaders(options) {
   const headers = new Headers(options.headers || {});

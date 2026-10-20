@@ -3,6 +3,7 @@ import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { formatCurrency } from '../utils/formatters';
 import { useLocale } from '../hooks/useLocale';
+import { errorMessage } from '../utils/errorMessage';
 import TextEntryDialog from '../components/common/TextEntryDialog';
 import { authService } from '../services/api';
 import LoadMore from '../components/common/LoadMore';
@@ -248,7 +249,7 @@ function Approvals() {
         const res = await fetchApi(`${API_URL}/approvals/audit?${params}`);
         if (res.success) { setAudit(current => append ? [...current, ...(res.records || [])] : (res.records || [])); setTotalCounts(current => ({ ...current, audit: res.totalCount ?? null })); }
       }
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e); }
     finally { setLoading(false); setLoadingMore(false); }
   }, [tab, auditFilters]);
 
@@ -327,7 +328,7 @@ function Approvals() {
         </div>
       )}
 
-      {error && <div className="alert alert-danger" style={{ marginBottom: '16px' }}>{error}</div>}
+      {error && <div className="alert alert-danger" style={{ marginBottom: '16px' }}>{errorMessage(error, t)}</div>}
 
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>

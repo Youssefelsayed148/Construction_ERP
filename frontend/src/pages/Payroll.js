@@ -1,6 +1,7 @@
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
+import { errorMessage } from '../utils/errorMessage';
 import { Search, Plus, DollarSign, CheckCircle, ChevronDown, ChevronRight, X } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 import LoadMore from '../components/common/LoadMore';
@@ -259,7 +260,7 @@ function CreatePayrollModal({ locale, t, onClose, onSave }) {
       } else {
         setError(res.error || 'Failed to generate payroll');
       }
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e); }
     finally { setCreating(false); }
   };
 
@@ -299,7 +300,7 @@ function CreatePayrollModal({ locale, t, onClose, onSave }) {
                   {t('payroll.system.payrollGeneratedSuccessfully')}
                 </div>
               )}
-              {error && <div className="alert alert-danger">{error}</div>}
+              {error && <div className="alert alert-danger">{errorMessage(error, t)}</div>}
             </div>
           </form>
         </div>

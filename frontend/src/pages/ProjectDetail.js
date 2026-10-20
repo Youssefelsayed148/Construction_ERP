@@ -2,6 +2,7 @@ import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
+import { errorMessage } from '../utils/errorMessage';
 import LoadMore from '../components/common/LoadMore';
 import { ArrowLeft, Edit, Plus, Users, Calendar, Flag, MapPin, X, Briefcase, TrendingUp, TrendingDown } from 'lucide-react';
 import { formatCurrency, formatDate, formatPercent } from '../utils/formatters';
@@ -90,7 +91,7 @@ function ProjectDetail() {
         setError(res.error || 'Failed to load project');
       }
     } catch (e) {
-      setError(e.message);
+      setError(e);
     } finally {
       setLoading(false);
     }
@@ -175,7 +176,7 @@ function ProjectDetail() {
           <ArrowLeft size={16} />
           {t('projects.system.backToProjects')}
         </button>
-        <div className="alert alert-danger">{error}</div>
+        <div className="alert alert-danger">{errorMessage(error, t)}</div>
       </div>
     );
   }
@@ -565,7 +566,7 @@ function EditProjectModal({ project, locale, t, onClose, onSave, clients, manage
       const res = await fetchApi(`${API_URL}/projects/${project.id}`, { method: 'PUT', body: JSON.stringify(body) });
       if (res.success) { onSave(); onClose(); }
       else { setError(res.error || 'Save failed'); }
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e); }
     finally { setSaving(false); }
   };
 
@@ -673,7 +674,7 @@ function EditProjectModal({ project, locale, t, onClose, onSave, clients, manage
                 </div>
               </div>
 
-              {error && <div className="alert alert-danger">{error}</div>}
+              {error && <div className="alert alert-danger">{errorMessage(error, t)}</div>}
             </div>
           </form>
         </div>
@@ -716,7 +717,7 @@ function PhaseModal({ phase, locale, t, projectId, onClose, onSave }) {
       const res = await fetchApi(url, { method, body: JSON.stringify(body) });
       if (res.success) { onSave(); onClose(); }
       else { setError(res.error || 'Save failed'); }
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e); }
     finally { setSaving(false); }
   };
 
@@ -769,7 +770,7 @@ function PhaseModal({ phase, locale, t, projectId, onClose, onSave }) {
                 </div>
               </div>
 
-              {error && <div className="alert alert-danger">{error}</div>}
+              {error && <div className="alert alert-danger">{errorMessage(error, t)}</div>}
             </div>
           </form>
         </div>
@@ -800,7 +801,7 @@ function TeamModal({ locale, t, employees, totalCount, loadingMore, onLoadMore, 
       const res = await fetchApi(`${API_URL}/projects/${projectId}/team`, { method: 'POST', body: JSON.stringify(body) });
       if (res.success) { onSave(); onClose(); }
       else { setError(res.error || 'Failed to add member'); }
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e); }
     finally { setSaving(false); }
   };
 
@@ -840,7 +841,7 @@ function TeamModal({ locale, t, employees, totalCount, loadingMore, onLoadMore, 
                 </select>
               </div>
 
-              {error && <div className="alert alert-danger">{error}</div>}
+              {error && <div className="alert alert-danger">{errorMessage(error, t)}</div>}
             </div>
           </form>
         </div>
@@ -883,7 +884,7 @@ function MilestoneModal({ milestone, locale, t, projectId, onClose, onSave }) {
       const res = await fetchApi(url, { method, body: JSON.stringify(body) });
       if (res.success) { onSave(); onClose(); }
       else { setError(res.error || 'Save failed'); }
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e); }
     finally { setSaving(false); }
   };
 
@@ -926,7 +927,7 @@ function MilestoneModal({ milestone, locale, t, projectId, onClose, onSave }) {
                 </div>
               </div>
 
-              {error && <div className="alert alert-danger">{error}</div>}
+              {error && <div className="alert alert-danger">{errorMessage(error, t)}</div>}
             </div>
           </form>
         </div>

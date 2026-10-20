@@ -1,6 +1,7 @@
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
+import { errorMessage } from '../utils/errorMessage';
 import { Search, Plus, Edit, Trash2, Package, X, RotateCcw } from 'lucide-react';
 import ReasonDialog from '../components/common/ReasonDialog';
 import LoadMore from '../components/common/LoadMore';
@@ -310,7 +311,7 @@ function ItemModal({ item, locale, t, onClose, onSave }) {
       const res = await fetchApi(url, { method, body: JSON.stringify(form) });
       if (res.success) { onSave(); onClose(); }
       else { setError(res.error || 'Save failed'); }
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e); }
     finally { setSaving(false); }
   };
 
@@ -395,7 +396,7 @@ function ItemModal({ item, locale, t, onClose, onSave }) {
                 </label>
               </div>
 
-              {error && <div className="alert alert-danger">{error}</div>}
+              {error && <div className="alert alert-danger">{errorMessage(error, t)}</div>}
             </div>
           </form>
         </div>

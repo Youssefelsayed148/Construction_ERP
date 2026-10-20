@@ -56,11 +56,14 @@ describe('MyActions screen', () => {
     expect(container.querySelectorAll('tbody tr').length).toBe(0);
   });
 
-  test('a failed load shows the error message and the empty bucket view', async () => {
+  test('a failed load shows the localized error and the empty bucket view', async () => {
     global.fetch = jest.fn().mockRejectedValue(new Error('Database unavailable'));
     jest.spyOn(console, 'error').mockImplementation(() => {});
     render(); await flush();
-    expect(container.textContent).toContain('Database unavailable');
+    // C2 contract: the caught request error renders through its localized
+    // errors.networkError message, never the raw thrown string.
+    expect(container.textContent).toContain('Cannot reach the server. Check your connection.');
+    expect(container.textContent).not.toContain('Database unavailable');
     expect(container.textContent).toContain('Nothing here.'); // error state, not a crash
     expect(container.querySelector('tbody')).not.toBe(null);
   });

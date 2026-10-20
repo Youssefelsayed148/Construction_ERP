@@ -1,6 +1,7 @@
 import { apiFetch } from '../services/apiClient';
 import React, { useState } from 'react';
 import { useLocale } from '../hooks/useLocale';
+import { errorMessage } from '../utils/errorMessage';
 import LoadMore from '../components/common/LoadMore';
 import { formatNumber } from '../utils/formatters';
 
@@ -85,7 +86,7 @@ export default function ProcurementReview() {
       <input id="rfq-id" className="form-control" type="number" min="1" required value={rfqId} onChange={(e) => setRfqId(e.target.value)} />
       <button className="btn btn-primary" disabled={loading}>{loading ? t('common.loading') : t('procurement.comparison.compare')}</button>
     </form>
-    {error && <div className="alert alert-danger">{error}</div>}
+    {error && <div className="alert alert-danger">{errorMessage(error, t)}</div>}
     {comparison && <>
       <h2>{comparison.rfq_number}</h2>
       <div className="portal-actions">

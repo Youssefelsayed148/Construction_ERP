@@ -3,6 +3,7 @@ import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
+import { errorMessage } from '../utils/errorMessage';
 import TextEntryDialog from '../components/common/TextEntryDialog';
 import LoadMore from '../components/common/LoadMore';
 import { ArrowLeft, Plus, FlaskConical, AlertOctagon, ShieldCheck, Siren, X, CheckCircle, ClipboardCheck, ListChecks, Wrench, PackageCheck, Gauge } from 'lucide-react';
@@ -254,7 +255,7 @@ function TestModal({ projectId, locale, t, onClose, onSave }) {
       });
       if (res.success) { onSave(); onClose(); }
       else setError(res.error || 'Save failed');
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e); }
     finally { setSaving(false); }
   };
 
@@ -295,7 +296,7 @@ function TestModal({ projectId, locale, t, onClose, onSave }) {
                 <label className="form-label">{t('qhse.certificates.notes')}</label>
                 <textarea className="form-textarea" value={form.notes} onChange={e => handleChange('notes', e.target.value)} />
               </div>
-              {error && <div className="alert alert-danger">{error}</div>}
+              {error && <div className="alert alert-danger">{errorMessage(error, t)}</div>}
             </div>
           </form>
         </div>
@@ -447,7 +448,7 @@ function NcrModal({ projectId, locale, t, fromTest, onClose, onSave }) {
       const res = await fetchApi(`${API_URL}/qhse/ncrs`, { method: 'POST', body: JSON.stringify(body) });
       if (res.success) { onSave(); onClose(); }
       else setError(res.error || 'Save failed');
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e); }
     finally { setSaving(false); }
   };
 
@@ -476,7 +477,7 @@ function NcrModal({ projectId, locale, t, fromTest, onClose, onSave }) {
                   {['minor', 'major', 'critical'].map(s => <option key={s} value={s}>{SEVERITY_LABELS[locale]?.[s] || s}</option>)}
                 </select>
               </div>
-              {error && <div className="alert alert-danger">{error}</div>}
+              {error && <div className="alert alert-danger">{errorMessage(error, t)}</div>}
             </div>
           </form>
         </div>
@@ -594,7 +595,7 @@ function InspectionModal({ projectId, locale, t, onClose, onSave }) {
       const res = await fetchApi(`${API_URL}/qhse/inspections`, { method: 'POST', body: JSON.stringify(body) });
       if (res.success) { onSave(); onClose(); }
       else setError(res.error || 'Save failed');
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e); }
     finally { setSaving(false); }
   };
 
@@ -633,7 +634,7 @@ function InspectionModal({ projectId, locale, t, onClose, onSave }) {
                 <label className="form-label">{t('qhse.system.findings2')}</label>
                 <textarea className="form-textarea" value={form.findings} onChange={e => setForm(f => ({ ...f, findings: e.target.value }))} />
               </div>
-              {error && <div className="alert alert-danger">{error}</div>}
+              {error && <div className="alert alert-danger">{errorMessage(error, t)}</div>}
             </div>
           </form>
         </div>
@@ -765,7 +766,7 @@ function IncidentModal({ projectId, locale, t, onClose, onSave }) {
       });
       if (res.success) { onSave(); onClose(); }
       else setError(res.error || 'Save failed');
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e); }
     finally { setSaving(false); }
   };
 
@@ -810,7 +811,7 @@ function IncidentModal({ projectId, locale, t, onClose, onSave }) {
                   <input className="form-input" value={form.corrective_action} onChange={e => handleChange('corrective_action', e.target.value)} />
                 </div>
               </div>
-              {error && <div className="alert alert-danger">{error}</div>}
+              {error && <div className="alert alert-danger">{errorMessage(error, t)}</div>}
             </div>
           </form>
         </div>
