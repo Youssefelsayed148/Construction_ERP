@@ -415,6 +415,132 @@ router.post('/reservations/:id/release', authenticate, authorize(), async (req, 
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 });
 
+// ---------------------------------------------------------------------------
+// Warehouses — master create/update (B3: C-MASTER-001 / C-INVENTORY-001)
+// ---------------------------------------------------------------------------
+
+// Current warehouses schema (migrate-2.2.js base + inventory-migration.js
+// warehouse_type + replenishment-migration.js storage_capacity). No code
+// column exists, so the numbering service is not needed here.
+const WAREHOUSE_BODY = {
+  name: Joi.string().trim().max(255).required(),
+  name_en: Joi.string().trim().max(255).allow('', null),
+  name_ar: Joi.string().trim().max(255).allow('', null),
+  warehouse_type: Joi.string().valid(...WAREHOUSE_TYPES).default('project'),
+  project_id: Joi.number().integer().allow(null),
+  storage_capacity: Joi.number().min(0).allow(null),
+};
+
+router.post('/', authenticate, authorize(), async (req, res) => {
+  try {
+    const { error, value } = Joi.object(WAREHOUSE_BODY).validate(req.body);
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    // Project scope through the central check when the body names a project.
+    authorizeProjectPayload(req, value);
+
+    const created = await auditedTransaction(
+      (q) => q(
+        `INSERT INTO warehouses (name, name_en, name_ar, type, warehouse_type, project_id, storage_capacity)
+         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+        [value.name, value.name_en || value.name, value.name_ar || value.name_en || value.name,
+         value.warehouse_type, value.warehouse_type, value.project_id ?? null, value.storage_capacity ?? null]
+      ).then((r) => r.rows[0]),
+      (result) => ({
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        action: 'create', module: 'warehouses',
+        description: `Created warehouse ${result.name}`,
+        entityId: result.id, entityType: 'warehouse',
+      })
+    );
+    res.status(201).json({ success: true, data: created });
+  } catch (e) {
+    res.status(e.error_code && e.status ? e.status : 400).json({
+      success: false, error: e.message, ...(e.error_code ? { error_code: e.error_code, error_params: e.error_params || {} } : {}),
+    });
+  }
+});
+
+router.put('/:id', authenticate, authorize(), async (req, res) => {
+  try {
+    const { error, value } = Joi.object({
+      ...WAREHOUSE_BODY, name: Joi.string().trim().max(255),
+      warehouse_type: Joi.string().valid(...WAREHOUSE_TYPES),
+    }).min(1).validate(req.body);
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    authorizeProjectPayload(req, value);
+
+    const updated = await auditedTransaction(async (q) => {
+      const existing = (await q('SELECT * FROM warehouses WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!existing) return null;
+      const sets = []; const params = []; let i = 1;
+      for (const [k, v] of Object.entries(value)) {
+        sets.push(`${k} = $${i++}`);
+        params.push(k === 'name_ar' ? (v == null || v === '' ? null : v) : v);
+      }
+      if (sets.length) {
+        params.push(req.params.id);
+        return (await q(`UPDATE warehouses SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`, params)).rows[0];
+      }
+      return existing;
+    }, (result) => (result ? {
+      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+      action: 'update', module: 'warehouses',
+      description: `Updated warehouse ${result.name}`,
+      entityId: result.id, entityType: 'warehouse',
+    } : null));
+    if (!updated) return res.status(404).json({ success: false, error: 'Warehouse not found' });
+    res.json({ success: true, data: updated });
+  } catch (e) {
+    res.status(e.error_code && e.status ? e.status : 400).json({
+      success: false, error: e.message, ...(e.error_code ? { error_code: e.error_code, error_params: e.error_params || {} } : {}),
+    });
+  }
+});
+
+// PUT /api/warehouses/:id/stock/:itemId/reorder-level — the reorder-level setter
+// (C-INVENTORY-001): stock is never touched, only the alert threshold.
+router.put('/:id/stock/:itemId/reorder-level', authenticate, authorize(), async (req, res) => {
+  try {
+    const { error, value } = Joi.object({ reorder_level: Joi.number().min(0).required() }).validate(req.body);
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+
+    const updated = await auditedTransaction(async (q) => {
+      const warehouse = (await q('SELECT id, project_id FROM warehouses WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+      if (!warehouse) return null;
+      // Record scope: a project-bound warehouse is only reachable for its project's roles.
+      if (warehouse.project_id != null && !req.accessScope?.companyWide
+          && !(req.accessScope?.projectIds || []).includes(Number(warehouse.project_id))) {
+        const denied = new Error('Warehouse belongs to another project');
+        denied.status = 403; denied.error_code = 'warehouse_project_scope_denied'; denied.error_params = {};
+        throw denied;
+      }
+      const item = (await q('SELECT id FROM item_master WHERE id = $1', [req.params.itemId])).rows[0];
+      if (!item) return null;
+      // Upsert: a (warehouse, item) row may not exist until the first movement; the
+      // threshold must be settable before any movement creates the projection row.
+      return (await q(
+        `INSERT INTO warehouse_stock (warehouse_id, item_id, quantity, reorder_level, updated_at)
+         VALUES ($1, $2, 0, $3, NOW())
+         ON CONFLICT (warehouse_id, item_id)
+         DO UPDATE SET reorder_level = $3, updated_at = NOW()
+         RETURNING *`,
+        [warehouse.id, item.id, value.reorder_level]
+      )).rows[0];
+    }, (result) => (result ? {
+      userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+      action: 'update', module: 'inventory',
+      description: `Set reorder level ${value.reorder_level} for item #${req.params.itemId} at warehouse #${req.params.id}`,
+      entityId: req.params.id, entityType: 'warehouse_stock',
+    } : null));
+    if (!updated) return res.status(404).json({ success: false, error: 'Warehouse or item not found' });
+    res.json({ success: true, data: updated });
+  } catch (e) {
+    res.status(e.error_code && e.status ? e.status : 400).json({
+      success: false, error: e.message, ...(e.error_code ? { error_code: e.error_code, error_params: e.error_params || {} } : {}),
+    });
+  }
+});
+
 // Register the catch-all warehouse detail route after named collection routes.
 router.get('/:id', authenticate, authorize(), async (req, res) => {
   try {
