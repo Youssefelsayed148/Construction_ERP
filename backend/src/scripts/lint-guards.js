@@ -16,6 +16,9 @@
 //              shared cost view so dashboards, costing and the commercial engine never disagree (closeout A2.4)
 //   mutation-without-audit  route SQL/known write helpers without a reachable business audit;
 //              AST-based, per-file ratchet. Six endpoint exemptions: mutation-audit-exemptions.json.
+//   raw-error-message  `res.status(..).json({ ..., error: e.message })` in routes/: a raw English server
+//              string with no stable error_code. Convert to routeFail/typedFail (C2 error contract);
+//              per-file ratchet, per-file baseline that may only go down.
 //
 // The baseline is per file. A file may not exceed its recorded count, and a file
 // with no entry may not have any. A site is a COUNT(/MAX( line with "+ 1" in the same
@@ -159,6 +162,14 @@ const countCounterIncrements = (text) =>
   text.split(/\r?\n/).filter((l) => JS_COUNTER_PLUS_ONE.test(l) || SQL_SET_BOUND.test(l)).length;
 
 const CATCH_TO_ZERO = /\.catch\(\s*\(\s*\w*\s*\)\s*=>\s*(?:\(\s*\{\s*rows\s*:|zero\()/g;
+// C2: a raw English error response — the JSON body carries `error: e.message` and no
+// stable error_code the frontend could localize. Lines that already answer with the
+// contract (error_code / error_key / a typed helper) are compliant. Comments do not count.
+const RAW_ERROR_MESSAGE = /\berror:\s*(?:e|err|error\d*)\s*\.\s*message\b/;
+const TYPED_ERROR_LINE = /\b(?:error_code|error_key|routeFail|typedFail)\b/;
+function countRawErrorMessages(text) {
+  return text.split('\n').filter((l) => !/^\s*\/\//.test(l) && RAW_ERROR_MESSAGE.test(l) && !TYPED_ERROR_LINE.test(l)).length;
+}
 const POST_COMMIT_AUDIT = /\bawait\s+(?:logActivity|auditProc|auditFin)\s*\(/g;
 // The replenishment sweep is a leader-locked, multi-step operation rather than
 // one business-row transaction; its completion audit is intentionally separate.
@@ -215,7 +226,7 @@ function walk(dir, out = []) {
 }
 
 function scan() {
-  const result = { 'silent-catch': {}, 'count-numbering': {}, 'counter-rmw': {}, 'catch-to-zero': {}, 'cost-view': {}, 'event-swallow': {}, 'post-commit-audit': {}, 'direct-project-id': {}, 'mutation-without-audit': {} };
+  const result = { 'silent-catch': {}, 'count-numbering': {}, 'counter-rmw': {}, 'catch-to-zero': {}, 'cost-view': {}, 'event-swallow': {}, 'post-commit-audit': {}, 'direct-project-id': {}, 'mutation-without-audit': {}, 'raw-error-message': {} };
   const auditCache = new Map();
   for (const file of walk(srcDir)) {
     const rel = path.relative(srcDir, file).split(path.sep).join('/');
@@ -232,6 +243,8 @@ function scan() {
       if (projectReads) result['direct-project-id'][rel] = projectReads;
       const unboundAuditCalls = countUnboundActivityAudits(text, rel);
       if (unboundAuditCalls) result['post-commit-audit'][rel] = (result['post-commit-audit'][rel] || 0) + unboundAuditCalls;
+      const rawErrors = countRawErrorMessages(text);
+      if (rawErrors) result['raw-error-message'][rel] = rawErrors;
     }
     const lines = text.split('\n');
     let silent = 0;
@@ -299,7 +312,8 @@ function main() {
   const baseline = fs.existsSync(baselinePath) ? JSON.parse(fs.readFileSync(baselinePath, 'utf8')) : {};
   const { failures, improvements } = compare(current, baseline);
   // A rule's first baseline (category absent) may be written; afterwards --update refuses any increase.
-  const blocking = baseline['mutation-without-audit'] ? failures : failures.filter((m) => !m.startsWith('mutation-without-audit'));
+  const firstBaselineAllowed = new Set(['mutation-without-audit', 'raw-error-message']);
+  const blocking = failures.filter((m) => !firstBaselineAllowed.has(m.split(':')[0]));
   if (process.argv.includes('--update') && !blocking.length) {
     fs.writeFileSync(baselinePath, `${JSON.stringify(current, null, 2)}\n`);
     console.log(`baseline written: ${baselinePath}`);

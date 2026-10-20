@@ -10,7 +10,7 @@ const { query, transaction } = require('../config/database');
 const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
-const { typedFail } = require('../utils/typedRoute');
+const { typedFail, routeFail } = require('../utils/typedRoute');
 
 const INVOICE_STATUSES = ['draft', 'sent', 'partially_paid', 'paid', 'overdue', 'void'];
 
@@ -65,7 +65,7 @@ router.get('/:id', authenticate, authorize(), async (req, res) => {
        WHERE i.id = $1`,
       [req.params.id]
     );
-    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Invoice not found' });
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Invoice not found', error_code: 'invoice_not_found', error_params: {} });
 
     const invoice = result.rows[0];
     invoice.status = displayStatus(invoice, invoice.total_paid);
@@ -77,7 +77,7 @@ router.get('/:id', authenticate, authorize(), async (req, res) => {
     const lines = await query('SELECT * FROM invoice_lines WHERE invoice_id = $1 ORDER BY line_no', [req.params.id]);
 
     res.json({ success: true, data: { ...invoice, payments: payments.rows, lines: lines.rows } });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { return routeFail(res, error, 'INVOICES', req); }
 });
 
 router.post('/', authenticate, authorize(), async (req, res) => {
@@ -91,7 +91,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
       description: Joi.string().allow(''),
     });
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
     authorizeProjectPayload(req, value);
 
     // The invoice and its ledger entry commit together.
@@ -126,7 +126,7 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
       status: Joi.string().valid(...INVOICE_STATUSES),
     }).min(1);
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
 
     const sets = []; const params = []; let idx = 1;
     for (const [k, v] of Object.entries(value)) {
@@ -148,17 +148,17 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
       await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'invoices', description: `Updated invoice ${existing.invoice_number}`, entityId: req.params.id, entityType: 'invoice' }, { query: q });
       return { invoice: updated, number: existing.invoice_number };
     });
-    if (outcome.notFound) return res.status(404).json({ success: false, error: 'Invoice not found' });
-    if (outcome.posted) return res.status(409).json({ success: false, error: 'This invoice is already posted to the ledger; void it and issue a new one instead of changing its amount' });
+    if (outcome.notFound) return res.status(404).json({ success: false, error: 'Invoice not found', error_code: 'invoice_not_found', error_params: {} });
+    if (outcome.posted) return res.status(409).json({ success: false, error: 'This invoice is already posted to the ledger; void it and issue a new one instead of changing its amount', error_code: 'invoice_posted', error_params: {} });
 
     res.json({ success: true, data: outcome.invoice });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { return routeFail(res, error, 'INVOICES', req); }
 });
 
 // Void, never delete. An invoice with live payments has to have those payments voided first.
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
   const reason = reasonFrom(req);
-  if (!reason) return res.status(400).json({ success: false, error: 'A reason is required to void an invoice' });
+  if (!reason) return res.status(400).json({ success: false, error: 'A reason is required to void an invoice', error_code: 'void_reason_required', error_params: {} });
   try {
     const outcome = await transaction(async (client) => {
       const q = client.query.bind(client);
@@ -178,18 +178,19 @@ router.delete('/:id', authenticate, authorize(), async (req, res) => {
       await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'void', module: 'invoices', description: `Voided invoice ${updated.invoice_number}: ${reason}`, entityId: req.params.id, entityType: 'invoice' }, { query: q });
       return { invoice: updated };
     });
-    if (outcome.notFound) return res.status(404).json({ success: false, error: 'Invoice not found' });
-    if (outcome.conflict) return res.status(409).json({ success: false, error: `Invoice is already ${outcome.conflict}` });
+    if (outcome.notFound) return res.status(404).json({ success: false, error: 'Invoice not found', error_code: 'invoice_not_found', error_params: {} });
+    if (outcome.conflict) return res.status(409).json({ success: false, error: `Invoice is already ${outcome.conflict}`, error_code: 'invoice_already_terminal', error_params: { status: outcome.conflict } });
     if (outcome.paymentCount) {
       return res.status(400).json({
         success: false,
         error: 'Cannot void an invoice with live payments. Void the payments first.',
-        paymentCount: outcome.paymentCount,
+        error_code: 'invoice_has_live_payments',
+        error_params: { payment_count: outcome.paymentCount },
       });
     }
 
     res.json({ success: true, message: 'Invoice voided' });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { return routeFail(res, error, 'INVOICES', req); }
 });
 
 module.exports = router;

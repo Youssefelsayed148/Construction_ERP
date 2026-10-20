@@ -10,6 +10,7 @@ const { logActivity } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 const { auditedMutation } = require('../utils/auditedMutation');
 const { hasSourceCost } = require('../services/costView');
+const { routeFail } = require('../utils/typedRoute');
 
 // -- Employees --
 router.get('/employees', authenticate, authorize(), async (req, res) => {
@@ -23,15 +24,15 @@ router.get('/employees', authenticate, authorize(), async (req, res) => {
     const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
     const data = await queryPaginated(req, res, query, { sql: `SELECT * FROM employees ${w}`, params: p, orderBy: [{ column: 'name' }] });
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'HR', req); }
 });
 
 router.get('/employees/:id', authenticate, authorize(), async (req, res) => {
   try {
     const r = await query('SELECT * FROM employees WHERE id = $1', [req.params.id]);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Employee not found' });
+    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Employee not found', error_code: 'employee_not_found', error_params: {} });
     res.json({ success: true, data: r.rows[0] });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'HR', req); }
 });
 
 router.post('/employees', authenticate, authorize('owner', 'admin', 'hr_manager'), async (req, res) => {
@@ -46,7 +47,7 @@ router.post('/employees', authenticate, authorize('owner', 'admin', 'hr_manager'
       is_manager: Joi.boolean().default(false),
     });
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
 
     const r = await auditedTransaction(async (q) => {
       if (!value.code) value.code = await nextNumber(q, { table: 'employees', column: 'code', prefix: 'EMP', pad: 4 });
@@ -58,13 +59,13 @@ router.post('/employees', authenticate, authorize('owner', 'admin', 'hr_manager'
       return inserted;
     }, (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hr', description: `Created employee ${value.code}`, entityId: result.rows[0].id, entityType: 'employee' }));
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'HR', req); }
 });
 
 router.put('/employees/:id', authenticate, authorize('owner', 'admin', 'hr_manager'), async (req, res) => {
   try {
     const existing = await query('SELECT * FROM employees WHERE id = $1', [req.params.id]);
-    if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Employee not found' });
+    if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Employee not found', error_code: 'employee_not_found', error_params: {} });
 
     const schema = Joi.object({
       name_ar: Joi.string(), name_en: Joi.string().allow(''), phone: Joi.string().allow(''),
@@ -76,7 +77,7 @@ router.put('/employees/:id', authenticate, authorize('owner', 'admin', 'hr_manag
       is_manager: Joi.boolean(),
     }).min(1);
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
 
     if (value.name_ar) value.name = value.name_ar;
 
@@ -87,7 +88,7 @@ router.put('/employees/:id', authenticate, authorize('owner', 'admin', 'hr_manag
     p.push(req.params.id);
     const r = await auditedTransaction((q) => q(`UPDATE employees SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`, p), (result) => result.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'hr', description: `Updated employee ${existing.rows[0].code}`, entityId: req.params.id, entityType: 'employee' }));
     res.json({ success: true, data: r.rows[0] });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'HR', req); }
 });
 
 router.delete('/employees/:id', authenticate, authorize('owner', 'admin'), async (req, res) => {
@@ -97,9 +98,9 @@ router.delete('/employees/:id', authenticate, authorize('owner', 'admin'), async
       if (r.rows.length === 0) return { skipAudit: true };
       return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, before: r.rows[0], description: `Deleted employee ${r.rows[0].code}` };
     });
-    if (!out.data) return res.status(404).json({ success: false, error: 'Employee not found' });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Employee not found', error_code: 'employee_not_found', error_params: {} });
     res.json({ success: true, message: 'Deleted' });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'HR', req); }
 });
 
 // -- Attendance --
@@ -113,7 +114,7 @@ router.get('/attendance', authenticate, authorize(), async (req, res) => {
     const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
     const data = await queryPaginated(req, res, query, { sql: `SELECT a.*, e.name FROM attendance a LEFT JOIN employees e ON a.employee_id = e.id ${w}`, params: p, orderBy: [{ column: 'a.date', direction: 'DESC' }] });
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'HR', req); }
 });
 
 router.post('/attendance', authenticate, authorize(), async (req, res) => {
@@ -124,7 +125,7 @@ router.post('/attendance', authenticate, authorize(), async (req, res) => {
       check_in: Joi.string().allow(''), check_out: Joi.string().allow(''), notes: Joi.string().allow(''),
     });
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
 
     const out = await auditedMutation(req, { action: 'create', module: 'hr', entityType: 'attendance' }, async (q) => {
       const existing = await q('SELECT id FROM attendance WHERE employee_id = $1 AND date = $2', [value.employee_id, value.date]);
@@ -135,9 +136,9 @@ router.post('/attendance', authenticate, authorize(), async (req, res) => {
       );
       return { data: r.rows[0], entityId: r.rows[0].id, after: r.rows[0], description: `Recorded attendance for employee ${value.employee_id} on ${value.date}: ${value.status}` };
     });
-    if (out.duplicate) return res.status(400).json({ success: false, error: 'Attendance already recorded for this date' });
+    if (out.duplicate) return res.status(400).json({ success: false, error: 'Attendance already recorded for this date', error_code: 'attendance_duplicate', error_params: {} });
     res.status(201).json({ success: true, data: out.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'HR', req); }
 });
 
 // -- Leave Requests --
@@ -150,7 +151,7 @@ router.get('/leaves', authenticate, authorize(), async (req, res) => {
     const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
     const data = await queryPaginated(req, res, query, { sql: `SELECT lr.*, e.name FROM leave_requests lr LEFT JOIN employees e ON lr.employee_id = e.id ${w}`, params: p, orderBy: [{ column: 'lr.created_at', direction: 'DESC' }] });
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'HR', req); }
 });
 
 router.post('/leaves', authenticate, authorize(), async (req, res) => {
@@ -161,7 +162,7 @@ router.post('/leaves', authenticate, authorize(), async (req, res) => {
       reason: Joi.string().allow(''),
     });
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
 
     const out = await auditedMutation(req, { action: 'create', module: 'hr', entityType: 'leave_request' }, async (q) => {
       const r = await q(
@@ -171,21 +172,21 @@ router.post('/leaves', authenticate, authorize(), async (req, res) => {
       return { data: r.rows[0], entityId: r.rows[0].id, after: r.rows[0], description: `Leave requested for employee ${value.employee_id}: ${value.start_date} to ${value.end_date}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'HR', req); }
 });
 
 router.put('/leaves/:id', authenticate, authorize('owner', 'admin', 'hr_manager'), async (req, res) => {
   try {
     const { status } = req.body;
-    if (!['approved', 'rejected'].includes(status)) return res.status(400).json({ success: false, error: 'Invalid status' });
+    if (!['approved', 'rejected'].includes(status)) return res.status(400).json({ success: false, error: 'Invalid status', error_code: 'invalid_status', error_params: {} });
 
     const r = await auditedTransaction((q) => q(
       `UPDATE leave_requests SET status = $1, reviewed_by = $2, updated_at = NOW() WHERE id = $3 RETURNING *`,
       [status, req.user.id, req.params.id]
     ), (result) => result.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: status === 'approved' ? 'approve' : 'reject', module: 'hr', description: `${status === 'approved' ? 'Approved' : 'Rejected'} leave request #${req.params.id}`, entityId: req.params.id, entityType: 'leave_request' }));
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Leave request not found' });
+    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Leave request not found', error_code: 'leave_request_not_found', error_params: {} });
     res.json({ success: true, data: r.rows[0] });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'HR', req); }
 });
 
 // -- Daily Laborers --
@@ -201,7 +202,7 @@ router.get('/laborers', authenticate, authorize(), async (req, res) => {
     const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
     const data = await queryPaginated(req, res, query, { sql: `SELECT * FROM daily_laborers ${w}`, params: p, orderBy: [{ column: 'full_name' }] });
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'HR', req); }
 });
 
 router.get('/laborers/skills', authenticate, authorize(), (req, res) => res.json({ success: true, data: SKILLS }));
@@ -209,9 +210,9 @@ router.get('/laborers/skills', authenticate, authorize(), (req, res) => res.json
 router.get('/laborers/:id', authenticate, authorize(), async (req, res) => {
   try {
     const r = await query('SELECT * FROM daily_laborers WHERE id = $1', [req.params.id]);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Laborer not found' });
+    if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Laborer not found', error_code: 'laborer_not_found', error_params: {} });
     res.json({ success: true, data: r.rows[0] });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'HR', req); }
 });
 
 router.post('/laborers', authenticate, authorize(), async (req, res) => {
@@ -224,7 +225,7 @@ router.post('/laborers', authenticate, authorize(), async (req, res) => {
       is_active: Joi.boolean().optional(),
     });
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
 
     const r = await auditedTransaction(async (q) => {
       if (!value.code) value.code = await nextNumber(q, { table: 'daily_laborers', column: 'code', prefix: 'DL', pad: 4 });
@@ -235,13 +236,13 @@ router.post('/laborers', authenticate, authorize(), async (req, res) => {
       );
     }, (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hr', description: `Created daily laborer ${value.code}`, entityId: result.rows[0].id, entityType: 'daily_laborer' }));
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'HR', req); }
 });
 
 router.put('/laborers/:id', authenticate, authorize(), async (req, res) => {
   try {
     const existing = await query('SELECT * FROM daily_laborers WHERE id = $1', [req.params.id]);
-    if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Laborer not found' });
+    if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Laborer not found', error_code: 'laborer_not_found', error_params: {} });
 
     const schema = Joi.object({
       full_name: Joi.string(), full_name_en: Joi.string().allow(''), national_id: Joi.string().allow(''),
@@ -250,7 +251,7 @@ router.put('/laborers/:id', authenticate, authorize(), async (req, res) => {
       is_active: Joi.boolean(),
     }).min(1);
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
 
     const sets = []; const p = []; let i = 1;
     for (const [k, v] of Object.entries(value)) {
@@ -259,7 +260,7 @@ router.put('/laborers/:id', authenticate, authorize(), async (req, res) => {
     p.push(req.params.id);
     const r = await auditedTransaction((q) => q(`UPDATE daily_laborers SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`, p), (result) => result.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'hr', description: `Updated daily laborer ${existing.rows[0].code}`, entityId: req.params.id, entityType: 'daily_laborer' }));
     res.json({ success: true, data: r.rows[0] });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'HR', req); }
 });
 
 router.delete('/laborers/:id', authenticate, authorize(), async (req, res) => {
@@ -269,9 +270,9 @@ router.delete('/laborers/:id', authenticate, authorize(), async (req, res) => {
       if (r.rows.length === 0) return { skipAudit: true };
       return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, before: r.rows[0], description: `Deleted laborer ${r.rows[0].code}` };
     });
-    if (!out.data) return res.status(404).json({ success: false, error: 'Laborer not found' });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Laborer not found', error_code: 'laborer_not_found', error_params: {} });
     res.json({ success: true, message: 'Deleted' });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'HR', req); }
 });
 
 // -- Labor Payments --
@@ -284,7 +285,7 @@ router.get('/labor-payments', authenticate, authorize(), async (req, res) => {
     const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
     const data = await queryPaginated(req, res, query, { sql: `SELECT lp.*, dl.full_name, dl.code as laborer_code FROM labor_payments lp LEFT JOIN daily_laborers dl ON lp.laborer_id = dl.id ${w}`, params: p, orderBy: [{ column: 'lp.payment_date', direction: 'DESC' }] });
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'HR', req); }
 });
 
 router.post('/labor-payments', authenticate, authorize(), async (req, res) => {
@@ -296,7 +297,7 @@ router.post('/labor-payments', authenticate, authorize(), async (req, res) => {
       daily_rate: Joi.number().min(0).default(0), paid_by: Joi.string().allow(''), notes: Joi.string().allow(''),
     });
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
     authorizeProjectPayload(req, value);
 
     const total_amount = value.days_worked * value.daily_rate;
@@ -322,7 +323,7 @@ router.post('/labor-payments', authenticate, authorize(), async (req, res) => {
       return inserted;
     });
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'HR', req); }
 });
 
 router.delete('/labor-payments/:id', authenticate, authorize(), async (req, res) => {
@@ -342,12 +343,12 @@ router.delete('/labor-payments/:id', authenticate, authorize(), async (req, res)
       if (r.rows.length === 0) return { skipAudit: true };
       return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, before: r.rows[0], amount: Number(r.rows[0].total_amount), description: `Deleted labor payment ${r.rows[0].id}` };
     });
-    if (!out.data) return res.status(404).json({ success: false, error: 'Payment not found' });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Payment not found', error_code: 'labor_payment_not_found', error_params: {} });
     res.json({ success: true, message: 'Deleted' });
   } catch (e) {
-    res.status(e.status || 500).json({ success: false, error: e.message,
-      ...(e.error_code ? { error_code: e.error_code, error_key: e.error_key, error_params: e.error_params || {} } : {}),
-    });
+    // Payroll typed errors carry an i18n error_key alongside the code (C2 contract).
+    if (e && e.error_code && e.status) return res.status(e.status).json({ success: false, error: e.message, error_code: e.error_code, error_key: e.error_key, error_params: e.error_params || {} });
+    return routeFail(res, e, 'HR', req);
   }
 });
 

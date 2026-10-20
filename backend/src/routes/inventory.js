@@ -15,18 +15,15 @@ const { auditedTransaction } = require('../utils/auditedTransaction');
 const lots = require('../services/inventoryLots');
 const docs = require('../services/inventoryDocuments');
 const units = require('../services/unitConversions');
+const { routeFail } = require('../utils/typedRoute');
 
 const router = express.Router();
 
 function fail(res, e) {
-  if (e && e.error_code && e.status) {
-    return res.status(e.status).json({ success: false, error: e.message, error_code: e.error_code, error_params: e.error_params || {} });
-  }
   if (e && /^Insufficient stock/.test(e.message || '')) {
     return res.status(409).json({ success: false, error: e.message, error_code: 'insufficient_stock', error_params: {} });
   }
-  console.error('[INVENTORY]', e);
-  return res.status(500).json({ success: false, error: e.message, error_code: 'inventory_error', error_params: {} });
+  return routeFail(res, e, 'INVENTORY');
 }
 
 function validated(schema, body, res) {

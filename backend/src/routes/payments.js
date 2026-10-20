@@ -9,6 +9,7 @@ const { logActivity, fireEvent } = require('../utils/activity');
 const finance = require('../services/financeEngine');
 const { reasonFrom } = require('../utils/reason');
 const glPosting = require('../services/glPosting');
+const { routeFail } = require('../utils/typedRoute');
 
 const PAYMENT_METHODS = ['cash', 'bank_transfer', 'check', 'other'];
 
@@ -48,7 +49,7 @@ router.get('/', authenticate, authorize(), async (req, res) => {
       orderBy: [{ column: 'p.payment_date', direction: 'DESC' }, { column: 'p.created_at', direction: 'DESC' }],
     });
     res.json({ success: true, data: dataResult.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { return routeFail(res, error, 'PAYMENTS', req); }
 });
 
 // Client (AR) and supplier (AP) payments. An AP payment names a supplier instead of a client; it posts
@@ -68,7 +69,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
       notes: Joi.string().allow(''),
     });
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
     authorizeProjectPayload(req, value);
     if (value.direction === 'ap' && !value.supplier_id) {
       return res.status(400).json({ success: false, error: 'A supplier payment needs supplier_id', error_code: 'supplier_required', error_params: {} });
@@ -132,14 +133,14 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     if (error && error.error_code) {
       return res.status(error.status || 400).json({ success: false, error: error.message, error_code: error.error_code, error_params: error.error_params || {} });
     }
-    return res.status(400).json({ success: false, error: error.message });
+    return routeFail(res, error, 'PAYMENTS', req);
   }
 });
 
 // Void, never delete: the payment row, its allocations and its history stay; the money stops counting.
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
   const reason = reasonFrom(req);
-  if (!reason) return res.status(400).json({ success: false, error: 'A reason is required to void a payment' });
+  if (!reason) return res.status(400).json({ success: false, error: 'A reason is required to void a payment', error_code: 'void_reason_required', error_params: {} });
   try {
     const outcome = await transaction(async (client) => {
       const q = client.query.bind(client);
@@ -168,11 +169,11 @@ router.delete('/:id', authenticate, authorize(), async (req, res) => {
       await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'void', module: 'payments', description: `Voided payment #${req.params.id}: ${reason}`, entityId: req.params.id, entityType: 'payment' }, { query: q });
       return { payment: existing };
     });
-    if (outcome.notFound) return res.status(404).json({ success: false, error: 'Payment not found' });
-    if (outcome.conflict) return res.status(409).json({ success: false, error: 'Payment is already void' });
+    if (outcome.notFound) return res.status(404).json({ success: false, error: 'Payment not found', error_code: 'payment_not_found', error_params: {} });
+    if (outcome.conflict) return res.status(409).json({ success: false, error: 'Payment is already void', error_code: 'payment_already_void', error_params: {} });
 
     res.json({ success: true, message: 'Payment voided' });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { return routeFail(res, error, 'PAYMENTS', req); }
 });
 
 module.exports = router;

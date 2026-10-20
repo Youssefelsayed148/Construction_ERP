@@ -9,6 +9,7 @@ const { logActivity } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 const engine = require('../services/inventoryEngine');
 const lots = require('../services/inventoryLots');
+const { routeFail } = require('../utils/typedRoute');
 
 // Phase 10 — inventory surface. Stock is ledgered: every change enters as a
 // stock_movements row through the movement API; warehouse_stock is a derived
@@ -61,7 +62,7 @@ router.get('/', authenticate, authorize(), async (req, res) => {
     const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
     const data = await queryPaginated(req, res, query, { sql: `SELECT w.*, p.name as project_name FROM warehouses w LEFT JOIN projects p ON w.project_id = p.id ${w} ORDER BY w.type, w.name`, params: p, orderBy: [{"column":"type","direction":"ASC"},{"column":"name","direction":"ASC"}] });
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'WAREHOUSES', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -82,7 +83,7 @@ router.get('/:id/movements', authenticate, authorize(), async (req, res) => {
       orderBy: [{ column: 'sm.created_at', direction: 'DESC' }, { column: 'sm.id', direction: 'DESC' }],
     });
     res.json({ success: true, data: rows.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'WAREHOUSES', req); }
 });
 
 // POST /api/warehouses/:id/movements — the movement API. A 'grn' requires MIR
@@ -92,7 +93,7 @@ router.post('/:id/movements', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object(movementBodySchema);
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
 
     if (value.movement_type === 'grn') {
       const hasMir = value.mir_accepted === true || (value.reference_type === 'mir' && value.reference_id != null);
@@ -100,12 +101,13 @@ router.post('/:id/movements', authenticate, authorize(), async (req, res) => {
         return res.status(400).json({
           success: false,
           error: 'A delivery only becomes usable stock after an accepted MIR — post movement_type \'quarantine\' for received-but-uninspected material, or supply mir_accepted/MIR reference evidence',
+          error_code: 'grn_requires_accepted_mir', error_params: {},
         });
       }
     }
 
     if (value.unit_cost != null && !COST_BEARING_TYPES.includes(value.movement_type)) {
-      return res.status(400).json({ success: false, error: `unit_cost is not accepted on a ${value.movement_type} movement: it is valued at the current weighted average` });
+      return res.status(400).json({ success: false, error: `unit_cost is not accepted on a ${value.movement_type} movement: it is valued at the current weighted average`, error_code: 'unit_cost_not_accepted', error_params: { movement_type: value.movement_type } });
     }
 
     const { movement, balances } = await transaction(async (client) => {
@@ -138,11 +140,7 @@ router.post('/:id/movements', authenticate, authorize(), async (req, res) => {
       return { movement: created, balances };
     });
     res.status(201).json({ success: true, data: { movement, balances } });
-  } catch (e) {
-    res.status(e.error_code && e.status ? e.status : 400).json({
-      success: false, error: e.message, ...(e.error_code ? { error_code: e.error_code, error_params: e.error_params || {} } : {}),
-    });
-  }
+  } catch (e) { return routeFail(res, e, 'WAREHOUSES', req); }
 });
 
 // POST /api/warehouses/movements/:id/reverse — append-only correction: posts a
@@ -152,7 +150,7 @@ router.post('/movements/:id/reverse', authenticate, authorize(), async (req, res
   try {
     const schema = Joi.object({ reason: Joi.string().optional().allow(null, '') });
     const { error, value } = schema.validate(req.body || {});
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
 
     const movement = await auditedTransaction((q) => engine.reverseMovement(q, parseInt(req.params.id, 10), {
       reason: value.reason || null, created_by: req.user.id,
@@ -163,7 +161,7 @@ router.post('/movements/:id/reverse', authenticate, authorize(), async (req, res
       entityId: result.id, entityType: 'stock_movement',
     }));
     res.status(201).json({ success: true, data: movement });
-  } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'WAREHOUSES', req); }
 });
 
 // POST /api/warehouses/movements/:id/mir — the MIR gate. result 'accepted'
@@ -177,12 +175,12 @@ router.post('/movements/:id/mir', authenticate, authorize(), async (req, res) =>
       notes: Joi.string().optional().allow(null, ''),
     });
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
 
     const original = (await query('SELECT * FROM stock_movements WHERE id = $1', [req.params.id])).rows[0];
-    if (!original) return res.status(404).json({ success: false, error: 'Stock movement not found' });
+    if (!original) return res.status(404).json({ success: false, error: 'Stock movement not found', error_code: 'stock_movement_not_found', error_params: {} });
     if (original.movement_type !== 'quarantine') {
-      return res.status(400).json({ success: false, error: `Movement #${original.id} is not a quarantined receipt` });
+      return res.status(400).json({ success: false, error: `Movement #${original.id} is not a quarantined receipt`, error_code: 'movement_not_quarantined_receipt', error_params: { movement_id: original.id } });
     }
 
     const { movement, balances } = await transaction(async (client) => {
@@ -206,7 +204,7 @@ router.post('/movements/:id/mir', authenticate, authorize(), async (req, res) =>
       return { movement: created, balances };
     });
     res.status(201).json({ success: true, data: { movement, balances } });
-  } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'WAREHOUSES', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -230,7 +228,7 @@ router.get('/transfers', authenticate, authorize(), async (req, res) => {
       orderBy: [{ column: 't.created_at', direction: 'DESC' }],
     });
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'WAREHOUSES', req); }
 });
 
 router.post('/transfers', authenticate, authorize(), async (req, res) => {
@@ -241,7 +239,7 @@ router.post('/transfers', authenticate, authorize(), async (req, res) => {
       items: Joi.array().items(Joi.object({ item_id: Joi.number().integer().required(), quantity: Joi.number().positive().required() })).min(1).required(),
     });
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
 
     const result = await transaction(async (client) => {
       const transfer = await client.query(
@@ -262,14 +260,14 @@ router.post('/transfers', authenticate, authorize(), async (req, res) => {
       return created;
     });
     res.status(201).json({ success: true, data: result });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'WAREHOUSES', req); }
 });
 
 router.put('/transfers/:id/complete', authenticate, authorize(), async (req, res) => {
   try {
     const transfer = await query('SELECT * FROM inventory_transfers WHERE id = $1', [req.params.id]);
-    if (transfer.rows.length === 0) return res.status(404).json({ success: false, error: 'Transfer not found' });
-    if (transfer.rows[0].status !== 'draft') return res.status(400).json({ success: false, error: 'Transfer already processed' });
+    if (transfer.rows.length === 0) return res.status(404).json({ success: false, error: 'Transfer not found', error_code: 'transfer_not_found', error_params: {} });
+    if (transfer.rows[0].status !== 'draft') return res.status(400).json({ success: false, error: 'Transfer already processed', error_code: 'transfer_already_processed', error_params: {} });
 
     const items = await query('SELECT * FROM inventory_transfer_items WHERE transfer_id = $1', [req.params.id]);
 
@@ -332,9 +330,7 @@ router.put('/transfers/:id/complete', authenticate, authorize(), async (req, res
       await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'complete', module: 'inventory', description: `Completed inventory transfer #${req.params.id} as paired stock movements`, entityId: req.params.id, entityType: 'inventory_transfer' }, { query: txQuery });
     });
     res.json({ success: true, message: 'Transfer completed' });
-  } catch (e) {
-    res.status(400).json({ success: false, error: e.message });
-  }
+  } catch (e) { return routeFail(res, e, 'WAREHOUSES', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -359,7 +355,7 @@ router.get('/reservations', authenticate, authorize(), async (req, res) => {
       orderBy: [{ column: 'sr.created_at', direction: 'DESC' }],
     });
     res.json({ success: true, data: rows.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'WAREHOUSES', req); }
 });
 
 // POST /api/warehouses/reservations
@@ -376,7 +372,7 @@ router.post('/reservations', authenticate, authorize(), async (req, res) => {
       reference_id: Joi.number().integer().optional().allow(null),
     });
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
     authorizeProjectPayload(req, value);
 
     const reservation = await auditedTransaction((q) => engine.createReservation(q, {
@@ -396,7 +392,7 @@ router.post('/reservations', authenticate, authorize(), async (req, res) => {
       entityId: result.id, entityType: 'stock_reservation',
     }));
     res.status(201).json({ success: true, data: reservation });
-  } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'WAREHOUSES', req); }
 });
 
 // POST /api/warehouses/reservations/:id/release
@@ -412,7 +408,7 @@ router.post('/reservations/:id/release', authenticate, authorize(), async (req, 
       entityId: result.id, entityType: 'stock_reservation',
     }));
     res.json({ success: true, data: reservation });
-  } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'WAREHOUSES', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -434,7 +430,7 @@ const WAREHOUSE_BODY = {
 router.post('/', authenticate, authorize(), async (req, res) => {
   try {
     const { error, value } = Joi.object(WAREHOUSE_BODY).validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
     // Project scope through the central check when the body names a project.
     authorizeProjectPayload(req, value);
     // The project id always comes from the authorized helper (lint guard
@@ -456,11 +452,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
       })
     );
     res.status(201).json({ success: true, data: created });
-  } catch (e) {
-    res.status(e.error_code && e.status ? e.status : 400).json({
-      success: false, error: e.message, ...(e.error_code ? { error_code: e.error_code, error_params: e.error_params || {} } : {}),
-    });
-  }
+  } catch (e) { return routeFail(res, e, 'WAREHOUSES', req); }
 });
 
 router.put('/:id', authenticate, authorize(), async (req, res) => {
@@ -469,7 +461,7 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
       ...WAREHOUSE_BODY, name: Joi.string().trim().max(255),
       warehouse_type: Joi.string().valid(...WAREHOUSE_TYPES),
     }).min(1).validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
     authorizeProjectPayload(req, value);
 
     const updated = await auditedTransaction(async (q) => {
@@ -491,13 +483,9 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
       description: `Updated warehouse ${result.name}`,
       entityId: result.id, entityType: 'warehouse',
     } : null));
-    if (!updated) return res.status(404).json({ success: false, error: 'Warehouse not found' });
+    if (!updated) return res.status(404).json({ success: false, error: 'Warehouse not found', error_code: 'warehouse_not_found', error_params: {} });
     res.json({ success: true, data: updated });
-  } catch (e) {
-    res.status(e.error_code && e.status ? e.status : 400).json({
-      success: false, error: e.message, ...(e.error_code ? { error_code: e.error_code, error_params: e.error_params || {} } : {}),
-    });
-  }
+  } catch (e) { return routeFail(res, e, 'WAREHOUSES', req); }
 });
 
 // PUT /api/warehouses/:id/stock/:itemId/reorder-level — the reorder-level setter
@@ -505,7 +493,7 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
 router.put('/:id/stock/:itemId/reorder-level', authenticate, authorize(), async (req, res) => {
   try {
     const { error, value } = Joi.object({ reorder_level: Joi.number().min(0).required() }).validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
 
     const updated = await auditedTransaction(async (q) => {
       const warehouse = (await q('SELECT id, project_id FROM warehouses WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
@@ -535,20 +523,16 @@ router.put('/:id/stock/:itemId/reorder-level', authenticate, authorize(), async 
       description: `Set reorder level ${value.reorder_level} for item #${req.params.itemId} at warehouse #${req.params.id}`,
       entityId: req.params.id, entityType: 'warehouse_stock',
     } : null));
-    if (!updated) return res.status(404).json({ success: false, error: 'Warehouse or item not found' });
+    if (!updated) return res.status(404).json({ success: false, error: 'Warehouse or item not found', error_code: 'warehouse_stock_not_found', error_params: {} });
     res.json({ success: true, data: updated });
-  } catch (e) {
-    res.status(e.error_code && e.status ? e.status : 400).json({
-      success: false, error: e.message, ...(e.error_code ? { error_code: e.error_code, error_params: e.error_params || {} } : {}),
-    });
-  }
+  } catch (e) { return routeFail(res, e, 'WAREHOUSES', req); }
 });
 
 // Register the catch-all warehouse detail route after named collection routes.
 router.get('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const wh = await query('SELECT * FROM warehouses WHERE id = $1', [req.params.id]);
-    if (wh.rows.length === 0) return res.status(404).json({ success: false, error: 'Warehouse not found' });
+    if (wh.rows.length === 0) return res.status(404).json({ success: false, error: 'Warehouse not found', error_code: 'warehouse_not_found', error_params: {} });
 
     // Derived projection — physical/reserved/quarantined/available come from
     // the ledger via the engine; the stored columns are never hand-edited.
@@ -559,7 +543,7 @@ router.get('/:id', authenticate, authorize(), async (req, res) => {
     );
 
     res.json({ success: true, data: { ...wh.rows[0], stock: stock.rows } });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'WAREHOUSES', req); }
 });
 
 module.exports = router;

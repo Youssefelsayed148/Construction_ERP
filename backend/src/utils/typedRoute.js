@@ -36,6 +36,25 @@ function typedFail(res, e, tag = 'ROUTE', req = null) {
   });
 }
 
+// C2 error contract for route catch-alls: every failure answers with a stable
+// error_code the frontend can localize, while the English `error` string is
+// kept for logs and old clients. A business error that carries a 4xx status
+// passes its message through under a stable code (its own error_code, else
+// `business_rule_violation`); anything else is an unexpected failure and goes
+// through typedFail so no internal detail leaks.
+function routeFail(res, e, tag = 'ROUTE', req = null) {
+  const status = e && Number.isInteger(e.status) && e.status >= 400 && e.status < 500 ? e.status : null;
+  if (status) {
+    return res.status(status).json({
+      success: false,
+      error: e.message,
+      error_code: e.error_code || 'business_rule_violation',
+      error_params: e.error_params || {},
+    });
+  }
+  return typedFail(res, e, tag, req);
+}
+
 // Validate req.body with a Joi schema; on failure answer 400 and return null.
 function typedBody(schema, req, res) {
   const { error, value } = schema.validate(req.body || {});
@@ -46,4 +65,4 @@ function typedBody(schema, req, res) {
   return value;
 }
 
-module.exports = { atomic, typedFail, typedBody };
+module.exports = { atomic, typedFail, typedBody, routeFail };

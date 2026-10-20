@@ -6,6 +6,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const policy = require('../services/policy');
 const workflowEngine = require('../services/workflowEngine');
 const { logActivity, fireEvent } = require('../utils/activity');
+const { routeFail } = require('../utils/typedRoute');
 
 // Module roles mapping - who handles Stage 1 (manager_review) for each module.
 // Phase 6: these maps now drive the 'legacy_module_approval' workflow template
@@ -158,10 +159,10 @@ router.post('/request', authenticate, authorize(), async (req, res) => {
     const request_id = Number.isInteger(Number(req.body.request_id)) ? Number(req.body.request_id) : req.body.request_id;
 
     if (!APPROVAL_MODULES.includes(module_name)) {
-      return res.status(400).json({ success: false, error: `Unknown approval module "${module_name}"; expected one of ${APPROVAL_MODULES.join(', ')}` });
+      return res.status(400).json({ success: false, error: `Unknown approval module "${module_name}"; expected one of ${APPROVAL_MODULES.join(', ')}`, error_code: 'unknown_approval_module', error_params: { module: module_name } });
     }
     if (!Number.isInteger(request_id) || !request_type) {
-      return res.status(400).json({ success: false, error: 'request_type and an integer request_id are required' });
+      return res.status(400).json({ success: false, error: 'request_type and an integer request_id are required', error_code: 'validation_error', error_params: {} });
     }
 
     const stage = DIRECT_TO_OWNER_MODULES.includes(module_name) ? 'owner_review' : 'manager_review';
@@ -255,7 +256,7 @@ router.post('/request', authenticate, authorize(), async (req, res) => {
     res.json({ success: true, requires_approval: true, request: result.rows[0] });
   } catch (error) {
     console.error('Error creating approval request:', error);
-    res.status(500).json({ success: false, error: error.message });
+    return routeFail(res, error, 'APPROVALS', req);
   }
 });
 
@@ -307,7 +308,7 @@ router.get('/pending', authenticate, authorize(
     res.json({ success: true, count: page.total, requests: page.rows });
   } catch (error) {
     console.error('Error fetching pending approvals:', error);
-    res.status(500).json({ success: false, error: error.message });
+    return routeFail(res, error, 'APPROVALS', req);
   }
 });
 
@@ -321,7 +322,7 @@ router.put('/:id/approve', authenticate, authorize(), async (req, res) => {
     return res.status(result.statusCode).json(result.body);
   } catch (error) {
     console.error('Error approving:', error);
-    res.status(500).json({ success: false, error: error.message });
+    return routeFail(res, error, 'APPROVALS', req);
   }
 });
 
@@ -371,13 +372,13 @@ router.put('/:id/cancel', authenticate, authorize(), async (req, res) => {
       }, { query: q });
       return { cancelled, workflowCancelled };
     });
-    if (result.notFound) return res.status(404).json({ success: false, error: 'Approval not found' });
+    if (result.notFound) return res.status(404).json({ success: false, error: 'Approval not found', error_code: 'approval_not_found', error_params: {} });
     if (result.forbidden) return res.status(403).json({ success: false, error: 'Only an owner, an admin or the original requester can cancel this approval', error_code: 'approval_cancel_forbidden', error_params: {} });
     if (result.conflict) return res.status(409).json({ success: false, error: `Approval is already ${result.conflict}`, error_code: 'approval_not_cancellable', error_params: { status: result.conflict } });
     return res.json({ success: true, data: result.cancelled, workflows_cancelled: result.workflowCancelled });
   } catch (error) {
     console.error('Error cancelling approval:', error);
-    res.status(500).json({ success: false, error: error.message });
+    return routeFail(res, error, 'APPROVALS', req);
   }
 });
 
@@ -412,7 +413,7 @@ router.get('/stale', authenticate, authorize('owner', 'admin'), async (req, res)
     });
   } catch (error) {
     console.error('Error building the stale-approvals report:', error);
-    res.status(500).json({ success: false, error: error.message });
+    return routeFail(res, error, 'APPROVALS', req);
   }
 });
 
@@ -425,7 +426,7 @@ router.put('/:id/reject', authenticate, authorize(), async (req, res) => {  try 
     return res.status(result.statusCode).json(result.body);
   } catch (error) {
     console.error('Error rejecting:', error);
-    res.status(500).json({ success: false, error: error.message });
+    return routeFail(res, error, 'APPROVALS', req);
   }
 });
 
@@ -447,7 +448,7 @@ router.get('/my-requests', authenticate, authorize(), async (req, res) => {
     res.json({ success: true, count: enriched.length, requests: enriched });
   } catch (error) {
     console.error('Error fetching my requests:', error);
-    res.status(500).json({ success: false, error: error.message });
+    return routeFail(res, error, 'APPROVALS', req);
   }
 });
 
@@ -477,7 +478,7 @@ router.get('/audit', authenticate, authorize('owner', 'admin'), async (req, res)
     const enriched = await enrichApprovalRows(page.rows.map(normalizeWorkflowApproval));
     res.json({ success: true, count: enriched.length, records: enriched });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    return routeFail(res, error, 'APPROVALS', req);
   }
 });
 
@@ -498,7 +499,7 @@ router.get('/check/:module/:requestId', authenticate, authorize(), async (req, r
     }
     res.json({ requires_approval: true, pending: current?.status === 'pending' });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    return routeFail(res, error, 'APPROVALS', req);
   }
 });
 
@@ -592,12 +593,12 @@ router.get('/:id/details', authenticate, authorize(), async (req, res) => {
       WHERE ar.id = $1
     `, [id]);
     if (arRes.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'Request not found' });
+      return res.status(404).json({ success: false, error: 'Request not found', error_code: 'agent_request_not_found', error_params: {} });
     }
     const ar = normalizeWorkflowApproval(arRes.rows[0]);
 
     if (ar.requester_id !== req.user.id && !PRIVILEGED_APPROVAL_ROLES.includes(req.user.role)) {
-      return res.status(403).json({ success: false, error: 'Not authorized to view this request' });
+      return res.status(403).json({ success: false, error: 'Not authorized to view this request', error_code: 'agent_request_forbidden', error_params: {} });
     }
 
     let source = null;
@@ -614,7 +615,7 @@ router.get('/:id/details', authenticate, authorize(), async (req, res) => {
     res.json({ success: true, request: ar, source, timeline: buildApprovalTimeline(ar) });
   } catch (error) {
     console.error('Error fetching approval details:', error);
-    res.status(500).json({ success: false, error: error.message });
+    return routeFail(res, error, 'APPROVALS', req);
   }
 });
 

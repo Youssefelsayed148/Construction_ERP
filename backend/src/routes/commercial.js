@@ -9,7 +9,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const { auditedChange } = require('../utils/auditedMutation');
 const engine = require('../services/commercialEngine');
-const { atomic, typedFail, typedBody } = require('../utils/typedRoute');
+const { atomic, typedFail, typedBody, routeFail } = require('../utils/typedRoute');
 
 // Phase 13 — the commercial surface: client contracts (SOV), the variation
 // lifecycle (through the Phase 6 'variation' workflow with the catalog's
@@ -30,7 +30,7 @@ router.get('/contracts/:projectId', authenticate, authorize(), async (req, res) 
       c.lines = (await query('SELECT * FROM contract_lines WHERE client_contract_id = $1 ORDER BY sort_order, id', [c.id])).rows;
     }
     res.json({ success: true, data: contracts });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'COMMERCIAL', req); }
 });
 
 router.post('/contracts', authenticate, authorize(), async (req, res) => {
@@ -56,7 +56,7 @@ router.post('/contracts', authenticate, authorize(), async (req, res) => {
       })).default([]),
     });
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
     authorizeProjectPayload(req, value);
 
     const created = await transaction(async (client) => {
@@ -92,7 +92,7 @@ router.post('/contracts', authenticate, authorize(), async (req, res) => {
       return contract;
     });
     res.status(201).json({ success: true, data: created });
-  } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'COMMERCIAL', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -105,7 +105,7 @@ router.get('/variations/:projectId', authenticate, authorize(), async (req, res)
       sql: 'SELECT * FROM variations WHERE project_id = $1', params: [req.params.projectId], orderBy: [{ column: 'id' }],
     });
     res.json({ success: true, data: page.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'COMMERCIAL', req); }
 });
 
 router.post('/variations', authenticate, authorize(), async (req, res) => {
@@ -138,7 +138,7 @@ router.post('/variations', authenticate, authorize(), async (req, res) => {
       })).default([]),
     });
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
     authorizeProjectPayload(req, value);
 
     const variation = await atomicAudited(req, (q) => engine.createVariation(q, { ...value, created_by: req.user.id }),
@@ -155,14 +155,14 @@ router.post('/variations/:id/start', authenticate, authorize(), async (req, res)
       describe: (row) => `Started approval workflow for variation ${row ? row.variation_number : variationId}`,
     });
     res.json({ success: true, data: instance });
-  } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'COMMERCIAL', req); }
 });
 
 router.post('/variations/:id/decide', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({ decision: Joi.string().valid('approve', 'reject').required(), comment: Joi.string().allow('', null), approved_amount: Joi.number().min(0).precision(2) });
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
     const variationId = parseInt(req.params.id, 10);
     const result = await auditedChange(req, { action: 'decide', module: 'commercial', entityType: 'variation' }, {
       table: 'variations', id: variationId,
@@ -181,7 +181,7 @@ router.post('/variations/:id/decide', authenticate, authorize(), async (req, res
       },
     });
     res.json({ success: true, data: result });
-  } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'COMMERCIAL', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -191,9 +191,9 @@ router.post('/variations/:id/decide', authenticate, authorize(), async (req, res
 router.get('/project/:projectId/commercial', authenticate, authorize(), async (req, res) => {
   try {
     const data = await engine.projectCommercial(query, parseInt(req.params.projectId, 10));
-    if (!data) return res.status(404).json({ success: false, error: 'Project not found' });
+    if (!data) return res.status(404).json({ success: false, error: 'Project not found', error_code: 'project_not_found', error_params: {} });
     res.json({ success: true, data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'COMMERCIAL', req); }
 });
 
 // Legacy snapshots (audit trail of the three retired formulas).
@@ -204,7 +204,7 @@ router.get('/project/:projectId/legacy-snapshots', authenticate, authorize(), as
       orderBy: [{ column: 'snapshot_type' }],
     });
     res.json({ success: true, data: page.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'COMMERCIAL', req); }
 });
 
 // ---------------------------------------------------------------------------

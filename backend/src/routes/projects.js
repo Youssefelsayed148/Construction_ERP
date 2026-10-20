@@ -8,6 +8,7 @@ const { logActivity, fireEvent } = require('../utils/activity');
 const { auditedMutation } = require('../utils/auditedMutation');
 const { queryPaginated } = require('../utils/pagination');
 const provisioning = require('../services/projectProvisioning');
+const { routeFail } = require('../utils/typedRoute');
 
 const PROJECT_TYPES = ['residential', 'commercial', 'industrial', 'infrastructure', 'mixed'];
 const PROJECT_STATUSES = ['planning', 'active', 'on_hold', 'completed', 'closed'];
@@ -43,7 +44,7 @@ router.get('/portfolio', authenticate, authorize(), async (req, res) => {
       ${scope ? `WHERE ${scope}` : ''}
     `, params, orderBy: [{ column: 'status' }, { column: 'created_at', direction: 'DESC' }] });
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'PROJECTS', req); }
 });
 
 router.get('/', authenticate, authorize(), async (req, res) => {
@@ -62,7 +63,7 @@ router.get('/', authenticate, authorize(), async (req, res) => {
       orderBy: [{ column: 'created_at', direction: 'DESC' }],
     });
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'PROJECTS', req); }
 });
 
 // -- Wizard templates (registered before /:id so "templates" is not read as an id) --
@@ -70,13 +71,13 @@ router.get('/templates', authenticate, authorize(), async (req, res) => {
   try {
     const data = await query('SELECT id, key, name, project_type, description, is_active FROM project_templates WHERE is_active = true ORDER BY name');
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'PROJECTS', req); }
 });
 
 router.get('/templates/:key', authenticate, authorize(), async (req, res) => {
   try {
     const t = await query('SELECT * FROM project_templates WHERE key = $1 AND is_active = true', [req.params.key]);
-    if (t.rows.length === 0) return res.status(404).json({ success: false, error: 'Template not found' });
+    if (t.rows.length === 0) return res.status(404).json({ success: false, error: 'Template not found', error_code: 'project_template_not_found', error_params: {} });
     const template = t.rows[0];
     // default_values may come back as a JSON string depending on the driver.
     if (typeof template.default_values === 'string') {
@@ -90,7 +91,7 @@ router.get('/templates/:key', authenticate, authorize(), async (req, res) => {
       query('SELECT module, threshold_amount, approver_role, stage FROM template_approval_rules WHERE template_id = $1 ORDER BY sort_order, id', [template.id]),
     ]);
     res.json({ success: true, data: { ...template, locations: locations.rows, wbs: wbs.rows, folders: folders.rows, workflows: workflows.rows, approval_rules: rules.rows } });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'PROJECTS', req); }
 });
 
 // Explicit wizard route (works regardless of the flag) — the 11-step UI posts
@@ -102,7 +103,7 @@ router.post('/wizard', authenticate, authorize(), async (req, res) => {
 router.get('/:id', authenticate, authorize(), async (req, res) => {
   try {
     const project = await query(`SELECT p.*, c.name_ar as client_name, c.name_en as client_name_en, e.name_ar as project_manager_name, e.name_en as project_manager_name_en FROM projects p LEFT JOIN clients c ON p.client_id = c.id LEFT JOIN employees e ON p.project_manager_id = e.id WHERE p.id = $1`, [req.params.id]);
-    if (project.rows.length === 0) return res.status(404).json({ success: false, error: 'Project not found' });
+    if (project.rows.length === 0) return res.status(404).json({ success: false, error: 'Project not found', error_code: 'project_not_found', error_params: {} });
 
     const [phases, team, milestones] = await Promise.all([
       query('SELECT * FROM project_phases WHERE project_id = $1 ORDER BY sort_order', [req.params.id]),
@@ -117,7 +118,7 @@ router.get('/:id', authenticate, authorize(), async (req, res) => {
       success: true,
       data: { ...project.rows[0], phases: phases.rows, team: team.rows, milestones: milestones.rows }
     });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'PROJECTS', req); }
 });
 
 // POST /api/projects — dispatcher. Legacy single-INSERT stays available while
@@ -185,7 +186,7 @@ const wizardCreate = async (req, res) => {
       }).allow(null),
     }).unknown(true);
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
 
     const result = await transaction(async (client) => {
       const out = await provisioning.provisionProject(value, { client, templateKey: value.template_key, createdBy: req.user.id });
@@ -201,7 +202,7 @@ const wizardCreate = async (req, res) => {
     res.status(201).json({ success: true, data: result.project, counts: result.counts, steps: result.steps });
   } catch (e) {
     console.error('Wizard provisioning failed:', e);
-    res.status(500).json({ success: false, error: `Provisioning failed, rolled back: ${e.message}` });
+    res.status(500).json({ success: false, error: `Provisioning failed, rolled back: ${e.message}`, error_code: 'project_provisioning_rolled_back', error_params: {} });
   }
 };
 
@@ -220,7 +221,7 @@ const legacyCreate = async (req, res) => {
       status: Joi.string().valid(...PROJECT_STATUSES).default('planning'),
     });
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
 
     const result = await transaction(async (client) => {
       // The number is drawn on the transaction client so a rolled-back create does not burn a counter.
@@ -238,7 +239,7 @@ const legacyCreate = async (req, res) => {
       return createdProject;
     });
     res.status(201).json({ success: true, data: result });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'PROJECTS', req); }
 };
 
 router.put('/:id', authenticate, authorize(), async (req, res) => {
@@ -254,7 +255,7 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
       completion_percentage: Joi.number().min(0).max(100),
     }).min(1);
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
 
     const sets = []; const p = []; let i = 1;
     for (const [k, v] of Object.entries(value)) {
@@ -274,9 +275,9 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
       await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'projects', description: `Updated project ${existing.rows[0].code}`, entityId: req.params.id, entityType: 'project' }, { query: q });
       return { row: updated.rows[0] };
     });
-    if (outcome.notFound) return res.status(404).json({ success: false, error: 'Project not found' });
+    if (outcome.notFound) return res.status(404).json({ success: false, error: 'Project not found', error_code: 'project_not_found', error_params: {} });
     res.json({ success: true, data: outcome.row });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'PROJECTS', req); }
 });
 
 // -- Phases --
@@ -288,7 +289,7 @@ router.post('/:id/phases', authenticate, authorize(), async (req, res) => {
       end_date: Joi.date().iso().allow(null), budget: Joi.number().min(0).default(0),
     });
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
 
     const out = await auditedMutation(req, { action: 'create', module: 'projects', entityType: 'project_phase' }, async (q) => {
       const r = await q(
@@ -299,7 +300,7 @@ router.post('/:id/phases', authenticate, authorize(), async (req, res) => {
       return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], amount: Number(r.rows[0].budget), description: `Created phase ${r.rows[0].code}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'PROJECTS', req); }
 });
 
 router.put('/:projectId/phases/:phaseId', authenticate, authorize(), async (req, res) => {
@@ -311,7 +312,7 @@ router.put('/:projectId/phases/:phaseId', authenticate, authorize(), async (req,
       completion_percentage: Joi.number().min(0).max(100),
     }).min(1);
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
 
     const sets = []; const p = []; let i = 1;
     for (const [k, v] of Object.entries(value)) {
@@ -332,9 +333,9 @@ router.put('/:projectId/phases/:phaseId', authenticate, authorize(), async (req,
           : `Updated phase ${updated.rows[0].code || updated.rows[0].id} of project #${req.params.projectId}`,
       };
     });
-    if (outcome.notFound) return res.status(404).json({ success: false, error: 'Phase not found' });
+    if (outcome.notFound) return res.status(404).json({ success: false, error: 'Phase not found', error_code: 'phase_not_found', error_params: {} });
     res.json({ success: true, data: outcome.row });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'PROJECTS', req); }
 });
 
 router.delete('/:projectId/phases/:phaseId', authenticate, authorize(), async (req, res) => {
@@ -344,9 +345,9 @@ router.delete('/:projectId/phases/:phaseId', authenticate, authorize(), async (r
       if (r.rowCount === 0) return { skipAudit: true };
       return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, before: r.rows[0], description: `Deleted phase ${r.rows[0].code}` };
     });
-    if (!out.data) return res.status(404).json({ success: false, error: 'Phase not found' });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Phase not found', error_code: 'phase_not_found', error_params: {} });
     res.json({ success: true, message: 'Deleted' });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'PROJECTS', req); }
 });
 
 // -- Team --
@@ -356,7 +357,7 @@ router.post('/:id/team', authenticate, authorize(), async (req, res) => {
       employee_id: Joi.number().integer().required(), role: Joi.string().valid(...TEAM_ROLES).default('site_engineer'),
     });
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
 
     const out = await auditedMutation(req, { action: 'assign', module: 'projects', entityType: 'project_team' }, async (q) => {
       const existing = await q('SELECT id FROM project_team WHERE project_id = $1 AND employee_id = $2', [req.params.id, value.employee_id]);
@@ -364,9 +365,9 @@ router.post('/:id/team', authenticate, authorize(), async (req, res) => {
       const r = await q('INSERT INTO project_team (project_id, employee_id, role) VALUES ($1,$2,$3) RETURNING *', [req.params.id, value.employee_id, value.role]);
       return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], description: `Added employee ${value.employee_id} to project #${req.params.id} as ${value.role}` };
     });
-    if (out.duplicate) return res.status(400).json({ success: false, error: 'Employee already in team' });
+    if (out.duplicate) return res.status(400).json({ success: false, error: 'Employee already in team', error_code: 'team_member_duplicate', error_params: {} });
     res.status(201).json({ success: true, data: out.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'PROJECTS', req); }
 });
 
 router.delete('/:projectId/team/:teamId', authenticate, authorize(), async (req, res) => {
@@ -376,9 +377,9 @@ router.delete('/:projectId/team/:teamId', authenticate, authorize(), async (req,
       if (r.rowCount === 0) return { skipAudit: true };
       return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, before: r.rows[0], description: `Removed employee ${r.rows[0].employee_id} from project #${req.params.projectId}` };
     });
-    if (!out.data) return res.status(404).json({ success: false, error: 'Team member not found' });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Team member not found', error_code: 'team_member_not_found', error_params: {} });
     res.json({ success: true, message: 'Removed' });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'PROJECTS', req); }
 });
 
 // -- Milestones --
@@ -389,7 +390,7 @@ router.post('/:id/milestones', authenticate, authorize(), async (req, res) => {
       target_date: Joi.date().iso().required(), achieved_date: Joi.date().iso().allow(null),
     });
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
 
     const out = await auditedMutation(req, { action: 'create', module: 'projects', entityType: 'project_milestone' }, async (q) => {
       const r = await q(
@@ -400,7 +401,7 @@ router.post('/:id/milestones', authenticate, authorize(), async (req, res) => {
       return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], description: `Created milestone ${value.title_ar}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'PROJECTS', req); }
 });
 
 router.put('/:projectId/milestones/:milestoneId', authenticate, authorize(), async (req, res) => {
@@ -411,7 +412,7 @@ router.put('/:projectId/milestones/:milestoneId', authenticate, authorize(), asy
       status: Joi.string().valid('pending', 'achieved', 'delayed'),
     }).min(1);
     const { error, value } = schema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
 
     const sets = []; const p = []; let i = 1;
     for (const [k, v] of Object.entries(value)) {
@@ -424,9 +425,9 @@ router.put('/:projectId/milestones/:milestoneId', authenticate, authorize(), asy
       const r = await q(`UPDATE project_milestones SET ${sets.join(', ')} WHERE id = $${i} AND project_id = $${i + 1} RETURNING *`, p);
       return { data: r.rows[0], entityId: before.id, projectId: before.project_id, before, after: r.rows[0], oldStatus: before.status, newStatus: r.rows[0].status, description: `Updated milestone ${before.title}` };
     });
-    if (!out.data) return res.status(404).json({ success: false, error: 'Milestone not found' });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Milestone not found', error_code: 'milestone_not_found', error_params: {} });
     res.json({ success: true, data: out.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'PROJECTS', req); }
 });
 
 router.delete('/:projectId/milestones/:milestoneId', authenticate, authorize(), async (req, res) => {
@@ -436,9 +437,9 @@ router.delete('/:projectId/milestones/:milestoneId', authenticate, authorize(), 
       if (r.rowCount === 0) return { skipAudit: true };
       return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, before: r.rows[0], description: `Deleted milestone ${r.rows[0].title}` };
     });
-    if (!out.data) return res.status(404).json({ success: false, error: 'Milestone not found' });
+    if (!out.data) return res.status(404).json({ success: false, error: 'Milestone not found', error_code: 'milestone_not_found', error_params: {} });
     res.json({ success: true, message: 'Deleted' });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'PROJECTS', req); }
 });
 
 module.exports = router;

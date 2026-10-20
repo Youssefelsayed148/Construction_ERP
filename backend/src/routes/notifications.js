@@ -7,7 +7,7 @@ const { queryPaginated } = require('../utils/pagination');
 const { logActivity } = require('../utils/activity');
 const { auditedMutation } = require('../utils/auditedMutation');
 const Joi = require('joi');
-const { typedFail } = require('../utils/typedRoute');
+const { typedFail, routeFail } = require('../utils/typedRoute');
 
 // GET /api/notifications — the in-app inbox (frontend polls).
 router.get('/', authenticate, authorize(), async (req, res) => {
@@ -22,7 +22,7 @@ router.get('/', authenticate, authorize(), async (req, res) => {
     res.json({ success: true, data: page.rows, unread: count });
   } catch (e) {
     console.error('Error listing notifications:', e);
-    res.status(500).json({ success: false, error: e.message });
+    return routeFail(res, e, 'NOTIFICATIONS', req);
   }
 });
 
@@ -36,7 +36,7 @@ router.post('/:id/read', authenticate, authorize(), async (req, res) => {
     });
     res.json({ success: r.data.ok });
   } catch (e) {
-    res.status(500).json({ success: false, error: e.message });
+    return routeFail(res, e, 'NOTIFICATIONS', req);
   }
 });
 
@@ -81,7 +81,7 @@ router.get('/preferences', authenticate, authorize(), async (req, res) => {
     const prefs = await notificationService.getPreferences(req.user.id);
     res.json({ success: true, data: prefs });
   } catch (e) {
-    res.status(500).json({ success: false, error: e.message });
+    return routeFail(res, e, 'NOTIFICATIONS', req);
   }
 });
 
@@ -93,7 +93,7 @@ router.put('/preferences', authenticate, authorize(), async (req, res) => {
       channel: Joi.string().valid(...notificationService.CHANNELS).required(),
       enabled: Joi.boolean().default(true),
     }).unknown(false).validate(req.body);
-    if (error) return res.status(400).json({ success: false, error_code: 'invalid_notification_preference' });
+    if (error) return res.status(400).json({ success: false, error: 'Invalid notification preference', error_code: 'invalid_notification_preference', error_params: { field: error.details[0].path.join('.') } });
     const r = await auditedMutation(req, { action: 'update', module: 'notifications', entityType: 'notification_preference' }, async (q) => {
       const result = await notificationService.setPreference(req.user.id, value.event_type, value.channel, value.enabled, { query: q });
       return { data: result, entityId: req.user.id, after: value, description: `Notification preference ${value.event_type}/${value.channel} ${value.enabled ? 'on' : 'off'}` };
