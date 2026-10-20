@@ -64,41 +64,98 @@ const MATRIX = {
   BLOCKED_UNTIL_5_1: ['owner', 'admin', 'manager', 'staff', 'engineer', 'accountant', 'finance_manager', 'purchasing_mgr', 'project_manager', 'site_supervisor', 'legal_mgr', 'maintenance_mgr'],
 };
 
-// C5: the Phase A routes (cash flow, stock reservations, notification
-// preferences, project calendars) against the canonical role map (migration
-// 0031 + 0006). Same rule: hidden ⇒ the API refuses for that role.
+// C5 + the screens closeout: the Phase A routes (cash flow, stock
+// reservations, notification preferences, project calendars) plus the
+// finance-workbench commitments route, against the canonical role map
+// (migration 0031 + 0006 + 0036). Same rule: hidden ⇒ the API refuses for
+// that role. Grants are read straight from the migrations, not assumed:
+//   cash-flow     GET /api/finance-ledger/cash-flow        (finance-ledger view:
+//                 0036 view owner_ceo/coo/accountant_ap + 0031 accountant_ar/commercial_manager)
+//   reservations  GET /api/warehouses/reservations         (warehouses view:
+//                 0006 site_engineer/storekeeper + 0031 owner_ceo/coo/construction_manager/
+//                 site_manager/procurement_manager/procurement_officer/equipment_manager/supplier_sales)
+//   preferences   GET /api/notifications/preferences       (notifications view:
+//                 all 18 canonical internal roles via 0031's shared util reads)
+//   calendars     GET /api/projects/:projectId/calendars   (projects view)
+//   commitments   GET /api/commercial/project/:id/commitments (ACTION_OVERRIDES maps the GET to
+//                 see_internal_cost: owner_ceo, coo and commercial_manager only — NOTE the
+//                 earlier site_engineer row wrongly denied reservations; 0006 grants it.
 const C5_MATRIX = {
   owner_ceo: {
-    allowed: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/warehouses/reservations'], ['GET', '/api/notifications/preferences'], ['GET', '/api/projects/:projectId/calendars']],
+    allowed: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/warehouses/reservations'], ['GET', '/api/notifications/preferences'], ['GET', '/api/projects/:projectId/calendars'], ['GET', '/api/commercial/project/:projectId/commitments']],
+    denied: [],
+  },
+  coo: {
+    allowed: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/warehouses/reservations'], ['GET', '/api/notifications/preferences'], ['GET', '/api/projects/:projectId/calendars'], ['GET', '/api/commercial/project/:projectId/commitments']],
     denied: [],
   },
   accountant_ar: {
     allowed: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/notifications/preferences']],
-    denied: [['GET', '/api/warehouses/reservations'], ['GET', '/api/projects/:projectId/calendars']],
+    denied: [['GET', '/api/warehouses/reservations'], ['GET', '/api/projects/:projectId/calendars'], ['GET', '/api/commercial/project/:projectId/commitments']],
+  },
+  accountant_ap: {
+    allowed: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/notifications/preferences']],
+    denied: [['GET', '/api/warehouses/reservations'], ['GET', '/api/projects/:projectId/calendars'], ['GET', '/api/commercial/project/:projectId/commitments']],
+  },
+  commercial_manager: {
+    allowed: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/notifications/preferences'], ['GET', '/api/projects/:projectId/calendars'], ['GET', '/api/commercial/project/:projectId/commitments']],
+    denied: [['GET', '/api/warehouses/reservations']],
   },
   storekeeper: {
     allowed: [['GET', '/api/warehouses/reservations'], ['GET', '/api/notifications/preferences'], ['GET', '/api/projects/:projectId/calendars']],
-    denied: [['GET', '/api/finance-ledger/cash-flow']],
+    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/commercial/project/:projectId/commitments']],
   },
   site_engineer: {
-    allowed: [['GET', '/api/notifications/preferences'], ['GET', '/api/projects/:projectId/calendars']],
-    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/warehouses/reservations']],
-  },
-  hr_manager: {
-    allowed: [['GET', '/api/notifications/preferences'], ['GET', '/api/projects/:projectId/calendars']],
-    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/warehouses/reservations']],
+    allowed: [['GET', '/api/warehouses/reservations'], ['GET', '/api/notifications/preferences'], ['GET', '/api/projects/:projectId/calendars']],
+    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/commercial/project/:projectId/commitments']],
   },
   procurement_manager: {
     allowed: [['GET', '/api/warehouses/reservations'], ['GET', '/api/notifications/preferences'], ['GET', '/api/projects/:projectId/calendars']],
-    denied: [['GET', '/api/finance-ledger/cash-flow']],
+    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/commercial/project/:projectId/commitments']],
+  },
+  procurement_officer: {
+    allowed: [['GET', '/api/warehouses/reservations'], ['GET', '/api/notifications/preferences']],
+    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/projects/:projectId/calendars'], ['GET', '/api/commercial/project/:projectId/commitments']],
+  },
+  equipment_manager: {
+    allowed: [['GET', '/api/warehouses/reservations'], ['GET', '/api/notifications/preferences'], ['GET', '/api/projects/:projectId/calendars']],
+    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/commercial/project/:projectId/commitments']],
+  },
+  construction_manager: {
+    allowed: [['GET', '/api/warehouses/reservations'], ['GET', '/api/notifications/preferences'], ['GET', '/api/projects/:projectId/calendars']],
+    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/commercial/project/:projectId/commitments']],
+  },
+  site_manager: {
+    allowed: [['GET', '/api/warehouses/reservations'], ['GET', '/api/notifications/preferences'], ['GET', '/api/projects/:projectId/calendars']],
+    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/commercial/project/:projectId/commitments']],
+  },
+  qa_qc_manager: {
+    allowed: [['GET', '/api/notifications/preferences'], ['GET', '/api/projects/:projectId/calendars']],
+    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/warehouses/reservations'], ['GET', '/api/commercial/project/:projectId/commitments']],
+  },
+  hse_manager: {
+    allowed: [['GET', '/api/notifications/preferences'], ['GET', '/api/projects/:projectId/calendars']],
+    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/warehouses/reservations'], ['GET', '/api/commercial/project/:projectId/commitments']],
+  },
+  hr_manager: {
+    allowed: [['GET', '/api/notifications/preferences'], ['GET', '/api/projects/:projectId/calendars']],
+    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/warehouses/reservations'], ['GET', '/api/commercial/project/:projectId/commitments']],
+  },
+  quantity_surveyor: {
+    allowed: [['GET', '/api/notifications/preferences'], ['GET', '/api/projects/:projectId/calendars']],
+    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/warehouses/reservations'], ['GET', '/api/commercial/project/:projectId/commitments']],
+  },
+  viewer: {
+    allowed: [['GET', '/api/notifications/preferences'], ['GET', '/api/projects/:projectId/calendars']],
+    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/warehouses/reservations'], ['GET', '/api/commercial/project/:projectId/commitments']],
   },
   client_executive: {
     allowed: [['GET', '/api/projects/:projectId/calendars']],
-    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/warehouses/reservations'], ['GET', '/api/notifications/preferences']],
+    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/warehouses/reservations'], ['GET', '/api/notifications/preferences'], ['GET', '/api/commercial/project/:projectId/commitments']],
   },
   supplier_sales: {
     allowed: [['GET', '/api/warehouses/reservations']],
-    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/projects/:projectId/calendars'], ['GET', '/api/notifications/preferences']],
+    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/projects/:projectId/calendars'], ['GET', '/api/notifications/preferences'], ['GET', '/api/commercial/project/:projectId/commitments']],
   },
 };
 

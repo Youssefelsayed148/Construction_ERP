@@ -66,10 +66,10 @@ describe('R0.8 context auth and sidebar preserve session behavior', () => {
 // adminWorkspaces/settings/agent-activity are additionally role-gated.
 describe('C5 canonical role map: rendered sidebar entries', () => {
   const Grants = {
-    owner_ceo: ['dashboard', 'projects', 'inventory', 'clients', 'suppliers', 'assets', 'hr', 'invoices', 'legal', 'approvals', 'actions'],
-    procurement_manager: ['dashboard', 'projects', 'inventory', 'procurement', 'suppliers', 'invoices'],
+    owner_ceo: ['dashboard', 'projects', 'inventory', 'clients', 'suppliers', 'assets', 'hr', 'invoices', 'finance-ledger', 'warehouses', 'notifications', 'legal', 'approvals', 'actions'],
+    procurement_manager: ['dashboard', 'projects', 'procurement', 'suppliers', 'invoices', 'warehouses', 'notifications'],
     storekeeper: ['projects', 'items', 'warehouses', 'inventory', 'actions', 'notifications'],
-    accountant_ar: ['dashboard', 'clients', 'invoices', 'payments', 'finance', 'finance-ledger', 'approvals', 'actions'],
+    accountant_ar: ['dashboard', 'clients', 'invoices', 'payments', 'finance', 'finance-ledger', 'approvals', 'actions', 'notifications'],
     site_engineer: ['projects', 'boq', 'locations', 'quantities', 'schedule', 'site', 'work-orders', 'qhse', 'hse', 'actions', 'notifications'],
     hr_manager: ['hr', 'payroll', 'users', 'organizations', 'delegations', 'projects', 'dashboard', 'reports', 'actions', 'notifications'],
     client_executive: ['projects', 'docs', 'qhse', 'boq'],
@@ -103,54 +103,61 @@ describe('C5 canonical role map: rendered sidebar entries', () => {
 
   test('owner_ceo: full internal menu plus admin workspaces; settings and agent activity stay owner/admin', () => {
     const view = renderFor('owner_ceo');
-    expect(view.links).toEqual(expect.arrayContaining(['/dashboard', '/projects', '/inventory', '/hr', '/invoices', '/my-actions', '/admin/organizations']));
+    expect(view.links).toEqual(expect.arrayContaining(['/dashboard', '/projects', '/inventory', '/hr', '/invoices', '/my-actions', '/cash-flow', '/reservations', '/notification-preferences', '/admin/organizations']));
     expect(view.links).not.toContain('/settings');
     expect(view.links).not.toContain('/agent-activity');
     view.unmount();
   });
 
-  test('procurement_manager: comparison, suppliers and invoices; no hr, clients, expenses or legal', () => {
+  test('procurement_manager: comparison, suppliers, invoices and reservations; no hr, clients, expenses, legal or cash flow', () => {
     const view = renderFor('procurement_manager');
-    expect(view.links).toEqual(expect.arrayContaining(['/procurement/comparison', '/suppliers', '/invoices', '/inventory']));
+    expect(view.links).toEqual(expect.arrayContaining(['/procurement/comparison', '/suppliers', '/invoices', '/reservations', '/notification-preferences']));
     expect(view.links).not.toContain('/hr');
     expect(view.links).not.toContain('/clients');
     expect(view.links).not.toContain('/expenses');
     expect(view.links).not.toContain('/legal');
+    expect(view.links).not.toContain('/cash-flow');
     view.unmount();
   });
 
-  test('storekeeper: inventory and projects; no invoices, procurement comparison or hr (no prices, no money)', () => {
+  test('storekeeper: inventory, projects, reservations and notification preferences; no invoices, comparison, hr or cash flow', () => {
     const view = renderFor('storekeeper');
-    expect(view.links).toEqual(expect.arrayContaining(['/inventory', '/projects']));
+    expect(view.links).toEqual(expect.arrayContaining(['/inventory', '/projects', '/reservations', '/notification-preferences']));
     expect(view.links).not.toContain('/invoices');
     expect(view.links).not.toContain('/procurement/comparison');
     expect(view.links).not.toContain('/hr');
+    expect(view.links).not.toContain('/cash-flow');
     view.unmount();
   });
 
-  test('accountant_ar: invoices and my actions; no inventory, hr or suppliers', () => {
+  test('accountant_ar: invoices, my actions, cash flow and notification preferences; no inventory, hr, suppliers or reservations', () => {
     const view = renderFor('accountant_ar');
-    expect(view.links).toEqual(expect.arrayContaining(['/invoices', '/my-actions', '/approvals']));
+    expect(view.links).toEqual(expect.arrayContaining(['/invoices', '/my-actions', '/approvals', '/cash-flow', '/notification-preferences']));
     expect(view.links).not.toContain('/inventory');
     expect(view.links).not.toContain('/hr');
     expect(view.links).not.toContain('/suppliers');
+    expect(view.links).not.toContain('/reservations');
     view.unmount();
   });
 
-  test('site_engineer: projects and my actions; no invoices, inventory or admin workspaces', () => {
+  test('site_engineer: projects, my actions and notification preferences; no invoices, inventory, reservations or cash flow', () => {
     const view = renderFor('site_engineer');
-    expect(view.links).toEqual(expect.arrayContaining(['/projects', '/my-actions']));
+    expect(view.links).toEqual(expect.arrayContaining(['/projects', '/my-actions', '/notification-preferences']));
     expect(view.links).not.toContain('/invoices');
     expect(view.links).not.toContain('/inventory');
+    expect(view.links).not.toContain('/reservations');
+    expect(view.links).not.toContain('/cash-flow');
     expect(view.links).not.toContain('/admin/organizations');
     view.unmount();
   });
 
-  test('hr_manager: hr; no invoices, inventory or admin workspaces', () => {
+  test('hr_manager: hr and notification preferences; no invoices, inventory, reservations or cash flow', () => {
     const view = renderFor('hr_manager');
-    expect(view.links).toEqual(expect.arrayContaining(['/hr', '/projects']));
+    expect(view.links).toEqual(expect.arrayContaining(['/hr', '/projects', '/notification-preferences']));
     expect(view.links).not.toContain('/invoices');
     expect(view.links).not.toContain('/inventory');
+    expect(view.links).not.toContain('/reservations');
+    expect(view.links).not.toContain('/cash-flow');
     expect(view.links).not.toContain('/admin/organizations');
     view.unmount();
   });
