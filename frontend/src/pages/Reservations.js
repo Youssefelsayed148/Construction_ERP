@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useApiClient } from '../hooks/useApiClient';
 import { apiJson, apiUrl } from '../services/apiClient';
 import { useLocale } from '../hooks/useLocale';
 import { authService } from '../services/api';
@@ -22,7 +21,6 @@ export function canManageReservations(user) {
 
 function Reservations() {
   const { t, locale } = useLocale();
-  const apiClient = useApiClient();
   const [rows, setRows] = useState([]);
   const [materials, setMaterials] = useState(null);
   const [warehouses, setWarehouses] = useState(null);

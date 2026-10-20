@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useApiClient } from '../hooks/useApiClient';
 import { apiJson, apiUrl } from '../services/apiClient';
 import { useLocale } from '../hooks/useLocale';
 import { errorMessage } from '../utils/errorMessage';
@@ -42,7 +41,6 @@ const defaultEnabled = (channel) => channel === 'in_app';
 
 function NotificationPreferences() {
   const { t } = useLocale();
-  const apiClient = useApiClient();
   const [rows, setRows] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState('');

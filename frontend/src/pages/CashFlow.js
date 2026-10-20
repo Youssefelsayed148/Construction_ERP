@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useApiClient } from '../hooks/useApiClient';
 import { apiJson, apiUrl } from '../services/apiClient';
 import { useLocale } from '../hooks/useLocale';
 import { formatCurrency } from '../utils/formatters';
@@ -13,7 +12,6 @@ const BUCKETS = ['current', '1_30', '31_60', '61_90', '90_plus'];
 
 function CashFlow() {
   const { t } = useLocale();
-  const apiClient = useApiClient();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -31,7 +29,7 @@ function CashFlow() {
     } finally {
       setLoading(false);
     }
-  }, [apiClient]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
