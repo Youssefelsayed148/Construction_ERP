@@ -1,0 +1,36 @@
+# Task: Construction ERP closeout - Session T (all test batches T1-T5 prep)
+
+Test and verify the Osiris Labs Construction ERP closeout (React, Express, PostgreSQL, bilingual EN/AR, RBAC). You own TEST AUTHORING and the SINGLE full verification run. A separate Session F owns product-code fixes. Read first: `AGENTS.md`, `docs/CLOSEOUT_PLAN_F_AND_T.md`, `docs/ERP_CLOSEOUT_PLAN.md`, `docs/GO_NOGO.md`, `docs/GOLDEN_VALUES.md`, `docs/UAT_PILOT.md`, `docs/STAGING.md`, the top ~120 lines of `STATE.md`.
+
+## Base branch
+1. Work directly ON branch `closeout/batch-a-to-6`; do NOT create a new branch (if the environment pre-created a `claude/...` branch, `git checkout closeout/batch-a-to-6` tracking origin first), then `git pull --rebase origin closeout/batch-a-to-6`. It must contain merge commit `680fc09`; if not, STOP and report. Its `STATE.md` should begin with `F-SESSION COMPLETE`; if it does not, Session F has not finished: say so, author tests only, and do NOT run the final verification set (report it NOT RUN) rather than verifying half-fixed code.
+2. Do not edit product code (backend/src routes/services/middleware, frontend/src components/pages) except to fix a defect your test proves AND only if the fix is under ~20 lines and clearly correct; otherwise record the defect (id, file:line, reproduction, severity) in `docs/CLOSEOUT_GAPS.md` and leave it for Session F.
+
+## TEST-RUN DISCIPLINE
+- While authoring: no suite runs. At most one collect/syntax check per new file (e.g. `--listTests` or running that single file once with `-t` skipped is NOT needed; prefer a single combined run of ONLY your new files after all are written).
+- Then, once: new test files together. Then ONCE each of: full PG suite (`npm --prefix backend run test:pg`), backend mock suite (`npm --prefix backend run test`), `lint:guards`, frontend suites + `i18n:check` + `i18n:parity` + `i18n:inventory --check`, frontend build. Save unfiltered output to ignored log files.
+- Failures: classify each as (a) test bug -> fix test, (b) product defect -> record (or tiny fix per rule above), (c) environment. Rerun ONLY failing files. Do NOT run a second full suite; list it as NOT RUN.
+- Two failed attempts at one step -> stop that item, record blocker, continue.
+
+## Hard constraints
+Same as AGENTS.md: throwaway local PostgreSQL 16 only (Docker if available else installed service; DB name like `erp_closeout_test`), env vars in process only, no `.env` edits, no secrets printed, no external services, no legacy role switch. Never touch demo/pilot/clone databases; if a repo seed script's target guard refuses your throwaway DB, do not bypass the guard - write the fixture through the repo's PG test fixtures instead and note it. Additive migrations only (if you truly need one, next free number; `0030` never). Commit each slice on `closeout/batch-a-to-6` with the harness Co-Authored-By trailer; push with `git push origin closeout/batch-a-to-6` (pull --rebase first); never `main`, no PR, no force-push, no deploy. Update `STATE.md`, `docs/CLOSEOUT_PROGRESS.md`, `docs/CLOSEOUT_LOG.md` after each batch with command output.
+
+## T1 - Merge confirmation (executed at the END, once)
+Run the verification set above on the merged base. Record counts. Confirm CI workflow jobs reference existing scripts (`.github/workflows/ci.yml`); do not trigger remote CI.
+
+## T2 - Golden journey (author early, run in T1's single PG run)
+Extend `golden-chain.pg.test.js` (currently a partial purchase-to-pay slice) or add `golden-journey.pg.test.js`: tender -> contract -> project setup (phases/milestones/BOQ) -> purchase requisition -> RFQ/quotes/award -> PO -> delivery -> MIR inspection -> GRN -> supplier invoice/payment -> site report/progress -> client valuation with retention -> invoice issue -> receipt -> variation -> handover -> warranty. Drive through service/API paths real users use (supertest against the app or the repo's existing PG harness helpers); assert at each step: status transitions, numbering, audit events, stock effects, GL balanced entries, AR/AP subledger == GL, retention held/released, and project cost/progress/finance against the numbers in `docs/GOLDEN_VALUES.md` (those assumptions are provisional - mark assertions `// PROVISIONAL golden value` and list them in the report). If a lifecycle stage has no implemented backend, assert the gap explicitly with a skipped test carrying a reason and record it in `docs/CLOSEOUT_GAPS.md` - never fake it.
+
+## T3 - Role-by-role lifecycle and permissions
+1. Generate (from the seeded policy tables, not hand lists) a matrix for the 18 internal and 8 external canonical roles (+ legacy roles still seeded): for each role, which of the golden-journey actions it can perform vs. is refused (403/404), and which sidebar entries/routes are visible. Reuse `nav-visibility.pg.test.js` and the permission-matrix suite; extend rather than duplicate.
+2. Role scenario tests: maker/checker separation (a maker cannot approve their own request), approval-limit refusal above limit (`approval_limit_exceeded`), project-scope isolation (a user on project A cannot read project B rows), external-role cage (client/supplier/consultant/subcontractor see only their portal data).
+3. Frontend: extend Playwright/e2e or the existing `e2e/c2-demo-ui-crawl.js`-style harness only as AUTHORED scripts (they need the app + seeded DB; run them only if the stack comes up cheaply from your throwaway DB, otherwise mark NOT RUN with the exact command for the owner to run).
+
+## T4 - Pilot-environment readiness (scripts and docs; run what the sandbox allows)
+Write/verify runbooks and scripts, run only what works locally against the throwaway DB: migration idempotency (run all migrations twice), `backend/scripts/r02-pg-gate.ps1 -Reconcile` equivalent reconciliation on the throwaway DB if runnable in this OS, backup/restore rehearsal with `pg_dump`/`pg_restore` into a second throwaway DB with row-count comparison, rollback runbook check (`docs/MIGRATIONS.md`), smoke script review (`smoke:staging`) against a locally started backend. Anything requiring Docker, the pilot copy or demo stack -> exact command + NOT RUN.
+
+## T5 - Human UAT kit
+Produce `docs/UAT_EXECUTION_KIT.md`: per role (finance, procurement, site, owner, plus client/supplier/subcontractor/consultant portals) a numbered script walking the full lifecycle with expected result per step, test accounts to use (reference seeded usernames/roles only; no passwords), defect log template, severity rubric, sign-off table. Align with `docs/UAT_PILOT.md`; do not mark any sign-off as done.
+
+## Final report (last message and STATE.md)
+Per batch: commits, tests added (file, count, what each proves), defects found (id, severity, file:line, who fixes), gate table (command, exit code, pass/fail counts or NOT RUN + reason), provisional golden assertions list, whether Session F fixes were included. Update `docs/GO_NOGO.md` evidence column with real command output only; keep the verdict NO-GO unless every criterion has evidence (human sign-offs will not).
