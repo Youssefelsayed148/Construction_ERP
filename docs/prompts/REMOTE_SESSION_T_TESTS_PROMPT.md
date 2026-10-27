@@ -4,7 +4,7 @@ Test and verify the Osiris Labs Construction ERP closeout (React, Express, Postg
 
 ## Base branch
 1. Work directly ON branch `closeout/batch-a-to-6`; do NOT create a new branch (if the environment pre-created a `claude/...` branch, `git checkout closeout/batch-a-to-6` tracking origin first), then `git pull --rebase origin closeout/batch-a-to-6`. It must contain commit `c8242b5` (the cloud Batch 0-4 tip); if not, STOP and report. Its `STATE.md` should begin with `F-SESSION COMPLETE`; if it does not, Session F has not finished: say so, author tests only, and do NOT run the final verification set (report it NOT RUN) rather than verifying half-fixed code.
-2. Do not edit product code (backend/src routes/services/middleware, frontend/src components/pages) except to fix a defect your test proves AND only if the fix is under ~20 lines and clearly correct; otherwise record the defect (id, file:line, reproduction, severity) in `docs/CLOSEOUT_GAPS.md` and leave it for Session F.
+2. Do not edit product code (backend/src routes/services/middleware, frontend/src components/pages) except to fix a defect your test proves AND only if the fix is under ~40 lines and clearly correct; otherwise record the defect (id, file:line, reproduction, severity) in `docs/CLOSEOUT_GAPS.md` and leave it for Session F.
 
 ## TEST-RUN DISCIPLINE
 - While authoring: no suite runs. At most one collect/syntax check per new file (e.g. `--listTests` or running that single file once with `-t` skipped is NOT needed; prefer a single combined run of ONLY your new files after all are written).
