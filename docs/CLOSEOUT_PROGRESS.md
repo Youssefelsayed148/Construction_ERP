@@ -1837,3 +1837,11 @@ Implementation 854e8bd and LF checkpoint 855ee52 committed. Pilot migrate exited
 - Commits: c783004 (C2 backend), 3a66e3d (C2 frontend), 901c573 (C3), 0ba4a98+56d5b7e (C4 + build-gate fix), 30d23a5 (C5), f3ccf23 (C6 review pack).
 - Defects found by the screenshot gate and fixed in-scope: Approvals/Payroll missing localizedName imports (compile-error overlay); SiteWorkspace crash on non-object workspace payload; unused-locale build failure on the 8092 demo build.
 - Open after Phase C: full PG gate (all .pg suites incl. the new C5 matrix), B1 repair-script dry run/--apply on construction_erp_demo, --approval-limits demo stage, owner visual review, native Arabic review, C5 external-portal role-map decision.
+
+## 2026-10-27 - Remote batch 0-4 session, Batch 0 (environment)
+
+- Base `dd86ab5` on `claude/erp-closeout-batches-0-4-qvzg2x` (== `closeout/batch-a-to-6`). Order per `docs/prompts/REMOTE_BATCH_0_4_PROMPT.md`: Batch 0 -> 1 -> 3 -> 4 -> 2.
+- Docker daemon unavailable in this sandbox; used the pre-installed local PostgreSQL 16 service instead (`pg_ctlcluster 16 main start`). Throwaway DB `erp_closeout_test` created. `backend/node_modules` installed via `npm ci` (445 packages, exit 0).
+- `npm --prefix backend run migrate` with `DB_*`/`JWT_SECRET`/`TEST_PG=1` in the process env only: exit 0, 130 applied. Rerun: exit 0, 0 applied / 130 already applied (repeatable). Highest migration `0068`; next new one is `0069`; `0030` confirmed still a gap.
+- `.github/workflows/ci.yml` script references checked against `backend/package.json`, `frontend/package.json`, root `package.json`: all exist, no drift. Correction to the remaining-plan prompt: `lint:api` is a frontend script (`frontend/scripts/api-client-guard.js`), run as `npm --prefix frontend run lint:api`.
+- No remote CI triggered (push approval not sought). Proceeding to Batch 1.

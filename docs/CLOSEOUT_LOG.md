@@ -2895,3 +2895,16 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 - C5 commit `30d23a5`: canonical-role nav matrix for cash flow/reservations/preferences/calendars in the deferred PG suite; Sidebar rendering tests for eight canonical roles. FINDING (needs decision): external portal menu/auth map still uses legacy role keys, leaving client_executive with a portal-less sidebar and supplier_sales with an empty sidebar.
 - C6 commit `f3ccf23`: review pack regenerated (97 terms / 26 routes / 36 namespaces). Explicitly NOT a sign-off.
 - Gates: affected frontend tests 409 green; i18n:check / i18n:parity / i18n:inventory --check ok; lint:api ok; backend lint-guards ok; 8092 demo build compiled with no localhost:5000 in the main bundle. Full PG run (including the new C5 matrix and the converted-route PG coverage) remains a deferred gate; no database was available in this sandbox.
+
+# 2026-10-27 - Remote batch 0-4 session - Batch 0 command evidence
+
+| Step | Command | Result |
+|---|---|---|
+| Docker check | `docker info` | "failed to connect to the docker API at unix:///var/run/docker.sock ... no such file or directory" (daemon not running) |
+| PG cluster check | `pg_lsclusters` | `16 main 5432 down postgres /var/lib/postgresql/16/main ...` |
+| Start PG | `pg_ctlcluster 16 main start` | cluster `16/main` online, port 5432 |
+| Create throwaway DB | `sudo -u postgres psql -c "CREATE DATABASE erp_closeout_test;"` | `CREATE DATABASE` |
+| Install deps | `npm ci` (in `backend/`) | added 445 packages, exit 0 |
+| Migrate (1st) | `DB_HOST=127.0.0.1 DB_PORT=5432 DB_NAME=erp_closeout_test DB_USER=postgres DB_PASSWORD=postgres JWT_SECRET=closeout-session-only-secret-32-chars-minimum TEST_PG=1 npm run migrate` (in `backend/`) | `all migrations completed (130 applied, 0 already applied)`, exit 0 |
+| Migrate (2nd, repeatability) | same command | `all migrations completed (0 applied, 130 already applied)`, exit 0 |
+| CI drift check | read `.github/workflows/ci.yml`; diffed script names against `backend/package.json`, `frontend/package.json`, root `package.json` | all referenced scripts exist; no drift; `lint:api` confirmed frontend-side |
