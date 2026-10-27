@@ -2908,3 +2908,17 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 | Migrate (1st) | `DB_HOST=127.0.0.1 DB_PORT=5432 DB_NAME=erp_closeout_test DB_USER=postgres DB_PASSWORD=postgres JWT_SECRET=closeout-session-only-secret-32-chars-minimum TEST_PG=1 npm run migrate` (in `backend/`) | `all migrations completed (130 applied, 0 already applied)`, exit 0 |
 | Migrate (2nd, repeatability) | same command | `all migrations completed (0 applied, 130 already applied)`, exit 0 |
 | CI drift check | read `.github/workflows/ci.yml`; diffed script names against `backend/package.json`, `frontend/package.json`, root `package.json` | all referenced scripts exist; no drift; `lint:api` confirmed frontend-side |
+
+# 2026-10-27 - Remote batch 0-4 session - Batch 1 command evidence
+
+| Step | Command | Result |
+|---|---|---|
+| Pre-existing regression suite, 1st run | `DB_HOST=127.0.0.1 DB_PORT=5432 DB_NAME=erp_closeout_test DB_USER=postgres DB_PASSWORD=postgres JWT_SECRET=... TEST_PG=1 npx jest --config jest.pg.config.js --runInBand --forceExit --testPathPattern="b1-invoice-money"` | 1 suite / **4 failed, 2 passed** (first-ever real-PG run of this file) |
+| Diagnosis repro: valuation fields | `node -e "...finance.createClientValuation..."` | amount 90000.00, certified_gross 100000.00, retention_amount 10000.00 — fields correct |
+| Diagnosis repro: posted journal lines | `node -e "...finance.transitionInvoice(...'approved')...transitionInvoice(...'issued')..."` | 3 real lines (90000/10000/100000 debit-debit-credit); `gl_account_map` join multiplied them because `receivable`/`client_retention_receivable`/`subcontractor_advance_receivable` share `account_id=2` (provisional seed) |
+| `gl_account_map` inspection | `SELECT key, account_id FROM gl_account_map ORDER BY account_id, key;` | confirmed 4 groups of shared `account_id` across distinct keys |
+| Diagnosis repro: PUT bypass | `node -e "...POST /api/invoices...PUT .../:id {status:'issued'}..."` | PUT -> 400 `validation_error` ("status must be one of draft, sent, partially_paid, paid, overdue, void") |
+| Test file fixes applied | 3 edits to `b1-invoice-money.pg.test.js` (no production code) | — |
+| Pre-existing regression suite, rerun | same jest command | 1 suite / **6 passed**, exit 0 |
+| New invariant test, 1st run | same jest command, `--testPathPattern="b1-ar-ap-invariant"` | 1 suite / 2 passed, 1 failed (`payment_batch_project_required` — service invoice names no PO, batch item needs explicit `project_id`) |
+| New invariant test, fix + rerun | added `project_id` to the batch item; rerun | 1 suite / 3 passed, exit 0 |

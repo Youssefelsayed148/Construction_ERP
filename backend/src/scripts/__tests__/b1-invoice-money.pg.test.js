@@ -95,7 +95,7 @@ describePg('B1 invoice money lifecycle (real PostgreSQL, real app)', () => {
     const detail1 = await get(`/api/invoices/${draft.id}`);
     expect(detail1.status).toBe(200);
     expect(detail1.body.data.status).toBe('draft'); // past-due draft is never shown as overdue
-    const list1 = await get(`/api/invoices?project_id=${project.id}`);
+    const list1 = await get(`/api/invoices?project_id=${project}`);
     expect(list1.status).toBe(200);
     const listed = list1.body.data.find((i) => i.id === draft.id);
     expect(listed.status).toBe('draft');
@@ -200,16 +200,18 @@ describePg('B1 invoice money lifecycle (real PostgreSQL, real app)', () => {
     await db.transaction((txClient) => finance.transitionInvoice(txClient.query.bind(txClient), valuation.id, 'issued', owner));
 
     const entry = await one("SELECT id FROM journal_entries WHERE reference_type = 'client_invoice' AND reference_id = $1", [valuation.id]);
-    const lines = await all('SELECT gam.key AS account, jel.debit, jel.credit FROM journal_entry_lines jel JOIN gl_account_map gam ON gam.account_id = jel.account_id WHERE jel.journal_entry_id = $1', [entry.id]);
-    const byKey = {};
-    for (const line of lines) {
-      byKey[line.account] = byKey[line.account] || { debit: 0, credit: 0 };
-      byKey[line.account].debit += Number(line.debit || 0);
-      byKey[line.account].credit += Number(line.credit || 0);
-    }
-    expect(money(byKey.receivable.debit)).toBe('90000.00');   // AR receivable at net
-    expect(money(byKey.client_retention_receivable.debit)).toBe('10000.00'); // retention held on the GL
-    expect(money(byKey.revenue.credit)).toBe('100000.00');
+    // glPosting.postClientInvoice posts this scenario's lines in a fixed order (receivable, then
+    // retention, then revenue — no advance/deduction/tax here), so line_order identifies each line
+    // unambiguously. A gam.key join is NOT safe here: the default/provisional gl_account_map seeds
+    // several distinct keys onto the SAME underlying account (e.g. 'receivable',
+    // 'client_retention_receivable' and 'subcontractor_advance_receivable' all map to account_id 2
+    // until finance-owner account-mapping review, per the glPosting.js header comment), so joining by
+    // account_id multiplies every line across every key that currently shares its account.
+    const lines = await all('SELECT line_order, debit, credit FROM journal_entry_lines WHERE journal_entry_id = $1 ORDER BY line_order', [entry.id]);
+    expect(lines).toHaveLength(3);
+    expect(money(lines[0].debit)).toBe('90000.00');  // 1: AR receivable at net
+    expect(money(lines[1].debit)).toBe('10000.00');  // 2: retention held on the GL
+    expect(money(lines[2].credit)).toBe('100000.00'); // 3: revenue at gross
 
     const receipt = await post('/api/payments', {
       invoice_id: valuation.id, project_id: project, client_id: client,
@@ -225,34 +227,46 @@ describePg('B1 invoice money lifecycle (real PostgreSQL, real app)', () => {
     expect(money((await finance.retentionTotals(db.query, { project_id: project, party_type: 'client' })).held)).toBe('10000.00');
   });
 
-  test('REPORT-ONLY documentation: PUT /api/invoices/:id still accepts any status and bypasses transitionInvoice', async () => {
+  test('REPORT-ONLY documentation: PUT /api/invoices/:id still accepts a raw status jump and bypasses transitionInvoice', async () => {
     // This test DOCUMENTS the known exposure (reported, not fixed in B1 without owner approval):
     // PUT accepts any INVOICE_STATUSES value, applies it as a raw column update and calls
     // glPosting.syncInvoicePosting with the before/after rows — so a draft can jump straight
     // to any status with neither the transitionInvoice lifecycle guard nor a 'status_change'
     // audit event; only the syncInvoicePosting firing depends on the outcome.
-    const created = await post('/api/invoices', {
-      project_id: project, client_id: client, amount: 300,
-      issue_date: new Date().toISOString().slice(0, 10), description: 'b1 put bypass doc',
-    });
-    const invoiceId = created.body.data.id;
+    //
+    // Note: routes/invoices.js INVOICE_STATUSES is the legacy subset (draft, sent, partially_paid,
+    // paid, overdue, void) — it does NOT include 'approved'/'issued'/'cancelled'/'credited', so a PUT
+    // naming one of those is refused by Joi with a plain validation_error before it ever reaches the
+    // handler. That narrows this exposure (first observed against 'issued') to the legacy subset only.
+    // 'paid' is in that subset and is still issued-family (financeEngine.ISSUED_STATUSES), so a raw
+    // DRAFT -> paid jump still demonstrates the full exposure: an invoice that never went through
+    // approved -> issued, and never received a real payment, ends up GL-posted and marked paid.
+    const draft = await one(
+      `INSERT INTO invoices (invoice_number, project_id, client_id, amount, issue_date, status)
+       VALUES ($1, $2, $3, 300, CURRENT_DATE, 'draft') RETURNING id`,
+      [`${tag}-pb`.slice(0, 20), project, client]
+    );
+    const invoiceId = draft.id;
+    expect(await journalCount('client_invoice', invoiceId)).toBe(0); // never posted: still draft
     const statusChangesBefore = (await one(
       "SELECT COUNT(*)::int AS c FROM audit_events WHERE entity_type = 'invoice' AND entity_id = $1 AND event_type = 'status_change'", [invoiceId])).c;
     const response = await fetch(`${base}/api/invoices/${invoiceId}`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${owner.token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'issued' }),
+      body: JSON.stringify({ status: 'paid' }),
     });
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.data.status).toBe('issued');          // raw update went straight through
-    expect((await one('SELECT status FROM invoices WHERE id = $1', [invoiceId])).status).toBe('issued');
+    expect(body.data.status).toBe('paid');          // raw update went straight through, skipping approved -> issued
+    expect((await one('SELECT status FROM invoices WHERE id = $1', [invoiceId])).status).toBe('paid');
     // No lifecycle audit: the bypass left no 'status_change' event behind.
     expect((await one(
       "SELECT COUNT(*)::int AS c FROM audit_events WHERE entity_type = 'invoice' AND entity_id = $1 AND event_type = 'status_change'", [invoiceId])).c)
       .toBe(statusChangesBefore);
     // Exposure demonstrated end-to-end: the syncInvoicePosting call still fires on the
-    // non-issued → issued jump, so GL state follows PUT without any lifecycle control.
+    // non-issued (draft) -> issued-family (paid) jump, so GL state follows PUT without any
+    // lifecycle control and with zero actual payment ever recorded for this invoice.
     expect(await journalCount('client_invoice', invoiceId)).toBe(1);
+    expect((await one('SELECT COUNT(*)::int AS c FROM payments WHERE invoice_id = $1', [invoiceId])).c).toBe(0);
   });
 });
