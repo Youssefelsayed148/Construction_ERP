@@ -31,6 +31,14 @@ const ROUTES = [
   { name: 'my-actions', path: '/my-actions' },
   { name: 'site-workspace', path: '/projects/1/site-workspace' },
   { name: 'admin-workspace', path: '/admin/organizations' },
+  // Closeout screens: cash flow, stock reservations, notification preferences
+  // and the finance-workbench commitments tab. The commitments tab needs a
+  // permissions fixture so see_internal_cost and the commercial approve grant
+  // resolve for the owner baseline user.
+  { name: 'cash-flow', path: '/cash-flow' },
+  { name: 'reservations', path: '/reservations' },
+  { name: 'notification-preferences', path: '/notification-preferences' },
+  { name: 'finance-commitments', path: '/projects/1/operations', financeTab: 'Commitments|الالتزامات', role: 'owner', policyPermissions: [{ module: '*', action: '*' }] },
 ];
 
 const VIEWPORTS = [
@@ -44,18 +52,24 @@ for (const locale of ['en', 'ar']) {
       test(`baseline ${route.name} ${locale} ${vpName}`, async ({ page }) => {
         test.skip(!process.env.I18N_SCREENSHOTS, 'on demand: npm run i18n:screenshots');
         await page.setViewportSize(viewport);
-        await page.addInitScript(({ jwt, loc, role, anon }) => {
+        await page.addInitScript(({ jwt, loc, role, anon, policyPermissions }) => {
           localStorage.setItem('locale', loc);
           if (!anon) {
             localStorage.setItem('token', jwt);
-            localStorage.setItem('user', JSON.stringify({ id: 1, name: 'Baseline User', role: role || 'owner', policy_modules: ['*'] }));
+            localStorage.setItem('user', JSON.stringify({ id: 1, name: 'Baseline User', role: role || 'owner', policy_modules: ['*'], policy_permissions: policyPermissions || undefined }));
           }
-        }, { jwt: token(), loc: locale, role: route.role, anon: route.anon });
+        }, { jwt: token(), loc: locale, role: route.role, anon: route.anon, policyPermissions: route.policyPermissions });
         await page.route('**/api/**', (r) => r.fulfill({
           status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, data: [] }),
         }));
         await page.goto(route.path);
         await page.waitForTimeout(800);
+        if (route.financeTab) {
+          const tab = page.getByRole('tab', { name: new RegExp(route.financeTab) });
+          await tab.waitFor({ timeout: 5000 });
+          await tab.click();
+          await page.waitForTimeout(400);
+        }
         await page.screenshot({ path: path.join(outDir, `${route.name}.${locale}.${vpName}.png`), fullPage: false });
       });
     }
