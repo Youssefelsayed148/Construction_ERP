@@ -328,10 +328,17 @@ describe('append-only ledger', () => {
 describe('no direct warehouse_stock mutation remains (static check)', () => {
   const routesDir = path.join(__dirname, '..', '..', 'routes');
 
-  test('the direct-mutation POST /warehouses/:id/stock endpoint is removed', () => {
+  test('the direct-mutation POST /warehouses/:id/stock endpoint is removed; the reorder-level upsert never touches quantity', () => {
     const content = fs.readFileSync(path.join(routesDir, 'warehouses.js'), 'utf8');
-    expect(content).not.toMatch(/INSERT INTO warehouse_stock/);
-    expect(content).not.toMatch(/UPDATE warehouse_stock/);
+    // PUT /:id/stock/:itemId/reorder-level upserts warehouse_stock (C-INVENTORY-001), but it is not
+    // the removed direct-mutation anti-pattern this check guards against: it only ever inserts
+    // quantity as the literal 0 first-row default, and the ON CONFLICT branch updates reorder_level
+    // only - quantity is never set by this file outside inventoryEngine.
+    const updates = content.match(/UPDATE warehouse_stock SET [^,\n]+/g) || [];
+    for (const u of updates) expect(u).toMatch(/reorder_level/);
+    const inserts = content.match(/INSERT INTO warehouse_stock \([^)]*\)/g) || [];
+    expect(inserts).toHaveLength(1);
+    expect(content).toMatch(/INSERT INTO warehouse_stock \([^)]*\)\s*VALUES \(\$1, \$2, 0, \$3, NOW\(\)\)/); // quantity is always the literal 0 default
   });
 
   test('work-order material issuance goes through the movement API, not direct stock mutation', () => {
@@ -349,6 +356,8 @@ describe('no direct warehouse_stock mutation remains (static check)', () => {
   test('warehouses.js exposes the movement/reservation/transfer surface', () => {
     const content = fs.readFileSync(path.join(routesDir, 'warehouses.js'), 'utf8');
     const routes = content.match(/router\.(get|post|put|delete)\s*\(/g) || [];
-    expect(routes.length).toBe(12);
+    // 12 movement/reservation/transfer routes + warehouse CRUD (POST /, PUT /:id) and the
+    // reorder-level setter (PUT /:id/stock/:itemId/reorder-level), added since this count was set.
+    expect(routes.length).toBe(15);
   });
 });
