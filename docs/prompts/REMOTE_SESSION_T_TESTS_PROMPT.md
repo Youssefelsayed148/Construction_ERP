@@ -1,4 +1,4 @@
-# Task: Construction ERP closeout - Session T (all test batches T1-T5 prep)
+# Task: Construction ERP closeout - Session T (whole-system review T0 + all test batches T1-T5)
 
 Test and verify the Osiris Labs Construction ERP closeout (React, Express, PostgreSQL, bilingual EN/AR, RBAC). You own TEST AUTHORING and the SINGLE full verification run. A separate Session F owns product-code fixes. Read first: `AGENTS.md`, `docs/CLOSEOUT_PLAN_F_AND_T.md`, `docs/ERP_CLOSEOUT_PLAN.md`, `docs/GO_NOGO.md`, `docs/GOLDEN_VALUES.md`, `docs/UAT_PILOT.md`, `docs/STAGING.md`, the top ~120 lines of `STATE.md`.
 
@@ -14,6 +14,14 @@ Test and verify the Osiris Labs Construction ERP closeout (React, Express, Postg
 
 ## Hard constraints
 Same as AGENTS.md: throwaway local PostgreSQL 16 only (Docker if available else installed service; DB name like `erp_closeout_test`), env vars in process only, no `.env` edits, no secrets printed, no external services, no legacy role switch. Never touch demo/pilot/clone databases; if a repo seed script's target guard refuses your throwaway DB, do not bypass the guard - write the fixture through the repo's PG test fixtures instead and note it. Additive migrations only (if you truly need one, next free number; `0030` never). Commit each slice on `closeout/batch-a-to-6` with the harness Co-Authored-By trailer; push with `git push origin closeout/batch-a-to-6` (pull --rebase first); never `main`, no PR, no force-push, no deploy. Update `STATE.md`, `docs/CLOSEOUT_PROGRESS.md`, `docs/CLOSEOUT_LOG.md` after each batch with command output.
+
+## T0 - Whole-system reconciliation and launch audit (FIRST, read-only; this is the closeout review)
+Owner intent: most unchecked items in `docs/ERP_CLOSEOUT_PLAN.md` and `docs/CLOSEOUT_GAPS.md` are believed to be stale documentation, and we must stop discovering failures one at a time. Produce ONE complete, evidence-based picture of the whole system now.
+1. For EVERY unchecked box in `docs/ERP_CLOSEOUT_PLAN.md` (all phases 0-11), decide from code, migrations, routes, screens and existing tests (cite file:line or migration number): DONE, PARTIAL (what is missing), OPEN, or N/A-DEFERRED (with reason). Do not trust prior docs or reports; open the code. Write the full table to `docs/CLOSEOUT_RECONCILIATION.md` (item, verdict, evidence, severity if not done, owner = Session F / T / human).
+2. Tick the plan boxes and refresh `docs/CLOSEOUT_GAPS.md` so the docs match reality (only for items with evidence; leave the rest unchecked).
+3. Whole-system inventory sweep (static, no suite runs): list every backend route file and mounted path with its authenticate/authorize/project-scope/audit/typed-error status (flag any that lacks one); every frontend route/screen with loading/empty/error/i18n/permission gating; every table with a status vocabulary and whether a CHECK constraint exists; every migration applied cleanly in numeric order with no duplicate numbers. Output counts and the exact list of gaps.
+4. Classify every finding: BLOCKER (data loss/corruption, money or ledger wrong, security hole, cross-project leak, a core lifecycle step unusable, a role locked out of its job) / MAJOR (wrong behavior with a workaround, missing audit, missing localization on a core screen) / MINOR (cosmetic, polish, rare edge). ONLY Blockers and Majors gate launch. Minors go to `docs/POST_LAUNCH_BACKLOG.md` and are not worked on.
+5. Fix rule: Blockers/Majors that Session F did not already fix are fixed here if each is a small, clearly-correct change (<~40 lines) with a focused test; larger ones are recorded in `docs/LAUNCH_READINESS.md` with scope and a recommended session. Do not start large rebuilds.
 
 ## T1 - Merge confirmation (executed at the END, once)
 Run the verification set above on the merged base. Record counts. Confirm CI workflow jobs reference existing scripts (`.github/workflows/ci.yml`); do not trigger remote CI.
@@ -31,6 +39,9 @@ Write/verify runbooks and scripts, run only what works locally against the throw
 
 ## T5 - Human UAT kit
 Produce `docs/UAT_EXECUTION_KIT.md`: per role (finance, procurement, site, owner, plus client/supplier/subcontractor/consultant portals) a numbered script walking the full lifecycle with expected result per step, test accounts to use (reference seeded usernames/roles only; no passwords), defect log template, severity rubric, sign-off table. Align with `docs/UAT_PILOT.md`; do not mark any sign-off as done.
+
+## Launch readiness verdict (last deliverable)
+Write `docs/LAUNCH_READINESS.md` with: (1) the finite exit checklist = the 7 GO criteria in `docs/GO_NOGO.md` plus "zero open Blockers, zero open Majors without an owner-accepted waiver"; (2) for each criterion: MET with evidence, NOT MET with exact remaining work, or HUMAN (who, what); (3) counts of Blockers/Majors/Minors found, fixed, open; (4) the shortest remaining path to launch as an ordered list, with each step labelled agent / owner / operator / UAT users. State plainly that anything not run in this session is NOT RUN. Never mark a human sign-off as done.
 
 ## Final report (last message and STATE.md)
 Per batch: commits, tests added (file, count, what each proves), defects found (id, severity, file:line, who fixes), gate table (command, exit code, pass/fail counts or NOT RUN + reason), provisional golden assertions list, whether Session F fixes were included. Update `docs/GO_NOGO.md` evidence column with real command output only; keep the verdict NO-GO unless every criterion has evidence (human sign-offs will not).

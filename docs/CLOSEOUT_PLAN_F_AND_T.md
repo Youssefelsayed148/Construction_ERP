@@ -20,6 +20,7 @@ Test-run budget: fix batches run no suites; Session T runs the full PG suite, mo
 - F4 Localization/PDF: production Arabic PDF/CSV; shrink inline en/ar branches (53) and the Handover raw enum; regenerate the Arabic review pack (not a sign-off).
 
 ## Test batches (Session T)
+- T0 Whole-system reconciliation (first, read-only): every unchecked plan/gap item verified against code and marked DONE/PARTIAL/OPEN/DEFERRED in `docs/CLOSEOUT_RECONCILIATION.md`; stale docs refreshed; full route/screen/table inventory sweep; findings classed Blocker/Major/Minor (only Blocker+Major gate launch; Minors go to `docs/POST_LAUNCH_BACKLOG.md`); small Blocker/Major fixes made in place.
 - T1 Merge confirmation: single full PG + mock + lint/i18n/build run on the merged result.
 - T2 Golden journey: tender-to-warranty PG test with GL/AR/AP/stock/retention/audit assertions vs `GOLDEN_VALUES.md` (provisional values marked).
 - T3 Role-by-role lifecycle: permission/nav matrix for 26 canonical roles generated from seeded policy; maker-checker, approval limits, project scope, external cage; UI crawl scripts authored.
@@ -38,3 +39,6 @@ Test-run budget: fix batches run no suites; Session T runs the full PG suite, mo
 
 ## After both sessions (human/operator work)
 Review F and T branches and merge to `closeout/batch-a-to-6`; push and obtain a green remote CI run; native Egyptian Arabic review and visual/RTL review; fill the approval-limits sheet; approve golden values; stand up the pilot stack and run the UAT kit with real users per role; restore drill and rollback sign-off; audit-finding triage; update `docs/GO_NOGO.md`; GO/NO-GO decision; only then merge to `main` and deploy.
+
+## Launch readiness
+Session T ends by writing `docs/LAUNCH_READINESS.md`: the finite exit checklist (7 GO criteria + zero open Blockers/Majors), evidence per criterion, and the shortest remaining path to launch labelled agent / owner / operator / UAT users. This replaces open-ended discovery with a closed list.
