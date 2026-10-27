@@ -1872,3 +1872,10 @@ Implementation 854e8bd and LF checkpoint 855ee52 committed. Pilot migrate exited
 - lint:guards, frontend i18n:check, i18n:parity, lint:api: all green on first run.
 - Commits: fda42d4 (PG triage), 6fd3dc6 (mock triage), plus this docs commit. Full session commit list and gate table in STATE.md.
 - NOT RUN: demo-stack items (B1 repair --apply, --approval-limits stage), remote CI.
+
+## 2026-10-27 - Session F: F1 + F2 (hardening, error contract)
+
+- F1: denial-audit dedupe (bounded, 60s window); MIR-already-decided 400->409 review fix; svcError typed throws (~125 sites, 6 new EN/AR codes); document mutations on auditedMutation + ip/request id for all auditedMutation callers.
+- F2: raw error-message route sites 366 -> 0 via routeFail (32 files); `upload_rejected` EN/AR key.
+- Focused tests: f1-denial-dedupe 4/4, f1-typed-service-errors 18/18, f1-documents-audit 9/9, f2-error-contract 27 groups pass (3 groups dropped, see STATE.md).
+- NOT RUN: all suites, build (deferred to Session T).

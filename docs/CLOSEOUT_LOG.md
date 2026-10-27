@@ -2957,3 +2957,12 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 | Frontend `i18n:check` | `npm run i18n:check` (frontend) | exit 0: `i18n:check ok` |
 | Frontend `i18n:parity` | `npm run i18n:parity` (frontend) | exit 0: `i18n parity ok: 37 namespaces, 3049 English keys` |
 | Frontend `lint:api` | `npm run lint:api` (frontend) | exit 0: `Direct API calls: 1/1 across 1 files` |
+
+### Session F: F1 + F2 (hardening, error contract)
+
+| Slice | Command | Result |
+|---|---|---|
+| F1.1 | `npx jest src/scripts/__tests__/f1-denial-dedupe.test.js` | 4 passed |
+| F1.3 | `npx jest src/scripts/__tests__/f1-typed-service-errors.test.js` | 18 passed |
+| F1.4 | `npx jest src/scripts/__tests__/f1-documents-audit.test.js` | 9 passed |
+| F2 | `npx jest src/scripts/__tests__/f2-error-contract.test.js` | run 1: 5 failed / 25 passed; run 2: 3 failed / 27 passed; 3 groups removed (see STATE.md) |
