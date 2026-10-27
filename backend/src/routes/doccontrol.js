@@ -8,7 +8,7 @@ const { queryPaginated, paginateRows } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
-const { auditedMutation } = require('../utils/auditedMutation');
+const { auditedMutation, rowSnapshot } = require('../utils/auditedMutation');
 const { dateOnly } = require('../utils/validation');
 const { normalizeDateFields } = require('../utils/dateOnly');
 
@@ -22,6 +22,17 @@ function rejectLegacyResponse(res, replacement) {
     error_code: 'staged_response_required',
     error_params: { replacement },
   });
+}
+
+// F1.4: every document mutation writes the activity_log row AND an audit_events before/after row (with the
+// caller's ip and request id) in the same transaction as the change. work(q) returns the auditedMutation
+// shape, or null for a no-op (not found / nothing matched), which writes no audit row.
+async function documentMutation(req, action, work) {
+  const out = await auditedMutation(req, { action, module: 'documents', entityType: 'project_document' }, async (q) => {
+    const result = await work(q);
+    return result || { skipAudit: true, data: null };
+  });
+  return out.data;
 }
 
 // ============ CATEGORIES ============
@@ -124,7 +135,7 @@ router.post('/documents', authenticate, authorize(), async (req, res) => {
       return res.status(400).json({ success: false, error_code: 'external_visibility_requires_public_confidentiality' });
     }
 
-    const result = await auditedTransaction(async (q) => {
+    const result = await documentMutation(req, 'create', async (q) => {
       if (value.project_location_id != null) {
         const location = await q('SELECT 1 FROM project_locations WHERE id = $1 AND project_id = $2', [value.project_location_id, authorizedProjectId(req, value)]);
         if (!location.rows.length) throw Object.assign(new Error('document_location_project_mismatch'), { status: 400, error_code: 'document_location_project_mismatch' });
@@ -151,8 +162,9 @@ router.post('/documents', authenticate, authorize(), async (req, res) => {
        VALUES ($1,1,$2,$3,$4,'Initial version',$5)`,
       [inserted.rows[0].id, value.file_url, value.file_type, value.file_size_bytes, req.user.id]
       );
-      return inserted;
-    }, (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Uploaded document "${value.title}"`, entityId: result.rows[0].id, entityType: 'project_document' }));
+      const row = inserted.rows[0];
+      return { data: inserted, entityId: row.id, projectId: row.project_id, after: row, newStatus: row.doc_status, description: `Uploaded document "${value.title}"` };
+    });
     res.status(201).json({ success: true, data: normalizeDateFields(result.rows[0], ['issue_date', 'review_due_date']) });
   } catch (error) {
     if (error.error_code) return res.status(error.status || 400).json({ success: false, error_code: error.error_code });
@@ -177,8 +189,7 @@ router.post('/documents/:id/versions', authenticate, authorize(), async (req, re
 
     // One transaction, serialised on the document row: the previous current version is superseded first,
     // then the new one is inserted as the only current version (a unique index enforces that).
-    const uploaded = await transaction(async (client) => {
-      const q = (text, params) => client.query(text, params);
+    const uploaded = await documentMutation(req, 'update', async (q) => {
       const locked = await q('SELECT * FROM project_documents WHERE id = $1 FOR UPDATE', [req.params.id]);
       if (locked.rows.length === 0) return null;
       const doc = locked.rows[0];
@@ -197,8 +208,12 @@ router.post('/documents/:id/versions', authenticate, authorize(), async (req, re
         [doc.id, newVersion, value.file_url, value.file_type, value.file_size_bytes, value.change_description, req.user.id, revisionCode]
       );
       const updated = await q('SELECT * FROM project_documents WHERE id = $1', [doc.id]);
-      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `Uploaded v${newVersion} (${revisionCode}) of "${doc.title}" — previous revision superseded`, entityId: req.params.id, entityType: 'project_document' }, { query: q });
-      return { doc, newVersion, revisionCode, revision: inserted.rows[0], updated: updated.rows[0] };
+      return {
+        data: { doc, newVersion, revisionCode, revision: inserted.rows[0], updated: updated.rows[0] },
+        entityId: doc.id, projectId: doc.project_id, before: doc, after: updated.rows[0],
+        oldStatus: doc.doc_status, newStatus: updated.rows[0].doc_status,
+        description: `Uploaded v${newVersion} (${revisionCode}) of "${doc.title}" — previous revision superseded`,
+      };
     });
     if (!uploaded) return res.status(404).json({ success: false, error: 'Document not found' });
     const { doc, newVersion, revisionCode } = uploaded;
@@ -221,7 +236,7 @@ router.put('/documents/:id', authenticate, authorize(), async (req, res) => {
     }).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const result = await auditedTransaction(async (q) => {
+    const result = await documentMutation(req, 'update', async (q) => {
       const current = (await q('SELECT * FROM project_documents WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
       if (!current) return null;
       const visibility = value.portal_visibility || current.portal_visibility || 'internal';
@@ -237,8 +252,10 @@ router.put('/documents/:id', authenticate, authorize(), async (req, res) => {
         else { sets.push(`${k} = $${idx++}`); params.push(v); }
       }
       params.push(req.params.id);
-      return q(`UPDATE project_documents SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
-    }, (updated) => updated && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `Updated document ${updated.rows[0].title}`, entityId: updated.rows[0].id, entityType: 'project_document' }));
+      const updated = await q(`UPDATE project_documents SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params);
+      const row = updated.rows[0];
+      return { data: updated, entityId: row.id, projectId: row.project_id, before: current, after: row, oldStatus: current.status, newStatus: row.status, description: `Updated document ${row.title}` };
+    });
     if (!result) return res.status(404).json({ success: false, error: 'Document not found' });
     if (!result.rows?.length) return res.status(404).json({ success: false, error: 'Document not found' });
     res.json({ success: true, data: normalizeDateFields(result.rows[0], ['issue_date']) });
@@ -251,11 +268,17 @@ router.put('/documents/:id', authenticate, authorize(), async (req, res) => {
 // Submit for approval (document controllers submit; approving needs the separate `approve` action).
 router.post('/documents/:id/submit', authenticate, authorize(), async (req, res) => {
   try {
-    const result = await auditedTransaction((q) => q(
-      `UPDATE project_documents SET status = 'submitted', updated_at = NOW()
-        WHERE id = $1 AND status IN ('draft', 'rejected') RETURNING *`,
-      [req.params.id]
-    ), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'submit', module: 'documents', description: `Document "${r.rows[0].title}" submitted for approval`, entityId: req.params.id, entityType: 'project_document' }));
+    const result = await documentMutation(req, 'submit', async (q) => {
+      const before = await rowSnapshot(q, 'project_documents', req.params.id);
+      const r = await q(
+        `UPDATE project_documents SET status = 'submitted', updated_at = NOW()
+          WHERE id = $1 AND status IN ('draft', 'rejected') RETURNING *`,
+        [req.params.id]
+      );
+      const row = r.rows[0];
+      if (!row) return { data: r, skipAudit: true };
+      return { data: r, entityId: row.id, projectId: row.project_id, before, after: row, oldStatus: before && before.status, newStatus: row.status, description: `Document "${row.title}" submitted for approval` };
+    });
     if (result.rows.length === 0) {
       const exists = await query('SELECT status FROM project_documents WHERE id = $1', [req.params.id]);
       if (exists.rows.length === 0) return res.status(404).json({ success: false, error: 'Document not found' });
@@ -268,10 +291,16 @@ router.post('/documents/:id/submit', authenticate, authorize(), async (req, res)
 router.post('/documents/:id/:action(approve|reject)', authenticate, authorize(), async (req, res) => {
   try {
     const newStatus = req.params.action === 'approve' ? 'approved' : 'rejected';
-    const result = await auditedTransaction((q) => q(
-      `UPDATE project_documents SET status = $1, approved_by = $2, approved_at = NOW(), updated_at = NOW() WHERE id = $3 RETURNING *`,
-      [newStatus, req.user.id, req.params.id]
-    ), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `Document "${r.rows[0].title}" ${newStatus}`, entityId: req.params.id, entityType: 'project_document' }));
+    const result = await documentMutation(req, req.params.action, async (q) => {
+      const before = await rowSnapshot(q, 'project_documents', req.params.id);
+      const r = await q(
+        `UPDATE project_documents SET status = $1, approved_by = $2, approved_at = NOW(), updated_at = NOW() WHERE id = $3 RETURNING *`,
+        [newStatus, req.user.id, req.params.id]
+      );
+      const row = r.rows[0];
+      if (!row) return { data: r, skipAudit: true };
+      return { data: r, entityId: row.id, projectId: row.project_id, before, after: row, oldStatus: before && before.status, newStatus, description: `Document "${row.title}" ${newStatus}` };
+    });
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Document not found' });
     res.json({ success: true, data: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
@@ -279,7 +308,12 @@ router.post('/documents/:id/:action(approve|reject)', authenticate, authorize(),
 
 router.delete('/documents/:id', authenticate, authorize(), async (req, res) => {
   try {
-    const result = await auditedTransaction((q) => q('DELETE FROM project_documents WHERE id = $1 RETURNING title', [req.params.id]), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'documents', description: `Deleted document "${r.rows[0].title}"`, entityId: req.params.id, entityType: 'project_document' }));
+    const result = await documentMutation(req, 'delete', async (q) => {
+      const before = await rowSnapshot(q, 'project_documents', req.params.id);
+      const r = await q('DELETE FROM project_documents WHERE id = $1 RETURNING title', [req.params.id]);
+      if (!r.rows[0]) return { data: r, skipAudit: true };
+      return { data: r, entityId: before.id, projectId: before.project_id, before, oldStatus: before.status, description: `Deleted document "${r.rows[0].title}"` };
+    });
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Document not found' });
     res.json({ success: true, message: 'Document deleted' });
   } catch (error) { res.status(500).json({ success: false, error: error.message }); }
@@ -485,9 +519,11 @@ router.post('/documents/:id/register', authenticate, authorize(), async (req, re
     const schema = Joi.object({ revision_code: Joi.string().allow('', null).optional() });
     const { error, value } = schema.validate(req.body || {});
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const doc = await auditedTransaction((q) => doccontrolEngine.registerDocument(q, {
-      documentId: req.params.id, revisionCode: value.revision_code || 'R0',
-    }), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `Registered document ${result.doc_number}`, entityId: result.id, entityType: 'project_document' }));
+    const doc = await documentMutation(req, 'update', async (q) => {
+      const before = await rowSnapshot(q, 'project_documents', req.params.id);
+      const result = await doccontrolEngine.registerDocument(q, { documentId: req.params.id, revisionCode: value.revision_code || 'R0' });
+      return { data: result, entityId: result.id, projectId: result.project_id, before, after: result, description: `Registered document ${result.doc_number}` };
+    });
     res.json({ success: true, data: doc });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });
@@ -498,7 +534,11 @@ router.post('/documents/:id/supersede', authenticate, authorize(), async (req, r
     const schema = Joi.object({ replacement_document_id: Joi.number().integer().required() });
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
-    const doc = await auditedTransaction((q) => doccontrolEngine.supersedeDocument(q, req.params.id, value.replacement_document_id, req.user), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `Superseded ${result.doc_number || `#${result.id}`}`, entityId: result.id, entityType: 'project_document' }));
+    const doc = await documentMutation(req, 'update', async (q) => {
+      const before = await rowSnapshot(q, 'project_documents', req.params.id);
+      const result = await doccontrolEngine.supersedeDocument(q, req.params.id, value.replacement_document_id, req.user);
+      return { data: result, entityId: result.id, projectId: result.project_id, before, after: result, oldStatus: before && before.doc_status, newStatus: result.doc_status, description: `Superseded ${result.doc_number || `#${result.id}`}` };
+    });
     res.json({ success: true, data: doc });
   } catch (error) { res.status(400).json({ success: false, error: error.message }); }
 });

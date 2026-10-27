@@ -18,6 +18,7 @@ async function auditedMutation(req, meta, work, opts = {}) {
     await snapshot({
       entity: meta.entityType, entityId: result.entityId, action: result.action || meta.action,
       before: result.before, after: result.after, userId: req.user.id, projectId: result.projectId,
+      ipAddress: req.ip, requestId: req.requestId || null,
     }, { query: q });
     return result;
   }, (result) => result && !result.skipAudit && ({
