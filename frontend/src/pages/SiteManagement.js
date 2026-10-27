@@ -1,4 +1,4 @@
-import { formatDate as sharedDate } from '../utils/formatters';
+import { formatDate as sharedDate, localizedName } from '../utils/formatters';
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -435,14 +435,14 @@ function ReportModal({ projectId, locale, t, onClose, onSave }) {
                       <span className="form-label">{t('site.offline.location')}</span>
                       <select className="form-input" value={row.project_location_id} onChange={(event) => changeMeasurement(row.rowId, 'project_location_id', event.target.value)} required>
                         <option value="">{t('site.offline.chooseLocation')}</option>
-                        {catalog.locations.map((location) => <option key={location.id} value={location.id}>{locale === 'ar' ? (location.name_ar || location.name || location.name_en) : (location.name_en || location.name || location.name_ar)}</option>)}
+                        {catalog.locations.map((location) => <option key={location.id} value={location.id}>{localizedName(location, locale)}</option>)}
                       </select>
                     </label>
                     <label className="form-group">
                       <span className="form-label">{t('site.offline.boqItem')}</span>
                       <select className="form-input" value={row.boq_item_id} onChange={(event) => changeMeasurement(row.rowId, 'boq_item_id', event.target.value)} required>
                         <option value="">{t('site.offline.chooseItem')}</option>
-                        {catalog.items.map((item) => <option key={item.id} value={item.id}>{item.code} · {locale === 'ar' ? (item.description_ar || item.description || item.description_en) : (item.description_en || item.description || item.description_ar)}</option>)}
+                        {catalog.items.map((item) => <option key={item.id} value={item.id}>{item.code} · {localizedName(item, locale, 'description')}</option>)}
                       </select>
                     </label>
                     <label className="form-group">

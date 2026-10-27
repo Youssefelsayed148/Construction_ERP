@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../store';
 import { authApi, authService } from '../services/api';
 import { useLocale } from '../hooks/useLocale';
+import { otherLocale } from '../i18n/config';
 import { HardHat, Eye, EyeOff } from 'lucide-react';
 
 function Login() {
@@ -152,8 +153,8 @@ function Login() {
             borderTop: '1px solid var(--color-surface-raised)',
           }}>
             <button
-              lang={locale === 'ar' ? 'en' : 'ar'}
-              onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')}
+              lang={otherLocale(locale)}
+              onClick={() => setLocale(otherLocale(locale))}
               style={{
                 background: 'none',
                 border: '1px solid var(--color-surface-raised)',

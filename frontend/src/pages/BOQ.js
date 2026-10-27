@@ -1,4 +1,4 @@
-import { formatNumber } from '../utils/formatters';
+import { formatNumber, localizedName } from '../utils/formatters';
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -101,8 +101,8 @@ function BOQ() {
 
   const typeLabel = (tp) => TYPE_LABELS[locale]?.[tp] || tp;
   const unitLabel = (u) => UNIT_LABELS[locale]?.[u] || u;
-  const sectionName = (s) => locale === 'ar' ? (s.name_ar || s.name_en) : (s.name_en || s.name_ar);
-  const itemDesc = (it) => locale === 'ar' ? (it.description_ar || it.description_en) : (it.description_en || it.description_ar);
+  const sectionName = (s) => localizedName(s, locale);
+  const itemDesc = (it) => localizedName(it, locale, 'description');
 
   // Contractual rows: the server refuses (409 record_in_use) while measurements, allocations or recipes reference the entry.
   const confirmDelete = async () => {
@@ -488,7 +488,7 @@ function SectionModal({ section, sections, projectId, locale, t, onClose, onSave
                   <select className="form-select" value={form.parent_id} onChange={e => handleChange('parent_id', e.target.value)}>
                     <option value="">{t('boq.system.rootSection')}</option>
                     {parentOptions.map(s => (
-                      <option key={s.id} value={s.id}>{s.code} - {locale === 'ar' ? s.name_ar : s.name_en}</option>
+                      <option key={s.id} value={s.id}>{s.code} - {localizedName(s, locale)}</option>
                     ))}
                   </select>
                 </div>
@@ -539,7 +539,7 @@ function ItemModal({ item, sections, defaultSectionId, projectId, masterItems, i
 
   const selectedMasterItem = masterItems.find(mi => mi.id === Number(form.item_master_id));
   const itemMasterLabel = selectedMasterItem
-    ? `${selectedMasterItem.code} - ${locale === 'ar' ? selectedMasterItem.name_ar : selectedMasterItem.name_en}`
+    ? `${selectedMasterItem.code} - ${localizedName(selectedMasterItem, locale)}`
     : '';
 
   const handleSubmit = async (e) => {
@@ -587,7 +587,7 @@ function ItemModal({ item, sections, defaultSectionId, projectId, masterItems, i
                   <select className="form-select" value={form.section_id} onChange={e => handleChange('section_id', e.target.value)} required>
                     <option value="">{t('boq.system.selectSection')}</option>
                     {sections.map(s => (
-                      <option key={s.id} value={s.id}>{s.code} - {locale === 'ar' ? s.name_ar : s.name_en}</option>
+                      <option key={s.id} value={s.id}>{s.code} - {localizedName(s, locale)}</option>
                     ))}
                   </select>
                 </div>
@@ -674,7 +674,7 @@ function ItemModal({ item, sections, defaultSectionId, projectId, masterItems, i
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                           >
                             <span style={{ fontFamily: 'monospace', color: 'var(--color-accent)', marginRight: '8px' }}>{mi.code}</span>
-                            {locale === 'ar' ? mi.name_ar : mi.name_en}
+                            {localizedName(mi, locale)}
                           </div>
                         ))}
                       </div>

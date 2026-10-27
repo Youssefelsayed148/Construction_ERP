@@ -9,6 +9,7 @@ import WorkPackageSelect from '../components/project/WorkPackageSelect';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
+import { FORMAT_LOCALE } from '../i18n/config';
 import { authService } from '../services/api';
 import { hasProjectPermission } from '../utils/projectNav';
 import LoadMore from '../components/common/LoadMore';
@@ -373,7 +374,7 @@ function ViewsTab({ projectId, locale, t }) {
             <div className="stat-value" style={{ color: kpis.project.schedule_variance_percent < 0 ? 'var(--color-danger, #e5534b)' : 'var(--color-success)' }}>{kpis.project.schedule_variance_percent}%</div></div>
           <div className="stat-card"><div className="stat-label">{t('schedule.system.spi')}</div><div className="stat-value">{kpis.spi ?? '—'}</div></div>
           <div className="stat-card"><div className="stat-label">{t('schedule.cpi')}</div><div className="stat-value">{kpis.project.cpi ?? '—'}</div>{kpis.project.cpi == null && <small>{t(`schedule.cpiStatus.${kpis.cpi_status}`)}</small>}</div>
-          {kpis.project.bac != null && <div className="stat-card"><div className="stat-label">{t('schedule.budgetAtCompletion')}</div><div className="stat-value">{Number(kpis.project.bac).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US')}</div></div>}
+          {kpis.project.bac != null && <div className="stat-card"><div className="stat-label">{t('schedule.budgetAtCompletion')}</div><div className="stat-value">{Number(kpis.project.bac).toLocaleString(FORMAT_LOCALE[locale])}</div></div>}
         </div>
       )}
       <section className="card" aria-labelledby="schedule-resource-load-title">

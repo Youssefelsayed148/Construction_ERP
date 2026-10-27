@@ -253,5 +253,18 @@
     "push": "Push notification",
     "sms": "SMS",
     "whatsapp": "WhatsApp"
+  },
+  "handoverState": {
+    "preHandover": "Pre-handover",
+    "punchSnag": "Punch / snag list",
+    "rectification": "Rectification",
+    "finalInspection": "Final inspection",
+    "testingCommissioning": "Testing & commissioning",
+    "asBuilts": "As-built drawings",
+    "oM": "O&M manuals",
+    "training": "Training",
+    "takingOver": "Taking over",
+    "dlpWarranty": "Defects liability / warranty",
+    "finalCompletion": "Final completion"
   }
 }

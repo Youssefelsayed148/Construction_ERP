@@ -7,6 +7,9 @@ export const FORMAT_LOCALE = { en: 'en-EG', ar: 'ar-EG' };
 
 export const isSupportedLocale = (value) => SUPPORTED_LOCALES.includes(value);
 export const normalizeLocale = (value) => (isSupportedLocale(value) ? value : DEFAULT_LOCALE);
+export const otherLocale = (locale) => (locale === 'ar' ? 'en' : 'ar');
+// Label of the language switch: it names the language it switches TO, in that language.
+export const LOCALE_BADGE = { en: 'EN', ar: 'ع' };
 export const directionOf = (locale) => (locale === 'ar' ? 'rtl' : 'ltr');
 
 export function readStoredLocale() {

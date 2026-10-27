@@ -35,13 +35,13 @@ export function ErrorState({ message, onRetry }) {
 
 // Back / next arrows follow the reading direction; neutral icons (download, calendar, check) are not mirrored.
 export function BackIcon(props) {
-  const { isRTL } = useLocale();
-  const Icon = isRTL ? ArrowRight : ArrowLeft;
+  const { dir } = useLocale();
+  const Icon = dir === 'rtl' ? ArrowRight : ArrowLeft;
   return <Icon aria-hidden="true" {...props} />;
 }
 
 export function NextIcon(props) {
-  const { isRTL } = useLocale();
-  const Icon = isRTL ? ArrowLeft : ArrowRight;
+  const { dir } = useLocale();
+  const Icon = dir === 'rtl' ? ArrowLeft : ArrowRight;
   return <Icon aria-hidden="true" {...props} />;
 }

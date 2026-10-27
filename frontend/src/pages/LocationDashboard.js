@@ -2,6 +2,7 @@ import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
+import { FORMAT_LOCALE } from '../i18n/config';
 import LoadMore from '../components/common/LoadMore';
 import {
   Building2, Layers, MapPin, AlertTriangle, FileText,
@@ -70,7 +71,7 @@ export default function LocationDashboard() {
       boq_value: 'قيمة BOQ', planned_quantity: 'الكمية المخططة',
       manual: 'يدوي', schedule: 'الجدول',
     },
-  }[locale === 'ar' ? 'ar' : 'en'];
+  }[locale === 'en' ? 'en' : 'ar'];
 
   const loadLocations = useCallback(async ({ append = false } = {}) => {
     if (append) setLoadingMore(true); else setLoading(true);
@@ -109,7 +110,7 @@ export default function LocationDashboard() {
 
   const reload = async () => { setLoading(true); await loadLocations(); setLoading(false); };
 
-  const fmt = (n) => (n == null ? '—' : Number(n).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US', { maximumFractionDigits: 2 }));
+  const fmt = (n) => (n == null ? '—' : Number(n).toLocaleString(FORMAT_LOCALE[locale], { maximumFractionDigits: 2 }));
   const pct = (n) => (n == null ? '—' : `${Number(n).toFixed(1)}%`);
 
   const StatRow = ({ label, value, accent }) => (

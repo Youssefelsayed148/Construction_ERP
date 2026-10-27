@@ -5,7 +5,7 @@ import { useLocale } from '../hooks/useLocale';
 import ReasonDialog from '../components/common/ReasonDialog';
 import LoadMore from '../components/common/LoadMore';
 import { ArrowLeft, Plus, Edit, Trash2, ClipboardList, CheckCircle, XCircle, Package, Wrench, Users, Calendar } from 'lucide-react';
-import { formatCurrency, formatDate, formatPercent } from '../utils/formatters';
+import { formatCurrency, formatDate, formatPercent, localizedName } from '../utils/formatters';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
@@ -99,14 +99,14 @@ function WorkOrders() {
   useEffect(() => { loadWorkOrders(); }, [loadWorkOrders]);
 
   const statusLabel = (s) => STATUS_LABELS[locale]?.[s] || s;
-  const woTitle = (wo) => locale === 'ar' ? (wo.title_ar || wo.title_en) : (wo.title_en || wo.title_ar);
+  const woTitle = (wo) => localizedName(wo, locale, 'title');
   const phaseName = (wo) => {
     if (!wo.phase_name && !wo.phase_name_ar && !wo.phase_name_en) return '—';
-    return locale === 'ar' ? (wo.phase_name_ar || wo.phase_name) : (wo.phase_name_en || wo.phase_name);
+    return localizedName(wo, locale, 'phase_name');
   };
   const boqSectionName = (wo) => {
     if (!wo.boq_section_name_ar && !wo.boq_section_name_en) return '—';
-    return locale === 'ar' ? (wo.boq_section_name_ar || wo.boq_section_name_en) : (wo.boq_section_name_en || wo.boq_section_name_ar);
+    return localizedName(wo, locale, 'boq_section_name');
   };
 
   // A work order carries cost records, so DELETE cancels it (the server keeps the row and its children).
@@ -281,7 +281,7 @@ function WorkOrders() {
       <ReasonDialog
         open={Boolean(cancelTarget)}
         title={t('workorders.cancel.title')}
-        message={cancelTarget ? t('workorders.cancel.message', { title: (locale === 'ar' ? cancelTarget.title_ar : cancelTarget.title_en) || cancelTarget.title || cancelTarget.title_ar || '' }) : ''}
+        message={cancelTarget ? t('workorders.cancel.message', { title: (localizedName(cancelTarget, locale, 'title')) || cancelTarget.title || cancelTarget.title_ar || '' }) : ''}
         confirmLabel={t('workorders.cancel.confirm')}
         busy={cancelBusy}
         error={cancelError}
@@ -326,7 +326,7 @@ function WODetail({ wo, projectId, locale, t, activeTab, setActiveTab, loadWorkO
               }}
             >
               <Icon size={14} />
-              <span>{locale === 'ar' ? tab.label_ar : tab.label_en}</span>
+              <span>{localizedName(tab, locale, 'label')}</span>
             </button>
           );
         })}
@@ -369,7 +369,7 @@ function WOMaterialsTab({ wo, projectId, locale, t }) {
 
   useEffect(() => { loadMaterials(); }, [loadMaterials]);
 
-  const itemLabel = (it) => locale === 'ar' ? (it.item_name_ar || it.item_name_en || it.item?.name_ar || it.item?.name_en) : (it.item_name_en || it.item_name_ar || it.item?.name_en || it.item?.name_ar);
+  const itemLabel = (it) => localizedName(it, locale, 'item_name') || localizedName(it.item, locale);
 
   return (
     <div>
@@ -462,7 +462,7 @@ export function WOMaterialFormModal({ wo, items, warehouses, locale, t, onClose,
     finally { setSaving(false); }
   };
 
-  const itemLabel = (it) => `${it.code || ''} - ${locale === 'ar' ? (it.name_ar || it.name_en) : (it.name_en || it.name_ar)} (${it.unit || '—'})`;
+  const itemLabel = (it) => `${it.code || ''} - ${localizedName(it, locale)} (${it.unit || '—'})`;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -693,7 +693,7 @@ function WOEquipmentTab({ wo, projectId, locale, t }) {
 
   useEffect(() => { loadEntries(); }, [loadEntries]);
 
-  const eqLabel = (eq) => locale === 'ar' ? (eq.equipment_name_ar || eq.equipment_name_en || eq.equipment?.name_ar || eq.equipment?.name_en) : (eq.equipment_name_en || eq.equipment_name_ar || eq.equipment?.name_en || eq.equipment?.name_ar);
+  const eqLabel = (eq) => localizedName(eq, locale, 'equipment_name') || localizedName(eq.equipment, locale);
 
   return (
     <div>
@@ -783,7 +783,7 @@ function WOEquipmentFormModal({ wo, equipment, locale, t, onClose, onSave }) {
     finally { setSaving(false); }
   };
 
-  const eqLabel = (eq) => `${eq.code || ''} - ${locale === 'ar' ? (eq.name_ar || eq.name_en) : (eq.name_en || eq.name_ar)}`;
+  const eqLabel = (eq) => `${eq.code || ''} - ${localizedName(eq, locale)}`;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -857,7 +857,7 @@ function WOCompletionsTab({ wo, projectId, locale, t, loadWorkOrders }) {
 
   useEffect(() => { loadCompletions(); }, [loadCompletions]);
 
-  const boqItemDesc = (c) => locale === 'ar' ? (c.boq_item_description_ar || c.boq_item_description_en) : (c.boq_item_description_en || c.boq_item_description_ar);
+  const boqItemDesc = (c) => localizedName(c, locale, 'boq_item_description');
 
   const handleVerify = async (compId) => {
     try {
@@ -986,7 +986,7 @@ function WOCompletionFormModal({ wo, boqItems, locale, t, onClose, onSave }) {
 
   const itemLabel = (it) => {
     const code = it.code || '';
-    const desc = locale === 'ar' ? (it.description_ar || it.description_en) : (it.description_en || it.description_ar);
+    const desc = localizedName(it, locale, 'description');
     const unit = it.unit || '';
     return `${code} - ${desc} (${unit})`;
   };
@@ -1081,7 +1081,7 @@ function WorkOrderModal({ wo, projectId, phases, boqSections, users, locale, t, 
     finally { setSaving(false); }
   };
 
-  const phaseLabel = (p) => `${p.code || ''} - ${locale === 'ar' ? (p.name_ar || p.name) : (p.name_en || p.name)}`;
+  const phaseLabel = (p) => `${p.code || ''} - ${localizedName(p, locale)}`;
   const userLabel = (u) => u.name || u.username;
 
   return (
@@ -1123,7 +1123,7 @@ function WorkOrderModal({ wo, projectId, phases, boqSections, users, locale, t, 
                   <select className="form-select" value={form.boq_section_id} onChange={e => handleChange('boq_section_id', e.target.value)}>
                     <option value="">{t('workorders.system.select')}</option>
                     {boqSections.map(s => (
-                      <option key={s.id} value={s.id}>{s.code || ''} - {locale === 'ar' ? (s.name_ar || s.name_en) : (s.name_en || s.name_ar)}</option>
+                      <option key={s.id} value={s.id}>{s.code || ''} - {localizedName(s, locale)}</option>
                     ))}
                   </select>
                 </div>

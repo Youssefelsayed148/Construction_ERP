@@ -253,5 +253,18 @@
     "push": "إشعار فوري",
     "sms": "رسالة نصية",
     "whatsapp": "واتساب"
+  },
+  "handoverState": {
+    "preHandover": "ما قبل التسليم",
+    "punchSnag": "قائمة الملاحظات والعيوب",
+    "rectification": "التصحيح",
+    "finalInspection": "الفحص النهائي",
+    "testingCommissioning": "الاختبار والتشغيل",
+    "asBuilts": "مخططات ما بعد التنفيذ",
+    "oM": "كتيبات التشغيل والصيانة",
+    "training": "التدريب",
+    "takingOver": "الاستلام",
+    "dlpWarranty": "فترة ضمان العيوب",
+    "finalCompletion": "الإنجاز النهائي"
   }
 }

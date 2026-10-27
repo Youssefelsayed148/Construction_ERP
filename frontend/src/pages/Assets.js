@@ -4,6 +4,7 @@ import { useLocale } from '../hooks/useLocale';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import LoadMore from '../components/common/LoadMore';
 import { Search, Plus, Edit, Trash2, Wrench, X } from 'lucide-react';
+import { localizedName } from '../utils/formatters';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
@@ -90,7 +91,7 @@ function Assets() {
 
   const categoryLabel = (cat) => CATEGORY_LABELS[locale]?.[cat] || cat;
   const typeLabel = (t) => EQUIPMENT_TYPE_LABELS[locale]?.[t] || t;
-  const assetName = (asset) => locale === 'ar' ? asset.name_ar : asset.name_en;
+  const assetName = (asset) => localizedName(asset, locale);
 
   const categories = ['earthmoving', 'lifting', 'concrete', 'compaction', 'transport', 'generator', 'tool', 'other'];
 
@@ -218,7 +219,7 @@ function Assets() {
         onClose={() => setShowModal(false)}
         onSave={loadAssets}
       />}
-      <ConfirmDialog open={Boolean(deleteTarget)} title={t('common.dialogs.confirmTitle')} message={t('common.dialogs.confirmDelete')} confirmLabel={t('common.delete')} destructive requireText={locale === 'ar' ? deleteTarget?.name_ar || deleteTarget?.name_en || '' : deleteTarget?.name_en || deleteTarget?.name_ar || ''} onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
+      <ConfirmDialog open={Boolean(deleteTarget)} title={t('common.dialogs.confirmTitle')} message={t('common.dialogs.confirmDelete')} confirmLabel={t('common.delete')} destructive requireText={localizedName(deleteTarget, locale)} onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
     </div>
   );
 }
@@ -363,11 +364,11 @@ function AssetModal({ asset, locale, t, projects, onClose, onSave }) {
                   <option value="">{t('assets.system.inYardUnassigned')}</option>
                   {form.current_project_id && !projects.some(p => String(p.id) === String(form.current_project_id)) && (
                     <option value={form.current_project_id} disabled>
-                      {locale === 'ar' ? (asset?.current_project_name_ar || 'مشروع غير نشط') : (asset?.current_project_name_en || asset?.current_project_name_ar || 'Inactive project')}
+                      {localizedName(asset, locale, 'current_project_name') || t('assets.inactiveProject')}
                     </option>
                   )}
                   {projects.map(p => (
-                    <option key={p.id} value={p.id}>{locale === 'ar' ? p.name_ar : (p.name_en || p.name_ar)} ({p.code})</option>
+                    <option key={p.id} value={p.id}>{localizedName(p, locale)} ({p.code})</option>
                   ))}
                 </select>
               </div>

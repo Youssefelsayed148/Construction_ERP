@@ -261,7 +261,7 @@ export default function Handover() {
           <div className="card" style={{ padding: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
               <span style={{ fontWeight: 600 }}>{data.process.process_number}</span>
-              <span className="badge badge-info">{translateEnum(t, 'status', data.process.status)}</span>
+              <span className="badge badge-info">{translateEnum(t, 'handoverState', data.process.status)}</span>
             </div>
             <div style={{ display: 'grid', gap: 6 }}>
               {['pre_handover', 'punch_snag', 'rectification', 'final_inspection', 'testing_commissioning', 'as_builts', 'o_m', 'training', 'taking_over', 'dlp_warranty', 'final_completion'].map(s => {
@@ -270,7 +270,7 @@ export default function Handover() {
                 return (
                   <div key={s} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}>
                     <span style={{ width: 10, height: 10, borderRadius: 5, background: reached ? 'var(--color-success)' : 'var(--color-surface-raised)' }} />
-                    {s.replace(/_/g, ' ')}
+                    {translateEnum(t, 'handoverState', s)}
                   </div>
                 );
               })}

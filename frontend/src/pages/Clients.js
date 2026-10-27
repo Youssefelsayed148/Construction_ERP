@@ -1,4 +1,4 @@
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, localizedName, pickByLocale } from '../utils/formatters';
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
@@ -72,11 +72,11 @@ function Clients() {
     } catch (e) { alert(e.message); }
   };
 
-  const clientName = (c) => locale === 'ar' ? c.name_ar : c.name_en;
+  const clientName = (c) => localizedName(c, locale);
   const cityDisplay = (city) => {
     if (!city) return '-';
     const match = EGYPT_CITIES.find(c => c.en === city);
-    return match ? (locale === 'ar' ? match.ar : match.en) : city;
+    return match ? (pickByLocale(locale, match.en, match.ar)) : city;
   };
 
   return (
@@ -233,7 +233,7 @@ function Clients() {
         onClose={() => setShowModal(false)}
         onSave={loadClients}
       />}
-      <ConfirmDialog open={Boolean(deleteTarget)} title={t('common.dialogs.confirmTitle')} message={t('common.dialogs.confirmDelete')} confirmLabel={t('common.delete')} destructive requireText={locale === 'ar' ? deleteTarget?.name_ar || deleteTarget?.name_en || '' : deleteTarget?.name_en || deleteTarget?.name_ar || ''} onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
+      <ConfirmDialog open={Boolean(deleteTarget)} title={t('common.dialogs.confirmTitle')} message={t('common.dialogs.confirmDelete')} confirmLabel={t('common.delete')} destructive requireText={localizedName(deleteTarget, locale)} onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
     </div>
   );
 }
@@ -314,7 +314,7 @@ function ClientModal({ client, locale, t, onClose, onSave }) {
                     )}
                     {EGYPT_CITIES.map(c => (
                       <option key={c.en} value={c.en}>
-                        {locale === 'ar' ? c.ar : c.en}
+                        {pickByLocale(locale, c.en, c.ar)}
                       </option>
                     ))}
                   </select>

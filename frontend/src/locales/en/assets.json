@@ -28,5 +28,6 @@
     "location": "Location",
     "inYardUnassigned": "In Yard (Unassigned)",
     "operatorRequired": "Operator Required"
-  }
+  },
+  "inactiveProject": "Inactive project"
 }

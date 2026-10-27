@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLocale } from '../hooks/useLocale';
 import LoadMore from '../components/common/LoadMore';
 import { ArrowRight, ArrowLeft, Check, X, Building2, Layers, Network, Users, Globe, ShieldCheck, FileCheck, CalendarRange, FolderTree, BellRing } from 'lucide-react';
+import { localizedName, pickByLocale } from '../utils/formatters';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
@@ -164,7 +165,7 @@ function ProjectWizard() {
     finally { setSaving(false); }
   };
 
-  const L = (en, ar) => (locale === 'ar' ? ar : en);
+  const L = (en, ar) => pickByLocale(locale, en, ar);
 
   const stepsUi = STEPS.map((s, i) => ({ ...s, index: i }));
 
@@ -228,7 +229,7 @@ function ProjectWizard() {
                 <label className="form-label">{t('projectWizard.system.clientOptional')}</label>
                 <select className="form-select" value={form.client_id} onChange={e => set('client_id', e.target.value)}>
                   <option value="">{t('projectWizard.system.noClientAssigned')}</option>
-                  {clients.map(c => <option key={c.id} value={c.id}>{locale === 'ar' ? c.name_ar : c.name_en} ({c.code})</option>)}
+                  {clients.map(c => <option key={c.id} value={c.id}>{localizedName(c, locale)} ({c.code})</option>)}
                 </select>
                 <LoadMore loadedCount={clients.length} totalCount={lookupCounts.clients} loading={loadingLookup.clients} onLoadMore={() => loadMoreLookup('clients')} t={t} />
               </div>
@@ -288,7 +289,7 @@ function ProjectWizard() {
                 <label className="form-label">{t('projectWizard.system.projectManager')}</label>
                 <select className="form-select" value={form.project_manager_id} onChange={e => set('project_manager_id', e.target.value)}>
                   <option value="">--</option>
-                  {managers.map(m => <option key={m.id} value={m.id}>{locale === 'ar' ? m.name_ar : (m.name_en || m.name_ar)}</option>)}
+                  {managers.map(m => <option key={m.id} value={m.id}>{localizedName(m, locale)}</option>)}
                 </select>
                 <LoadMore loadedCount={managers.length} totalCount={lookupCounts.managers} loading={loadingLookup.managers} onLoadMore={() => loadMoreLookup('managers')} t={t} />
               </div>
@@ -393,7 +394,7 @@ function ProjectWizard() {
               <select className="form-select" value="" onChange={e => addTeamMember(e.target.value)}>
                 <option value="">{t('projectWizard.system.selectEmployee')}</option>
                 {employees.filter(e => !form.team.some(m => m.employee_id === e.id)).map(e => (
-                  <option key={e.id} value={e.id}>{locale === 'ar' ? e.name_ar : (e.name_en || e.name_ar)} {e.email ? `(${e.email})` : ''}</option>
+                  <option key={e.id} value={e.id}>{localizedName(e, locale)} {e.email ? `(${e.email})` : ''}</option>
                 ))}
               </select>
               <LoadMore loadedCount={employees.length} totalCount={lookupCounts.employees} loading={loadingLookup.employees} onLoadMore={() => loadMoreLookup('employees')} t={t} />
@@ -404,7 +405,7 @@ function ProjectWizard() {
             {form.team.map((m, idx) => (
               <div key={m.employee_id} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                 <span style={{ flex: 1, fontSize: '14px' }}>
-                  {(() => { const e = employees.find(x => x.id === m.employee_id); return e ? (locale === 'ar' ? e.name_ar : (e.name_en || e.name_ar)) : m.employee_id; })()}
+                  {(() => { const e = employees.find(x => x.id === m.employee_id); return e ? (localizedName(e, locale)) : m.employee_id; })()}
                 </span>
                 <select className="form-select" style={{ width: '220px' }} value={m.role} onChange={e => setForm(f => ({ ...f, team: f.team.map((x, i) => i === idx ? { ...x, role: e.target.value } : x) }))}>
                   {TEAM_ROLES.map(r => <option key={r} value={r}>{translateEnum(t, 'role', r)}</option>)}
@@ -426,7 +427,7 @@ function ProjectWizard() {
                 <label className="form-label">{t('projectWizard.system.organizationClientDirectory')}</label>
                 <select id="participant-org" className="form-select" defaultValue="">
                   <option value="">{t('projectWizard.system.selectOrganization')}</option>
-                  {clients.map(o => <option key={o.id} value={o.id}>{(locale === 'ar' ? o.name_ar : o.name_en) || o.code}</option>)}
+                  {clients.map(o => <option key={o.id} value={o.id}>{(localizedName(o, locale)) || o.code}</option>)}
                 </select>
                 <LoadMore loadedCount={clients.length} totalCount={lookupCounts.clients} loading={loadingLookup.clients} onLoadMore={() => loadMoreLookup('clients')} t={t} />
               </div>
@@ -453,7 +454,7 @@ function ProjectWizard() {
               const c = clients.find(x => x.id === p.client_id);
               return (
                 <div key={`${p.client_id}-${p.participant_type}`} style={{ display: 'flex', gap: '12px', alignItems: 'center', fontSize: '14px' }}>
-                  <span style={{ flex: 1 }}>{c ? (locale === 'ar' ? c.name_ar : c.name_en) : p.client_id}</span>
+                  <span style={{ flex: 1 }}>{c ? (localizedName(c, locale)) : p.client_id}</span>
                   <span className="badge badge-info">{p.participant_type}</span>
                   <button className="btn" onClick={() => setForm(f => ({ ...f, participants: f.participants.filter((_, i) => i !== idx) }))}><X size={14} /></button>
                 </div>

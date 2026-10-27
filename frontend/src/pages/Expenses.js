@@ -1,4 +1,4 @@
-import { formatDate as sharedDate } from '../utils/formatters';
+import { formatDate as sharedDate, localizedName } from '../utils/formatters';
 import { apiFetch, apiResponseJson } from '../services/apiClient';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '../hooks/useLocale';
@@ -221,7 +221,7 @@ function Expenses() {
                     </span>
                   </td>
                   <td style={{ fontFamily: 'monospace', fontSize: '13px', color: 'var(--color-accent)' }}>
-                    {e.project_id ? `${locale === 'ar' ? e.project_name_ar : (e.project_name_en || e.project_name_ar)} (${e.project_code})` : '-'}
+                    {e.project_id ? `${localizedName(e, locale, 'project_name')} (${e.project_code})` : '-'}
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: '6px' }}>
@@ -328,7 +328,7 @@ function ExpenseModal({ expense, locale, t, projects, onClose, onSave }) {
                   <select className="form-select" value={form.project_id} onChange={e => handleChange('project_id', e.target.value)}>
                     <option value="">-- {t('expenses.system.noProject')} --</option>
                     {projects.map(p => (
-                      <option key={p.id} value={p.id}>{locale === 'ar' ? p.name_ar : (p.name_en || p.name_ar)} ({p.code})</option>
+                      <option key={p.id} value={p.id}>{localizedName(p, locale)} ({p.code})</option>
                     ))}
                   </select>
                 </div>

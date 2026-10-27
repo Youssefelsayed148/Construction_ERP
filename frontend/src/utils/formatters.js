@@ -76,4 +76,10 @@ function localizedName(record, locale, fields = ['name']) {
   return '';
 }
 
-export { formatCurrency, formatNumber, formatDate, formatDateTime, formatPercent, localizedName };
+// Pick between two already-localized values (e.g. a lookup table's { en, ar } entry) for the active locale,
+// falling back to the other one so an unfilled translation never renders blank.
+function pickByLocale(locale, en, ar) {
+  return activeLocale(locale).startsWith('ar') ? (ar || en) : (en || ar);
+}
+
+export { formatCurrency, formatNumber, formatDate, formatDateTime, formatPercent, localizedName, pickByLocale };

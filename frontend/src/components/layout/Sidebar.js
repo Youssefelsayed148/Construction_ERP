@@ -5,6 +5,7 @@ import { useAuth } from '../../store';
 import { authService } from '../../services/api';
 import { useLocale } from '../../hooks/useLocale';
 import { translateRole } from '../../i18n/enums';
+import { otherLocale, LOCALE_BADGE } from '../../i18n/config';
 import { LayoutDashboard, Briefcase, Users, Package, Truck, Wrench, Shield, DollarSign, Receipt, ClipboardList, ListChecks, LogOut, Globe, HardHat, Bot, Settings as SettingsIcon, Warehouse, Bell, TrendingUp } from 'lucide-react';
 
 // Labels are catalog keys (navigation.items.*), never literal text.
@@ -74,7 +75,7 @@ function Sidebar({ mobileOpen = false, onNavigate }) {
   };
 
   const toggleLocale = () => {
-    setLocale(locale === 'ar' ? 'en' : 'ar');
+    setLocale(otherLocale(locale));
   };
 
   return (
@@ -105,8 +106,8 @@ function Sidebar({ mobileOpen = false, onNavigate }) {
       <div className="sidebar-footer">
         <button onClick={toggleLocale} className="locale-toggle" title={t('navigation.actions.switchLanguage')} aria-label={t('navigation.actions.switchLanguage')}>
           <Globe size={16} aria-hidden="true" />
-          <span style={{ fontSize: '12px', marginInlineStart: '6px' }} lang={locale === 'ar' ? 'en' : 'ar'}>
-            {locale === 'ar' ? 'EN' : 'ع'}
+          <span style={{ fontSize: '12px', marginInlineStart: '6px' }} lang={otherLocale(locale)}>
+            {LOCALE_BADGE[otherLocale(locale)]}
           </span>
         </button>
 

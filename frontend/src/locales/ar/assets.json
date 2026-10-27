@@ -28,5 +28,6 @@
     "location": "الموقع",
     "inYardUnassigned": "في المخزن (غير مخصصة)",
     "operatorRequired": "تحتاج مشغل"
-  }
+  },
+  "inactiveProject": "مشروع غير نشط"
 }

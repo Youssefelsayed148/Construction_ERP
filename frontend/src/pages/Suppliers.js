@@ -5,6 +5,7 @@ import ReasonDialog from '../components/common/ReasonDialog';
 import LoadMore from '../components/common/LoadMore';
 import { Search, Plus, Edit, Trash2, Truck, X, RotateCcw } from 'lucide-react';
 import EGYPT_CITIES from '../constants/egyptCities';
+import { localizedName, pickByLocale } from '../utils/formatters';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
@@ -89,11 +90,11 @@ function Suppliers() {
   };
 
   const specialtyLabel = (s) => SPECIALTY_LABELS[locale]?.[s] || s;
-  const supplierName = (s) => locale === 'ar' ? s.name_ar : s.name_en;
+  const supplierName = (s) => localizedName(s, locale);
   const cityDisplay = (city) => {
     if (!city) return '-';
     const match = EGYPT_CITIES.find(c => c.en === city);
-    return match ? (locale === 'ar' ? match.ar : match.en) : city;
+    return match ? (pickByLocale(locale, match.en, match.ar)) : city;
   };
 
   return (
@@ -339,7 +340,7 @@ function SupplierModal({ supplier, locale, t, onClose, onSave }) {
                     )}
                     {EGYPT_CITIES.map(c => (
                       <option key={c.en} value={c.en}>
-                        {locale === 'ar' ? c.ar : c.en}
+                        {pickByLocale(locale, c.en, c.ar)}
                       </option>
                     ))}
                   </select>
@@ -404,7 +405,7 @@ function SuppliedMaterials({ supplierId, locale, t }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const itemName = (i) => locale === 'ar' ? i.name_ar : (i.name_en || i.name_ar);
+  const itemName = (i) => localizedName(i, locale);
   const linkedIds = new Set(links.map(l => l.material_id));
   const availableItems = items.filter(i => !linkedIds.has(i.id));
 
@@ -467,7 +468,7 @@ function SuppliedMaterials({ supplierId, locale, t }) {
                 <tbody>
                   {links.map(l => (
                     <tr key={l.id}>
-                      <td>{locale === 'ar' ? l.material_name_ar : (l.material_name_en || l.material_name_ar)} <span style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}>({l.material_code})</span></td>
+                      <td>{localizedName(l, locale, 'material_name')} <span style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}>({l.material_code})</span></td>
                       <td style={{ fontFamily: 'monospace' }}>{l.unit_price != null ? Number(l.unit_price).toFixed(2) : '-'}</td>
                       <td style={{ fontFamily: 'monospace' }}>{l.lead_time_days != null ? l.lead_time_days : '-'}</td>
                       <td style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>{l.notes || '-'}</td>
