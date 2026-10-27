@@ -12,6 +12,9 @@ RUN npm run lint:guards && npm test -- --runInBand --testPathIgnorePatterns 'dec
 FROM node:20-alpine
 WORKDIR /app
 
+# Headless Chromium prints Arabic PDFs (src/utils/htmlPdf.js); the OFL fonts ship in assets/fonts.
+RUN apk add --no-cache chromium
+ENV PDF_CHROMIUM_PATH=/usr/bin/chromium
 COPY package*.json ./
 RUN npm ci --omit=dev
 

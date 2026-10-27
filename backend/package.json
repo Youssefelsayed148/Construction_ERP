@@ -14,11 +14,11 @@
     "seed:pilot-data": "node src/scripts/seed-pilot-data.js",
     "seed:golden-demo": "node src/scripts/seed-golden-demo.js",
     "seed:company-demo": "node src/scripts/seed-company-demo.js",
-      "seed:company-demo:masters": "node src/scripts/seed-company-demo.js --masters",
-      "seed:company-demo:procurement": "node src/scripts/seed-company-demo.js --procurement",
-      "seed:company-demo:finance": "node src/scripts/seed-company-demo.js --finance",
-      "seed:company-demo:hr": "node src/scripts/seed-company-demo.js --hr",
-      "seed:company-demo:site-qhse": "node src/scripts/seed-company-demo.js --site-qhse",
+    "seed:company-demo:masters": "node src/scripts/seed-company-demo.js --masters",
+    "seed:company-demo:procurement": "node src/scripts/seed-company-demo.js --procurement",
+    "seed:company-demo:finance": "node src/scripts/seed-company-demo.js --finance",
+    "seed:company-demo:hr": "node src/scripts/seed-company-demo.js --hr",
+    "seed:company-demo:site-qhse": "node src/scripts/seed-company-demo.js --site-qhse",
     "seed:company-demo:reset": "node src/scripts/seed-company-demo.js --reset",
     "smoke:staging": "node src/scripts/smoke-staging.js",
     "backup:rehearse": "node src/scripts/backup-restore-rehearsal.js",
@@ -47,11 +47,13 @@
     "multer": "^2.1.1",
     "pdfkit": "^0.20.2",
     "pg": "^8.22.0",
+    "playwright-core": "^1.63.0",
     "winston": "^3.10.0"
   },
   "devDependencies": {
     "jest": "^29.6.2",
-    "nodemon": "^3.0.1"
+    "nodemon": "^3.0.1",
+    "pdfjs-dist": "^3.11.174"
   },
   "jest": {
     "setupFiles": [

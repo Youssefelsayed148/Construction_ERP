@@ -9,6 +9,7 @@
 'use strict';
 
 const PDFDocument = require('pdfkit');
+const htmlPdf = require('./htmlPdf');
 
 const BRAND = {
   name: process.env.COMPANY_NAME || 'Osiris Labs',
@@ -34,6 +35,8 @@ function num(n) {
 // renderDocument({ brand, docType, number, date, meta, columns, rows,
 //                  summary, notes }) → Promise<Buffer>
 async function renderDocument(spec) {
+  // F4: Arabic content (or spec.locale === 'ar') is laid out and shaped by Chromium; PDFKit cannot render Arabic.
+  if (htmlPdf.resolveLocale(spec) === 'ar') return htmlPdf.renderHtmlPdf(spec, { locale: 'ar' });
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({ size: 'A4', margin: 48, bufferPages: true });
