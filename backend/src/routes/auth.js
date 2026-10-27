@@ -9,6 +9,7 @@ const policy = require('../services/policy');
 const tokens = require('../services/tokens');
 const passwords = require('../services/passwords');
 const authLockout = require('../services/authLockout');
+const { routeFail } = require('../utils/typedRoute');
 
 // POST /api/auth/register
 router.post('/register', authenticate, authorize('owner', 'admin'), async (req, res) => {
@@ -66,7 +67,7 @@ router.post('/register', authenticate, authorize('owner', 'admin'), async (req, 
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'auth.POST /register', req);
   }
 });
 
@@ -138,7 +139,7 @@ router.post('/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'auth.POST /login', req);
   }
 });
 
@@ -188,7 +189,7 @@ router.post('/change-password', authenticate, authorize(), async (req, res) => {
       data: { token: tokens.signSession({ userId: req.user.id, tokenVersion: updated.rows[0].token_version }) },
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'auth.POST /change-password', req);
   }
 });
 
@@ -205,7 +206,7 @@ router.post('/logout-all', authenticate, authorizeSelfSession(), async (req, res
     });
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'auth.POST /logout-all', req);
   }
 });
 

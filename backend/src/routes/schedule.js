@@ -22,6 +22,7 @@ const engine = require('../services/schedulingEngine');
 const costView = require('../services/costView');
 const { dateOnly } = require('../utils/validation');
 const { normalizeDateFields } = require('../utils/dateOnly');
+const { routeFail } = require('../utils/typedRoute');
 
 function scheduleProjectAllowed(req, projectId) {
   return req.accessScope?.companyWide || (req.accessScope?.projectIds || []).includes(Number(projectId));
@@ -94,7 +95,7 @@ router.get('/calendars', authenticate, authorize(), async (req, res) => {
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const r = await queryPaginated(req, res, query, { sql: `SELECT * FROM calendars c ${where} ORDER BY c.is_default DESC, c.name`, params: params, orderBy: [{"column":"is_default","direction":"DESC"},{"column":"name","direction":"ASC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.GET /calendars', req); }
 });
 
 router.post('/calendars', authenticate, authorize(), async (req, res) => {
@@ -117,7 +118,7 @@ router.post('/calendars', authenticate, authorize(), async (req, res) => {
       return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], description: `Created calendar ${value.name}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.POST /calendars', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -155,7 +156,7 @@ router.get('/activities', authenticate, authorize(), async (req, res) => {
       rows = rows.filter((a) => critIds.has(engine.toNum(a.id)));
     }
     res.json({ success: true, data: paginateRows(req, res, rows, { orderBy: [{ column: 'planned_start' }] }).rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.GET /activities', req); }
 });
 
 async function relationshipsFor(q, projectId) {
@@ -188,7 +189,7 @@ router.get('/activities/export', authenticate, authorize(), async (req, res) => 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="schedule-${project_id}.csv"`);
     res.send(lines.join('\n'));
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.GET /activities/export', req); }
 });
 
 router.get('/activities/:id', authenticate, authorize(), async (req, res) => {
@@ -203,7 +204,7 @@ router.get('/activities/:id', authenticate, authorize(), async (req, res) => {
       [req.params.id]
     )).rows;
     res.json({ success: true, data: { ...activity, relationships: rels } });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.GET /activities/:id', req); }
 });
 
 router.post('/activities', authenticate, authorize(), async (req, res) => {
@@ -261,7 +262,7 @@ router.post('/activities', authenticate, authorize(), async (req, res) => {
       return inserted;
     });
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.POST /activities', req); }
 });
 
 // Set the activity BAC independently so the change has its own authorization,
@@ -340,7 +341,7 @@ router.put('/activities/:id', authenticate, authorize(), async (req, res) => {
       await progressEngine.syncProjectProgress(query, r.rows[0].project_id);
     } catch (e) { console.error('[SCHEDULE] project progress recompute failed:', e.message); }
     res.json({ success: true, data: r.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.PUT /activities/:id', req); }
 });
 
 router.delete('/activities/:id', authenticate, authorize(), async (req, res) => {
@@ -352,7 +353,7 @@ router.delete('/activities/:id', authenticate, authorize(), async (req, res) => 
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Activity not found' });
     res.json({ success: true, message: 'Activity deleted' });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.DELETE /activities/:id', req); }
 });
 
 // Progress update — quantity-derived when the activity is quantity-driven;
@@ -370,7 +371,7 @@ router.post('/activities/:id/progress', authenticate, authorize('owner', 'admin'
     const updated = await transaction(async (client) => {
       const q = client.query.bind(client);
       const before = (await q('SELECT * FROM schedule_activities WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
-      if (!before) throw Object.assign(new Error('Activity not found'), { statusCode: 404 });
+      if (!before) throw Object.assign(new Error('Activity not found'), { statusCode: 404, status: 404, error_code: 'schedule_activity_not_found' });
       const dataDate = value.data_date ? new Date(`${value.data_date}T12:00:00`) : undefined;
       const row = await engine.updateProgress(q, req.params.id, { ...value, dataDate }, req.user);
       await q(
@@ -387,7 +388,7 @@ router.post('/activities/:id/progress', authenticate, authorize('owner', 'admin'
     });
     res.json({ success: true, data: normalizeDateFields(updated, ['actual_start', 'actual_finish']) });
   } catch (error) {
-    res.status(error.statusCode || 500).json({ success: false, error: error.message });
+    routeFail(res, error, 'schedule.POST /activities/:id/progress', req);
   }
 });
 
@@ -399,7 +400,7 @@ router.get('/activities/:id/progress-history', authenticate, authorize(), async 
        LEFT JOIN users u ON u.id = h.created_by
        WHERE h.schedule_activity_id = $1 ORDER BY h.created_at DESC, h.id DESC`, params: [req.params.id], orderBy: [{"column":"created_at","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: result.rows.map((row) => normalizeDateFields(row, ['data_date'])) });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.GET /activities/:id/progress-history', req); }
 });
 
 // Project-owned resources available for dated schedule assignments.
@@ -434,7 +435,7 @@ router.get('/activities/:id/assignments', authenticate, authorize(), async (req,
        LEFT JOIN asset_register ar ON ar.id = a.asset_register_id
        WHERE a.schedule_activity_id = $1 ORDER BY a.assigned_from, a.id`, params: [req.params.id], orderBy: [{"column":"assigned_from","direction":"ASC"},{"column":"id","direction":"ASC"}] });
     res.json({ success: true, data: result.rows.map((row) => normalizeDateFields(row, ['assigned_from', 'assigned_to'])) });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.GET /activities/:id/assignments', req); }
 });
 
 router.post('/activities/:id/assignments', authenticate, authorize('owner', 'admin', 'project_manager', 'planning_engineer'), async (req, res) => {
@@ -538,7 +539,7 @@ router.get('/relationships', authenticate, authorize(), async (req, res) => {
        LEFT JOIN schedule_activities p ON r.predecessor_id = p.id
        LEFT JOIN schedule_activities s ON r.successor_id = s.id ${where} ORDER BY r.id`, params: params, orderBy: [{"column":"id","direction":"ASC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.GET /relationships', req); }
 });
 
 const REL_TYPES = ['FS', 'SS', 'FF', 'SF'];
@@ -565,7 +566,7 @@ router.post('/relationships', authenticate, authorize(), async (req, res) => {
       return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], description: `Linked activity ${value.predecessor_id} -> ${value.successor_id} (${value.relationship_type})` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.POST /relationships', req); }
 });
 
 router.delete('/relationships/:id', authenticate, authorize(), async (req, res) => {
@@ -577,7 +578,7 @@ router.delete('/relationships/:id', authenticate, authorize(), async (req, res) 
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Relationship not found' });
     res.json({ success: true, message: 'Relationship deleted' });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.DELETE /relationships/:id', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -600,7 +601,7 @@ router.get('/schedule/cpm', authenticate, authorize(), async (req, res) => {
         activities: activities.map((a) => ({ ...a, cpm: critMap.get(engine.toNum(a.id)) || null })),
       },
     });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.GET /schedule/cpm', req); }
 });
 
 router.get('/schedule/lookahead', authenticate, authorize(), async (req, res) => {
@@ -611,7 +612,7 @@ router.get('/schedule/lookahead', authenticate, authorize(), async (req, res) =>
     const dataDate = data_date ? new Date(data_date) : new Date();
     const rows = engine.lookahead(acts, [2, 4, 6].includes(parseInt(weeks, 10)) ? parseInt(weeks, 10) : 2, dataDate);
     res.json({ success: true, data: paginateRows(req, res, rows, { orderBy: [{ column: 'planned_start' }] }).rows, window_weeks: parseInt(weeks, 10) });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.GET /schedule/lookahead', req); }
 });
 
 router.get('/schedule/delayed', authenticate, authorize(), async (req, res) => {
@@ -621,7 +622,7 @@ router.get('/schedule/delayed', authenticate, authorize(), async (req, res) => {
     const acts = (await query('SELECT * FROM schedule_activities WHERE project_id = $1', [project_id])).rows;
     const rows = engine.delayedActivities(acts, data_date ? new Date(data_date) : new Date());
     res.json({ success: true, data: paginateRows(req, res, rows, { orderBy: [{ column: 'planned_finish', direction: 'ASC' }] }).rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.GET /schedule/delayed', req); }
 });
 
 // SV% per activity + project aggregate; a current baseline turns SPI on by default.
@@ -719,7 +720,7 @@ router.get('/schedule/s-curve', authenticate, authorize(), async (req, res) => {
     if (!project_id) return res.status(400).json({ success: false, error: 'project_id is required' });
     const acts = (await query('SELECT * FROM schedule_activities WHERE project_id = $1', [project_id])).rows;
     res.json({ success: true, data: engine.sCurve(acts, data_date ? new Date(data_date) : new Date()) });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.GET /schedule/s-curve', req); }
 });
 
 // Alerts — cross-module (material readiness, blockers, critical delay, milestones).
@@ -729,7 +730,7 @@ router.get('/schedule/alerts', authenticate, authorize(), async (req, res) => {
     if (!project_id) return res.status(400).json({ success: false, error: 'project_id is required' });
     const alerts = await engine.scheduleAlerts(query, project_id, data_date ? new Date(data_date) : new Date());
     res.json({ success: true, data: paginateRows(req, res, alerts, { orderBy: [{ column: 'type' }, { column: 'activity_id' }] }).rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.GET /schedule/alerts', req); }
 });
 
 // Milestones integrated with the schedule (milestone can reference an activity).
@@ -743,7 +744,7 @@ router.get('/schedule/milestones', authenticate, authorize(), async (req, res) =
        FROM project_milestones m LEFT JOIN schedule_activities a ON m.schedule_activity_id = a.id
        ${where} ORDER BY m.target_date NULLS LAST`, params: params, orderBy: [{"column":"target_date","direction":"ASC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.GET /schedule/milestones', req); }
 });
 
 router.post('/schedule/milestones/:id/link', authenticate, authorize(), async (req, res) => {
@@ -761,7 +762,7 @@ router.post('/schedule/milestones/:id/link', authenticate, authorize(), async (r
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Milestone not found' });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.POST /schedule/milestones/:id/link', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -779,7 +780,7 @@ router.get('/baselines', authenticate, authorize(), async (req, res) => {
     const r = await queryPaginated(req, res, query, { sql: `SELECT b.*, u.name as created_by_name FROM baselines b LEFT JOIN users u ON b.created_by = u.id
        ${where} ORDER BY b.baseline_date DESC`, params: params, orderBy: [{"column":"baseline_date","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.GET /baselines', req); }
 });
 
 // Snapshot the current plan as a baseline (only one is 'current').
@@ -806,7 +807,7 @@ router.post('/baselines', authenticate, authorize(), async (req, res) => {
       return inserted;
     });
     res.status(201).json({ success: true, data: { ...r.rows[0], activity_count: snapshot.length } });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.POST /baselines', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -902,7 +903,7 @@ router.post('/activities/import', authenticate, authorize('owner', 'admin', 'pro
     return { created, skipped };
     });
     res.json({ success: true, data: outcome });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'schedule.POST /activities/import', req); }
 });
 
 async function codeLookupId(code, projectId, q = query) {

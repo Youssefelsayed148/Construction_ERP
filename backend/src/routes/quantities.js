@@ -11,6 +11,7 @@ const engine = require('../services/quantityEngine');
 const materialDemand = require('../services/materialDemand');
 const progressEngine = require('../services/progressEngine');
 const costView = require('../services/costView');
+const { routeFail } = require('../utils/typedRoute');
 
 // Phase 8 — quantity surface. Executed quantity is NEVER edited on a summary
 // row: it only enters the system as a quantity_measurements row. Allocation
@@ -62,7 +63,7 @@ router.get('/allocations/:boqItemId', authenticate, authorize(), async (req, res
       };
     });
     res.json({ success: true, data: paginateRows(req, res, data, { orderBy: [{ column: 'location_name' }, { column: 'id' }] }).rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'quantities.GET /allocations/:boqItemId', req); }
 });
 
 // POST /api/quantities/allocations — upsert an allocation's planned fields.
@@ -107,7 +108,7 @@ router.post('/allocations', authenticate, authorize(), async (req, res) => {
       console.error('[MATERIAL_DEMAND] allocation recompute failed:', e.message));
 
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'quantities.POST /allocations', req); }
 });
 
 // PUT /api/quantities/allocations/:id — planned/design only; derived columns
@@ -153,7 +154,7 @@ router.put('/allocations/:id', authenticate, authorize(), async (req, res) => {
         console.error('[MATERIAL_DEMAND] allocation recompute failed:', e.message));
     }
     res.json({ success: true, data: r.rows[0] });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'quantities.PUT /allocations/:id', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -181,7 +182,7 @@ router.get('/measurements', authenticate, authorize(), async (req, res) => {
       orderBy: [{ column: 'qm.measured_date', direction: 'DESC' }, { column: 'qm.id', direction: 'DESC' }],
     });
     res.json({ success: true, data: r.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'quantities.GET /measurements', req); }
 });
 
 // POST /api/quantities/measurements — insert ONLY. Executed roll-ups move.
@@ -224,7 +225,7 @@ router.post('/measurements', authenticate, authorize(), async (req, res) => {
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (e) {
     if (e.error_code) return res.status(e.status || 400).json({ success: false, error: e.message, error_code: e.error_code, error_params: e.error_params || {} });
-    res.status(500).json({ success: false, error: e.message });
+    routeFail(res, e, 'quantities.POST /measurements', req);
   }
 });
 
@@ -248,7 +249,7 @@ router.post('/measurements/:id/review', authenticate, authorize(), async (req, r
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Measurement not found' });
     res.json({ success: true, data: out.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'quantities.POST /measurements/:id/review', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -261,7 +262,7 @@ router.get('/progress/project/:projectId', authenticate, authorize(), async (req
     const policy = req.query.weight_policy || 'boq_value';
     const data = await engine.projectProgress(query, parseInt(req.params.projectId, 10), policy);
     res.json({ success: true, data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'quantities.GET /progress/project/:projectId', req); }
 });
 
 // GET /api/quantities/progress/location/:locationId
@@ -270,7 +271,7 @@ router.get('/progress/location/:locationId', authenticate, authorize(), async (r
     const data = await engine.locationProgress(query, parseInt(req.params.locationId, 10));
     if (!data) return res.status(404).json({ success: false, error: 'Location not found' });
     res.json({ success: true, data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'quantities.GET /progress/location/:locationId', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -377,7 +378,7 @@ router.get('/locations/:locationId/dashboard', authenticate, authorize(), async 
     }
 
     res.json({ success: true, data: sections });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'quantities.GET /locations/:locationId/dashboard', req); }
 });
 
 module.exports = router;

@@ -21,6 +21,7 @@ const { auditedTransaction } = require('../utils/auditedTransaction');
 const { auditedMutation } = require('../utils/auditedMutation');
 const hseEngine = require('../services/hseEngine');
 const { renderDocument } = require('../utils/procurementPdf');
+const { routeFail } = require('../utils/typedRoute');
 
 async function projectNameFor(q, projectId) {
   try {
@@ -43,7 +44,7 @@ router.get('/dashboard', authenticate, authorize(), async (req, res) => {
   try {
     const data = await hseEngine.hseDashboard(query, req.query.project_id ? { projectId: req.query.project_id } : {});
     res.json({ success: true, data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.GET /dashboard', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -64,7 +65,7 @@ router.get('/incidents', authenticate, authorize(), async (req, res) => {
        FROM incidents i LEFT JOIN users u ON i.reported_by = u.id LEFT JOIN users cu ON i.closed_by = cu.id
        ${where} ORDER BY i.incident_date DESC, i.id DESC`, params: params, orderBy: [{"column":"incident_date","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.GET /incidents', req); }
 });
 
 const INCIDENT_SCHEMA = Joi.object({
@@ -95,7 +96,7 @@ router.post('/incidents', authenticate, authorize(), async (req, res) => {
        value.severity, value.description, value.injured_party || null, value.is_lti, value.lost_days,
        value.corrective_action || null, value.investigation_notes || null, value.root_cause || null, req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hse', description: `Reported incident (${value.severity}${value.is_lti ? ', LTI' : ''})`, entityId: result.rows[0].id, entityType: 'incident' }));
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.POST /incidents', req); }
 });
 
 router.put('/incidents/:id', authenticate, authorize(), async (req, res) => {
@@ -119,7 +120,7 @@ router.put('/incidents/:id', authenticate, authorize(), async (req, res) => {
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Incident not found' });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.PUT /incidents/:id', req); }
 });
 
 const INCIDENT_TRANSITIONS = { open: ['investigating', 'closed'], investigating: ['closed'] };
@@ -142,7 +143,7 @@ router.post('/incidents/:id/status', authenticate, authorize(), async (req, res)
     if (out.missing) return res.status(404).json({ success: false, error: 'Incident not found' });
     if (out.badTransition) return res.status(400).json({ success: false, error: `Cannot transition from '${out.badTransition}' to '${value.status}'` });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.POST /incidents/:id/status', req); }
 });
 
 router.get('/incidents/:id/pdf', authenticate, authorize(), async (req, res) => {
@@ -160,7 +161,7 @@ router.get('/incidents/:id/pdf', authenticate, authorize(), async (req, res) => 
              ['Investigation', incident.investigation_notes || '-']],
     });
     sendPdf(res, pdf, `incident-${incident.id}.pdf`);
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.GET /incidents/:id/pdf', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -178,7 +179,7 @@ router.get('/inspections', authenticate, authorize(), async (req, res) => {
     const r = await queryPaginated(req, res, query, { sql: `SELECT si.*, u.name as inspector_name FROM hse_inspections si
        LEFT JOIN users u ON si.inspector_id = u.id ${where} ORDER BY si.inspection_date DESC, si.id DESC`, params: params, orderBy: [{"column":"inspection_date","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.GET /inspections', req); }
 });
 
 router.post('/inspections', authenticate, authorize(), async (req, res) => {
@@ -201,7 +202,7 @@ router.post('/inspections', authenticate, authorize(), async (req, res) => {
       [authorizedProjectId(req, value), value.inspection_date || null, req.user.id, value.inspection_type,
        JSON.stringify(value.checklist_items), value.findings || null, value.follow_up_due || null, value.status]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hse', description: `Logged ${value.inspection_type} inspection (${value.status})`, entityId: result.rows[0].id, entityType: 'hse_inspection' }));
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.POST /inspections', req); }
 });
 
 router.put('/inspections/:id', authenticate, authorize(), async (req, res) => {
@@ -231,7 +232,7 @@ router.put('/inspections/:id', authenticate, authorize(), async (req, res) => {
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Inspection not found' });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.PUT /inspections/:id', req); }
 });
 
 router.get('/inspections/:id/pdf', authenticate, authorize(), async (req, res) => {
@@ -248,7 +249,7 @@ router.get('/inspections/:id/pdf', authenticate, authorize(), async (req, res) =
       notes: inspection.findings || null,
     });
     sendPdf(res, pdf, `inspection-${inspection.id}.pdf`);
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.GET /inspections/:id/pdf', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -273,7 +274,7 @@ router.get('/permits', authenticate, authorize(), async (req, res) => {
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const r = await queryPaginated(req, res, query, { sql: `${PERMIT_SELECT} ${where} ORDER BY p.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.GET /permits', req); }
 });
 
 router.post('/permits', authenticate, authorize(), async (req, res) => {
@@ -294,14 +295,14 @@ router.post('/permits', authenticate, authorize(), async (req, res) => {
     authorizeProjectPayload(req, value);
     const permit = await auditedTransaction((q) => hseEngine.createPermit(q, value, req.user), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hse', description: `Created permit ${result.permit_number} (${result.permit_type})`, entityId: result.id, entityType: 'permit' }));
     res.status(201).json({ success: true, data: permit });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.POST /permits', req); }
 });
 
 router.post('/permits/:id/submit', authenticate, authorize(), async (req, res) => {
   try {
     const permit = await auditedTransaction((q) => hseEngine.submitPermit(q, req.params.id, req.user), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'hse', description: `${result.permit_number} submitted for approval`, entityId: result.id, entityType: 'permit' }));
     res.json({ success: true, data: permit });
-  } catch (error) { res.status(error.statusCode || 500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.POST /permits/:id/submit', req); }
 });
 
 // Stage decision (HSE review / PM approval). Reject at either stage reopens
@@ -316,7 +317,7 @@ router.post('/permits/:id/decision', authenticate, authorize(), async (req, res)
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     const permit = await auditedTransaction((q) => hseEngine.permitStageDecision(q, req.params.id, req.user, value.decision, { comment: value.comment }), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'hse', description: `${result.permit_number} — ${value.decision}`, entityId: result.id, entityType: 'permit' }));
     res.json({ success: true, data: permit });
-  } catch (error) { res.status(error.statusCode || 500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.POST /permits/:id/decision', req); }
 });
 
 router.post('/permits/:id/status', authenticate, authorize(), async (req, res) => {
@@ -329,7 +330,7 @@ router.post('/permits/:id/status', authenticate, authorize(), async (req, res) =
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     const permit = await auditedTransaction((q) => hseEngine.transitionPermit(q, req.params.id, value.status, req.user, { comment: value.comment }), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'hse', description: `${result.permit_number} status: ${value.status}`, entityId: result.id, entityType: 'permit' }));
     res.json({ success: true, data: permit });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.POST /permits/:id/status', req); }
 });
 
 router.get('/permits/:id/pdf', authenticate, authorize(), async (req, res) => {
@@ -349,7 +350,7 @@ router.get('/permits/:id/pdf', authenticate, authorize(), async (req, res) => {
              ...precautions.map((p, i) => [`Precaution ${i + 1}`, p])],
     });
     sendPdf(res, pdf, `${permit.permit_number}.pdf`);
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.GET /permits/:id/pdf', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -367,7 +368,7 @@ router.get('/jsas', authenticate, authorize(), async (req, res) => {
       FROM jsas j LEFT JOIN users u ON j.created_by = u.id LEFT JOIN users ru ON j.reviewed_by = ru.id
       ${where} ORDER BY j.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.GET /jsas', req); }
 });
 
 router.post('/jsas', authenticate, authorize(), async (req, res) => {
@@ -387,7 +388,7 @@ router.post('/jsas', authenticate, authorize(), async (req, res) => {
        VALUES ($1,$2,$3,$4::jsonb,$5,$6) RETURNING *`,
       [authorizedProjectId(req, value), value.title, value.activity || null, JSON.stringify(value.hazards), value.controls || null, req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hse', description: `Created JSA "${value.title}"`, entityId: result.rows[0].id, entityType: 'jsa' }));
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.POST /jsas', req); }
 });
 
 const JSA_TRANSITIONS = { draft: ['reviewed'], reviewed: ['approved', 'superseded'] };
@@ -409,7 +410,7 @@ router.post('/jsas/:id/status', authenticate, authorize(), async (req, res) => {
     if (out.missing) return res.status(404).json({ success: false, error: 'JSA not found' });
     if (out.badTransition) return res.status(400).json({ success: false, error: `Cannot transition from '${out.badTransition}' to '${value.status}'` });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.POST /jsas/:id/status', req); }
 });
 
 router.get('/jsas/:id/pdf', authenticate, authorize(), async (req, res) => {
@@ -426,7 +427,7 @@ router.get('/jsas/:id/pdf', authenticate, authorize(), async (req, res) => {
       notes: jsa.controls || null,
     });
     sendPdf(res, pdf, `jsa-${jsa.id}.pdf`);
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.GET /jsas/:id/pdf', req); }
 });
 
 router.get('/risk-assessments', authenticate, authorize(), async (req, res) => {
@@ -439,7 +440,7 @@ router.get('/risk-assessments', authenticate, authorize(), async (req, res) => {
     const r = await queryPaginated(req, res, query, { sql: `SELECT ra.*, u.name as created_by_name FROM risk_assessments ra
       LEFT JOIN users u ON ra.created_by = u.id ${where} ORDER BY ra.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.GET /risk-assessments', req); }
 });
 
 router.post('/risk-assessments', authenticate, authorize(), async (req, res) => {
@@ -465,7 +466,7 @@ router.post('/risk-assessments', authenticate, authorize(), async (req, res) => 
       [authorizedProjectId(req, value), value.title, value.activity || null, value.likelihood, value.severity, riskLevel,
        value.controls || null, value.residual_risk || null, value.assessor || null, req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hse', description: `Created risk assessment "${value.title}" (${riskLevel})`, entityId: result.rows[0].id, entityType: 'risk_assessment' }));
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.POST /risk-assessments', req); }
 });
 
 // Status lifecycle mirrors JSAs (review → approve); risk_assessments has no
@@ -484,7 +485,7 @@ router.post('/risk-assessments/:id/status', authenticate, authorize(), async (re
     const r = await auditedTransaction((q) => q(`UPDATE risk_assessments SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
       [value.status, req.params.id]), (result) => result.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'hse', description: `Risk assessment #${req.params.id} status → ${value.status}`, entityId: parseInt(req.params.id, 10), entityType: 'risk_assessment' }));
     res.json({ success: true, data: r.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.POST /risk-assessments/:id/status', req); }
 });
 
 router.get('/risk-assessments/:id/pdf', authenticate, authorize(), async (req, res) => {
@@ -499,7 +500,7 @@ router.get('/risk-assessments/:id/pdf', authenticate, authorize(), async (req, r
       rows: [['Activity', ra.activity || '-'], ['Controls', ra.controls || '-'], ['Assessor', ra.assessor || '-']],
     });
     sendPdf(res, pdf, `risk-assessment-${ra.id}.pdf`);
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.GET /risk-assessments/:id/pdf', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -515,7 +516,7 @@ router.get('/inductions', authenticate, authorize(), async (req, res) => {
     const r = await queryPaginated(req, res, query, { sql: `SELECT i.*, COALESCE(o.name_en, o.name_ar) as organization_name FROM inductions i
       LEFT JOIN organizations o ON i.organization_id = o.id ${where} ORDER BY i.induction_date DESC, i.id DESC`, params: params, orderBy: [{"column":"induction_date","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.GET /inductions', req); }
 });
 
 router.post('/inductions', authenticate, authorize(), async (req, res) => {
@@ -542,7 +543,7 @@ router.post('/inductions', authenticate, authorize(), async (req, res) => {
       return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], description: `Recorded induction for ${value.person_name}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.POST /inductions', req); }
 });
 
 router.get('/toolbox-talks', authenticate, authorize(), async (req, res) => {
@@ -553,7 +554,7 @@ router.get('/toolbox-talks', authenticate, authorize(), async (req, res) => {
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const r = await queryPaginated(req, res, query, { sql: `SELECT * FROM toolbox_talks t ${where} ORDER BY t.held_at DESC, t.id DESC`, params: params, orderBy: [{"column":"held_at","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.GET /toolbox-talks', req); }
 });
 
 router.post('/toolbox-talks', authenticate, authorize(), async (req, res) => {
@@ -584,7 +585,7 @@ router.post('/toolbox-talks', authenticate, authorize(), async (req, res) => {
       notes: value.notes || null,
     });
     res.status(201).json({ success: true, data: r.rows[0], pdf_base64: pdf.toString('base64') });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.POST /toolbox-talks', req); }
 });
 
 router.get('/near-misses', authenticate, authorize(), async (req, res) => {
@@ -598,7 +599,7 @@ router.get('/near-misses', authenticate, authorize(), async (req, res) => {
       FROM near_misses n LEFT JOIN project_locations pl ON n.project_location_id = pl.id
       LEFT JOIN users u ON n.reported_by = u.id ${where} ORDER BY n.incident_date DESC, n.id DESC`, params: params, orderBy: [{"column":"incident_date","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.GET /near-misses', req); }
 });
 
 router.post('/near-misses', authenticate, authorize(), async (req, res) => {
@@ -626,7 +627,7 @@ router.post('/near-misses', authenticate, authorize(), async (req, res) => {
       return { ...inserted, nearMissNumber };
     }, (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hse', description: `Reported near miss ${result.nearMissNumber}`, entityId: result.rows[0].id, entityType: 'near_miss' }));
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.POST /near-misses', req); }
 });
 
 router.post('/near-misses/:id/status', authenticate, authorize(), async (req, res) => {
@@ -642,7 +643,7 @@ router.post('/near-misses/:id/status', authenticate, authorize(), async (req, re
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Near miss not found' });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.POST /near-misses/:id/status', req); }
 });
 
 router.get('/near-misses/:id/pdf', authenticate, authorize(), async (req, res) => {
@@ -657,7 +658,7 @@ router.get('/near-misses/:id/pdf', authenticate, authorize(), async (req, res) =
       rows: [['Description', nm.description], ['Immediate action', nm.immediate_action || '-']],
     });
     sendPdf(res, pdf, `${nm.near_miss_number}.pdf`);
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.GET /near-misses/:id/pdf', req); }
 });
 
 router.get('/ppe-records', authenticate, authorize(), async (req, res) => {
@@ -669,7 +670,7 @@ router.get('/ppe-records', authenticate, authorize(), async (req, res) => {
     const r = await queryPaginated(req, res, query, { sql: `SELECT p.*, COALESCE(o.name_en, o.name_ar) as organization_name FROM ppe_records p
       LEFT JOIN organizations o ON p.organization_id = o.id ${where} ORDER BY p.issue_date DESC, p.id DESC`, params: params, orderBy: [{"column":"issue_date","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.GET /ppe-records', req); }
 });
 
 router.post('/ppe-records', authenticate, authorize(), async (req, res) => {
@@ -696,7 +697,7 @@ router.post('/ppe-records', authenticate, authorize(), async (req, res) => {
       return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], description: `Issued PPE ${value.item} x${value.quantity} to ${value.person_name}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.POST /ppe-records', req); }
 });
 
 router.get('/equipment-inspections', authenticate, authorize(), async (req, res) => {
@@ -708,7 +709,7 @@ router.get('/equipment-inspections', authenticate, authorize(), async (req, res)
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const r = await queryPaginated(req, res, query, { sql: `SELECT * FROM equipment_inspections e ${where} ORDER BY e.inspection_date DESC, e.id DESC`, params: params, orderBy: [{"column":"inspection_date","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.GET /equipment-inspections', req); }
 });
 
 router.post('/equipment-inspections', authenticate, authorize(), async (req, res) => {
@@ -735,7 +736,7 @@ router.post('/equipment-inspections', authenticate, authorize(), async (req, res
       return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], description: `Equipment inspection: ${value.equipment_name} ${value.result}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.POST /equipment-inspections', req); }
 });
 
 router.get('/emergency-drills', authenticate, authorize(), async (req, res) => {
@@ -746,7 +747,7 @@ router.get('/emergency-drills', authenticate, authorize(), async (req, res) => {
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const r = await queryPaginated(req, res, query, { sql: `SELECT * FROM emergency_drills d ${where} ORDER BY d.drill_date DESC, d.id DESC`, params: params, orderBy: [{"column":"drill_date","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.GET /emergency-drills', req); }
 });
 
 router.post('/emergency-drills', authenticate, authorize(), async (req, res) => {
@@ -772,7 +773,7 @@ router.post('/emergency-drills', authenticate, authorize(), async (req, res) => 
       return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], description: `Recorded emergency drill: ${value.drill_type}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'hse.POST /emergency-drills', req); }
 });
 
 module.exports = router;

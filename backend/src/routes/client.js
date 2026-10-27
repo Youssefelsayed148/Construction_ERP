@@ -6,7 +6,7 @@ const { paginateRows } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
-const { typedFail, typedBody } = require('../utils/typedRoute');
+const { typedFail, typedBody, routeFail } = require('../utils/typedRoute');
 const policy = require('../services/policy');
 const engine = require('../services/clientEngine');
 
@@ -25,7 +25,7 @@ router.get('/projects', authenticate, authorize(), async (req, res) => {
       previewProjectId: req.preview?.scoped_project_ids?.[0] ?? null,
     });
     res.json({ success: true, data: paginateRows(req, res, projectIds).rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'client.GET /projects', req); }
 });
 
 // Portfolio view — the landing page when the client has multiple projects.
@@ -35,7 +35,7 @@ router.get('/portfolio', authenticate, authorize(), async (req, res) => {
       preview_project_id: req.preview?.scoped_project_ids?.[0] ?? null,
     });
     res.json({ success: true, data: strip(data) });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'client.GET /portfolio', req); }
 });
 
 router.get('/dashboard', authenticate, authorize(), async (req, res) => {
@@ -55,7 +55,7 @@ router.get('/dashboard', authenticate, authorize(), async (req, res) => {
         preview: req.preview ? { read_only: true, role: req.preview.role } : undefined,
       },
     });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'client.GET /dashboard', req); }
 });
 
 router.get('/action-center', authenticate, authorize(), async (req, res) => {
@@ -65,7 +65,7 @@ router.get('/action-center', authenticate, authorize(), async (req, res) => {
       preview_project_id: req.preview?.scoped_project_ids?.[0] ?? null,
     });
     res.json({ success: true, data: strip(data) });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'client.GET /action-center', req); }
 });
 
 router.post('/variations/:id/response', authenticate, authorize('client'), async (req, res) => {
@@ -125,7 +125,7 @@ router.post('/preview', authenticate, authorize('owner', 'admin', 'project_manag
       }, { query: q });
     });
     res.json({ success: true, data: { token, read_only: true, role: 'client' } });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'client.POST /preview', req); }
 });
 
 module.exports = router;

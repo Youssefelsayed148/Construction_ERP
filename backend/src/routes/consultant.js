@@ -8,7 +8,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 const { auditedMutation } = require('../utils/auditedMutation');
-const { typedFail, typedBody } = require('../utils/typedRoute');
+const { typedFail, typedBody, routeFail } = require('../utils/typedRoute');
 const engine = require('../services/consultantEngine');
 
 // Mounted at /api/consultant — the consultant portal surface.
@@ -19,7 +19,7 @@ router.get('/projects', authenticate, authorize(), async (req, res) => {
   try {
     const projectIds = await engine.resolveConsultantProjects(query, req.user.id);
     res.json({ success: true, data: paginateRows(req, res, projectIds).rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'consultant.GET /projects', req); }
 });
 
 // Dashboard — every widget renders with an explicit empty label.
@@ -29,7 +29,7 @@ router.get('/dashboard', authenticate, authorize(), async (req, res) => {
       project_id: req.query.project_id ? parseInt(req.query.project_id, 10) : null,
     });
     res.json({ success: true, data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'consultant.GET /dashboard', req); }
 });
 
 // My Reviews — one inbox, sorted by due date/priority, filterable.
@@ -41,7 +41,7 @@ router.get('/reviews', authenticate, authorize(), async (req, res) => {
     if (req.query.type) filters.type = req.query.type;
     const rows = await engine.myReviews(query, req.user, filters);
     res.json({ success: true, data: paginateRows(req, res, rows, { orderBy: [{ column: 'due_date' }, { column: 'priority' }, { column: 'type' }, { column: 'id' }], preserveOrder: true }).rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'consultant.GET /reviews', req); }
 });
 
 // Record the consultant's final WIR inspection result through the formal QA/QC
@@ -135,7 +135,7 @@ router.post('/observations', authenticate, authorize(), async (req, res) => {
     authorizeProjectPayload(req, value);
     const observation = await auditedTransaction((q) => engine.createObservation(q, { ...value, user: req.user }), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'observations', description: `Raised observation ${result.observation_number}`, entityId: result.id, entityType: 'observation' }));
     res.status(201).json({ success: true, data: observation });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'consultant.POST /observations', req); }
 });
 
 router.post('/observations/:id/comments', authenticate, authorize(), async (req, res) => {
@@ -153,7 +153,7 @@ router.post('/observations/:id/comments', authenticate, authorize(), async (req,
       return { data: comment, entityId: parseInt(req.params.id, 10), after: comment, description: `Added ${value.comment_type} on observation #${req.params.id}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'consultant.POST /observations/:id/comments', req); }
 });
 
 router.post('/observations/:id/advance', authenticate, authorize(), async (req, res) => {
@@ -175,7 +175,7 @@ router.post('/observations/:id/advance', authenticate, authorize(), async (req, 
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     const observation = await auditedTransaction((q) => engine.advanceObservation(q, parseInt(req.params.id, 10), req.user, value.action, value), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'observations', description: `Observation → ${result.status}`, entityId: result.id, entityType: 'observation' }));
     res.json({ success: true, data: observation });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'consultant.POST /observations/:id/advance', req); }
 });
 
 router.get('/rfis/:id/responses', authenticate, authorize(), async (req, res) => {
@@ -224,7 +224,7 @@ router.post('/rfis/:id/response', authenticate, authorize(), async (req, res) =>
       return engine.recordRfiResponse(q, { ...value, rfi_id: parseInt(req.params.id, 10), user: req.user });
     }, (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'doccontrol', description: `RFI ${value.stage} recorded (rev ${value.revision})`, entityId: result.id, entityType: 'rfi_response' }));
     res.status(201).json({ success: true, data: response });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'consultant.POST /rfis/:id/response', req); }
 });
 
 router.post('/rfis/:id/close', authenticate, authorize(), async (req, res) => {
@@ -235,7 +235,7 @@ router.post('/rfis/:id/close', authenticate, authorize(), async (req, res) => {
       return { data: row, entityId: parseInt(req.params.id, 10), projectId: before && before.project_id, before, after: row, oldStatus: before && before.status, newStatus: row && row.status, description: `Closed RFI ${before ? before.rfi_number : req.params.id}` };
     });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'consultant.POST /rfis/:id/close', req); }
 });
 
 // Submittal review with A/B/C/D code.
@@ -255,7 +255,7 @@ router.post('/submittals/:id/response', authenticate, authorize(), async (req, r
       return engine.recordSubmittalResponse(q, { ...value, submittal_id: parseInt(req.params.id, 10), user: req.user });
     }, (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'doccontrol', description: `Submittal ${value.stage} recorded (rev ${value.revision})`, entityId: result.id, entityType: 'submittal_revision' }));
     res.status(201).json({ success: true, data: row });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'consultant.POST /submittals/:id/response', req); }
 });
 
 module.exports = router;

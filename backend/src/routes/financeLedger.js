@@ -43,7 +43,7 @@ router.post('/valuations', authenticate, authorize(), async (req, res) => {
       ...value, created_by: req.user.id, actor_name: req.user.name,
     }));
     res.status(201).json({ success: true, data: invoice });
-  } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'financeLedger.POST /valuations', req); }
 });
 
 router.post('/invoices/:id/transition', authenticate, authorize(), async (req, res) => {
@@ -62,7 +62,7 @@ router.post('/invoices/:id/transition', authenticate, authorize(), async (req, r
       return transitioned;
     });
     res.json({ success: true, data: invoice });
-  } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'financeLedger.POST /invoices/:id/transition', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -96,7 +96,7 @@ router.post('/payments/:id/allocate', authenticate, authorize(), async (req, res
       });
     });
     res.status(201).json({ success: true, data: result });
-  } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'financeLedger.POST /payments/:id/allocate', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -166,7 +166,7 @@ router.get('/retention', authenticate, authorize(), async (req, res) => {
       party_type: req.query.party_type || null,
     });
     res.json({ success: true, data: totals });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'financeLedger.GET /retention', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -182,7 +182,7 @@ router.get('/ap-review', authenticate, authorize(), async (req, res) => {
       orderBy: [{ column: 'q.status', direction: 'ASC' }, { column: 'q.id' }],
     });
     res.json({ success: true, data: page.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'financeLedger.GET /ap-review', req); }
 });
 
 router.post('/ap-review/:id/resolve', authenticate, authorize(), async (req, res) => {
@@ -200,7 +200,7 @@ router.post('/ap-review/:id/resolve', authenticate, authorize(), async (req, res
       action: 'update', module: 'finance', description: `Cleared AP review item #${req.params.id}`,
       entityId: result.id, entityType: 'ap_review_queue' }));
     res.json({ success: true, data: row });
-  } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'financeLedger.POST /ap-review/:id/resolve', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -224,14 +224,14 @@ router.get('/cash-flow', authenticate, authorize(), async (req, res) => {
         retention_payable: retentionPayable.balance,
       },
     });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'financeLedger.GET /cash-flow', req); }
 });
 
 router.get('/company-dashboard', authenticate, authorize(), async (req, res) => {
   try {
     const data = await finance.companyFinanceDashboard(query);
     res.json({ success: true, data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'financeLedger.GET /company-dashboard', req); }
 });
 
 router.get('/tax-codes', authenticate, authorize(), async (req, res) => {
@@ -241,7 +241,7 @@ router.get('/tax-codes', authenticate, authorize(), async (req, res) => {
       orderBy: [{ column: 'rate_pct' }],
     })).rows;
     res.json({ success: true, data: rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'financeLedger.GET /tax-codes', req); }
 });
 
 // Audit trail (immutable mirror).
@@ -253,7 +253,7 @@ router.get('/audit/:entityType/:entityId', authenticate, authorize(), async (req
       orderBy: [{ column: 'id' }],
     })).rows;
     res.json({ success: true, data: rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'financeLedger.GET /audit/:entityType/:entityId', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -261,7 +261,7 @@ router.get('/audit/:entityType/:entityId', authenticate, authorize(), async (req
 // table in the request's transaction; typed errors carry error_code and error_params.
 // ---------------------------------------------------------------------------
 const docs = require('../services/financeDocuments');
-const { typedFail, typedBody } = require('../utils/typedRoute');
+const { typedFail, typedBody, routeFail } = require('../utils/typedRoute');
 
 const auditedFin = (req, work, action, describe) => auditedTransaction(work, (row) => {
   const details = describe(row);

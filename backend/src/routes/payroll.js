@@ -9,6 +9,7 @@ const { logActivity } = require('../utils/activity');
 const { auditedMutation } = require('../utils/auditedMutation');
 const { journalPayrollPosted } = require('../utils/journal');
 const costAccrual = require('../services/costAccrual');
+const { routeFail } = require('../utils/typedRoute');
 
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
@@ -20,7 +21,7 @@ router.get('/', authenticate, authorize(), async (req, res) => {
     const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
     const data = await queryPaginated(req, res, query, { sql: `SELECT * FROM payroll_periods ${w}`, params: p, orderBy: [{ column: 'year', direction: 'DESC' }, { column: 'month', direction: 'DESC' }] });
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'payroll.GET /', req); }
 });
 
 router.get('/:id', authenticate, authorize(), async (req, res) => {
@@ -34,7 +35,7 @@ router.get('/:id', authenticate, authorize(), async (req, res) => {
     );
 
     res.json({ success: true, data: { ...period.rows[0], details: details.rows } });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'payroll.GET /:id', req); }
 });
 
 router.post('/', authenticate, authorize('owner', 'admin', 'finance_manager'), async (req, res) => {
@@ -79,7 +80,7 @@ router.post('/', authenticate, authorize('owner', 'admin', 'finance_manager'), a
       return updated.rows[0];
     });
     res.status(201).json({ success: true, data: result });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'payroll.POST /', req); }
 });
 
 router.put('/:id', authenticate, authorize(), async (req, res) => {
@@ -118,7 +119,7 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
 
     if (!r.data) return res.status(404).json({ success: false, error: 'Not found' });
     res.json({ success: true, data: r.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'payroll.PUT /:id', req); }
 });
 
 router.delete('/:id', authenticate, authorize('owner', 'admin'), async (req, res) => {
@@ -132,7 +133,7 @@ router.delete('/:id', authenticate, authorize('owner', 'admin'), async (req, res
     res.json({ success: true, message: 'Deleted' });
   } catch (e) {
     if (isReferenceViolation(e)) return recordInUse(res, 'Payroll period');   // it has payroll details
-    res.status(500).json({ success: false, error: e.message });
+    routeFail(res, e, 'payroll.DELETE /:id', req);
   }
 });
 

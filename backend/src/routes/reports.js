@@ -18,6 +18,7 @@ const { queryPaginated } = require('../utils/pagination');
 const { renderDocument } = require('../utils/procurementPdf');
 const sweepLeader = require('../services/sweepLeader');
 const policy = require('../services/policy');
+const { routeFail } = require('../utils/typedRoute');
 
 const PORTAL_ROLES = ['consultant', 'client', 'subcontractor', 'supplier'];
 
@@ -85,7 +86,7 @@ router.get('/catalog', authenticate, authorize(), async (req, res) => {
       columns: visibleColumns(r.columns, req.user).map(([k, label, tag]) => ({ key: k, label, internal: tag === 'internal' })),
     }));
     res.json({ success: true, data: { reports, packs: REPORT_PACKS } });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'reports.GET /catalog', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -130,7 +131,7 @@ router.get('/data/:reportKey', authenticate, authorize(), async (req, res, next)
     res.json({ success: true, data: { report: spec.label, columns, rows, page, page_size: pageSize } });
   } catch (error) {
     if (error.error_code) return next(error);
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'reports.GET /data/:reportKey', req);
   }
 });
 
@@ -181,7 +182,7 @@ router.get('/saved-views', authenticate, authorize(), async (req, res) => {
     if (module) { conditions.push(`module = $${idx++}`); params.push(module); }
     const r = await queryPaginated(req, res, query, { sql: `SELECT * FROM saved_views v WHERE ${conditions.join(' AND ')} ORDER BY v.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'reports.GET /saved-views', req); }
 });
 
 router.post('/saved-views', authenticate, authorize(), async (req, res) => {
@@ -203,7 +204,7 @@ router.post('/saved-views', authenticate, authorize(), async (req, res) => {
       return saved;
     });
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'reports.POST /saved-views', req); }
 });
 
 router.delete('/saved-views/:id', authenticate, authorize(), async (req, res) => {
@@ -215,7 +216,7 @@ router.delete('/saved-views/:id', authenticate, authorize(), async (req, res) =>
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Saved view not found' });
     res.json({ success: true, message: 'Saved view deleted' });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'reports.DELETE /saved-views/:id', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -232,7 +233,7 @@ router.get('/scheduled', authenticate, authorize(), async (req, res) => {
               (SELECT COUNT(*) FROM scheduled_report_runs run WHERE run.scheduled_report_id = s.id)::int AS run_count
        FROM scheduled_reports s LEFT JOIN users u ON s.created_by = u.id ${where} ORDER BY s.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'reports.GET /scheduled', req); }
 });
 
 router.post('/scheduled', authenticate, authorize(), async (req, res) => {
@@ -259,7 +260,7 @@ router.post('/scheduled', authenticate, authorize(), async (req, res) => {
       return scheduled;
     });
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'reports.POST /scheduled', req); }
 });
 
 router.delete('/scheduled/:id', authenticate, authorize(), async (req, res) => {
@@ -271,7 +272,7 @@ router.delete('/scheduled/:id', authenticate, authorize(), async (req, res) => {
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Scheduled report not found' });
     res.json({ success: true, message: 'Scheduled report removed' });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'reports.DELETE /scheduled/:id', req); }
 });
 
 // ---------------------------------------------------------------------------

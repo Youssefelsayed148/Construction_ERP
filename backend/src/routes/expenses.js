@@ -8,7 +8,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { journalExpenseCreated } = require('../utils/journal');
 const costAccrual = require('../services/costAccrual');
-const { typedFail } = require('../utils/typedRoute');
+const { typedFail, routeFail } = require('../utils/typedRoute');
 
 // An expense is posted once it has a ledger entry or a cost row (every expense since 2.7a). Its amount and
 // project then cannot change and it cannot be deleted: the ledger and the project cost would describe
@@ -51,7 +51,7 @@ router.get('/:id', authenticate, authorize(), async (req, res) => {
     const result = await query('SELECT e.*, u.name as created_by_name FROM expenses e LEFT JOIN users u ON e.created_by = u.id WHERE e.id = $1', [req.params.id]);
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Expense not found' });
     res.json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'expenses.GET /:id', req); }
 });
 
 router.post('/', authenticate, authorize(), async (req, res) => {
@@ -116,7 +116,7 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
       return updated;
     });
     res.json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'expenses.PUT /:id', req); }
 });
 
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
@@ -130,7 +130,7 @@ router.delete('/:id', authenticate, authorize(), async (req, res) => {
     });
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Expense not found' });
     res.json({ success: true, message: 'Expense deleted' });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'expenses.DELETE /:id', req); }
 });
 
 module.exports = router;

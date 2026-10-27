@@ -8,7 +8,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 const { auditedMutation } = require('../utils/auditedMutation');
-const { typedFail, typedBody } = require('../utils/typedRoute');
+const { typedFail, typedBody, routeFail } = require('../utils/typedRoute');
 const engine = require('../services/portalEngine');
 const procurement = require('../services/procurementService');
 const { svcError } = require('../utils/serviceErrors');
@@ -48,7 +48,7 @@ router.get('/subcontractor/dashboard', authenticate, authorize(), async (req, re
       return res.status(200).json({ success: true, data }); // zero-scope → setup actions, not an error
     }
     res.json({ success: true, data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'portal.GET /subcontractor/dashboard', req); }
 });
 
 // Package detail — isolation: another subcontractor's package → 404.
@@ -57,7 +57,7 @@ router.get('/subcontractor/contracts/:id', authenticate, authorize(), async (req
     const contract = await engine.subContractForOrg(query, parseInt(req.params.id, 10), req.user.id);
     if (!contract) return res.status(404).json({ success: false, error: 'Package not found' });
     res.json({ success: true, data: contract });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'portal.GET /subcontractor/contracts/:id', req); }
 });
 
 router.post('/subcontractor/contracts/:id/acknowledge', authenticate, authorize(), async (req, res) => {
@@ -69,7 +69,7 @@ router.post('/subcontractor/contracts/:id/acknowledge', authenticate, authorize(
       return { data: row, entityId: row.id, projectId: row.project_id, before: contract, after: row, description: `Acknowledged subcontract package ${row.contract_number || row.id}` };
     });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'portal.POST /subcontractor/contracts/:id/acknowledge', req); }
 });
 
 router.post('/subcontractor/instructions/:id/acknowledge', authenticate, authorize(), async (req, res) => {
@@ -90,7 +90,7 @@ router.post('/subcontractor/instructions/:id/acknowledge', authenticate, authori
     });
     if (!instruction) return res.status(404).json({ success: false, error: 'Instruction not found' });
     res.json({ success: true, data: instruction });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'portal.POST /subcontractor/instructions/:id/acknowledge', req); }
 });
 
 // Submit progress quantities (work verification claim).
@@ -122,7 +122,7 @@ router.post('/subcontractor/quantities', authenticate, authorize(), async (req, 
       return { data: r.rows[0], entityId: r.rows[0].id, projectId: contract.project_id, after: r.rows[0], description: `Submitted quantity claim for package ${value.sub_contract_id}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'portal.POST /subcontractor/quantities', req); }
 });
 
 // Submit a payment application through the shared Phase 13 certificate table.
@@ -151,7 +151,7 @@ router.post('/subcontractor/payment-applications', authenticate, authorize(), as
     });
     if (!certificate) return res.status(404).json({ success: false, error: 'Package not found' });
     res.status(201).json({ success: true, data: certificate });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'portal.POST /subcontractor/payment-applications', req); }
 });
 
 router.post('/subcontractor/rfis', authenticate, authorize(), async (req, res) => {
@@ -177,7 +177,7 @@ router.post('/subcontractor/rfis', authenticate, authorize(), async (req, res) =
       return { data: row, entityId: row.id, projectId: row.project_id, after: row, description: `Raised RFI ${row.rfi_number}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'portal.POST /subcontractor/rfis', req); }
 });
 
 router.post('/subcontractor/submittals', authenticate, authorize(), async (req, res) => {
@@ -202,7 +202,7 @@ router.post('/subcontractor/submittals', authenticate, authorize(), async (req, 
       return { data: row, entityId: row.id, projectId: row.project_id, after: row, description: `Submitted submittal ${row.submittal_number}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'portal.POST /subcontractor/submittals', req); }
 });
 
 router.post('/subcontractor/rfis/:id/acknowledge', authenticate, authorize(), async (req, res) => {
@@ -223,7 +223,7 @@ router.post('/subcontractor/rfis/:id/acknowledge', authenticate, authorize(), as
       return { data: row, entityId: rfiId, projectId: rfi.project_id, before: rfi, after: row, description: `Acknowledged RFI ${rfi.rfi_number || rfiId}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'portal.POST /subcontractor/rfis/:id/acknowledge', req); }
 });
 
 router.post('/subcontractor/submittals/:id/resubmit', authenticate, authorize(), async (req, res) => {
@@ -241,7 +241,7 @@ router.post('/subcontractor/submittals/:id/resubmit', authenticate, authorize(),
       return { data: row, entityId: id, projectId: submittal.project_id, before: submittal, after: row, description: `Resubmitted submittal ${submittal.submittal_number || id}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'portal.POST /subcontractor/submittals/:id/resubmit', req); }
 });
 
 // The intake stays separate from the formal WIR/MIR, QHSE, labour, equipment,
@@ -289,7 +289,7 @@ router.get('/supplier/dashboard', authenticate, authorize(), async (req, res) =>
   try {
     const data = await engine.supplierDashboard(query, req.user.id);
     res.json({ success: true, data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'portal.GET /supplier/dashboard', req); }
 });
 
 router.get('/supplier/rfqs/:id', authenticate, authorize(), async (req, res) => {
@@ -303,7 +303,7 @@ router.get('/supplier/rfqs/:id', authenticate, authorize(), async (req, res) => 
       supplier_ids: access.supplierIds,
       lines: lines.map((l) => ({ id: l.id, material_id: l.material_id, description: l.description, quantity: l.quantity, unit: l.unit })),
     } });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'portal.GET /supplier/rfqs/:id', req); }
 });
 
 router.get('/supplier/purchase-orders/:id', authenticate, authorize(), async (req, res) => {
@@ -316,7 +316,7 @@ router.get('/supplier/purchase-orders/:id', authenticate, authorize(), async (re
       total_amount: po.total_amount,
       lines: lines.map((l) => ({ id: l.id, material_id: l.material_id, description: l.description, quantity: l.quantity, unit: l.unit, unit_rate: l.unit_rate })),
     } });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'portal.GET /supplier/purchase-orders/:id', req); }
 });
 
 router.post('/supplier/rfqs/:id/quotations', authenticate, authorize(), async (req, res) => {
@@ -345,7 +345,7 @@ router.post('/supplier/rfqs/:id/quotations', authenticate, authorize(), async (r
       return { data: result, entityId: result.id, projectId: access.rfq.project_id, after: result, amount: result.total_price == null ? undefined : Number(result.total_price), description: `Supplier quotation on RFQ ${access.rfq.rfq_number || access.rfq.id}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'portal.POST /supplier/rfqs/:id/quotations', req); }
 });
 
 router.post('/supplier/rfqs/:id/clarifications', authenticate, authorize(), async (req, res) => {
@@ -364,7 +364,7 @@ router.post('/supplier/rfqs/:id/clarifications', authenticate, authorize(), asyn
       return { data: row, entityId: row.id, projectId: access.rfq.project_id, after: row, description: `RFQ clarification submitted for RFQ #${access.rfq.id}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'portal.POST /supplier/rfqs/:id/clarifications', req); }
 });
 
 router.post('/supplier/purchase-orders/:id/acknowledge', authenticate, authorize(), async (req, res) => {
@@ -376,7 +376,7 @@ router.post('/supplier/purchase-orders/:id/acknowledge', authenticate, authorize
       return { data: row, entityId: row.id, projectId: row.project_id, before: po, after: row, description: `Supplier acknowledged PO ${row.order_number || row.id}` };
     });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'portal.POST /supplier/purchase-orders/:id/acknowledge', req); }
 });
 
 router.post('/supplier/purchase-orders/:id/propose-delivery', authenticate, authorize(), async (req, res) => {
@@ -395,7 +395,7 @@ router.post('/supplier/purchase-orders/:id/propose-delivery', authenticate, auth
       return { data: row, entityId: row.id, projectId: po.project_id, after: row, description: `Delivery date proposed for PO #${po.id}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'portal.POST /supplier/purchase-orders/:id/propose-delivery', req); }
 });
 
 router.post('/supplier/deliveries/:id/certificates', authenticate, authorize(), async (req, res) => {
@@ -417,7 +417,7 @@ router.post('/supplier/deliveries/:id/certificates', authenticate, authorize(), 
       return { data: row, entityId: row.id, projectId: po.project_id, after: row, description: `Delivery certificate submitted for delivery #${delivery.id}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'portal.POST /supplier/deliveries/:id/certificates', req); }
 });
 
 router.post('/supplier/invoices', authenticate, authorize(), async (req, res) => {
@@ -441,7 +441,7 @@ router.post('/supplier/invoices', authenticate, authorize(), async (req, res) =>
       return { data: result, entityId: result.invoice && result.invoice.id, projectId: po.project_id, after: result.invoice, amount: Number(value.total_amount), description: `Supplier invoice ${value.invoice_number} submitted via portal` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'portal.POST /supplier/invoices', req); }
 });
 
 module.exports = router;

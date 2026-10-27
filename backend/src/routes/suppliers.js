@@ -7,6 +7,7 @@ const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 const { reasonFrom } = require('../utils/reason');
+const { routeFail } = require('../utils/typedRoute');
 
 const SPECIALTIES = ['concrete', 'steel', 'electrical', 'plumbing', 'wood', 'paint_coating', 'aggregate', 'equipment', 'safety', 'general', 'other'];
 
@@ -36,7 +37,7 @@ router.get('/', authenticate, authorize(), async (req, res) => {
     const dataResult = await queryPaginated(req, res, query, { sql: `SELECT * FROM suppliers ${where}`, params, orderBy: [{ column: 'name_en' }] });
     res.json({ success: true, data: dataResult.rows });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'suppliers.GET /', req);
   }
 });
 
@@ -55,7 +56,7 @@ router.get('/:id', authenticate, authorize(), async (req, res) => {
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Supplier not found' });
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'suppliers.GET /:id', req);
   }
 });
 
@@ -93,7 +94,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
 
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'suppliers.POST /', req);
   }
 });
 
@@ -125,7 +126,7 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
 
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'suppliers.PUT /:id', req);
   }
 });
 
@@ -140,7 +141,7 @@ router.delete('/:id', authenticate, authorize(), async (req, res) => {
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Supplier not found' });
     res.json({ success: true, message: 'Supplier deleted' });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'suppliers.DELETE /:id', req);
   }
 });
 
@@ -152,7 +153,7 @@ router.post('/:id/restore', authenticate, authorize(), async (req, res) => {
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Deleted supplier not found' });
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'suppliers.POST /:id/restore', req);
   }
 });
 
@@ -166,7 +167,7 @@ router.get('/:id/materials', authenticate, authorize(), async (req, res) => {
     });
     res.json({ success: true, data: data.rows });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'suppliers.GET /:id/materials', req);
   }
 });
 
@@ -198,7 +199,7 @@ router.post('/:id/materials', authenticate, authorize(), async (req, res) => {
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) {
     if (error.code === '23505') return res.status(409).json({ success: false, error: 'This material is already linked to this supplier' });
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'suppliers.POST /:id/materials', req);
   }
 });
 
@@ -208,7 +209,7 @@ router.delete('/:id/materials/:material_id', authenticate, authorize(), async (r
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Link not found' });
     res.json({ success: true, message: 'Material unlinked' });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'suppliers.DELETE /:id/materials/:material_id', req);
   }
 });
 

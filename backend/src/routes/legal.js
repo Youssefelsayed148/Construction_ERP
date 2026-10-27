@@ -6,6 +6,7 @@ const { query } = require('../config/database');
 const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditedTransaction } = require('../utils/auditedTransaction');
+const { routeFail } = require('../utils/typedRoute');
 
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
@@ -17,7 +18,7 @@ router.get('/', authenticate, authorize(), async (req, res) => {
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const dataResult = await queryPaginated(req, res, query, { sql: `SELECT * FROM legal_documents ${where}`, params, orderBy: [{ column: 'created_at', direction: 'DESC' }] });
     res.json({ success: true, data: dataResult.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'legal.GET /', req); }
 });
 
 router.get('/:id', authenticate, authorize(), async (req, res) => {
@@ -25,7 +26,7 @@ router.get('/:id', authenticate, authorize(), async (req, res) => {
     const result = await query('SELECT * FROM legal_documents WHERE id = $1', [req.params.id]);
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Document not found' });
     res.json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'legal.GET /:id', req); }
 });
 
 router.post('/', authenticate, authorize(), async (req, res) => {
@@ -45,7 +46,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
       [value.title, value.document_type, value.description, value.file_path, value.submitted_by, authorizedProjectId(req, value)]
     ), (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'legal', description: `Created legal document "${value.title}"`, entityId: r.rows[0].id, entityType: 'legal_document' }));
     res.status(201).json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'legal.POST /', req); }
 });
 
 router.put('/:id', authenticate, authorize(), async (req, res) => {
@@ -70,7 +71,7 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
     const result = await auditedTransaction((q) => q(`UPDATE legal_documents SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'legal', description: `Updated legal document "${r.rows[0].title}"`, entityId: req.params.id, entityType: 'legal_document' }));
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Document not found' });
     res.json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'legal.PUT /:id', req); }
 });
 
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
@@ -78,7 +79,7 @@ router.delete('/:id', authenticate, authorize(), async (req, res) => {
     const result = await auditedTransaction((q) => q('DELETE FROM legal_documents WHERE id = $1 RETURNING title', [req.params.id]), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'legal', description: `Deleted legal document "${r.rows[0].title}"`, entityId: req.params.id, entityType: 'legal_document' }));
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Document not found' });
     res.json({ success: true, message: 'Document deleted' });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'legal.DELETE /:id', req); }
 });
 
 module.exports = router;

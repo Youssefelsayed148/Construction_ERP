@@ -20,7 +20,7 @@ const crypto = require('crypto');
 const oauthService = require('../services/oauthService');
 const apiTokenService = require('../services/apiTokenService');
 const { auditedTransaction } = require('../utils/auditedTransaction');
-const { typedFail } = require('../utils/typedRoute');
+const { typedFail, routeFail } = require('../utils/typedRoute');
 
 // Personal API tokens --------------------------------------------------------
 
@@ -125,7 +125,7 @@ router.get('/activity', authenticate, authorize('owner', 'admin'), async (req, r
       orderBy: [{ column: 'c.created_at', direction: 'DESC' }, { column: 'c.id', direction: 'DESC' }],
     });
     res.json({ success: true, data: page.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'agents.GET /activity', req); }
 });
 
 // Gated action requests (pending + history) -----------------------------------
@@ -145,7 +145,7 @@ router.get('/requests', authenticate, authorize('owner', 'admin', 'finance_manag
       orderBy: [{ column: 'r.created_at', direction: 'DESC' }, { column: 'r.id', direction: 'DESC' }],
     });
     res.json({ success: true, data: page.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'agents.GET /requests', req); }
 });
 
 // Approve / reject a gated request; approve EXECUTES the stored operation.
@@ -157,7 +157,7 @@ router.post('/requests/:id/decision', authenticate, authorize('owner', 'admin', 
     const result = await mcpService.decideRequest(parseInt(req.params.id, 10), req.user, value.decision, value.comment);
     res.json({ success: true, data: result });
   } catch (e) {
-    res.status(e.status || 400).json({ success: false, error: e.message });
+    routeFail(res, e, 'agents.POST /requests/:id/decision', req);
   }
 });
 

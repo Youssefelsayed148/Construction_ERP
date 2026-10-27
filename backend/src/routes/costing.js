@@ -6,12 +6,13 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { fireEvent } = require('../utils/activity');
 const commercialEngine = require('../services/commercialEngine');
 const costView = require('../services/costView');
+const { routeFail } = require('../utils/typedRoute');
 
 router.get('/codes', authenticate, authorize(), async (req, res) => {
   try {
     const data = await queryPaginated(req, res, query, { sql: 'SELECT * FROM cost_codes', orderBy: [{ column: 'code' }] });
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'costing.GET /codes', req); }
 });
 
 router.get('/project/:projectId', authenticate, authorize(), async (req, res) => {
@@ -26,7 +27,7 @@ router.get('/project/:projectId', authenticate, authorize(), async (req, res) =>
       success: true,
       data: { costs, summary_by_type: byType, grand_total: grandTotal }
     });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'costing.GET /project/:projectId', req); }
 });
 
 router.get('/project/:projectId/summary', authenticate, authorize(), async (req, res) => {
@@ -40,7 +41,7 @@ router.get('/project/:projectId/summary', authenticate, authorize(), async (req,
       [req.params.projectId]
     );
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'costing.GET /project/:projectId/summary', req); }
 });
 
 router.get('/project/:projectId/profitability', authenticate, authorize(), async (req, res) => {
@@ -72,7 +73,7 @@ router.get('/project/:projectId/profitability', authenticate, authorize(), async
         legacy,
       }
     });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'costing.GET /project/:projectId/profitability', req); }
 });
 
 module.exports = router;

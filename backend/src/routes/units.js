@@ -8,6 +8,7 @@ const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { auditedMutation, auditedChange } = require('../utils/auditedMutation');
+const { routeFail } = require('../utils/typedRoute');
 
 // Mounted at /api/sales — buildings & sellable units (real estate).
 
@@ -73,7 +74,7 @@ router.get('/buildings', authenticate, authorize(), async (req, res) => {
         b.project_location_id
        FROM buildings b ${where} ORDER BY b.code`, params: params, orderBy: [{"column":"code","direction":"ASC"}] });
     res.json({ success: true, data: result.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'units.GET /buildings', req); }
 });
 
 router.post('/buildings', authenticate, authorize(), async (req, res) => {
@@ -127,7 +128,7 @@ router.post('/buildings', authenticate, authorize(), async (req, res) => {
     res.status(201).json({ success: true, data: created });
   } catch (error) {
     if (error.code === '23505') return res.status(409).json({ success: false, error: 'Building code already exists in this project' });
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'units.POST /buildings', req);
   }
 });
 
@@ -189,7 +190,7 @@ router.put('/buildings/:id', authenticate, authorize(), async (req, res) => {
     if (!out.data) return res.status(404).json({ success: false, error: 'Building not found' });
 
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'units.PUT /buildings/:id', req); }
 });
 
 router.delete('/buildings/:id', authenticate, authorize(), async (req, res) => {
@@ -209,7 +210,7 @@ router.delete('/buildings/:id', authenticate, authorize(), async (req, res) => {
     if (out.blocked) return res.status(400).json({ success: false, error: 'Cannot delete building with reserved/sold units' });
     if (!out.data) return res.status(404).json({ success: false, error: 'Building not found' });
     res.json({ success: true, message: 'Building deleted' });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'units.DELETE /buildings/:id', req); }
 });
 
 // ============ UNITS ============
@@ -221,7 +222,7 @@ router.get('/buildings/:buildingId/units', authenticate, authorize(), async (req
     if (status) { conditions.push(`status = $${idx++}`); params.push(status); }
     const result = await queryPaginated(req, res, query, { sql: `SELECT * FROM units WHERE ${conditions.join(' AND ')} ORDER BY floor_no, code`, params: params, orderBy: [{"column":"floor_no","direction":"ASC"},{"column":"code","direction":"ASC"}] });
     res.json({ success: true, data: result.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'units.GET /buildings/:buildingId/units', req); }
 });
 
 router.post('/buildings/:buildingId/units', authenticate, authorize(), async (req, res) => {
@@ -257,7 +258,7 @@ router.post('/buildings/:buildingId/units', authenticate, authorize(), async (re
     res.status(201).json({ success: true, data: out.data });
   } catch (error) {
     if (error.code === '23505') return res.status(409).json({ success: false, error: 'Unit code already exists in this building' });
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'units.POST /buildings/:buildingId/units', req);
   }
 });
 
@@ -306,7 +307,7 @@ router.post('/buildings/:buildingId/bulk-units', authenticate, authorize(), asyn
     res.status(201).json({ success: true, data: created });
   } catch (error) {
     if (error.code === '23505') return res.status(409).json({ success: false, error: 'Generated unit codes collide with existing units — adjust prefix or start floor' });
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'units.POST /buildings/:buildingId/bulk-units', req);
   }
 });
 
@@ -345,7 +346,7 @@ router.put('/units/:id', authenticate, authorize(), async (req, res) => {
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Unit not found' });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'units.PUT /units/:id', req); }
 });
 
 // Status transition: available → reserved → contracted → delivered → closed (+ block/release)
@@ -413,7 +414,7 @@ router.post('/units/:id/status', authenticate, authorize(), async (req, res) => 
       success: true,
       data: { ...result.rows[0], auto_invoice: invoice }
     });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'units.POST /units/:id/status', req); }
 });
 
 router.delete('/units/:id', authenticate, authorize(), async (req, res) => {
@@ -428,7 +429,7 @@ router.delete('/units/:id', authenticate, authorize(), async (req, res) => {
     if (out.missing) return res.status(404).json({ success: false, error: 'Unit not found' });
     if (out.blocked) return res.status(400).json({ success: false, error: 'Cannot delete a reserved/sold unit' });
     res.json({ success: true, message: 'Unit deleted' });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'units.DELETE /units/:id', req); }
 });
 
 // ============ SALES SUMMARY ============
@@ -492,7 +493,7 @@ router.get('/summary', authenticate, authorize(), async (req, res) => {
         client_breakdown: clientBreakdown
       }
     });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'units.GET /summary', req); }
 });
 
 module.exports = router;

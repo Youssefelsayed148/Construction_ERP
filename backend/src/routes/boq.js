@@ -9,6 +9,7 @@ const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditedMutation } = require('../utils/auditedMutation');
 const { isReferenceViolation, recordInUse } = require('../utils/references');
+const { routeFail } = require('../utils/typedRoute');
 
 const BOQ_ITEM_TYPES = ['material', 'labor', 'equipment', 'subcontract'];
 
@@ -16,7 +17,7 @@ router.get('/sections/:projectId', authenticate, authorize(), async (req, res) =
   try {
     const sections = await queryPaginated(req, res, query, { sql: 'SELECT * FROM boq_sections WHERE project_id = $1 ORDER BY parent_id NULLS FIRST, sort_order', params: [req.params.projectId], orderBy: [{"column":"parent_id","direction":"ASC"},{"column":"sort_order","direction":"ASC"}] });
     res.json({ success: true, data: sections.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'boq.GET /sections/:projectId', req); }
 });
 
 router.post('/sections', authenticate, authorize(), async (req, res) => {
@@ -40,7 +41,7 @@ router.post('/sections', authenticate, authorize(), async (req, res) => {
       return { data: r.rows[0], entityId: r.rows[0].id, projectId, after: r.rows[0], description: `Created BOQ section ${r.rows[0].code}` };
     });
     res.status(201).json({ success: true, data: row.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'boq.POST /sections', req); }
 });
 
 router.put('/sections/:id', authenticate, authorize(), async (req, res) => {
@@ -60,7 +61,7 @@ router.put('/sections/:id', authenticate, authorize(), async (req, res) => {
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Section not found' });
     res.json({ success: true, data: out.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'boq.PUT /sections/:id', req); }
 });
 
 // Contractual rows: a section or item that anything references (items, measurements, allocations, recipes)
@@ -76,7 +77,7 @@ router.delete('/sections/:id', authenticate, authorize(), async (req, res) => {
     res.json({ success: true, message: 'Deleted' });
   } catch (e) {
     if (isReferenceViolation(e)) return recordInUse(res, 'BOQ section');
-    res.status(500).json({ success: false, error: e.message });
+    routeFail(res, e, 'boq.DELETE /sections/:id', req);
   }
 });
 
@@ -105,7 +106,7 @@ router.get('/items/:projectId', authenticate, authorize(), async (req, res) => {
        ) qm ON qm.boq_item_id = bi.id
        WHERE ${conds.join(' AND ')} ORDER BY bs.sort_order, bi.code`, params: p, orderBy: [{"column":"sort_order","direction":"ASC"},{"column":"code","direction":"ASC"}] });
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'boq.GET /items/:projectId', req); }
 });
 
 router.post('/items', authenticate, authorize(), async (req, res) => {
@@ -136,7 +137,7 @@ router.post('/items', authenticate, authorize(), async (req, res) => {
       return { data: r.rows[0], entityId: r.rows[0].id, projectId, after: r.rows[0], amount: Number(r.rows[0].quantity) * Number(r.rows[0].unit_rate), description: `Created BOQ item ${r.rows[0].code}` };
     });
     res.status(201).json({ success: true, data: row.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'boq.POST /items', req); }
 });
 
 router.put('/items/:id', authenticate, authorize(), async (req, res) => {
@@ -162,7 +163,7 @@ router.put('/items/:id', authenticate, authorize(), async (req, res) => {
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'BOQ item not found' });
     res.json({ success: true, data: out.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'boq.PUT /items/:id', req); }
 });
 
 router.delete('/items/:id', authenticate, authorize(), async (req, res) => {
@@ -176,7 +177,7 @@ router.delete('/items/:id', authenticate, authorize(), async (req, res) => {
     res.json({ success: true, message: 'Deleted' });
   } catch (e) {
     if (isReferenceViolation(e)) return recordInUse(res, 'BOQ item');
-    res.status(500).json({ success: false, error: e.message });
+    routeFail(res, e, 'boq.DELETE /items/:id', req);
   }
 });
 
@@ -189,7 +190,7 @@ router.get('/summary/:projectId', authenticate, authorize(), async (req, res) =>
     );
     const grandTotal = summary.rows.reduce((s, r) => s + parseFloat(r.total_value || 0), 0);
     res.json({ success: true, data: { by_type: summary.rows, grand_total: grandTotal } });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'boq.GET /summary/:projectId', req); }
 });
 
 module.exports = router;

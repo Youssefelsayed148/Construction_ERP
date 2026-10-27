@@ -8,6 +8,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { isReferenceViolation, recordInUse } = require('../utils/references');
 const { logActivity, fireEvent } = require('../utils/activity');
 const { auditedMutation } = require('../utils/auditedMutation');
+const { routeFail } = require('../utils/typedRoute');
 
 // Full CRUD over the project location tree: site/building/zone/floor/area/
 // room — the allowed type set comes from location_types (seeded per the
@@ -30,7 +31,7 @@ router.get('/project/:projectId', authenticate, authorize(), async (req, res) =>
        WHERE pl.project_id = $1
        ORDER BY pl.sort_order, pl.id`, params: [req.params.projectId], orderBy: [{"column":"sort_order","direction":"ASC"},{"column":"id","direction":"ASC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'locations.GET /project/:projectId', req); }
 });
 
 // GET /api/locations/:id — one node with its direct children.
@@ -52,7 +53,7 @@ router.get('/:id', authenticate, authorize(), async (req, res) => {
       [req.params.id]
     );
     res.json({ success: true, data: { ...r.rows[0], children: children.rows } });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'locations.GET /:id', req); }
 });
 
 // POST /api/locations — create a node (parent resolved from parent_id or
@@ -102,7 +103,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     res.status(201).json({ success: true, data: created.data });
   } catch (e) {
     if (e.message && e.message.includes('unique')) return res.status(409).json({ success: false, error: 'A location with this code already exists at that level' });
-    res.status(500).json({ success: false, error: e.message });
+    routeFail(res, e, 'locations.POST /', req);
   }
 });
 
@@ -136,7 +137,7 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Location not found' });
     res.json({ success: true, data: out.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'locations.PUT /:id', req); }
 });
 
 // DELETE /api/locations/:id — refuses when children exist (real rows, not counts).
@@ -154,7 +155,7 @@ router.delete('/:id', authenticate, authorize(), async (req, res) => {
     res.json({ success: true, message: 'Deleted' });
   } catch (e) {
     if (isReferenceViolation(e)) return recordInUse(res, 'Location');   // BOQ allocations point at it
-    res.status(500).json({ success: false, error: e.message });
+    routeFail(res, e, 'locations.DELETE /:id', req);
   }
 });
 

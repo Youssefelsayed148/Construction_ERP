@@ -8,6 +8,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 const { auditedMutation } = require('../utils/auditedMutation');
+const { routeFail } = require('../utils/typedRoute');
 
 // Phase 9 — material planning surface: recipes (with editable factors) and
 // the derived material_requirements read path. Demand rows are NEVER edited
@@ -56,7 +57,7 @@ router.get('/recipes', authenticate, authorize(), async (req, res) => {
       }
     }
     res.json({ success: true, data: recipes });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'materials.GET /recipes', req); }
 });
 
 // GET /api/materials/recipes/:id
@@ -71,7 +72,7 @@ router.get('/recipes/:id', authenticate, authorize(), async (req, res) => {
       [recipe.id]
     )).rows;
     res.json({ success: true, data: recipe });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'materials.GET /recipes/:id', req); }
 });
 
 // POST /api/materials/recipes — create a recipe (project-scoped override, or a
@@ -131,7 +132,7 @@ router.post('/recipes', authenticate, authorize(), async (req, res) => {
 
     // Factors changed → re-derive demand (durable event; catch-up safe).
     res.status(201).json({ success: true, data: recipe.rows[0] });
-  } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'materials.POST /recipes', req); }
 });
 
 // PUT /api/materials/recipes/:id — header fields only; lines have their own routes.
@@ -174,7 +175,7 @@ router.put('/recipes/:id', authenticate, authorize(), async (req, res) => {
     }));
 
     res.json({ success: true, data: r.rows[0] });
-  } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'materials.PUT /recipes/:id', req); }
 });
 
 // POST /api/materials/recipes/:id/lines — upsert one factor line.
@@ -208,7 +209,7 @@ router.post('/recipes/:id/lines', authenticate, authorize(), async (req, res) =>
     }));
 
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'materials.POST /recipes/:id/lines', req); }
 });
 
 // DELETE /api/materials/recipes/:id/lines/:lineId
@@ -226,7 +227,7 @@ router.delete('/recipes/:id/lines/:lineId', authenticate, authorize(), async (re
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Recipe line not found' });
     res.json({ success: true, message: 'Line deleted' });
-  } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'materials.DELETE /recipes/:id/lines/:lineId', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -259,7 +260,7 @@ router.get('/requirements', authenticate, authorize(), async (req, res) => {
       orderBy: [{ column: 'mr.source_activity_date', direction: 'ASC' }, { column: 'mr.id' }],
     });
     res.json({ success: true, data: page.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'materials.GET /requirements', req); }
 });
 
 // ---------------------------------------------------------------------------

@@ -24,7 +24,7 @@ const { renderDocument } = require('../utils/procurementPdf');
 const { nextNumber } = require('../services/numbering');
 const { dateOnly } = require('../utils/validation');
 const { normalizeDateFields } = require('../utils/dateOnly');
-const { typedFail } = require('../utils/typedRoute');
+const { typedFail, routeFail } = require('../utils/typedRoute');
 
 function handoverProjectAllowed(req, projectId) {
   return req.accessScope?.companyWide || (req.accessScope?.projectIds || []).includes(Number(projectId));
@@ -60,7 +60,7 @@ router.get('/process/:projectId', authenticate, authorize(), async (req, res) =>
     const process = (await query('SELECT * FROM handover_processes WHERE project_id = $1', [req.params.projectId])).rows[0] || null;
     const readiness = await engine.handoverReadiness(query, req.params.projectId);
     res.json({ success: true, data: { process, readiness } });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'handover.GET /process/:projectId', req); }
 });
 
 router.post('/process/:projectId/start', authenticate, authorize(), async (req, res) => {
@@ -71,7 +71,7 @@ router.post('/process/:projectId/start', authenticate, authorize(), async (req, 
       return started;
     }, (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'handover', description: `Started handover process ${result.process_number}`, entityId: result.id, entityType: 'handover_process' }));
     res.status(201).json({ success: true, data: { process, readiness: await engine.handoverReadiness(query, req.params.projectId) } });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'handover.POST /process/:projectId/start', req); }
 });
 
 router.post('/process/:id/transition', authenticate, authorize('owner', 'admin', 'project_manager'), async (req, res) => {
@@ -81,7 +81,7 @@ router.post('/process/:id/transition', authenticate, authorize('owner', 'admin',
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     const process = await auditedTransaction((q) => engine.transitionHandover(q, req.params.id, value.status, req.user), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'handover', description: `Handover advanced to ${value.status}`, entityId: result.id, entityType: 'handover_process' }));
     res.json({ success: true, data: process });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'handover.POST /process/:id/transition', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -100,7 +100,7 @@ router.get('/package/:projectId', authenticate, authorize(), async (req, res) =>
     )).rows;
     const readiness = await engine.handoverReadiness(query, req.params.projectId);
     res.json({ success: true, data: { items, readiness } });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'handover.GET /package/:projectId', req); }
 });
 
 router.post('/package/:projectId/items', authenticate, authorize(), async (req, res) => {
@@ -121,7 +121,7 @@ router.post('/package/:projectId/items', authenticate, authorize(), async (req, 
       return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], description: `Added handover package item "${value.title}"` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'handover.POST /package/:projectId/items', req); }
 });
 
 router.put('/package/items/:id', authenticate, authorize(), async (req, res) => {
@@ -180,7 +180,7 @@ router.post('/package/items/:id/verify', authenticate, authorize('owner', 'admin
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Package item not found' });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'handover.POST /package/items/:id/verify', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -364,7 +364,7 @@ router.get('/claims', authenticate, authorize(), async (req, res) => {
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const r = await queryPaginated(req, res, query, { sql: `${CLAIM_SELECT} ${where} ORDER BY wc.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'handover.GET /claims', req); }
 });
 
 // Client or an authorized user raises a claim against an asset/location.
@@ -384,7 +384,7 @@ router.post('/claims', authenticate, authorize(), async (req, res) => {
     authorizeProjectPayload(req, value);
     const claim = await auditedTransaction((q) => engine.createWarrantyClaim(q, value, req.user), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'handover', description: `Raised warranty claim ${result.claim_number}`, entityId: result.id, entityType: 'warranty_claim' }));
     res.status(201).json({ success: true, data: claim });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'handover.POST /claims', req); }
 });
 
 router.post('/claims/:id/status', authenticate, authorize('owner', 'admin', 'project_manager', 'consultant', 'client'), async (req, res) => {
@@ -399,13 +399,13 @@ router.post('/claims/:id/status', authenticate, authorize('owner', 'admin', 'pro
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     const claim = await auditedTransaction((q) => engine.transitionWarrantyClaim(q, req.params.id, value.status, req.user, value), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'handover', description: `${result.claim_number} → ${value.status}`, entityId: result.id, entityType: 'warranty_claim' }));
     res.json({ success: true, data: claim });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'handover.POST /claims/:id/status', req); }
 });
 
 router.get('/claims/:id/sla', authenticate, authorize(), async (req, res) => {
   try {
     res.json({ success: true, data: await engine.warrantySlaStatus(query, req.params.id) });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'handover.GET /claims/:id/sla', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -425,7 +425,7 @@ router.get('/checklist/:projectId/pdf', authenticate, authorize(), async (req, r
       rows: items.map((i, idx) => [String(idx + 1), i.title, i.status]),
     });
     sendPdf(res, pdf, `handover-checklist-${projectId}.pdf`);
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'handover.GET /checklist/:projectId/pdf', req); }
 });
 
 router.get('/assets/:projectId/pdf', authenticate, authorize(), async (req, res) => {
@@ -440,7 +440,7 @@ router.get('/assets/:projectId/pdf', authenticate, authorize(), async (req, res)
       rows: assets.map((a) => [a.asset_code, a.name, a.serial_no || '-', a.commissioning_date || '-', a.warranty_end || '-']),
     });
     sendPdf(res, pdf, `asset-register-${projectId}.pdf`);
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'handover.GET /assets/:projectId/pdf', req); }
 });
 
 router.get('/warranty-register/:projectId/pdf', authenticate, authorize(), async (req, res) => {
@@ -487,7 +487,7 @@ router.get('/certificate/:projectId/pdf', authenticate, authorize(), async (req,
       notes: 'This certificate is system-generated by the Construction ERP handover module.',
     });
     sendPdf(res, pdf, `handover-certificate-${projectId}.pdf`);
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'handover.GET /certificate/:projectId/pdf', req); }
 });
 
 module.exports = router;

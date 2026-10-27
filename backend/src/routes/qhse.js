@@ -11,6 +11,7 @@ const { auditedTransaction } = require('../utils/auditedTransaction');
 const { auditedMutation } = require('../utils/auditedMutation');
 const { dateOnly } = require('../utils/validation');
 const { normalizeDateFields } = require('../utils/dateOnly');
+const { routeFail } = require('../utils/typedRoute');
 
 // Mounted at /api/qhse — quality tests, NCRs, safety inspections & incidents.
 // All list endpoints filter by ?project_id.
@@ -27,7 +28,7 @@ router.get('/quality-tests', authenticate, authorize(), async (req, res) => {
     const result = await queryPaginated(req, res, query, { sql: `SELECT qt.*, u.name as created_by_name FROM quality_tests qt
        LEFT JOIN users u ON qt.created_by = u.id ${where} ORDER BY qt.test_date DESC, qt.id DESC`, params: params, orderBy: [{"column":"test_date","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: result.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.GET /quality-tests', req); }
 });
 
 router.post('/quality-tests', authenticate, authorize(), async (req, res) => {
@@ -53,7 +54,7 @@ router.post('/quality-tests', authenticate, authorize(), async (req, res) => {
        value.tested_by, value.notes, JSON.stringify(value.attachments), req.user.id]
     ), (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Logged quality test "${value.test_type}" (${value.result})`, entityId: r.rows[0].id, entityType: 'quality_test' }));
     res.status(201).json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.POST /quality-tests', req); }
 });
 
 router.put('/quality-tests/:id', authenticate, authorize(), async (req, res) => {
@@ -82,7 +83,7 @@ router.put('/quality-tests/:id', authenticate, authorize(), async (req, res) => 
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Test not found' });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.PUT /quality-tests/:id', req); }
 });
 
 router.delete('/quality-tests/:id', authenticate, authorize(), async (req, res) => {
@@ -94,7 +95,7 @@ router.delete('/quality-tests/:id', authenticate, authorize(), async (req, res) 
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Test not found' });
     res.json({ success: true, message: 'Test deleted' });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.DELETE /quality-tests/:id', req); }
 });
 
 // ============ NCRs ============
@@ -117,7 +118,7 @@ router.get('/ncrs', authenticate, authorize(), async (req, res) => {
        LEFT JOIN users ru ON n.raised_by = ru.id LEFT JOIN users su ON n.resolved_by = su.id
        ${where} ORDER BY n.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: result.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.GET /ncrs', req); }
 });
 
 router.post('/ncrs', authenticate, authorize(), async (req, res) => {
@@ -144,7 +145,7 @@ router.post('/ncrs', authenticate, authorize(), async (req, res) => {
       return { ...inserted, ncrNumber };
     }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Raised ${r.ncrNumber} (${value.severity})`, entityId: r.rows[0].id, entityType: 'ncr' }));
     res.status(201).json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.POST /ncrs', req); }
 });
 
 // NCR status transitions: open → in_progress → resolved → closed (resolved can reopen to in_progress)
@@ -181,7 +182,7 @@ router.post('/ncrs/:id/status', authenticate, authorize(), async (req, res) => {
       return updated;
     }, () => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'qhse', description: `${existing.rows[0].ncr_number} → ${value.status}`, entityId: req.params.id, entityType: 'ncr' }));
     res.json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.POST /ncrs/:id/status', req); }
 });
 
 router.put('/ncrs/:id', authenticate, authorize(), async (req, res) => {
@@ -209,7 +210,7 @@ router.put('/ncrs/:id', authenticate, authorize(), async (req, res) => {
     if (out.missing) return res.status(404).json({ success: false, error: 'NCR not found' });
     if (out.closed) return res.status(400).json({ success: false, error: 'Closed NCRs are read-only' });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.PUT /ncrs/:id', req); }
 });
 
 // ============ SAFETY INSPECTIONS ============
@@ -224,7 +225,7 @@ router.get('/inspections', authenticate, authorize(), async (req, res) => {
     const result = await queryPaginated(req, res, query, { sql: `SELECT si.*, u.name as inspector_name FROM safety_inspections si
        LEFT JOIN users u ON si.inspector_id = u.id ${where} ORDER BY si.inspection_date DESC, si.id DESC`, params: params, orderBy: [{"column":"inspection_date","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: result.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.GET /inspections', req); }
 });
 
 router.post('/inspections', authenticate, authorize(), async (req, res) => {
@@ -246,7 +247,7 @@ router.post('/inspections', authenticate, authorize(), async (req, res) => {
       [authorizedProjectId(req, value), value.inspection_date, req.user.id, JSON.stringify(value.checklist_items), value.findings, value.status]
     ), (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Logged safety inspection (${value.status})`, entityId: r.rows[0].id, entityType: 'safety_inspection' }));
     res.status(201).json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.POST /inspections', req); }
 });
 
 router.put('/inspections/:id', authenticate, authorize(), async (req, res) => {
@@ -275,7 +276,7 @@ router.put('/inspections/:id', authenticate, authorize(), async (req, res) => {
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Inspection not found' });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.PUT /inspections/:id', req); }
 });
 
 // ============ SAFETY INCIDENTS ============
@@ -290,7 +291,7 @@ router.get('/incidents', authenticate, authorize(), async (req, res) => {
     const result = await queryPaginated(req, res, query, { sql: `SELECT si.*, u.name as reported_by_name FROM incidents si
        LEFT JOIN users u ON si.reported_by = u.id ${where} ORDER BY si.incident_date DESC, si.id DESC`, params: params, orderBy: [{"column":"incident_date","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: result.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.GET /incidents', req); }
 });
 
 router.post('/incidents', authenticate, authorize(), async (req, res) => {
@@ -315,7 +316,7 @@ router.post('/incidents', authenticate, authorize(), async (req, res) => {
        value.injured_party, req.user.id, value.corrective_action]
     ), (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Reported safety incident (${value.severity})`, entityId: r.rows[0].id, entityType: 'safety_incident' }));
     res.status(201).json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.POST /incidents', req); }
 });
 
 router.put('/incidents/:id', authenticate, authorize(), async (req, res) => {
@@ -342,7 +343,7 @@ router.put('/incidents/:id', authenticate, authorize(), async (req, res) => {
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Incident not found' });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.PUT /incidents/:id', req); }
 });
 
 // ============================================================================
@@ -380,7 +381,7 @@ router.get('/itps', authenticate, authorize(), async (req, res) => {
        LEFT JOIN users u ON i.created_by = u.id
        ${where} ORDER BY i.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: result.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.GET /itps', req); }
 });
 
 router.get('/itps/:id', authenticate, authorize(), async (req, res) => {
@@ -397,7 +398,7 @@ router.get('/itps/:id', authenticate, authorize(), async (req, res) => {
        WHERE p.itp_id = $1 ORDER BY p.seq, p.id`, [req.params.id]
     )).rows;
     res.json({ success: true, data: { ...itp, points } });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.GET /itps/:id', req); }
 });
 
 router.post('/itps', authenticate, authorize(), async (req, res) => {
@@ -449,7 +450,7 @@ router.post('/itps', authenticate, authorize(), async (req, res) => {
       return { itp: { ...itp, points: value.points }, itpNumber };
     }, (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Created ITP ${result.itpNumber} (${value.points.length} points)`, entityId: result.itp.id, entityType: 'itp' }));
     res.status(201).json({ success: true, data: r.itp });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.POST /itps', req); }
 });
 
 router.post('/itps/:id/points', authenticate, authorize(), async (req, res) => {
@@ -479,7 +480,7 @@ router.post('/itps/:id/points', authenticate, authorize(), async (req, res) => {
       return { data: r.rows[0], entityId: r.rows[0].id, after: r.rows[0], description: `Added ITP point "${value.title}" to ITP #${req.params.id}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.POST /itps/:id/points', req); }
 });
 
 router.put('/itps/:id', authenticate, authorize(), async (req, res) => {
@@ -515,7 +516,7 @@ router.put('/itps/:id', authenticate, authorize(), async (req, res) => {
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'ITP not found' });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.PUT /itps/:id', req); }
 });
 
 // ITP document (branded PDF)
@@ -529,7 +530,7 @@ router.get('/itps/:id/pdf', authenticate, authorize(), async (req, res) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${itp.itp_number}.pdf"`);
     res.send(pdf);
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.GET /itps/:id/pdf', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -562,7 +563,7 @@ router.get('/wirs', authenticate, authorize(), async (req, res) => {
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const r = await queryPaginated(req, res, query, { sql: `${WIR_SELECT} ${where} ORDER BY w.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.GET /wirs', req); }
 });
 
 router.get('/wirs/:id', authenticate, authorize(), async (req, res) => {
@@ -574,7 +575,7 @@ router.get('/wirs/:id', authenticate, authorize(), async (req, res) => {
       checklist = (await query('SELECT * FROM checklist_instances WHERE id = $1', [wir.checklist_instance_id])).rows[0] || null;
     }
     res.json({ success: true, data: { ...wir, checklist } });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.GET /wirs/:id', req); }
 });
 
 router.post('/wirs', authenticate, authorize(), async (req, res) => {
@@ -602,7 +603,7 @@ router.post('/wirs', authenticate, authorize(), async (req, res) => {
     res.status(201).json({ success: true, data: wir });
   } catch (error) {
     if (projectSetup.respondIfSetupError(res, error)) return;
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'qhse.POST /wirs', req);
   }
 });
 
@@ -612,8 +613,7 @@ router.post('/wirs/:id/submit', authenticate, authorize(), async (req, res) => {
     const wir = await auditedTransaction((q) => qaqcEngine.submitWir(q, req.params.id, req.user), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'qhse', description: `${result.wir_number} submitted for QA/QC`, entityId: result.id, entityType: 'wir' }));
     res.json({ success: true, data: wir });
   } catch (error) {
-    const code = error.statusCode || 500;
-    res.status(code).json({ success: false, error: error.message });
+    routeFail(res, error, 'qhse.POST /wirs/:id/submit', req);
   }
 });
 
@@ -630,7 +630,7 @@ router.post('/wirs/:id/decision', authenticate, authorize(), async (req, res) =>
     const wir = await auditedTransaction((q) => qaqcEngine.wirStepDecision(q, req.params.id, null, req.user, value.decision, value.comment), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'qhse', description: `${result.wir_number} — ${value.decision} at ${result.status}`, entityId: result.id, entityType: 'wir' }));
     res.json({ success: true, data: wir });
   } catch (error) {
-    res.status(error.statusCode || 500).json({ success: false, error: error.message });
+    routeFail(res, error, 'qhse.POST /wirs/:id/decision', req);
   }
 });
 
@@ -647,7 +647,7 @@ router.post('/wirs/:id/result', authenticate, authorize(), async (req, res) => {
     const wir = await auditedTransaction((q) => qaqcEngine.decideWir(q, req.params.id, req.user, value.result, { comment: value.comment }), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'qhse', description: `${result.wir_number} result: ${value.result}`, entityId: result.id, entityType: 'wir' }));
     res.json({ success: true, data: wir });
   } catch (error) {
-    res.status(error.statusCode || 500).json({ success: false, error: error.message });
+    routeFail(res, error, 'qhse.POST /wirs/:id/result', req);
   }
 });
 
@@ -664,7 +664,7 @@ router.get('/wirs/:id/pdf', authenticate, authorize(), async (req, res) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${wir.wir_number}.pdf"`);
     res.send(pdf);
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.GET /wirs/:id/pdf', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -682,7 +682,7 @@ router.get('/checklists/templates', authenticate, authorize(), async (req, res) 
        LEFT JOIN users u ON t.created_by = u.id
        ${where} ORDER BY t.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.GET /checklists/templates', req); }
 });
 
 router.post('/checklists/templates', authenticate, authorize(), async (req, res) => {
@@ -701,7 +701,7 @@ router.post('/checklists/templates', authenticate, authorize(), async (req, res)
        VALUES ($1,$2,$3,$4::jsonb,$5) RETURNING *`,
       [authorizedProjectId(req, value) || null, value.name, value.discipline || null, JSON.stringify(value.items), req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Created checklist template "${value.name}"`, entityId: result.rows[0].id, entityType: 'checklist_template' }));
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.POST /checklists/templates', req); }
 });
 
 // Instantiate a checklist from a template (or ad-hoc) for a context record.
@@ -735,7 +735,7 @@ router.post('/checklists/instances', authenticate, authorize(), async (req, res)
       return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, after: r.rows[0], description: `Created checklist instance ${value.title || templateTitle || ''}`.trim() };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.POST /checklists/instances', req); }
 });
 
 router.get('/checklists/instances', authenticate, authorize(), async (req, res) => {
@@ -749,7 +749,7 @@ router.get('/checklists/instances', authenticate, authorize(), async (req, res) 
     const r = await queryPaginated(req, res, query, { sql: `SELECT ci.*, u.name as created_by_name FROM checklist_instances ci
       LEFT JOIN users u ON ci.created_by = u.id ${where} ORDER BY ci.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.GET /checklists/instances', req); }
 });
 
 // Fill in checklist items (ok/note), optionally completing the instance.
@@ -774,7 +774,7 @@ router.put('/checklists/instances/:id', authenticate, authorize(), async (req, r
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Checklist instance not found' });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.PUT /checklists/instances/:id', req); }
 });
 
 router.get('/checklists/instances/:id/pdf', authenticate, authorize(), async (req, res) => {
@@ -786,7 +786,7 @@ router.get('/checklists/instances/:id/pdf', authenticate, authorize(), async (re
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="checklist-${instance.id}.pdf"`);
     res.send(pdf);
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.GET /checklists/instances/:id/pdf', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -809,7 +809,7 @@ router.get('/actions', authenticate, authorize(), async (req, res) => {
        FROM ${table} ca LEFT JOIN users u ON ca.assigned_user_id = u.id LEFT JOIN users cu ON ca.created_by = cu.id
        ${where} ORDER BY ca.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.GET /actions', req); }
 });
 
 router.post('/actions', authenticate, authorize(), async (req, res) => {
@@ -834,7 +834,7 @@ router.post('/actions', authenticate, authorize(), async (req, res) => {
       [authorizedProjectId(req, value), value.source_type || 'manual', value.source_id || null, value.description,
        value.assigned_user_id || null, value.assigned_role || null, value.due_date || null, req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Raised ${value.kind} action`, entityId: result.rows[0].id, entityType: `${value.kind}_action` }));
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.POST /actions', req); }
 });
 
 // CAPA lifecycle: open → in_progress → completed → verified
@@ -873,7 +873,7 @@ router.post('/actions/:id/status', authenticate, authorize(), async (req, res) =
     if (out.missing) return res.status(404).json({ success: false, error: `${value.kind} action not found` });
     if (out.badTransition) return res.status(400).json({ success: false, error: `Cannot transition from '${out.badTransition}' to '${value.status}'` });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.POST /actions/:id/status', req); }
 });
 
 router.get('/actions/:id/pdf', authenticate, authorize(), async (req, res) => {
@@ -887,7 +887,7 @@ router.get('/actions/:id/pdf', authenticate, authorize(), async (req, res) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${kind}-action-${action.id}.pdf"`);
     res.send(pdf);
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.GET /actions/:id/pdf', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -906,7 +906,7 @@ router.get('/mock-ups', authenticate, authorize(), async (req, res) => {
        LEFT JOIN organizations o ON m.subcontractor_organization_id = o.id
        LEFT JOIN users u ON m.created_by = u.id ${where} ORDER BY m.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.GET /mock-ups', req); }
 });
 
 router.post('/mock-ups', authenticate, authorize(), async (req, res) => {
@@ -929,7 +929,7 @@ router.post('/mock-ups', authenticate, authorize(), async (req, res) => {
       [authorizedProjectId(req, value), value.title, value.discipline || null, value.project_location_id || null,
        value.subcontractor_organization_id || null, value.remarks || null, JSON.stringify(value.photos), req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Proposed mock-up "${value.title}"`, entityId: result.rows[0].id, entityType: 'mock_up' }));
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.POST /mock-ups', req); }
 });
 
 const MOCK_UP_TRANSITIONS = {
@@ -961,7 +961,7 @@ router.post('/mock-ups/:id/status', authenticate, authorize(), async (req, res) 
     if (out.missing) return res.status(404).json({ success: false, error: 'Mock-up not found' });
     if (out.badTransition) return res.status(400).json({ success: false, error: `Cannot transition from '${out.badTransition}' to '${value.status}'` });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.POST /mock-ups/:id/status', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -981,7 +981,7 @@ router.get('/calibration-records', authenticate, authorize(), async (req, res) =
        LEFT JOIN users u ON cr.created_by = u.id
        ${where} ORDER BY cr.calibration_date DESC, cr.id DESC`, params: params, orderBy: [{"column":"calibration_date","direction":"DESC"},{"column":"id","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.GET /calibration-records', req); }
 });
 
 router.post('/calibration-records', authenticate, authorize(), async (req, res) => {
@@ -1008,7 +1008,7 @@ router.post('/calibration-records', authenticate, authorize(), async (req, res) 
        value.calibration_date || null, value.next_calibration_date || null, value.certificate_ref || null,
        value.result, value.issued_by || null, value.notes || null, req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Recorded calibration for "${value.instrument_name}"`, entityId: result.rows[0].id, entityType: 'calibration_record' }));
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.POST /calibration-records', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -1033,7 +1033,7 @@ router.get('/punch-items', authenticate, authorize(), async (req, res) => {
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const r = await queryPaginated(req, res, query, { sql: `${PUNCH_SELECT} ${where} ORDER BY p.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.GET /punch-items', req); }
 });
 
 router.post('/punch-items', authenticate, authorize(), async (req, res) => {
@@ -1055,7 +1055,7 @@ router.post('/punch-items', authenticate, authorize(), async (req, res) => {
     authorizeProjectPayload(req, value);
     const punch = await auditedTransaction((q) => qaqcEngine.createPunchItem(q, value, req.user), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Raised ${result.punch_number}`, entityId: result.id, entityType: 'punch_item' }));
     res.status(201).json({ success: true, data: punch });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.POST /punch-items', req); }
 });
 
 router.post('/punch-items/:id/status', authenticate, authorize(), async (req, res) => {
@@ -1068,7 +1068,7 @@ router.post('/punch-items/:id/status', authenticate, authorize(), async (req, re
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     const punch = await auditedTransaction((q) => qaqcEngine.transitionPunchItem(q, req.params.id, value.status, req.user, { comment: value.comment }), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'qhse', description: `${result.punch_number} → ${value.status}`, entityId: result.id, entityType: 'punch_item' }));
     res.json({ success: true, data: punch });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.POST /punch-items/:id/status', req); }
 });
 
 router.get('/punch-items/pdf', authenticate, authorize(), async (req, res) => {
@@ -1081,7 +1081,7 @@ router.get('/punch-items/pdf', authenticate, authorize(), async (req, res) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="punch-list-${project_id}.pdf"`);
     res.send(pdf);
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.GET /punch-items/pdf', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -1109,7 +1109,7 @@ router.post('/ncrs/:id/verify', authenticate, authorize(), async (req, res) => {
        WHERE id = $4 RETURNING *`,
       [value.verification_notes, value.closure_authority || null, req.user.id, req.params.id]), (result) => result.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'qhse', description: `NCR #${req.params.id} verified & closed`, entityId: req.params.id, entityType: 'ncr' }));
     res.json({ success: true, data: r.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.POST /ncrs/:id/verify', req); }
 });
 
 router.get('/ncrs/:id/pdf', authenticate, authorize(), async (req, res) => {
@@ -1121,7 +1121,7 @@ router.get('/ncrs/:id/pdf', authenticate, authorize(), async (req, res) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${ncr.ncr_number}.pdf"`);
     res.send(pdf);
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.GET /ncrs/:id/pdf', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -1137,7 +1137,7 @@ router.get('/quality-tests/:id/pdf', authenticate, authorize(), async (req, res)
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="test-report-${test.id}.pdf"`);
     res.send(pdf);
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.GET /quality-tests/:id/pdf', req); }
 });
 
 // ============ QA/QC CERTIFICATE REGISTER ============
@@ -1298,7 +1298,7 @@ router.get('/mirs', authenticate, authorize(), async (req, res) => {
        LEFT JOIN deliveries d ON m.delivery_id = d.id
        ${where} ORDER BY m.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.GET /mirs', req); }
 });
 
 // Attach the submittal/certificate links to a MIR.
@@ -1329,7 +1329,7 @@ router.put('/mirs/:id', authenticate, authorize(), async (req, res) => {
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'MIR not found' });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.PUT /mirs/:id', req); }
 });
 
 // Sync a MIR into the Phase 6 'mir' template (idempotent per MIR).
@@ -1352,7 +1352,7 @@ router.post('/mirs/:id/workflow', authenticate, authorize(), async (req, res) =>
     if (out.missing) return res.status(404).json({ success: false, error: 'MIR not found' });
     if (out.existing) return res.json({ success: true, data: { workflow_instance_id: out.existing, existing: true } });
     res.status(201).json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.POST /mirs/:id/workflow', req); }
 });
 
 // Sync the MIR decision outcome into its workflow instance (called after
@@ -1379,7 +1379,7 @@ router.post('/mirs/:id/workflow/decision', authenticate, authorize(), async (req
     if (out.missing) return res.status(404).json({ success: false, error: 'MIR not found' });
     if (out.noWorkflow) return res.status(400).json({ success: false, error: 'MIR has no workflow instance — POST /mirs/:id/workflow first' });
     res.json({ success: true });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'qhse.POST /mirs/:id/workflow/decision', req); }
 });
 
 module.exports = router;

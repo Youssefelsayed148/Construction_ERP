@@ -7,6 +7,7 @@ const { query } = require('../config/database');
 const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditedTransaction } = require('../utils/auditedTransaction');
+const { routeFail } = require('../utils/typedRoute');
 
 const EQUIPMENT_TYPES = ['owned', 'rented'];
 const EQUIPMENT_CATEGORIES = ['earthmoving', 'lifting', 'concrete', 'compaction', 'transport', 'generator', 'tool', 'pump', 'scaffolding', 'other'];
@@ -32,7 +33,7 @@ router.get('/', authenticate, authorize(), async (req, res) => {
       orderBy: [{ column: 'a.category' }, { column: 'a.code' }],
     });
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'assets.GET /', req); }
 });
 
 router.get('/:id', authenticate, authorize(), async (req, res) => {
@@ -44,7 +45,7 @@ router.get('/:id', authenticate, authorize(), async (req, res) => {
     );
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Equipment not found' });
     res.json({ success: true, data: result.rows[0] });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'assets.GET /:id', req); }
 });
 
 router.post('/', authenticate, authorize(), async (req, res) => {
@@ -72,7 +73,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
       );
     }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'assets', description: `Created equipment ${value.code}`, entityId: r.rows[0].id, entityType: 'asset' }));
     res.status(201).json({ success: true, data: result.rows[0] });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'assets.POST /', req); }
 });
 
 router.put('/:id', authenticate, authorize(), async (req, res) => {
@@ -101,7 +102,7 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
     const result = await auditedTransaction((q) => q(`UPDATE assets SET ${sets.join(', ')}, name = COALESCE(name_en, name_ar), updated_at = NOW() WHERE id = $${idx} RETURNING *`, params), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'assets', description: `Updated equipment ${existing.rows[0].code}`, entityId: req.params.id, entityType: 'asset' }));
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Equipment not found' });
     res.json({ success: true, data: result.rows[0] });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'assets.PUT /:id', req); }
 });
 
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
@@ -109,7 +110,7 @@ router.delete('/:id', authenticate, authorize(), async (req, res) => {
     const r = await auditedTransaction((q) => q('DELETE FROM assets WHERE id = $1 RETURNING code', [req.params.id]), (result) => result.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'assets', description: `Deleted equipment ${result.rows[0].code}`, entityId: req.params.id, entityType: 'asset' }));
     if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Equipment not found' });
     res.json({ success: true, message: 'Deleted' });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'assets.DELETE /:id', req); }
 });
 
 // -- Assignments --
@@ -120,7 +121,7 @@ router.get('/:id/assignments', authenticate, authorize(), async (req, res) => {
       orderBy: [{ column: 'assigned_from', direction: 'DESC' }],
     });
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'assets.GET /:id/assignments', req); }
 });
 
 router.post('/:id/assignments', authenticate, authorize(), async (req, res) => {
@@ -138,7 +139,7 @@ router.post('/:id/assignments', authenticate, authorize(), async (req, res) => {
       [req.params.id, authorizedProjectId(req, value), value.assigned_from, value.assigned_to || null]
     ), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'assign', module: 'assets', description: `Assigned equipment #${req.params.id} to project #${authorizedProjectId(req, value)}`, entityId: result.rows[0].id, entityType: 'equipment_assignment' }));
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'assets.POST /:id/assignments', req); }
 });
 
 // -- Usage Logs --
@@ -149,7 +150,7 @@ router.get('/:id/usage-logs', authenticate, authorize(), async (req, res) => {
       orderBy: [{ column: 'log_date', direction: 'DESC' }],
     });
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'assets.GET /:id/usage-logs', req); }
 });
 
 router.post('/:id/usage-logs', authenticate, authorize(), async (req, res) => {
@@ -168,7 +169,7 @@ router.post('/:id/usage-logs', authenticate, authorize(), async (req, res) => {
       [req.params.id, authorizedProjectId(req, value), value.log_date, value.hours_operated, value.operator_id || null, value.fuel_liters, value.notes]
     ), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'log_usage', module: 'assets', description: `Recorded equipment usage for #${req.params.id}`, entityId: result.rows[0].id, entityType: 'equipment_usage_log' }));
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'assets.POST /:id/usage-logs', req); }
 });
 
 module.exports = router;

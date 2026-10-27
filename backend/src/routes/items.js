@@ -7,6 +7,7 @@ const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 const { reasonFrom } = require('../utils/reason');
+const { routeFail } = require('../utils/typedRoute');
 
 const CATEGORIES = ['raw_material', 'finished_material', 'equipment_rental', 'consumable', 'tool', 'safety', 'other'];
 const SUB_CATEGORIES = {
@@ -80,7 +81,7 @@ router.get('/', authenticate, authorize(), async (req, res) => {
     const page = await queryPaginated(req, res, query, { sql: `SELECT * FROM item_master ${where}`, params, orderBy: [{ column: 'category' }, { column: 'sub_category' }, { column: 'code' }] });
     res.json({ success: true, data: page.rows, meta: { total: page.total, limit: page.limit, offset: page.offset } });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'items.GET /', req);
   }
 });
 
@@ -90,7 +91,7 @@ router.get('/:id', authenticate, authorize(), async (req, res) => {
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Item not found' });
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'items.GET /:id', req);
   }
 });
 
@@ -103,7 +104,7 @@ router.get('/:id/suppliers', authenticate, authorize(), async (req, res) => {
     });
     res.json({ success: true, data: data.rows });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'items.GET /:id/suppliers', req);
   }
 });
 
@@ -138,7 +139,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
 
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'items.POST /', req);
   }
 });
 
@@ -184,7 +185,7 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
 
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'items.PUT /:id', req);
   }
 });
 
@@ -200,7 +201,7 @@ router.delete('/:id', authenticate, authorize(), async (req, res) => {
 
     res.json({ success: true, message: 'Item deleted' });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'items.DELETE /:id', req);
   }
 });
 
@@ -212,7 +213,7 @@ router.post('/:id/restore', authenticate, authorize(), async (req, res) => {
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Deleted item not found' });
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'items.POST /:id/restore', req);
   }
 });
 

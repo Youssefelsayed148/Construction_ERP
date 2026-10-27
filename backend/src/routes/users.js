@@ -6,6 +6,7 @@ const { authenticate, authorize, createPreviewToken } = require('../middleware/a
 const policy = require('../services/policy');
 const { logActivity } = require('../utils/activity');
 const { queryPaginated } = require('../utils/pagination');
+const { routeFail } = require('../utils/typedRoute');
 
 // GET /api/users - list all users (owner/admin)
 router.get('/', authenticate, authorize('owner', 'admin'), async (req, res) => {
@@ -16,7 +17,7 @@ router.get('/', authenticate, authorize('owner', 'admin'), async (req, res) => {
     });
     res.json({ success: true, data: result.rows });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'users.GET /', req);
   }
 });
 
@@ -27,7 +28,7 @@ router.get('/preview/roles', authenticate, authorize('owner', 'admin'), async (r
     const result = await query('SELECT key, name FROM roles WHERE is_system = true ORDER BY key');
     res.json({ success: true, data: result.rows });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'users.GET /preview/roles', req);
   }
 });
 
@@ -41,7 +42,7 @@ router.get('/:id', authenticate, authorize('owner', 'admin'), async (req, res) =
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'User not found' });
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'users.GET /:id', req);
   }
 });
 
@@ -148,7 +149,7 @@ router.put('/:id', authenticate, authorize('owner', 'admin'), async (req, res) =
 
     res.json({ success: true, data: outcome.row });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'users.PUT /:id', req);
   }
 });
 
@@ -173,7 +174,7 @@ router.delete('/:id', authenticate, authorize('owner', 'admin'), async (req, res
 
     res.json({ success: true, message: 'User deactivated' });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'users.DELETE /:id', req);
   }
 });
 
@@ -208,7 +209,7 @@ router.post('/preview/:role', authenticate, authorize('owner', 'admin'), async (
     res.json({ success: true, preview_role: role, token, expires_in: '30m' });
   } catch (error) {
     console.error('Error starting preview:', error);
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'users.POST /preview/:role', req);
   }
 });
 

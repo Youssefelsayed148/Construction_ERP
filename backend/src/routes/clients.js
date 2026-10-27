@@ -6,6 +6,7 @@ const { query } = require('../config/database');
 const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditedTransaction } = require('../utils/auditedTransaction');
+const { routeFail } = require('../utils/typedRoute');
 
 router.get('/', authenticate, authorize(), async (req, res) => {
   try {
@@ -17,7 +18,7 @@ router.get('/', authenticate, authorize(), async (req, res) => {
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const dataResult = await queryPaginated(req, res, query, { sql: `SELECT * FROM clients ${where}`, params, orderBy: [{ column: 'name_en' }] });
     res.json({ success: true, data: dataResult.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'clients.GET /', req); }
 });
 
 router.get('/:id', authenticate, authorize(), async (req, res) => {
@@ -25,7 +26,7 @@ router.get('/:id', authenticate, authorize(), async (req, res) => {
     const result = await query('SELECT * FROM clients WHERE id = $1', [req.params.id]);
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Client not found' });
     res.json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'clients.GET /:id', req); }
 });
 
 router.post('/', authenticate, authorize(), async (req, res) => {
@@ -53,7 +54,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     }, (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'clients', description: `Created client ${value.code}`, entityId: r.rows[0].id, entityType: 'client' }));
     if (result.duplicate) return res.status(400).json({ success: false, error: 'Code already exists' });
     res.status(201).json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'clients.POST /', req); }
 });
 
 router.put('/:id', authenticate, authorize(), async (req, res) => {
@@ -80,7 +81,7 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
     const result = await auditedTransaction((q) => q(`UPDATE clients SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, params), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'clients', description: `Updated client ${existing.rows[0].code}`, entityId: req.params.id, entityType: 'client' }));
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Client not found' });
     res.json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'clients.PUT /:id', req); }
 });
 
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
@@ -88,7 +89,7 @@ router.delete('/:id', authenticate, authorize(), async (req, res) => {
     const result = await auditedTransaction((q) => q('DELETE FROM clients WHERE id = $1 RETURNING code', [req.params.id]), (r) => r.rows[0] && ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'delete', module: 'clients', description: `Deleted client ${r.rows[0].code}`, entityId: req.params.id, entityType: 'client' }));
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Client not found' });
     res.json({ success: true, message: 'Client deleted' });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'clients.DELETE /:id', req); }
 });
 
 module.exports = router;

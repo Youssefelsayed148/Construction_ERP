@@ -12,6 +12,7 @@ const { auditedMutation } = require('../utils/auditedMutation');
 const quantityEngine = require('../services/quantityEngine');
 const progressEngine = require('../services/progressEngine');
 const actionService = require('../services/actionService');
+const { routeFail } = require('../utils/typedRoute');
 
 // Mounted at /api/projects — provides /:projectId/site-reports, /:projectId/instructions, /:projectId/site-visits
 
@@ -31,7 +32,7 @@ router.get('/:projectId/site-reports', authenticate, authorize(), async (req, re
       orderBy: [{ column: 'sdr.report_date', direction: 'DESC' }, { column: 'sdr.id', direction: 'DESC' }],
     });
     res.json({ success: true, data: result.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'site.GET /:projectId/site-reports', req); }
 });
 
 router.get('/:projectId/site-reports/:date', authenticate, authorize(), async (req, res) => {
@@ -44,7 +45,7 @@ router.get('/:projectId/site-reports/:date', authenticate, authorize(), async (r
     );
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Report not found' });
     res.json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'site.GET /:projectId/site-reports/:date', req); }
 });
 
 // Quantities reported on site (closeout A2.6). Each line becomes a pending quantity_measurements row with source
@@ -116,7 +117,7 @@ router.post('/:projectId/site-reports', authenticate, authorize(), requireIdempo
   } catch (error) {
     if (error.code === '23505') return res.status(409).json({ success: false, error: 'A report already exists for this project and date' });
     if (error.error_code) return res.status(error.status || 400).json({ success: false, error: error.message, error_code: error.error_code, error_params: error.error_params || {} });
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'site.POST /:projectId/site-reports', req);
   }
 });
 
@@ -167,7 +168,7 @@ router.put('/:projectId/site-reports/:id', authenticate, authorize(), async (req
     res.json({ success: true, data: audited.rows[0] });
   } catch (error) {
     if (error.error_code) return res.status(error.status || 400).json({ success: false, error: error.message, error_code: error.error_code, error_params: error.error_params || {} });
-    res.status(500).json({ success: false, error: error.message });
+    routeFail(res, error, 'site.PUT /:projectId/site-reports/:id', req);
   }
 });
 
@@ -189,7 +190,7 @@ router.get('/:projectId/instructions', authenticate, authorize(), async (req, re
        LEFT JOIN users iu ON ei.issued_by = iu.id LEFT JOIN users cu ON ei.closed_by = cu.id
        WHERE ${conditions.join(' AND ')} ORDER BY ei.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: result.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'site.GET /:projectId/instructions', req); }
 });
 
 router.post('/:projectId/instructions', authenticate, authorize(), async (req, res) => {
@@ -245,7 +246,7 @@ router.post('/:projectId/instructions', authenticate, authorize(), async (req, r
     });
 
     res.status(201).json({ success: true, data: (await query('SELECT * FROM engineer_instructions WHERE id = $1', [instruction.id])).rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'site.POST /:projectId/instructions', req); }
 });
 
 router.put('/:projectId/instructions/:id', authenticate, authorize(), async (req, res) => {
@@ -277,7 +278,7 @@ router.put('/:projectId/instructions/:id', authenticate, authorize(), async (req
     if (out.closed) return res.status(400).json({ success: false, error: 'Closed instructions are read-only' });
     if (!out.data) return res.status(404).json({ success: false, error: 'Instruction not found' });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'site.PUT /:projectId/instructions/:id', req); }
 });
 
 // Status transitions: acknowledge → implement → close
@@ -345,7 +346,7 @@ router.post('/:projectId/instructions/:id/:action(acknowledge|implement|close)',
     }
 
     res.json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'site.POST /:projectId/instructions/:id/:action(acknowledge|implement|close)', req); }
 });
 
 // ============ SITE VISITS ============
@@ -356,7 +357,7 @@ router.get('/:projectId/site-visits', authenticate, authorize(), async (req, res
        LEFT JOIN users u ON sv.logged_by = u.id
        WHERE sv.project_id = $1 ORDER BY sv.visit_date DESC`, params: [req.params.projectId], orderBy: [{"column":"visit_date","direction":"DESC"}] });
     res.json({ success: true, data: result.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'site.GET /:projectId/site-visits', req); }
 });
 
 router.post('/:projectId/site-visits', authenticate, authorize(), async (req, res) => {
@@ -387,7 +388,7 @@ router.post('/:projectId/site-visits', authenticate, authorize(), async (req, re
        JSON.stringify(value.referenced_document_ids), value.notes, JSON.stringify(value.photos), JSON.stringify(value.action_items), req.user.id]
     ), (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'site', description: `Logged site visit by ${value.visitor_name}`, entityId: r.rows[0].id, entityType: 'site_visit' }));
     res.status(201).json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'site.POST /:projectId/site-visits', req); }
 });
 
 router.put('/:projectId/site-visits/:id', authenticate, authorize(), async (req, res) => {
@@ -415,7 +416,7 @@ router.put('/:projectId/site-visits/:id', authenticate, authorize(), async (req,
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Visit not found' });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'site.PUT /:projectId/site-visits/:id', req); }
 });
 
 router.delete('/:projectId/site-visits/:id', authenticate, authorize(), async (req, res) => {
@@ -427,7 +428,7 @@ router.delete('/:projectId/site-visits/:id', authenticate, authorize(), async (r
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Visit not found' });
     res.json({ success: true, message: 'Visit deleted' });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'site.DELETE /:projectId/site-visits/:id', req); }
 });
 
 // ============ PHASE 15 — WORKSPACE + SELF-ASSEMBLING DAILY REPORT ============
@@ -441,7 +442,7 @@ router.get('/:projectId/workspace', authenticate, authorize(), async (req, res) 
     const date = req.query.date || new Date().toISOString().slice(0, 10);
     const data = await siteEngine.getWorkspace(query, parseInt(req.params.projectId, 10), date);
     res.json({ success: true, data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'site.GET /:projectId/workspace', req); }
 });
 
 // Generate (or refresh) the day's report from the source records — the
@@ -463,7 +464,7 @@ router.post('/:projectId/site-reports/assemble', authenticate, authorize(), asyn
       value.report_date || new Date().toISOString().slice(0, 10), req.user, value
     ), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'site', description: `Assembled daily site report from source records`, entityId: result.report.id, entityType: 'site_daily_report' }));
     res.status(201).json({ success: true, data: report });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'site.POST /:projectId/site-reports/assemble', req); }
 });
 
 // ============ PHOTOS (shared metadata model) ============
@@ -489,7 +490,7 @@ router.post('/:projectId/photos', authenticate, authorize(), async (req, res) =>
       ...value, project_id: parseInt(req.params.projectId, 10), uploader_user_id: req.user.id,
     }), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'site', description: 'Captured site photo', entityId: result.id, entityType: 'photo' }));
     res.status(201).json({ success: true, data: photo });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'site.POST /:projectId/photos', req); }
 });
 
 router.get('/:projectId/photos', authenticate, authorize(), async (req, res) => {
@@ -500,7 +501,7 @@ router.get('/:projectId/photos', authenticate, authorize(), async (req, res) => 
       linked_entity_id: req.query.linked_entity_id ? parseInt(req.query.linked_entity_id, 10) : null,
     });
     res.json({ success: true, data: paginateRows(req, res, photos, { orderBy: [{ column: 'created_at', direction: 'DESC' }] }).rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'site.GET /:projectId/photos', req); }
 });
 
 // ============ STICKY NOTES ============
@@ -512,7 +513,7 @@ router.get('/:projectId/sticky-notes', authenticate, authorize(), async (req, re
       owner_user_id: req.user.id,
     });
     res.json({ success: true, data: paginateRows(req, res, notes, { orderBy: [{ column: 'created_at', direction: 'DESC' }] }).rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'site.GET /:projectId/sticky-notes', req); }
 });
 
 router.post('/:projectId/sticky-notes', authenticate, authorize(), async (req, res) => {
@@ -532,7 +533,7 @@ router.post('/:projectId/sticky-notes', authenticate, authorize(), async (req, r
       ...value, project_id: parseInt(req.params.projectId, 10), owner_user_id: req.user.id,
     }), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'site', description: 'Added sticky note', entityId: result.id, entityType: 'sticky_note' }));
     res.status(201).json({ success: true, data: note });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'site.POST /:projectId/sticky-notes', req); }
 });
 
 // "Convert to action" — the only way a sticky note leaves the workspace: it
@@ -549,7 +550,7 @@ router.post('/:projectId/sticky-notes/:id/convert-to-action', authenticate, auth
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     const result = await auditedTransaction((q) => siteEngine.convertStickyToAction(q, parseInt(req.params.id, 10), req.user, value), () => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'site', description: `Converted sticky note #${req.params.id} to action item`, entityId: req.params.id, entityType: 'sticky_note' }));
     res.status(201).json({ success: true, data: result });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'site.POST /:projectId/sticky-notes/:id/convert-to-action', req); }
 });
 
 module.exports = router;

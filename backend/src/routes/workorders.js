@@ -11,6 +11,7 @@ const { auditedMutation } = require('../utils/auditedMutation');
 const inventoryEngine = require('../services/inventoryEngine');
 const { reasonFrom } = require('../utils/reason');
 const { svcError } = require('../utils/serviceErrors');
+const { routeFail } = require('../utils/typedRoute');
 
 const WO_STATUSES = ['planned', 'in_progress', 'completed', 'cancelled'];
 
@@ -30,7 +31,7 @@ router.get('/project/:projectId', authenticate, authorize(), async (req, res) =>
        LEFT JOIN boq_sections bs ON wo.boq_section_id = bs.id
        WHERE ${conds.join(' AND ')} ORDER BY wo.created_at DESC`, params: p, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'workorders.GET /project/:projectId', req); }
 });
 
 router.get('/:id', authenticate, authorize(), async (req, res) => {
@@ -46,7 +47,7 @@ router.get('/:id', authenticate, authorize(), async (req, res) => {
     ]);
 
     res.json({ success: true, data: { ...wo.rows[0], materials: materials.rows, labor: labor.rows, equipment: equipment.rows, completions: completions.rows } });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'workorders.GET /:id', req); }
 });
 
 router.post('/', authenticate, authorize(), async (req, res) => {
@@ -69,7 +70,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
       [authorizedProjectId(req, value), value.phase_id, value.boq_section_id, value.title_ar, value.title_ar, value.title_en || value.title_ar, value.description, value.planned_start_date, value.planned_end_date, value.assigned_to, value.notes]
     ), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'work_orders', description: `Created WO: ${value.title_ar}`, entityId: result.rows[0].id, entityType: 'work_order' }));
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'workorders.POST /', req); }
 });
 
 router.put('/:id', authenticate, authorize(), async (req, res) => {
@@ -96,7 +97,7 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Work order not found' });
     res.json({ success: true, data: out.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'workorders.PUT /:id', req); }
 });
 
 // A work order carries cost records (materials issued from stock, labor, equipment, completions), so it is
@@ -120,7 +121,7 @@ router.delete('/:id', authenticate, authorize(), async (req, res) => {
     }
 
     res.json({ success: true, message: 'Work order cancelled' });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'workorders.DELETE /:id', req); }
 });
 
 // Materials
@@ -130,7 +131,7 @@ router.get('/:id/materials', authenticate, authorize(), async (req, res) => {
     if (wo.rows.length === 0) return res.status(404).json({ success: false, error: 'Work order not found' });
     const r = await queryPaginated(req, res, query, { sql: 'SELECT wom.*, im.code as item_code, im.name_en, im.name_ar FROM work_order_materials wom LEFT JOIN item_master im ON wom.item_id = im.id WHERE wom.work_order_id = $1 ORDER BY wom.id', params: [req.params.id], orderBy: [{"column":"id","direction":"ASC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'workorders.GET /:id/materials', req); }
 });
 
 router.post('/:id/materials', authenticate, authorize(), async (req, res) => {
@@ -182,7 +183,7 @@ router.post('/:id/materials', authenticate, authorize(), async (req, res) => {
     });
 
     res.status(201).json({ success: true, message: 'Material issued' });
-  } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'workorders.POST /:id/materials', req); }
 });
 
 // Labor (planning only, no cost)
@@ -192,7 +193,7 @@ router.get('/:id/labor', authenticate, authorize(), async (req, res) => {
     if (wo.rows.length === 0) return res.status(404).json({ success: false, error: 'Work order not found' });
     const r = await queryPaginated(req, res, query, { sql: 'SELECT * FROM work_order_labor WHERE work_order_id = $1 ORDER BY work_date, id', params: [req.params.id], orderBy: [{"column":"work_date","direction":"ASC"},{"column":"id","direction":"ASC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'workorders.GET /:id/labor', req); }
 });
 
 router.post('/:id/labor', authenticate, authorize(), async (req, res) => {
@@ -213,7 +214,7 @@ router.post('/:id/labor', authenticate, authorize(), async (req, res) => {
       return { data: r.rows[0], entityId: r.rows[0].id, after: r.rows[0], description: `Recorded labor for WO #${req.params.id}: ${value.skill_category} x${value.worker_count}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'workorders.POST /:id/labor', req); }
 });
 
 // Equipment
@@ -223,7 +224,7 @@ router.get('/:id/equipment', authenticate, authorize(), async (req, res) => {
     if (wo.rows.length === 0) return res.status(404).json({ success: false, error: 'Work order not found' });
     const r = await queryPaginated(req, res, query, { sql: 'SELECT woe.*, a.code as equipment_code FROM work_order_equipment woe LEFT JOIN assets a ON woe.equipment_id = a.id WHERE woe.work_order_id = $1 ORDER BY woe.work_date, woe.id', params: [req.params.id], orderBy: [{"column":"work_date","direction":"ASC"},{"column":"id","direction":"ASC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'workorders.GET /:id/equipment', req); }
 });
 
 router.post('/:id/equipment', authenticate, authorize(), async (req, res) => {
@@ -244,7 +245,7 @@ router.post('/:id/equipment', authenticate, authorize(), async (req, res) => {
       return { data: r.rows[0], entityId: r.rows[0].id, after: r.rows[0], amount: total_cost, description: `Recorded equipment for WO #${req.params.id}: asset ${value.equipment_id} ${value.hours}h` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'workorders.POST /:id/equipment', req); }
 });
 
 // Work Completions
@@ -254,7 +255,7 @@ router.get('/:id/completions', authenticate, authorize(), async (req, res) => {
     if (wo.rows.length === 0) return res.status(404).json({ success: false, error: 'Work order not found' });
     const r = await queryPaginated(req, res, query, { sql: 'SELECT wc.*, u.name as verified_name FROM work_completions wc LEFT JOIN users u ON wc.verified_by = u.id WHERE wc.work_order_id = $1 ORDER BY wc.completion_date, wc.id', params: [req.params.id], orderBy: [{"column":"completion_date","direction":"ASC"},{"column":"id","direction":"ASC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'workorders.GET /:id/completions', req); }
 });
 
 router.post('/:id/completions', authenticate, authorize(), async (req, res) => {
@@ -311,7 +312,7 @@ router.post('/:id/completions', authenticate, authorize(), async (req, res) => {
     });
 
     res.status(201).json({ success: true, data: completionAudit.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'workorders.POST /:id/completions', req); }
 });
 
 router.put('/:woId/completions/:compId/verify', authenticate, authorize(), async (req, res) => {
@@ -358,7 +359,7 @@ router.put('/:woId/completions/:compId/verify', authenticate, authorize(), async
       await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: status, module: 'work_orders', description: `${status === 'verified' ? 'Verified' : 'Rejected'} work completion #${req.params.compId}`, entityId: req.params.compId, entityType: 'work_completion' }, { query: (text, params) => client.query(text, params) });
     });
     res.json({ success: true, message: status === 'verified' ? 'Verified' : 'Rejected' });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'workorders.PUT /:woId/completions/:compId/verify', req); }
 });
 
 module.exports = router;

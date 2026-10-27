@@ -6,7 +6,7 @@ const actionService = require('../services/actionService');
 const Joi = require('joi');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 const { auditedMutation, auditedChange } = require('../utils/auditedMutation');
-const { typedFail } = require('../utils/typedRoute');
+const { typedFail, routeFail } = require('../utils/typedRoute');
 const { EXTERNAL_ROLES } = require('../services/policy');
 
 router.get('/:id/comments', authenticate, authorize(), async (req, res) => {
@@ -52,7 +52,7 @@ router.get('/my', authenticate, authorize(), async (req, res) => {
     res.json({ success: true, buckets, total });
   } catch (e) {
     console.error('Error listing my actions:', e);
-    res.status(500).json({ success: false, error: e.message });
+    routeFail(res, e, 'actions.GET /my', req);
   }
 });
 
@@ -81,7 +81,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     });
     res.status(201).json({ success: true, data: item });
   } catch (e) {
-    res.status(e.message && e.message.includes('requires') ? 400 : 500).json({ success: false, error: e.message });
+    routeFail(res, e, 'actions.POST /', req);
   }
 });
 
@@ -96,7 +96,7 @@ router.post('/:id/acknowledge', authenticate, authorize(), async (req, res) => {
     if (!r.ok) return res.status(r.statusCode).json({ success: false, error: r.error });
     res.json({ success: true });
   } catch (e) {
-    res.status(500).json({ success: false, error: e.message });
+    routeFail(res, e, 'actions.POST /:id/acknowledge', req);
   }
 });
 
@@ -111,7 +111,7 @@ router.post('/:id/complete', authenticate, authorize(), async (req, res) => {
     if (!r.ok) return res.status(r.statusCode).json({ success: false, error: r.error });
     res.json({ success: true, data: r.item });
   } catch (e) {
-    res.status(500).json({ success: false, error: e.message });
+    routeFail(res, e, 'actions.POST /:id/complete', req);
   }
 });
 
@@ -128,7 +128,7 @@ router.post('/:id/delegate', authenticate, authorize(), async (req, res) => {
     if (!r.ok) return res.status(r.statusCode).json({ success: false, error: r.error });
     res.json({ success: true });
   } catch (e) {
-    res.status(500).json({ success: false, error: e.message });
+    routeFail(res, e, 'actions.POST /:id/delegate', req);
   }
 });
 

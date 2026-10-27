@@ -7,6 +7,7 @@ const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity } = require('../utils/activity');
 const { auditedMutation } = require('../utils/auditedMutation');
+const { routeFail } = require('../utils/typedRoute');
 
 // Maintenance Reminders (linked to assets)
 router.get('/', authenticate, authorize(), async (req, res) => {
@@ -19,7 +20,7 @@ router.get('/', authenticate, authorize(), async (req, res) => {
     const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
     const data = await queryPaginated(req, res, query, { sql: `SELECT mr.*, a.code as asset_code, a.name_en as asset_name FROM maintenance_reminders mr LEFT JOIN assets a ON mr.asset_id = a.id ${w}`, params: p, orderBy: [{ column: 'mr.scheduled_date', direction: 'DESC' }] });
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'maintenance.GET /', req); }
 });
 
 router.get('/:id', authenticate, authorize(), async (req, res) => {
@@ -27,7 +28,7 @@ router.get('/:id', authenticate, authorize(), async (req, res) => {
     const r = await query('SELECT mr.*, a.code as asset_code FROM maintenance_reminders mr LEFT JOIN assets a ON mr.asset_id = a.id WHERE mr.id = $1', [req.params.id]);
     if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Reminder not found' });
     res.json({ success: true, data: r.rows[0] });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'maintenance.GET /:id', req); }
 });
 
 router.post('/', authenticate, authorize(), async (req, res) => {
@@ -55,7 +56,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
       return result;
     });
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'maintenance.POST /', req); }
 });
 
 router.put('/:id', authenticate, authorize(), async (req, res) => {
@@ -86,7 +87,7 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
       return updated;
     });
     res.json({ success: true, data: r.rows[0] });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'maintenance.PUT /:id', req); }
 });
 
 router.delete('/:id', authenticate, authorize(), async (req, res) => {
@@ -98,7 +99,7 @@ router.delete('/:id', authenticate, authorize(), async (req, res) => {
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Reminder not found' });
     res.json({ success: true, message: 'Deleted' });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'maintenance.DELETE /:id', req); }
 });
 
 module.exports = router;

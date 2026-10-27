@@ -11,6 +11,7 @@ const { auditedTransaction } = require('../utils/auditedTransaction');
 const { auditedMutation, rowSnapshot } = require('../utils/auditedMutation');
 const { dateOnly } = require('../utils/validation');
 const { normalizeDateFields } = require('../utils/dateOnly');
+const { routeFail } = require('../utils/typedRoute');
 
 // Mounted at /api/docs — document library with versioning, RFIs, submittals.
 // File uploads go through /api/documents/upload first; this router stores the returned URLs.
@@ -41,7 +42,7 @@ router.get('/categories', authenticate, authorize(), async (req, res) => {
   try {
     const result = await query('SELECT * FROM document_categories ORDER BY parent_id NULLS FIRST, name');
     res.json({ success: true, data: result.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.GET /categories', req); }
 });
 
 router.post('/categories', authenticate, authorize(), async (req, res) => {
@@ -54,7 +55,7 @@ router.post('/categories', authenticate, authorize(), async (req, res) => {
       return { data: result.rows[0], entityId: result.rows[0].id, after: result.rows[0], description: `Created document category ${value.name}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.POST /categories', req); }
 });
 
 // ============ DOCUMENTS ============
@@ -80,7 +81,7 @@ router.get('/documents', authenticate, authorize(), async (req, res) => {
       orderBy: [{ column: 'd.updated_at', direction: 'DESC' }],
     });
     res.json({ success: true, data: result.rows.map((doc) => normalizeDateFields(doc, ['issue_date', 'review_due_date'])) });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.GET /documents', req); }
 });
 
 router.get('/documents/:id', authenticate, authorize(), async (req, res) => {
@@ -100,7 +101,7 @@ router.get('/documents/:id', authenticate, authorize(), async (req, res) => {
     ]);
     if (doc.rows.length === 0) return res.status(404).json({ success: false, error: 'Document not found' });
     res.json({ success: true, data: { ...doc.rows[0], versions: versions.rows } });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.GET /documents/:id', req); }
 });
 
 router.post('/documents', authenticate, authorize(), async (req, res) => {
@@ -219,7 +220,7 @@ router.post('/documents/:id/versions', authenticate, authorize(), async (req, re
     const { doc, newVersion, revisionCode } = uploaded;
 
     res.status(201).json({ success: true, data: uploaded.updated, revision: uploaded.revision });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.POST /documents/:id/versions', req); }
 });
 
 router.put('/documents/:id', authenticate, authorize(), async (req, res) => {
@@ -285,7 +286,7 @@ router.post('/documents/:id/submit', authenticate, authorize(), async (req, res)
       return res.status(409).json({ success: false, error: `A ${exists.rows[0].status} document cannot be submitted` });
     }
     res.json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.POST /documents/:id/submit', req); }
 });
 
 router.post('/documents/:id/:action(approve|reject)', authenticate, authorize(), async (req, res) => {
@@ -303,7 +304,7 @@ router.post('/documents/:id/:action(approve|reject)', authenticate, authorize(),
     });
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Document not found' });
     res.json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.POST /documents/:id/:action(approve|reject)', req); }
 });
 
 router.delete('/documents/:id', authenticate, authorize(), async (req, res) => {
@@ -316,7 +317,7 @@ router.delete('/documents/:id', authenticate, authorize(), async (req, res) => {
     });
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Document not found' });
     res.json({ success: true, message: 'Document deleted' });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.DELETE /documents/:id', req); }
 });
 
 // ============ RFIs ============
@@ -337,7 +338,7 @@ router.get('/rfis', authenticate, authorize(), async (req, res) => {
        LEFT JOIN work_packages wp ON wp.id = r.work_package_id
        ${where} ORDER BY r.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: result.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.GET /rfis', req); }
 });
 
 router.post('/rfis', authenticate, authorize(), async (req, res) => {
@@ -400,7 +401,7 @@ router.post('/rfis/:id/close', authenticate, authorize(), async (req, res) => {
     });
     if (closed.rows.length === 0) return res.status(404).json({ success: false, error: 'RFI not found or not answered yet' });
     res.json({ success: true, data: closed.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.POST /rfis/:id/close', req); }
 });
 
 // ============ SUBMITTALS ============
@@ -416,7 +417,7 @@ router.get('/submittals', authenticate, authorize(), async (req, res) => {
        LEFT JOIN users su ON s.submitted_by = su.id LEFT JOIN users ru ON s.responded_by = ru.id
        ${where} ORDER BY s.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: result.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.GET /submittals', req); }
 });
 
 router.post('/submittals', authenticate, authorize(), async (req, res) => {
@@ -442,7 +443,7 @@ router.post('/submittals', authenticate, authorize(), async (req, res) => {
       return { ...inserted, subNumber };
     }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Submitted ${r.subNumber}: ${value.title}`, entityId: r.rows[0].id, entityType: 'project_submittal' }));
     res.status(201).json({ success: true, data: result.rows[0] });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.POST /submittals', req); }
 });
 
 router.post('/submittals/:id/respond', authenticate, authorize(), async (req, res) => {
@@ -509,7 +510,7 @@ router.get('/registers', authenticate, authorize(), async (req, res) => {
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const r = await queryPaginated(req, res, query, { sql: `${DOC_REGISTER_SELECT} ${where} ORDER BY d.doc_number NULLS LAST, d.created_at DESC`, params: params, orderBy: [{"column":"doc_number","direction":"ASC"},{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows.map((doc) => normalizeDateFields(doc, ['issue_date', 'review_due_date'])) });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.GET /registers', req); }
 });
 
 // Register a document into the controlled register — assigns
@@ -525,7 +526,7 @@ router.post('/documents/:id/register', authenticate, authorize(), async (req, re
       return { data: result, entityId: result.id, projectId: result.project_id, before, after: result, description: `Registered document ${result.doc_number}` };
     });
     res.json({ success: true, data: doc });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.POST /documents/:id/register', req); }
 });
 
 // Supersede — point an old document at its replacement.
@@ -540,7 +541,7 @@ router.post('/documents/:id/supersede', authenticate, authorize(), async (req, r
       return { data: result, entityId: result.id, projectId: result.project_id, before, after: result, oldStatus: before && before.doc_status, newStatus: result.doc_status, description: `Superseded ${result.doc_number || `#${result.id}`}` };
     });
     res.json({ success: true, data: doc });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.POST /documents/:id/supersede', req); }
 });
 
 // Revision history with current/superseded flags (the superseded warning data).
@@ -558,7 +559,7 @@ router.get('/documents/:id/revisions', authenticate, authorize(), async (req, re
       params: [req.params.id], orderBy: [{ column: 'version_no', direction: 'DESC' }],
     });
     res.json({ success: true, data: { document: doc, revisions: page.rows, current_revision_id: currentRevisionId } });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.GET /documents/:id/revisions', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -609,7 +610,7 @@ router.get('/transmittals', authenticate, authorize(), async (req, res) => {
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const r = await queryPaginated(req, res, query, { sql: `${TRANSMITTAL_SELECT} ${where} ORDER BY t.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.GET /transmittals', req); }
 });
 
 router.post('/transmittals', authenticate, authorize(), async (req, res) => {
@@ -682,7 +683,7 @@ router.get('/transmittals/:id', authenticate, authorize(), async (req, res) => {
       [req.params.id]
     )).rows;
     res.json({ success: true, data: { ...t, items } });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.GET /transmittals/:id', req); }
 });
 
 router.post('/transmittals/:id/items', authenticate, authorize(), async (req, res) => {
@@ -730,7 +731,7 @@ router.post('/transmittals/:id/status', authenticate, authorize(), async (req, r
     if (!existing || !documentProjectAllowed(req, existing.project_id)) return transmittalFailure(res, 404, 'transmittal_not_found');
     const t = await auditedTransaction((q) => doccontrolEngine.transitionTransmittal(q, req.params.id, value.status, req.user, { ackNote: value.ack_note }), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `Transmittal ${result.transmittal_number} → ${value.status}`, entityId: result.id, entityType: 'transmittal' }));
     res.json({ success: true, data: t });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.POST /transmittals/:id/status', req); }
 });
 
 router.get('/transmittals/:id/pdf', authenticate, authorize(), async (req, res) => {
@@ -764,7 +765,7 @@ router.get('/transmittals/:id/pdf', authenticate, authorize(), async (req, res) 
       notes: t.purpose || null,
     });
     sendPdf(res, pdf, `${t.transmittal_number}.pdf`);
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.GET /transmittals/:id/pdf', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -791,7 +792,7 @@ router.get('/correspondence', authenticate, authorize(), async (req, res) => {
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const r = await queryPaginated(req, res, query, { sql: `${CORR_SELECT} ${where} ORDER BY c.created_at DESC`, params: params, orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: r.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.GET /correspondence', req); }
 });
 
 router.post('/correspondence', authenticate, authorize(), async (req, res) => {
@@ -815,7 +816,7 @@ router.post('/correspondence', authenticate, authorize(), async (req, res) => {
     authorizeProjectPayload(req, value);
     const c = await auditedTransaction((q) => doccontrolEngine.createCorrespondence(q, value, req.user), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'documents', description: `Created ${value.corr_type} ${result.corr_number}: ${value.subject.slice(0, 60)}`, entityId: result.id, entityType: 'correspondence' }));
     res.status(201).json({ success: true, data: c });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.POST /correspondence', req); }
 });
 
 router.get('/correspondence/:id', authenticate, authorize(), async (req, res) => {
@@ -828,7 +829,7 @@ router.get('/correspondence/:id', authenticate, authorize(), async (req, res) =>
       [req.params.id]
     )).rows;
     res.json({ success: true, data: { ...c, history } });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.GET /correspondence/:id', req); }
 });
 
 router.post('/correspondence/:id/status', authenticate, authorize(), async (req, res) => {
@@ -841,7 +842,7 @@ router.post('/correspondence/:id/status', authenticate, authorize(), async (req,
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     const c = await auditedTransaction((q) => doccontrolEngine.transitionCorrespondence(q, req.params.id, value.status, req.user, { note: value.note }), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `${result.corr_number} → ${value.status}`, entityId: result.id, entityType: 'correspondence' }));
     res.json({ success: true, data: c });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.POST /correspondence/:id/status', req); }
 });
 
 // Amend — revision-safe content change with an immutable history row.
@@ -856,7 +857,7 @@ router.post('/correspondence/:id/amend', authenticate, authorize(), async (req, 
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     const c = await auditedTransaction((q) => doccontrolEngine.amendCorrespondence(q, req.params.id, req.user, value), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'documents', description: `${result.corr_number} amended to revision ${result.revision}`, entityId: result.id, entityType: 'correspondence' }));
     res.json({ success: true, data: c });
-  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.POST /correspondence/:id/amend', req); }
 });
 
 router.get('/correspondence/:id/pdf', authenticate, authorize(), async (req, res) => {
@@ -882,7 +883,7 @@ router.get('/correspondence/:id/pdf', authenticate, authorize(), async (req, res
       notes: c.linked_entity_type ? `Linked record: ${c.linked_entity_type} #${c.linked_entity_id}` : null,
     });
     sendPdf(res, pdf, `${c.corr_number}.pdf`);
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.GET /correspondence/:id/pdf', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -893,7 +894,7 @@ router.get('/numbering/:project_id', authenticate, authorize(), async (req, res)
   try {
     const settings = await doccontrolEngine.loadSettings(query, req.params.project_id);
     res.json({ success: true, data: settings });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.GET /numbering/:project_id', req); }
 });
 
 router.put('/numbering/:project_id', authenticate, authorize(), async (req, res) => {
@@ -921,7 +922,7 @@ router.put('/numbering/:project_id', authenticate, authorize(), async (req, res)
       return { data: r.rows[0], entityId: r.rows[0].id, projectId: r.rows[0].project_id, before, after: r.rows[0], description: `Updated document numbering for project #${req.params.project_id}` };
     });
     res.json({ success: true, data: out.data });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.PUT /numbering/:project_id', req); }
 });
 
 // ---------------------------------------------------------------------------
@@ -995,7 +996,7 @@ router.get('/search', authenticate, authorize(), async (req, res) => {
       orderBy: [{ column: 'created_at', direction: 'DESC' }, { column: 'record_type' }, { column: 'id' }],
     });
     res.json({ success: true, data: page.rows });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'doccontrol.GET /search', req); }
 });
 
 module.exports = router;

@@ -8,6 +8,7 @@ const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logActivity, fireEvent } = require('../utils/activity');
 const { auditedMutation } = require('../utils/auditedMutation');
+const { routeFail } = require('../utils/typedRoute');
 
 // -- Subcontractors --
 router.get('/', authenticate, authorize(), async (req, res) => {
@@ -19,7 +20,7 @@ router.get('/', authenticate, authorize(), async (req, res) => {
     const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
     const data = await queryPaginated(req, res, query, { sql: `SELECT * FROM subcontractors ${w}`, params: p, orderBy: [{ column: 'name' }] });
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'subcontractors.GET /', req); }
 });
 
 router.get('/:id', authenticate, authorize(), async (req, res) => {
@@ -27,7 +28,7 @@ router.get('/:id', authenticate, authorize(), async (req, res) => {
     const r = await query('SELECT * FROM subcontractors WHERE id = $1', [req.params.id]);
     if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Subcontractor not found' });
     res.json({ success: true, data: r.rows[0] });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'subcontractors.GET /:id', req); }
 });
 
 router.post('/', authenticate, authorize(), async (req, res) => {
@@ -56,7 +57,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
     return { data: r.rows[0], entityId: r.rows[0].id, after: r.rows[0], description: `Created subcontractor ${r.rows[0].code}` };
     });
     res.status(201).json({ success: true, data: created.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'subcontractors.POST /', req); }
 });
 
 router.put('/:id', authenticate, authorize(), async (req, res) => {
@@ -84,7 +85,7 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Subcontractor not found' });
     res.json({ success: true, data: out.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'subcontractors.PUT /:id', req); }
 });
 
 // -- Sub Contracts --
@@ -93,7 +94,7 @@ router.get('/contracts/:projectId', authenticate, authorize(), async (req, res) 
     const data = await queryPaginated(req, res, query, { sql: `SELECT sc.*, s.name as sub_name, s.name_en as sub_name_en, bi.description as boq_item_name
        FROM sub_contracts sc LEFT JOIN subcontractors s ON sc.subcontractor_id = s.id LEFT JOIN boq_items bi ON sc.boq_item_id = bi.id WHERE sc.project_id = $1 ORDER BY sc.created_at DESC`, params: [req.params.projectId], orderBy: [{"column":"created_at","direction":"DESC"}] });
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'subcontractors.GET /contracts/:projectId', req); }
 });
 
 router.post('/contracts', authenticate, authorize(), async (req, res) => {
@@ -139,7 +140,7 @@ router.post('/contracts', authenticate, authorize(), async (req, res) => {
       return created;
     });
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'subcontractors.POST /contracts', req); }
 });
 
 // -- Work Verifications --
@@ -147,7 +148,7 @@ router.get('/verifications/:contractId', authenticate, authorize(), async (req, 
   try {
     const data = await queryPaginated(req, res, query, { sql: `SELECT swv.*, bi.description as boq_item_name FROM sub_work_verifications swv LEFT JOIN boq_items bi ON swv.boq_item_id = bi.id WHERE swv.sub_contract_id = $1 ORDER BY period_from DESC`, params: [req.params.contractId], orderBy: [{"column":"period_from","direction":"DESC"}] });
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'subcontractors.GET /verifications/:contractId', req); }
 });
 
 router.post('/verifications', authenticate, authorize(), async (req, res) => {
@@ -169,7 +170,7 @@ router.post('/verifications', authenticate, authorize(), async (req, res) => {
       return { data: r.rows[0], entityId: r.rows[0].id, after: r.rows[0], description: `Created work verification for subcontract ${value.sub_contract_id}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'subcontractors.POST /verifications', req); }
 });
 
 router.put('/verifications/:id', authenticate, authorize(), async (req, res) => {
@@ -188,7 +189,7 @@ router.put('/verifications/:id', authenticate, authorize(), async (req, res) => 
     });
     if (!out.data) return res.status(404).json({ success: false, error: 'Verification not found' });
     res.json({ success: true, data: out.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'subcontractors.PUT /verifications/:id', req); }
 });
 
 // -- Payment Certificates --
@@ -196,7 +197,7 @@ router.get('/certificates/:contractId', authenticate, authorize(), async (req, r
   try {
     const data = await queryPaginated(req, res, query, { sql: `SELECT spc.*, u.name as certifier_name FROM sub_payment_certificates spc LEFT JOIN users u ON spc.certified_by = u.id WHERE spc.sub_contract_id = $1 ORDER BY period_from DESC`, params: [req.params.contractId], orderBy: [{"column":"period_from","direction":"DESC"}] });
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'subcontractors.GET /certificates/:contractId', req); }
 });
 
 router.post('/certificates', authenticate, authorize(), async (req, res) => {
@@ -223,7 +224,7 @@ router.post('/certificates', authenticate, authorize(), async (req, res) => {
       return { data: r.rows[0], entityId: r.rows[0].id, after: r.rows[0], amount: net_payable, description: `Created subcontractor certificate ${cert_number}` };
     });
     res.status(201).json({ success: true, data: out.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'subcontractors.POST /certificates', req); }
 });
 
 router.put('/certificates/:id', authenticate, authorize(), async (req, res) => {
@@ -255,7 +256,7 @@ router.put('/certificates/:id', authenticate, authorize(), async (req, res) => {
     if (!r.data) return res.status(404).json({ success: false, error: 'Certificate not found' });
 
     res.json({ success: true, data: r.data });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { routeFail(res, e, 'subcontractors.PUT /certificates/:id', req); }
 });
 
 module.exports = router;

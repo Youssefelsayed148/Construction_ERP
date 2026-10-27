@@ -4,6 +4,7 @@ const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const commercialEngine = require('../services/commercialEngine');
 const clientCollections = require('../services/clientCollections');
+const { routeFail } = require('../utils/typedRoute');
 
 router.get('/project/:id', authenticate, authorize(), async (req, res) => {
   try {
@@ -53,7 +54,7 @@ router.get('/project/:id', authenticate, authorize(), async (req, res) => {
         legacy_profit_cash_proxy: legacySnapshot.rows[0] ? legacySnapshot.rows[0].figures : null,
       }
     });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'finance.GET /project/:id', req); }
 });
 
 router.get('/summary', authenticate, authorize(), async (req, res) => {
@@ -72,7 +73,7 @@ router.get('/summary', authenticate, authorize(), async (req, res) => {
         overdue_count: result.rows[0].overdue,
       }
     });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { routeFail(res, error, 'finance.GET /summary', req); }
 });
 
 module.exports = router;
