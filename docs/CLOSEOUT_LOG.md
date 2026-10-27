@@ -2975,3 +2975,13 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 | F3.1 FE | `CI=true npx react-scripts test --watchAll=false src/utils/portalFamily.test.js src/components/layout/Sidebar.test.js` | 2 suites / 32 passed |
 | F3.2 | `npx jest src/scripts/__tests__/f3-mir-supplier-collection.test.js` | 8 passed |
 | migrations | `npm run migrate` on throwaway `erp_closeout_test` (local PG16) | 0072, 0073 applied |
+
+### Session F: F4 (Arabic PDF, inline branches) + final report
+
+| Slice | Command | Result |
+|---|---|---|
+| F4.1 | `npx jest src/scripts/__tests__/f4-pdf-export.test.js` | run1 2 failed (fixture/over-strict match), run3 9 passed |
+| F4.2 | `CI=true npx react-scripts test --watchAll=false src/utils/localizedHelpers.test.js src/components/layout/Sidebar.test.js` | 2 suites / 15 passed |
+| F4.2 | `node scripts/i18n-inventory.js --check` (frontend) | `i18n:check ok` |
+| F4.3 | `npm run i18n:review-pack` (frontend) | Wrote docs/ARABIC_REVIEW_PACK.md: 97 terms, 26 routes, 37 namespaces |
+| baselines | `node src/scripts/lint-guards.js --update` (backend); `npm run i18n:inventory`; `npm run i18n:parity` | baseline written; inventory written; `i18n parity ok: 37 namespaces, 3072 English keys` |

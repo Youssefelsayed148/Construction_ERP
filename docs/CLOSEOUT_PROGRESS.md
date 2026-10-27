@@ -1885,3 +1885,9 @@ Implementation 854e8bd and LF checkpoint 855ee52 committed. Pilot migrate exited
 - F3: portal grants 0072 + family-based data gates + LandingRedirect; C-PROC-002 supplier-collection record 0073 (service, route, audit fixture, UI, EN/AR); owner_ceo census item dropped (docs); approval-limits decision sheet written.
 - Focused tests: f3-portal-family 19/19, f3-mir-supplier-collection 8/8, frontend portalFamily + Sidebar 32/32.
 - NOT RUN: all suites, build, PG files (nav-visibility.pg.test.js edited, node --check only).
+
+## 2026-10-27 - Session F: F4 (Arabic PDF, inline branches) + final report
+
+- F4: production Arabic PDF (Chromium + bundled fonts, fails closed), CSV hygiene tested; inlineBranches 53->0 and rawEnumRendering 1->0 via shared helpers/enum keys; ARABIC_REVIEW_PACK regenerated (NOT a native sign-off).
+- Final static checks run once: lint:guards --update (baseline wrote; raw-error-message {} ), i18n:inventory (baseline), i18n:parity ok (37 namespaces, 3072 keys); i18n:check ok (run mid-F4, not at the very end).
+- NOT RUN: all suites and build (deferred to Session T).

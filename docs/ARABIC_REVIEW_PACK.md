@@ -1,13 +1,13 @@
 # Arabic construction terminology and export review pack
 
-Status: **pending native Egyptian construction-domain reviewer and Arabic role UAT**. Generated on 2026-10-14 from the current final glossary and the paired catalogs. This is a review worksheet, not a sign-off.
+Status: **pending native Egyptian construction-domain reviewer and Arabic role UAT**. Generated on 2026-10-27 (closeout Session F) from the current final glossary and the paired catalogs. This is a review worksheet, not a sign-off.
 
 ## Review checklist
 
 - [ ] Confirm Arabic terminology for construction, procurement, contracts, QS, finance, QA/QC, HSE, planning, handover, and warranty in Egyptian usage.
 - [ ] Check abbreviations and mixed Arabic/Latin text: C35, BOQ, RFQ, PR, PO, GRN, MIR, WIR, NCR, EGP, dates, email addresses, URLs, and document numbers.
 - [ ] Inspect EN/AR screenshots at desktop and mobile sizes; baseline images are in [docs/i18n/baseline/screenshots/](i18n/baseline/screenshots/).
-- [ ] Review the representative Arabic PDF screenshots and PDFs listed in [PDF_SPIKE.md](i18n/PDF_SPIKE.md). This is a renderer spike, not final production export sign-off.
+- [ ] Review the representative Arabic PDF screenshots and PDFs listed in [PDF_SPIKE.md](i18n/PDF_SPIKE.md). The spike chose the renderer that production export now uses; real exported documents still need native review.
 - [ ] Record each proposed correction in the term table with its screen/export context, reviewer, and date.
 - [ ] Re-run `npm run i18n:check` and `npm run i18n:parity` after accepted terminology edits.
 
@@ -162,11 +162,11 @@ The current English mobile route smoke passed for each listed route. Arabic text
 - Native Egyptian construction-domain reviewer: **pending**
 - Arabic role-based UAT: **pending owner**
 - Arabic terminology corrections: **none recorded yet; review pending**
-- Full production Arabic PDF/CSV export review: **pending; current PDF files are spike samples**
+- Production Arabic PDF/CSV export review: **pending native visual review**. Production PDF export is now implemented (headless Chromium + bundled IBM Plex fonts, `backend/src/utils/htmlPdf.js`, closeout F4) and machine-checked for Arabic text presence only; CSV keeps the UTF-8 BOM and neutralises formula prefixes. The sample files in the spike folder remain spike samples. **This pack is NOT a native-review sign-off.**
 
 ## Current paired catalog inventory
 
-Generated from 36 EN/AR namespaces. The reviewer should add corrections in the term table above and confirm contextual usage on the screens below.
+Generated from 37 EN/AR namespaces. The reviewer should add corrections in the term table above and confirm contextual usage on the screens below.
 
 ### actions
 
@@ -425,6 +425,7 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 
 | Catalog key | English | Arabic |
 |---|---|---|
+| `assets.inactiveProject` | Inactive project | مشروع غير نشط |
 | `assets.maintenance` | Maintenance | الصيانة |
 | `assets.system.addEquipment` | Add Equipment | إضافة معدة |
 | `assets.system.addNewEquipment` | Add New Equipment | إضافة معدة جديدة |
@@ -1093,6 +1094,7 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 | `enums.entityType.purchaseOrder` | Purchase order | أمر شراء |
 | `enums.entityType.purchaseRequest` | Purchase request | طلب شراء |
 | `enums.entityType.rfi` | RFI | RFI |
+| `enums.entityType.subContract` | Subcontract | عقد باطن |
 | `enums.entityType.submittal` | Submittal | مستند للاعتماد |
 | `enums.entityType.variation` | Variation | أمر تغيير |
 | `enums.entityType.workOrder` | Work order | أمر عمل |
@@ -1100,6 +1102,17 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 | `enums.frequency.daily` | Daily | يومي |
 | `enums.frequency.monthly` | Monthly | شهري |
 | `enums.frequency.weekly` | Weekly | أسبوعي |
+| `enums.handoverState.asBuilts` | As-built drawings | مخططات ما بعد التنفيذ |
+| `enums.handoverState.dlpWarranty` | Defects liability / warranty | فترة ضمان العيوب |
+| `enums.handoverState.finalCompletion` | Final completion | الإنجاز النهائي |
+| `enums.handoverState.finalInspection` | Final inspection | الفحص النهائي |
+| `enums.handoverState.oM` | O&M manuals | كتيبات التشغيل والصيانة |
+| `enums.handoverState.preHandover` | Pre-handover | ما قبل التسليم |
+| `enums.handoverState.punchSnag` | Punch / snag list | قائمة الملاحظات والعيوب |
+| `enums.handoverState.rectification` | Rectification | التصحيح |
+| `enums.handoverState.takingOver` | Taking over | الاستلام |
+| `enums.handoverState.testingCommissioning` | Testing & commissioning | الاختبار والتشغيل |
+| `enums.handoverState.training` | Training | التدريب |
 | `enums.inspectionPointType.hold` | Hold | نقطة توقف |
 | `enums.inspectionPointType.review` | Review | مراجعة |
 | `enums.inspectionPointType.witness` | Witness | نقطة حضور |
@@ -1241,6 +1254,7 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 | `enums.status.rectificationInProgress` | Rectification in progress | قيد التصحيح |
 | `enums.status.rectified` | Rectified | تم التصحيح |
 | `enums.status.rejected` | Rejected | مرفوض |
+| `enums.status.released` | Released | مُفلت |
 | `enums.status.reserved` | Reserved | محجوز |
 | `enums.status.resolved` | Resolved | تم الحل |
 | `enums.status.responded` | Responded | تم الرد |
@@ -1280,6 +1294,7 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 | `errors.advance_recovery_exceeds_balance` | Advance recovery cannot exceed the unrecovered contract advance. | لا يمكن أن يتجاوز استرداد الدفعة المقدمة رصيدها المتبقي. |
 | `errors.agent_request_forbidden` | You are not authorized to view this request. | ليست لديك صلاحية لعرض هذا الطلب. |
 | `errors.agent_request_not_found` | The request could not be found. | لم يتم العثور على الطلب. |
+| `errors.amount_exceeds_limit` | The amount or quantity exceeds the permitted limit. | المبلغ أو الكمية يتجاوز الحد المسموح به. |
 | `errors.apiRouteNotFound` | API route not found | مسار واجهة البرمجة غير موجود |
 | `errors.approval_not_found` | The approval request could not be found. | لم يتم العثور على طلب الاعتماد. |
 | `errors.attendance_duplicate` | Attendance has already been recorded for this date. | تم تسجيل الحضور لهذا التاريخ بالفعل. |
@@ -1293,6 +1308,9 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 | `errors.certified_quantity_amount_override` | Certified work is calculated from certified quantities and contract rates. | يتم احتساب قيمة الأعمال المعتمدة من الكميات المعتمدة والأسعار التعاقدية. |
 | `errors.certified_quantity_invalid` | Certified quantities must be within the claimed amounts and measurements must remain certified. | يجب ألا تتجاوز الكميات المعتمدة المطالبة، ويجب أن تظل القياسات معتمدة. |
 | `errors.certified_quantity_lines_required` | Enter the certified quantity for every claimed line. | أدخل الكمية المعتمدة لكل بند من المطالبة. |
+| `errors.commitment_cancelled` | A cancelled commitment cannot be adjusted. | لا يمكن تعديل التزام ملغى. |
+| `errors.commitment_not_found` | This commitment no longer exists. | هذا الالتزام لم يعد موجودًا. |
+| `errors.commitment_unchanged` | The cancelled amount is unchanged. | المبلغ الملغى لم يتغير. |
 | `errors.conflict` | This record was changed by someone else. | تم تعديل هذا السجل بواسطة شخص آخر. |
 | `errors.contract_boq_rate_ambiguous` | Each BOQ item must have exactly one matching contract rate. | يجب أن يكون لكل بند في جدول الكميات سعر تعاقدي مطابق واحد فقط. |
 | `errors.databaseTimeout` | The database operation timed out. Please retry. | انتهت مهلة عملية قاعدة البيانات. يرجى المحاولة مرة أخرى. |
@@ -1305,12 +1323,15 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 | `errors.forbidden` | You do not have permission to do this. | ليس لديك صلاحية لتنفيذ هذا الإجراء. |
 | `errors.grn_not_found` | The goods receipt could not be found. | إشعار استلام البضاعة غير موجود. |
 | `errors.grn_requires_accepted_mir` | A delivery only becomes usable stock after an accepted inspection. Post it as quarantined stock or attach the accepted inspection reference. | لا يصبح التوريد مخزونًا قابلًا للاستخدام إلا بعد فحص مقبول. سجّله كمخزون محجوز أو أرفق مرجع الفحص المقبول. |
+| `errors.insufficient_stock` | There is not enough usable stock for this request. | لا يوجد مخزون صالح للاستخدام يكفي لهذا الطلب. |
 | `errors.internal_error` | The request could not be completed. | تعذر إكمال الطلب. |
 | `errors.invalidProjectId` | Enter a valid project identifier. | أدخل معرّف مشروع صحيحًا. |
 | `errors.invalid_activity_budgeted_cost` | Enter a non-negative activity budget with no more than two decimal places. | أدخل ميزانية نشاط غير سالبة وبحد أقصى منزلتين عشريتين. |
 | `errors.invalid_document_id` | Enter a valid document identifier. | أدخل معرّف مستند صحيحًا. |
+| `errors.invalid_input` | Some of the submitted values are missing or invalid. | بعض القيم المُدخلة ناقصة أو غير صحيحة. |
 | `errors.invalid_notification_preference` | The notification preference values are invalid. | قيم تفضيلات الإشعارات غير صحيحة. |
 | `errors.invalid_resource_load_range` | Choose a valid resource loading date range of up to 91 days. | اختر نطاقاً صحيحاً لتحميل الموارد لا يتجاوز 91 يوماً. |
+| `errors.invalid_state` | This action is not allowed in the record's current state. | لا يمكن تنفيذ هذا الإجراء في الحالة الحالية للسجل. |
 | `errors.invalid_status` | The provided status is not valid. | الحالة المقدمة غير صحيحة. |
 | `errors.invoice_already_terminal` | This invoice is already voided or credited. | هذه الفاتورة ملغاة أو مضافة بالفعل. |
 | `errors.invoice_has_live_payments` | This invoice has payments recorded against it. Void those payments first. | لدى هذه الفاتورة مدفوعات مسجلة. ألغِ تلك المدفوعات أولًا. |
@@ -1329,6 +1350,7 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 | `errors.networkError` | Cannot reach the server. Check your connection. | تعذر الوصول إلى الخادم. تحقق من اتصالك. |
 | `errors.no_compliant_quotation` | No compliant quotation is available to recommend. | لا يوجد عرض أسعار مطابق يمكن التوصية به. |
 | `errors.notFound` | The requested record was not found. | لم يتم العثور على السجل المطلوب. |
+| `errors.not_authorized_for_action` | You are not authorized to perform this action. | غير مصرّح لك بتنفيذ هذا الإجراء. |
 | `errors.payment_already_void` | This payment is already void. | هذه الدفعة ملغاة بالفعل. |
 | `errors.payment_not_found` | The payment could not be found. | لم يتم العثور على الدفعة. |
 | `errors.phase_not_found` | The phase could not be found. | لم يتم العثور على المرحلة. |
@@ -1355,7 +1377,9 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 | `errors.quotation_not_found` | The supplier quotation could not be found. | عرض السعر غير موجود. |
 | `errors.rateLimitUnavailable` | The rate limit service is temporarily unavailable. Please try again shortly. | خدمة تحديد معدل الطلبات غير متاحة مؤقتًا. يُرجى المحاولة بعد قليل. |
 | `errors.rateLimited` | Too many requests. Please wait a moment. | عدد الطلبات كبير جدًا. يرجى الانتظار قليلًا. |
+| `errors.reason_required` | Enter a reason with at least three characters. | أدخل سببًا من ثلاثة أحرف على الأقل. |
 | `errors.recordInUse` | This record is used by other records and cannot be deleted. | هذا السجل مستخدم في سجلات أخرى ولا يمكن حذفه. |
+| `errors.record_not_found` | The requested record was not found. | لم يتم العثور على السجل المطلوب. |
 | `errors.requestFailed` | The request could not be completed. | تعذر إكمال الطلب. |
 | `errors.retryLater` | This service is temporarily unavailable. Please try again shortly. | هذه الخدمة غير متاحة مؤقتًا. يرجى المحاولة بعد قليل. |
 | `errors.retryLaterTimeout` | This request took too long. Please try again. | استغرق هذا الطلب وقتًا طويلًا. يرجى المحاولة مرة أخرى. |
@@ -1381,6 +1405,7 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 | `errors.unknown` | An unexpected error occurred. | حدث خطأ غير متوقع. |
 | `errors.unknown_approval_module` | Unknown approval module. | وحدة اعتماد غير معروفة. |
 | `errors.unknown_document_type` | Unknown document type. | نوع مستند غير معروف. |
+| `errors.upload_rejected` | This file could not be uploaded. Check its type and size and try again. | تعذر رفع هذا الملف. تحقق من نوعه وحجمه ثم أعد المحاولة. |
 | `errors.validation` | Some fields are invalid. Please review and try again. | بعض الحقول غير صحيحة. يرجى المراجعة والمحاولة مرة أخرى. |
 | `errors.validation_error` | Some required values are invalid. Review the highlighted fields. | تحقق من القيم المدخلة وحاول مرة أخرى. |
 | `errors.void_reason_required` | Enter a reason to void this record. | أدخل سببًا لإلغاء هذا السجل. |
@@ -1452,6 +1477,21 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 | `finance.accountMappings.status` | Confirmation | حالة التأكيد |
 | `finance.accountMappings.title` | Chart of accounts mappings | ربط الحسابات بدليل الحسابات |
 | `finance.accountMappings.unconfirmed` | Provisional / unconfirmed | مؤقت / غير مؤكد |
+| `finance.cashFlow.apAging` | Payables aging (AP) | أعمار الذمم الدائنة |
+| `finance.cashFlow.arAging` | Receivables aging (AR) | أعمار الذمم المدينة |
+| `finance.cashFlow.bucket` | Aging bucket | الفترة العمرية |
+| `finance.cashFlow.buckets.1_30` | 1-30 days | ١-٣٠ يومًا |
+| `finance.cashFlow.buckets.31_60` | 31-60 days | ٣١-٦٠ يومًا |
+| `finance.cashFlow.buckets.61_90` | 61-90 days | ٦١-٩٠ يومًا |
+| `finance.cashFlow.buckets.90_plus` | 90+ days | أكثر من ٩٠ يومًا |
+| `finance.cashFlow.buckets.current` | Current | غير مستحق |
+| `finance.cashFlow.description` | Company-wide receivable and payable aging with retention balances. | أعمار الذمم المدينة والدائنة على مستوى الشركة مع أرصدة المحتجزات. |
+| `finance.cashFlow.empty` | No outstanding receivables, payables or retention balances. | لا توجد ذمم مستحقة أو أرصدة محتجزات. |
+| `finance.cashFlow.outstanding` | Outstanding | المستحق |
+| `finance.cashFlow.refresh` | Refresh | تحديث |
+| `finance.cashFlow.retentionPayable` | Retention held for subcontractors | محتجزات محتجزة للمقاولين من الباطن |
+| `finance.cashFlow.retentionReceivable` | Retention held from clients | محتجزات محتجزة من العملاء |
+| `finance.cashFlow.title` | Cash flow | التدفق النقدي |
 | `finance.invoices` | Invoices | الفواتير |
 | `finance.payments` | Payments | المدفوعات |
 | `finance.system.addInvoice` | Add Invoice | إضافة فاتورة |
@@ -1504,6 +1544,8 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 | `finance.void.voidedBadge` | Void | ملغاة |
 | `finance.workbench.actionError` | The finance action could not be completed. Check your access and the record status, then try again. | تعذر إتمام الإجراء المالي. تحقق من صلاحيتك وحالة السجل ثم أعد المحاولة. |
 | `finance.workbench.addLine` | Add cost code | إضافة بند تكلفة |
+| `finance.workbench.adjustCommitment` | Adjust a commitment | تعديل التزام |
+| `finance.workbench.adjustHelp` | Records a manual cancellation (descope) with a reason; every change keeps a history row. | يسجل إلغاءً يدويًا (تخفيض نطاق) مع ذكر السبب؛ ويُحفظ سجل لكل تغيير. |
 | `finance.workbench.amount` | Amount | المبلغ |
 | `finance.workbench.applications` | Payment applications | طلبات المستخلصات |
 | `finance.workbench.approve` | Approve | اعتماد |
@@ -1512,6 +1554,7 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 | `finance.workbench.batchScope` | Payment batches require a company-wide finance grant. | تتطلب دفعات الموردين صلاحية مالية على مستوى الشركة. |
 | `finance.workbench.batches` | Payment batches | دفعات الموردين |
 | `finance.workbench.budgets` | Budget versions | إصدارات الميزانية |
+| `finance.workbench.cancelledAmount` | Cancelled amount | المبلغ الملغى |
 | `finance.workbench.certificates` | Payment certificates | شهادات الدفع |
 | `finance.workbench.certified` | Application certified. | تم اعتماد طلب المستخلص. |
 | `finance.workbench.certify` | Certify claim | اعتماد المطالبة |
@@ -1520,6 +1563,8 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 | `finance.workbench.claimed_variations` | Claimed variations | التغييرات المطالب بها |
 | `finance.workbench.claimed_work` | Claimed work | الأعمال المطالب بها |
 | `finance.workbench.client` | Client | العميل |
+| `finance.workbench.commitment` | Commitment | الالتزام |
+| `finance.workbench.commitments` | Commitments (purchase orders and subcontracts) | الالتزامات (أوامر الشراء وعقود الباطن) |
 | `finance.workbench.contractId` | Contract ID | معرّف العقد |
 | `finance.workbench.costCodeId` | Cost code ID (optional) | معرّف بند التكلفة (اختياري) |
 | `finance.workbench.create` | Create draft | إنشاء مسودة |
@@ -1543,6 +1588,7 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 | `finance.workbench.newForecast` | New forecast version | إصدار توقع جديد |
 | `finance.workbench.newRetentionRelease` | Post retention release | تسجيل صرف الاستقطاع |
 | `finance.workbench.number` | Number | الرقم |
+| `finance.workbench.original` | Original amount | المبلغ الأصلي |
 | `finance.workbench.party` | Party type | نوع الطرف |
 | `finance.workbench.paymentDate` | Payment date | تاريخ الدفع |
 | `finance.workbench.posted` | Posted | مسجل |
@@ -1555,8 +1601,11 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 | `finance.workbench.removeLine` | Remove line | حذف البند |
 | `finance.workbench.retentionHelp` | The release is checked against held retention, posted to the ledger, and can be reversed with a reason. | يتم التحقق من المبلغ مقابل الاستقطاع المحتجز، وتسجيل القيد، ويمكن عكسه مع ذكر السبب. |
 | `finance.workbench.retentionReleases` | Retention release history | سجل صرف الاستقطاعات |
+| `finance.workbench.saveAdjustment` | Save adjustment | حفظ التعديل |
 | `finance.workbench.saved` | Changes saved. | تم حفظ التغييرات. |
+| `finance.workbench.selectCommitment` | Select a commitment | اختر التزامًا |
 | `finance.workbench.selectInvoice` | Select an invoice | اختر فاتورة |
+| `finance.workbench.source` | Source | المصدر |
 | `finance.workbench.startWorkflow` | Start approval | بدء الاعتماد |
 | `finance.workbench.started` | Approval started. | بدأ مسار الاعتماد. |
 | `finance.workbench.subcontractor` | Subcontractor | مقاول الباطن |
@@ -1566,6 +1615,7 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 | `finance.workbench.supplierInvoiceId` | Supplier invoice ID | معرّف فاتورة المورد |
 | `finance.workbench.tabs.applications` | Applications and certificates | المستخلصات والشهادات |
 | `finance.workbench.tabs.batches` | Payment batches | دفعات الموردين |
+| `finance.workbench.tabs.commitments` | Commitments | الالتزامات |
 | `finance.workbench.tabs.creditNotes` | Credit notes | الإشعارات الدائنة |
 | `finance.workbench.tabs.retention` | Retention releases | صرف الاستقطاع |
 | `finance.workbench.tabs.versions` | Budget and forecast | الميزانية والتوقعات |
@@ -1833,6 +1883,24 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 | `inventory.record.deletedBadge` | Deleted | محذوفة |
 | `inventory.record.restore` | Restore | استعادة |
 | `inventory.record.showDeleted` | Show deleted items | عرض المواد المحذوفة |
+| `inventory.reservations.createdAt` | Created | أُنشئ في |
+| `inventory.reservations.description` | Reserved stock subtracts from available, never from physical. | المخزون المحجوز يُخصم من المتاح وليس من الرصيد الفعلي. |
+| `inventory.reservations.empty` | No stock reservations match this filter. | لا توجد حجوزات مخزون مطابقة لهذا الفلتر. |
+| `inventory.reservations.expiresAt` | Expires | ينتهي في |
+| `inventory.reservations.footnote` | A reservation reserves availability until it is released or expires. | يبقى الحجز محتجزًا من المتاح حتى يُفلت أو ينتهي. |
+| `inventory.reservations.material` | Material | المادة |
+| `inventory.reservations.newReservation` | New reservation | حجز جديد |
+| `inventory.reservations.noExpiry` | No expiry | بدون تاريخ انتهاء |
+| `inventory.reservations.noProject` | Company-wide | على مستوى الشركة |
+| `inventory.reservations.noWarehouse` | No warehouse scope | بدون مخزن محدد |
+| `inventory.reservations.project` | Project | المشروع |
+| `inventory.reservations.quantity` | Quantity | الكمية |
+| `inventory.reservations.refresh` | Refresh | تحديث |
+| `inventory.reservations.release` | Release | إفلات الحجز |
+| `inventory.reservations.reserve` | Reserve | حجز |
+| `inventory.reservations.statusFilter` | Status | الحالة |
+| `inventory.reservations.title` | Stock reservations | حجوزات المخزون |
+| `inventory.reservations.warehouse` | Warehouse (optional) | المخزن (اختياري) |
 | `inventory.system.active` | Active | نشط |
 | `inventory.system.addItem` | Add Item | إضافة مادة |
 | `inventory.system.addNewItem` | Add New Item | إضافة مادة جديدة |
@@ -1891,6 +1959,7 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 | `navigation.items.agentActivity` | Agent Activity | نشاط الوكلاء |
 | `navigation.items.approvals` | Approvals | الموافقات |
 | `navigation.items.assets` | Equipment | المعدات |
+| `navigation.items.cashFlow` | Cash flow | التدفق النقدي |
 | `navigation.items.clients` | Clients | العملاء |
 | `navigation.items.dashboard` | Dashboard | لوحة التحكم |
 | `navigation.items.expenses` | Expenses | المصروفات |
@@ -1899,8 +1968,10 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 | `navigation.items.invoices` | Invoices & Payments | الفواتير والمدفوعات |
 | `navigation.items.legal` | Legal | القسم القانوني |
 | `navigation.items.myActions` | My Actions | مهامي |
+| `navigation.items.notificationPreferences` | Notification preferences | تفضيلات الإشعارات |
 | `navigation.items.procurementComparison` | Procurement comparison | مقارنة المشتريات |
 | `navigation.items.projects` | Projects | المشاريع |
+| `navigation.items.reservations` | Stock reservations | حجوزات المخزون |
 | `navigation.items.settings` | Settings | الإعدادات |
 | `navigation.items.suppliers` | Suppliers | الموردين |
 | `navigation.offline.banner` | You are offline. Daily reports can be queued on this device; other changes need a connection. | أنت غير متصل بالإنترنت. تحتاج التغييرات المرسلة إلى اتصال. |
@@ -1913,6 +1984,34 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 | `navigation.settings.placeholder` | Settings will be available here. | ستتوفر الإعدادات هنا. |
 | `navigation.settings.title` | Settings | الإعدادات |
 | `navigation.user.fallbackName` | User | مستخدم |
+
+### notifications
+
+| Catalog key | English | Arabic |
+|---|---|---|
+| `notifications.preferences.defaultsNote` | No personal overrides yet: in-app notifications are on for every event and the other channels are off. | لا توجد تخصيصات شخصية بعد: الإشعارات داخل التطبيق مفعّلة لكل حدث والقنوات الأخرى معطّلة. |
+| `notifications.preferences.description` | Choose how each notification event reaches you. | اختر كيفية وصول كل حدث إشعار إليك. |
+| `notifications.preferences.event` | Event | الحدث |
+| `notifications.preferences.events.actionOverdue` | Action item overdue | تجاوز موعد إجراء |
+| `notifications.preferences.events.approvalRequested` | Approval requested | طلب اعتماد |
+| `notifications.preferences.events.deliveryReceived` | Goods received | استلام بضاعة |
+| `notifications.preferences.events.handoverAdvanced` | Handover advanced | تقدم التسليم |
+| `notifications.preferences.events.invoiceCreated` | Invoice created | إنشاء فاتورة |
+| `notifications.preferences.events.invoiceDue` | Invoice due | فاتورة مستحقة |
+| `notifications.preferences.events.invoiceOverdue` | Invoice overdue | فاتورة متأخرة |
+| `notifications.preferences.events.observationCreated` | Observation raised | رفع ملاحظة |
+| `notifications.preferences.events.paymentReceived` | Payment received | استلام دفعة |
+| `notifications.preferences.events.purchaseOrderApproved` | Purchase order approved | اعتماد أمر شراء |
+| `notifications.preferences.events.purchaseOrderIssued` | Purchase order issued | إصدار أمر شراء |
+| `notifications.preferences.events.purchaseOrderRejected` | Purchase order rejected | رفض أمر شراء |
+| `notifications.preferences.events.purchaseRequisitionApproved` | Purchase requisition approved | اعتماد طلب شراء |
+| `notifications.preferences.events.rfiSubmitted` | RFI submitted | إرسال طلب معلومات (RFI) |
+| `notifications.preferences.events.variationApproved` | Variation approved | اعتماد أمر تغيير |
+| `notifications.preferences.events.wirSubmitted` | Work inspection request submitted | إرسال طلب فحص أعمال |
+| `notifications.preferences.footnote` | Channels without a personal switch follow the defaults: in-app on, everything else off until a provider is configured. | القنوات بدون تخصيص شخصي تتبع الافتراضي: داخل التطبيق مفعّل، وقنوات أخرى معطّلة حتى يُهيأ مزود لها. |
+| `notifications.preferences.refresh` | Refresh | تحديث |
+| `notifications.preferences.title` | Notification preferences | تفضيلات الإشعارات |
+| `notifications.preferences.toggle` | Toggle preference | تبديل التفضيل |
 
 ### payroll
 
@@ -2270,6 +2369,7 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 | `procurement.actions.createReturn` | Record supplier return | تسجيل مرتجع للمورد |
 | `procurement.actions.createRfq` | Create request for quotation | إنشاء طلب عرض سعر |
 | `procurement.actions.invite` | Invite selected suppliers | دعوة الموردين المحددين |
+| `procurement.actions.markSupplierCollected` | Mark collected by supplier | تأكيد استلام المورد للمرفوض |
 | `procurement.actions.recordDelivery` | Record delivery | تسجيل التسليم |
 | `procurement.actions.recordInvoice` | Record supplier invoice | تسجيل فاتورة المورد |
 | `procurement.actions.recordPayment` | Record supplier payment | تسجيل دفعة المورد |
@@ -2368,6 +2468,9 @@ Generated from 36 EN/AR namespaces. The reviewer should add corrections in the t
 | `procurement.messages.selectRfqAndSupplier` | Select an RFQ and at least one supplier. | حدد طلب عرض سعر ومورداً واحداً على الأقل. |
 | `procurement.messages.selectRfqLine` | Select a line from the selected RFQ. | حدد بنداً من طلب عرض السعر. |
 | `procurement.messages.submitted` | Submitted for approval. | تم الإرسال للموافقة. |
+| `procurement.messages.supplierCollected` | Collected by supplier | استلمه المورد |
+| `procurement.messages.supplierCollectionNote` | Collection note (optional) | ملاحظة الاستلام (اختياري) |
+| `procurement.messages.supplierToCollect` | Rejected - supplier to collect | مرفوض - على المورد استلامه |
 | `procurement.messages.threeWayMatch` | Invoice lines are checked against the purchase order and accepted goods receipts. Approval records the supplier liability. | تتم مطابقة بنود الفاتورة مع أمر الشراء والبضائع المستلمة والمقبولة. الاعتماد يسجل التزام المورد. |
 | `procurement.rfq` | Request for quotation | طلب عرض سعر |
 | `procurement.title` | Procurement | المشتريات |
