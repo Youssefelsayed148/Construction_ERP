@@ -58,7 +58,7 @@ export const SNAKE_CASE_ERROR_CODES = new Set([
   'supplier_invoice_duplicate', 'supplier_invoice_not_approvable', 'cancel_reason_required',
   'reason_required', 'commitment_not_found', 'commitment_cancelled', 'commitment_unchanged',
   'record_not_found', 'invalid_state', 'insufficient_stock', 'invalid_input', 'amount_exceeds_limit',
-  'not_authorized_for_action',
+  'not_authorized_for_action', 'upload_rejected',
 ]);
 
 function withAuthHeaders(options) {
