@@ -283,6 +283,9 @@ function ProcurementWorkspace({ projectId }) {
       {(data.material_inspection_requests || []).map((row) => <div className="procurement-action" key={`mir-${row.id}`}><b>{refOf(row)} · {translateEnum(t, 'status', row.status)}</b>
         {row.status === 'pending' && <><button className="btn btn-sm" disabled={busy} onClick={() => postAction(`/procurement/mir/${row.id}/decide`, { decision: 'accept' })}>{t('procurement.actions.accept')}</button>
           <button className="btn btn-sm btn-danger" disabled={busy} onClick={() => postAction(`/procurement/mir/${row.id}/decide`, { decision: 'reject' })}>{t('procurement.actions.reject')}</button></>}
+        {row.supplier_collection_status === 'pending_collection' && <><span className="badge badge-warning">{t('procurement.messages.supplierToCollect')}</span>
+          <button className="btn btn-sm" disabled={busy} onClick={() => postAction(`/procurement/mir/${row.id}/supplier-collection`, {})}>{t('procurement.actions.markSupplierCollected')}</button></>}
+        {row.supplier_collection_status === 'collected' && <span className="badge">{t('procurement.messages.supplierCollected')}</span>}
         {row.status === 'accepted' && <button className="btn btn-sm" disabled={busy} onClick={() => postAction(`/procurement/mir/${row.id}/grn`)}>{t('procurement.actions.createGrn')}</button>}</div>)}
       <EntityTable rows={data.goods_receipt_notes} title={t('procurement.workspace.goodsReceipts')} empty={t('procurement.messages.noGrns')}
         columns={[["reference", t('procurement.fields.reference')], ['purchase_order_id', t('procurement.fields.purchaseOrder')], ['status', t('common.status')], ['created_at', t('common.createdAt')]]} />

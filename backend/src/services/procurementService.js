@@ -680,9 +680,11 @@ async function decideMir(q, mirId, user, decision, { accepted = null, notes = nu
   const poLineIds = [...new Set(plan.map((p) => p.line.purchase_order_line_id).filter((id) => id != null))].sort((x, y) => x - y);
   if (poLineIds.length) await q('SELECT id FROM purchase_order_lines WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE', [poLineIds]);
   const claimed = (await q(
-    `UPDATE material_inspection_requests SET status = $1, inspected_by = $2, decided_at = $3, notes = $4
+    `UPDATE material_inspection_requests SET status = $1, inspected_by = $2, decided_at = $3, notes = $4,
+            supplier_collection_status = $6
       WHERE id = $5 AND status = 'pending' RETURNING *`,
-    [status, user ? user.id : null, new Date(), notes, mirId]
+    // C-PROC-002: any rejected quantity leaves a minimal "supplier to collect" record on the MIR (no return document).
+    [status, user ? user.id : null, new Date(), notes, mirId, acceptedQty < inspectedQty ? 'pending_collection' : null]
   )).rows[0];
   if (!claimed) throw new ConflictError('MIR is already decided');
 
@@ -721,6 +723,23 @@ async function decideMir(q, mirId, user, decision, { accepted = null, notes = nu
     }
   }
   return (await q('SELECT * FROM material_inspection_requests WHERE id = $1', [mirId])).rows[0];
+}
+
+// C-PROC-002: the supplier has collected the rejected goods. Stock-neutral (the write-off already happened at
+// the MIR decision) and no GL effect - it only closes the "supplier to collect" record, with an optional note.
+async function markSupplierCollected(q, mirId, user, { note = null } = {}) {
+  const mir = (await q('SELECT * FROM material_inspection_requests WHERE id = $1 FOR UPDATE', [mirId])).rows[0];
+  if (!mir) throw svcError(404, 'record_not_found', `MIR #${mirId} not found`);
+  if (mir.supplier_collection_status !== 'pending_collection') {
+    throw svcError(409, 'invalid_state', 'This MIR has no rejected goods awaiting supplier collection');
+  }
+  return (await q(
+    `UPDATE material_inspection_requests
+        SET supplier_collection_status = 'collected', supplier_collection_note = $2,
+            supplier_collection_updated_at = NOW(), supplier_collection_updated_by = $3
+      WHERE id = $1 RETURNING *`,
+    [mirId, note, user ? user.id : null]
+  )).rows[0];
 }
 
 // GRN — only for MIR-accepted quantities. Documents the acceptance; the
@@ -1071,6 +1090,7 @@ module.exports = {
   createDelivery,
   createMir,
   decideMir,
+  markSupplierCollected,
   createGrn,
   createSupplierReturn,
   matchInvoiceLine,

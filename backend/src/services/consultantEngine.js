@@ -26,6 +26,7 @@ const { query: defaultQuery } = require('../config/database');
 const { nextNumber } = require('./numbering');
 const workflowEngine = require('./workflowEngine');
 const qaqcEngine = require('./qaqcEngine');
+const { portalFamily } = require('./portalFamily');
 const OBSERVATION_IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
 
 const OBSERVATION_TRANSITIONS = {
@@ -143,7 +144,7 @@ async function createObservation(q, {
   before_photos = [], after_photos = [], user, organization_id = null,
 }) {
   await assertConsultantProject(q, user, project_id);
-  if (user.role === 'consultant') organization_id = (await consultantIdentity(q, user, project_id)).organization_id;
+  if (portalFamily(user.role) === 'consultant') organization_id = (await consultantIdentity(q, user, project_id)).organization_id;
   if (location_id != null) {
     const location = (await q('SELECT project_id FROM project_locations WHERE id = $1', [location_id])).rows[0];
     if (!location || toNum(location.project_id) !== toNum(project_id)) throw new Error('Observation location must belong to the same project');
@@ -151,7 +152,7 @@ async function createObservation(q, {
   if (drawing_document_id != null) {
     const drawing = (await q('SELECT * FROM project_documents WHERE id = $1', [drawing_document_id])).rows[0];
     if (!drawing || toNum(drawing.project_id) !== toNum(project_id) || drawing.document_type !== 'drawing') throw new Error('Reference drawing must belong to the same project');
-    if (user.role === 'consultant' && (drawing.status !== 'approved' || !canExternalViewDocument(drawing, 'consultant'))) {
+    if (portalFamily(user.role) === 'consultant' && (drawing.status !== 'approved' || !canExternalViewDocument(drawing, 'consultant'))) {
       throw new Error('Reference drawing is not available in the consultant portal');
     }
   }
@@ -241,7 +242,7 @@ async function addObservationComment(q, { observation_id, user, organization_id 
   const observation = (await q('SELECT project_id FROM observations WHERE id = $1', [observation_id])).rows[0];
   if (!observation) throw new Error(`Observation #${observation_id} not found`);
   await assertConsultantProject(q, user, observation.project_id);
-  if (user.role === 'consultant') organization_id = (await consultantIdentity(q, user, observation.project_id)).organization_id;
+  if (portalFamily(user.role) === 'consultant') organization_id = (await consultantIdentity(q, user, observation.project_id)).organization_id;
   const r = await q(
     `INSERT INTO observation_comments (observation_id, author_user_id, organization_id, comment_type, body)
      VALUES ($1,$2,$3,$4,$5) RETURNING *`,
@@ -256,7 +257,7 @@ async function advanceObservation(q, observationId, user, action, opts = {}) {
   const observation = (await q('SELECT * FROM observations WHERE id = $1', [observationId])).rows[0];
   if (!observation) throw new Error(`Observation #${observationId} not found`);
   await assertConsultantProject(q, user, observation.project_id);
-  const actorOrganizationId = user.role === 'consultant'
+  const actorOrganizationId = portalFamily(user.role) === 'consultant'
     ? (await consultantIdentity(q, user, observation.project_id)).organization_id : null;
   const allowedRoles = {
     acknowledge: ['consultant', 'project_manager', 'owner', 'admin'],
@@ -410,7 +411,7 @@ async function recordRfiResponse(q, { rfi_id, stage = 'official_response', user,
   } else {
     if (!['consultant', 'owner', 'admin', 'project_manager'].includes(user.role)) throw new Error('Consultant review role required');
     await assertConsultantProject(q, user, rfi.project_id);
-    if (user.role === 'consultant') ({ organization_id, organization_name } = await consultantIdentity(q, user, rfi.project_id));
+    if (portalFamily(user.role) === 'consultant') ({ organization_id, organization_name } = await consultantIdentity(q, user, rfi.project_id));
   }
   const r = await q(
     `INSERT INTO rfi_responses (rfi_id, revision, stage, responder_user_id, responder_name,
@@ -473,8 +474,8 @@ async function recordSubmittalResponse(q, { submittal_id, stage = 'response', us
     response: ['consultant', 'owner', 'admin'],
   };
   if (!allowedRoles[stage].includes(user.role)) throw new Error(`Role ${user.role} cannot complete ${stage}`);
-  if (user.role === 'consultant') await assertConsultantProject(q, user, submittal.project_id);
-  if (user.role === 'consultant') ({ organization_id, organization_name } = await consultantIdentity(q, user, submittal.project_id));
+  if (portalFamily(user.role) === 'consultant') await assertConsultantProject(q, user, submittal.project_id);
+  if (portalFamily(user.role) === 'consultant') ({ organization_id, organization_name } = await consultantIdentity(q, user, submittal.project_id));
   const r = await q(
     `INSERT INTO submittal_revisions (submittal_id, revision_number, stage, actor_user_id, actor_name,
        actor_organization_id, actor_organization_name, response_code, comments, attachments)

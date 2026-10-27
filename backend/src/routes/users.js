@@ -7,6 +7,7 @@ const policy = require('../services/policy');
 const { logActivity } = require('../utils/activity');
 const { queryPaginated } = require('../utils/pagination');
 const { routeFail } = require('../utils/typedRoute');
+const { isExternalPortalRole } = require('../services/portalFamily');
 
 // GET /api/users - list all users (owner/admin)
 router.get('/', authenticate, authorize('owner', 'admin'), async (req, res) => {
@@ -124,7 +125,7 @@ router.put('/:id', authenticate, authorize('owner', 'admin'), async (req, res) =
           'DELETE FROM user_project_roles WHERE user_id = $1 AND role_id IN (SELECT id FROM roles WHERE key = $2)',
           [id, current.role]
         );
-        if (!policy.EXTERNAL_ROLES.has(value.role)) {
+        if (!isExternalPortalRole(value.role)) {
           await q(
             `INSERT INTO user_project_roles (user_id, project_id, role_id, granted_by)
              SELECT $1, NULL, r.id, $3 FROM roles r

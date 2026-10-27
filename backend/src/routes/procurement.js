@@ -11,6 +11,7 @@ const pdf = require('../utils/procurementPdf');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 const { auditedChange } = require('../utils/auditedMutation');
 const { typedFail: commonTypedFail, routeFail } = require('../utils/typedRoute');
+const { portalFamily } = require('../services/portalFamily');
 const atomic = (fn) => transaction((client) => fn(client.query.bind(client)));
 
 // Phase 12 — the PR → RFQ → PO → GRN procurement surface. All state lives in
@@ -214,7 +215,7 @@ router.get('/rfq/:id/quotations/vendor/:supplierId', authenticate, authorize(), 
   try {
     const rfqId = parseInt(req.params.id, 10);
     const supplierId = parseInt(req.params.supplierId, 10);
-    if (req.user.role === 'supplier') {
+    if (portalFamily(req.user.role) === 'supplier') {
       const scope = await require('../services/portalEngine').supplierScope(query, req.user.id);
       if (!scope.supplierIds.includes(supplierId)) {
         return res.status(404).json({ success: false, error: 'Quotation not found', error_code: 'quotation_not_found', error_params: {} });
@@ -616,6 +617,22 @@ router.post('/mir/:id/decide', authenticate, authorize(), async (req, res) => {
       }, { query: q });
       return decided;
     } });
+    res.json({ success: true, data: mir });
+  } catch (e) { return routeFail(res, e, 'PROCUREMENT', req); }
+});
+
+// C-PROC-002: the supplier collected a rejected delivery (no return document; stock-neutral, no GL effect).
+router.post('/mir/:id/supplier-collection', authenticate, authorize(), async (req, res) => {
+  try {
+    const schema = Joi.object({ note: Joi.string().max(2000).allow('', null) });
+    const { error, value } = schema.validate(req.body || {});
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
+    const mirId = parseInt(req.params.id, 10);
+    const mir = await auditedChange(req, { action: 'update', module: 'procurement', entityType: 'material_inspection_request' }, {
+      table: 'material_inspection_requests', id: mirId,
+      describe: (row) => `MIR ${row?.mir_number || mirId}: rejected goods collected by supplier`,
+      run: (q) => svc.markSupplierCollected(q, mirId, req.user, { note: value.note || null }),
+    });
     res.json({ success: true, data: mir });
   } catch (e) { return routeFail(res, e, 'PROCUREMENT', req); }
 });

@@ -1,3 +1,4 @@
+import { portalFamilyOf } from '../../utils/portalFamily';
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../store';
@@ -37,28 +38,9 @@ const portalMenuItems = {
   supplier: [{ path: '/supplier-portal', icon: Truck, labelKey: 'portals.supplier', module: 'portal', action: 'view' }],
 };
 
-// The canonical external roles of migration 0031 are project-bound mirrors of
-// the four legacy alias roles, so each one maps to the portal menu of its
-// alias family: the same single entry and the same path the legacy role
-// already gets - nothing is added beyond what those legacy roles reach.
-// The mapping is role-authoritative (the legacy keys only pass the grant
-// filter because their own grants include their portal module); the backend
-// policy remains the enforcement point for every portal API.
-const CANONICAL_PORTAL_FAMILY = {
-  client_executive: 'client',
-  client_reviewer: 'client',
-  // 0031 describes pmc_manager as client-side supervision reads with the
-  // see_client_value lens and grants it no consultant-module permissions.
-  pmc_manager: 'client',
-  consultant_coordinator: 'consultant',
-  consultant_reviewer: 'consultant',
-  subcontractor_manager: 'subcontractor',
-  subcontractor_site_engineer: 'subcontractor',
-  // An external service provider mirroring the supplier shape: ('portal','view')
-  // plus its own domain module.
-  testing_lab: 'supplier',
-  supplier_sales: 'supplier',
-};
+// The canonical external roles of migration 0031 are project-bound mirrors of the four legacy alias roles
+// (utils/portalFamily.js), so each one gets the portal menu of its alias family. Role-authoritative: the backend
+// policy (migration 0072 grants the same portal modules) remains the enforcement point for every portal API.
 
 const labelFor = (t, item) => t(item.labelKey.startsWith('portals.') ? `navigation.${item.labelKey}` : `navigation.items.${item.labelKey}`);
 
@@ -67,8 +49,8 @@ function Sidebar({ mobileOpen = false, onNavigate }) {
   const navigate = useNavigate();
   const { t, setLocale, locale } = useLocale();
   const user = authService.getCurrentUser();
-  const portalFamily = CANONICAL_PORTAL_FAMILY[user?.role];
-  const portalMenu = portalMenuItems[user?.role] || (portalFamily ? portalMenuItems[portalFamily] : null);
+  const portalFamily = portalFamilyOf(user?.role);
+  const portalMenu = portalFamily ? portalMenuItems[portalFamily] : null;
   const base = portalMenu || mainMenuItems;
   const modules = Array.isArray(user?.policy_modules) ? user.policy_modules : user?.module_permissions;
   const permissions = user?.policy_permissions;

@@ -7,10 +7,10 @@ const Joi = require('joi');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 const { auditedMutation, auditedChange } = require('../utils/auditedMutation');
 const { typedFail, routeFail } = require('../utils/typedRoute');
-const { EXTERNAL_ROLES } = require('../services/policy');
+const { isExternalPortalRole } = require('../services/portalFamily');
 
 router.get('/:id/comments', authenticate, authorize(), async (req, res) => {
-  if (EXTERNAL_ROLES.has(req.user.role)) return res.status(403).json({ success: false, error_code: 'action_comments_internal_only' });
+  if (isExternalPortalRole(req.user.role)) return res.status(403).json({ success: false, error_code: 'action_comments_internal_only' });
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 200);
   try {
     const result = await auditedTransaction(async (q) => {
@@ -27,7 +27,7 @@ router.get('/:id/comments', authenticate, authorize(), async (req, res) => {
 });
 
 router.post('/:id/comments', authenticate, authorize(), async (req, res) => {
-  if (EXTERNAL_ROLES.has(req.user.role)) return res.status(403).json({ success: false, error_code: 'action_comments_internal_only' });
+  if (isExternalPortalRole(req.user.role)) return res.status(403).json({ success: false, error_code: 'action_comments_internal_only' });
   const { error, value } = Joi.object({ body: Joi.string().trim().min(1).max(5000).required() }).unknown(false).validate(req.body);
   if (error) return res.status(400).json({ success: false, error_code: 'invalid_action_comment' });
   try {

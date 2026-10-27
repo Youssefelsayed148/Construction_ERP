@@ -150,8 +150,17 @@ const C5_MATRIX = {
     denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/warehouses/reservations'], ['GET', '/api/commercial/project/:projectId/commitments']],
   },
   client_executive: {
-    allowed: [['GET', '/api/projects/:projectId/calendars']],
+    // F3: migration 0072 gives the client family its portal module (client-portal.view).
+    allowed: [['GET', '/api/projects/:projectId/calendars'], ['GET', '/api/client-portal/projects']],
     denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/warehouses/reservations'], ['GET', '/api/notifications/preferences'], ['GET', '/api/commercial/project/:projectId/commitments']],
+  },
+  client_reviewer: {
+    allowed: [['GET', '/api/client-portal/projects']],
+    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/warehouses/reservations'], ['GET', '/api/commercial/project/:projectId/commitments']],
+  },
+  pmc_manager: {
+    allowed: [['GET', '/api/client-portal/projects']],
+    denied: [['GET', '/api/finance-ledger/cash-flow'], ['GET', '/api/warehouses/reservations'], ['GET', '/api/commercial/project/:projectId/commitments']],
   },
   supplier_sales: {
     allowed: [['GET', '/api/warehouses/reservations']],

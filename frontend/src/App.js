@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
+import { portalLandingPath } from './utils/portalFamily';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Items from './pages/Items';
@@ -53,11 +54,9 @@ function ProtectedRoute({ children }) {
 function LandingRedirect() {
   const user = authService.getCurrentUser();
   if (!user) return <Navigate to="/login" replace />;
-  const portalLanding = {
-    consultant: '/consultant-portal', client: '/client-portal',
-    subcontractor: '/subcontractor-portal', supplier: '/supplier-portal',
-  };
-  if (portalLanding[user.role]) return <Navigate to={portalLanding[user.role]} replace />;
+  // Mapped canonical external roles (client_executive, consultant_coordinator, ...) land on their alias family's portal.
+  const portalPath = portalLandingPath(user.role);
+  if (portalPath) return <Navigate to={portalPath} replace />;
   return <Navigate to="/dashboard" replace />;
 }
 

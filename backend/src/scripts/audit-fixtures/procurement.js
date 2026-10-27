@@ -51,6 +51,11 @@ module.exports = {
     return { body: { purchase_order_id: p.id, warehouse_id: w.warehouse, lines: [{ purchase_order_line_id: (await poLine(ctx, p)).id, quantity: 10 }] }, status: 201 };
   }),
   ...group(['POST /api/procurement/deliveries/:id/mir', 'POST /api/v1/deliveries/:id/mir'], async ctx => ({ params: { id: (await delivery(ctx, await world(ctx))).id }, body: {}, status: 201 })),
+  ...group(['POST /api/procurement/mir/:id/supplier-collection'], async ctx => {
+    const m = await mir(ctx, await world(ctx));
+    await ctx.api('POST', `/api/procurement/mir/${m.id}/decide`, { decision: 'reject' });
+    return { params: { id: m.id }, body: { note: 'collected by supplier truck' } };
+  }),
   ...group(['POST /api/procurement/mir/:id/decide', 'POST /api/v1/deliveries/mir/:id/decide'], async ctx => ({ params: { id: (await mir(ctx, await world(ctx))).id }, body: { decision: 'accept' } })),
   ...group(['POST /api/procurement/mir/:id/grn', 'POST /api/v1/grns/from-mir/:id'], async ctx => ({ params: { id: (await acceptedMir(ctx, await world(ctx))).id }, body: {}, status: 201 })),
   ...group(['POST /api/procurement/grn/:id/returns', 'POST /api/v1/grns/:id/returns'], async ctx => {

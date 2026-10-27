@@ -2,6 +2,7 @@
 
 const policy = require('./policy');
 const { canExternalViewDocument } = require('./documentVisibility');
+const { portalFamily } = require('./portalFamily');
 // Canonical external roles from migration 0031 must retain portal restrictions;
 // their generic docs grants never make draft internal files publicly accessible.
 const EXTERNAL_MEDIA_ROLES = new Set([...policy.EXTERNAL_ROLES,
@@ -37,15 +38,15 @@ async function canAccessMedia(q, user, fileName, preview = null, policyEvaluator
 
   let projectIds = [];
   let allowedVisibility = [];
-  if (user.role === 'client') {
+  if (portalFamily(user.role) === 'client') {
     projectIds = preview ? (preview.scoped_project_ids || []).map(Number)
       : await require('./clientEngine').resolveClientProjects(q, user.id);
     allowedVisibility = ['client', 'all_external'];
-  } else if (user.role === 'consultant') {
+  } else if (portalFamily(user.role) === 'consultant') {
     projectIds = preview ? (preview.scoped_project_ids || []).map(Number)
       : await require('./consultantEngine').resolveConsultantProjects(q, user.id);
     allowedVisibility = ['consultant', 'all_external'];
-  } else if (user.role === 'subcontractor') {
+  } else if (portalFamily(user.role) === 'subcontractor') {
     projectIds = (await require('./portalEngine').subcontractorScopeFor(q, user.id)).projectIds;
     allowedVisibility = ['subcontractor', 'all_external'];
   }
@@ -55,7 +56,7 @@ async function canAccessMedia(q, user, fileName, preview = null, policyEvaluator
     projectIds = projectIds.filter((id) => previewProjects.includes(Number(id)));
   }
   if (!projectIds.length) return false;
-  if (user.role === 'consultant') {
+  if (portalFamily(user.role) === 'consultant') {
     const links = (await q('SELECT organization_id, is_active FROM organization_users WHERE user_id = $1', [user.id])).rows
       .filter((link) => link.is_active !== false)
       .map((link) => Number(link.organization_id));

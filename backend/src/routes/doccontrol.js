@@ -12,6 +12,7 @@ const { auditedMutation, rowSnapshot } = require('../utils/auditedMutation');
 const { dateOnly } = require('../utils/validation');
 const { normalizeDateFields } = require('../utils/dateOnly');
 const { routeFail } = require('../utils/typedRoute');
+const { isExternalPortalRole } = require('../services/portalFamily');
 
 // Mounted at /api/docs — document library with versioning, RFIs, submittals.
 // File uploads go through /api/documents/upload first; this router stores the returned URLs.
@@ -938,8 +939,7 @@ router.get('/search', authenticate, authorize(), async (req, res) => {
       return res.json({ success: true, data: page.rows });
     }
     const like = `%${term.trim()}%`;
-    const externalRoles = ['consultant', 'client', 'subcontractor', 'supplier'];
-    const isExternal = externalRoles.includes(req.user.role);
+    const isExternal = isExternalPortalRole(req.user.role);
 
     const results = [];
     // Documents — every revision matches, visibility resolved per revision's document.

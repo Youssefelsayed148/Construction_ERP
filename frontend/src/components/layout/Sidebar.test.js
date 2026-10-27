@@ -72,13 +72,13 @@ describe('C5 canonical role map: rendered sidebar entries', () => {
     accountant_ar: ['dashboard', 'clients', 'invoices', 'payments', 'finance', 'finance-ledger', 'approvals', 'actions', 'notifications'],
     site_engineer: ['projects', 'boq', 'locations', 'quantities', 'schedule', 'site', 'work-orders', 'qhse', 'hse', 'actions', 'notifications'],
     hr_manager: ['hr', 'payroll', 'users', 'organizations', 'delegations', 'projects', 'dashboard', 'reports', 'actions', 'notifications'],
-    client_executive: ['projects', 'docs', 'qhse', 'boq'],
-    client_reviewer: ['projects', 'docs', 'qhse', 'boq'],
-    pmc_manager: ['projects', 'boq', 'locations', 'quantities', 'site', 'schedule', 'docs', 'documents', 'qhse', 'reports'],
+    client_executive: ['projects', 'docs', 'qhse', 'boq', 'client-portal'],
+    client_reviewer: ['projects', 'docs', 'qhse', 'boq', 'client-portal'],
+    pmc_manager: ['projects', 'boq', 'locations', 'quantities', 'site', 'schedule', 'docs', 'documents', 'qhse', 'reports', 'client-portal'],
     consultant_coordinator: ['projects', 'consultant', 'documents'],
-    consultant_reviewer: ['projects', 'consultant', 'documents'],
+    consultant_reviewer: ['projects', 'consultant', 'documents', 'qhse', 'boq', 'docs', 'work-orders'],
     subcontractor_manager: ['portal', 'subcontractors', 'documents'],
-    subcontractor_site_engineer: ['portal', 'documents'],
+    subcontractor_site_engineer: ['portal', 'documents', 'subcontractors'],
     supplier_sales: ['portal', 'items', 'warehouses'],
     testing_lab: ['portal', 'qhse'],
   };
@@ -162,6 +162,7 @@ describe('C5 canonical role map: rendered sidebar entries', () => {
     view.unmount();
   });
 
+  // F3: the grants above mirror migration 0072 (canonical external roles hold their alias family's portal modules).
   test('FINDING C5 (fixed): every canonical external role renders its alias family portal menu', () => {
     // The 0031 canonical external roles map to the portal menu of their legacy
     // alias family: same path, nothing beyond what the legacy roles reach.

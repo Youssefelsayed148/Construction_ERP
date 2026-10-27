@@ -10,6 +10,7 @@ const tokens = require('../services/tokens');
 const passwords = require('../services/passwords');
 const authLockout = require('../services/authLockout');
 const { routeFail } = require('../utils/typedRoute');
+const { isExternalPortalRole } = require('../services/portalFamily');
 
 // POST /api/auth/register
 router.post('/register', authenticate, authorize('owner', 'admin'), async (req, res) => {
@@ -48,7 +49,7 @@ router.post('/register', authenticate, authorize('owner', 'admin'), async (req, 
         [value.name, value.email, hashedPassword, value.role, value.department || null, value.module_permissions || []]
       );
       // Project-bound external roles get no company-wide row; they are assigned per project.
-      if (!policy.EXTERNAL_ROLES.has(value.role)) {
+      if (!isExternalPortalRole(value.role)) {
         await client.query(
           `INSERT INTO user_project_roles (user_id, project_id, role_id, granted_by)
            SELECT $1, NULL, id, $3 FROM roles WHERE key = $2`,

@@ -40,7 +40,7 @@
     "invite": "دعوة الموردين المحددين", "submitQuote": "إرسال عرض السعر", "submitRecommendation": "إرسال للموافقة",
     "approve": "موافقة", "reject": "رفض", "createPo": "إنشاء أمر شراء", "startPoApproval": "إرسال للاعتماد", "approveIssue": "اعتماد أمر الشراء",
     "save": "حفظ التغييرات", "recordDelivery": "تسجيل التسليم", "createMir": "إنشاء طلب فحص", "accept": "قبول الفحص",
-    "createGrn": "إنشاء إذن استلام", "createReturn": "تسجيل مرتجع للمورد", "recordInvoice": "تسجيل فاتورة المورد",
+    "markSupplierCollected": "تأكيد استلام المورد للمرفوض", "createGrn": "إنشاء إذن استلام", "createReturn": "تسجيل مرتجع للمورد", "recordInvoice": "تسجيل فاتورة المورد",
     "approveInvoice": "اعتماد فاتورة المورد", "recordPayment": "تسجيل دفعة المورد"
   },
   "workspace": {
@@ -63,7 +63,7 @@
     "noDeliveries": "لا توجد تسليمات لهذا المشروع.", "noGrns": "لا توجد أذون استلام لهذا المشروع.", "noInvoices": "لا توجد مراجعات لفواتير الموردين.",
     "noAnalytics": "لا تتوفر تحليلات مشتريات بعد.", "comparisonUnavailable": "تفاصيل المقارنة غير متاحة حسب صلاحياتك الحالية.",
     "recommendedVendor": "المورد الموصى به: {supplier}.", "selectRfqAndSupplier": "حدد طلب عرض سعر ومورداً واحداً على الأقل.",
-    "selectRfqLine": "حدد بنداً من طلب عرض السعر.", "selectPurchaseOrder": "حدد أمر شراء.", "selectGrn": "حدد إذن استلام يحتوي على بند مستلم.",
+    "selectRfqLine": "حدد بنداً من طلب عرض السعر.", "selectPurchaseOrder": "حدد أمر شراء.", "supplierToCollect": "مرفوض - على المورد استلامه", "supplierCollected": "استلمه المورد", "supplierCollectionNote": "ملاحظة الاستلام (اختياري)", "selectGrn": "حدد إذن استلام يحتوي على بند مستلم.",
     "threeWayMatch": "تتم مطابقة بنود الفاتورة مع أمر الشراء والبضائع المستلمة والمقبولة. الاعتماد يسجل التزام المورد.",
     "apReviewHelp": "استخدم معرف فاتورة المورد الذي يظهر بعد تسجيلها. يعتمد الاعتماد على ربط الحسابات المُعد.",
     "cancelConfirm": "إلغاء {reference}؟ يلزم إدخال السبب وسيظل السجل محفوظاً في سجل التدقيق.",

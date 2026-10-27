@@ -40,7 +40,7 @@
     "invite": "Invite selected suppliers", "submitQuote": "Submit quotation", "submitRecommendation": "Submit for approval",
     "approve": "Approve", "reject": "Reject", "createPo": "Create purchase order", "startPoApproval": "Submit for approval", "approveIssue": "Approve purchase order",
     "save": "Save changes", "recordDelivery": "Record delivery", "createMir": "Create inspection request", "accept": "Accept inspection",
-    "createGrn": "Create goods receipt", "createReturn": "Record supplier return", "recordInvoice": "Record supplier invoice",
+    "markSupplierCollected": "Mark collected by supplier", "createGrn": "Create goods receipt", "createReturn": "Record supplier return", "recordInvoice": "Record supplier invoice",
     "approveInvoice": "Approve supplier invoice", "recordPayment": "Record supplier payment"
   },
   "workspace": {
@@ -63,7 +63,7 @@
     "noDeliveries": "No deliveries for this project.", "noGrns": "No goods receipts for this project.", "noInvoices": "No supplier invoice reviews to show.",
     "noAnalytics": "No procurement analytics are available yet.", "comparisonUnavailable": "The comparison details are not available for your current access.",
     "recommendedVendor": "Recommended supplier: {supplier}.", "selectRfqAndSupplier": "Select an RFQ and at least one supplier.",
-    "selectRfqLine": "Select a line from the selected RFQ.", "selectPurchaseOrder": "Select a purchase order.", "selectGrn": "Select a goods receipt with a received line.",
+    "selectRfqLine": "Select a line from the selected RFQ.", "selectPurchaseOrder": "Select a purchase order.", "supplierToCollect": "Rejected - supplier to collect", "supplierCollected": "Collected by supplier", "supplierCollectionNote": "Collection note (optional)", "selectGrn": "Select a goods receipt with a received line.",
     "threeWayMatch": "Invoice lines are checked against the purchase order and accepted goods receipts. Approval records the supplier liability.",
     "apReviewHelp": "Use the supplier invoice ID returned when an invoice is recorded. Approval follows the configured ledger mapping.",
     "cancelConfirm": "Cancel {reference}? A reason is required and the record will remain in the audit trail.",

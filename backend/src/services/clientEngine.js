@@ -18,6 +18,7 @@
 const { canExternalViewDocument } = require('./documentVisibility');
 
 const { query: defaultQuery } = require('../config/database');
+const { portalFamily } = require('./portalFamily');
 
 // Fields a client must never receive, whatever the UI does. Stripped
 // server-side from every portal payload.
@@ -120,7 +121,7 @@ async function assignedClientOrganizations(q, userId, projectId) {
 }
 
 async function decideClientVariation(q, variationId, user, decision, comment = null) {
-  if (user.role !== 'client') throw Object.assign(new Error('Client role required'), { status: 403, error_code: 'forbidden' });
+  if (portalFamily(user.role) !== 'client') throw Object.assign(new Error('Client role required'), { status: 403, error_code: 'forbidden' });
   const variation = (await q('SELECT * FROM variations WHERE id = $1 FOR UPDATE', [variationId])).rows[0];
   if (!variation) throw Object.assign(new Error('Variation not found'), { status: 404, error_code: 'record_not_found' });
   const assigned = await assignedClientOrganizations(q, user.id, variation.project_id);
@@ -149,7 +150,7 @@ async function decideClientVariation(q, variationId, user, decision, comment = n
 }
 
 async function acknowledgeClientDocument(q, documentId, user, comment = null) {
-  if (user.role !== 'client') throw Object.assign(new Error('Client role required'), { status: 403, error_code: 'forbidden' });
+  if (portalFamily(user.role) !== 'client') throw Object.assign(new Error('Client role required'), { status: 403, error_code: 'forbidden' });
   const document = (await q('SELECT * FROM project_documents WHERE id = $1 FOR UPDATE', [documentId])).rows[0];
   if (!document) throw Object.assign(new Error('Document not found'), { status: 404, error_code: 'record_not_found' });
   const assigned = await assignedClientOrganizations(q, user.id, document.project_id);
