@@ -1,6 +1,6 @@
 # Closeout plan - Session F (fixes) and Session T (tests)
 
-Written 2026-10-28. Supersedes the "next batches" section of `docs/CLOSEOUT_REMAINING_PLAN.md`. Batches 0-4 (environment, finance, security re-audit, test infra, first PG gate) are done on the cloud branch `claude/erp-closeout-batches-0-4-qvzg2x` and merged locally into `closeout/batch-a-to-6` (`680fc09`); that merge must be pushed before a cloud session can see it. Verdict remains **NO-GO** until Batch 8 evidence exists.
+Written 2026-10-28. Supersedes the "next batches" section of `docs/CLOSEOUT_REMAINING_PLAN.md`. Batches 0-4 (environment, finance, security re-audit, test infra, first PG gate) are done on the cloud branch `claude/erp-closeout-batches-0-4-qvzg2x` and merged locally into `closeout/batch-a-to-6` (tip `c8242b5`); that merge must be pushed before a cloud session can see it. Verdict remains **NO-GO** until Batch 8 evidence exists.
 
 ## Two cloud sessions
 

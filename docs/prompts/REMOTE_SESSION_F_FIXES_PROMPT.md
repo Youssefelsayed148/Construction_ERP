@@ -1,6 +1,6 @@
 # Task: Construction ERP closeout - Session F (all fix batches F1-F4)
 
-Continue the closeout of the Osiris Labs Construction ERP (React, Express, PostgreSQL, bilingual EN/AR, RBAC). Base: branch `closeout/batch-a-to-6` (it already contains the merged Batches 0-4 work, merge commit `680fc09`; if `git log` does not show it, STOP and report - do not redo that work). Read first: `AGENTS.md`, `docs/CLOSEOUT_PLAN_F_AND_T.md`, `docs/ERP_CLOSEOUT_PLAN.md`, `docs/CLOSEOUT_GAPS.md`, the top ~120 lines of `STATE.md`. Inspect code before changing it. Status claims need current command output.
+Continue the closeout of the Osiris Labs Construction ERP (React, Express, PostgreSQL, bilingual EN/AR, RBAC). Base: branch `closeout/batch-a-to-6` (it already contains the merged Batches 0-4 work, commit `c8242b5` (the cloud Batch 0-4 tip); if `git log` does not show it, STOP and report - do not redo that work). Read first: `AGENTS.md`, `docs/CLOSEOUT_PLAN_F_AND_T.md`, `docs/ERP_CLOSEOUT_PLAN.md`, `docs/CLOSEOUT_GAPS.md`, the top ~120 lines of `STATE.md`. Inspect code before changing it. Status claims need current command output.
 
 You own PRODUCT-CODE fixes. A separate Session T owns test authoring and the single full PG run; do not write golden-journey, role-by-role UAT, or pilot-environment tests, and do not run the full PG suite.
 
