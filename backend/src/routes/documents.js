@@ -35,7 +35,7 @@ const upload = multer({
 // document control, QHSE attachments, etc.
 router.post('/upload', authenticate, authorize(), (req, res) => {
   upload.array('files', 10)(req, res, async (err) => {
-    if (err) return res.status(400).json({ success: false, error: err.message });
+    if (err) return res.status(400).json({ success: false, error: err.message, error_code: 'upload_rejected', error_params: {} });
     if (!req.files || req.files.length === 0) return res.status(400).json({ success: false, error: 'No files uploaded' });
     const valid = await Promise.all(req.files.map((file) => validateUploadFile(file)));
     if (valid.some((isValid) => !isValid)) {

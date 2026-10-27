@@ -23,8 +23,9 @@ function section(name, promise) {
 }
 const q = (name, sql, params) => section(name, query(sql, params));
 function fail(res, e) {
-  const body = { success: false, error: e.message };
-  if (e.error_code) { body.error_code = e.error_code; body.error_params = e.error_params || {}; }
+  // Phase 1 security closeout: never put e.message in the response body. The real message is
+  // already logged server-side by section() above; the client gets the stable error_code only.
+  const body = { success: false, error: 'The request could not be completed', error_code: e.error_code || 'internal_error', error_params: e.error_params || {} };
   return res.status(500).json(body);
 }
 

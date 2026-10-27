@@ -25,10 +25,13 @@ const name_en = Joi.string().allow('', null);
 function fail(res, e) {
   const status = e.status || (e.error_code ? 400 : 500);
   if (status >= 500) console.error('[ORGANIZATIONS]', e);
+  // Phase 1 security closeout: a typed (error_code) error's message is deliberate and safe to
+  // show; an untyped 500 is unexpected, so the client gets a generic message, never e.message.
   return res.status(status).json({
     success: false,
-    error: e.message,
-    ...(e.error_code ? { error_code: e.error_code, error_params: e.error_params || {} } : {}),
+    error: status >= 500 ? 'The request could not be completed' : e.message,
+    ...(e.error_code ? { error_code: e.error_code, error_params: e.error_params || {} }
+      : status >= 500 ? { error_code: 'internal_error', error_params: {} } : {}),
   });
 }
 

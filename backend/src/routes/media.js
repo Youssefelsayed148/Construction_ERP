@@ -3,6 +3,7 @@ const path = require('path');
 const { query } = require('../config/database');
 const { authenticate } = require('../middleware/auth');
 const { canAccessMedia } = require('../services/mediaAccess');
+const { routeFail } = require('../utils/typedRoute');
 
 const router = express.Router();
 const uploadDir = path.resolve(__dirname, '../../uploads');
@@ -19,7 +20,7 @@ router.get('/:fileName', authenticate, async (req, res) => {
     res.sendFile(path.join(uploadDir, fileName), (error) => {
       if (error && !res.headersSent) res.status(error.status || 404).json({ success: false, error: 'File not found' });
     });
-  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+  } catch (error) { return routeFail(res, error, 'MEDIA', req); }
 });
 
 module.exports = router;

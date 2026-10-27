@@ -3,6 +3,7 @@ const router = express.Router();
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { getRecentActivities } = require('../utils/activity');
+const { routeFail } = require('../utils/typedRoute');
 
 // GET /api/activity - recent activity
 router.get('/', authenticate, authorize(), async (req, res) => {
@@ -11,7 +12,7 @@ router.get('/', authenticate, authorize(), async (req, res) => {
     const activities = await getRecentActivities(limit);
     res.json({ success: true, activities });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    return routeFail(res, error, 'ACTIVITY', req);
   }
 });
 
