@@ -7,6 +7,7 @@ const { transaction } = require('../config/database');
 const { auditedMutation } = require('../utils/auditedMutation');
 const { authenticate, authorize } = require('../middleware/auth');
 const { MAX_UPLOAD_BYTES, ALLOWED_EXTENSIONS, validateUploadFile } = require('../utils/uploadValidation');
+const avScanQueue = require('../services/avScanQueue');
 
 const UPLOAD_DIR = path.join(__dirname, '../../uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -51,6 +52,7 @@ router.post('/upload', authenticate, authorize(), (req, res) => {
       await auditedMutation(req, { action: 'upload', module: 'documents', entityType: 'uploaded_file' }, async (q) => {
         for (const file of req.files) {
           await q('INSERT INTO uploaded_files (file_name, uploaded_by) VALUES ($1, $2)', [file.filename, req.user.id]);
+          avScanQueue.enqueueScan({ fileName: file.filename });
         }
         return {
           data: files, entityId: null, after: { files: req.files.map((f) => ({ file_name: f.filename, original_name: f.originalname, size: f.size })) },
