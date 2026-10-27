@@ -719,11 +719,13 @@ async function visibilityFlags(user, opts = {}) {
 }
 
 // Append-only audit trail. There is deliberately no update/delete helper.
-async function recordAuditEvent({ entity, entityId, action, before, after, userId, projectId }, opts = {}) {
+// ipAddress/requestId (Batch 3, Phase 1 security closeout) are optional so every existing caller
+// keeps working unchanged; passing them lets a denial or mutation be traced back to its request.
+async function recordAuditEvent({ entity, entityId, action, before, after, userId, projectId, ipAddress = null, requestId = null }, opts = {}) {
   const q = opts.query || query;
   const res = await q(
-    `INSERT INTO audit_events (entity, entity_id, action, "before", "after", user_id, project_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    `INSERT INTO audit_events (entity, entity_id, action, "before", "after", user_id, project_id, ip_address, request_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
     [
       entity,
       entityId == null ? null : entityId,
@@ -732,6 +734,8 @@ async function recordAuditEvent({ entity, entityId, action, before, after, userI
       after == null ? null : JSON.stringify(after),
       userId == null ? null : userId,
       projectId == null ? null : projectId,
+      ipAddress || null,
+      requestId || null,
     ]
   );
   return res.rows && res.rows[0] ? res.rows[0] : null;

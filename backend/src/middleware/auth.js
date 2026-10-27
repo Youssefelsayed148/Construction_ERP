@@ -147,6 +147,22 @@ const authenticate = async (req, res, next) => {
 // authorize(...roles) — call signature unchanged: every existing call site in
 // backend/src/routes/ keeps working untouched.
 //
+// Phase 1 security closeout (Batch 3): best-effort denial audit. A logging failure must never block
+// answering the denial itself (the user still gets their 403), so it is isolated in its own try/catch
+// and never awaited by anything that could turn it into a 500. project_id is best-effort: a denial can
+// happen before any project is resolved, so it is frequently null, which is fine for an audit row.
+async function logDenial(req, after) {
+  try {
+    await policy.recordAuditEvent({
+      entity: 'authorization', action: 'denied', before: null, after,
+      userId: req.user ? req.user.id : null, projectId: null,
+      ipAddress: req.ip, requestId: req.requestId || null,
+    });
+  } catch (error) {
+    console.error('[auth] denial audit logging failed (request still answered):', error.message);
+  }
+}
+
 // Internally the flat role check is replaced by the scoped policy engine:
 //   1. The policy service (services/policy.js) resolves the user's
 //      user_project_roles rows against the request's module (Express mount
@@ -179,10 +195,12 @@ const authorize = (...roles) => {
     }
 
     if (!decision.allowed) {
+      await logDenial(req, { module: policy.moduleFromRequest(req), method: req.method, path: req.path, reason: 'policy_denied' });
       return res.status(403).json({ success: false, error: 'Insufficient permissions' });
     }
 
     if (roles.length > 0 && !roles.includes(req.user.role)) {
+      await logDenial(req, { module: policy.moduleFromRequest(req), method: req.method, path: req.path, reason: 'role_not_allowed', allowedRoles: roles });
       return res.status(403).json({ success: false, error: 'Insufficient permissions' });
     }
 
