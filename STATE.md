@@ -1,3 +1,5 @@
+F-SESSION COMPLETE ff50813
+
 # 2026-10-27 - Session F: F4 (Arabic PDF, inline branches) + final report
 
 ## F4 - localization and PDF
