@@ -1864,3 +1864,11 @@ Implementation 854e8bd and LF checkpoint 855ee52 committed. Pilot migrate exited
 - All five items already built by an earlier session under labels B4 (concurrency, constraints)/B5 (OpenAPI contract)/B6 (permission matrix), found via each file's own header comment and independently confirmed by reading the files directly. No new test files needed; nothing rebuilt.
 - Verification: confirmed file existence, spot-read headers, syntax-checked all 100 .pg.test.js files (0 errors) - collect-only, no execution (none of these tests have ever run against real PG before this session; actual pass/fail evidence is Batch 2's job).
 - docs/CLOSEOUT_GAPS.md Phase 4 section updated to verified-by-code.
+
+## 2026-10-27 - Remote batch 0-4 session, Batch 2 (final gate) - GREEN after triage
+
+- Full real-PG suite (test:pg, run once): first run 10 suites/11 tests failed out of 100/2099. Root-caused each via direct reproduction: 3 genuine product defects (business-rule errors thrown without .status in procurementService.js/inventoryEngine.js, causing misleading 500s; a stale-status bug in financeEngine.computeLifecycleStatus after a payment void) and 9 pre-existing test-file bugs. All fixed; all 10 suites reconfirmed green (individually, or by test name for the one with a rerun-collision risk).
+- Full backend mock suite (run once): 1 suite/2 tests failed (stale static-check assertions in inventory.test.js predating already-shipped warehouse CRUD routes). Fixed; reconfirmed green.
+- lint:guards, frontend i18n:check, i18n:parity, lint:api: all green on first run.
+- Commits: fda42d4 (PG triage), 6fd3dc6 (mock triage), plus this docs commit. Full session commit list and gate table in STATE.md.
+- NOT RUN: demo-stack items (B1 repair --apply, --approval-limits stage), remote CI.

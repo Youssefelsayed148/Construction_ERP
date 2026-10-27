@@ -1,3 +1,41 @@
+# 2026-10-27 - Remote batch 0-4 session: Batch 2 (final gate) complete - GREEN after triage
+
+All six gates below have now run, each exactly once per TEST-RUN DISCIPLINE (the full PG suite and the full backend mock suite each ran once; failures were fixed and only the failing files were rerun — never a second full suite). Full unfiltered output for every gate is saved under `logs/` (gitignored by the repo's own `*.log` rule).
+
+## Gate table
+
+| Gate | Command | First run | After triage |
+|---|---|---|---|
+| Full real-PG suite | `DB_*+JWT_SECRET+TEST_PG=1 npm --prefix backend run test:pg` | exit 1: **10 suites / 11 tests failed**, 90/2099 suites-tests passing otherwise (100 suites / 2099 tests total) | All 10 fixed; each rerun individually green, plus a combined rerun of 9 of the 10 together: **9 suites / 83 tests PASS**; the 10th (`mutation-audit.pg.test.js`) confirmed by its specific test name (`-t`) to avoid an unrelated payroll-fixture idempotency collision from re-running the same file twice against the same throwaway DB: **PASS**. No second full-suite run was made (per discipline). |
+| Backend `lint:guards` | `node backend/src/scripts/lint-guards.js` | — (run once, after the PG triage) | exit 0: `lint-guards: ok` |
+| Full backend mock-db suite | `JWT_SECRET=... npm --prefix backend test -- --runInBand --detectOpenHandles` | exit 1: **1 suite / 2 tests failed** (`inventory.test.js`), 81/82 suites and 1220/1222 tests passing otherwise | Fixed; rerun of `inventory.test.js` alone: **18/18 PASS** |
+| Frontend `i18n:check` | `npm --prefix frontend run i18n:check` | exit 0: `i18n:check ok` | — (passed first time) |
+| Frontend `i18n:parity` | `npm --prefix frontend run i18n:parity` | exit 0: `i18n parity ok: 37 namespaces, 3049 English keys` | — (passed first time) |
+| Frontend `lint:api` | `npm --prefix frontend run lint:api` | exit 0: `Direct API calls: 1/1 across 1 files` | — (passed first time) |
+
+**NOT RUN (out of scope for this remote session, each needs the demo stack and/or owner approval, per AGENTS.md and the remote-batch prompt):** the B1 repair-script dry run and `--apply` against `construction_erp_demo`; the `--approval-limits` demo seed stage; remote CI (`.github/workflows/ci.yml` on GitHub) — no push-triggered CI run was requested or watched this session; the frontend production build and Playwright E2E (outside this batch's named gate list; the remaining-plan's Batch 6/7/8 own these).
+
+## Triage: 10 PG failures + 2 mock failures, all root-caused and fixed (commits `fda42d4`, `6fd3dc6`)
+
+None of these 100 real-PG test files, and this specific pair of mock-suite static-check assertions, had ever actually executed against this code before this session (no PG database was ever available before Batch 0; the mock suite's own full run is undocumented in any earlier STATE.md entry as having included these exact files post-dating the warehouse-CRUD routes). Each failure was read to its root cause via direct reproduction (ad-hoc Node scripts against the live throwaway DB, not guessed) before any line was changed.
+
+**3 genuine product defects**, all pre-existing (not introduced this session), all in code untouched by Batches 0/1/3/4:
+1. `services/procurementService.js`: `submitQuotation`/`decideMir` threw plain `Error` for business-rule refusals (supplier not invited, RFQ closed, duplicate quote, line/material mismatch, "already decided") with no `.status` — `routeFail`/`typedFail` (the C2 typed-error contract from an earlier session) downgrades any such error to a misleading 500 instead of the correct 400. Added a `BadRequestError` class (matching the file's existing `NotFoundError`/`ConflictError` pattern) and applied it to the sites the failing tests actually exercise.
+2. `services/inventoryEngine.js`: the identical bug shape for "Insufficient stock" on an outbound movement — attached `.status = 400`.
+3. `services/financeEngine.js` `computeLifecycleStatus`: once an invoice had reached `partially_paid`/`paid`/`overdue`, voiding its only payment left it permanently stuck showing that status (paid dropped to 0, but the function's fallback returned the stale `invoice.status` unchanged). Now reverts to the base `issued` state when a void/reversal brings paid back to 0. Reran `b1-invoice-money.pg.test.js`, `b1-ar-ap-invariant.pg.test.js`, `finance-flows.pg.test.js`, `finance-aging-equivalence.pg.test.js` (4 suites / 19 tests) to confirm this shared function's other callers were unaffected: all green.
+
+**9 pre-existing test-file bugs** (no behavior change needed; each already matched an established, separately-tested contract elsewhere) — see the `fda42d4`/`6fd3dc6` commit messages for the full list: a missing `source_type` filter causing a false-positive id collision (`commercial-5-5.pg.test.js`); a stale response-shape assertion (`soft-delete.pg.test.js`); 3 missing audit-registry fixtures for already-shipped warehouse-CRUD routes (`audit-fixtures/inventory.js`); an assertion expecting 400 where the established, already-tested `ledger_account_not_mapped` contract is 500 (`ledger-postings.pg.test.js`); a NOT-NULL-violating raw insert and a response-path typo (`b3-warehouses.pg.test.js`); an extra field the target route's Joi schema correctly rejects (`role-list-b2.pg.test.js`); a cleanup `DELETE` the `audit_events` append-only trigger (Batch 3's own security hardening!) correctly refuses (`fail-closed.pg.test.js`); two static-check assertions that predate the warehouse CRUD/reorder-level routes (`inventory.test.js`, mock suite).
+
+## Session-wide summary (Batches 0, 1, 3, 4, 2)
+
+- **Commits this session** (branch `claude/erp-closeout-batches-0-4-qvzg2x`, pushed): `c422811` (Batch 0 docs), `26b4f6f` (Batch 1 test+docs), `39217d2`/`82ed7fc`/`18c5ce4`/`62e42db` (Batch 3 code+tests), `90c8995` (Batch 3 docs), `71e5de0` (Batch 4 docs), `fda42d4` (Batch 2 PG triage), `6fd3dc6` (Batch 2 mock triage), plus this entry's commit.
+- **Migrations added**: `0069_audit_event_request_context.sql`, `0070_mfa_design_stub.sql`, `0071_upload_scan_queue.sql` (next free number is `0072`).
+- **New error codes**: `upload_rejected` (documents.js multer rejection) — not yet given its own EN/AR key; falls back to the generic localized error message (verified safe, not a crash) per the existing `errorCodeToTranslationKey` fallback behavior. Recorded as an optional follow-up, not blocking.
+- **Lint baseline**: `raw-error-message` 374 sites/40 files -> 366 sites/32 files (backend/lint-guards.baseline.json, locked in with `--update`). Full `lint:guards`: ok, no other baseline changed.
+- **Decisions taken without asking** (all conservative, each explained in its own batch entry above): using the local PostgreSQL service instead of Docker (Batch 0); reusing existing `routeFail`/`typedFail`/`BadRequestError` conventions for the 3 product fixes rather than inventing a new error-handling pattern; fixing pre-existing test-file bugs in place rather than reverting to "expected" values that would have hidden a real defect (verified each one's root cause by direct reproduction first); not expanding `documents.js`'s thin audit-call coverage or converting the remaining 366 raw-error-message sites (explicitly out of this batch's time budget, recorded as open).
+- **Needs the owner**: production approval-limit values (Batch 5); the B1 AR demo-repair script's `--apply` and the `--approval-limits` seed stage (both need the demo stack + explicit approval); the C-PROC-002 rejected-delivery-return design question; push/merge strategy for this branch; whether to pursue the remaining 366 raw-error-message conversions and the `documents.js` audit-coverage gap in a future batch.
+- **Not claimed**: remote CI was never triggered or observed this session; no claim is made about `.github/workflows/ci.yml`'s actual run status beyond the drift check in Batch 0.
+
 # 2026-10-27 - Remote batch 0-4 session: Batch 4 (Phase 4 test infrastructure) complete - verified-already-done, no new code
 
 - All five of Batch 4's items were already built by an earlier session, under closeout labels B4/B5/B6 (findable from the files' own header comments, independently confirmed by reading the actual files, not just taking a sub-agent's word for it):

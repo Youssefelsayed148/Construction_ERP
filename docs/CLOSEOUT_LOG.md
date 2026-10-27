@@ -2943,3 +2943,17 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 | File existence check | `ls backend/src/scripts/__tests__/ \| grep -E "constraints-b4\|v1-contract\|policy-matrix\|role-matrix\|mcp-safety\|..."` | all cited files present; 100 total `*.pg.test.js` files |
 | Header spot-check | `head -20` on `constraints-b4.pg.test.js`, `policy-matrix.pg.test.js`, `v1-contract.pg.test.js` | each explicitly self-labelled "Closeout B4"/"B6"/"B5" and matches the sub-agent audit's quotes verbatim |
 | Syntax/collect check (all 100 files) | `node -e "...for each *.pg.test.js: new vm.Script(fs.readFileSync(f))..."` | `checked 100 files, 0 syntax errors` |
+
+# 2026-10-27 - Remote batch 0-4 session - Batch 2 command evidence
+
+| Step | Command | Result |
+|---|---|---|
+| Full real-PG suite (1st, only, full run) | `DB_HOST=127.0.0.1 DB_PORT=5432 DB_NAME=erp_closeout_test DB_USER=postgres DB_PASSWORD=postgres JWT_SECRET=... TEST_PG=1 npm run test:pg` (backend) | exit 1; Test Suites: 10 failed, 90 passed, 100 total; Tests: 11 failed, 2088 passed, 2099 total; 181.68s. Full output: `logs/batch2-test-pg.log` |
+| 10 individual/targeted PG reruns after fixes | `npx jest --config jest.pg.config.js --runInBand --forceExit --testPathPattern="<file>"` (x9) + `-t "registry covers..."` (mutation-audit) | all green |
+| Combined PG rerun (9 of 10 files) | `--testPathPattern="commercial-5-5\|procurement-flows\|soft-delete\|procurement-locking\|inventory-integrity\|ledger-postings\|b3-warehouses\|role-list-b2\|fail-closed"` | 9 suites / 83 tests PASS |
+| Backend `lint:guards` | `node src/scripts/lint-guards.js` | exit 0: `lint-guards: ok` |
+| Full backend mock suite (1st, only, full run) | `JWT_SECRET=... npm test -- --runInBand --detectOpenHandles` (backend) | exit 1; Test Suites: 1 failed, 81 passed, 82 total; Tests: 2 failed, 1220 passed, 1222 total; 28.1s. Full output: `logs/batch2-backend-mock.log` |
+| Mock suite rerun after fix | `npx jest --runInBand --testPathPattern="scripts/__tests__/inventory.test.js"` | 18/18 PASS |
+| Frontend `i18n:check` | `npm run i18n:check` (frontend) | exit 0: `i18n:check ok` |
+| Frontend `i18n:parity` | `npm run i18n:parity` (frontend) | exit 0: `i18n parity ok: 37 namespaces, 3049 English keys` |
+| Frontend `lint:api` | `npm run lint:api` (frontend) | exit 0: `Direct API calls: 1/1 across 1 files` |
