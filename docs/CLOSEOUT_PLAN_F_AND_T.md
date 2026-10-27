@@ -21,9 +21,10 @@ Test-run budget: fix batches run no suites; Session T runs the full PG suite, mo
 
 ## Test batches (Session T)
 - T0 Whole-system reconciliation (first, read-only): every unchecked plan/gap item verified against code and marked DONE/PARTIAL/OPEN/DEFERRED in `docs/CLOSEOUT_RECONCILIATION.md`; stale docs refreshed; full route/screen/table inventory sweep; findings classed Blocker/Major/Minor (only Blocker+Major gate launch; Minors go to `docs/POST_LAUNCH_BACKLOG.md`); small Blocker/Major fixes made in place.
+  - T0.6 (added 2026-10-28): module wiring matrix (every mounted router vs frontend screen vs DB; leads: subcontractors, costing, maintenance and most procurement steps appeared to have no UI), screen quality matrix, missing-screen check against Phase 6, API-to-DB integrity, and a three-layer role access audit (backend policy, sidebar, frontend route guard; `ProtectedRoute` has no per-route role guard today).
 - T1 Merge confirmation: single full PG + mock + lint/i18n/build run on the merged result.
 - T2 Golden journey: tender-to-warranty PG test with GL/AR/AP/stock/retention/audit assertions vs `GOLDEN_VALUES.md` (provisional values marked).
-- T3 Role-by-role lifecycle: permission/nav matrix for 26 canonical roles generated from seeded policy; maker-checker, approval limits, project scope, external cage; UI crawl scripts authored.
+- T3 Role-by-role lifecycle: permission/nav matrix for 26 canonical roles generated from seeded policy; maker-checker, approval limits, project scope, external cage; UI crawl scripts authored; plus (2026-10-28) a generated sidebar-vs-API test per role, list-endpoint project-scope tests, external id-guessing tests, and a render-every-route-as-each-role-family frontend test.
 - T4 Pilot readiness: migration idempotency, backup/restore rehearsal, reconciliation, rollback runbook, smoke review.
 - T5 UAT kit: per-role scripts, defect template, sign-off table (no sign-offs claimed).
 
