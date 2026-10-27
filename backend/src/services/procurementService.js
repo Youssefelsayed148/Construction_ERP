@@ -83,6 +83,12 @@ class NotFoundError extends Error {
 class ConflictError extends Error {
   constructor(message) { super(message); this.status = 409; }
 }
+// A business-rule refusal that is the caller's fault (bad input, invalid combination), never the
+// server's: routeFail/typedFail (utils/typedRoute.js) only answer 400 for an error that already
+// carries .status itself - a plain Error falls through to a generic, misleading 500.
+class BadRequestError extends Error {
+  constructor(message) { super(message); this.status = 400; }
+}
 // A requisition cannot pass the budget check: carries the stable code and the figures for the caller.
 class OverrideError extends Error {
   constructor(message, status, code) { super(message); this.status = status; this.error_code = code; this.error_params = {}; }
@@ -306,28 +312,28 @@ async function submitQuotation(q, {
   deviations = [], technical_score = null, commercial_score = null, created_by = null,
 }) {
   const rfq = (await q('SELECT * FROM rfqs WHERE id = $1', [rfq_id])).rows[0];
-  if (!rfq) throw new Error(`RFQ #${rfq_id} not found`);
-  if (['awarded', 'closed', 'cancelled', 'void'].includes(rfq.status)) throw new Error('RFQ is no longer open for quotations');
-  if (rfq.due_date && new Date(rfq.due_date).getTime() < Date.now() - 86400000) throw new Error('RFQ quotation deadline has passed');
+  if (!rfq) throw new NotFoundError(`RFQ #${rfq_id} not found`);
+  if (['awarded', 'closed', 'cancelled', 'void'].includes(rfq.status)) throw new ConflictError('RFQ is no longer open for quotations');
+  if (rfq.due_date && new Date(rfq.due_date).getTime() < Date.now() - 86400000) throw new BadRequestError('RFQ quotation deadline has passed');
   const invited = (await q('SELECT * FROM rfq_vendors WHERE rfq_id = $1', [rfq_id])).rows
     .some((v) => toNum(v.supplier_id) === toNum(supplier_id));
-  if (!invited) throw new Error('Supplier was not invited to this RFQ');
+  if (!invited) throw new BadRequestError('Supplier was not invited to this RFQ');
   const duplicate = (await q(
     'SELECT * FROM supplier_quotations WHERE rfq_id = $1 AND supplier_id = $2',
     [rfq_id, supplier_id]
   )).rows[0];
-  if (duplicate) throw new Error('This vendor already quoted on the RFQ');
+  if (duplicate) throw new ConflictError('This vendor already quoted on the RFQ');
 
   const rfqLines = (await q('SELECT * FROM rfq_lines WHERE rfq_id = $1', [rfq_id])).rows;
   const expected = new Set(rfqLines.map((line) => toNum(line.id)));
   const offered = lines.map((line) => toNum(line.rfq_line_id));
   if (offered.length !== expected.size || new Set(offered).size !== expected.size || offered.some((id) => !expected.has(id))) {
-    throw new Error('Quotation must cover each line of this RFQ exactly once');
+    throw new BadRequestError('Quotation must cover each line of this RFQ exactly once');
   }
   for (const line of lines) {
     const source = rfqLines.find((r) => toNum(r.id) === toNum(line.rfq_line_id));
     if (line.material_id != null && toNum(line.material_id) !== toNum(source.material_id)) {
-      throw new Error('Quotation material does not match its RFQ line');
+      throw new BadRequestError('Quotation material does not match its RFQ line');
     }
   }
   const subtotal = round2(lines.reduce((s, l) => s + toNum(l.quantity) * toNum(l.unit_price), 0));
@@ -677,7 +683,7 @@ async function decideMir(q, mirId, user, decision, { accepted = null, notes = nu
       WHERE id = $5 AND status = 'pending' RETURNING *`,
     [status, user ? user.id : null, new Date(), notes, mirId]
   )).rows[0];
-  if (!claimed) throw new Error('MIR is already decided');
+  if (!claimed) throw new BadRequestError('MIR is already decided');
 
   // 3. Post the movements and bookkeeping.
   for (const { line, lineAccepted, rejected } of plan) {

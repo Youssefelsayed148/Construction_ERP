@@ -286,6 +286,12 @@ async function transitionInvoice(q, invoiceId, newStatus, user, extra = {}) {
 // due date is, so a read never promotes an unissued invoice into the money lifecycle.
 const ISSUED_FAMILY_STATUSES = new Set(['issued', 'sent', 'partially_paid', 'overdue']);
 
+// A money sub-status is only ever correct while it still reflects actual money paid; once a
+// voided payment brings paid back to 0, staying 'partially_paid' (or 'paid'/'overdue') would show
+// a payment state with nothing actually paid. 'issued' is the base, moneyless issued state (legacy
+// 'sent' is its equivalent, kept as-is below so an invoice that was NEVER paid is not relabelled).
+const MONEY_SUB_STATUSES = new Set(['partially_paid', 'paid', 'overdue']);
+
 function computeLifecycleStatus(invoice, totalPaid, now = new Date()) {
   // Phase 5.5: issued credit notes reduce what the client owes (invoices.credited_amount).
   const net = (invoice.net_amount != null ? toNum(invoice.net_amount) : toNum(invoice.amount)) - toNum(invoice.credited_amount);
@@ -295,6 +301,7 @@ function computeLifecycleStatus(invoice, totalPaid, now = new Date()) {
   if (paid >= net && net > 0) return 'paid';
   if (invoice.due_date != null && new Date(invoice.due_date) < new Date(now) && paid < net) return 'overdue';
   if (paid > 0) return 'partially_paid';
+  if (MONEY_SUB_STATUSES.has(invoice.status)) return 'issued'; // a void/reversal brought paid back to 0
   return invoice.status;
 }
 

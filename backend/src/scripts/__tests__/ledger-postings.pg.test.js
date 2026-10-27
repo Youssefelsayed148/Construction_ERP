@@ -154,7 +154,11 @@ describePg('2.7b client invoice and payment postings (real PostgreSQL, real app)
       expect((await one('SELECT count(*)::int n FROM invoices WHERE project_id = $1', [ids.project])).n).toBe(invoicesBefore + 1);
       const paymentsBefore = (await one('SELECT count(*)::int n FROM payments WHERE project_id = $1', [ids.project])).n;
       const p = await pay(keep.id, 10);
-      expect(p.status).toBe(400);
+      // Same underlying cause as the invoice attempt above (the deleted 'receivable' mapping):
+      // typedFail's JournalError branch always answers 500 ledger_account_not_mapped, never 400 -
+      // an unmapped account is a server misconfiguration, not the caller's fault.
+      expect(p.status).toBe(500);
+      expect(p.body).toMatchObject({ success: false, error_code: 'ledger_account_not_mapped', error_params: { key: 'receivable' } });
       expect((await one('SELECT count(*)::int n FROM payments WHERE project_id = $1', [ids.project])).n).toBe(paymentsBefore);
     } finally {
       await db.query("INSERT INTO gl_account_map (key, account_id) VALUES ('receivable', $1)", [original]);

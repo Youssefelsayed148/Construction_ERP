@@ -47,7 +47,8 @@ describePg('fail-closed authorization (real PostgreSQL, real app)', () => {
   afterAll(async () => {
     const ids = (await db.query('SELECT id FROM users WHERE email LIKE $1', [`fc-%-${tag}@test.io`])).rows.map((r) => r.id);
     await db.query('DELETE FROM activity_log WHERE user_id = ANY($1)', [ids]);
-    await db.query('DELETE FROM audit_events WHERE user_id = ANY($1)', [ids]);
+    // audit_events is append-only (trigger audit_events_no_delete, Phase 1 security hardening):
+    // its rows outlive this cleanup, same as any other real audit trail would.
     await db.query('DELETE FROM user_project_roles WHERE user_id = ANY($1) OR granted_by = ANY($1)', [ids]);
     // users are deactivated, never deleted (migration 0011)
     await db.query("UPDATE users SET is_active = false WHERE email LIKE $1", [`fc-%-${tag}@test.io`]);

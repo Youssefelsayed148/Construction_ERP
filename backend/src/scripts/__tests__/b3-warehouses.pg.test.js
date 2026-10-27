@@ -78,11 +78,11 @@ describePg('B3 warehouses master surface (real PostgreSQL, real app)', () => {
   });
 
   test('reorder level is settable, survives a later movement, and the low-stock widget reacts', async () => {
-    const item = (await one("INSERT INTO item_master (code, name_en, name_ar, unit) VALUES ($1, $1, $1, 'pcs') RETURNING id", [`b3item-${tag}`])).id;
+    const item = (await one("INSERT INTO item_master (code, category, name_en, name_ar, unit) VALUES ($1, 'test', $1, $1, 'pcs') RETURNING id", [`b3item-${tag}`])).id;
     const warehouse = ids.warehouse;
 
     // The low-stock widgets react: measure the overview's inventory.low_stock before/after.
-    const lowStockBefore = (await (await call('GET', '/api/dashboard/overview', users.owner.token)).body).modules.inventory.low_stock;
+    const lowStockBefore = (await call('GET', '/api/dashboard/overview', users.owner.token)).body.data.modules.inventory.low_stock;
     const set = await call('PUT', `/api/warehouses/${warehouse}/stock/${item}/reorder-level`, users.storekeeper.token, { reorder_level: 5 });
     expect(set.status).toBe(200);
     expect(Number(set.body.data.reorder_level)).toBe(5);
@@ -96,7 +96,7 @@ describePg('B3 warehouses master surface (real PostgreSQL, real app)', () => {
     const stock = (await one('SELECT * FROM warehouse_stock WHERE warehouse_id = $1 AND item_id = $2', [warehouse, item]));
     expect(Number(stock.reorder_level)).toBe(5); // kept after the movement rewrote the row
 
-    const lowStockAfter = (await (await call('GET', '/api/dashboard/overview', users.owner.token)).body).modules.inventory.low_stock;
+    const lowStockAfter = (await call('GET', '/api/dashboard/overview', users.owner.token)).body.data.modules.inventory.low_stock;
     expect(lowStockAfter).toBeGreaterThan(lowStockBefore); // quantity 2 <= reorder 5 counts as low stock
 
     const belowZero = await call('PUT', `/api/warehouses/${warehouse}/stock/${item}/reorder-level`, users.storekeeper.token, { reorder_level: -1 });

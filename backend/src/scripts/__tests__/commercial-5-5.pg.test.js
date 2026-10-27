@@ -527,7 +527,11 @@ describePg('5.5 commercial and finance (real PostgreSQL, real app)', () => {
     expect(concurrentReads.map((response) => response.status)).toEqual(Array(20).fill(200));
     const after = await all('SELECT id, commitment_number, source_type, source_id, original_amount, status, updated_at FROM commitments WHERE project_id = $1 ORDER BY id', [pA]);
     expect(after).toEqual(before);
-    expect(after.some((row) => Number(row.source_id) === unledgered)).toBe(false);
+    // source_id is an id from whichever table source_type names (purchase_order / sub_contract);
+    // different tables have independent sequences, so a bare source_id match can collide with an
+    // unrelated row (e.g. a purchase_order commitment whose source_id happens to equal this
+    // sub_contract's id) — the source_type filter (used above at `before`) is required here too.
+    expect(after.some((row) => row.source_type === 'sub_contract' && Number(row.source_id) === unledgered)).toBe(false);
   });
 
   // --------------------------------------------------------------------------------------------------

@@ -189,7 +189,8 @@ describePg('soft delete and void-with-reason (real PostgreSQL, real app)', () =>
       const f = await invoiceWithPayment('i2', { paid: 300 });
       const blocked = await call('DELETE', `/api/invoices/${f.inv.id}`, { reason: 'x' });
       expect(blocked.status).toBe(400);
-      expect(blocked.body.paymentCount).toBe(1);
+      expect(blocked.body.error_code).toBe('invoice_has_live_payments');
+      expect(blocked.body.error_params.payment_count).toBe(1);
       await call('DELETE', `/api/payments/${f.payment.id}`, { reason: 'x' });
       expect((await call('DELETE', `/api/invoices/${f.inv.id}`, { reason: 'x' })).status).toBe(200);
     });

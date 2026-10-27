@@ -74,4 +74,13 @@ module.exports = {
   ...group(['PUT /api/warehouses/transfers/:id/complete', 'PUT /api/v1/inventory/transfers/:id/complete'], async ctx => ({ params: { id: (await ctx.api('POST', '/api/warehouses/transfers', await transferBody(ctx, await world(ctx)))).id } })),
   ...group(['POST /api/warehouses/reservations', 'POST /api/v1/inventory/reservations'], async ctx => ({ body: reservationBody(ctx, await world(ctx)), status: 201 })),
   ...group(['POST /api/warehouses/reservations/:id/release', 'POST /api/v1/inventory/reservations/:id/release'], async ctx => ({ params: { id: (await ctx.api('POST', '/api/warehouses/reservations', reservationBody(ctx, await world(ctx)))).id } })),
+  ...group(['POST /api/warehouses'], async ctx => ({ body: { name: `r02-wh-${ctx.n()}`, warehouse_type: 'project', project_id: ctx.pid }, status: 201 })),
+  ...group(['PUT /api/warehouses/:id'], async ctx => ({
+    params: { id: (await ctx.api('POST', '/api/warehouses', { name: `r02-wh-u-${ctx.n()}`, warehouse_type: 'project', project_id: ctx.pid })).id },
+    body: { storage_capacity: 500 },
+  })),
+  ...group(['PUT /api/warehouses/:id/stock/:itemId/reorder-level'], async ctx => {
+    const w = await world(ctx);
+    return { params: { id: w.warehouse, itemId: w.material }, body: { reorder_level: 5 } };
+  }),
 };

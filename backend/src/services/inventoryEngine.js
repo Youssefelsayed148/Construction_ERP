@@ -315,7 +315,11 @@ async function createMovementLocked(q, {
     const fromQuarantine = movement_type === 'quarantine_release' || movement_type === 'quarantine_reject';
     const usable = fromQuarantine ? balances.quarantined : balances.available;
     if (usable < qty) {
-      throw new Error(`Insufficient stock: ${usable} usable (${fromQuarantine ? 'quarantined' : 'available'}), ${qty} requested`);
+      // A caller's fault (asked for more than is usable), never the server's: routeFail/typedFail
+      // (utils/typedRoute.js) only answer 400 for an error that already carries .status itself.
+      const err = new Error(`Insufficient stock: ${usable} usable (${fromQuarantine ? 'quarantined' : 'available'}), ${qty} requested`);
+      err.status = 400;
+      throw err;
     }
   }
 

@@ -63,12 +63,14 @@ describePg('B2 canonical role lists (real PostgreSQL, real app)', () => {
   });
 
   test('hr POST /employees: hr_manager succeeds (canonical grant now admitted); storekeeper still 403', async () => {
+    // employees is a company-wide master resource (no project_id column); routes/hr.js's Joi
+    // schema correctly has no project_id field and rejects any unknown key.
     const created = await call('POST', '/api/hr/employees', users.hrManager.token, {
-      name_ar: `موظف ${tag}`, name_en: `emp-${tag}`, project_id: ids.project,
+      name_ar: `موظف ${tag}`, name_en: `emp-${tag}`,
     });
     expect(created.status).toBe(201);
     const denied = await call('POST', '/api/hr/employees', users.storekeeper.token, {
-      name_ar: `موظف ${tag}`, name_en: `emp2-${tag}`, project_id: ids.project,
+      name_ar: `موظف ${tag}`, name_en: `emp2-${tag}`,
     });
     expect(denied.status).toBe(403); // no hr create grant — the policy denies despite the list change
   });
