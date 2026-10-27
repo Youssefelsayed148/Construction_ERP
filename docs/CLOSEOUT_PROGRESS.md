@@ -1858,3 +1858,9 @@ Implementation 854e8bd and LF checkpoint 855ee52 committed. Pilot migrate exited
 - Audited all 15 unchecked Phase 1 boxes against code first: 13 already implemented (file:line evidence in STATE.md), 2 genuinely open.
 - Implemented: audit denial logging + ip_address/request_id on audit_events (`39217d2`); MFA design stub, columns + doc (`82ed7fc`); AV-scan queue stub (`18c5ce4`); converted the 8 single-site raw-error-message files, baseline 374->366 across 40->32 files (`62e42db`).
 - Deferred, recorded not silently dropped: the remaining 366 raw-error-message sites (32 files, led by qhse.js/hse.js/doccontrol.js/schedule.js/portal.js/site.js) - mechanical but large, out of this batch's remaining budget; documents.js's thin audit-call coverage (2 sites) relative to its mutation surface.
+
+## 2026-10-27 - Remote batch 0-4 session, Batch 4 (Phase 4 test infrastructure)
+
+- All five items already built by an earlier session under labels B4 (concurrency, constraints)/B5 (OpenAPI contract)/B6 (permission matrix), found via each file's own header comment and independently confirmed by reading the files directly. No new test files needed; nothing rebuilt.
+- Verification: confirmed file existence, spot-read headers, syntax-checked all 100 .pg.test.js files (0 errors) - collect-only, no execution (none of these tests have ever run against real PG before this session; actual pass/fail evidence is Batch 2's job).
+- docs/CLOSEOUT_GAPS.md Phase 4 section updated to verified-by-code.

@@ -2935,3 +2935,11 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 | Error-leakage: lint-guards after edits | `node src/scripts/lint-guards.js` | 8 files reported "dropped 1 -> 0"; `lint-guards: ok` |
 | Error-leakage: regression | `npx jest --runInBand --testPathPattern="mutation-audit-guard"` | 8/8 passed (mock-db, no PG needed) |
 | Error-leakage: baseline locked in | `node src/scripts/lint-guards.js --update` | baseline written; raw-error-message now 366 sites / 32 files |
+
+# 2026-10-27 - Remote batch 0-4 session - Batch 4 command evidence
+
+| Step | Command | Result |
+|---|---|---|
+| File existence check | `ls backend/src/scripts/__tests__/ \| grep -E "constraints-b4\|v1-contract\|policy-matrix\|role-matrix\|mcp-safety\|..."` | all cited files present; 100 total `*.pg.test.js` files |
+| Header spot-check | `head -20` on `constraints-b4.pg.test.js`, `policy-matrix.pg.test.js`, `v1-contract.pg.test.js` | each explicitly self-labelled "Closeout B4"/"B6"/"B5" and matches the sub-agent audit's quotes verbatim |
+| Syntax/collect check (all 100 files) | `node -e "...for each *.pg.test.js: new vm.Script(fs.readFileSync(f))..."` | `checked 100 files, 0 syntax errors` |
