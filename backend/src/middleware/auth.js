@@ -151,8 +151,30 @@ const authenticate = async (req, res, next) => {
 // answering the denial itself (the user still gets their 403), so it is isolated in its own try/catch
 // and never awaited by anything that could turn it into a 500. project_id is best-effort: a denial can
 // happen before any project is resolved, so it is frequently null, which is fine for an audit row.
+//
+// Burst control (F1): at most one denial row per user+module+method+path+reason per DENIAL_WINDOW_MS, over a
+// bounded in-memory map, so a hammering client cannot flood audit_events or add a DB write to every 403.
+const DENIAL_WINDOW_MS = Number(process.env.DENIAL_AUDIT_WINDOW_MS) || 60 * 1000;
+const DENIAL_MAX_KEYS = 5000;
+const recentDenials = new Map();
+
+function shouldLogDenial(req, after, now = Date.now()) {
+  const key = [req.user ? req.user.id : req.ip, after.module, after.method, after.path, after.reason].join('|');
+  const last = recentDenials.get(key);
+  if (last !== undefined && now - last < DENIAL_WINDOW_MS) return false;
+  if (recentDenials.size >= DENIAL_MAX_KEYS) {
+    for (const [k, t] of recentDenials) if (now - t >= DENIAL_WINDOW_MS) recentDenials.delete(k);
+    // Still full of live keys: drop the oldest (Map iterates in insertion order).
+    while (recentDenials.size >= DENIAL_MAX_KEYS) recentDenials.delete(recentDenials.keys().next().value);
+  }
+  recentDenials.delete(key);
+  recentDenials.set(key, now);
+  return true;
+}
+
 async function logDenial(req, after) {
   try {
+    if (!shouldLogDenial(req, after)) return;
     await policy.recordAuditEvent({
       entity: 'authorization', action: 'denied', before: null, after,
       userId: req.user ? req.user.id : null, projectId: null,
@@ -240,4 +262,4 @@ const authorizeSelfSession = () => function authorizeSelfSessionMiddleware(req, 
   return next();
 };
 
-module.exports = { authenticate, authorize, authorizeSelfSession, createPreviewToken, externalPortalAllowed, filterScopedPayload };
+module.exports = { authenticate, authorize, authorizeSelfSession, createPreviewToken, externalPortalAllowed, filterScopedPayload, _logDenial: logDenial, _resetDenialWindow: () => recentDenials.clear(), _denialMapSize: () => recentDenials.size };
