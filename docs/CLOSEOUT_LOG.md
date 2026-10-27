@@ -2922,3 +2922,16 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 | Pre-existing regression suite, rerun | same jest command | 1 suite / **6 passed**, exit 0 |
 | New invariant test, 1st run | same jest command, `--testPathPattern="b1-ar-ap-invariant"` | 1 suite / 2 passed, 1 failed (`payment_batch_project_required` — service invoice names no PO, batch item needs explicit `project_id`) |
 | New invariant test, fix + rerun | added `project_id` to the batch item; rerun | 1 suite / 3 passed, exit 0 |
+
+# 2026-10-27 - Remote batch 0-4 session - Batch 3 command evidence
+
+| Step | Command | Result |
+|---|---|---|
+| Denial audit test | `TEST_PG=1 ... npx jest --config jest.pg.config.js --runInBand --forceExit --testPathPattern="b3-denial-audit"` | 1 suite / 1 passed |
+| MFA stub migration + test | `npm run migrate` then `--testPathPattern="b3-mfa-stub"` | migration 0070 applied; 1 suite / 1 passed |
+| AV-scan queue migration + test (1st run) | `npm run migrate` then `--testPathPattern="b3-av-scan-queue"` | migration 0071 applied; FAILED - `column "id" does not exist` (uploaded_files has no surrogate id; fixed to use file_name) |
+| AV-scan queue test (rerun) | same | 1 suite / 1 passed |
+| Error-leakage: before | `python3 -c "...json.load(lint-guards.baseline.json)..."` | raw-error-message 374 sites / 40 files |
+| Error-leakage: lint-guards after edits | `node src/scripts/lint-guards.js` | 8 files reported "dropped 1 -> 0"; `lint-guards: ok` |
+| Error-leakage: regression | `npx jest --runInBand --testPathPattern="mutation-audit-guard"` | 8/8 passed (mock-db, no PG needed) |
+| Error-leakage: baseline locked in | `node src/scripts/lint-guards.js --update` | baseline written; raw-error-message now 366 sites / 32 files |
