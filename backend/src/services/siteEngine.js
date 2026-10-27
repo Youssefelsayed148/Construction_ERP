@@ -18,6 +18,7 @@
 'use strict';
 
 const { query: defaultQuery } = require('../config/database');
+const { svcError } = require('../utils/serviceErrors');
 
 function toNum(v) {
   if (v == null) return 0;
@@ -314,12 +315,12 @@ async function createStickyNote(q, {
   project_id = null, scope = 'personal', owner_user_id, location_id = null,
   linked_entity_type = null, linked_entity_id = null, text, color = 'yellow', reminder_at = null,
 }) {
-  if (!STICKY_SCOPES.includes(scope)) throw new Error(`Invalid sticky-note scope: ${scope}`);
-  if (!text || !String(text).trim()) throw new Error('Sticky note requires text');
+  if (!STICKY_SCOPES.includes(scope)) throw svcError(400, 'invalid_input', `Invalid sticky-note scope: ${scope}`);
+  if (!text || !String(text).trim()) throw svcError(400, 'invalid_input', 'Sticky note requires text');
   if (scope === 'personal') { project_id = project_id; } // personal notes may still sit on a project
-  if (scope === 'location' && location_id == null) throw new Error('Location sticky note requires location_id');
+  if (scope === 'location' && location_id == null) throw svcError(400, 'invalid_input', 'Location sticky note requires location_id');
   if (scope === 'record' && (linked_entity_type == null || linked_entity_id == null)) {
-    throw new Error('Record sticky note requires linked_entity_type and linked_entity_id');
+    throw svcError(400, 'invalid_input', 'Record sticky note requires linked_entity_type and linked_entity_id');
   }
   const r = await q(
     `INSERT INTO sticky_notes (project_id, scope, owner_user_id, location_id, linked_entity_type, linked_entity_id, text, color, reminder_at)
@@ -347,7 +348,7 @@ async function listStickyNotes(q, { project_id = null, owner_user_id = null } = 
 // pointer to the action it spawned; the note itself is never a document.
 async function convertStickyToAction(q, noteId, user, opts = {}) {
   const note = (await q('SELECT * FROM sticky_notes WHERE id = $1', [noteId])).rows[0];
-  if (!note) throw new Error(`Sticky note #${noteId} not found`);
+  if (!note) throw svcError(404, 'record_not_found', `Sticky note #${noteId} not found`);
   if (note.converted_action_item_id != null) return { note, already: true };
 
   const actionService = require('./actionService');

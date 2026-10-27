@@ -30,6 +30,7 @@ const numbering = require('./numbering');
 const projectSetup = require('./projectSetupService');
 const workflowEngine = require('./workflowEngine');
 const { fireEvent } = require('../utils/activity');
+const { svcError } = require('../utils/serviceErrors');
 
 const WIR_RESULT_STATES = ['approved', 'approved_with_comments', 'rejected', 'reinspect'];
 
@@ -122,10 +123,10 @@ async function createWir(q, input, user) {
 // action pipeline picks the step up from there.
 async function submitWir(q, wirId, user) {
   const wir = (await q('SELECT * FROM wirs WHERE id = $1', [wirId])).rows[0];
-  if (!wir) throw new Error('WIR not found');
-  if (wir.status !== 'draft') throw new Error(`WIR is already ${wir.status}`);
+  if (!wir) throw svcError(404, 'record_not_found', 'WIR not found');
+  if (wir.status !== 'draft') throw svcError(409, 'invalid_state', `WIR is already ${wir.status}`);
   const allowed = user.role === 'owner' || user.role === 'admin' || WIR_ALLOWED_ROLES.submit.includes(user.role);
-  if (!allowed) throw new Error('Not authorized to submit this WIR');
+  if (!allowed) throw svcError(403, 'not_authorized_for_action', 'Not authorized to submit this WIR');
 
   await q(`UPDATE wirs SET status = 'submitted', submitted_by = $1, updated_at = $2 WHERE id = $3`,
     [user.id, new Date(), wirId]);
@@ -146,15 +147,15 @@ async function submitWir(q, wirId, user) {
 //   goes back to the requester for correction (re-submission re-opens QA/QC).
 async function wirStepDecision(q, wirId, stepKey, user, decision, comment) {
   const wir = (await q('SELECT * FROM wirs WHERE id = $1', [wirId])).rows[0];
-  if (!wir) throw new Error('WIR not found');
+  if (!wir) throw svcError(404, 'record_not_found', 'WIR not found');
   if (!['approve', 'reject', 'return'].includes(decision)) {
-    throw new Error(`Invalid decision: ${decision}`);
+    throw svcError(400, 'invalid_input', `Invalid decision: ${decision}`);
   }
   if (wir.status === 'consultant_review') {
-    throw new Error('The consultant stage takes the final result — POST /result');
+    throw svcError(409, 'invalid_state', 'The consultant stage takes the final result — POST /result');
   }
   if (!['submitted', 'qa_qc_review', 'pm_review'].includes(wir.status)) {
-    throw new Error(`WIR is ${wir.status} — no review step is open`);
+    throw svcError(409, 'invalid_state', `WIR is ${wir.status} — no review step is open`);
   }
   if (!wir.workflow_instance_id) throw new Error('WIR has no workflow instance');
 
@@ -195,12 +196,12 @@ function stampAtFor(status) {
 // / rejected / reinspect. reinspect loops the WIR back into a new QA/QC cycle.
 async function decideWir(q, wirId, user, result, { comment = null } = {}) {
   if (!WIR_RESULT_STATES.includes(result)) {
-    throw new Error(`Invalid WIR result: ${result}`);
+    throw svcError(400, 'invalid_input', `Invalid WIR result: ${result}`);
   }
   const wir = (await q('SELECT * FROM wirs WHERE id = $1', [wirId])).rows[0];
-  if (!wir) throw new Error('WIR not found');
+  if (!wir) throw svcError(404, 'record_not_found', 'WIR not found');
   if (wir.status !== 'consultant_review') {
-    throw new Error(`Only the consultant stage takes the final result (WIR is ${wir.status})`);
+    throw svcError(409, 'invalid_state', `Only the consultant stage takes the final result (WIR is ${wir.status})`);
   }
   const allowed = user.role === 'owner' || user.role === 'admin' || WIR_ALLOWED_ROLES.result.includes(user.role);
   if (!allowed) {
@@ -361,16 +362,16 @@ function punchActorCol(state) {
 
 async function transitionPunchItem(q, punchId, toState, user, { comment = null } = {}) {
   const punch = (await q('SELECT * FROM punch_items WHERE id = $1', [punchId])).rows[0];
-  if (!punch) throw new Error('Punch item not found');
+  if (!punch) throw svcError(404, 'record_not_found', 'Punch item not found');
   if (!PUNCH_TRANSITIONS[punch.status] || !PUNCH_TRANSITIONS[punch.status].includes(toState)) {
-    throw new Error(`Cannot transition punch item from '${punch.status}' to '${toState}'`);
+    throw svcError(409, 'invalid_state', `Cannot transition punch item from '${punch.status}' to '${toState}'`);
   }
   const roles = {
     assigned: PUNCH_ALLOWED_ROLES.assign, rectified: PUNCH_ALLOWED_ROLES.rectify,
     verified: PUNCH_ALLOWED_ROLES.verify, closed: PUNCH_ALLOWED_ROLES.close, open: PUNCH_ALLOWED_ROLES.assign,
   }[toState] || [];
   const allowed = user.role === 'owner' || user.role === 'admin' || roles.includes(user.role);
-  if (!allowed) throw new Error(`Not authorized to move a punch item to ${toState}`);
+  if (!allowed) throw svcError(403, 'not_authorized_for_action', `Not authorized to move a punch item to ${toState}`);
 
   const now = new Date();
   const stampCol = punchStamp(toState);

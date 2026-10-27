@@ -20,6 +20,7 @@ const numbering = require('./numbering');
 const workflowEngine = require('./workflowEngine');
 const { fireEvent } = require('../utils/activity');
 const { WARRANTY_STEP_FOR_STATE } = require('../scripts/handover-migration');
+const { svcError } = require('../utils/serviceErrors');
 
 const HANDOVER_STATES = [
   'pre_handover', 'punch_snag', 'rectification', 'final_inspection',
@@ -95,19 +96,19 @@ async function startHandover(q, projectId, user) {
 // punch/snag stage requires zero open punch items (Phase 19 register).
 async function transitionHandover(q, processId, toState, user) {
   const process = (await safeOne(q, 'SELECT * FROM handover_processes WHERE id = $1', [processId]));
-  if (!process.id) throw new Error('Handover process not found');
+  if (!process.id) throw svcError(404, 'record_not_found', 'Handover process not found');
   const currentIdx = HANDOVER_STATES.indexOf(process.status);
   const nextIdx = HANDOVER_STATES.indexOf(toState);
-  if (nextIdx === -1) throw new Error(`Unknown handover state: ${toState}`);
+  if (nextIdx === -1) throw svcError(400, 'invalid_input', `Unknown handover state: ${toState}`);
   if (nextIdx !== currentIdx + 1) {
-    throw new Error(`Handover must move through the exact states — cannot go from '${process.status}' to '${toState}'`);
+    throw svcError(409, 'invalid_state', `Handover must move through the exact states — cannot go from '${process.status}' to '${toState}'`);
   }
   if (process.status === 'punch_snag') {
     const open = (await safeOne(q,
       `SELECT COUNT(*) AS c FROM punch_items WHERE project_id = $1 AND status = ANY($2::text[])`,
       [process.project_id, ['open', 'assigned', 'rectified']]));
     if (parseInt(open.c || 0, 10) > 0) {
-      throw new Error(`Cannot leave the punch/snag stage with ${open.c} open punch item(s)`);
+      throw svcError(409, 'invalid_state', `Cannot leave the punch/snag stage with ${open.c} open punch item(s)`);
     }
   }
   const now = new Date();
@@ -211,9 +212,9 @@ async function transitionWarrantyClaim(q, claimId, toState, user, {
   note = null, assigned_organization_id = null, assigned_user_id = null, evidence = null,
 } = {}) {
   const claim = (await safeOne(q, 'SELECT * FROM warranty_claims WHERE id = $1', [claimId]));
-  if (!claim.id) throw new Error('Warranty claim not found');
+  if (!claim.id) throw svcError(404, 'record_not_found', 'Warranty claim not found');
   if (!WARRANTY_TRANSITIONS[claim.status] || !WARRANTY_TRANSITIONS[claim.status].includes(toState)) {
-    throw new Error(`Cannot transition warranty claim from '${claim.status}' to '${toState}'`);
+    throw svcError(409, 'invalid_state', `Cannot transition warranty claim from '${claim.status}' to '${toState}'`);
   }
   const now = new Date();
   const params = [toState, now];
@@ -254,7 +255,7 @@ async function transitionWarrantyClaim(q, claimId, toState, user, {
 // SLA tracking — overdue claims (past due, not closed) with days remaining.
 async function warrantySlaStatus(q, claimId) {
   const claim = await safeOne(q, 'SELECT * FROM warranty_claims WHERE id = $1', [claimId]);
-  if (!claim.id) throw new Error('Warranty claim not found');
+  if (!claim.id) throw svcError(404, 'record_not_found', 'Warranty claim not found');
   const due = claim.due_date ? new Date(claim.due_date) : null;
   const open = !['accepted', 'closed'].includes(claim.status);
   return {

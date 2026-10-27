@@ -23,6 +23,7 @@ const { nextNumber } = require('./numbering');
 const commercialEngine = require('./commercialEngine');
 const glPosting = require('./glPosting');
 const sweepLeader = require('./sweepLeader');
+const { svcError } = require('../utils/serviceErrors');
 
 const INVOICE_LIFECYCLE = ['draft', 'approved', 'issued', 'partially_paid', 'paid', 'overdue', 'cancelled', 'void', 'credited'];
 const REMINDER_STAGES = [
@@ -244,7 +245,7 @@ async function createInvoiceFromCertificate(q, certificate, clientId, user) {
 // Lifecycle transitions with audit.
 async function transitionInvoice(q, invoiceId, newStatus, user, extra = {}) {
   const existing = (await q('SELECT * FROM invoices WHERE id = $1', [invoiceId])).rows[0];
-  if (!existing) throw new Error(`Invoice #${invoiceId} not found`);
+  if (!existing) throw svcError(404, 'record_not_found', `Invoice #${invoiceId} not found`);
   const allowed = {
     draft: ['approved', 'cancelled'],
     approved: ['issued', 'cancelled'],
@@ -256,10 +257,10 @@ async function transitionInvoice(q, invoiceId, newStatus, user, extra = {}) {
   const from = existing.status === 'sent' ? 'issued' : existing.status; // legacy 'sent' ≡ issued
   if (!['credited', 'void', 'cancelled'].includes(newStatus)
       && allowed[from] && !allowed[from].includes(newStatus)) {
-    throw new Error(`Invalid lifecycle transition: ${from} → ${newStatus}`);
+    throw svcError(409, 'invalid_state', `Invalid lifecycle transition: ${from} → ${newStatus}`);
   }
   if ((from === 'paid' || from === 'partially_paid') && newStatus === 'void' && toNum(existing.paid_total || 0) > 0) {
-    throw new Error('Cannot void an invoice that has payments allocated');
+    throw svcError(409, 'invalid_state', 'Cannot void an invoice that has payments allocated');
   }
 
   const sets = ['status = $1', 'updated_at = $2'];
@@ -311,7 +312,7 @@ function computeLifecycleStatus(invoice, totalPaid, now = new Date()) {
 
 async function invoiceOutstanding(q, invoiceId) {
   const inv = (await q('SELECT * FROM invoices WHERE id = $1', [invoiceId])).rows[0];
-  if (!inv) throw new Error(`Invoice #${invoiceId} not found`);
+  if (!inv) throw svcError(404, 'record_not_found', `Invoice #${invoiceId} not found`);
   const net = inv.net_amount != null && toNum(inv.net_amount) > 0 ? toNum(inv.net_amount) : toNum(inv.amount);
   const allocs = (await q(
     "SELECT * FROM payment_allocations WHERE invoice_id = $1 AND target_type = 'client_invoice' AND voided_at IS NULL",
@@ -324,7 +325,7 @@ async function invoiceOutstanding(q, invoiceId) {
 
 async function supplierInvoiceOutstanding(q, supplierInvoiceId) {
   const inv = (await q('SELECT * FROM supplier_invoices WHERE id = $1', [supplierInvoiceId])).rows[0];
-  if (!inv) throw new Error(`Supplier invoice #${supplierInvoiceId} not found`);
+  if (!inv) throw svcError(404, 'record_not_found', `Supplier invoice #${supplierInvoiceId} not found`);
   const allocs = (await q(
     "SELECT * FROM payment_allocations WHERE supplier_invoice_id = $1 AND target_type = 'supplier_invoice' AND voided_at IS NULL",
     [supplierInvoiceId]
@@ -341,8 +342,8 @@ async function allocatePayment(q, {
   payment_id, allocations = [], allocated_by = null, actor_name = null,
 }) {
   const payment = (await q('SELECT * FROM payments WHERE id = $1', [payment_id])).rows[0];
-  if (!payment) throw new Error(`Payment #${payment_id} not found`);
-  if (payment.voided_at) throw new Error(`Payment #${payment_id} is void and cannot be allocated`);
+  if (!payment) throw svcError(404, 'record_not_found', `Payment #${payment_id} not found`);
+  if (payment.voided_at) throw svcError(409, 'invalid_state', `Payment #${payment_id} is void and cannot be allocated`);
 
   const existing = (await q(
     'SELECT * FROM payment_allocations WHERE payment_id = $1 AND voided_at IS NULL',
@@ -351,7 +352,7 @@ async function allocatePayment(q, {
   const alreadyAllocated = round2(existing.reduce((s, a) => s + toNum(a.amount), 0));
   const requested = round2(allocations.reduce((s, a) => s + toNum(a.amount), 0));
   if (round2(alreadyAllocated + requested) > toNum(payment.amount) + 1e-9) {
-    throw new Error(`Allocation exceeds the payment amount: ${payment.amount} available, ${round2(alreadyAllocated + requested)} requested`);
+    throw svcError(400, 'amount_exceeds_limit', `Allocation exceeds the payment amount: ${payment.amount} available, ${round2(alreadyAllocated + requested)} requested`);
   }
 
   // Validate every target before the first write. Routes also wrap this in a
@@ -360,26 +361,26 @@ async function allocatePayment(q, {
   const plannedByTarget = new Map();
   for (const a of allocations) {
     const amount = round2(toNum(a.amount));
-    if (!(amount > 0)) throw new Error('Allocation amounts must be positive');
+    if (!(amount > 0)) throw svcError(400, 'invalid_input', 'Allocation amounts must be positive');
     if (a.target_type === 'supplier_invoice') {
-      if (!a.supplier_invoice_id) throw new Error('Supplier invoice ID is required');
+      if (!a.supplier_invoice_id) throw svcError(400, 'invalid_input', 'Supplier invoice ID is required');
       const bal = await supplierInvoiceOutstanding(q, a.supplier_invoice_id);
       const key = `supplier:${a.supplier_invoice_id}`;
       const planned = round2((plannedByTarget.get(key) || 0) + amount);
       if (planned > bal.outstanding + 1e-9) {
-        throw new Error(`Allocation exceeds the supplier invoice's outstanding balance: ${bal.outstanding} outstanding, ${amount} requested`);
+        throw svcError(400, 'amount_exceeds_limit', `Allocation exceeds the supplier invoice's outstanding balance: ${bal.outstanding} outstanding, ${amount} requested`);
       }
       plannedByTarget.set(key, planned);
       validated.push({ ...a, amount, target_type: 'supplier_invoice' });
     } else {
-      if (!a.invoice_id) throw new Error('Invoice ID is required');
+      if (!a.invoice_id) throw svcError(400, 'invalid_input', 'Invoice ID is required');
       const inv = (await q('SELECT * FROM invoices WHERE id = $1', [a.invoice_id])).rows[0];
-      if (!inv) throw new Error(`Invoice #${a.invoice_id} not found`);
+      if (!inv) throw svcError(404, 'record_not_found', `Invoice #${a.invoice_id} not found`);
       const bal = await invoiceOutstanding(q, a.invoice_id);
       const key = `client:${a.invoice_id}`;
       const planned = round2((plannedByTarget.get(key) || 0) + amount);
       if (planned > bal.outstanding + 1e-9) {
-        throw new Error(`Allocation exceeds the invoice's outstanding balance: ${bal.outstanding} outstanding, ${amount} requested`);
+        throw svcError(400, 'amount_exceeds_limit', `Allocation exceeds the invoice's outstanding balance: ${bal.outstanding} outstanding, ${amount} requested`);
       }
       plannedByTarget.set(key, planned);
       validated.push({ ...a, amount, target_type: 'client_invoice' });
@@ -456,7 +457,7 @@ async function recordRetention(q, { project_id, party_type, direction, amount, s
   // A release can never exceed what was actually held for that party.
   const totals = await retentionTotals(q, { project_id, party_type });
   if (direction === 'released' && totals.balance < amt) {
-    throw new Error(`Retention release exceeds the held balance: ${totals.balance} held, ${amt} requested`);
+    throw svcError(400, 'amount_exceeds_limit', `Retention release exceeds the held balance: ${totals.balance} held, ${amt} requested`);
   }
   const r = await q(
     'INSERT INTO retention_ledger (project_id, party_type, source_type, source_id, direction, amount) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',

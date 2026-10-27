@@ -11,6 +11,7 @@ const { auditedMutation } = require('../utils/auditedMutation');
 const { typedFail, typedBody } = require('../utils/typedRoute');
 const engine = require('../services/portalEngine');
 const procurement = require('../services/procurementService');
+const { svcError } = require('../utils/serviceErrors');
 
 const SUBMISSION_KINDS = Object.freeze({
   wir_request: { entityType: null, schema: Joi.object({ sub_contract_id: Joi.number().integer().positive().required(), requested_date: Joi.date().iso().allow(null), note: Joi.string().max(4000).required() }).required() },
@@ -30,7 +31,7 @@ function supplierAssignment(scope, supplierId, projectId) {
 function rfqSupplier(access, requestedId) {
   const ids = access.supplierIds;
   const id = requestedId == null ? (ids.length === 1 ? ids[0] : null) : Number(requestedId);
-  if (!id || !ids.includes(id)) throw new Error('Select an invited supplier organization for this RFQ');
+  if (!id || !ids.includes(id)) throw svcError(400, 'invalid_input', 'Select an invited supplier organization for this RFQ');
   return supplierAssignment(access.scope, id, access.rfq.project_id);
 }
 

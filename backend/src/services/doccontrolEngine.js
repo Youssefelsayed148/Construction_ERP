@@ -13,6 +13,7 @@
 const { query: defaultQuery } = require('../config/database');
 const { nextNumber, bumpCounter } = require('./numbering');
 const { fireEvent } = require('../utils/activity');
+const { svcError } = require('../utils/serviceErrors');
 
 const CONTROLLED_DOC_TYPES = ['drawing', 'specification', 'contract', 'report', 'method_statement', 'as_built', 'o_m'];
 const DISCIPLINE_CODES = {
@@ -99,13 +100,13 @@ async function nextDocNumber(q, { project_id, discipline, doc_type, rev_code = '
 // code and stamps the register metadata.
 async function registerDocument(q, { documentId, revisionCode = 'R0' }) {
   const doc = (await q('SELECT * FROM project_documents WHERE id = $1', [num(documentId) || documentId])).rows[0];
-  if (!doc) throw new Error('Document not found');
+  if (!doc) throw svcError(404, 'record_not_found', 'Document not found');
   if (doc.doc_number) {
     const dupe = (await q(
       'SELECT id FROM project_documents WHERE project_id = $1 AND doc_number = $2 AND id != $3',
       [doc.project_id, doc.doc_number, doc.id]
     )).rows[0];
-    if (dupe) throw new Error(`Document number ${doc.doc_number} is already used by document #${dupe.id}`);
+    if (dupe) throw svcError(409, 'invalid_state', `Document number ${doc.doc_number} is already used by document #${dupe.id}`);
     return doc;
   }
   const docNumber = await nextDocNumber(q, {
@@ -125,7 +126,7 @@ async function registerDocument(q, { documentId, revisionCode = 'R0' }) {
 // re-approval, and the revision code bumps. Exactly one current revision.
 async function supersedeForNewRevision(q, documentId, newRevisionCode) {
   const doc = (await q('SELECT * FROM project_documents WHERE id = $1', [documentId])).rows[0];
-  if (!doc) throw new Error('Document not found');
+  if (!doc) throw svcError(404, 'record_not_found', 'Document not found');
   const prevVersions = (await q(
     'SELECT id FROM document_versions WHERE document_id = $1 AND is_current = $2',
     [documentId, true]
@@ -146,9 +147,9 @@ async function supersedeForNewRevision(q, documentId, newRevisionCode) {
 // Explicit supersede — points the old document at the new revision.
 async function supersedeDocument(q, oldDocumentId, newDocumentId, user) {
   const oldDoc = (await q('SELECT * FROM project_documents WHERE id = $1', [oldDocumentId])).rows[0];
-  if (!oldDoc) throw new Error('Document not found');
+  if (!oldDoc) throw svcError(404, 'record_not_found', 'Document not found');
   const newDoc = (await q('SELECT * FROM project_documents WHERE id = $1', [newDocumentId])).rows[0];
-  if (!newDoc) throw new Error('Replacement document not found');
+  if (!newDoc) throw svcError(404, 'record_not_found', 'Replacement document not found');
   await q(
     `UPDATE project_documents SET is_current = $4, doc_status = 'superseded', superseded_by_doc_id = $1, updated_at = $2 WHERE id = $3`,
     [newDoc.id, new Date(), oldDocumentId, false]
@@ -200,9 +201,9 @@ const TRANSMITTAL_TRANSITIONS = {
 
 async function transitionTransmittal(q, transmittalId, toState, user, { ackNote = null } = {}) {
   const t = (await q('SELECT * FROM transmittals WHERE id = $1', [transmittalId])).rows[0];
-  if (!t) throw new Error('Transmittal not found');
+  if (!t) throw svcError(404, 'record_not_found', 'Transmittal not found');
   if (!TRANSMITTAL_TRANSITIONS[t.status] || !TRANSMITTAL_TRANSITIONS[t.status].includes(toState)) {
-    throw new Error(`Cannot transition transmittal from '${t.status}' to '${toState}'`);
+    throw svcError(409, 'invalid_state', `Cannot transition transmittal from '${t.status}' to '${toState}'`);
   }
   if (toState === 'acknowledged') {
     await q(
@@ -262,9 +263,9 @@ const CORR_TRANSITIONS = {
 
 async function transitionCorrespondence(q, corrId, toState, user, { note = null } = {}) {
   const c = (await q('SELECT * FROM correspondence WHERE id = $1', [corrId])).rows[0];
-  if (!c) throw new Error('Correspondence not found');
+  if (!c) throw svcError(404, 'record_not_found', 'Correspondence not found');
   if (!CORR_TRANSITIONS[c.status] || !CORR_TRANSITIONS[c.status].includes(toState)) {
-    throw new Error(`Cannot transition correspondence from '${c.status}' to '${toState}'`);
+    throw svcError(409, 'invalid_state', `Cannot transition correspondence from '${c.status}' to '${toState}'`);
   }
   const now = new Date();
   if (toState === 'responded') {
@@ -287,8 +288,8 @@ async function transitionCorrespondence(q, corrId, toState, user, { note = null 
 // with an immutable history row (revision-safe).
 async function amendCorrespondence(q, corrId, user, { body = null, subject = null, note = null } = {}) {
   const c = (await q('SELECT * FROM correspondence WHERE id = $1', [corrId])).rows[0];
-  if (!c) throw new Error('Correspondence not found');
-  if (c.status === 'closed') throw new Error('Closed correspondence is read-only');
+  if (!c) throw svcError(404, 'record_not_found', 'Correspondence not found');
+  if (c.status === 'closed') throw svcError(409, 'invalid_state', 'Closed correspondence is read-only');
   const toRevision = num(c.revision) + 1;
   // Read-modify-write keeps the expression portable across PostgreSQL and the
   // test MockDb (COALESCE-with-param UPDATE expressions are not portable).

@@ -26,6 +26,7 @@
 const database = require('../config/database');
 const costAccrual = require('./costAccrual');
 const lots = require('./inventoryLots');
+const { svcError } = require('../utils/serviceErrors');
 
 // Every ledger write runs in ONE transaction that holds a per-(warehouse, material) advisory lock from the
 // balance check to the projection update, so concurrent movements queue instead of racing. Callers inside a
@@ -256,14 +257,14 @@ async function createMovementLocked(q, {
   reference_type = null, reference_id = null, notes = null, created_by = null, unit_cost = null, lot_id = null,
 }) {
   if (!MOVEMENT_TYPES.includes(movement_type)) {
-    throw new Error(`Invalid movement_type: ${movement_type}`);
+    throw svcError(400, 'invalid_input', `Invalid movement_type: ${movement_type}`);
   }
   const qty = toNum(quantity);
   if (qty === 0 && !['adjustment', 'reversal'].includes(movement_type)) {
-    throw new Error('quantity must be non-zero');
+    throw svcError(400, 'invalid_input', 'quantity must be non-zero');
   }
   if (qty < 0 && !['adjustment', 'reversal'].includes(movement_type)) {
-    throw new Error(`${movement_type} quantity must be positive — direction is encoded by the movement type`);
+    throw svcError(400, 'invalid_input', `${movement_type} quantity must be positive — direction is encoded by the movement type`);
   }
 
   await lockPairs(q, [[warehouse_id, material_id]]);
@@ -374,7 +375,7 @@ async function reverseMovement(q, movementId, options = {}) {
 
 async function reverseMovementLocked(q, movementId, { reason = null, created_by = null } = {}) {
   const original = (await q('SELECT * FROM stock_movements WHERE id = $1', [movementId])).rows[0];
-  if (!original) throw new Error(`Stock movement #${movementId} not found`);
+  if (!original) throw svcError(404, 'record_not_found', `Stock movement #${movementId} not found`);
   // The "already reversed?" check and the reversal must not interleave with another reversal of this row.
   await lockPairs(q, [[original.warehouse_id, original.material_id]]);
   const prior = (await q(
@@ -383,9 +384,9 @@ async function reverseMovementLocked(q, movementId, { reason = null, created_by 
        AND movement_type IN ('reversal','quarantine_reject','quarantine_restore')`,
     [original.id]
   )).rows[0];
-  if (prior) throw new Error(`Stock movement #${movementId} is already reversed by movement #${prior.id}`);
+  if (prior) throw svcError(409, 'invalid_state', `Stock movement #${movementId} is already reversed by movement #${prior.id}`);
   if (original.movement_type === 'reversal') {
-    throw new Error('Cannot reverse a reversal — post a new adjustment movement instead');
+    throw svcError(409, 'invalid_state', 'Cannot reverse a reversal — post a new adjustment movement instead');
   }
   if (original.movement_type === 'quarantine') {
     return createMovement(q, {
@@ -454,14 +455,14 @@ async function createReservationLocked(q, {
   quantity, expires_at = null, reference_type = null, reference_id = null, created_by = null,
 }) {
   const qty = toNum(quantity);
-  if (!(qty > 0)) throw new Error('Reservation quantity must be positive');
+  if (!(qty > 0)) throw svcError(400, 'invalid_input', 'Reservation quantity must be positive');
   // Warehouse-scoped reservations are gated on available stock, checked under the pair lock so two
   // concurrent reservations cannot both pass the check.
   if (warehouse_id != null) {
     await lockPairs(q, [[warehouse_id, material_id]]);
     const balances = await getBalances(q, warehouse_id, material_id);
     if (balances.available < qty) {
-      throw new Error(`Insufficient available stock: ${balances.available} available, ${qty} requested`);
+      throw svcError(400, 'insufficient_stock', `Insufficient available stock: ${balances.available} available, ${qty} requested`);
     }
   }
   const r = await q(
@@ -482,7 +483,7 @@ async function releaseReservation(q, reservationId, options = {}) {
 
 async function releaseReservationLocked(q, reservationId, { status = 'released' } = {}) {
   const existing = (await q('SELECT * FROM stock_reservations WHERE id = $1', [reservationId])).rows[0];
-  if (!existing) throw new Error(`Reservation #${reservationId} not found`);
+  if (!existing) throw svcError(404, 'record_not_found', `Reservation #${reservationId} not found`);
   if (existing.warehouse_id != null) await lockPairs(q, [[existing.warehouse_id, existing.material_id]]);
   // Only the caller whose UPDATE returns the row releases it.
   const r = await q(
@@ -491,7 +492,7 @@ async function releaseReservationLocked(q, reservationId, { status = 'released' 
       WHERE id = $4 AND status = 'active' RETURNING *`,
     [status, new Date(), new Date(), reservationId]
   );
-  if (!r.rows[0]) throw new Error(`Reservation #${reservationId} is already ${existing.status === 'active' ? 'released' : existing.status}`);
+  if (!r.rows[0]) throw svcError(409, 'invalid_state', `Reservation #${reservationId} is already ${existing.status === 'active' ? 'released' : existing.status}`);
   if (existing.warehouse_id != null) {
     await rebuildWarehouseStock(q, { warehouseId: existing.warehouse_id, materialId: existing.material_id });
   }

@@ -10,6 +10,7 @@ const finance = require('../services/financeEngine');
 const { reasonFrom } = require('../utils/reason');
 const glPosting = require('../services/glPosting');
 const { routeFail } = require('../utils/typedRoute');
+const { svcError } = require('../utils/serviceErrors');
 
 const PAYMENT_METHODS = ['cash', 'bank_transfer', 'check', 'other'];
 
@@ -86,9 +87,9 @@ router.post('/', authenticate, authorize(), async (req, res) => {
       if (value.direction === 'ar' && value.invoice_id) {
         const inv = (await q('SELECT * FROM invoices WHERE id = $1 FOR UPDATE', [value.invoice_id])).rows[0];
         if (!inv || Number(inv.project_id) !== authorizedProjectId(req, value) || Number(inv.client_id) !== value.client_id) {
-          throw new Error('Invoice does not belong to the selected project and client');
+          throw svcError(400, 'invalid_input', 'Invoice does not belong to the selected project and client');
         }
-        if (['void', 'cancelled', 'credited'].includes(inv.status)) throw new Error('Invoice is not payable');
+        if (['void', 'cancelled', 'credited'].includes(inv.status)) throw svcError(409, 'invalid_state', 'Invoice is not payable');
         // B1 (C-FIN-AR-001): money only lands on an issued invoice. A draft or approved
         // invoice must never accept a payment — otherwise the GL gets a client_payment with
         // no matching client_invoice entry and AR and the ledger diverge.
@@ -100,7 +101,7 @@ router.post('/', authenticate, authorize(), async (req, res) => {
           throw notIssued;
         }
         const balance = await finance.invoiceOutstanding(q, value.invoice_id);
-        if (value.amount > balance.outstanding + 1e-9) throw new Error('Payment exceeds invoice outstanding balance');
+        if (value.amount > balance.outstanding + 1e-9) throw svcError(400, 'amount_exceeds_limit', 'Payment exceeds invoice outstanding balance');
       }
       const row = (await q(
         `INSERT INTO payments (invoice_id, project_id, client_id, direction, supplier_id, amount, payment_date, payment_method, reference_number, notes)

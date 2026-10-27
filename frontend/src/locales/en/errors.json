@@ -111,5 +111,11 @@
   "reason_required": "Enter a reason with at least three characters.",
   "commitment_not_found": "This commitment no longer exists.",
   "commitment_cancelled": "A cancelled commitment cannot be adjusted.",
-  "commitment_unchanged": "The cancelled amount is unchanged."
+  "commitment_unchanged": "The cancelled amount is unchanged.",
+  "record_not_found": "The requested record was not found.",
+  "invalid_state": "This action is not allowed in the record's current state.",
+  "insufficient_stock": "There is not enough usable stock for this request.",
+  "invalid_input": "Some of the submitted values are missing or invalid.",
+  "amount_exceeds_limit": "The amount or quantity exceeds the permitted limit.",
+  "not_authorized_for_action": "You are not authorized to perform this action."
 }

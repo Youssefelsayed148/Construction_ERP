@@ -20,6 +20,7 @@
 
 const { query: defaultQuery } = require('../config/database');
 const notificationService = require('./notificationService');
+const { svcError } = require('../utils/serviceErrors');
 
 const OPEN_STATUSES = ['open', 'in_progress'];
 const PRIORITIES = ['low', 'medium', 'high', 'critical'];
@@ -65,13 +66,13 @@ async function createActionItem(input, opts = {}) {
   const notifyFlag = opts.notify !== false;
 
   if (!input.title || !String(input.title).trim()) {
-    throw new Error('Action item requires a title');
+    throw svcError(400, 'invalid_input', 'Action item requires a title');
   }
   if (input.priority && !PRIORITIES.includes(input.priority)) {
-    throw new Error(`Invalid priority: ${input.priority}`);
+    throw svcError(400, 'invalid_input', `Invalid priority: ${input.priority}`);
   }
   if (input.assigned_user_id == null && input.assigned_role == null) {
-    throw new Error('Action item requires assigned_user_id or assigned_role');
+    throw svcError(400, 'invalid_input', 'Action item requires assigned_user_id or assigned_role');
   }
 
   const reminderPolicy = input.reminder_policy || await resolveReminderPolicy(client, input.source_type || '*');

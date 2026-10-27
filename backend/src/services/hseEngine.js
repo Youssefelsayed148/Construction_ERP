@@ -19,6 +19,7 @@ const { nextNumber } = require('./numbering');
 const workflowEngine = require('./workflowEngine');
 const { fireEvent } = require('../utils/activity');
 const sweepLeader = require('./sweepLeader');
+const { svcError } = require('../utils/serviceErrors');
 
 const SIGN_OFF_TYPES = ['hot_work', 'confined_space', 'lifting'];
 
@@ -95,11 +96,11 @@ async function createPermit(q, input, user) {
 // Requester submits → HSE review opens.
 async function submitPermit(q, permitId, user) {
   const permit = (await q('SELECT * FROM permits WHERE id = $1', [permitId])).rows[0];
-  if (!permit) throw new Error('Permit not found');
-  if (permit.status !== 'draft') throw new Error(`Permit is already ${permit.status}`);
+  if (!permit) throw svcError(404, 'record_not_found', 'Permit not found');
+  if (permit.status !== 'draft') throw svcError(409, 'invalid_state', `Permit is already ${permit.status}`);
   const allowed = user.role === 'owner' || user.role === 'admin' ||
     ['engineer', 'site_supervisor'].includes(user.role);
-  if (!allowed) throw new Error('Not authorized to submit this permit');
+  if (!allowed) throw svcError(403, 'not_authorized_for_action', 'Not authorized to submit this permit');
 
   await q(`UPDATE permits SET status = 'pending_approval', updated_at = $1 WHERE id = $2`, [new Date(), permitId]);
   await syncPermitStep(q, permit, 'draft', user, false, 'Submitted for HSE review');
@@ -120,11 +121,11 @@ async function submitPermit(q, permitId, user) {
 // HSE review + PM approval — domain decisions synced to the engine, exactly
 // the consultantEngine pattern. Rejected permits reopen for correction.
 async function permitStageDecision(q, permitId, user, decision, { comment = null } = {}) {
-  if (!['approve', 'reject'].includes(decision)) throw new Error(`Invalid decision: ${decision}`);
+  if (!['approve', 'reject'].includes(decision)) throw svcError(400, 'invalid_input', `Invalid decision: ${decision}`);
   const permit = (await q('SELECT * FROM permits WHERE id = $1', [permitId])).rows[0];
-  if (!permit) throw new Error('Permit not found');
+  if (!permit) throw svcError(404, 'record_not_found', 'Permit not found');
   if (!['pending_approval', 'approved'].includes(permit.status)) {
-    throw new Error(`Permit is ${permit.status} — no approval stage is open`);
+    throw svcError(409, 'invalid_state', `Permit is ${permit.status} — no approval stage is open`);
   }
   if (!permit.workflow_instance_id) throw new Error('Permit has no workflow instance');
 
@@ -167,13 +168,13 @@ async function permitStageDecision(q, permitId, user, decision, { comment = null
 // Work starts / suspends / closes — only valid-window moves, terminal on close.
 async function transitionPermit(q, permitId, toState, user, { comment = null } = {}) {
   const permit = (await q('SELECT * FROM permits WHERE id = $1', [permitId])).rows[0];
-  if (!permit) throw new Error('Permit not found');
+  if (!permit) throw svcError(404, 'record_not_found', 'Permit not found');
   if (!PERMIT_TRANSITIONS[permit.status] || !PERMIT_TRANSITIONS[permit.status].includes(toState)) {
-    throw new Error(`Cannot transition permit from '${permit.status}' to '${toState}'`);
+    throw svcError(409, 'invalid_state', `Cannot transition permit from '${permit.status}' to '${toState}'`);
   }
   const allowed = user.role === 'owner' || user.role === 'admin' ||
     ['project_manager', 'engineer', 'site_supervisor'].includes(user.role);
-  if (!allowed) throw new Error('Not authorized for this permit transition');
+  if (!allowed) throw svcError(403, 'not_authorized_for_action', 'Not authorized for this permit transition');
 
   const now = new Date();
   const stampCol = { suspended: 'suspended_at', closed: 'closed_at', rejected: null, active: null }[toState] || null;

@@ -27,6 +27,7 @@ const workflowEngineRef = () => require('./workflowEngine');
 const { nextNumber } = require('./numbering');
 const costView = require('./costView');
 const commitmentLedger = require('./commitmentLedger');
+const { svcError } = require('../utils/serviceErrors');
 
 function toNum(v) {
   if (v == null) return 0;
@@ -284,8 +285,8 @@ async function updateVariation(q, variationId, fields) {
 
 async function startVariationWorkflow(q, variationId, user) {
   const variation = (await q('SELECT * FROM variations WHERE id = $1', [variationId])).rows[0];
-  if (!variation) throw new Error(`Variation #${variationId} not found`);
-  if (variation.workflow_instance_id != null) throw new Error('Variation already has a workflow');
+  if (!variation) throw svcError(404, 'record_not_found', `Variation #${variationId} not found`);
+  if (variation.workflow_instance_id != null) throw svcError(409, 'invalid_state', 'Variation already has a workflow');
 
   const instance = await workflowEngineRef().startWorkflow('variation', 'variation', variation.id, {
     module_name: 'variation',
@@ -305,8 +306,8 @@ async function startVariationWorkflow(q, variationId, user) {
 // and the project forecast in one transaction.
 async function decideVariation(q, variationId, user, decision, comment, { approved_amount = null } = {}) {
   const variation = (await q('SELECT * FROM variations WHERE id = $1', [variationId])).rows[0];
-  if (!variation) throw new Error(`Variation #${variationId} not found`);
-  if (variation.workflow_instance_id == null) throw new Error('Variation workflow not started');
+  if (!variation) throw svcError(404, 'record_not_found', `Variation #${variationId} not found`);
+  if (variation.workflow_instance_id == null) throw svcError(409, 'invalid_state', 'Variation workflow not started');
   if (approved_amount != null && decision === 'approve') {
     // The approving authority states the approved amount (it may be less than submitted or recommended).
     await q('UPDATE variations SET approved_amount = $2, updated_at = NOW() WHERE id = $1', [variationId, round2(approved_amount)]);
@@ -338,7 +339,7 @@ async function decideVariation(q, variationId, user, decision, comment, { approv
 // together with the variation's incorporated status.
 async function incorporateVariation(q, variationId) {
   const variation = (await q('SELECT * FROM variations WHERE id = $1', [variationId])).rows[0];
-  if (!variation) throw new Error(`Variation #${variationId} not found`);
+  if (!variation) throw svcError(404, 'record_not_found', `Variation #${variationId} not found`);
 
   // Phase 5.5: the amount that counts is the APPROVED amount (default: what was submitted). Every figure the
   // engine reads (revised contract value, approved variations) reads variations.amount, so it follows here once.

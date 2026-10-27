@@ -10,6 +10,7 @@ const { auditedTransaction } = require('../utils/auditedTransaction');
 const { auditedMutation } = require('../utils/auditedMutation');
 const inventoryEngine = require('../services/inventoryEngine');
 const { reasonFrom } = require('../utils/reason');
+const { svcError } = require('../utils/serviceErrors');
 
 const WO_STATUSES = ['planned', 'in_progress', 'completed', 'cancelled'];
 
@@ -150,7 +151,7 @@ router.post('/:id/materials', authenticate, authorize(), async (req, res) => {
       if (value.warehouse_id && value.actual_quantity > 0) {
         const balances = await inventoryEngine.getBalances(txQuery, value.warehouse_id, value.item_id);
         if (balances.available < value.actual_quantity) {
-          throw new Error(`Insufficient stock: ${balances.available} available, ${value.actual_quantity} requested`);
+          throw svcError(400, 'insufficient_stock', `Insufficient stock: ${balances.available} available, ${value.actual_quantity} requested`);
         }
       }
 

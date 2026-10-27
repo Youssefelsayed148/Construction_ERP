@@ -10,6 +10,7 @@ const { auditedTransaction } = require('../utils/auditedTransaction');
 const engine = require('../services/inventoryEngine');
 const lots = require('../services/inventoryLots');
 const { routeFail } = require('../utils/typedRoute');
+const { svcError } = require('../utils/serviceErrors');
 
 // Phase 10 — inventory surface. Stock is ledgered: every change enters as a
 // stock_movements row through the movement API; warehouse_stock is a derived
@@ -279,7 +280,7 @@ router.put('/transfers/:id/complete', authenticate, authorize(), async (req, res
           WHERE id = $2 AND status = 'draft' RETURNING id`,
         [req.user.id, req.params.id]
       );
-      if (claimed.rows.length === 0) throw new Error('Transfer already processed');
+      if (claimed.rows.length === 0) throw svcError(409, 'invalid_state', 'Transfer already processed');
       // Lock every (warehouse, material) pair up front, in sorted order, so concurrent transfers cannot deadlock.
       await engine.lockPairs(txQuery, items.rows.flatMap((item) => [
         [transfer.rows[0].from_warehouse_id, item.item_id], [transfer.rows[0].to_warehouse_id, item.item_id],
@@ -288,7 +289,7 @@ router.put('/transfers/:id/complete', authenticate, authorize(), async (req, res
       for (const item of items.rows) {
         const balances = await engine.getBalances(txQuery, transfer.rows[0].from_warehouse_id, item.item_id);
         if (balances.available < engine.toNum(item.quantity)) {
-          throw new Error(`Insufficient stock for item #${item.item_id}: ${balances.available} available, ${item.quantity} requested`);
+          throw svcError(400, 'insufficient_stock', `Insufficient stock for item #${item.item_id}: ${balances.available} available, ${item.quantity} requested`);
         }
       }
       // Paired movements in one transaction: transfer_out + transfer_in.

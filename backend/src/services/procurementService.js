@@ -30,6 +30,7 @@ const inventoryEngine = require('./inventoryEngine');
 const inventoryLots = require('./inventoryLots');
 const costAccrual = require('./costAccrual');
 const costView = require('./costView');
+const { svcError } = require('../utils/serviceErrors');
 
 const PRICE_VARIANCE_TOLERANCE = 0.02;   // 2% line-price tolerance
 const TAX_MATCH_TOLERANCE = 1.0;         // absolute currency tolerance
@@ -153,8 +154,8 @@ async function syncStatusFromWorkflow(q, entityType, entityId, { extra = {} } = 
 async function decideOnDocument(q, entityType, entityId, user, decision, comment, opts = {}) {
   const table = entityType === 'purchase_request' ? 'purchase_requests' : 'purchase_orders';
   const doc = (await q(`SELECT * FROM ${table} WHERE id = $1`, [entityId])).rows[0];
-  if (!doc) throw new Error(`${entityType} #${entityId} not found`);
-  if (doc.workflow_instance_id == null) throw new Error(`${entityType} #${entityId} has no active workflow — submit it first`);
+  if (!doc) throw svcError(404, 'record_not_found', `${entityType} #${entityId} not found`);
+  if (doc.workflow_instance_id == null) throw svcError(409, 'invalid_state', `${entityType} #${entityId} has no active workflow — submit it first`);
 
   // The budget step approves only a requisition that fits the project budget (rejecting stays possible), unless an
   // owner/admin overrides it with a reason.
@@ -205,7 +206,7 @@ async function createPurchaseRequest(q, {
   lines = [], created_by = null, source_type = 'manual', source_id = null, source_key = null,
   policy_mode = null, location_id = null, cost_code_id = null, work_package_id = null, notes = null,
 }) {
-  if (!Array.isArray(lines) || lines.length === 0) throw new Error('A requisition needs at least one line');
+  if (!Array.isArray(lines) || lines.length === 0) throw svcError(400, 'invalid_input', 'A requisition needs at least one line');
   const requestNumber = await nextNumber(q, 'purchase_requests', 'request_number', 'PR');
   const amount = round2(lines.reduce((s, l) => s + toNum(l.quantity) * toNum(l.estimated_unit_price), 0));
   const r = await q(
@@ -232,8 +233,8 @@ async function createPurchaseRequest(q, {
 
 async function submitPurchaseRequest(q, prId, user) {
   const pr = (await q('SELECT * FROM purchase_requests WHERE id = $1', [prId])).rows[0];
-  if (!pr) throw new Error(`Purchase requisition #${prId} not found`);
-  if (pr.status !== 'draft') throw new Error(`Requisition is in state ${pr.status} — only Draft can be submitted`);
+  if (!pr) throw svcError(404, 'record_not_found', `Purchase requisition #${prId} not found`);
+  if (pr.status !== 'draft') throw svcError(409, 'invalid_state', `Requisition is in state ${pr.status} — only Draft can be submitted`);
 
   // The replenishment sweep submits as the 'system' actor: no user row, only the requester steps (Draft,
   // Submit) are completed on its behalf; the budget check and approvals still wait for people.
@@ -275,7 +276,7 @@ async function submitPurchaseRequest(q, prId, user) {
 // ---------------------------------------------------------------------------
 
 async function createRfq(q, { purchase_request_id = null, project_id = null, title, due_date = null, lines = [], created_by = null }) {
-  if (!Array.isArray(lines) || lines.length === 0) throw new Error('An RFQ needs at least one line');
+  if (!Array.isArray(lines) || lines.length === 0) throw svcError(400, 'invalid_input', 'An RFQ needs at least one line');
   const rfqNumber = await nextNumber(q, 'rfqs', 'rfq_number', 'RFQ');
   const r = await q(
     `INSERT INTO rfqs (rfq_number, purchase_request_id, project_id, title, due_date, status, created_by)
@@ -372,7 +373,7 @@ async function submitQuotation(q, {
 // technical/commercial score.
 async function buildBidComparison(q, rfqId, opts = {}) {
   const rfq = (await q('SELECT * FROM rfqs WHERE id = $1', [rfqId])).rows[0];
-  if (!rfq) throw new Error(`RFQ #${rfqId} not found`);
+  if (!rfq) throw svcError(404, 'record_not_found', `RFQ #${rfqId} not found`);
   const quotations = (await q('SELECT * FROM supplier_quotations WHERE rfq_id = $1 ORDER BY id', [rfqId])).rows;
 
   const rows = [];
@@ -437,10 +438,10 @@ async function quotationsForVendor(q, rfqId, supplierId) {
 
 async function awardRfq(q, rfqId, quotationId, user) {
   const rfq = (await q('SELECT * FROM rfqs WHERE id = $1', [rfqId])).rows[0];
-  if (!rfq) throw new Error(`RFQ #${rfqId} not found`);
+  if (!rfq) throw svcError(404, 'record_not_found', `RFQ #${rfqId} not found`);
   const quotation = (await q('SELECT * FROM supplier_quotations WHERE id = $1 AND rfq_id = $2', [quotationId, rfqId])).rows[0];
-  if (!quotation) throw new Error(`Quotation #${quotationId} is not on RFQ #${rfqId}`);
-  if (quotation.compliant === false) throw new Error('A non-compliant quotation cannot be awarded');
+  if (!quotation) throw svcError(400, 'invalid_input', `Quotation #${quotationId} is not on RFQ #${rfqId}`);
+  if (quotation.compliant === false) throw svcError(400, 'invalid_input', 'A non-compliant quotation cannot be awarded');
 
   await q('UPDATE supplier_quotations SET awarded = $1, status = $2 WHERE id = $3', [true, 'awarded', quotationId]);
   await q('UPDATE supplier_quotations SET status = $1 WHERE rfq_id = $2 AND id != $3', ['not_awarded', rfqId, quotationId]);
@@ -457,7 +458,7 @@ async function createPurchaseOrder(q, {
   needed_by = null, tolerance_pct = 5, taxes = 0, freight = 0, approved_charges = 0,
   payment_terms = null, delivery_terms = null, lines = [], created_by = null, source_key = null,
 }) {
-  if (!Array.isArray(lines) || lines.length === 0) throw new Error('A purchase order needs at least one line');
+  if (!Array.isArray(lines) || lines.length === 0) throw svcError(400, 'invalid_input', 'A purchase order needs at least one line');
   const orderNumber = await nextNumber(q, 'purchase_orders', 'order_number', 'PO');
   const r = await q(
     `INSERT INTO purchase_orders
@@ -500,9 +501,9 @@ async function issuePurchaseOrder(q, poId, user) {
   // Issue = start the approval chain: the workflow state machine runs
   // Draft → Commercial/Procurement Approval → Financial Authority → Issued.
   const po = (await q('SELECT * FROM purchase_orders WHERE id = $1', [poId])).rows[0];
-  if (!po) throw new Error(`Purchase order #${poId} not found`);
-  if (po.status !== 'draft') throw new Error(`PO is in state ${po.status} — only Draft can enter approval`);
-  if (po.workflow_instance_id != null) throw new Error('PO already has a workflow');
+  if (!po) throw svcError(404, 'record_not_found', `Purchase order #${poId} not found`);
+  if (po.status !== 'draft') throw svcError(409, 'invalid_state', `PO is in state ${po.status} — only Draft can enter approval`);
+  if (po.workflow_instance_id != null) throw svcError(409, 'invalid_state', 'PO already has a workflow');
 
   const instance = await workflowEngine.startWorkflow('po', 'purchase_order', po.id, {
     module_name: 'purchase_order',
@@ -544,15 +545,15 @@ async function createDelivery(q, {
   // The PO row and its lines are locked for the rest of the transaction: concurrent deliveries against the
   // same PO queue here, so the cumulative check below reads the true delivered quantity.
   const po = (await q('SELECT * FROM purchase_orders WHERE id = $1 FOR UPDATE', [purchase_order_id])).rows[0];
-  if (!po) throw new Error(`Purchase order #${purchase_order_id} not found`);
-  if (!PO_OPEN_STATUSES.includes(po.status)) throw new Error(`PO is ${po.status} — deliveries require an issued/open PO`);
+  if (!po) throw svcError(404, 'record_not_found', `Purchase order #${purchase_order_id} not found`);
+  if (!PO_OPEN_STATUSES.includes(po.status)) throw svcError(409, 'invalid_state', `PO is ${po.status} — deliveries require an issued/open PO`);
 
   const poLines = (await q('SELECT * FROM purchase_order_lines WHERE purchase_order_id = $1 ORDER BY id FOR UPDATE', [purchase_order_id])).rows;
   // Several delivery lines may hit one PO line: check the sum, not each line on its own.
   const requested = new Map();
   for (const line of lines) {
     const poLine = poLines.find((pl) => pl.id === toNum(line.purchase_order_line_id));
-    if (!poLine) throw new Error(`Delivery line does not reference a PO line of PO #${purchase_order_id}`);
+    if (!poLine) throw svcError(400, 'invalid_input', `Delivery line does not reference a PO line of PO #${purchase_order_id}`);
     requested.set(poLine.id, round3((requested.get(poLine.id) || 0) + toNum(line.quantity)));
   }
   for (const [poLineId, qty] of requested) {
@@ -560,7 +561,7 @@ async function createDelivery(q, {
     const deliveredCum = round3(toNum(poLine.delivered_quantity) + qty);
     const maxAllowed = round3(toNum(poLine.quantity) * (1 + toNum(po.tolerance_pct) / 100));
     if (deliveredCum > maxAllowed + 1e-9) {
-      throw new Error(`Delivered cumulative ${deliveredCum} exceeds ordered ${toNum(poLine.quantity)} + tolerance ${toNum(po.tolerance_pct)}% for PO line #${poLineId}`);
+      throw svcError(400, 'amount_exceeds_limit', `Delivered cumulative ${deliveredCum} exceeds ordered ${toNum(poLine.quantity)} + tolerance ${toNum(po.tolerance_pct)}% for PO line #${poLineId}`);
     }
   }
 
@@ -618,9 +619,9 @@ async function createMir(q, { delivery_id, lines = null, created_by = null }) {
     `SELECT d.*, po.project_id AS purchase_project_id FROM deliveries d
       JOIN purchase_orders po ON po.id = d.purchase_order_id WHERE d.id = $1`, [delivery_id]
   )).rows[0];
-  if (!delivery) throw new Error(`Delivery #${delivery_id} not found`);
+  if (!delivery) throw svcError(404, 'record_not_found', `Delivery #${delivery_id} not found`);
   const existing = (await q('SELECT * FROM material_inspection_requests WHERE delivery_id = $1', [delivery_id])).rows[0];
-  if (existing) throw new Error(`Delivery #${delivery_id} already has MIR #${existing.mir_number}`);
+  if (existing) throw svcError(409, 'invalid_state', `Delivery #${delivery_id} already has MIR #${existing.mir_number}`);
 
   const deliveryLines = (await q('SELECT * FROM delivery_lines WHERE delivery_id = $1', [delivery_id])).rows;
   const mirNumber = await nextNumber(q, 'material_inspection_requests', 'mir_number', 'MIR');
@@ -648,9 +649,9 @@ async function createMir(q, { delivery_id, lines = null, created_by = null }) {
 // quantities are written off from quarantine (never usable).
 async function decideMir(q, mirId, user, decision, { accepted = null, notes = null } = {}) {
   const mir = (await q('SELECT * FROM material_inspection_requests WHERE id = $1', [mirId])).rows[0];
-  if (!mir) throw new Error(`MIR #${mirId} not found`);
-  if (mir.status !== 'pending') throw new Error(`MIR is already ${mir.status}`);
-  if (!['accept', 'reject'].includes(decision)) throw new Error(`Invalid MIR decision: ${decision}`);
+  if (!mir) throw svcError(404, 'record_not_found', `MIR #${mirId} not found`);
+  if (mir.status !== 'pending') throw svcError(409, 'invalid_state', `MIR is already ${mir.status}`);
+  if (!['accept', 'reject'].includes(decision)) throw svcError(400, 'invalid_input', `Invalid MIR decision: ${decision}`);
 
   const mirLines = (await q('SELECT * FROM mir_lines WHERE mir_id = $1 ORDER BY id', [mirId])).rows;
   if (mirLines.length === 0) throw new Error('MIR has no lines');
@@ -665,7 +666,7 @@ async function decideMir(q, mirId, user, decision, { accepted = null, notes = nu
       ? 0
       : round3(accepted && accepted[line.id] != null ? toNum(accepted[line.id]) : inspected);
     if (lineAccepted < 0 || lineAccepted > inspected + 1e-9) {
-      throw new Error(`Accepted quantity ${lineAccepted} is outside MIR line #${line.id} quantity ${inspected}`);
+      throw svcError(400, 'amount_exceeds_limit', `Accepted quantity ${lineAccepted} is outside MIR line #${line.id} quantity ${inspected}`);
     }
     plan.push({ line, lineAccepted, rejected: round3(inspected - lineAccepted) });
     inspectedQty = round3(inspectedQty + inspected);
@@ -683,7 +684,7 @@ async function decideMir(q, mirId, user, decision, { accepted = null, notes = nu
       WHERE id = $5 AND status = 'pending' RETURNING *`,
     [status, user ? user.id : null, new Date(), notes, mirId]
   )).rows[0];
-  if (!claimed) throw new BadRequestError('MIR is already decided');
+  if (!claimed) throw new ConflictError('MIR is already decided');
 
   // 3. Post the movements and bookkeeping.
   for (const { line, lineAccepted, rejected } of plan) {
@@ -728,16 +729,16 @@ async function decideMir(q, mirId, user, decision, { accepted = null, notes = nu
 async function createGrn(q, { mir_id, warehouse_id, created_by = null, received_by = null }) {
   // The MIR row lock serialises concurrent GRN creation for the same MIR.
   const mir = (await q('SELECT * FROM material_inspection_requests WHERE id = $1 FOR UPDATE', [mir_id])).rows[0];
-  if (!mir) throw new Error(`MIR #${mir_id} not found`);
+  if (!mir) throw svcError(404, 'record_not_found', `MIR #${mir_id} not found`);
   if (!['accepted', 'partially_accepted'].includes(mir.status)) {
-    throw new Error(`MIR ${mir.status} — a GRN can only be created for MIR-accepted quantities`);
+    throw svcError(409, 'invalid_state', `MIR ${mir.status} — a GRN can only be created for MIR-accepted quantities`);
   }
   const existingGrn = (await q('SELECT * FROM goods_receipt_notes WHERE mir_id = $1', [mir_id])).rows[0];
-  if (existingGrn) throw new Error(`MIR #${mir_id} already has GRN #${existingGrn.grn_number}`);
+  if (existingGrn) throw svcError(409, 'invalid_state', `MIR #${mir_id} already has GRN #${existingGrn.grn_number}`);
 
   const mirLines = (await q('SELECT * FROM mir_lines WHERE mir_id = $1', [mir_id])).rows;
   const acceptedLines = mirLines.filter((l) => toNum(l.accepted_quantity) > 0);
-  if (acceptedLines.length === 0) throw new Error('MIR has no accepted quantities');
+  if (acceptedLines.length === 0) throw svcError(409, 'invalid_state', 'MIR has no accepted quantities');
 
   // Enforce: accepted cumulative ≤ delivered cumulative ≤ ordered + tolerance.
   const po = (await q('SELECT * FROM purchase_orders WHERE id = $1', [mir.purchase_order_id])).rows[0];
@@ -946,7 +947,7 @@ async function recordSupplierInvoice(q, {
 
 async function threeWayMatch(q, invoiceId) {
   const invoice = (await q('SELECT * FROM supplier_invoices WHERE id = $1', [invoiceId])).rows[0];
-  if (!invoice) throw new Error(`Supplier invoice #${invoiceId} not found`);
+  if (!invoice) throw svcError(404, 'record_not_found', `Supplier invoice #${invoiceId} not found`);
   const invLines = (await q('SELECT * FROM supplier_invoice_lines WHERE supplier_invoice_id = $1', [invoiceId])).rows;
   let grnLines = [];
   if (invoice.purchase_order_id != null) {
@@ -1028,7 +1029,7 @@ async function issueMaterialToWorkPackage(q, {
 }) {
   const balances = await inventoryEngine.getBalances(q, warehouse_id, material_id);
   if (balances.available < toNum(quantity)) {
-    throw new Error(`Insufficient stock: ${balances.available} available, ${quantity} requested`);
+    throw svcError(400, 'insufficient_stock', `Insufficient stock: ${balances.available} available, ${quantity} requested`);
   }
   const wom = await q(
     `INSERT INTO work_order_materials
