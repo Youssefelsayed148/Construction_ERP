@@ -2966,3 +2966,12 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 | F1.3 | `npx jest src/scripts/__tests__/f1-typed-service-errors.test.js` | 18 passed |
 | F1.4 | `npx jest src/scripts/__tests__/f1-documents-audit.test.js` | 9 passed |
 | F2 | `npx jest src/scripts/__tests__/f2-error-contract.test.js` | run 1: 5 failed / 25 passed; run 2: 3 failed / 27 passed; 3 groups removed (see STATE.md) |
+
+### Session F: F3 (portal grants, rejected-delivery record, decisions)
+
+| Slice | Command | Result |
+|---|---|---|
+| F3.1 | `npx jest src/scripts/__tests__/f3-portal-family.test.js` | 19 passed |
+| F3.1 FE | `CI=true npx react-scripts test --watchAll=false src/utils/portalFamily.test.js src/components/layout/Sidebar.test.js` | 2 suites / 32 passed |
+| F3.2 | `npx jest src/scripts/__tests__/f3-mir-supplier-collection.test.js` | 8 passed |
+| migrations | `npm run migrate` on throwaway `erp_closeout_test` (local PG16) | 0072, 0073 applied |

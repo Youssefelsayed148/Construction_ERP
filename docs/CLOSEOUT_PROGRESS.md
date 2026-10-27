@@ -1879,3 +1879,9 @@ Implementation 854e8bd and LF checkpoint 855ee52 committed. Pilot migrate exited
 - F2: raw error-message route sites 366 -> 0 via routeFail (32 files); `upload_rejected` EN/AR key.
 - Focused tests: f1-denial-dedupe 4/4, f1-typed-service-errors 18/18, f1-documents-audit 9/9, f2-error-contract 27 groups pass (3 groups dropped, see STATE.md).
 - NOT RUN: all suites, build (deferred to Session T).
+
+## 2026-10-27 - Session F: F3 (portal grants, rejected-delivery record, decisions)
+
+- F3: portal grants 0072 + family-based data gates + LandingRedirect; C-PROC-002 supplier-collection record 0073 (service, route, audit fixture, UI, EN/AR); owner_ceo census item dropped (docs); approval-limits decision sheet written.
+- Focused tests: f3-portal-family 19/19, f3-mir-supplier-collection 8/8, frontend portalFamily + Sidebar 32/32.
+- NOT RUN: all suites, build, PG files (nav-visibility.pg.test.js edited, node --check only).
