@@ -95,6 +95,19 @@ export const ADMIN_AREAS = {
     fields: [field('project_id', 'number', true), field('client_id', 'number'), field('title', 'text'), field('original_value', 'number', true), field('retention_percent', 'number'), field('advance_percent', 'number'), field('advance_amount', 'number'), field('contract_date', 'date'), field('start_date', 'date'), field('end_date', 'date'), field('status', 'select', false, ['active', 'closed', 'terminated']), field('notes', 'textarea')],
     columns: ['contract_number', 'title', 'original_value', 'retention_percent', 'status'], projectScoped: true,
   },
+  'subcontractor-contracts': {
+    title: 'subcontractorContracts', module: 'subcontractors', roles: ['owner', 'admin', 'project_manager', 'engineer'],
+    list: params => `/subcontractors/contracts/${encodeURIComponent(params.get('project_id') || '')}`,
+    create: '/subcontractors/contracts',
+    fields: [field('project_id', 'number', true), field('subcontractor_id', 'number', true), field('boq_item_id', 'number'), field('scope', 'textarea'), field('contract_value', 'number'), field('start_date', 'date'), field('end_date', 'date'), field('retention_percent', 'number'), field('advance_percent', 'number'), field('advance_amount', 'number')],
+    columns: ['contract_number', 'sub_name', 'contract_value', 'status', 'retention_percent'], projectScoped: true,
+  },
+  'subcontractor-verifications': {
+    title: 'subcontractorVerifications', module: 'subcontractors', roles: ['owner', 'admin', 'project_manager', 'engineer'],
+    list: '/subcontractors/verifications', create: '/subcontractors/verifications', update: id => `/subcontractors/verifications/${id}`,
+    fields: [field('sub_contract_id', 'number', true), field('boq_item_id', 'number', true), field('period_from', 'date', true), field('period_to', 'date', true), field('quantity_claimed', 'number'), field('quantity_verified', 'number'), field('notes', 'textarea'), field('status', 'select', false, ['approved', 'rejected'])],
+    columns: ['contract_number', 'period_from', 'period_to', 'quantity_verified', 'status'], projectScoped: true,
+  },
 };
 
 async function parseResponse(response) {
