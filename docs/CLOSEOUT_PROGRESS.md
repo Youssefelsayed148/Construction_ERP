@@ -1,3 +1,16 @@
+# 2026-10-28 - Session T, Batch T0/T0.6/T4
+
+Whole-system reconciliation (T0) and screen/API/DB/role coverage audit (T0.6, required) complete:
+`docs/CLOSEOUT_RECONCILIATION.md` (new) is the full phase-by-phase evidence table, re-derived from code
+rather than copied from prior docs. `docs/ERP_CLOSEOUT_PLAN.md` and `docs/CLOSEOUT_GAPS.md` corrected in
+place for items found DONE but still marked open or stale; `docs/POST_LAUNCH_BACKLOG.md` (new) holds every
+Minor finding. Pilot-environment readiness (T4) run against a throwaway PostgreSQL 16 database: migration
+idempotency, reconciliation (`reconcile-database.js`), data-cleaning report, and a full backup/restore
+rehearsal all passed; `smoke:staging` NOT RUN (needs a Docker Compose pilot stack not provisioned here).
+Full command output and the complete finding list are in `docs/CLOSEOUT_LOG.md`'s and `STATE.md`'s
+2026-10-28 entries. No product code changed this batch. Next: T2 golden journey test, T3 role/permission
+tests, T5 UAT kit, then the single T1 verification run.
+
 # 2026-10-19 - Screen 5 project calendars section
 
 - Placement: ProjectDetail.js project setup area (above Phases). New component `frontend/src/components/project/ProjectCalendars.js` mounted with locale/t props; ProjectWizard.js rejected (creation-time only) and Schedule.js rejected (different `calendars` entity at `/api/schedule/calendars`).

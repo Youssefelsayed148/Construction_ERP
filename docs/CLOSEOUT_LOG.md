@@ -1,3 +1,33 @@
+# 2026-10-28 - Session T, Batch T0/T0.6/T4 (whole-system reconciliation + pilot readiness)
+
+Branch `closeout/batch-a-to-6` (fast-forwarded to `2ee9890`, which includes F-session's full push).
+Environment: local PostgreSQL 16 (`pg_ctlcluster 16 main start`), throwaway DB `erp_closeout_test`.
+
+| Check | Command | Result |
+|---|---|---|
+| Migrate (1st) | `DB_HOST=127.0.0.1 DB_PORT=5432 DB_NAME=erp_closeout_test DB_USER=postgres DB_PASSWORD=postgres JWT_SECRET=closeout-session-only-secret-32-chars-minimum TEST_PG=1 npm run migrate` (backend) | `all migrations completed (135 applied, 0 already applied)`; 72 versioned files, no duplicate numbers, `0030` absent (known gap) |
+| Migrate (2nd, idempotency) | same command, repeated | `all migrations completed (0 applied, 135 already applied)` |
+| Golden-demo fixture seed | `APP_ENV=staging DB_HOST=127.0.0.1 DB_PORT=5432 DB_NAME=erp_closeout_test DB_USER=postgres DB_PASSWORD=postgres JWT_SECRET=... TEST_PG=1 npm run seed:golden-demo` | `Seeded OSIRIS-RES-TOWERS-001: 96 units, 1 BOQ, 122.4000 m3 recipe demand.` |
+| Reconciliation (1st, empty DB) | `RECONCILIATION_BACKUP_CONFIRMED=true npm run reconcile` | 18/18 named checks `[OK]` (0 each), 1 `[PENDING]` = 0 |
+| Reconciliation (2nd, after golden-demo seed) | same command | identical: 18/18 `[OK]`, `[PENDING]` = 0 |
+| Data-cleaning report | `npm run data-cleaning-report` | "All constraints are validated. Nothing to clean." |
+| Backup/restore rehearsal | `pg_dump -Fc erp_closeout_test` -> `CREATE DATABASE erp_closeout_restore_test` -> `pg_restore` -> row-count comparison | dump 1,143,883 bytes; before/after row counts identical (users 0/0, schema_migrations 135/135, public tables 259/259) |
+| Dependency audit | `npm audit --omit=dev` (backend) | 3 findings: 1 moderate, 2 high, 0 critical; not triaged this session |
+| lint-guards (diagnostic read, by a sub-audit, not the official once-per-session T1 gate run) | `node src/scripts/lint-guards.js` | `lint-guards: ok`, every category 0 |
+| smoke:staging | not run | NOT RUN - requires the local Docker Compose pilot stack (`.env.docker`, port 8090), not provisioned in this sandbox; exact commands in `docs/STAGING.md` |
+
+T0 whole-system reconciliation and T0.6 screen/API/DB/role coverage audit: see `docs/CLOSEOUT_RECONCILIATION.md`
+(new file) for the full phase-by-phase table. Method: 7 parallel read-only sub-audits re-deriving every
+`docs/ERP_CLOSEOUT_PLAN.md` checklist item from code/migrations/DB, reconciled by the session where two
+sub-audits disagreed (procurement UI reachability - resolved by reading `ProcurementWorkspace.js` directly:
+it is a complete PR->RFQ->award->PO->delivery->MIR->GRN->invoice->payment screen, mounted at
+`projects/:id/operations`, not just the comparison-only `ProcurementReview.js`). `docs/CLOSEOUT_GAPS.md` and
+`docs/ERP_CLOSEOUT_PLAN.md` corrected in place for items found DONE but still marked open/stale (see diffs);
+`docs/POST_LAUNCH_BACKLOG.md` (new) holds every MINOR finding. No product code changed this batch (T0/T0.6
+is read-only per the T-session prompt's own rule: only a <40-line, test-proven Blocker/Major fix is in
+scope, and none was needed - every MAJOR/BLOCKER found this batch needs more than 40 lines or is a human/
+owner decision).
+
 # 2026-10-18 - RUN D2+E demo verification
 
 | Check / flow | Command or steps | Result |

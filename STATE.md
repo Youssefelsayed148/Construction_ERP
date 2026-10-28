@@ -1,4 +1,59 @@
-F-SESSION COMPLETE ff50813
+T-SESSION IN PROGRESS (T0/T0.6/T4 done; T1-T5 remaining) - base ff50813, merged to 2ee9890
+
+# 2026-10-28 - Session T: T0/T0.6 whole-system reconciliation + T4 pilot readiness
+
+Working directly on `closeout/batch-a-to-6` (fast-forwarded from local `dd86ab5` to `origin`'s `2ee9890`,
+which already contains the full F-session push through F4). Prerequisite checks per the T-session prompt:
+commit `c8242b5` (Batch 0-4 tip) present in history - confirmed. `STATE.md` began `F-SESSION COMPLETE` -
+confirmed, so the single full verification run (T1) may proceed once T2/T3 authoring is done.
+
+**T0 whole-system reconciliation + T0.6 coverage audit (REQUIRED):** `docs/CLOSEOUT_RECONCILIATION.md`
+(new) is the full result - every phase 0-11 checklist item in `docs/ERP_CLOSEOUT_PLAN.md` re-derived from
+code/migrations/a freshly migrated throwaway PostgreSQL 16 DB (`erp_closeout_test`, 135 migrations, 0
+errors), not copied from existing doc marks. Method: 7 parallel read-only sub-audits, reconciled by the
+session itself where two disagreed. Headline corrections (docs were stale, code was already done):
+Phase 1 error-leakage (0 raw sites, was 366) and audit coverage; Phase 2.7 ledger posting for client/
+supplier invoices/payments; Phase 5.1 organization CRUD and full 24+9 canonical role seeding (48 roles
+total); Phase 5.7 incident-register merge at the data/route level; Phase 7.1 licensed Arabic font bundling
+(`@fontsource/ibm-plex-sans-arabic`, OFL-licensed); Phase 8 EAC/ETC degenerate-logic fix; Phase 10 L4C
+(PortalDashboard.js) and most of the L5 inline-branch figure (0 remain repo-wide); the Procurement UI
+(`ProcurementWorkspace.js`, mounted at `projects/:id/operations`) already has full PR->RFQ->award->PO->
+delivery->MIR->GRN->invoice->payment forms, and zero `prompt()` calls remain anywhere in the frontend.
+`docs/ERP_CLOSEOUT_PLAN.md` and `docs/CLOSEOUT_GAPS.md` ticked/corrected in place with evidence.
+
+Newly confirmed, still genuinely open (Blocker/Major, feed `docs/LAUNCH_READINESS.md`): Phase 2.6 DB-level
+status enums missing on 75 of 99 `status` columns (MAJOR); canonical `finance_manager`/`project_manager`
+roles still run on blanket `(*,*)` grants unlike every other canonical role (MAJOR); `/api/subcontractors`,
+`/api/costing`, `/api/maintenance` have no frontend screen (MAJOR each, mitigated for subcontractors by
+`ProjectFinanceWorkbench.js`'s certificate-payment path); admin roles/permission-matrix UI, workflow
+template editor, notification-rules UI, a commercial contracts screen, and recipe-management UI are all
+missing (MAJOR each, workable via API/SQL at launch); Phase 9's golden scenario is still P2P-only
+(BLOCKER for a literal Phase-9 gate - this is T2's job, next); Phase 5.8 real notification channels are
+still console-only stub (MAJOR); Phase 11 independent security review, dependency audit triage (3 npm
+audit findings, not yet triaged), load test, and operator/admin/training docs are all open (MAJOR/MINOR).
+Every MINOR finding moved to `docs/POST_LAUNCH_BACKLOG.md` (new), not worked on.
+
+No BLOCKER found in the three-layer role-access audit (backend policy/sidebar/frontend route guard) on
+the routes actually traced; the frontend route guard gap (`ProtectedRoute` has no per-route check) was
+downgraded from a sub-audit's suspected MAJOR to MINOR after the session traced 2 routes end-to-end and
+found they already degrade cleanly on a 403 (no crash, no data flash).
+
+**T4 pilot-environment readiness:** migration idempotency (run twice, 2nd run 0 applied/135 already);
+`reconcile-database.js` run clean twice (empty DB, then after `seed:golden-demo` populated real fixture
+data - same 18/18 OK both times); `data-cleaning-report` clean; backup/restore rehearsal with `pg_dump`/
+`pg_restore` into a second throwaway DB, row counts identical before/after; rollback runbook reviewed
+(`docs/MIGRATIONS.md` - forward-only by design, no down-scripts; the rehearsed backup/restore IS the
+rollback mechanism). `smoke:staging` NOT RUN (needs the local Docker Compose pilot stack, not provisioned
+in this sandbox). Full command output in `docs/CLOSEOUT_LOG.md`'s 2026-10-28 entry.
+
+No product code was changed this batch (T0/T0.6/T4 are read-only/scripts-and-docs by the T-session prompt's
+own rule; no Blocker/Major found this batch was both small enough (<~40 lines) and clearly fixable in
+place - every one is either a human/owner decision or larger UI/screen work, recorded for Session F or a
+follow-up rather than attempted here).
+
+**Next:** T2 (author golden journey PG test extending `golden-chain.pg.test.js` toward tender-to-warranty),
+T3 (role-by-role lifecycle/permission tests), T5 (UAT execution kit), then T1 (the single full verification
+run), then `docs/LAUNCH_READINESS.md` and the final report.
 
 # 2026-10-27 - Session F: F4 (Arabic PDF, inline branches) + final report
 

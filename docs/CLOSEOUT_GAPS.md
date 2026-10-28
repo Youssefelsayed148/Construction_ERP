@@ -202,3 +202,32 @@ Owner decisions taken before this session and applied as given; none were re-ask
 - **`owner_ceo` approval wait state (decision 3) - DROPPED from the demo census**, no product change. There is no tracked final-states/census helper script in git; the census lives in `docs/DEMO_DATA_GUIDE.md` (now eight states) and its history in `docs/CLOSEOUT_LOG.md`.
 - **Production approval limits (decision 4) - OPEN, owner-only.** Nothing seeded. `docs/APPROVAL_LIMITS_DECISION_SHEET.md` is the blank sheet to fill.
 - **Missing plan file.** The session task referenced `docs/CLOSEOUT_PLAN_F_AND_T.md`; it is not in the repository (not on HEAD, `origin/main`, or any ref). The task text was used as the plan.
+
+## Session T0 corrections (2026-10-28)
+
+`docs/CLOSEOUT_RECONCILIATION.md` is now the authority for phase-by-phase status; it supersedes the
+"Unchecked items copied from ERP_CLOSEOUT_PLAN.md" section above wherever they disagree. This section
+lists only the specific corrections found (full evidence is in the reconciliation doc):
+
+- **DONE, not open** (this register's prose above is stale): Phase 1 error-leakage (0 raw `error: e.message`
+  sites, was 366); Phase 1 audit coverage of boq/subcontractors/portal/actions/documents (route-mutation
+  vs audited-call counts match for all five files); Phase 2.7 ledger posting for client invoices/
+  payments/supplier invoices; Phase 5.1 organization CRUD; Phase 5.1 role seeding (48 roles = all 24
+  internal + all 9 external spec-04 roles + 15 legacy — "remaining 20 internal roles, 9 external roles" was
+  wrong); Phase 5.7 incident-register merge (data/route level — only the Phase 6 UI consolidation remains);
+  Phase 7.1 licensed Arabic font bundling (`@fontsource/ibm-plex-sans-arabic`, OFL-licensed); Phase 8 EAC/ETC
+  degenerate-logic fix; Phase 10 L4C (PortalDashboard.js) and most of the ~1,093-branch L5 figure (0 inline
+  branches remain repo-wide, not just in Session F4's 13 touched files) and the L7 route-layer error
+  contract.
+- **Worse than documented**: the canonical `finance_manager` and `project_manager` roles (not just the 12
+  legacy roles) still hold blanket `(*,*)` grants with no granular per-module permissions, unlike every
+  other canonical role. MAJOR, recorded in `docs/LAUNCH_READINESS.md`.
+- **Refuted "no UI" leads**: `ProcurementWorkspace.js` (mounted at `projects/:id/operations`, procurement
+  tab) is a comprehensive PR→RFQ→award→PO→delivery→MIR→GRN→supplier-invoice→payment screen, not just the
+  comparison-only `ProcurementReview.js`. Zero `window.prompt()` calls remain anywhere in the frontend.
+- **Still genuinely open, newly confirmed with evidence**: Phase 2.6 DB-level status enums (75 of 99
+  `status` columns have no CHECK constraint); Phase 5.1 blanket-grant roles above; Phase 5.8 real
+  notification channels (still console-only stub); `/api/subcontractors`, `/api/costing`, `/api/maintenance`
+  have no frontend screen (T0.6 module wiring); admin roles/permission-matrix UI, workflow template editor,
+  notification-rules UI, a dedicated commercial contracts screen, and recipe-management UI are all missing
+  (T0.6 missing-screen check).

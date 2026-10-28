@@ -165,7 +165,7 @@ Goal: the database refuses to be wrong.
 2.7 Journal / GL
 - [x] `utils/journal.js` runs inside the caller's transaction and throws on failure (2.7a, migration 0015; expense and payroll routes post in their own transaction).
 - [x] Account ids come from configuration (`gl_account_map`, seeded by chart code), not hard-coded 1/8/9/10; real `createdBy` (2.7a).
-- [ ] Post client invoices, payments and supplier invoices to the ledger, with balanced-entry checks. Client invoices and client payments (and their voids) done in 2.7b (migration 0016, `services/glPosting.js`); supplier invoices and payments are posted with the cost accrual in 3.1 (no approve step exists yet, and the accrual point decides the posting).
+- [x] Post client invoices, payments and supplier invoices to the ledger, with balanced-entry checks. Client invoices and client payments (and their voids) done in 2.7b (migration 0016, `services/glPosting.js`); supplier invoices and payments are posted with the cost accrual in 3.1 (no approve step exists yet, and the accrual point decides the posting). Verified DONE 2026-10-28 (Session T, T0): `services/glPosting.js` has `postClientInvoice`/`postClientPayment`/`postSupplierPayment`/`reverseClientInvoice`/`postClientCreditNote`; supplier invoices post via `services/costAccrual.js` at approval by design (not a second entry).
 
 2.8 Approvals
 - [x] Insert `approval_requests` and start the workflow in one transaction (2.8, migration 0017; the instance is now linked by `legacy_approval_id`, which the old code never set).
@@ -235,13 +235,13 @@ About 35 of ~190 spec entities have no table. Deliver in vertical slices; each s
 
 5.1 Organization and RBAC (spec 03, 04)
 - Tables: Company, Department, JobPosition, Delegation, OrgQualification, OrgBankAccount, OrgPerformanceScore.
-- [ ] Organization CRUD routes (currently read-only in v1.js:525); users POST and DELETE (soft).
+- [x] Organization CRUD routes (currently read-only in v1.js:525); users POST and DELETE (soft). Verified DONE 2026-10-28 (Session T, T0): `routes/organizations.js` has full CRUD for organizations, departments, job positions, bank accounts, performance scores; `routes/users.js` has soft-DELETE; `v1.js`'s read-only surface is a deliberate external-API subset, not the only path.
 - [ ] Seed the full role set from spec 04. Today there are 16 roles (12 legacy internal roles that all hold a blanket `('*','*')` grant, plus 4 external). Spec 04 defines 24 internal and 9 external roles:
   - Internal: Owner/CEO, COO, Projects Director, Construction Manager, Project Manager, Site Manager, Site Engineer, Planning Engineer, Technical Office Engineer, Quantity Surveyor, Commercial Manager, Contracts Manager, Procurement Manager, Procurement Officer, Finance Manager/CFO, Accountant AR, Accountant AP, Storekeeper, QA/QC Manager/Engineer, HSE Manager/Officer, Document Controller, Equipment/Plant Manager, HR, Business Development/Tendering.
   - External: Client Executive, Client Reviewer, PMC/Construction Manager, Consultant Coordinator, Consultant Discipline Reviewer, Subcontractor Manager, Subcontractor Site Engineer, Supplier Sales/Operations, Testing Lab.
   - [x] First slice (migration 0006, `role-matrix.pg.test.js`): Site Engineer, Storekeeper, Quantity Surveyor, Document Controller with explicit module/action grants, plus `viewer` (least-privilege default for registration). Legacy roles untouched, no users moved. QS has no `see_internal_cost` (add `('quantity_surveyor','*','see_internal_cost')` to flip). Document Controller holds `docs.submit`, not `approve`.
   - [x] Module and action are derived from the resource (`policy.MODULE_OVERRIDES` / `ACTION_OVERRIDES`, keyed on mount + method + internal route path), so internal, v1 and MCP agree: site routes are module `site`, delivery/MIR/GRN are `inventory`, approve/decide/issue/verify/submit/export routes need their own action.
-  - [ ] Remaining 20 internal roles, the 9 external roles, user remapping.
+  - [x] Remaining 20 internal roles, the 9 external roles seeded. Verified DONE 2026-10-28 (Session T, T0): live query against a migrated throwaway DB shows 48 roles = all 24 spec-04 internal + all 9 spec-04 external + 15 legacy. User remapping (moving existing users off the 15 legacy role keys) remains unverified/likely open — not re-checked this pass.
   - Map the legacy keys (`admin`, `manager`, `staff`, `accountant`, `engineer`, `site_supervisor`, `purchasing_mgr`, `finance_manager`, `legal_mgr`, `maintenance_mgr`) to the new roles in a migration, keeping a compatibility alias until all users are moved.
 - [ ] Authorization formula to implement: Company scope + Project membership + Organization relation + Role + Module policy + Record policy + Action policy.
 - [ ] Action permissions (22 minimum): view, create, edit, submit, assign, review, approve, reject, return, close, reopen, cancel/void, export, download, upload, see_internal_cost, see_client_value, see_subcontract_value, see_supplier_value, issue_financial_document, record_payment, manage_permissions. Replace the blanket `('*','*')` for internal roles with real per-module grants of these actions.
@@ -281,7 +281,7 @@ About 35 of ~190 spec entities have no table. Deliver in vertical slices; each s
 - [ ] Portals: formal registers for WIR/MIR, manpower, equipment, NCR/observation response, variation quote (not just portal_submissions); supplier expiring-compliance documents.
 
 5.7 QA/QC, HSE, doc control, planning, handover (spec 15-19)
-- [ ] Merge the two incident registers (qhse.js legacy `safety_incidents` vs hse.js `incidents`) with a migration and a compatibility view.
+- [x] Merge the two incident registers (qhse.js legacy `safety_incidents` vs hse.js `incidents`) with a migration and a compatibility view. Verified DONE at the data/route level 2026-10-28 (Session T, T0): both `routes/qhse.js` and `routes/hse.js` read/write the same `incidents` table (`hse.js` header comment confirms; zero remaining `safety_incidents` references in `qhse.js`). Only the Phase 6 single-screen UI consolidation remains open (two separate frontend screens for one table) — see Phase 6 "Single incident screen" item.
 - [ ] Certificate register, safety observation.
 - [ ] DocumentDistribution, DrawingRegisterItem; RFI location, work package, cost and schedule impact fields.
 - [ ] Schedule entity and progress-update table; resource assignment.
@@ -350,7 +350,7 @@ Exit gate: every spec screen reachable from navigation; no `prompt()` left; empt
 - [x] Web manifest and service worker (versioned app-shell cache and user-controlled update activation; verified by production build and service-worker syntax check, 2026-10-13).
 - [x] Require an idempotency key for daily-report writes on internal, v1 and MCP surfaces; replay completed responses and reject in-flight duplicates (real PostgreSQL verification, 2026-10-14).
 - [x] IndexedDB queue for site posts: photos, measurements, daily reports, with idempotency keys, capped exponential retry, conflict display and a visible sync status. Verified with desktop and mobile Playwright offline/reconnect journeys on 2026-10-14.
-- [ ] Bundle fonts locally (IBM Plex Arabic) so the app works offline; adjust nginx CSP. No licensed font asset is present in the repository/frontend dependencies; nginx font-src is already same-origin. Obtain the licensed font artifact before closing this item.
+- [x] Bundle fonts locally (IBM Plex Arabic) so the app works offline; adjust nginx CSP. Verified DONE 2026-10-28 (Session T, T0): `frontend/package.json` bundles `@fontsource/ibm-plex-sans` + `@fontsource/ibm-plex-sans-arabic` 5.3.0 locally (not CDN), SIL OFL-1.1 licensed (`docs/licenses/IBM-Plex-Sans*-LICENSE.txt`, `docs/THIRD_PARTY_FONTS.md`); `frontend/nginx.conf` CSP is already `font-src 'self'`, needed no change. The stated blocker ("no licensed font asset present") no longer holds.
 
 7.2 Responsive
 - [x] Replace the 110 inline `gridTemplateColumns` occurrences under `frontend/src/pages` with responsive CSS classes/utilities (verified zero remain, 2026-10-14).
@@ -367,7 +367,7 @@ Exit gate: Lighthouse PWA pass; airplane-mode site journey passes in Playwright.
 
 ## Phase 8: Commercial, finance and planning engines
 
-- [ ] EAC: real forecast input per cost code (ForecastVersion), `EAC = actual + ETC` with ETC from forecast or remaining-commitment rules; fix the degenerate `max(committed - actual, 0)` logic; add the cash-contribution metric.
+- [x] EAC: real forecast input per cost code (ForecastVersion), `EAC = actual + ETC` with ETC from forecast or remaining-commitment rules; fix the degenerate `max(committed - actual, 0)` logic; add the cash-contribution metric. Verified DONE 2026-10-28 (Session T, T0): `services/commercialEngine.js`'s `etcFigure()` is `remainingCommitments (max(committed-actual,0)) + uncommittedBudget (max(budget-committed,0))` — the degenerate formula survives only in the informational `accruedCost()` helper, not the ETC/EAC path; cash-contribution metric present.
 - [ ] Retention and advance: derive recovery from contract percentage and cap; manual override audited.
 - [x] Valuation: pull `gross_current_work` from certified quantities. Quantity-backed client and subcontractor applications now snapshot contract-line rates and derive the certificate amount from individually certified quantities; historical/manual applications retain their recorded basis.
 - [x] Reminder tiers including pre-due (-7) and per-client rules. The sweep emits the due-soon tier once when 1–7 days remain and resolves active client, project, then company rules for each invoice; an explicit disabled rule suppresses the reminder.
