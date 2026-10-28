@@ -61,7 +61,21 @@ const MATRIX = {
   },
   // Blanket ('*','*') roles until 5.1 replaces their grants: currently NOT hidden. Pinned as a
   // fixture so the 5.1 switch cannot silently change what these roles see.
-  BLOCKED_UNTIL_5_1: ['owner', 'admin', 'manager', 'staff', 'engineer', 'accountant', 'finance_manager', 'purchasing_mgr', 'project_manager', 'site_supervisor', 'legal_mgr', 'maintenance_mgr'],
+  // Session G (G1.1, migration 0074) flipped finance_manager and project_manager to explicit
+  // per-module grants — they are removed from this list and get real denied/allowed entries below.
+  BLOCKED_UNTIL_5_1: ['owner', 'admin', 'manager', 'staff', 'engineer', 'accountant', 'purchasing_mgr', 'site_supervisor', 'legal_mgr', 'maintenance_mgr'],
+  // Migration 0074 grants: finance_manager keeps invoices/procurement/handover/payroll view, but
+  // has no legal or assets grant (explicitly excluded — see the migration's comments).
+  finance_manager: {
+    denied: [['GET', '/api/legal'], ['GET', '/api/assets']],
+    allowed: [['GET', '/api/invoices'], ['GET', '/api/procurement/project/:projectId'], ['GET', '/api/handover/assets?project_id=:projectId'], ['GET', '/api/handover/claims?project_id=:projectId'], ['GET', '/api/payroll'], ['GET', '/api/projects/:projectId']],
+  },
+  // Migration 0074 grants: project_manager keeps invoices/procurement/handover/boq/projects view,
+  // but has no payroll or legal grant (explicitly excluded — see the migration's comments).
+  project_manager: {
+    denied: [['GET', '/api/payroll'], ['GET', '/api/legal']],
+    allowed: [['GET', '/api/invoices'], ['GET', '/api/procurement/project/:projectId'], ['GET', '/api/handover/assets?project_id=:projectId'], ['GET', '/api/handover/claims?project_id=:projectId'], ['GET', '/api/boq/items/:projectId'], ['GET', '/api/projects/:projectId']],
+  },
 };
 
 // C5 + the screens closeout: the Phase A routes (cash flow, stock
