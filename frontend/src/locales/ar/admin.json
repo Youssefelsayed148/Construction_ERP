@@ -24,7 +24,9 @@
   "commercialContracts": { "title": "عقود العملاء" },
   "subcontractorContracts": { "title": "عقود المقاولين من الباطن" },
   "subcontractorVerifications": { "title": "اعتماد أعمال المقاولين من الباطن" },
+  "notificationRules": { "title": "قواعد الإشعارات", "note": "هذا العرض للقراءة فقط: يعرض أنواع الأحداث والأدوار المبرمجة في محرك الإشعارات. يتم تحديد تفضيلات القناة لكل مستخدم (بريد إلكتروني/دفع/داخل التطبيق) بشكل منفصل في شاشة تفضيلات الإشعارات الخاصة بكل مستخدم (/notification-preferences)." },
   "fields": {
+    "rule_type": "نوع القاعدة", "key": "الحدث", "label": "التسمية", "roles": "الأدوار المُبلَّغة",
     "parent_id": "معرّف رمز التكلفة الأصل", "level": "المستوى",
     "client_id": "معرّف العميل", "original_value": "القيمة الأصلية", "retention_percent": "نسبة الاحتجاز %", "advance_percent": "نسبة الدفعة المقدمة %", "advance_amount": "مبلغ الدفعة المقدمة", "contract_date": "تاريخ العقد", "start_date": "تاريخ البدء", "contract_number": "رقم العقد",
     "subcontractor_id": "معرّف المقاول من الباطن", "contract_value": "قيمة العقد", "sub_contract_id": "معرّف العقد الفرعي", "period_from": "الفترة من", "period_to": "الفترة إلى", "quantity_claimed": "الكمية المطالب بها", "quantity_verified": "الكمية المعتمدة", "sub_name": "المقاول من الباطن",

@@ -108,6 +108,10 @@ export const ADMIN_AREAS = {
     fields: [field('sub_contract_id', 'number', true), field('boq_item_id', 'number', true), field('period_from', 'date', true), field('period_to', 'date', true), field('quantity_claimed', 'number'), field('quantity_verified', 'number'), field('notes', 'textarea'), field('status', 'select', false, ['approved', 'rejected'])],
     columns: ['contract_number', 'period_from', 'period_to', 'quantity_verified', 'status'], projectScoped: true,
   },
+  'notification-rules': {
+    title: 'notificationRules', module: 'notifications', roles: ['owner', 'admin'],
+    list: '/notifications/rules', fields: [], columns: ['rule_type', 'key', 'label', 'roles'], note: true,
+  },
 };
 
 async function parseResponse(response) {
@@ -332,6 +336,7 @@ export default function AdminWorkspace() {
         </nav>
       </header>
       {notice && <div role="status" className="alert alert-success">{notice}</div>}
+      {config.note && <p className="admin-note">{t(`admin.${config.title}.note`)}</p>}
       {config.projectScoped && <form className="card admin-project-scope" onSubmit={applyProjectScope}>
         <FormField id="admin-project-scope-id" label={t('admin.fields.project_id')} type="number" required value={projectId} onChange={event => setProjectId(event.target.value)} />
         <button className="btn" type="submit">{t('admin.actions.loadProject')}</button>

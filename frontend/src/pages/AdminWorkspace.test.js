@@ -256,12 +256,12 @@ describe('R5 administrative workspaces', () => {
     expect(window.fetch).not.toHaveBeenCalled();
   });
 
-  test.each(Object.keys(ADMIN_AREAS).filter(area => area !== 'sla'))('%s surfaces a validation response without dropping its form', async area => {
+  test.each(Object.keys(ADMIN_AREAS).filter(area => !['sla', 'notification-rules'].includes(area)))('%s surfaces a validation response without dropping its form', async area => {
     expect(await submitWithFailure(area, 422)).toBe('errors.validation_error');
     expect(container.querySelector('form.admin-form')).not.toBeNull();
   });
 
-  test.each(Object.keys(ADMIN_AREAS).filter(area => area !== 'sla'))('%s surfaces a server failure without dropping its form', async area => {
+  test.each(Object.keys(ADMIN_AREAS).filter(area => !['sla', 'notification-rules'].includes(area)))('%s surfaces a server failure without dropping its form', async area => {
     expect(await submitWithFailure(area, 500)).toBe('errors.serverError');
     expect(container.querySelector('form.admin-form')).not.toBeNull();
   });
