@@ -45,6 +45,16 @@ const EXPECTED = {
     punch_items: ['open', 'assigned', 'rectified', 'verified', 'closed'],
     wirs: ['draft', 'submitted', 'qa_qc_review', 'pm_review', 'consultant_review', 'approved', 'approved_with_comments', 'rejected'],
   },
+  '0078_doc_control_status_checks.sql': {
+    project_documents: ['draft', 'review', 'submitted', 'approved', 'rejected', 'archived', 'acknowledged', 'awaiting_acknowledgement'],
+    document_versions: ['current', 'superseded'],
+    correspondence: ['draft', 'sent', 'received', 'responded', 'closed'],
+    transmittals: ['draft', 'sent', 'acknowledged', 'closed'],
+    project_rfis: ['open', 'draft', 'submitted', 'coordinator', 'discipline_review', 'answered', 'acknowledged', 'closed'],
+    project_submittals: ['submitted', 'internal_technical_review', 'pm', 'consultant_coordinator', 'reviewer', 'resubmit_required', 'closed'],
+    legal_documents: ['pending', 'verified', 'rejected'],
+    engineer_instructions: ['issued', 'acknowledged', 'implemented', 'closed'],
+  },
 };
 
 describe('G1.2 status CHECK vocabularies', () => {
