@@ -3176,3 +3176,24 @@ Backend (:5001) and frontend dev server (:3001) run on a fresh `erp_staging` dat
 Found: `GET /api/approvals/pending` was guarded by a hard-coded legacy role list, so `owner_ceo` and `coo` (both hold
 `approvals.approve`) got 403. Now policy-driven `authorize()`; the details view's privileged list includes both roles.
 Regression test in `approvals-atomic.pg.test.js`. Mutation audit + approvals suites re-run green on a fresh database.
+
+# 2026-10-28 - Phase 1/2 scripted HTTP scenario against the running app (real roles)
+
+Script drove the live app (:5001, fresh `erp_staging`) as procurement_officer, finance_manager, site_manager and the legacy owner:
+PR -> RFQ -> 2 quotes -> comparison -> award -> PO -> partial receipt (40) -> over-delivery refused -> balance receipt (60) ->
+supplier invoice -> AP payment + allocation -> repeat payment refused -> site daily report (idempotency key honoured) ->
+client contract -> payment application -> certify -> invoice -> partial/over/exact payment.
+Verified in SQL: stock +100 exactly, project cost 25,000, AP GL net 0, retention 2,500 and net certificate 22,500, invoice journal
+entry balanced, supplier and client invoices end `paid`, overpayment and double payment refused. No server errors.
+
+Findings (not fixed here):
+1. GAP: nine actions the policy requires have no canonical-role holder, so only legacy blanket roles (owner/admin/...) can do them:
+   `procurement.issue_financial_document` (issue a PO; `procurement_manager` can approve but not issue), `work-orders.approve`
+   (verify completion), `qhse.submit` (WIR submit), `handover.approve` (handover stage transition), `commercial.reject`,
+   `invoices.void`, `payments.void`, `items.delete`, `suppliers.delete`. Needs an owner decision on which roles get which, then a migration.
+2. DECISION: `PO_OPEN_STATUSES` (procurementService.js) lets goods be received and a GRN posted against a PO still in `draft`,
+   i.e. before it is approved/issued. No documented reason found.
+3. EXTERNAL (deferred): the payment-certificate workflow's consultant step could not be cleared by the seeded
+   `consultant_coordinator` (403 on `/api/consultant/payment-certificates/:id/recommendation`), so certificates stall at
+   `consultant_client`. Clients can still be billed with direct invoices.
+4. NOTE: pg DATE values are serialised from server-local midnight; set the server `TZ` deliberately on the VPS (UTC or Africa/Cairo).
