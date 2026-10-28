@@ -35,7 +35,7 @@ describePg('R1.2 project-scoped aggregate isolation', () => {
       await db.query("INSERT INTO incidents (project_id, description, severity) VALUES ($1,'R12 incident','minor')", [project.id]);
       if (suffix === 'B') await db.query("INSERT INTO incidents (project_id, description, severity) VALUES ($1,'R12 second incident','minor')", [project.id]);
     }
-    for (const [role, project] of [['owner', null], ['project_manager', own.id]]) {
+    for (const [role, project] of [['owner', null], ['manager', own.id]]) {
       const user = (await db.query("INSERT INTO users (name, email, password, role) VALUES ('R12', $1, 'unused', $2) RETURNING id, token_version", [`r12-${tag}-${role}@test.invalid`, role])).rows[0];
       userIds.push(user.id);
       await db.query('INSERT INTO user_project_roles (user_id, project_id, role_id) SELECT $1,$2,id FROM roles WHERE key=$3', [user.id, project, role]);

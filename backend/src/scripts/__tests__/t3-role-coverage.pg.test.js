@@ -277,7 +277,7 @@ describePg('T3 role coverage: generated sidebar-vs-API sweep, list-endpoint proj
       const orgOther = await newOrg('supplier');
       const otherSupplier = await one("INSERT INTO suppliers (code, name_en, name_ar) VALUES ($1, $1, $1) RETURNING id", [`t3-sup-${tag}`]);
       const rfq = await one(
-        "INSERT INTO rfqs (project_id, rfq_number, title, status) VALUES ($1, $2, 'T3 RFQ', 'open') RETURNING id",
+        "INSERT INTO rfqs (project_id, rfq_number, title, status) VALUES ($1, $2, 'T3 RFQ', 'draft') RETURNING id",
         [project.id, `t3-rfq-${tag}`]);
       void otherSupplier; void orgOther;
       const myOrg = await newOrg('supplier');
@@ -292,13 +292,13 @@ describePg('T3 role coverage: generated sidebar-vs-API sweep, list-endpoint proj
       const projectOther = await newProject('c-client-other');
       const myOrg = await newOrg('client');
       const otherVariation = await one(
-        "INSERT INTO variations (project_id, variation_number, title, status, amount) VALUES ($1, $2, 'T3 Variation', 'submitted', 1000) RETURNING id",
+        "INSERT INTO variations (project_id, variation_number, title, variation_type, status, amount) VALUES ($1, $2, 'T3 Variation', 'client', 'client_approval_reject', 1000) RETURNING id",
         [projectOther.id, `t3-var-${tag}`]);
       const actor = await actorFor('client_executive', projectMine.id, myOrg.id);
       const res = await call('POST', `/api/client-portal/variations/${otherVariation.id}/response`, actor.token, { decision: 'approve' });
       expect([401, 403, 404]).toContain(res.status);
       const row = await one('SELECT status FROM variations WHERE id = $1', [otherVariation.id]);
-      expect(row.status).toBe('submitted');
+      expect(row.status).toBe('client_approval_reject');
     });
 
     test('consultant: another project\'s RFI responses are not reachable by id', async () => {

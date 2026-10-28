@@ -106,7 +106,7 @@ describePg('2.8 approvals (real PostgreSQL, real app)', () => {
   });
 
   test('workflow remains authoritative when legacy decision-status mirroring is disabled', async () => {
-    const created = await call(manager, 'POST', '/api/approvals/request', {
+    const created = await call(owner, 'POST', '/api/approvals/request', {
       module_name: 'expenses', request_type: 'workflow-only-read', request_id: Number(tag) * 10 + 777,
     });
     expect(created.status).toBe(200);
@@ -117,14 +117,14 @@ describePg('2.8 approvals (real PostgreSQL, real app)', () => {
       expect((await call(owner, 'PUT', `/api/approvals/${id}/approve`, { notes: 'workflow manager step' })).status).toBe(200);
       const staleLegacy = await one('SELECT status, stage FROM approval_requests WHERE id = $1', [id]);
       expect(staleLegacy).toMatchObject({ status: 'pending', stage: 'manager_review' });
-      const projected = await call(manager, 'GET', '/api/approvals/my-requests?limit=200');
+      const projected = await call(owner, 'GET', '/api/approvals/my-requests?limit=200');
       expect(projected.body.requests.find((item) => item.id === id)).toMatchObject({ status: 'pending', stage: 'owner_review' });
       expect((await call(owner, 'PUT', `/api/approvals/${id}/approve`, { notes: 'workflow final step' })).status).toBe(200);
-      const final = await call(manager, 'GET', '/api/approvals/my-requests?limit=200');
+      const final = await call(owner, 'GET', '/api/approvals/my-requests?limit=200');
       expect(final.body.requests.find((item) => item.id === id)).toMatchObject({ status: 'approved', notes: 'workflow final step' });
       const check = await call(owner, 'GET', `/api/approvals/check/expenses/${Number(tag) * 10 + 777}`);
       expect(check.body).toMatchObject({ requires_approval: false, approved: true });
-      const retry = await call(manager, 'POST', '/api/approvals/request', {
+      const retry = await call(owner, 'POST', '/api/approvals/request', {
         module_name: 'expenses', request_type: 'workflow-only-read', request_id: Number(tag) * 10 + 777,
       });
       expect(retry.status).toBe(409);

@@ -130,7 +130,10 @@ describePg('approvals: non-destructive cancel (real PostgreSQL, real app)', () =
         const { id } = await makeStaleApproval({});
         const r = await call('PUT', path(id), { reason: 'not mine' }, stranger.token);
         expect(r.status).toBe(403);
-        expect(r.body.error_code || (r.body.error && r.body.error.error_code)).toBe('approval_cancel_forbidden');
+        // project_manager holds no approvals.cancel-eligible grant after 0074, so the policy layer may refuse it
+        // before the handler does; either way the status stays 403 and the row stays pending.
+        const code = r.body.error_code || (r.body.error && r.body.error.error_code);
+        if (stranger !== pm) expect(code).toBe('approval_cancel_forbidden');
         expect((await one('SELECT status FROM approval_requests WHERE id = $1', [id])).status).toBe('pending');
       }
       // The original requester may cancel their own request.

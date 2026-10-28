@@ -24,7 +24,7 @@ describePg('R1.1 project id mismatch and destination authorization', () => {
       if (suffix === 'A') own = row; else foreign = row;
     }
     client = (await db.query("INSERT INTO clients (name_en, name_ar) VALUES ($1,$1) RETURNING id", [`r11-${tag}`])).rows[0];
-    scoped = await makeUser('project_manager', own.id);
+    scoped = await makeUser('manager', own.id);
     owner = await makeUser('owner', null);
     const { app } = require('../../../server');
     await new Promise(resolve => { server = app.listen(0, '127.0.0.1', resolve); });
@@ -83,7 +83,7 @@ describePg('R1.1 project id mismatch and destination authorization', () => {
     const denied = await call('PUT', `/api/hse/incidents/${incident.id}`, { project_id: foreign.id });
     expect(denied.status).toBe(403);
     expect((await db.query('SELECT project_id FROM incidents WHERE id = $1', [incident.id])).rows[0].project_id).toBe(own.id);
-    await db.query("INSERT INTO user_project_roles (user_id, project_id, role_id) SELECT $1, $2, id FROM roles WHERE key = 'project_manager'", [scoped.id, foreign.id]);
+    await db.query("INSERT INTO user_project_roles (user_id, project_id, role_id) SELECT $1, $2, id FROM roles WHERE key = 'manager'", [scoped.id, foreign.id]);
     const permitted = await call('PUT', `/api/hse/incidents/${incident.id}`, { project_id: foreign.id });
     expect(permitted.status).toBe(200);
     expect((await db.query('SELECT project_id FROM incidents WHERE id = $1', [incident.id])).rows[0].project_id).toBe(foreign.id);

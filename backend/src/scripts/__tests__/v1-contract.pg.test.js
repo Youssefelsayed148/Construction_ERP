@@ -8,6 +8,7 @@
 //   2. response envelopes match the documented shapes: success → { success:true, data }, GET
 //      lists → { data, meta }, errors → { error:{ code, message, correlation_id, error_code?, error_params? } }.
 // If a test and the live API disagree here, the SPEC is fixed, not the test (plan B5).
+jest.setTimeout(180000); // the spec now documents 300+ operations; the default 30s is too short on a cold DB
 process.env.AUTH_RATE_LIMIT_PER_15_MIN = '1000';
 process.env.V1_RATE_LIMIT_PER_MIN = '100000';
 const tokens = require('../../services/tokens');

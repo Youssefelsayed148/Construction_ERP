@@ -293,30 +293,36 @@ describePg('R0.2 owner GET route smoke on migrated PostgreSQL', () => {
     const titlePrefix = `R2P-LEGAL-${tag}`;
     for (let n = 0; n < 3; n += 1) await db.query(
       "INSERT INTO legal_documents (title, document_type, status) VALUES ($1, 'pagination-test', $2)",
-      [`${titlePrefix}-${n}`, `pagination-${tag}`]
+      [`${titlePrefix}-${n}`, 'pending']
     );
     try { await expectPagePair('/api/legal', { document_type: 'pagination-test' }); }
     finally { await db.query('DELETE FROM legal_documents WHERE title LIKE $1', [`${titlePrefix}-%`]); }
   });
 
   test('maintenance reminder register advances to page 2 with a correct total and no overlap', async () => {
-    const status = `pagination-${tag}`;
+    // status is CHECK-constrained (G1.2), so the rows are isolated by their own project instead of a marker status.
+    const asset = (await db.query("INSERT INTO assets (name, name_ar, name_en) VALUES ($1, $1, $1) RETURNING id", [`r02-maint-${tag}`])).rows[0].id;
+    const proj = (await db.query("INSERT INTO projects (name, name_en, code, status) VALUES ($1, $1, $2, 'active') RETURNING id", [`r02-maint-${tag}`, `R2PM-${tag}`])).rows[0].id;
     for (let n = 0; n < 3; n += 1) await db.query(
-      'INSERT INTO maintenance_reminders (title, scheduled_date, status) VALUES ($1, CURRENT_DATE, $2)',
-      [`R2P-MAINT-${tag}-${n}`, status]
+      "INSERT INTO maintenance_reminders (asset_id, project_id, title, scheduled_date, status) VALUES ($1, $2, $3, CURRENT_DATE, 'scheduled')",
+      [asset, proj, `R2P-MAINT-${tag}-${n}`]
     );
-    try { await expectPagePair('/api/maintenance', { status }); }
-    finally { await db.query('DELETE FROM maintenance_reminders WHERE status = $1', [status]); }
+    try { await expectPagePair('/api/maintenance', { project_id: proj }); }
+    finally {
+      await db.query('DELETE FROM maintenance_reminders WHERE project_id = $1', [proj]);
+      await db.query('DELETE FROM assets WHERE id = $1', [asset]);
+      await db.query('DELETE FROM projects WHERE id = $1', [proj]);
+    }
   });
 
   test('payroll period register advances to page 2 with a correct total and no overlap', async () => {
-    const status = `pagination-${tag}`;
+    // status is CHECK-constrained (G1.2); year 2099 isolates these rows.
     for (let n = 1; n <= 3; n += 1) await db.query(
-      'INSERT INTO payroll_periods (period_name, month, year, status, created_by) VALUES ($1, $2, 2099, $3, $4)',
-      [`R2P-PAYROLL-${tag}-${n}`, n, status, owner.id]
+      "INSERT INTO payroll_periods (period_name, month, year, status, created_by) VALUES ($1, $2, 2099, 'draft', $3)",
+      [`R2P-PAYROLL-${tag}-${n}`, n, owner.id]
     );
-    try { await expectPagePair('/api/payroll', { year: 2099, status }); }
-    finally { await db.query('DELETE FROM payroll_periods WHERE status = $1 AND created_by = $2', [status, owner.id]); }
+    try { await expectPagePair('/api/payroll', { year: 2099 }); }
+    finally { await db.query('DELETE FROM payroll_periods WHERE year = 2099 AND created_by = $1', [owner.id]); }
   });
 
   test('invoice and payment registers each advance to page 2 with correct totals and no overlap', async () => {
@@ -519,7 +525,8 @@ describePg('R0.2 owner GET route smoke on migrated PostgreSQL', () => {
   });
 
   test('warehouse transfer register advances to page 2 with a correct total and no overlap', async () => {
-    const status = `pagination-${tag}`;
+    const status = 'draft';
+    const before = await getRouteTotal('/api/warehouses/transfers', { status });
     const warehouseIds = [];
     for (let n = 0; n < 2; n += 1) warehouseIds.push((await db.query(
       "INSERT INTO warehouses (name, type, project_id) VALUES ($1, 'site', $2) RETURNING id",
@@ -530,9 +537,9 @@ describePg('R0.2 owner GET route smoke on migrated PostgreSQL', () => {
         `INSERT INTO inventory_transfers (from_warehouse_id, to_warehouse_id, status, requested_by)
          VALUES ($1, $2, $3, $4)`, [warehouseIds[0], warehouseIds[1], status, owner.id]
       );
-      await expectPagePair('/api/warehouses/transfers', { status });
+      await expectPagePair('/api/warehouses/transfers', { status }, 'id', before + 3);
     } finally {
-      await db.query('DELETE FROM inventory_transfers WHERE status = $1 AND requested_by = $2', [status, owner.id]);
+      await db.query('DELETE FROM inventory_transfers WHERE from_warehouse_id = ANY($1)', [warehouseIds]);
       await db.query('DELETE FROM warehouses WHERE id = ANY($1)', [warehouseIds]);
     }
   });
@@ -634,7 +641,7 @@ describePg('R0.2 owner GET route smoke on migrated PostgreSQL', () => {
           [`R2P-LAB-${tag}-${n}`, `r02-laborer-${tag}-${n}`]
         )).rows[0].id;
         laborerIds.push(laborer);
-        await db.query('INSERT INTO attendance (employee_id, date, status) VALUES ($1, CURRENT_DATE + $2::int, $3)', [employee, n, `pagination-${tag}`]);
+        await db.query('INSERT INTO attendance (employee_id, date, status) VALUES ($1, CURRENT_DATE + $2::int, $3)', [employee, n, 'present']);
         await db.query('INSERT INTO leave_requests (employee_id, leave_type, start_date, end_date, reason) VALUES ($1, $2, CURRENT_DATE + $3::int, CURRENT_DATE + $3::int, $4)', [employee, `pagination-${tag}`, n, `leave-${n}`]);
         await db.query('INSERT INTO labor_payments (project_id, laborer_id, payment_date, total_amount) VALUES ($1, $2, CURRENT_DATE + $3::int, 1)', [project.id, laborer, n]);
       }
@@ -731,9 +738,9 @@ describePg('R0.2 owner GET route smoke on migrated PostgreSQL', () => {
     try {
       for (let n = 0; n < 3; n += 1) await db.query(
         "INSERT INTO stock_reservations (material_id, project_id, quantity, status) VALUES ($1, $2, 1, $3)",
-        [material, project.id, `pagination-${tag}`]
+        [material, project.id, 'active']
       );
-      await expectPagePair('/api/warehouses/reservations', { project_id: project.id, status: `pagination-${tag}` });
+      await expectPagePair('/api/warehouses/reservations', { project_id: project.id, status: 'active', material_id: material });
     } finally {
       await db.query('DELETE FROM stock_reservations WHERE material_id = $1 AND project_id = $2', [material, project.id]);
       await db.query('DELETE FROM item_master WHERE id = $1', [material]);

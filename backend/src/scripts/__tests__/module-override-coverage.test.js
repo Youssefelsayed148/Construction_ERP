@@ -31,7 +31,7 @@ describe('action overrides', () => {
   const MOUNT_FILES = {
     approvals: 'approvals', commercial: 'commercial', consultant: 'consultant', 'client-portal': 'client', docs: 'doccontrol', 'finance-ledger': 'financeLedger', handover: 'handover',
     procurement: 'procurement', projects: 'projects', qhse: 'qhse', subcontractors: 'subcontractors', 'work-orders': 'workorders', reports: 'reports',
-    invoices: 'invoices', items: 'items', payments: 'payments', suppliers: 'suppliers', inventory: 'inventory', materials: 'materials',
+    invoices: 'invoices', items: 'items', payments: 'payments', suppliers: 'suppliers', inventory: 'inventory', materials: 'materials', notifications: 'notifications',
   };
 
   test('every override matches a real route with that method', () => {
@@ -49,6 +49,9 @@ describe('action overrides', () => {
     expect(act('procurement', 'POST', '/po/:id/issue')).toBe('issue_financial_document');
     expect(act('procurement', 'GET', '/rfq/:id/comparison')).toBe('see_supplier_value');
     expect(act('docs', 'POST', '/rfis')).toBe('create');
+    // a user's own notification feed: mark-read / retry are edits, since no canonical role holds notifications.create
+    expect(act('notifications', 'POST', '/:id/read')).toBe('edit');
+    expect(act('notifications', 'POST', '/deliveries/:id/retry')).toBe('edit');
     expect(act('consultant', 'POST', '/wirs/:id/result', null, { result: 'approved' })).toBe('approve');
     expect(act('consultant', 'POST', '/wirs/:id/result', null, { result: 'rejected' })).toBe('reject');
     expect(act('consultant', 'POST', '/variations/:id/recommendation', null, { decision: 'approve' })).toBe('approve');

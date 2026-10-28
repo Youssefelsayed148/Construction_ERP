@@ -23,7 +23,9 @@ router.get('/', authenticate, authorize(), async (req, res) => {
   } catch (e) { routeFail(res, e, 'subcontractors.GET /', req); }
 });
 
-router.get('/:id', authenticate, authorize(), async (req, res) => {
+router.get('/:id', authenticate, authorize(), async (req, res, next) => {
+  // Named sub-paths (/verifications, /contracts, ...) are registered below; let them fall through.
+  if (!/^\d+$/.test(req.params.id)) return next('route');
   try {
     const r = await query('SELECT * FROM subcontractors WHERE id = $1', [req.params.id]);
     if (r.rows.length === 0) return res.status(404).json({ success: false, error: 'Subcontractor not found' });

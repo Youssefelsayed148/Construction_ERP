@@ -21,7 +21,7 @@ describePg('Batch 5A client collections exclude supplier cash outflows', () => {
       VALUES ($1,$2,$3,200,CURRENT_DATE),($1,$2,NULL,100,CURRENT_DATE)`, [project.id, client.id, invoice.id]);
     await db.query("INSERT INTO payments (project_id,supplier_id,direction,amount,payment_date) VALUES ($1,$2,'ap',9130,CURRENT_DATE)", [project.id, supplier.id]);
     await db.query("INSERT INTO expenses (project_id,category,description,amount) VALUES ($1,'materials','batch5a',40)", [project.id]);
-    for (const role of ['owner', 'project_manager']) {
+    for (const role of ['owner', 'manager']) {
       const user = (await db.query('INSERT INTO users (name,email,password,role) VALUES ($1,$2,\'unused\',$3) RETURNING id,token_version', [tag, `${tag}-${role}@test.invalid`, role])).rows[0];
       await db.query('INSERT INTO user_project_roles (user_id,project_id,role_id) SELECT $1,$2,id FROM roles WHERE key=$3', [user.id, role === 'owner' ? null : project.id, role]);
       user.token = tokens.signSession({ userId: user.id, tokenVersion: user.token_version });

@@ -651,7 +651,6 @@ async function runInTransaction(q, fn) {
 
 async function runReceivableReminderSweep(q = defaultQuery, opts = {}) {
   const now = opts.now || new Date();
-  const nowMs = new Date(now).getTime();
   const invoices = (await q('SELECT * FROM invoices')).rows.filter(
     (i) => !['draft', 'cancelled', 'void', 'credited', 'paid'].includes(i.status === 'sent' ? 'issued' : i.status)
   );
@@ -671,7 +670,7 @@ async function runReceivableReminderSweep(q = defaultQuery, opts = {}) {
     const outstanding = round2(net - allocatedSum(allocs));
     if (outstanding <= 0) continue;
     if (inv.due_date == null) continue;
-    const daysUntilDue = Math.ceil((new Date(inv.due_date).getTime() - nowMs) / 86400000);
+    const daysUntilDue = calendarDay(inv.due_date) - calendarDay(now);
 
     let stage = null;
     if (daysOverdueOf(inv, now) >= 30) stage = 'overdue_30';
@@ -720,9 +719,16 @@ async function runReceivableReminderSweep(q = defaultQuery, opts = {}) {
   if (failures.length) throw new Error(`${failures.length} receivable reminder(s) failed: ${failures[0].message}`);
   return { reminders_sent: sent };
 }
+// Whole calendar days, from local date parts: a millisecond difference divided by 24h is off by one across a
+// daylight-saving change on any server that is not on UTC (a 6-day gap spanning one reads as 6 days + 1 hour).
+function calendarDay(value) {
+  const d = new Date(value);
+  return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000);
+}
+
 function daysOverdueOf(invoice, now) {
   if (invoice.due_date == null) return 0;
-  return Math.max(Math.floor((new Date(now).getTime() - new Date(invoice.due_date).getTime()) / 86400000), 0);
+  return Math.max(calendarDay(now) - calendarDay(invoice.due_date), 0);
 }
 
 function initReceivableReminderScheduler(opts = {}) {

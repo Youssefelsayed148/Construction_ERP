@@ -344,7 +344,7 @@ describePg('reconciliation seeded defects (real PostgreSQL)', () => {
       );
       const voidedId = (await client.query(
         `INSERT INTO goods_receipt_notes (grn_number, purchase_order_id, status)
-         VALUES ($1, $2, 'voided') RETURNING id`, [`RD-GRN-V-${tag}-${sequence}`, poId]
+         VALUES ($1, $2, 'rejected') RETURNING id`, [`RD-GRN-V-${tag}-${sequence}`, poId]
       )).rows[0].id;
       await client.query(
         `INSERT INTO grn_lines (grn_id, purchase_order_line_id, material_id, quantity)

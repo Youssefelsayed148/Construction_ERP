@@ -208,6 +208,9 @@ const ACTION_OVERRIDES = Object.freeze([
   }],
   ['client-portal', 'POST', /^\/variations\/:id\/response$/, (req) => req.body?.decision === 'reject' ? 'reject' : 'approve'],
   ['client-portal', 'POST', /^\/documents\/:id\/acknowledgement$/, 'approve'],
+  // A user's own notification feed: marking read / retrying a delivery is an edit of their own record, not a
+  // 'create' (no canonical role holds notifications.create, so POST's default would 403 every one of them).
+  ['notifications', 'POST', /^\/(?:deliveries\/)?:id\/(?:read|retry)$/, 'edit'],
   ['approvals', 'PUT', /^\/:id\/approve$/, 'approve'],
   // Phase 3.5: progress columns are derived; setting one by hand is a distinct permission, not 'edit'.
   ['projects', 'PUT', /^\/:id$/, (req) => (req.body && req.body.completion_percentage != null ? 'override_progress' : 'edit')],

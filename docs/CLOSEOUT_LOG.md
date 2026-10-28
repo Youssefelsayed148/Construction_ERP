@@ -3145,3 +3145,26 @@ R3 implementation and final gates are complete. The scorecard in `docs/R3_SCOREC
 | F4.2 | `node scripts/i18n-inventory.js --check` (frontend) | `i18n:check ok` |
 | F4.3 | `npm run i18n:review-pack` (frontend) | Wrote docs/ARABIC_REVIEW_PACK.md: 97 terms, 26 routes, 37 namespaces |
 | baselines | `node src/scripts/lint-guards.js --update` (backend); `npm run i18n:inventory`; `npm run i18n:parity` | baseline written; inventory written; `i18n parity ok: 37 namespaces, 3072 English keys` |
+
+# 2026-10-28 - Phase 0 automated gates on real PostgreSQL 16
+
+Throwaway `postgres:16-alpine` container, fresh database, `TEST_PG=1`, `npm run test:pg`.
+
+- Migrations: 145 applied, re-run applies 0. `validate-status-constraints.sql` ran clean; 0 NOT VALID constraints remain.
+- First full run: 12 suites / 25 tests failed (90 suites passed). Triage and fixes, one cause each:
+  - Product: `notifications` POST routes (`/:id/read`, `/deliveries/:id/retry`) resolved to action `create`, which no canonical
+    role holds, so every canonical-role user got 403. Now `edit` via `policy.ACTION_OVERRIDES` (`services/policy.js`).
+  - Product: `GET /api/subcontractors/verifications` returned 500 because `GET /:id` was registered first; `/:id` now
+    falls through for non-numeric ids (`routes/subcontractors.js`).
+  - Product: `financeEngine.runReceivableReminderSweep` counted days as ms/86400000, off by one across a DST change on a
+    non-UTC server (Cairo, 30 Oct); now `calendarDay()` differences.
+  - Tests stale after 0074: scoped actor `project_manager` replaced by legacy `manager` in project-id-mismatch,
+    aggregate-scope, client-collections; approvals-atomic requester is `owner` (no canonical role holds approvals.create);
+    approvals-cancel accepts the policy-layer 403 for `project_manager`.
+  - Tests stale after G1.2 CHECK constraints: seeds used statuses the app never writes (get-routes page-2 fixtures,
+    reconcile-defects `voided` GRN, t3-role-coverage `open` RFQ / `submitted` variation).
+  - Registry/coverage: new `audit-fixtures/admin-config.js` (5 admin routes), v1-contract timeout raised,
+    module-override-coverage includes the notifications mount.
+- Final full run on a fresh database: 102/102 suites, 2190 passed, 1 skipped, exit 0 (423 s).
+- Also green: backend mock jest (92 suites), `lint:guards`, frontend 51 suites / 493 tests, i18n check/parity, `lint:api`.
+- Not run here: remote CI (Actions tab), the pilot Docker stack smoke.
