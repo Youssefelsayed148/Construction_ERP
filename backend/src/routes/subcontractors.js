@@ -143,6 +143,30 @@ router.post('/contracts', authenticate, authorize(), async (req, res) => {
   } catch (e) { routeFail(res, e, 'subcontractors.POST /contracts', req); }
 });
 
+// GET /api/subcontractors/verifications?project_id=&status= — the admin
+// list view (verifications are created per sub-contract, but the screen
+// that administers them needs a project-wide list). sc.project_id is kept
+// in the SELECT so the company-wide auto-scope filter (middleware/auth.js)
+// can still drop rows for a project-scoped caller even if project_id were
+// omitted or wrong.
+router.get('/verifications', authenticate, authorize(), async (req, res) => {
+  try {
+    const { project_id, status } = req.query;
+    const conds = []; const p = []; let i = 1;
+    if (project_id) { conds.push(`sc.project_id = $${i++}`); p.push(parseInt(project_id, 10)); }
+    if (status) { conds.push(`swv.status = $${i++}`); p.push(status); }
+    const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
+    const data = await queryPaginated(req, res, query, {
+      sql: `SELECT swv.*, sc.project_id, sc.contract_number, bi.description as boq_item_name
+            FROM sub_work_verifications swv
+            JOIN sub_contracts sc ON sc.id = swv.sub_contract_id
+            LEFT JOIN boq_items bi ON swv.boq_item_id = bi.id ${where}`,
+      params: p, orderBy: [{ column: 'swv.period_from', direction: 'DESC' }],
+    });
+    res.json({ success: true, data: data.rows });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 // -- Work Verifications --
 router.get('/verifications/:contractId', authenticate, authorize(), async (req, res) => {
   try {
