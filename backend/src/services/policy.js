@@ -192,6 +192,12 @@ const MODULE_OVERRIDES = Object.freeze({
   team: [
     [/.*/, 'team'],
   ],
+  // G2.2: the workflow-template admin editor is approval configuration; it is
+  // judged under the approvals policy module (owner/admin only, additionally
+  // restricted by role in the router itself).
+  'workflow-templates': [
+    [/.*/, 'approvals'],
+  ],
 });
 
 // [mount module, METHOD, route path pattern, action | (req) => action]

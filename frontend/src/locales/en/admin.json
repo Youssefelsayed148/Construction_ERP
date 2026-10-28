@@ -1,11 +1,11 @@
 {
   "nav": { "areas": "Administration areas" },
-  "actions": { "create": "Create record", "edit": "Edit record", "loadProject": "Load project", "runSweep": "Run replenishment sweep", "viewSla": "View SLA", "rotateSecret": "Rotate secret", "deactivate": "Deactivate", "post": "Post", "void": "Void", "confirmVoid": "Confirm void", "policies": "Policies", "alerts": "Alerts" },
+  "actions": { "create": "Create record", "edit": "Edit record", "loadProject": "Load project", "runSweep": "Run replenishment sweep", "viewSla": "View SLA", "rotateSecret": "Rotate secret", "deactivate": "Deactivate", "post": "Post", "void": "Void", "confirmVoid": "Confirm void", "policies": "Policies", "alerts": "Alerts", "viewSteps": "Steps", "activate": "Activate" },
   "messages": {
     "unknownArea": "This administration screen is unavailable.",
     "permissionDenied": "You do not have permission to view this administration screen.",
     "saved": "Changes saved.",
-    "deactivated": "Record deactivated.", "secretShownOnce": "Copy this signing secret now. It will not be shown again.", "tokenShownOnce": "Copy this API token now. It will not be shown again.", "sweepComplete": "Replenishment sweep completed.", "posted": "Document posted.", "voided": "Document voided."
+    "deactivated": "Record deactivated.", "activated": "Activated.", "secretShownOnce": "Copy this signing secret now. It will not be shown again.", "tokenShownOnce": "Copy this API token now. It will not be shown again.", "sweepComplete": "Replenishment sweep completed.", "posted": "Document posted.", "voided": "Document voided."
   },
   "organizations": { "title": "Organizations" },
   "users": { "title": "Users and roles" },
@@ -25,6 +25,7 @@
   "subcontractorContracts": { "title": "Subcontracts" },
   "subcontractorVerifications": { "title": "Subcontract work verifications" },
   "rolesMatrix": { "title": "Roles and permissions matrix" },
+  "workflowTemplates": { "title": "Workflow templates", "stepsTitle": "Workflow steps (in execution order)", "newInstancesNote": "Deactivating a template stops NEW workflow instances only — in-flight instances keep their started steps. Editing a step's approver role or SLA applies to new instances and is also re-read by the engine when resolving decisions on instances still in progress." },
   "notificationRules": { "title": "Notification rules", "note": "This view is read-only: it shows the event types and roles coded into the notification engine. Per-user channel preferences (email/push/in-app) are set separately on each user's Notification preferences screen (/notification-preferences)." },
   "fields": {
     "rule_type": "Rule type", "key": "Event", "label": "Label", "roles": "Notified roles", "role_name": "Role name", "module": "Module",
@@ -39,7 +40,8 @@
     "name": "Name", "role": "Role", "department": "Department", "job_title": "Job title", "is_active": "Active",
     "delegate_from_name": "Delegated by", "delegate_name": "Delegate", "delegate_user_id": "Delegate user ID",
     "module_scope": "Module scope", "max_amount": "Maximum amount", "valid_from": "Valid from", "valid_to": "Valid to", "notes": "Notes",
-    "action": "Action", "currency": "Currency", "enabled": "Enabled", "project_id": "Project ID", "warehouse_id": "Warehouse ID", "reason": "Reason", "type": "Type", "lines_json": "Lines (JSON array)", "variation_number": "Variation", "title": "Title", "amount": "Amount", "description": "Description", "created_at": "Created", "claim_number": "Claim", "sla_days": "SLA days", "due_date": "Due date", "url": "Webhook URL", "events_json": "Events (JSON array)", "project_ids_json": "Project IDs (JSON array)", "events": "Events", "token_prefix": "Token prefix", "scopes": "Scopes", "scopes_text": "Scopes (comma separated)", "expires_at": "Expires", "revoked_at": "Revoked", "doc_prefix": "Document prefix", "include_discipline": "Include discipline", "include_type": "Include document type", "seq_pad": "Sequence padding", "rev_prefix": "Revision prefix", "rule_key": "Policy key", "rule_value": "Policy", "scope": "Scope", "ref": "Scope reference", "mode": "Policy mode"
+    "action": "Action", "currency": "Currency", "enabled": "Enabled", "project_id": "Project ID", "warehouse_id": "Warehouse ID", "reason": "Reason", "type": "Type", "lines_json": "Lines (JSON array)", "variation_number": "Variation", "title": "Title", "amount": "Amount", "description": "Description", "created_at": "Created", "claim_number": "Claim", "sla_days": "SLA days", "due_date": "Due date", "url": "Webhook URL", "events_json": "Events (JSON array)", "project_ids_json": "Project IDs (JSON array)", "events": "Events", "token_prefix": "Token prefix", "scopes": "Scopes", "scopes_text": "Scopes (comma separated)", "expires_at": "Expires", "revoked_at": "Revoked", "doc_prefix": "Document prefix", "include_discipline": "Include discipline", "include_type": "Include document type", "seq_pad": "Sequence padding", "rev_prefix": "Revision prefix", "rule_key": "Policy key", "rule_value": "Policy", "scope": "Scope", "ref": "Scope reference", "mode": "Policy mode",
+    "entity_type_scope": "Entity scope", "step_count": "Steps", "step_key": "Step key", "sort_order": "Order", "resolver_type": "Resolver type", "resolver_value": "Approver / resolver", "sla_hours": "SLA (hours)", "is_terminal": "Terminal"
   },
   "options": {
     "client": "Client", "supplier": "Supplier", "subcontractor": "Subcontractor", "consultant": "Consultant", "other": "Other",

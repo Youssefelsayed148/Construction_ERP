@@ -256,13 +256,62 @@ describe('R5 administrative workspaces', () => {
     expect(window.fetch).not.toHaveBeenCalled();
   });
 
-  test.each(Object.keys(ADMIN_AREAS).filter(area => !['sla', 'notification-rules', 'roles-matrix'].includes(area)))('%s surfaces a validation response without dropping its form', async area => {
+  test.each(Object.keys(ADMIN_AREAS).filter(area => !['sla', 'notification-rules', 'roles-matrix', 'workflow-templates'].includes(area)))('%s surfaces a validation response without dropping its form', async area => {
     expect(await submitWithFailure(area, 422)).toBe('errors.validation_error');
     expect(container.querySelector('form.admin-form')).not.toBeNull();
   });
 
-  test.each(Object.keys(ADMIN_AREAS).filter(area => !['sla', 'notification-rules', 'roles-matrix'].includes(area)))('%s surfaces a server failure without dropping its form', async area => {
+  test.each(Object.keys(ADMIN_AREAS).filter(area => !['sla', 'notification-rules', 'roles-matrix', 'workflow-templates'].includes(area)))('%s surfaces a server failure without dropping its form', async area => {
     expect(await submitWithFailure(area, 500)).toBe('errors.serverError');
     expect(container.querySelector('form.admin-form')).not.toBeNull();
+  });
+
+  test('workflow-templates loads, opens the ordered step editor, saves a step edit, and hides from unauthorized users', async () => {
+    const templateRow = { id: 3, key: 'purchase_order', name: 'Purchase order', entity_type_scope: 'purchase_orders', is_active: true, step_count: 2 };
+    const detail = {
+      ...templateRow,
+      steps: [
+        { id: 11, step_key: 'manager_review', name: 'Manager review', sort_order: 1, mode: 'sequential', resolver_type: 'role', resolver_value: 'project_manager', sla_hours: 24 },
+        { id: 12, step_key: 'owner_release', name: 'Owner release', sort_order: 2, mode: 'sequential', resolver_type: 'requester', resolver_value: null, sla_hours: null },
+      ],
+    };
+    window.fetch.mockImplementation(async (url, options = {}) => {
+      const method = (options.method || 'GET').toUpperCase();
+      if (method === 'PUT' && String(url).includes('/workflow-templates/3/steps/11')) {
+        return response(200, { success: true, data: { ...detail.steps[0], sla_hours: 48 } });
+      }
+      if (method === 'GET' && String(url).includes('/workflow-templates/3')) {
+        return response(200, { success: true, data: detail });
+      }
+      return response(200, { success: true, data: [templateRow] }, '1');
+    });
+    ({ container, root } = mount('/admin/workflow-templates'));
+    await act(async () => Promise.resolve());
+    expect(container.querySelector('h1').textContent).toBe('admin.workflowTemplates.title');
+    expect(container.textContent).toContain('purchase_order');
+    const stepsButton = [...container.querySelectorAll('button')].find(button => button.textContent === 'admin.actions.viewSteps');
+    await act(async () => stepsButton.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(container.textContent).toContain('admin.workflowTemplates.newInstancesNote');
+    const slaInput = container.querySelector('input[aria-label="admin.fields.sla_hours"]');
+    await act(async () => setValue(slaInput, '48'));
+    const save = [...container.querySelectorAll('button')].find(button => button.textContent === 'common.save');
+    await act(async () => save.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    const put = window.fetch.mock.calls.find(([, options = {}]) => (options.method || 'GET').toUpperCase() === 'PUT');
+    expect(put[0]).toContain('/workflow-templates/3/steps/11');
+    expect(JSON.parse(put[1].body)).toEqual({ resolver_value: 'project_manager', sla_hours: 48 });
+    act(() => root.unmount());
+    window.fetch.mockResolvedValue(response(500, { error: { code: 'internal_error', message: 'request failed' } }));
+    ({ container, root } = mount('/admin/workflow-templates'));
+    await act(async () => Promise.resolve());
+    expect(container.textContent).toContain('errors.serverError');
+    act(() => root.unmount());
+    localStorage.setItem('user', JSON.stringify({ role: 'staff', policy_modules: ['*'], policy_permissions: [{ module: '*', action: '*' }] }));
+    window.fetch = jest.fn();
+    ({ container, root } = mount('/admin/workflow-templates'));
+    await act(async () => Promise.resolve());
+    expect(container.textContent).toContain('admin.messages.permissionDenied');
+    expect(window.fetch).not.toHaveBeenCalled();
   });
 });

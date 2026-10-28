@@ -1,11 +1,11 @@
 {
   "nav": { "areas": "أقسام الإدارة" },
-  "actions": { "create": "إنشاء سجل", "edit": "تعديل السجل", "loadProject": "تحميل المشروع", "runSweep": "تشغيل مراجعة إعادة التوريد", "viewSla": "عرض اتفاقية مستوى الخدمة", "rotateSecret": "تغيير المفتاح السري", "deactivate": "تعطيل", "post": "ترحيل", "void": "إلغاء", "confirmVoid": "تأكيد الإلغاء", "policies": "السياسات", "alerts": "التنبيهات" },
+  "actions": { "create": "إنشاء سجل", "edit": "تعديل السجل", "loadProject": "تحميل المشروع", "runSweep": "تشغيل مراجعة إعادة التوريد", "viewSla": "عرض اتفاقية مستوى الخدمة", "rotateSecret": "تغيير المفتاح السري", "deactivate": "تعطيل", "post": "ترحيل", "void": "إلغاء", "confirmVoid": "تأكيد الإلغاء", "policies": "السياسات", "alerts": "التنبيهات", "viewSteps": "الخطوات", "activate": "تنشيط" },
   "messages": {
     "unknownArea": "شاشة الإدارة هذه غير متاحة.",
     "permissionDenied": "ليست لديك صلاحية لعرض شاشة الإدارة هذه.",
     "saved": "تم حفظ التغييرات.",
-    "deactivated": "تم تعطيل السجل.", "secretShownOnce": "انسخ مفتاح التوقيع الآن، فلن يظهر مرة أخرى.", "tokenShownOnce": "انسخ رمز واجهة البرمجة الآن، فلن يظهر مرة أخرى.", "sweepComplete": "اكتملت مراجعة إعادة التوريد.", "posted": "تم ترحيل المستند.", "voided": "تم إلغاء المستند."
+    "deactivated": "تم تعطيل السجل.", "activated": "تم التنشيط.", "secretShownOnce": "انسخ مفتاح التوقيع الآن، فلن يظهر مرة أخرى.", "tokenShownOnce": "انسخ رمز واجهة البرمجة الآن، فلن يظهر مرة أخرى.", "sweepComplete": "اكتملت مراجعة إعادة التوريد.", "posted": "تم ترحيل المستند.", "voided": "تم إلغاء المستند."
   },
   "organizations": { "title": "المؤسسات" },
   "users": { "title": "المستخدمون والأدوار" },
@@ -25,6 +25,7 @@
   "subcontractorContracts": { "title": "عقود المقاولين من الباطن" },
   "subcontractorVerifications": { "title": "اعتماد أعمال المقاولين من الباطن" },
   "rolesMatrix": { "title": "مصفوفة الأدوار والصلاحيات" },
+  "workflowTemplates": { "title": "قوالب سير الاعتماد", "stepsTitle": "خطوات سير الاعتماد (بترتيب التنفيذ)", "newInstancesNote": "إلغاء تنشيط القالب يوقف مثيلات سير الاعتماد الجديدة فقط — المثيلات الجارية تحتفظ بخطواتها التي بدأت بالفعل. تعديل دور المعتمِد أو مدة SLA للخطوة يسري على المثيلات الجديدة، كما يعيد محرك الاعتماد قراءتها عند اتخاذ القرارات على المثيلات الجارية." },
   "notificationRules": { "title": "قواعد الإشعارات", "note": "هذا العرض للقراءة فقط: يعرض أنواع الأحداث والأدوار المبرمجة في محرك الإشعارات. يتم تحديد تفضيلات القناة لكل مستخدم (بريد إلكتروني/دفع/داخل التطبيق) بشكل منفصل في شاشة تفضيلات الإشعارات الخاصة بكل مستخدم (/notification-preferences)." },
   "fields": {
     "rule_type": "نوع القاعدة", "key": "الحدث", "label": "التسمية", "roles": "الأدوار المُبلَّغة", "role_name": "اسم الدور", "module": "الوحدة",
@@ -39,7 +40,8 @@
     "name": "الاسم", "role": "الدور", "department": "القسم", "job_title": "المسمى الوظيفي", "is_active": "نشط",
     "delegate_from_name": "المفوِّض", "delegate_name": "المفوَّض إليه", "delegate_user_id": "معرّف المستخدم المفوَّض إليه",
     "module_scope": "نطاق الوحدة", "max_amount": "الحد الأقصى للمبلغ", "valid_from": "ساري من", "valid_to": "ساري حتى", "notes": "ملاحظات",
-    "action": "الإجراء", "currency": "العملة", "enabled": "مفعّل", "project_id": "معرّف المشروع", "warehouse_id": "معرّف المخزن", "reason": "السبب", "type": "النوع", "lines_json": "بنود المستند (JSON)", "variation_number": "التغيير", "title": "العنوان", "amount": "المبلغ", "description": "الوصف", "created_at": "تاريخ الإنشاء", "claim_number": "المطالبة", "sla_days": "أيام الاستجابة", "due_date": "تاريخ الاستحقاق", "url": "عنوان إشعار الويب", "events_json": "الأحداث (JSON)", "project_ids_json": "معرّفات المشاريع (JSON)", "events": "الأحداث", "token_prefix": "بادئة الرمز", "scopes": "النطاقات", "scopes_text": "النطاقات (مفصولة بفواصل)", "expires_at": "تاريخ الانتهاء", "revoked_at": "تاريخ الإلغاء", "doc_prefix": "بادئة المستند", "include_discipline": "تضمين التخصص", "include_type": "تضمين نوع المستند", "seq_pad": "طول الرقم التسلسلي", "rev_prefix": "بادئة المراجعة", "rule_key": "مفتاح السياسة", "rule_value": "السياسة", "scope": "النطاق", "ref": "مرجع النطاق", "mode": "وضع السياسة"
+    "action": "الإجراء", "currency": "العملة", "enabled": "مفعّل", "project_id": "معرّف المشروع", "warehouse_id": "معرّف المخزن", "reason": "السبب", "type": "النوع", "lines_json": "بنود المستند (JSON)", "variation_number": "التغيير", "title": "العنوان", "amount": "المبلغ", "description": "الوصف", "created_at": "تاريخ الإنشاء", "claim_number": "المطالبة", "sla_days": "أيام الاستجابة", "due_date": "تاريخ الاستحقاق", "url": "عنوان إشعار الويب", "events_json": "الأحداث (JSON)", "project_ids_json": "معرّفات المشاريع (JSON)", "events": "الأحداث", "token_prefix": "بادئة الرمز", "scopes": "النطاقات", "scopes_text": "النطاقات (مفصولة بفواصل)", "expires_at": "تاريخ الانتهاء", "revoked_at": "تاريخ الإلغاء", "doc_prefix": "بادئة المستند", "include_discipline": "تضمين التخصص", "include_type": "تضمين نوع المستند", "seq_pad": "طول الرقم التسلسلي", "rev_prefix": "بادئة المراجعة", "rule_key": "مفتاح السياسة", "rule_value": "السياسة", "scope": "النطاق", "ref": "مرجع النطاق", "mode": "وضع السياسة",
+    "entity_type_scope": "نطاق الكيان", "step_count": "عدد الخطوات", "step_key": "مفتاح الخطوة", "sort_order": "الترتيب", "resolver_type": "نوع المعتمِد", "resolver_value": "المعتمِد / المُحلِّد", "sla_hours": "مدة SLA (ساعات)", "is_terminal": "خطوة نهائية"
   },
   "options": {
     "client": "عميل", "supplier": "مورد", "subcontractor": "مقاول من الباطن", "consultant": "استشاري", "other": "أخرى",

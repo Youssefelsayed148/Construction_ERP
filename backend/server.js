@@ -64,6 +64,7 @@ app.get('/api/health', async (req, res) => {
 app.use('/api/auth', require('./src/routes/auth'));
 app.use('/api/users', require('./src/routes/users'));
 app.use('/api/approvals', require('./src/routes/approvals'));
+app.use('/api/workflow-templates', require('./src/routes/workflowTemplates'));
 app.use('/api/approval-limits', require('./src/routes/approvalLimits'));
 app.use('/api/activity', require('./src/routes/activity'));
 app.use('/api/dashboard', require('./src/routes/dashboard'));

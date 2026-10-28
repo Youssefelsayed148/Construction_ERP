@@ -116,6 +116,11 @@ export const ADMIN_AREAS = {
     title: 'rolesMatrix', module: 'users', roles: ['owner', 'admin'],
     list: '/users/preview/matrix', fields: [], columns: ['role', 'role_name', 'module', 'action'],
   },
+  'workflow-templates': {
+    title: 'workflowTemplates', module: 'approvals', roles: ['owner', 'admin'],
+    list: '/workflow-templates', fields: [], columns: ['key', 'name', 'entity_type_scope', 'step_count', 'is_active'],
+    stepsDetail: true, toggleActive: true,
+  },
 };
 
 async function parseResponse(response) {
@@ -168,6 +173,8 @@ export default function AdminWorkspace() {
   const [slaDetails, setSlaDetails] = useState(null);
   const [voidTarget, setVoidTarget] = useState(null);
   const [voidReason, setVoidReason] = useState('');
+  const [stepTemplate, setStepTemplate] = useState(null);
+  const [stepEdits, setStepEdits] = useState({});
   const [projectId, setProjectId] = useState(() => new URLSearchParams(location.search).get('project_id') || '');
   const pageSize = 200;
 
@@ -186,7 +193,7 @@ export default function AdminWorkspace() {
       }
       const listPath = typeof config.list === 'function' ? config.list(params) : config.list;
       const { body, totalCount: count } = await parseResponse(await request(apiUrl(`${listPath}?${params}`)));
-      if (area === 'users' || area === 'approval-limits') {
+      if (area === 'users' || area === 'approval-limits' || area === 'workflow-templates') {
         const rolesResult = await parseResponse(await request(apiUrl('/users/preview/roles')));
         setAvailableRoles((rolesResult.body.data || []).map(role => role.key));
       }
@@ -202,7 +209,7 @@ export default function AdminWorkspace() {
   }, [area, config, location.search, request, user]);
 
   useEffect(() => { paging.current = { offset: 0, total: null }; setRows([]); refresh(); }, [refresh]);
-  useEffect(() => { setOneTimeSecret(''); setSlaDetails(null); setVoidTarget(null); }, [area]);
+  useEffect(() => { setOneTimeSecret(''); setSlaDetails(null); setVoidTarget(null); setStepTemplate(null); setStepEdits({}); }, [area]);
 
   const save = useCallback(async values => {
     const payload = { ...values };
@@ -309,6 +316,41 @@ export default function AdminWorkspace() {
     catch (error) { setLoadError(error); }
   };
 
+  const showSteps = async row => {
+    try {
+      const { body } = await parseResponse(await request(apiUrl(`/workflow-templates/${row.id}`)));
+      setStepTemplate(body.data || null); setStepEdits({});
+    } catch (error) { setLoadError(error); }
+  };
+
+  const changeStepEdit = (stepId, key, value) => {
+    setStepEdits(previous => ({ ...previous, [stepId]: { ...previous[stepId], [key]: value } }));
+  };
+
+  const saveStep = async step => {
+    if (!stepTemplate) return;
+    const edits = stepEdits[step.id] || {};
+    const payload = {
+      resolver_value: edits.resolver_value !== undefined ? edits.resolver_value : step.resolver_value,
+      sla_hours: edits.sla_hours !== undefined && edits.sla_hours !== '' ? Number(edits.sla_hours) : (edits.sla_hours === '' ? null : step.sla_hours),
+    };
+    try {
+      const { body } = await parseResponse(await request(apiUrl(`/workflow-templates/${stepTemplate.id}/steps/${step.id}`), { method: 'PUT', body: JSON.stringify(payload) }));
+      setNotice(body.message || t('admin.messages.saved'));
+      setStepTemplate(previous => ({ ...previous, steps: previous.steps.map(item => (item.id === step.id ? body.data || item : item)) }));
+      setStepEdits(previous => ({ ...previous, [step.id]: {} }));
+      refresh();
+    } catch (error) { setLoadError(error); }
+  };
+
+  const toggleTemplate = async row => {
+    try {
+      await parseResponse(await request(apiUrl(`/workflow-templates/${row.id}`), { method: 'PUT', body: JSON.stringify({ is_active: row.is_active === false }) }));
+      setNotice(t(row.is_active === false ? 'admin.messages.activated' : 'admin.messages.deactivated'));
+      refresh();
+    } catch (error) { setLoadError(error); }
+  };
+
   const rotateSecret = async row => {
     try { const { body } = await parseResponse(await request(apiUrl(config.rotate(row.id)), { method: 'POST', body: '{}' })); setOneTimeSecret(body.data.secret); }
     catch (error) { setLoadError(error); }
@@ -352,6 +394,36 @@ export default function AdminWorkspace() {
       </div>}
       {oneTimeSecret && <div role="alert" className="alert alert-warning admin-secret"><strong>{t(config.tokenOnce ? 'admin.messages.tokenShownOnce' : 'admin.messages.secretShownOnce')}</strong><code>{oneTimeSecret}</code><button className="btn" type="button" onClick={() => setOneTimeSecret('')}>{t('common.close')}</button></div>}
       {slaDetails && <section className="card" role="dialog" aria-modal="true" aria-label={t('admin.sla.title')}><dl>{Object.entries(slaDetails).map(([key, value]) => <React.Fragment key={key}><dt>{t(`admin.fields.${key}`, key)}</dt><dd>{String(value ?? '—')}</dd></React.Fragment>)}</dl><button className="btn" type="button" onClick={() => setSlaDetails(null)}>{t('common.close')}</button></section>}
+      {stepTemplate && <section className="card" role="dialog" aria-modal="true" aria-label={t('admin.workflowTemplates.stepsTitle')}>
+        <h2>{stepTemplate.name || stepTemplate.key}</h2>
+        <p className="admin-note">{t('admin.workflowTemplates.newInstancesNote')}</p>
+        <div className="table-responsive"><table className="data-table"><thead><tr>
+          <th>{t('admin.fields.step_key')}</th><th>{t('admin.fields.sort_order')}</th><th>{t('admin.fields.mode')}</th><th>{t('admin.fields.resolver_type')}</th><th>{t('admin.fields.resolver_value')}</th><th>{t('admin.fields.sla_hours')}</th><th>{t('common.actions')}</th>
+        </tr></thead><tbody>
+          {stepTemplate.steps.map(step => {
+            const edits = stepEdits[step.id] || {};
+            const resolverValue = edits.resolver_value !== undefined ? edits.resolver_value : (step.resolver_value ?? '');
+            const slaValue = edits.sla_hours !== undefined ? edits.sla_hours : (step.sla_hours ?? '');
+            const roleChoices = availableRoles.length ? availableRoles : roleOptions;
+            return <tr key={step.id}>
+              <td>{step.step_key}</td>
+              <td>{step.sort_order}</td>
+              <td>{step.mode}</td>
+              <td>{step.resolver_type}</td>
+              <td>{step.resolver_type === 'role'
+                ? <select aria-label={t('admin.fields.resolver_value')} value={resolverValue} onChange={event => changeStepEdit(step.id, 'resolver_value', event.target.value)}>
+                    <option value="">{t('common.select', 'Select')}</option>
+                    {roleChoices.map(option => <option key={option} value={option}>{translateEnum(t, 'role', option)}</option>)}
+                  </select>
+                : <input aria-label={t('admin.fields.resolver_value')} value={resolverValue} onChange={event => changeStepEdit(step.id, 'resolver_value', event.target.value)} />}
+              </td>
+              <td><input aria-label={t('admin.fields.sla_hours')} type="number" min="0" value={slaValue} onChange={event => changeStepEdit(step.id, 'sla_hours', event.target.value)} /></td>
+              <td><button type="button" className="btn btn-sm" onClick={() => saveStep(step)}>{t('common.save')}</button></td>
+            </tr>;
+          })}
+        </tbody></table></div>
+        <button className="btn" type="button" onClick={() => setStepTemplate(null)}>{t('common.close')}</button>
+      </section>}
       {voidTarget && <form className="card" onSubmit={event => { event.preventDefault(); if (voidReason.trim()) documentAction(voidTarget, 'void'); }}>
         <FormField id="admin-void-reason" label={t('admin.fields.reason')} required value={voidReason} onChange={event => setVoidReason(event.target.value)} />
         <div className="form-actions"><button type="button" className="btn" onClick={() => setVoidTarget(null)}>{t('common.cancel')}</button><button type="submit" className="btn btn-primary" disabled={!voidReason.trim()}>{t('admin.actions.confirmVoid')}</button></div>
@@ -376,6 +448,8 @@ export default function AdminWorkspace() {
           {config.void && row.status !== 'voided' && row.status !== 'posted' && <button type="button" className="btn btn-sm" onClick={() => setVoidTarget(row)}>{t('admin.actions.void')}</button>}
           {config.rotate && <button type="button" className="btn btn-sm" onClick={() => rotateSecret(row)}>{t('admin.actions.rotateSecret')}</button>}
           {config.deactivate && !showingAlerts && !(area === 'replenishment' && row.rule_key === 'replenishment_policy:default') && row.is_active !== false && row.status !== 'inactive' && !row.revoked_at && <button type="button" className="btn btn-sm" onClick={() => deactivate(row)}>{t('admin.actions.deactivate')}</button>}
+          {config.stepsDetail && <button type="button" className="btn btn-sm" onClick={() => showSteps(row)}>{t('admin.actions.viewSteps')}</button>}
+          {config.toggleActive && <button type="button" className="btn btn-sm" onClick={() => toggleTemplate(row)}>{t(row.is_active === false ? 'admin.actions.activate' : 'admin.actions.deactivate')}</button>}
         </td></tr>)}
       </tbody></table></div>}
       <LoadMore loadedCount={rows.length} totalCount={totalCount} loading={loading} t={t} onLoadMore={() => refresh({ append: true })} />
