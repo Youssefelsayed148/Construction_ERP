@@ -1,4 +1,137 @@
-T-SESSION COMPLETE (all batches T0/T0.6/T1-T5 done) - base ff50813, merged to 2ee9890, verdict NO-GO (unchanged, see docs/LAUNCH_READINESS.md)
+G-SESSION IN PROGRESS, STOPPED BY OWNER MID-BATCH - base 6b932f6, HEAD now 832c634 (pushed to origin/closeout/batch-a-to-6). See "2026-10-28 - Session G (in progress)" below for exact done/in-flight/not-started state and the handoff for the next session. T-SESSION COMPLETE (all batches T0/T0.6/T1-T5 done) - base ff50813, merged to 2ee9890, verdict NO-GO (unchanged, see docs/LAUNCH_READINESS.md)
+
+# 2026-10-28 - Session G (in progress, stopped by owner before completion)
+
+Working on `closeout/batch-a-to-6` per `docs/prompts/REMOTE_SESSION_G_FINAL_FIXES_PROMPT.md`, base commit
+`5bdf673` (T-session complete) confirmed present. The owner asked this session to stop and hand off
+before G1-G3 finished. This entry is the accurate, non-fabricated handoff: everything below "DONE AND
+PUSHED" is real and on `origin/closeout/batch-a-to-6`; everything under "IN FLIGHT" lives only in local
+git worktrees under `.claude/worktrees/` in this sandbox and has **not** been reviewed, integrated, or
+pushed - a fresh session must re-check its live state (agents may have kept running, stalled, or been
+killed between this entry being written and the next session starting) before trusting any detail here.
+
+## DONE AND PUSHED (origin/closeout/batch-a-to-6, as of commit 832c634)
+
+- **G1.1** (migration `0074_finance_project_manager_grants.sql`): retired the blanket `('*','*')` grant on
+  the two remaining canonical roles that had one (`finance_manager`, `project_manager`). Explicit
+  per-module/action grants inserted (modeled on sibling canonical roles + workflowEngine.js's
+  MODULE_MANAGER_ROLES authority), DO-block safety assertion verified before the blanket row is deleted.
+  Verified live: applied cleanly to a freshly migrated throwaway DB (`erp_closeout_test`, 136 migrations,
+  0 errors), idempotent re-run applies 0, `nav-visibility.pg.test.js` updated for the new grant set and run
+  once (164/164 pass), `t3-role-coverage.pg.test.js` run once unmodified (47/47 pass, it derives
+  expectations live from the seeded policy so it needed no edits), `org-rbac-5-1.pg.test.js` +
+  `legacy-role-dry-run.pg.test.js` run once (16/16 pass). Commit `3943b91`.
+- **G3** (all four items): `docs/OPERATOR_RUNBOOK.md`, `docs/ADMIN_GUIDE.md`, `docs/TRAINING_NOTES.md`,
+  `docs/API_VERSIONING.md`, and a new "Feature flags" section in `docs/STAGING.md` - all written from a
+  background agent, grounded in real file/command citations (see its commits' bodies). Commits `d84a8c3`,
+  `3f39942`, `e06851d`, `bc0967c`. One stale claim it flagged (`docs/LAUNCH_READINESS.md` open-Major #10
+  saying "no load/performance test exists" when `backend/src/scripts/load-profiling.js` is real and was
+  already run, per `docs/LOAD_BASELINES.md`) was corrected in commit `832c634`.
+- **Note on `docs/STAGING.md`**: the G3 agent found no "Notification adapters" section yet when it wrote
+  the Feature-flags section (the G1.3 agent's SMTP env-var docs for that section were still in flight in a
+  separate worktree at the time) - it deliberately did not duplicate that list to avoid drift. Whoever
+  integrates the G1.3 worktree's commit must check `docs/STAGING.md` lands with BOTH sections present,
+  not just one overwriting the other.
+
+## IN FLIGHT - local git worktrees, NOT integrated/pushed - CONFIRMED built on a STALE base, read this first
+
+Three background agents were dispatched (via the `Agent` tool, `isolation: "worktree"`, each told to
+commit locally and never push). **Critical, confirmed finding**: all three worktrees were created from a
+stale cached branch ref, commit `c8242b5` ("Batch 0-4 tip" - roughly two months/several sessions behind),
+**not** the real dispatch base `6b932f6` (`git merge-base --is-ancestor 6b932f6 HEAD` fails in all three).
+Only the G3 docs agent (already integrated above) caught this itself and self-corrected with
+`git merge --ff-only 6b932f6` before writing anything; none of these three did the same correction (one
+completed fully without correcting, two were cut off mid-batch by an account-wide rate limit). This
+session deliberately did **not** attempt to rebase/cherry-pick any of this work onto the real branch tip
+before stopping - that conflict resolution (these files have changed substantially across the F-session
+and T-session commits these worktrees never saw) needs a clear head and is exactly the kind of risky
+integration step that should not be rushed right before a handoff. Re-run `git worktree list` from the
+repo root first - state below is accurate as of this writing but agents may still be live.
+
+1. **G1.3-G1.6 (notifications SMTP adapter, BOQ.js error display, npm audit fixes, RFI/submittal
+   deprecation header) - COMPLETE per the agent's own report, 4 commits, NOT integrated.** Worktree
+   `.claude/worktrees/agent-a58ba9bb21608c4b5`, branch `worktree-agent-a58ba9bb21608c4b5`, commits (oldest
+   first) `6259e08` (SMTP adapter + `nodemailer` dep + audit-on-dispatch-failure + `docs/STAGING.md`
+   section + new test, 3/3 passing per its report), `0c4f626` (BOQ.js error display + new test, 1/1
+   passing), `ae4451e` (npm audit fixes in both backend/frontend lockfiles + new `docs/SECURITY_REVIEW_PREP.md`
+   section), `e78e52f` (doccontrol.js Deprecation/Sunset headers, NOT a retirement - it found live
+   consumers of the legacy fields in `consultantEngine.js` and `ProjectDocuments.js` - + a new
+   `docs/POST_LAUNCH_BACKLOG.md` with one row). **The new `docs/POST_LAUNCH_BACKLOG.md` in commit `e78e52f`
+   WILL conflict** with the real one already on `closeout/batch-a-to-6` (created by the T-session, already
+   has 11 rows) - the agent's worktree never saw that file exist, so it created its own from scratch. When
+   integrating, that file must be **merged by hand** (keep the real 11-row table, append the agent's new
+   row for the RFI/submittal deprecation with its sunset date, do not let either version overwrite the
+   other). Before cherry-picking the other 3 commits, rebase the worktree branch onto `closeout/batch-a-to-6`'s
+   real tip first and resolve whatever `notificationService.js`/`BOQ.js`/`doccontrol.js`/lockfile conflicts
+   come up (these files plausibly changed between `c8242b5` and now) - do not cherry-pick onto the stale
+   base and hope for the best.
+2. **G2 (8 missing screens + connectivity script) - 7 of 8 screens done, connectivity script NOT started.**
+   Worktree `.claude/worktrees/agent-afa4be0395b61422f`, branch `worktree-agent-afa4be0395b61422f`, 7
+   commits: `94f07da` (recipes), `29d77a9` (maintenance), `708ab4e` (costing + cost-code CRUD endpoints),
+   `76a755e` (commercial contracts + contract-header PUT endpoint), `63c7ad8` (subcontractor
+   contracts/verification), `1c606db` (notification-rules read-only view), `faaf0d6` (roles x permissions
+   matrix). The agent was cut off by an account-wide rate limit right after committing `faaf0d6` (its last
+   reported status: "120 passing. Commit screen 7" - meaning the 8th screen, the workflow-template editor,
+   was **not started**, and the `frontend/scripts/check-screen-connectivity.js` script - explicitly the
+   LAST step in its brief - was **not started either**). Rebase this worktree branch onto the real
+   `closeout/batch-a-to-6` tip first (same caution as above - `AdminWorkspace.js`/`App.js`/i18n locale
+   JSON files are exactly the kind of shared files likely to have moved), resolve conflicts, verify each
+   screen's one test still passes post-rebase, then build the workflow-template editor (not started at
+   all - see this session's original dispatch brief for the `workflow_templates`/`workflow_steps` schema
+   and suggested route shape) and the connectivity script before integrating.
+3. **G1.2 (DB-level status CHECK constraints, migrations `0075`+) - 1 of ~9-11 planned batches done,
+   rate-limited mid-batch-2.** Worktree `.claude/worktrees/agent-a48ecf8743a390ecb`, branch
+   `worktree-agent-a48ecf8743a390ecb`, 1 commit: `88e6265` "G1.2: add NOT VALID status CHECK constraints —
+   procurement batch (9 tables)" (covers roughly `purchase_orders`/`purchase_requests`/`rfqs`/`rfq_vendors`/
+   `goods_receipt_notes`/`supplier_invoices`/`supplier_quotations`/`supplier_returns`/`deliveries` - verify
+   the exact 9 by reading the migration file, don't assume). An uncommitted new file,
+   `backend/scripts/validate-status-constraints.sql`, was mid-edit when the rate limit hit (the agent's
+   last message was "Now let's start the validate-status-constraints.sql script, adding this batch") -
+   check whether it's a usable partial file or discard and rebuild it once all batches land. **63 of the
+   72 target tables still have no migration at all** - the remaining ~8 batches from the original dispatch
+   brief (commercial/finance, QA/HSE, doc control, handover/maintenance, HR, workflow/approvals engine,
+   schedule/work, inventory/materials, misc/infra) are entirely unstarted. Same rebase-before-cherry-pick
+   caution applies, though migration files are new/additive so collision risk here is lower than items 1-2
+   - the main risk is migration **numbering**: confirm `0075` is still free on the real tip before reusing
+   it (check `ls backend/src/migrations/ | sort -V | tail`), and re-verify this agent's "which 23 tables
+   already have a CHECK constraint" baseline against the real tip's migration history (it was derived
+   from a schema missing dozens of newer migrations - likely still correct since status-CHECK work hasn't
+   happened elsewhere, but verify, don't assume). The full 72-table target list and per-batch grouping are
+   in this session's original dispatch brief (conversation transcript) - re-derive via the
+   `information_schema.columns` + `information_schema.check_constraints` query pattern used for G1.1 above
+   if the transcript isn't available.
+
+**On resuming these three agents directly instead of redoing the work**: each failed/paused run's
+notification said their progress is saved and that sending them a message (`SendMessage` with their
+task-id) once the account's rate limit resets would let them continue with full context, which is far
+cheaper than a fresh agent re-deriving everything. Task-ids (meaningless to a human, but valid if this
+exact session process is still alive and reachable): G1.3-G1.6 `a58ba9bb21608c4b5` (already completed,
+nothing to resume), G2 `afa4be0395b61422f`, G1.2 `a48ecf8743a390ecb`. **This likely only works from
+*this* session**, not a brand-new one - a fresh session's `ListAgents` is very unlikely to show agents
+spawned by a different session. If a fresh session can't see them, treat the worktrees as abandoned and
+either finish them by hand (rebase + continue the same pattern already established in each one's existing
+commits) or dispatch fresh replacement agents for just the remaining scope (not the whole batch).
+
+## NOT STARTED AT ALL
+
+- **G4**: explicitly out of scope per the prompt - do not start (golden-value exactness, production
+  approval-limit values, CI run, staging stack, real-data reconciliation, native Arabic review, UAT, the
+  Phase 4 leftover test items, the duplicate `payment_certificates`/`sub_payment_certificates` surfaces, a
+  per-project feature-flag system).
+- **Final report / gate table / `docs/CLOSEOUT_PROGRESS.md` + `docs/CLOSEOUT_LOG.md` updates for this
+  batch**: not written yet beyond this `STATE.md` entry - do once G1-G3 are actually integrated and
+  verified, not before, per the prompt's own rule ("do not claim an unrun gate passed").
+- **The four static checks the prompt allows once at the very end** (`lint:guards`, `i18n:check`,
+  `i18n:parity`, `i18n:inventory --check`) and the G2.9 connectivity script: not run yet - run them once,
+  at the very end, after every other G1/G2/G3 item above is integrated, not per-item.
+
+## Local throwaway DB used this session
+
+`erp_closeout_test` on the sandbox's local PostgreSQL 16 cluster (`DB_HOST=localhost DB_PORT=5432
+DB_USER=postgres DB_PASSWORD=postgres`), 136 migrations applied as of G1.1 (through `0074`). A fresh
+session in a different sandbox will need to recreate this (`createdb erp_closeout_test` after starting the
+local cluster, then `npm run migrate` from `backend/` with those env vars) - it will not persist across
+sandboxes/sessions.
 
 # 2026-10-28 - Session T: T0/T0.6 whole-system reconciliation + T4 pilot readiness
 
