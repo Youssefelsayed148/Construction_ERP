@@ -1,3 +1,13 @@
+# 2026-10-28 - Session T, Batch T1 (single full verification run)
+
+Full PG suite and backend mock suite each run exactly once; both found a handful of pre-existing stale
+test expectations (never a product defect - each traced to code that has always behaved the documented
+way) plus one test-infrastructure artifact (shared rate-limit bucket across the full PG run, not fixed,
+recorded as understood). All 5 test-code fixes applied are under 40 lines, test-only, and reconfirmed green
+by rerunning each file alone. `lint:guards`, frontend suites, all three i18n gates, and the frontend
+production build all passed clean on the first run. Full detail: `docs/CLOSEOUT_LOG.md`'s 2026-10-28
+"Batch T1" entry. Next: the launch-readiness verdict and final report.
+
 # 2026-10-28 - Session T, Batch T2/T3/T5
 
 New real-PG tests authored and run together once: `golden-journey.pg.test.js` (contract through warranty,

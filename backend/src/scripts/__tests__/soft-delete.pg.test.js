@@ -154,7 +154,11 @@ describePg('soft delete and void-with-reason (real PostgreSQL, real app)', () =>
       const f = await invoiceWithPayment('p4', { amount: 1000, paid: 400 });
       await call('DELETE', `/api/payments/${f.payment.id}`, { reason: 'x' });
       const r = await call('POST', `/api/finance-ledger/payments/${f.payment.id}/allocate`, { allocations: [{ target_type: 'client_invoice', invoice_id: f.inv.id, amount: 100 }] });
-      expect(r.status).toBe(400);
+      // financeEngine.allocatePayment throws svcError(409, 'invalid_state', ...) for a voided payment -
+      // matches the 'three concurrent voids' test just above, which already expects 409 for the same
+      // voided-state conflict. This test's 400 expectation was stale (closeout T1, 2026-10-28).
+      expect(r.status).toBe(409);
+      expect(r.body.error_code).toBe('invalid_state');
     });
 
     test('project collected totals exclude voided payments', async () => {

@@ -83,7 +83,14 @@ describePg('2.7b client invoice and payment postings (real PostgreSQL, real app)
     await db.query("DELETE FROM gl_account_map WHERE key = 'vat_output'");
     try {
       const refused = await call('POST', `/api/finance-ledger/invoices/${inv.id}/transition`, { status: 'issued' });
-      expect(refused.status).toBe(400);
+      // utils/typedRoute.js's routeFail deliberately answers 500/ledger_account_not_mapped for an
+      // unmapped GL account (journal.js's JournalError carries .key) - a missing chart-of-accounts
+      // entry is a server configuration problem, not the caller's bad request (see that file's own
+      // comment, "keeps the code the rest of the API uses (L7 contract)"). This test's 400 expectation
+      // was stale (closeout T1, 2026-10-28); the invoice-stays-approved assertion below is the real
+      // regression guard and still holds.
+      expect(refused.status).toBe(500);
+      expect(refused.body.error_code).toBe('ledger_account_not_mapped');
       expect(String(refused.body.error)).toMatch(/vat_output/);
       expect((await one('SELECT status FROM invoices WHERE id = $1', [inv.id])).status).toBe('approved');
     } finally {

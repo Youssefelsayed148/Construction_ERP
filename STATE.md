@@ -1,4 +1,4 @@
-T-SESSION IN PROGRESS (T0/T0.6/T2/T3/T4/T5 done; T1 + launch verdict + final report remaining) - base ff50813, merged to 2ee9890
+T-SESSION IN PROGRESS (T0/T0.6/T1/T2/T3/T4/T5 done; launch verdict + final report remaining) - base ff50813, merged to 2ee9890
 
 # 2026-10-28 - Session T: T0/T0.6 whole-system reconciliation + T4 pilot readiness
 
@@ -65,8 +65,24 @@ all 4 families. Both new files run together once (TEST-RUN DISCIPLINE): 48 passe
 procurement, site, finance, handover/warranty and all four portals; no sign-off marked done. T3's frontend
 route-render item was deliberately not authored (see `docs/CLOSEOUT_GAPS.md` - downgraded to MINOR by T0.6).
 
-**Next:** T1 (the single full verification run: PG suite, backend mock suite, lint:guards, frontend suites
-+ i18n + build), then `docs/LAUNCH_READINESS.md` and the final report.
+**T1 (this same session, continued) - the single full verification run, once each per TEST-RUN DISCIPLINE:**
+full PG suite (102 suites/2165 tests) first run: 5 suites/11 tests failed; backend mock suite (89 suites/
+1316 tests) first run: 1 suite/1 test failed; both triaged file-by-file (never a second full-suite run) -
+4 PG-suite test files and 1 mock-suite test file had stale/outdated test-code expectations (not product
+defects: two races expect 409 where the code has always thrown 409 `invalid_state`, one expects 400 where
+`routeFail` deliberately answers 500 `ledger_account_not_mapped` for a missing GL account per the L7
+contract, one test's cleanup hard-deleted a project row that migration 0069 made undeletable once audited,
+one route list was never updated for F3's new supplier-collection route); all 5 fixed (test-only, <40 lines
+each) and reconfirmed green by rerunning each file alone. A 6th file (`token-typing.pg.test.js`) fails only
+inside the full run and passes alone - traced to the v1 rate limiter's shared loopback-IP bucket across
+~100 files in one process, a test-infrastructure characteristic, not a defect; recorded, not "fixed."
+`lint:guards`, frontend suites (50/452 all green), `i18n:check`, `i18n:parity`, `i18n:inventory --check`,
+and the frontend production build all passed clean on the first and only run. CI workflow confirmed to
+reference only existing npm scripts (read-only check, no remote CI triggered). Full gate table and triage
+detail: `docs/CLOSEOUT_LOG.md`'s 2026-10-28 "Batch T1" entry; full unfiltered logs: repo-root `logs/t1-*.log`
+(gitignored, not committed).
+
+**Next:** `docs/LAUNCH_READINESS.md` (the GO/NO-GO verdict) and the final report.
 
 # 2026-10-27 - Session F: F4 (Arabic PDF, inline branches) + final report
 

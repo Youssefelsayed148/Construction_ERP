@@ -15,8 +15,11 @@ describe('module overrides', () => {
 
   test('delivery, MIR and GRN routes are "inventory"; PR, RFQ and PO routes stay "procurement"', () => {
     const inventory = routesOf('procurement').filter((r) => policy.effectiveModule({ policyRoute: r.path }, 'procurement') === 'inventory').map((r) => `${r.method} ${r.path}`);
+    // POST /mir/:id/supplier-collection (migration 0073, F3's C-PROC-002 rejected-delivery flow) closes out
+    // a rejected MIR's supplier-collection status - same inventory domain as the rest of this list; the
+    // expectation was simply never updated when that route was added (closeout T1, 2026-10-28).
     expect(inventory.sort()).toEqual([
-      'GET /documents/grn/:id', 'POST /deliveries', 'POST /deliveries/:id/mir', 'POST /grn/:id/returns', 'POST /mir/:id/decide', 'POST /mir/:id/grn',
+      'GET /documents/grn/:id', 'POST /deliveries', 'POST /deliveries/:id/mir', 'POST /grn/:id/returns', 'POST /mir/:id/decide', 'POST /mir/:id/grn', 'POST /mir/:id/supplier-collection',
     ]);
     for (const p of ['/pr', '/pr/:id/decide', '/rfq', '/po/:id/issue', '/invoices']) {
       expect(policy.effectiveModule({ policyRoute: p }, 'procurement')).toBe('procurement');

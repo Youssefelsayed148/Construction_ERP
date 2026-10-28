@@ -124,7 +124,10 @@ describePg('procurement locking (real PostgreSQL, real app)', () => {
       await receive(f, 10);
       const results = await Promise.all([1, 2].map(() => call('POST', `/api/procurement/mir/${mir.id}/decide`, { decision: 'accept' })));
       expect(results.filter((r) => r.status === 200).length).toBe(1);
-      expect(results.filter((r) => r.status === 400).length).toBe(1);
+      // decideMir throws svcError(409, 'invalid_state', `MIR is already ${status}`) for the race loser -
+      // same 409/invalid_state convention this file's own concurrent-decision races use elsewhere. This
+      // test's 400 expectation was stale (closeout T1, 2026-10-28).
+      expect(results.filter((r) => r.status === 409).length).toBe(1);
       expect(await poLine(f)).toEqual({ delivered: 20, accepted: 10 });
       expect(await stock(f)).toEqual({ physical: 20, quarantined: 10 });
       const releases = (await one("SELECT count(*)::int AS n FROM stock_movements WHERE reference_type = 'mir' AND reference_id = $1 AND movement_type = 'quarantine_release'", [mir.id])).n;

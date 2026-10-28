@@ -235,6 +235,39 @@ lists only the specific corrections found (full evidence is in the reconciliatio
   calls) was judged a poor use of the single-test-run budget relative to its now-MINOR risk. This is listed
   as **not audited** for the remaining ~34 routes/role-family combinations, not silently cleared - see
   `docs/LAUNCH_READINESS.md`'s risk list.
+- **T1 full-PG-suite triage (2026-10-28).** The single full `test:pg` run (102 suites, 2165 tests) found 5
+  failing suites / 11 failing tests - all four actual test-code issues were pre-existing stale expectations
+  or a now-incompatible cleanup step, never a product defect, each confirmed by rerunning the fixed file
+  alone against a fresh throwaway database:
+  1. `soft-delete.pg.test.js` "a voided payment cannot be allocated" expected 400; `financeEngine.allocatePayment`
+     deliberately throws `svcError(409, 'invalid_state', ...)` for a voided payment, matching the 409 the very
+     next test in the same file already expects for the same kind of conflict. Test fixed to expect 409.
+  2. `procurement-locking.pg.test.js` "two concurrent decisions on one MIR" expected 400 for the race loser;
+     `decideMir` throws `svcError(409, 'invalid_state', 'MIR is already ...')`. Test fixed to expect 409.
+  3. `ledger-postings.pg.test.js` "tax goes to vat_output" (missing GL mapping) expected 400; `routeFail`/
+     `typedRoute.js` deliberately answers 500 `ledger_account_not_mapped` for an unmapped chart-of-accounts
+     key (its own comment: a missing mapping is a server configuration problem, not the caller's bad
+     request - "keeps the code the rest of the API uses (L7 contract)"). Test fixed to expect 500 +
+     `ledger_account_not_mapped`; the real regression guard (invoice stays `approved`, never corrupts to
+     `issued`) still holds and was reconfirmed.
+  4. `document-register-fields.pg.test.js`'s `afterAll` hard-deleted its test project, which now fails with
+     an `audit_events_project_id_fkey` violation because migration `0069` gave `audit_events` a `project_id`
+     FK and `audit_events` rows are immutable (`audit_events_no_delete` trigger) - once any audited mutation
+     references a project, it can never be hard-deleted again. Every other PG test file already follows this
+     convention (never hard-delete a `projects` row; only deactivate users); this one test's cleanup was
+     simply never updated. Fixed by dropping the `DELETE FROM projects` line, matching every other file.
+  5. `token-typing.pg.test.js` failed two tests (a 429 and a destructure-of-undefined caused by that 429)
+     ONLY inside the full 102-suite run; it passes cleanly every time run alone. Root cause (confirmed by
+     reading `middleware/postgresRateLimit.js`): the v1 rate limiter keys on `req.ip`, and every PG test file
+     connects via loopback (127.0.0.1) in the SAME Postgres-backed rate-limit bucket within the same process
+     - running the full suite accumulates enough v1 calls across ~100 files to exhaust the per-minute limit
+     before this file's own tests run. This is a **test-infrastructure characteristic, not a product defect**
+     and not touched: weakening the production rate limiter or special-casing test mode was judged out of
+     scope for a same-session fix and risks masking a real rate-limiting regression later. Recorded here as
+     a known, understood, reproducible interaction - not a silent gap. No code fix applied; NOT a gate
+     blocker (the full run's exit code reflects this one known false failure, explained here with evidence).
+  All 4 test-code fixes are under 40 lines each and clearly correct per the T session's own small-fix rule
+  (test-only changes, not product code). No product code was changed by this triage.
 - **T2 golden-journey test added** (`backend/src/scripts/__tests__/golden-journey.pg.test.js`): extends the
   tender-to-warranty lifecycle past where `golden-chain.pg.test.js` stops (adds RFQ/quotation/award, site
   report/progress, client valuation with retention, invoice issue/receipt, retention release, variation,

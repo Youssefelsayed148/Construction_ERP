@@ -1,3 +1,64 @@
+# 2026-10-28 - Session T, Batch T1 (single full verification run)
+
+Run exactly once each, per TEST-RUN DISCIPLINE, against the throwaway `erp_closeout_test` database
+(135 migrations applied, unchanged this batch). Full unfiltered output: `logs/t1-*.log` (repo-root,
+gitignored).
+
+| Gate | Command | First result | After triage fixes |
+|---|---|---|---|
+| Full PG suite | `DB_HOST=127.0.0.1 DB_PORT=5432 DB_NAME=erp_closeout_test DB_USER=postgres DB_PASSWORD=postgres JWT_SECRET=... TEST_PG=1 npm run test:pg` | exit 1; 5 suites failed / 97 passed / 102 total; 11 tests failed / 1 skipped / 2153 passed / 2165 total; 206.9s | all 5 affected files rerun individually (not a second full suite): 4 now pass after a test-code fix each; the 5th (`token-typing.pg.test.js`) passes alone and is explained as a shared-rate-limit-bucket artifact of running 100+ files against one loopback IP, not a defect - see below |
+| Backend mock suite | `JWT_SECRET=... npm test -- --runInBand --detectOpenHandles` | exit 1; 1 suite failed / 88 passed / 89 total; 1 test failed / 1315 passed / 1316 total; 31.6s | `module-override-coverage.test.js` rerun alone after a one-line fix: 4/4 pass |
+| `lint:guards` | `node src/scripts/lint-guards.js` | `lint-guards: ok`, exit 0 | - |
+| Frontend suites | `CI=true npm test -- --watchAll=false --runInBand` | exit 0; 50 suites / 452 tests, all passed | - |
+| `i18n:check` | `npm run i18n:check` | `i18n:check ok`, exit 0 | - |
+| `i18n:parity` | `npm run i18n:parity` | `i18n parity ok: 37 namespaces, 3072 English keys`, exit 0 | - |
+| `i18n:inventory --check` | `npm run i18n:inventory -- --check` | `i18n:check ok`, exit 0 | - |
+| Frontend production build | `CI=true npm run build` | compiled successfully, exit 0 | - |
+| CI workflow references existing scripts | read `.github/workflows/ci.yml`, cross-checked every `npm run <script>` it calls against `backend/package.json`/`frontend/package.json` | all 9 referenced scripts (`build`, `i18n:check`, `i18n:parity`, `lint:api`, `lint:guards`, `migrate`, `test:ci`, `test:e2e`, `test:pg`) exist | - no remote CI triggered, read-only check only |
+
+**Triage of the 5 failing PG-suite files + 1 mock-suite file (classification per TEST-RUN DISCIPLINE: test
+bug -> fix test; product defect -> record or small fix; environment -> record):**
+
+1. **`soft-delete.pg.test.js`** (test bug, fixed): "a voided payment cannot be allocated" expected 400;
+   `financeEngine.allocatePayment` deliberately throws `svcError(409, 'invalid_state', ...)`, matching the
+   409 the very next test in the same file already expects for an equivalent voided-state conflict. Stale
+   expectation, not a product defect - fixed to expect 409 + `invalid_state`.
+2. **`procurement-locking.pg.test.js`** (test bug, fixed): the race loser in a concurrent MIR-decide test
+   expected 400; `decideMir` throws `svcError(409, 'invalid_state', 'MIR is already ...')`, same convention
+   as every other already-decided conflict in this codebase. Fixed to expect 409.
+3. **`ledger-postings.pg.test.js`** (test bug, fixed): deleting the `vat_output` GL account mapping and
+   transitioning an invoice to `issued` expected 400; `utils/typedRoute.js`'s `routeFail` deliberately
+   answers 500 `ledger_account_not_mapped` for an unmapped chart-of-accounts key (its own comment: a missing
+   mapping is a server configuration problem, not the caller's bad request - this is the documented L7
+   contract). Fixed to expect 500 + `ledger_account_not_mapped`; the real regression guard (invoice stays
+   `approved`, never silently becomes `issued`) still holds and was reconfirmed.
+4. **`document-register-fields.pg.test.js`** (test bug, fixed): `afterAll` hard-deleted its project row,
+   which now fails with an `audit_events_project_id_fkey` violation - migration `0069` (Session F, F1.4)
+   gave `audit_events` a `project_id` FK, and `audit_events` rows are immutable by design
+   (`audit_events_no_delete` trigger), so once any audited mutation references a project it can never be
+   hard-deleted again. Every other PG test file already follows the convention of never hard-deleting a
+   `projects` row (only deactivating users); this one test's cleanup had simply never been updated for
+   migration 0069. Fixed by dropping that one `DELETE FROM projects` line.
+5. **`token-typing.pg.test.js`** (environment, NOT fixed - recorded): fails only inside the full 102-suite
+   run (confirmed: passes cleanly every time run alone). Root cause read directly from
+   `middleware/postgresRateLimit.js`: the v1 rate limiter keys on `req.ip`, and every PG test file connects
+   via loopback (127.0.0.1) into the SAME Postgres-backed rate-limit bucket within one process - ~100 files'
+   worth of v1 calls exhausts the per-minute limit before this file's own tests run. Judged out of scope to
+   "fix" (weakening the production rate limiter or special-casing test mode risks masking a real future
+   regression) and recorded here as a known, understood, reproducible test-infrastructure interaction, not
+   a silent gap and not a product defect.
+6. **`module-override-coverage.test.js`** (backend mock suite; test bug, fixed): its hand-written list of
+   "inventory"-module procurement routes didn't include `POST /mir/:id/supplier-collection` (migration
+   `0073`, Session F3's C-PROC-002 rejected-delivery flow) - the route correctly resolves to module
+   `inventory`, same as every other MIR route in the list; the hand-written expectation was simply never
+   updated when F3 added it. Fixed by adding the one route to the list.
+
+All 5 test-code fixes are under 40 lines each, test-only (no product code changed), and clearly correct per
+the small-fix rule - each confirmed by rerunning its own file alone, fresh, after the fix, to exit green.
+No second full-suite run was performed (per TEST-RUN DISCIPLINE: "Do NOT run a second full suite; list it
+as NOT RUN" - the full-suite numbers above are the only full run of each suite this session, with every
+individual failure traced, fixed or explained, and reconfirmed file-by-file).
+
 # 2026-10-28 - Session T, Batch T2/T3/T5 (golden journey, role tests, UAT kit)
 
 | Check | Command | Result |

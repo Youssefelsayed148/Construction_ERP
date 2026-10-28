@@ -35,7 +35,9 @@ describePg('controlled document issue and confidentiality fields (real PostgreSQ
   afterAll(async () => {
     if (created.documents.length) await db.query('DELETE FROM document_versions WHERE document_id = ANY($1::int[])', [created.documents]);
     if (created.documents.length) await db.query('DELETE FROM project_documents WHERE id = ANY($1::int[])', [created.documents]);
-    if (created.projects.length) await db.query('DELETE FROM projects WHERE id = ANY($1::int[])', [created.projects]);
+    // Projects are never hard-deleted here (migration 0069 gave audit_events a project_id FK with no
+    // delete path - every other PG test file leaves its project rows in the throwaway database and only
+    // deactivates users, same as this fix; closeout T1, 2026-10-28).
     if (created.users.length) await db.query('DELETE FROM user_project_roles WHERE user_id = ANY($1::int[])', [created.users]);
     if (created.users.length) await db.query('UPDATE users SET is_active = false WHERE id = ANY($1::int[])', [created.users]);
     if (server) await new Promise((resolve) => server.close(resolve));
