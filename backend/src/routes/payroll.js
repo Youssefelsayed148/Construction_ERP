@@ -88,7 +88,7 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
     const existing = await query('SELECT * FROM payroll_periods WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ success: false, error: 'Not found' });
 
-    const schema = Joi.object({ status: Joi.string(), posted_to_finance: Joi.boolean() }).min(1);
+    const schema = Joi.object({ status: Joi.string().valid('draft', 'approved', 'rejected', 'paid'), posted_to_finance: Joi.boolean() }).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
 

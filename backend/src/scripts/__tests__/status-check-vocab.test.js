@@ -62,6 +62,12 @@ const EXPECTED = {
     assets: ['active', 'maintenance', 'repair', 'out_of_service'],
     work_completions: ['pending_verification', 'verified', 'rejected', 'pending'],
   },
+  '0080_hr_status_checks.sql': {
+    employees: ['active', 'inactive', 'on_leave', 'terminated'],
+    attendance: ['present', 'absent', 'late', 'on_leave'],
+    leave_requests: ['pending', 'approved', 'rejected'],
+    payroll_periods: ['draft', 'approved', 'rejected', 'paid'],
+  },
 };
 
 describe('G1.2 status CHECK vocabularies', () => {
