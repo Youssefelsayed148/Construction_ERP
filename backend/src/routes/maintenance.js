@@ -70,7 +70,7 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
       interval_unit: Joi.string().allow(''),
       scheduled_date: Joi.date().iso(), next_due_date: Joi.date().iso(),
       estimated_hours: Joi.number(), estimated_cost: Joi.number(),
-      assigned_tech: Joi.string().allow(''), status: Joi.string(),
+      assigned_tech: Joi.string().allow(''), status: Joi.string().valid('scheduled', 'in_progress', 'completed', 'cancelled'),
       actual_hours: Joi.number(), actual_cost: Joi.number(),
       completion_date: Joi.date().iso().allow(null), completion_notes: Joi.string().allow(''),
     }).min(1);

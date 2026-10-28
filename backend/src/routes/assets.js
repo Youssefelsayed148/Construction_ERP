@@ -88,7 +88,7 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
       purchase_date: Joi.date().iso().allow(null), purchase_cost: Joi.number().min(0),
       hourly_rate: Joi.number().min(0), daily_rate: Joi.number().min(0),
       operator_required: Joi.boolean(), current_project_id: Joi.number().integer().allow(null),
-      status: Joi.string(),
+      status: Joi.string().valid('active', 'maintenance', 'repair', 'out_of_service'),
     }).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });

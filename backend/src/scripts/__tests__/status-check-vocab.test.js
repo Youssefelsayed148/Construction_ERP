@@ -55,6 +55,13 @@ const EXPECTED = {
     legal_documents: ['pending', 'verified', 'rejected'],
     engineer_instructions: ['issued', 'acknowledged', 'implemented', 'closed'],
   },
+  '0079_handover_maintenance_status_checks.sql': {
+    handover_package_items: ['pending', 'uploaded', 'approved', 'complete'],
+    warranty_claims: ['raised', 'assigned', 'rectification_in_progress', 'submitted_for_acceptance', 'accepted', 'rejected', 'closed'],
+    maintenance_reminders: ['scheduled', 'in_progress', 'completed', 'cancelled'],
+    assets: ['active', 'maintenance', 'repair', 'out_of_service'],
+    work_completions: ['pending_verification', 'verified', 'rejected', 'pending'],
+  },
 };
 
 describe('G1.2 status CHECK vocabularies', () => {
