@@ -32,6 +32,8 @@ const COMPANY_LEVEL = [
   // the current user id in their database predicates.
   /^\/api\/agent\/tokens\/:id\/revoke/,
   /^\/api\/agent\/sessions\/:id\/status/,
+  // Admin catalogues (G2): cost codes and workflow templates are company-level config, owner/admin only.
+  /^\/api\/costing\/codes\/:id/, /^\/api\/workflow-templates\//,
 ];
 // Project-owned records still without a rule. Reviewed, tracked for a later pass; do not add to this list.
 const KNOWN_GAPS = new Set([

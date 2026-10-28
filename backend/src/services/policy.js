@@ -322,6 +322,7 @@ const RECORD_SCOPE_RULES = Object.freeze({
     [/^\/forecast-versions\/:id(?:\/|$)/, 'forecast_versions'],
     [/^\/commitments\/:id(?:\/|$)/, 'commitments'],
     [/^\/contracts\/:contractId\/parties(?:\/|$)/, 'client_contracts', 'contractId'],
+    [/^\/contracts\/:id(?:\/|$)/, 'client_contracts'],
     [/^\/subcontracts\/:contractId\/parties(?:\/|$)/, 'sub_contracts', 'contractId'],
     [/^\/parties\/:id(?:\/|$)/, 'SELECT COALESCE(cc.project_id, sc.project_id) AS project_id FROM contract_parties p LEFT JOIN client_contracts cc ON cc.id = p.client_contract_id LEFT JOIN sub_contracts sc ON sc.id = p.sub_contract_id WHERE p.id = $1'],
   ],

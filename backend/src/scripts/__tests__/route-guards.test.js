@@ -126,6 +126,6 @@ describe('existing role guards are untouched (coarse filter preserved)', () => {
     const content = fs.readFileSync(path.join(ROUTES_DIR, 'users.js'), 'utf8');
     expect(content).toMatch(/router\.post\('\/preview\/:role',\s*authenticate,\s*authorize\(\s*['"]owner['"]\s*,\s*['"]admin['"]\s*\)/);
     const ownerAdminCount = (content.match(/authorize\(\s*['"]owner['"]\s*,\s*['"]admin['"]\s*\)/g) || []).length;
-    expect(ownerAdminCount).toBe(6); // GET /, GET /preview/roles, GET /:id, PUT /:id, DELETE /:id, POST /preview/:role
+    expect(ownerAdminCount).toBe(7); // GET /, GET /preview/roles, GET /preview/matrix, GET /:id, PUT /:id, DELETE /:id, POST /preview/:role
   });
 });

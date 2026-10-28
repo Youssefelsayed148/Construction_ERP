@@ -10,9 +10,12 @@ const finiteReference = new Set([
   '/api/documents/categories',
   '/api/expenses/categories',
   '/api/notifications/preferences',
+  '/api/notifications/rules',
   '/api/projects/templates',
   '/api/suppliers/specialties',
+  '/api/users/preview/matrix',
   '/api/users/preview/roles',
+  '/api/workflow-templates',
 ]);
 const exportOrScalar = /(?:^|\/)(?:pdf|export|download|health|openapi\.json|summary|dashboard|analytics|metrics|unread-count)(?:\/|$)/i;
 

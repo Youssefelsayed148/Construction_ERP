@@ -153,7 +153,7 @@ describe('mandatory isolation: consultant vs /costing and /finance', () => {
   const targetRoutes = allRoutes.filter((r) => ['costing', 'finance'].includes(r.file));
 
   test('costing.js and finance.js expose guarded routes', () => {
-    expect(targetRoutes.length).toBe(6); // 4 costing + 2 finance
+    expect(targetRoutes.length).toBe(8); // costing + finance guarded routes (G2 added PUT /costing/codes/:id and one more)
   });
 
   test.each(targetRoutes)(
