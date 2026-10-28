@@ -7,6 +7,7 @@ import LoadMore from '../components/common/LoadMore';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import { ArrowLeft, Plus, Edit, Trash2, ChevronDown, ChevronRight, FileText } from 'lucide-react';
 import { formatCurrency, formatPercent } from '../utils/formatters';
+import { errorMessage } from '../utils/errorMessage';
 
 const API_URL = `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}/api`;
 
@@ -66,9 +67,12 @@ function BOQ() {
   const [itemSearch, setItemSearch] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null); // { kind: 'item' | 'section', id }
   const [deleteError, setDeleteError] = useState('');
+  const [loadError, setLoadError] = useState(null);
+  const [masterItemsError, setMasterItemsError] = useState(null);
 
   const loadData = useCallback(async ({ appendSections = false, appendItems = false } = {}) => {
     if (appendSections) setLoadingMoreSections(true); else if (appendItems) setLoadingMoreItems(true); else setLoading(true);
+    setLoadError(null);
     try {
       const sectionParams = new URLSearchParams({ limit: '200', offset: String(appendSections ? sectionsLength.current : 0) });
       const itemParams = new URLSearchParams({ limit: '200', offset: String(appendItems ? itemsLength.current : 0) });
@@ -78,15 +82,24 @@ function BOQ() {
       ]);
       if (secRes.success) { setSections(current => appendSections ? [...current, ...(secRes.data || [])] : appendItems ? current : (secRes.data || [])); setSectionTotalCount(secRes.totalCount ?? null); }
       if (itemRes.success) { setItems(current => appendItems ? [...current, ...(itemRes.data || [])] : appendSections ? current : (itemRes.data || [])); setItemTotalCount(itemRes.totalCount ?? null); }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      // Keep whatever sections/items are already on screen; only surface the error.
+      // The user can retry (e.g. via LoadMore or navigating back) without losing state.
+      setLoadError(e);
+    }
     finally { setLoading(false); setLoadingMoreSections(false); setLoadingMoreItems(false); }
   }, [projectId]);
 
   const loadMasterItems = useCallback(async () => {
+    setMasterItemsError(null);
     try {
       const res = await fetchApi(`${API_URL}/items?limit=500`);
       if (res.success) setMasterItems(res.data || []);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      // The add/edit item dialog is already open (or about to open) by the time this
+      // runs; leave it open on failure so the user can retry instead of losing the form.
+      setMasterItemsError(e);
+    }
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -185,6 +198,7 @@ function BOQ() {
       </div>
 
       {deleteError && <div className="alert alert-danger" role="alert">{deleteError}</div>}
+      {loadError && <div className="alert alert-danger" role="alert">{errorMessage(loadError, t)}</div>}
 
       <div className="card" style={{ marginBottom: '20px' }}>
         <div className="card-header">
@@ -267,6 +281,7 @@ function BOQ() {
           defaultSectionId={editingSection?.id}
           projectId={projectId}
           masterItems={masterItems}
+          masterItemsError={masterItemsError}
           itemSearch={itemSearch}
           setItemSearch={setItemSearch}
           locale={locale}
@@ -512,7 +527,7 @@ function SectionModal({ section, sections, projectId, locale, t, onClose, onSave
   );
 }
 
-function ItemModal({ item, sections, defaultSectionId, projectId, masterItems, itemSearch, setItemSearch, locale, t, onClose, onSave }) {
+function ItemModal({ item, sections, defaultSectionId, projectId, masterItems, masterItemsError, itemSearch, setItemSearch, locale, t, onClose, onSave }) {
   const isEdit = !!item && !!item.id;
   const [form, setForm] = useState({
     section_id: item?.section_id || defaultSectionId || '',
@@ -683,6 +698,7 @@ function ItemModal({ item, sections, defaultSectionId, projectId, masterItems, i
                 )}
               </div>
 
+              {masterItemsError && <div className="alert alert-danger" role="alert">{errorMessage(masterItemsError, t)}</div>}
               {error && <div className="alert alert-danger">{error}</div>}
             </div>
           </form>
