@@ -22,3 +22,25 @@ Numbering note: versioned migration `0030` is absent in the observed history. Tr
 As of 2026-10-14, migration `0061_subcontract_advance_caps.sql` is the highest source migration. It has been applied only to the disposable local Postgres 16 database used for closeout testing; it is not evidence that any shared or production database is migrated.
 
 At the earlier 0062 implementation checkpoint, migration `0062_forecast_etc_basis.sql` was the highest source migration; the current maximum is `0064_schedule_activity_bac.sql`. Migrations 0061-0064 have now been applied only to disposable local PostgreSQL 16 test databases for closeout verification; no shared or production database was migrated.
+
+## Status CHECK constraints (0075-0083, added 2026-10-28)
+
+Migrations `0075_procurement_status_checks.sql` through `0083_misc_infra_status_checks.sql` add a
+`NOT VALID` CHECK on the `status` column of 70 base tables (the procurement batch plus eight
+subsystem batches). Every vocabulary was derived from all writers of that column (routes, services,
+workflow-engine maps/templates, seeds, fixtures, and data migrations); workflow-mirrored step keys
+and filter-only values are called out in per-table comments, and uncertain values are INCLUDED so
+no legitimate write can be blocked. History/audit mirror columns
+(`activity_log.old_status`/`new_status`, `observation_status_history.from_status`) are deliberately
+unconstrained — their vocabulary is the union of every other status by design.
+
+- Each migration is idempotent (pg_constraint lookup before ADD CONSTRAINT) and `NOT VALID`, so
+  existing rows can never block applying it.
+- Three route schemas were tightened in the same commits so the API cannot write values the CHECKs
+  reject: `PUT /api/payroll/:id`, `PUT /api/assets/:id`, `PUT /api/maintenance/:id` status fields.
+- After applying, an operator validates each constraint once the data is confirmed clean:
+  `psql -X -f scripts/validate-status-constraints.sql <dsn>` — one `ALTER TABLE ... VALIDATE
+  CONSTRAINT` line per table, grouped by batch, each idempotent. A failed validation rolls back only
+  that statement and does not drop the constraint; fix or restore the offending rows and re-run.
+- Bulk pre-check before validating:
+  `SELECT conrelid::regclass, conname FROM pg_constraint WHERE conname LIKE '%_status_check' AND NOT convalidated;`
