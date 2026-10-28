@@ -40,9 +40,13 @@ describePg('B3 concurrency (real PostgreSQL, real app)', () => {
     await db.query('INSERT INTO supplier_materials (supplier_id, material_id) VALUES ($1, $2)', [supplier.id, material.id]);
     return { key, project, supplier, material, warehouse };
   };
-  const newPo = (w, quantity, rate = 10) => tx((q) => svc.createPurchaseOrder(q, {
-    supplier_id: w.supplier.id, project_id: w.project.id, warehouse_id: w.warehouse.id, lines: [{ material_id: w.material.id, quantity, unit_rate: rate }], created_by: owner.id,
-  }));
+  const newPo = async (w, quantity, rate = 10) => {
+    const po = await tx((q) => svc.createPurchaseOrder(q, {
+      supplier_id: w.supplier.id, project_id: w.project.id, warehouse_id: w.warehouse.id, lines: [{ material_id: w.material.id, quantity, unit_rate: rate }], created_by: owner.id,
+    }));
+    await db.query("UPDATE purchase_orders SET status = 'issued' WHERE id = $1", [po.id]); // goods are only received against an issued PO
+    return po;
+  };
 
   beforeAll(async () => {
     ({ app } = require('../../../server'));

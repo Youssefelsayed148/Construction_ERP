@@ -52,6 +52,7 @@ describePg('3.1 cost accrual and postings (real PostgreSQL, real app)', () => {
       ],
       created_by: owner.id,
     }));
+    await tx((q) => q("UPDATE purchase_orders SET status = 'issued' WHERE id = $1", [po.id])); // goods are only received against an issued PO
     const delivery = await tx((q) => svc.createDelivery(q, {
       purchase_order_id: po.id, warehouse_id: ids.warehouse,
       // Only the stocked line is delivered to the warehouse; services are not stock movements.

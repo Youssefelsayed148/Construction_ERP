@@ -3197,3 +3197,16 @@ Findings (not fixed here):
    `consultant_coordinator` (403 on `/api/consultant/payment-certificates/:id/recommendation`), so certificates stall at
    `consultant_client`. Clients can still be billed with direct invoices.
 4. NOTE: pg DATE values are serialised from server-local midnight; set the server `TZ` deliberately on the VPS (UTC or Africa/Cairo).
+
+# 2026-10-28 - Findings from the scripted scenario fixed (migration 0084, draft-PO receipt guard)
+
+- `0084_canonical_action_gap_grants.sql`: grants the nine route-pinned actions that no canonical role held, each mirroring its sibling
+  permission (PO issue -> procurement_manager/owner_ceo/coo; commercial.reject -> commercial.approve holders; invoices/payments void ->
+  finance-ledger.void holders; work-orders.approve -> work-orders.edit holders; qhse.submit -> site-side QHSE roles; handover.approve ->
+  project_manager). items.delete / suppliers.delete stay owner/admin only. New `canonical-action-holders.pg.test.js` fails if any
+  fixed-action override loses its last canonical holder.
+- `procurementService.PO_OPEN_STATUSES` no longer includes `draft`, `commercial_procurement_approval`, `financial_authority`: goods can only be
+  received against an issued PO (its own error message already said so). Six suites whose fixtures received against draft POs now issue the PO first.
+- `e2e/scenario-golden.js` (saved scripted scenario): 52/52 with real roles; the consultant certificate step is skipped (external, deferred).
+- Verification: full `test:pg` on a fresh PostgreSQL 16 database 103/103 suites (2192 passed, 1 skipped); backend mock 92/92; lint:guards,
+  i18n check/parity, lint:api ok.

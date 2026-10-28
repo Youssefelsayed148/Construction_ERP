@@ -72,6 +72,7 @@ describePg('A2.3 cost posting: material issue, expenses, payroll (real PostgreSQ
       supplier_id: w.supplier.id, project_id: projectId, warehouse_id: warehouse.id,
       lines: [{ material_id: w.material.id, quantity, unit_rate: 100 }], created_by: owner.id,
     }));
+    await db.query("UPDATE purchase_orders SET status = 'issued' WHERE id = $1", [po.id]); // goods are only received against an issued PO
     const delivery = await tx((q) => svc.createDelivery(q, {
       purchase_order_id: po.id, warehouse_id: warehouse.id,
       lines: [{ purchase_order_line_id: po.lines[0].id, material_id: w.material.id, quantity }], received_by: owner.id,

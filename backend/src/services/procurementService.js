@@ -35,7 +35,8 @@ const { svcError } = require('../utils/serviceErrors');
 const PRICE_VARIANCE_TOLERANCE = 0.02;   // 2% line-price tolerance
 const TAX_MATCH_TOLERANCE = 1.0;         // absolute currency tolerance
 
-const PO_OPEN_STATUSES = ['draft', 'commercial_procurement_approval', 'financial_authority', 'issued', 'acknowledged', 'partially_fully_delivered', 'partially_delivered', 'fully_delivered'];
+// Goods can only be received against a PO that has been issued: a draft or in-approval PO has not been authorised to buy.
+const PO_OPEN_STATUSES = ['issued', 'acknowledged', 'partially_fully_delivered', 'partially_delivered', 'fully_delivered'];
 
 function toNum(v) {
   if (v == null) return 0;

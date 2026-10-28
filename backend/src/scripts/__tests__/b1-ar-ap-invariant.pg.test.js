@@ -191,6 +191,7 @@ describePg('B1 AR/AP reconciliation invariant (real PostgreSQL, real app)', () =
       lines: [{ material_id: material, quantity: 20, unit_rate: 100 }],
       created_by: users.owner.id,
     }));
+    await tx((q) => q("UPDATE purchase_orders SET status = 'issued' WHERE id = $1", [po.id])); // goods are only received against an issued PO
     const delivery = await tx((q) => svc.createDelivery(q, {
       purchase_order_id: po.id, warehouse_id: warehouse,
       lines: [{ purchase_order_line_id: po.lines[0].id, material_id: material, quantity: 20 }],

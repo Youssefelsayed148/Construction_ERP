@@ -53,9 +53,13 @@ describePg('A2.1 supplier-return reversal and accrual pairing (real PostgreSQL, 
     return Math.round(total * 100) / 100;
   };
 
-  const newPo = (lines) => tx((q) => svc.createPurchaseOrder(q, {
-    supplier_id: ids.supplier, project_id: ids.project, warehouse_id: ids.warehouse, lines, created_by: owner.id,
-  }));
+  const newPo = async (lines) => {
+    const po = await tx((q) => svc.createPurchaseOrder(q, {
+      supplier_id: ids.supplier, project_id: ids.project, warehouse_id: ids.warehouse, lines, created_by: owner.id,
+    }));
+    await db.query("UPDATE purchase_orders SET status = 'issued' WHERE id = $1", [po.id]); // goods are only received against an issued PO
+    return po;
+  };
   const receive = async (po, quantity) => {
     const stocked = po.lines.find((l) => l.material_id != null);
     const delivery = await tx((q) => svc.createDelivery(q, {
