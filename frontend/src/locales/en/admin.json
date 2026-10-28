@@ -21,8 +21,10 @@
   "materialsRecipes": { "title": "Material recipes" },
   "maintenance": { "title": "Equipment maintenance" },
   "costCodes": { "title": "Cost codes" },
+  "commercialContracts": { "title": "Client contracts" },
   "fields": {
     "parent_id": "Parent cost code ID", "level": "Level",
+    "client_id": "Client ID", "original_value": "Original value", "retention_percent": "Retention %", "advance_percent": "Advance %", "advance_amount": "Advance amount", "contract_date": "Contract date", "start_date": "Start date", "contract_number": "Contract number",
     "boq_item_id": "BOQ item ID", "activity_type": "Activity type", "output_description": "Output description", "output_unit": "Output unit",
     "asset_id": "Equipment ID", "maintenance_type": "Maintenance type", "priority": "Priority", "scheduled_date": "Scheduled date", "next_due_date": "Next due date", "interval_value": "Interval", "interval_unit": "Interval unit", "estimated_hours": "Estimated hours", "estimated_cost": "Estimated cost", "assigned_tech": "Assigned technician", "actual_hours": "Actual hours", "actual_cost": "Actual cost", "completion_date": "Completion date", "completion_notes": "Completion notes",
     "cause": "Cause", "responsibility": "Responsibility", "time_impact_days": "Time impact (days)", "recommended_amount": "Recommended amount", "expires_in_days": "Expires in (days)", "doc_number": "Document number", "doc_type": "Document type", "id": "ID", "updated_at": "Last updated",
@@ -39,6 +41,7 @@
     "engineer": "Engineer", "site_engineer": "Site engineer", "hr_manager": "HR manager", "accountant_ap": "AP accountant", "storekeeper": "Storekeeper", "staff": "Staff",
     "concrete_pour": "Concrete pour", "blockwork": "Blockwork", "plastering": "Plastering", "steel_fixing": "Steel fixing", "formwork": "Formwork", "finishing": "Finishing", "earthworks": "Earthworks",
     "scheduled": "Scheduled", "in_progress": "In progress", "completed": "Completed", "overdue": "Overdue", "cancelled": "Cancelled",
-    "labour": "Labour", "equipment": "Equipment", "subcontract": "Subcontract", "overhead": "Overhead"
+    "labour": "Labour", "equipment": "Equipment", "subcontract": "Subcontract", "overhead": "Overhead",
+    "active": "Active", "closed": "Closed", "terminated": "Terminated"
   }
 }

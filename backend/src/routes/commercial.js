@@ -95,6 +95,49 @@ router.post('/contracts', authenticate, authorize(), async (req, res) => {
   } catch (e) { return routeFail(res, e, 'COMMERCIAL', req); }
 });
 
+const CONTRACT_STATUSES = ['active', 'closed', 'terminated'];
+
+// PUT /api/commercial/contracts/:id — header-only edit (retention/advance
+// overrides, caps, status, dates, notes). Lines keep their own lifecycle
+// elsewhere; this never touches contract_lines.
+router.put('/contracts/:id', authenticate, authorize(), async (req, res) => {
+  try {
+    const existing = (await query('SELECT * FROM client_contracts WHERE id = $1', [req.params.id])).rows[0];
+    if (!existing) return res.status(404).json({ success: false, error: 'Contract not found', error_code: 'not_found' });
+    if (!req.accessScope?.companyWide && !req.accessScope?.projectIds?.includes(existing.project_id)) {
+      return res.status(403).json({ success: false, error: 'Insufficient permissions', error_code: 'project_scope_denied' });
+    }
+
+    const schema = Joi.object({
+      title: Joi.string().allow('', null),
+      retention_percent: Joi.number().min(0).max(100),
+      advance_percent: Joi.number().min(0).max(100),
+      advance_amount: money.allow(null),
+      end_date: Joi.date().iso().allow(null),
+      status: Joi.string().valid(...CONTRACT_STATUSES),
+      notes: Joi.string().allow('', null),
+    }).min(1);
+    const { error, value } = schema.validate(req.body);
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
+
+    const sets = []; const p = []; let i = 1;
+    for (const [k, v] of Object.entries(value)) { if (v !== undefined) { sets.push(`${k} = $${i++}`); p.push(v); } }
+    sets.push('updated_at = NOW()');
+    p.push(req.params.id);
+    const updated = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const r = await q(`UPDATE client_contracts SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`, p);
+      await logActivity({
+        userId: req.user.id, userName: req.user.name, userRole: req.user.role,
+        action: 'update', module: 'commercial', description: `Updated client contract ${existing.contract_number}`,
+        entityId: existing.id, entityType: 'client_contract',
+      }, { query: q });
+      return r.rows[0];
+    });
+    res.json({ success: true, data: updated });
+  } catch (e) { return routeFail(res, e, 'COMMERCIAL', req); }
+});
+
 // ---------------------------------------------------------------------------
 // Variations — lifecycle through the Phase 6 'variation' template
 // ---------------------------------------------------------------------------
