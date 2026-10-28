@@ -1,4 +1,4 @@
-T-SESSION IN PROGRESS (T0/T0.6/T1/T2/T3/T4/T5 done; launch verdict + final report remaining) - base ff50813, merged to 2ee9890
+T-SESSION COMPLETE (all batches T0/T0.6/T1-T5 done) - base ff50813, merged to 2ee9890, verdict NO-GO (unchanged, see docs/LAUNCH_READINESS.md)
 
 # 2026-10-28 - Session T: T0/T0.6 whole-system reconciliation + T4 pilot readiness
 
@@ -82,7 +82,30 @@ reference only existing npm scripts (read-only check, no remote CI triggered). F
 detail: `docs/CLOSEOUT_LOG.md`'s 2026-10-28 "Batch T1" entry; full unfiltered logs: repo-root `logs/t1-*.log`
 (gitignored, not committed).
 
-**Next:** `docs/LAUNCH_READINESS.md` (the GO/NO-GO verdict) and the final report.
+**`docs/LAUNCH_READINESS.md` (new) and `docs/GO_NOGO.md` (updated with this session's real command output)
+- the final deliverable:** verdict stays **NO-GO**. All 7 GO criteria plus the plan's own 8th (zero open
+Blockers/Majors without a waiver) are evaluated with evidence; none is marked done by this session. 0
+confirmed Blockers remain (the one suspected Blocker - procurement lifecycle UI - was refuted by reading
+`ProcurementWorkspace.js` directly). ~20 Majors remain open (DB-level status enums on 75 tables, the
+`finance_manager`/`project_manager` blanket-grant gap, 5 missing admin/commercial screens, no real
+notification channel, no load test, no production-data reconciliation, dependency-audit triage, and more -
+full list in `docs/LAUNCH_READINESS.md`); none was small enough to fix safely in place this session (each
+needs a screen, a migration, or a human/owner decision). 11 Minors are in `docs/POST_LAUNCH_BACKLOG.md`,
+not blocking. The ordered 10-step remaining path to launch (owner decisions -> screens/DB work -> CI ->
+operator pilot rehearsal -> security/native-Arabic review -> UAT -> owner GO/NO-GO call) is in
+`docs/LAUNCH_READINESS.md`'s last section, each step labelled who does it.
+
+## T-SESSION COMPLETE SUMMARY
+
+Batches this session: T0 (whole-system reconciliation), T0.6 (screen/API/DB/role coverage audit,
+required), T2 (golden-journey test), T3 (role-coverage tests), T4 (pilot readiness), T5 (UAT execution
+kit), T1 (single full verification run + triage). Commits pushed to `closeout/batch-a-to-6`: the T0/T0.6/T4
+batch, the T2/T3/T5 batch, and the T1 triage batch (3 commits total, all pushed; this final docs commit is
+the 4th). No product code was changed by this session - every fix made was to test code (5 stale
+expectations/cleanup bugs, all under 40 lines, all reconfirmed green) or to documentation (ticking
+already-true plan boxes, correcting stale gap-register prose, adding the new reconciliation/UAT/readiness
+docs). Full command-by-command evidence is in `docs/CLOSEOUT_LOG.md`'s four 2026-10-28 entries; this file's
+entries above are the same evidence in narrative form.
 
 # 2026-10-27 - Session F: F4 (Arabic PDF, inline branches) + final report
 
