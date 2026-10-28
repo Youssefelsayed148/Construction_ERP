@@ -72,6 +72,13 @@ const EXPECTED = {
     schedule_activities: ['planned', 'in_progress', 'completed', 'suspended'],
     work_packages: ['planned', 'in_progress', 'completed', 'on_hold', 'cancelled'],
   },
+  '0082_inventory_materials_status_checks.sql': {
+    inventory_transfers: ['draft', 'completed'],
+    stock_reservations: ['active', 'released'],
+    material_requirements: ['planned', 'identified', 'pending'],
+    material_inspection_requests: ['pending', 'accepted', 'partially_accepted', 'rejected', 'approved'],
+    replenishment_alerts: ['open', 'resolved'],
+  },
 };
 
 describe('G1.2 status CHECK vocabularies', () => {
