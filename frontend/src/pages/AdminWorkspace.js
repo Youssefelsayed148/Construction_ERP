@@ -112,6 +112,10 @@ export const ADMIN_AREAS = {
     title: 'notificationRules', module: 'notifications', roles: ['owner', 'admin'],
     list: '/notifications/rules', fields: [], columns: ['rule_type', 'key', 'label', 'roles'], note: true,
   },
+  'roles-matrix': {
+    title: 'rolesMatrix', module: 'users', roles: ['owner', 'admin'],
+    list: '/users/preview/matrix', fields: [], columns: ['role', 'role_name', 'module', 'action'],
+  },
 };
 
 async function parseResponse(response) {

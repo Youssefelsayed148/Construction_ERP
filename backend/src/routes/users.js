@@ -33,6 +33,26 @@ router.get('/preview/roles', authenticate, authorize('owner', 'admin'), async (r
   }
 });
 
+// GET /api/users/preview/matrix — the roles x modules x actions grant matrix
+// (G2 admin screen). Flattens roles -> role_permissions -> permissions into
+// one row per (role, module, action) grant; read-only, no DB write.
+// Registered before GET /:id for the same reason as /preview/roles above.
+router.get('/preview/matrix', authenticate, authorize('owner', 'admin'), async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT r.key AS role, r.name AS role_name, p.module, p.action
+       FROM role_permissions rp
+       JOIN roles r ON r.id = rp.role_id
+       JOIN permissions p ON p.id = rp.permission_id
+       WHERE r.is_system = true
+       ORDER BY r.key, p.module, p.action`
+    );
+    res.json({ success: true, data: result.rows.map((row, index) => ({ id: index + 1, ...row })) });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET /api/users/:id
 router.get('/:id', authenticate, authorize('owner', 'admin'), async (req, res) => {
   try {
