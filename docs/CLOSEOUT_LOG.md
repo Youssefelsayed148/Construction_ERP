@@ -1,3 +1,48 @@
+# 2026-10-28 - Session T, Batch T2/T3/T5 (golden journey, role tests, UAT kit)
+
+| Check | Command | Result |
+|---|---|---|
+| golden-journey.pg.test.js syntax | `node --check src/scripts/__tests__/golden-journey.pg.test.js` | exit 0 |
+| Combined focused run, new files only (per TEST-RUN DISCIPLINE) | `DB_HOST=127.0.0.1 DB_PORT=5432 DB_NAME=erp_closeout_test DB_USER=postgres DB_PASSWORD=postgres JWT_SECRET=... TEST_PG=1 npx jest --config jest.pg.config.js --runInBand --forceExit --testPathPattern="golden-journey\|t3-role-coverage"` | 2 suites, 49 tests: 48 passed, 1 skipped (documented), 0 failed |
+
+`backend/src/scripts/__tests__/golden-journey.pg.test.js` (new): one comprehensive test driving contract ->
+project setup (phase/milestone/BOQ) -> PR -> RFQ/quotations/comparison/award (the step `golden-chain.pg.test.js`
+skips) -> PO -> delivery -> MIR -> GRN -> supplier invoice/AP payment -> site daily report -> measurement
+review -> weighted schedule/project progress -> client payment application -> certificate (with the
+unconditional `consultant_client` workflow step, same project-participant binding as `commercial-5-5.pg.test.js`)
+-> retention held -> client invoice auto-created from the certificate -> approved -> issued (service-level,
+no HTTP route, same as `b1-invoice-money.pg.test.js`) -> balanced GL entry -> client receipt -> AR subledger
+zero -> retention release -> balance zero -> variation (cause/responsibility/linked RFI/days impact) ->
+incorporation -> revised contract value follows -> handover process start -> 10 sequential state transitions
+to `dlp_warranty` -> asset -> warranty registered. Plus one `test.skip` for warranty-claim filing/resolution
+(route exists, `handover.js` ~371-410, but no existing real-PG test proves its contract - recorded in
+`docs/CLOSEOUT_GAPS.md` per the "never fake it" rule rather than guessed). Four bugs found and fixed while
+authoring (all in the NEW test file, not product code): wrong audit-table column name (`entity` not
+`entity_type` - boq.js's auditedMutation writes the legacy column), wrong BOQ-allocation column name
+(`planned_quantity` not `quantity`), a missing decide-loop on the 3-step award-recommendation workflow
+(assumed 1 step), and a cross-product id-matching bug in this test's own AP-payable query (`reference_type
+IN (...) AND reference_id IN (...)` can false-match when run alongside other tests' fixtures in the same
+shared database - fixed to exact `(type, id)` pairs via `unnest`, the same technique `golden-chain.pg.test.js`
+already uses). GOLDEN_VALUES.md's exact BOQ/contract figures are not reproduced (judged too fragile for one
+chain this large); the test instead proves the same retention/advance-recovery formulas on its own simpler
+numbers, each marked `// PROVISIONAL golden value`.
+
+`backend/src/scripts/__tests__/t3-role-coverage.pg.test.js` (new, authored by a parallel sub-agent, reviewed
+and run again here alongside golden-journey to confirm no interaction): 47 tests across 3 groups - (A) a
+generated sidebar-vs-API sweep for all 33 canonical roles (24 internal + 9 external) across 16 Sidebar.js
+module entries, expected visibility derived live from `policy.evaluateForRole` rather than a hand-written
+table; (B) list-endpoint project-scope checks (not just single-record GETs) for projects, boq, work-orders,
+site, procurement, commercial, handover, finance-ledger/retention and documents; (C) id-guessing checks
+across all four external portal families (subcontractor, supplier, client, consultant).
+
+`docs/UAT_EXECUTION_KIT.md` (new, T5): full-lifecycle UAT scripts for owner, procurement, site, finance,
+handover/warranty, and all four external portals, extending (not replacing) `docs/UAT_PILOT.md`'s
+procure-to-pay-only scope. No sign-off marked done.
+
+T3's remaining item (frontend "render every route as each role-family" test) was deliberately NOT authored
+this session - see the `docs/CLOSEOUT_GAPS.md` entry for the reasoning (the T0.6 role-access audit already
+downgraded the underlying risk from MAJOR to MINOR by tracing 2 representative routes end-to-end).
+
 # 2026-10-28 - Session T, Batch T0/T0.6/T4 (whole-system reconciliation + pilot readiness)
 
 Branch `closeout/batch-a-to-6` (fast-forwarded to `2ee9890`, which includes F-session's full push).

@@ -225,6 +225,29 @@ lists only the specific corrections found (full evidence is in the reconciliatio
 - **Refuted "no UI" leads**: `ProcurementWorkspace.js` (mounted at `projects/:id/operations`, procurement
   tab) is a comprehensive PR→RFQ→award→PO→delivery→MIR→GRN→supplier-invoice→payment screen, not just the
   comparison-only `ProcurementReview.js`. Zero `window.prompt()` calls remain anywhere in the frontend.
+- **T3 frontend "render every route as each role-family" test - NOT AUTHORED this session, by deliberate
+  choice, not an oversight.** The T-session prompt's item 2(d) asks for a Jest/RTL test rendering every
+  `App.js` route under each role family and asserting either correct content or a clean no-access state.
+  The T0.6 role-access audit (`docs/CLOSEOUT_RECONCILIATION.md`) already traced 2 representative routes
+  (`/admin/*`, `/projects/:id/boq`) end-to-end and found they degrade cleanly on a 403 (no crash, no data
+  flash), downgrading this item from a suspected MAJOR to MINOR. Given that finding and this session's
+  remaining budget, a full 36-route x 5-role-family render harness (mocking fetch for every route's data
+  calls) was judged a poor use of the single-test-run budget relative to its now-MINOR risk. This is listed
+  as **not audited** for the remaining ~34 routes/role-family combinations, not silently cleared - see
+  `docs/LAUNCH_READINESS.md`'s risk list.
+- **T2 golden-journey test added** (`backend/src/scripts/__tests__/golden-journey.pg.test.js`): extends the
+  tender-to-warranty lifecycle past where `golden-chain.pg.test.js` stops (adds RFQ/quotation/award, site
+  report/progress, client valuation with retention, invoice issue/receipt, retention release, variation,
+  and handover through the warranty register). Two things it does NOT do, both intentional: (1) it does not
+  reproduce `docs/GOLDEN_VALUES.md`'s exact BOQ/contract figures (1,376,500 EGP etc.) - building that precise
+  fixture across one combined P2P+commercial+site+handover chain was judged too fragile for one session, so
+  the test proves the same retention/advance-recovery formulas on its own simpler deterministic numbers
+  instead, each marked `// PROVISIONAL golden value` in the test; (2) the warranty-claim filing/resolution
+  stage (`POST /api/handover/claims`, `POST /api/handover/claims/:id/status`, `routes/handover.js` ~371-410)
+  is left as an explicit `test.skip` with a reason, because no existing real-PG test exercises those two
+  routes and their exact request/response contract was not independently verified - asserting a guessed
+  shape would risk a false pass or a false defect report. Both are recorded here rather than silently
+  narrowed, per the T2 instructions.
 - **Still genuinely open, newly confirmed with evidence**: Phase 2.6 DB-level status enums (75 of 99
   `status` columns have no CHECK constraint); Phase 5.1 blanket-grant roles above; Phase 5.8 real
   notification channels (still console-only stub); `/api/subcontractors`, `/api/costing`, `/api/maintenance`

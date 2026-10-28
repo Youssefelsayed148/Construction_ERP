@@ -1,4 +1,4 @@
-T-SESSION IN PROGRESS (T0/T0.6/T4 done; T1-T5 remaining) - base ff50813, merged to 2ee9890
+T-SESSION IN PROGRESS (T0/T0.6/T2/T3/T4/T5 done; T1 + launch verdict + final report remaining) - base ff50813, merged to 2ee9890
 
 # 2026-10-28 - Session T: T0/T0.6 whole-system reconciliation + T4 pilot readiness
 
@@ -51,9 +51,22 @@ own rule; no Blocker/Major found this batch was both small enough (<~40 lines) a
 place - every one is either a human/owner decision or larger UI/screen work, recorded for Session F or a
 follow-up rather than attempted here).
 
-**Next:** T2 (author golden journey PG test extending `golden-chain.pg.test.js` toward tender-to-warranty),
-T3 (role-by-role lifecycle/permission tests), T5 (UAT execution kit), then T1 (the single full verification
-run), then `docs/LAUNCH_READINESS.md` and the final report.
+**T2/T3/T5 (this same session, continued):** `backend/src/scripts/__tests__/golden-journey.pg.test.js` (new)
+drives contract -> project setup -> PR -> RFQ/quotes/award -> PO -> delivery -> MIR -> GRN -> supplier
+invoice/payment -> site report/progress -> client valuation+certificate (clearing the seeded workflow's
+unconditional `consultant_client` step) -> retention held -> invoice issued -> receipt -> retention release
+-> variation incorporated -> handover through `dlp_warranty` -> warranty registered, all through the same
+real HTTP routes a user's screen calls; one `test.skip` for the warranty-claim sub-step (no proven contract,
+recorded in `docs/CLOSEOUT_GAPS.md`, not guessed). `backend/src/scripts/__tests__/t3-role-coverage.pg.test.js`
+(new): 47 tests - a generated sidebar-vs-API sweep across all 33 canonical roles derived live from the
+seeded policy, list-endpoint project-scope checks for 8 modules, and external-portal id-guessing checks for
+all 4 families. Both new files run together once (TEST-RUN DISCIPLINE): 48 passed, 1 skipped, 0 failed.
+`docs/UAT_EXECUTION_KIT.md` (new, T5) extends `docs/UAT_PILOT.md` to the full lifecycle across owner,
+procurement, site, finance, handover/warranty and all four portals; no sign-off marked done. T3's frontend
+route-render item was deliberately not authored (see `docs/CLOSEOUT_GAPS.md` - downgraded to MINOR by T0.6).
+
+**Next:** T1 (the single full verification run: PG suite, backend mock suite, lint:guards, frontend suites
++ i18n + build), then `docs/LAUNCH_READINESS.md` and the final report.
 
 # 2026-10-27 - Session F: F4 (Arabic PDF, inline branches) + final report
 

@@ -1,3 +1,15 @@
+# 2026-10-28 - Session T, Batch T2/T3/T5
+
+New real-PG tests authored and run together once: `golden-journey.pg.test.js` (contract through warranty,
+the RFQ/award step `golden-chain.pg.test.js` skips, plus everything past procurement - site progress,
+client valuation/retention, invoice issue/receipt, variation, handover/warranty) and
+`t3-role-coverage.pg.test.js` (47 tests: generated sidebar-vs-API sweep for all 33 canonical roles,
+list-endpoint project-scope checks, external-portal id-guessing). Combined result: 48 passed, 1 skipped
+(warranty-claim sub-step, no proven contract, documented), 0 failed. `docs/UAT_EXECUTION_KIT.md` (new, T5)
+extends `docs/UAT_PILOT.md` to the full lifecycle across all roles and portals. Full detail and the four
+bugs found/fixed while authoring the journey test are in `docs/CLOSEOUT_LOG.md`'s and `STATE.md`'s
+2026-10-28 entries. Next: the single T1 verification run, then the launch-readiness verdict.
+
 # 2026-10-28 - Session T, Batch T0/T0.6/T4
 
 Whole-system reconciliation (T0) and screen/API/DB/role coverage audit (T0.6, required) complete:
