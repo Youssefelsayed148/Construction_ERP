@@ -141,6 +141,7 @@ router.put('/recipes/:id', authenticate, authorize(), async (req, res) => {
     if (!existing) return res.status(404).json({ success: false, error: 'Recipe not found' });
 
     const schema = Joi.object({
+      code: Joi.string().allow('', null),
       name: Joi.string(),
       name_en: Joi.string().allow('', null),
       name_ar: Joi.string().allow('', null),
@@ -150,20 +151,36 @@ router.put('/recipes/:id', authenticate, authorize(), async (req, res) => {
       boq_item_id: Joi.number().integer().allow(null),
       is_active: Joi.boolean(),
       notes: Joi.string().allow('', null),
+      // Admin screen (G6) submits the lines alongside the header in one save;
+      // upsert them the same way the create route does, in the same transaction.
+      lines: Joi.array().items(lineSchema).optional(),
     }).min(1);
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
+    const { lines, ...headerValue } = value;
 
     const sets = []; const p = []; let i = 1;
-    for (const [k, v] of Object.entries(value)) { if (v !== undefined) { sets.push(`${k} = $${i++}`); p.push(v); } }
+    for (const [k, v] of Object.entries(headerValue)) { if (v !== undefined) { sets.push(`${k} = $${i++}`); p.push(v); } }
+    if (sets.length === 0) sets.push('updated_at = updated_at'); // lines-only save still touches the row below
     sets.push(`updated_at = NOW()`);
     p.push(req.params.id);
     const r = await auditedTransaction(async (q) => {
       const updated = await q(`UPDATE material_recipes SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`, p);
+      if (Array.isArray(lines)) {
+        for (const line of lines) {
+          await q(
+            `INSERT INTO recipe_lines (recipe_id, material_id, factor_per_unit, wastage_pct, unit, notes)
+             VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (recipe_id, material_id)
+             DO UPDATE SET factor_per_unit = EXCLUDED.factor_per_unit, wastage_pct = EXCLUDED.wastage_pct,
+                           unit = EXCLUDED.unit, notes = EXCLUDED.notes`,
+            [existing.id, line.material_id, line.factor_per_unit, line.wastage_pct, line.unit || null, line.notes || null]
+          );
+        }
+      }
       await fireEvent({
         eventType: 'recipe.changed', entityType: 'material_recipe', entityId: existing.id,
         userId: req.user.id, userName: req.user.name, userRole: req.user.role,
-        payload: { recipe_id: existing.id, project_id: existing.project_id, boq_item_id: value.boq_item_id ?? existing.boq_item_id },
+        payload: { recipe_id: existing.id, project_id: existing.project_id, boq_item_id: headerValue.boq_item_id ?? existing.boq_item_id },
       }, { query: q });
       return updated;
     }, () => ({

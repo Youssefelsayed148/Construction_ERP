@@ -70,6 +70,12 @@ export const ADMIN_AREAS = {
     title: 'replenishment', module: 'materials', roles: ['owner', 'admin', 'storekeeper', 'purchasing_mgr'], list: params => `/materials/replenishment/${params.get('view') === 'alerts' ? 'alerts' : 'policies'}`, create: '/materials/replenishment/policies', createMethod: 'PUT', update: () => '/materials/replenishment/policies', updateMethod: 'PUT', deactivate: () => '/materials/replenishment/policies', deactivateMethod: 'DELETE', sweep: '/materials/replenishment/sweep',
     fields: [field('scope', 'select', true, ['default', 'material', 'category']), field('ref'), field('mode', 'select', true, ['alert_only', 'auto_draft_pr', 'auto_draft_po', 'auto_issue_po'])], columns: ['rule_key', 'rule_value', 'is_active', 'updated_at'],
   },
+  'materials-recipes': {
+    title: 'materialsRecipes', module: 'materials', roles: ['owner', 'admin', 'storekeeper', 'purchasing_mgr', 'project_manager'],
+    list: '/materials/recipes', create: '/materials/recipes', update: id => `/materials/recipes/${id}`,
+    fields: [field('project_id', 'number'), field('boq_item_id', 'number'), field('activity_type', 'select', false, ['concrete_pour', 'blockwork', 'plastering', 'steel_fixing', 'formwork', 'finishing', 'earthworks', 'other']), field('code'), field('name', 'text', true), field('name_en'), field('name_ar'), field('output_description'), field('output_unit'), field('notes', 'textarea'), field('is_active', 'checkbox'), field('lines_json', 'textarea')],
+    columns: ['code', 'name', 'activity_type', 'output_unit', 'is_active'], projectScoped: true,
+  },
 };
 
 async function parseResponse(response) {

@@ -18,7 +18,9 @@
   "apiTokens": { "title": "API tokens" },
   "numbering": { "title": "Document numbering" },
   "replenishment": { "title": "Replenishment", "views": "Replenishment views" },
+  "materialsRecipes": { "title": "Material recipes" },
   "fields": {
+    "boq_item_id": "BOQ item ID", "activity_type": "Activity type", "output_description": "Output description", "output_unit": "Output unit",
     "cause": "Cause", "responsibility": "Responsibility", "time_impact_days": "Time impact (days)", "recommended_amount": "Recommended amount", "expires_in_days": "Expires in (days)", "doc_number": "Document number", "doc_type": "Document type", "id": "ID", "updated_at": "Last updated",
     "code": "Code", "org_type": "Organization type", "name_en": "Name (English)", "name_ar": "Name (Arabic)",
     "contact_person": "Contact person", "email": "Email", "phone": "Phone", "city": "City", "status": "Status",
@@ -30,6 +32,7 @@
   "options": {
     "client": "Client", "supplier": "Supplier", "subcontractor": "Subcontractor", "consultant": "Consultant", "other": "Other",
     "issues": "Issues", "returns": "Returns", "adjustments": "Adjustments", "client_instruction": "Client instruction", "design_change": "Design change", "site_condition": "Site condition", "regulatory": "Regulatory", "omission": "Omission", "contractor_request": "Contractor request", "force_majeure": "Force majeure", "other": "Other", "contractor": "Contractor", "third_party": "Third party", "shared": "Shared", "default": "Default", "material": "Material", "category": "Category", "issue_purchase_order": "Issue purchase order", "issue_client_invoice": "Issue client invoice", "record_payment": "Record payment", "approve_payment_certificate": "Approve payment certificate", "release_retention": "Release retention", "void_financial_record": "Void financial record", "approve_supplier_invoice": "Approve supplier invoice", "alert_only": "Alert only", "auto_draft_pr": "Draft purchase request", "auto_draft_po": "Draft purchase order", "auto_issue_po": "Issue purchase order", "owner": "Owner", "admin": "Administrator", "owner_ceo": "Owner / CEO", "coo": "COO", "project_manager": "Project manager",
-    "engineer": "Engineer", "site_engineer": "Site engineer", "hr_manager": "HR manager", "accountant_ap": "AP accountant", "storekeeper": "Storekeeper", "staff": "Staff"
+    "engineer": "Engineer", "site_engineer": "Site engineer", "hr_manager": "HR manager", "accountant_ap": "AP accountant", "storekeeper": "Storekeeper", "staff": "Staff",
+    "concrete_pour": "Concrete pour", "blockwork": "Blockwork", "plastering": "Plastering", "steel_fixing": "Steel fixing", "formwork": "Formwork", "finishing": "Finishing", "earthworks": "Earthworks"
   }
 }
