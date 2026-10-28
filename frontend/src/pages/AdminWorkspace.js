@@ -82,6 +82,12 @@ export const ADMIN_AREAS = {
     fields: [field('project_id', 'number', true), field('asset_id', 'number', true), field('title', 'text', true), field('description', 'textarea'), field('maintenance_type'), field('priority'), field('scheduled_date', 'date', true), field('next_due_date', 'date'), field('interval_value', 'number'), field('interval_unit'), field('estimated_hours', 'number'), field('estimated_cost', 'number'), field('assigned_tech'), field('status', 'select', false, ['scheduled', 'in_progress', 'completed', 'overdue', 'cancelled']), field('actual_hours', 'number'), field('actual_cost', 'number'), field('completion_date', 'date'), field('completion_notes', 'textarea')],
     columns: ['title', 'asset_id', 'status', 'scheduled_date', 'next_due_date'], projectScoped: true,
   },
+  'cost-codes': {
+    title: 'costCodes', module: 'costing', roles: ['owner', 'admin'],
+    list: '/costing/codes', create: '/costing/codes', update: id => `/costing/codes/${id}`,
+    fields: [field('code', 'text', true), field('name', 'text', true), field('name_en'), field('name_ar'), field('parent_id', 'number'), field('level', 'number'), field('type', 'select', false, ['material', 'labour', 'equipment', 'subcontract', 'overhead', 'other'])],
+    columns: ['code', 'name', 'type', 'level'],
+  },
 };
 
 async function parseResponse(response) {

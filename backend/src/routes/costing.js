@@ -1,17 +1,87 @@
 const express = require('express');
 const router = express.Router();
-const { query } = require('../config/database');
+const Joi = require('joi');
+const { query, transaction } = require('../config/database');
 const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
-const { fireEvent } = require('../utils/activity');
+const { logActivity, fireEvent } = require('../utils/activity');
 const commercialEngine = require('../services/commercialEngine');
 const costView = require('../services/costView');
+
+const COST_CODE_TYPES = ['material', 'labour', 'equipment', 'subcontract', 'overhead', 'other'];
 
 router.get('/codes', authenticate, authorize(), async (req, res) => {
   try {
     const data = await queryPaginated(req, res, query, { sql: 'SELECT * FROM cost_codes', orderBy: [{ column: 'code' }] });
     res.json({ success: true, data: data.rows });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// POST /api/costing/codes — create a cost code (owner/admin only: a company-wide
+// chart of accounts used across every project's costing/profitability views).
+router.post('/codes', authenticate, authorize('owner', 'admin'), async (req, res) => {
+  try {
+    const schema = Joi.object({
+      code: Joi.string().required(),
+      name: Joi.string().required(),
+      name_en: Joi.string().allow('', null),
+      name_ar: Joi.string().allow('', null),
+      parent_id: Joi.number().integer().allow(null),
+      level: Joi.number().integer().min(1).default(1),
+      type: Joi.string().valid(...COST_CODE_TYPES).default('material'),
+    });
+    const { error, value } = schema.validate(req.body);
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
+
+    const created = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const r = await q(
+        `INSERT INTO cost_codes (code, name, name_en, name_ar, parent_id, level, type) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+        [value.code, value.name, value.name_en || null, value.name_ar || null, value.parent_id ?? null, value.level, value.type]
+      );
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'costing', description: `Created cost code ${value.code}`, entityId: r.rows[0].id, entityType: 'cost_code' }, { query: q });
+      await fireEvent({ eventType: 'cost_code.created', entityType: 'cost_code', entityId: r.rows[0].id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { code: value.code } }, { query: q });
+      return r.rows[0];
+    });
+    res.status(201).json({ success: true, data: created });
+  } catch (e) {
+    if (e.code === '23505') return res.status(409).json({ success: false, error: 'A cost code with this code already exists', error_code: 'database_conflict' });
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// PUT /api/costing/codes/:id — edit a cost code's name/classification.
+router.put('/codes/:id', authenticate, authorize('owner', 'admin'), async (req, res) => {
+  try {
+    const existing = (await query('SELECT * FROM cost_codes WHERE id = $1', [req.params.id])).rows[0];
+    if (!existing) return res.status(404).json({ success: false, error: 'Cost code not found', error_code: 'not_found' });
+
+    const schema = Joi.object({
+      code: Joi.string(),
+      name: Joi.string(),
+      name_en: Joi.string().allow('', null),
+      name_ar: Joi.string().allow('', null),
+      parent_id: Joi.number().integer().allow(null),
+      level: Joi.number().integer().min(1),
+      type: Joi.string().valid(...COST_CODE_TYPES),
+    }).min(1);
+    const { error, value } = schema.validate(req.body);
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
+
+    const sets = []; const p = []; let i = 1;
+    for (const [k, v] of Object.entries(value)) { if (v !== undefined) { sets.push(`${k} = $${i++}`); p.push(v); } }
+    p.push(req.params.id);
+    const updated = await transaction(async (client) => {
+      const q = client.query.bind(client);
+      const r = await q(`UPDATE cost_codes SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`, p);
+      await logActivity({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'update', module: 'costing', description: `Updated cost code ${existing.code}`, entityId: existing.id, entityType: 'cost_code' }, { query: q });
+      return r.rows[0];
+    });
+    res.json({ success: true, data: updated });
+  } catch (e) {
+    if (e.code === '23505') return res.status(409).json({ success: false, error: 'A cost code with this code already exists', error_code: 'database_conflict' });
+    res.status(500).json({ success: false, error: e.message });
+  }
 });
 
 router.get('/project/:projectId', authenticate, authorize(), async (req, res) => {
