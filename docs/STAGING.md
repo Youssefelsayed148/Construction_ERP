@@ -145,3 +145,22 @@ The fixture is idempotent and provisions 96 units, a 120 m3 C35 BOQ line at EGP
 Its supplier price is fictional fixture data. These values validate the demo
 chain only; the separate commercial assumptions in `GOLDEN_VALUES.md` remain
 unapproved.
+
+## Feature flags
+
+This is documentation of the ad hoc environment-variable toggles that already exist in the codebase, not
+a new flag system — the closeout's locked decision is not to build a feature-flag framework. Found by
+grepping `backend/src` for `process.env.X` reads that branch behavior with an if/else, not just configure
+a value.
+
+| Name | What it toggles | Default |
+|---|---|---|
+| `APPROVALS_LEGACY_DUAL_WRITE` | Whether the workflow engine also mirrors an approval's new status onto the legacy status column. Read in `backend/src/services/workflowEngine.js:767`, `backend/src/scripts/cancel-stale-approvals.js:40`, and twice in `backend/src/routes/approvals.js:175,346`. | **On** (mirrors) — only `APPROVALS_LEGACY_DUAL_WRITE=false` turns it off. |
+| `NOTIFICATION_LIVE_SEND_ENABLED` | Whether the SMTP email provider actually sends mail. Read in `backend/src/services/notificationService.js:53`: when the configured email provider is `smtp` and this is not `'true'`, the send is recorded as `undelivered`/`live_delivery_disabled` instead of attempting delivery. | **Off** — must be set to `'true'` to allow live sends. |
+| `PROJECT_CREATION_WIZARD` | Whether `POST /api/projects` accepts the full 11-step wizard payload shape or only the legacy flat shape. Read in `backend/src/routes/projects.js:18-22` (accepts `'1'`, `'true'`, or `'on'`). | **Off** (legacy flat shape only). |
+
+`docs/CLOSEOUT_RECONCILIATION.md`'s Phase 11 table (line 181) names the first two of these as the only
+feature-flag-shaped mechanism found in code beyond ad hoc config; this session's grep did not surface any
+additional if/else-gated behavior toggle beyond `PROJECT_CREATION_WIZARD` above. (`SEED_DEFAULT_OWNER`,
+checked in `backend/src/scripts/setupDb.js:455`, is a seed-script guard rather than an application rollout
+flag, so it is not listed as a feature flag here.)
