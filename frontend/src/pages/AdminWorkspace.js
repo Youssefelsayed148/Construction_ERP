@@ -88,6 +88,13 @@ export const ADMIN_AREAS = {
     fields: [field('code', 'text', true), field('name', 'text', true), field('name_en'), field('name_ar'), field('parent_id', 'number'), field('level', 'number'), field('type', 'select', false, ['material', 'labour', 'equipment', 'subcontract', 'overhead', 'other'])],
     columns: ['code', 'name', 'type', 'level'],
   },
+  'commercial-contracts': {
+    title: 'commercialContracts', module: 'commercial', roles: ['owner', 'admin', 'project_manager', 'engineer'],
+    list: params => `/commercial/contracts/${encodeURIComponent(params.get('project_id') || '')}`,
+    create: '/commercial/contracts', update: id => `/commercial/contracts/${id}`,
+    fields: [field('project_id', 'number', true), field('client_id', 'number'), field('title', 'text'), field('original_value', 'number', true), field('retention_percent', 'number'), field('advance_percent', 'number'), field('advance_amount', 'number'), field('contract_date', 'date'), field('start_date', 'date'), field('end_date', 'date'), field('status', 'select', false, ['active', 'closed', 'terminated']), field('notes', 'textarea')],
+    columns: ['contract_number', 'title', 'original_value', 'retention_percent', 'status'], projectScoped: true,
+  },
 };
 
 async function parseResponse(response) {
@@ -153,7 +160,7 @@ export default function AdminWorkspace() {
     }
     params.set('limit', String(pageSize)); params.set('offset', String(nextOffset));
     try {
-      if (config.projectScoped && ['variations', 'sla', 'numbering'].includes(area) && !params.get('project_id')) {
+      if (config.projectScoped && ['variations', 'sla', 'numbering', 'commercial-contracts', 'subcontractor-contracts'].includes(area) && !params.get('project_id')) {
         setRows([]); setTotalCount(0); setLoadError(new ApiError({ code: 'validation_error' })); return;
       }
       const listPath = typeof config.list === 'function' ? config.list(params) : config.list;
@@ -202,6 +209,13 @@ export default function AdminWorkspace() {
     if (payload.project_id !== undefined) payload.project_id = Number(payload.project_id);
     if (area === 'numbering' || (area === 'variations' && editing)) delete payload.project_id;
     if (area === 'maintenance' && editing) { delete payload.project_id; delete payload.asset_id; }
+    if (area === 'commercial-contracts' && editing) {
+      // PUT /commercial/contracts/:id only edits the header fields that
+      // legitimately change after signing (retention/advance overrides,
+      // caps, status, notes, end date); the contract identity, original
+      // value and start are changed through the variation lifecycle instead.
+      ['project_id', 'client_id', 'original_value', 'contract_date', 'start_date'].forEach(key => delete payload[key]);
+    }
     const params = new URLSearchParams(location.search);
     const path = editing ? (typeof config.update === 'function' ? config.update(editing.id, params) : config.update) : (typeof config.create === 'function' ? config.create(params) : config.create);
     const method = editing ? (config.updateMethod || 'PUT') : (config.createMethod || 'POST');

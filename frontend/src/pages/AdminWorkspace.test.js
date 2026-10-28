@@ -60,7 +60,7 @@ async function executeWrite(area, action) {
       ? response(200, { success: true, data: area === 'inventory-documents' && String(url).includes('/41') ? row : [row] }, '1')
       : response(200, { success: true, data: { id: row.id, secret: 'rotated-secret', token: 'new-token' } }, '1');
   });
-  ({ container, root } = mount(`/admin/${area}${['variations', 'inventory-documents', 'numbering', 'sla'].includes(area) ? '?project_id=7' : ''}`));
+  ({ container, root } = mount(`/admin/${area}${['variations', 'inventory-documents', 'numbering', 'sla', 'commercial-contracts'].includes(area) ? '?project_id=7' : ''}`));
   await act(async () => Promise.resolve());
   if (action === 'create') {
     await fillRequiredFields(container, config);
@@ -91,7 +91,7 @@ async function executeWrite(area, action) {
   }
   const endpointKey = action === 'rotate' ? 'rotate' : action;
   const endpoint = config[endpointKey];
-  const params = new URLSearchParams(['variations', 'inventory-documents', 'numbering'].includes(area) ? 'project_id=7' : '');
+  const params = new URLSearchParams(['variations', 'inventory-documents', 'numbering', 'commercial-contracts'].includes(area) ? 'project_id=7' : '');
   const expected = typeof endpoint === 'function'
     ? action === 'create' ? endpoint(params) : endpoint(row.id, params)
     : endpoint;
@@ -106,7 +106,7 @@ async function submitWithFailure(area, status) {
     if (method !== 'GET') return response(status, { error: { code: status === 422 ? 'validation_error' : 'internal_error', message: 'request failed' } });
     return response(200, { success: true, data: area === 'inventory-documents' && String(url).includes('/41') ? row : [row] }, '1');
   });
-  ({ container, root } = mount(`/admin/${area}${['variations', 'inventory-documents', 'numbering'].includes(area) ? '?project_id=7' : ''}`));
+  ({ container, root } = mount(`/admin/${area}${['variations', 'inventory-documents', 'numbering', 'commercial-contracts'].includes(area) ? '?project_id=7' : ''}`));
   await act(async () => Promise.resolve());
   if (!config.create) {
     const edit = [...container.querySelectorAll('button')].find(button => button.textContent === 'common.edit');
@@ -133,7 +133,7 @@ describe('R5 administrative workspaces', () => {
 
   test.each(Object.keys(ADMIN_AREAS))('renders and loads the %s workspace', async area => {
     window.fetch.mockResolvedValue(response(200, { success: true, data: [] }, '0'));
-    const search = ['variations', 'sla', 'numbering'].includes(area) ? '?project_id=7' : '';
+    const search = ['variations', 'sla', 'numbering', 'commercial-contracts'].includes(area) ? '?project_id=7' : '';
     ({ container, root } = mount(`/admin/${area}${search}`));
     await act(async () => Promise.resolve());
     expect(container.querySelector('h1').textContent).toBe(`admin.${ADMIN_AREAS[area].title}.title`);
