@@ -24,6 +24,21 @@ function rejectLegacyResponse(res, replacement) {
   });
 }
 
+// Closeout batch A-6 item 4: the legacy single-answer fields this router still
+// returns (RFI `answer`/`answered_by`/`answered_by_name`/`answered_at`, submittal
+// `response`/`responded_by`/`responded_by_name`/`responded_at`) are dual-written
+// by services/consultantEngine.js alongside the revisioned rfi_responses /
+// submittal_revisions registers, and frontend/src/pages/ProjectDocuments.js still
+// reads `r.answer` and `s.response` directly from these list responses. They are
+// not dead, so they are not retired here; no shared Deprecation/Sunset-header
+// helper exists elsewhere in the repo, so this is a small one-off. See
+// docs/POST_LAUNCH_BACKLOG.md for the tracked retirement follow-up.
+const LEGACY_SINGLE_ANSWER_SUNSET = 'Tue, 26 Jan 2027 00:00:00 GMT'; // 90 days from 2026-10-28
+function markLegacySingleAnswerShape(res) {
+  res.set('Deprecation', 'true');
+  res.set('Sunset', LEGACY_SINGLE_ANSWER_SUNSET);
+}
+
 // ============ CATEGORIES ============
 
 router.get('/categories', authenticate, authorize(), async (req, res) => {
@@ -289,6 +304,7 @@ router.delete('/documents/:id', authenticate, authorize(), async (req, res) => {
 
 router.get('/rfis', authenticate, authorize(), async (req, res) => {
   try {
+    markLegacySingleAnswerShape(res); // see docs/POST_LAUNCH_BACKLOG.md: answer/answered_by(_name)/answered_at are legacy
     const { project_id, status } = req.query;
     let conditions = []; let params = []; let idx = 1;
     if (project_id) { conditions.push(`r.project_id = $${idx++}`); params.push(project_id); }
@@ -373,6 +389,7 @@ router.post('/rfis/:id/close', authenticate, authorize(), async (req, res) => {
 
 router.get('/submittals', authenticate, authorize(), async (req, res) => {
   try {
+    markLegacySingleAnswerShape(res); // see docs/POST_LAUNCH_BACKLOG.md: response/responded_by(_name)/responded_at are legacy
     const { project_id, status } = req.query;
     let conditions = []; let params = []; let idx = 1;
     if (project_id) { conditions.push(`s.project_id = $${idx++}`); params.push(project_id); }
