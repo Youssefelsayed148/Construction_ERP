@@ -65,6 +65,8 @@ router.put('/:id', authenticate, authorize(), async (req, res) => {
 
     const schema = Joi.object({
       title: Joi.string(), description: Joi.string().allow(''), priority: Joi.string(),
+      maintenance_type: Joi.string().allow(''), interval_value: Joi.number().allow(null),
+      interval_unit: Joi.string().allow(''),
       scheduled_date: Joi.date().iso(), next_due_date: Joi.date().iso(),
       estimated_hours: Joi.number(), estimated_cost: Joi.number(),
       assigned_tech: Joi.string().allow(''), status: Joi.string(),

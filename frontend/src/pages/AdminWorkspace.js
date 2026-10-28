@@ -76,6 +76,12 @@ export const ADMIN_AREAS = {
     fields: [field('project_id', 'number'), field('boq_item_id', 'number'), field('activity_type', 'select', false, ['concrete_pour', 'blockwork', 'plastering', 'steel_fixing', 'formwork', 'finishing', 'earthworks', 'other']), field('code'), field('name', 'text', true), field('name_en'), field('name_ar'), field('output_description'), field('output_unit'), field('notes', 'textarea'), field('is_active', 'checkbox'), field('lines_json', 'textarea')],
     columns: ['code', 'name', 'activity_type', 'output_unit', 'is_active'], projectScoped: true,
   },
+  maintenance: {
+    title: 'maintenance', module: 'maintenance', roles: ['owner', 'admin', 'project_manager', 'site_engineer'],
+    list: '/maintenance', create: '/maintenance', update: id => `/maintenance/${id}`,
+    fields: [field('project_id', 'number', true), field('asset_id', 'number', true), field('title', 'text', true), field('description', 'textarea'), field('maintenance_type'), field('priority'), field('scheduled_date', 'date', true), field('next_due_date', 'date'), field('interval_value', 'number'), field('interval_unit'), field('estimated_hours', 'number'), field('estimated_cost', 'number'), field('assigned_tech'), field('status', 'select', false, ['scheduled', 'in_progress', 'completed', 'overdue', 'cancelled']), field('actual_hours', 'number'), field('actual_cost', 'number'), field('completion_date', 'date'), field('completion_notes', 'textarea')],
+    columns: ['title', 'asset_id', 'status', 'scheduled_date', 'next_due_date'], projectScoped: true,
+  },
 };
 
 async function parseResponse(response) {
@@ -189,6 +195,7 @@ export default function AdminWorkspace() {
     });
     if (payload.project_id !== undefined) payload.project_id = Number(payload.project_id);
     if (area === 'numbering' || (area === 'variations' && editing)) delete payload.project_id;
+    if (area === 'maintenance' && editing) { delete payload.project_id; delete payload.asset_id; }
     const params = new URLSearchParams(location.search);
     const path = editing ? (typeof config.update === 'function' ? config.update(editing.id, params) : config.update) : (typeof config.create === 'function' ? config.create(params) : config.create);
     const method = editing ? (config.updateMethod || 'PUT') : (config.createMethod || 'POST');
