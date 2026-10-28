@@ -9,6 +9,10 @@ const LEGACY_BLANKET_OR_ALIAS = ['owner', 'admin', 'manager', 'accountant', 'eng
 // Destructive restore routes: owner/admin only by design.
 const OWNER_ONLY = new Set(['items.delete', 'suppliers.delete']);
 
+// Needs a migrated database: skipped unless TEST_PG=1, like every other .pg suite (the Docker image build and a plain `npm test` have no DB).
+const describePg = process.env.TEST_PG === '1' ? describe : describe.skip;
+
+describePg('canonical-role coverage of policy actions', () => {
 afterAll(async () => { await db.pool.end(); });
 
 test('every fixed-action override has at least one canonical-role holder', async () => {
@@ -25,4 +29,5 @@ test('every fixed-action override has at least one canonical-role holder', async
     return !rows.some((r) => (r.module === module || r.module === '*') && (r.action === action || r.action === '*'));
   });
   expect(missing).toEqual([]);
+});
 });

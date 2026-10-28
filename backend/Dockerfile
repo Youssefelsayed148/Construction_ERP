@@ -2,13 +2,15 @@
 # These suites read repo-root files that live outside this build context (docker-compose files, nginx conf, frontend locales
 # and apiClient), so they cannot pass here; CI runs them from the repo root: decision-record, compose-runtime-config,
 # company-demo-safety, f1-typed-service-errors.
+# The command-line pattern REPLACES package.json's testPathIgnorePatterns, so it must repeat '/node_modules/' and the real-PostgreSQL
+# '.pg.test.js' suites: the image build has no database.
 FROM node:20-alpine AS test
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
 ENV JWT_SECRET=image-build-test-secret-longer-than-32-characters
-RUN npm run lint:guards && npm test -- --runInBand --testPathIgnorePatterns 'decision-record|compose-runtime-config|company-demo-safety|f1-typed-service-errors' && touch /app/.tests-passed
+RUN npm run lint:guards && npm test -- --runInBand --testPathIgnorePatterns '/node_modules/|\.pg\.test\.js$|decision-record|compose-runtime-config|company-demo-safety|f1-typed-service-errors' && touch /app/.tests-passed
 
 # Stage 2: production dependencies only.
 FROM node:20-alpine
