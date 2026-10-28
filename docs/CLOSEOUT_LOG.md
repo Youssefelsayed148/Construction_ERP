@@ -1,3 +1,27 @@
+# 2026-10-28 - Session G continuation (G1.2 + G2 closeout, integration of the three wip branches)
+
+Commits (24, HEAD f5d8d38): c6809d7 (SMTP adapter; STAGING.md conflict resolved keeping BOTH "Feature flags"
+and "Notification adapters" sections; notification-smtp.test.js 3/3), 232632e (BOQ error display; 1/1 via
+`CI=true npx react-scripts test`, raw jest lacks the CRA JSX transform), 2ef7e78 (npm audit fixes; lockfiles
+auto-merged, `npm ci --dry-run` clean), e3de4d4 (doccontrol Deprecation/Sunset headers re-applied by hand
+onto the routeFail-converted handlers; POST_LAUNCH_BACKLOG.md hand-merged to 12 rows), bea6c59/15d7085/
+7fa983e/7696466/fdba563/5049662/86b669d (7 G2 screens; AdminWorkspace.test.js 120/120), 0424cbc (workflow-
+template editor: /api/workflow-templates router under the approvals policy module, owner/admin, 4 endpoints,
+audit-in-transaction; UI note corrected after confirming against workflowEngine.js:184/:280/:334 that step
+edits DO apply to in-flight instances; AdminWorkspace.test.js 124/124), dcf1717 (connectivity script; first
+run found admin.fields.end_date missing in BOTH locales - fixed; final run ALL PASSED, 20 screens, exit 0),
+3d1f886 (0075 cherry-pick), 9dfb7d8/c9d6870/ddcd5fe/bde75c4/7f993c3/a6e95ce/e74bd9d/5ce88d6 (0076-0083,
+61 tables, vocabularies from a 4-agent all-writers sweep; status-check-vocab.test.js extended and run once
+per batch, 9/9 final), be2ab4a (validate-status-constraints.sql, 70 lines + docs/MIGRATIONS.md), f5d8d38
+(4 raw-error catches from the G2 picks converted to routeFail; lint-guards: ok).
+
+Live DB evidence (PGlite 18.6 wire server, repo's own runner): `[migrate] all migrations completed (145
+applied, 0 already applied)`; re-run `0 applied, 145 already applied`; `86` status CHECK constraints, `70`
+NOT VALID (exactly the G1.2 ones); all 70 VALIDATE lines green, `0` still invalid.
+
+BLOCKED: `git push origin closeout/batch-a-to-6` - no GitHub credentials in the sandbox. 24 commits await
+the owner's push. The three wip/* backup branches stay on origin until that push lands (deletion after).
+
 # 2026-10-28 - Session T, Batch T1 (single full verification run)
 
 Run exactly once each, per TEST-RUN DISCIPLINE, against the throwaway `erp_closeout_test` database

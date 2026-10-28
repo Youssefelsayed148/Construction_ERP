@@ -1,3 +1,22 @@
+# 2026-10-28 - Session G continuation COMPLETE (push pending owner credentials)
+
+All G-scope items closed. G1.2 finished: 0075 (procurement, cherry-picked) + 0076-0083 (commercial/finance,
+QA/HSE, doc control, handover/maintenance, HR, schedule/work, inventory/materials, workflow-engine/misc/infra)
+= 70 tables with NOT VALID status CHECK constraints; vocabularies derived from every writer via a 4-agent
+sweep with file:line citations; 3 unvalidated PUT status schemas tightened (payroll, assets, maintenance) so
+the API cannot violate the CHECKs; `backend/scripts/validate-status-constraints.sql` + docs/MIGRATIONS.md
+note added. G1.3-G1.6 integrated from `wip/g1-3-to-6-notifications-boq-audit-rfi` (SMTP adapter, BOQ error
+display, npm audit fixes, doccontrol Deprecation/Sunset headers with a hand-merged POST_LAUNCH_BACKLOG row).
+G2 completed: 7 screens cherry-picked from `wip/g2-screens-7-of-8`, then the workflow-template editor (new
+`/api/workflow-templates` router + 8th AdminWorkspace screen) and the G2.9 connectivity script were built;
+first script run found and fixed a real gap (admin.fields.end_date missing in both locales). End-of-session
+gates each run once: lint-guards ok (after converting 4 raw-error catches the cherry-picks reintroduced),
+i18n:check ok, i18n:parity ok (37 namespaces / 3157 keys), i18n:inventory --check ok, connectivity ALL
+PASSED (20 screens). Live PG verification was done on an in-memory PostgreSQL 18.6 (PGlite) instance because
+the sandbox has no local Postgres/docker: 145 migrations applied, idempotent re-run 0 applied, all 70
+VALIDATE lines green. BLOCKED: final `git push` (no GitHub credentials in sandbox) - 24 local commits, HEAD
+f5d8d38, await `git push origin closeout/batch-a-to-6`. Full detail: STATE.md and docs/CLOSEOUT_LOG.md.
+
 # 2026-10-28 - Session T COMPLETE: launch readiness verdict
 
 `docs/LAUNCH_READINESS.md` (new) and `docs/GO_NOGO.md` (evidence columns updated with this session's real

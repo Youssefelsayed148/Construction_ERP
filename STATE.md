@@ -1,4 +1,109 @@
-G-SESSION IN PROGRESS, STOPPED BY OWNER MID-BATCH - base 6b932f6, HEAD now 832c634 (pushed to origin/closeout/batch-a-to-6). See "2026-10-28 - Session G (in progress)" below for exact done/in-flight/not-started state and the handoff for the next session. T-SESSION COMPLETE (all batches T0/T0.6/T1-T5 done) - base ff50813, merged to 2ee9890, verdict NO-GO (unchanged, see docs/LAUNCH_READINESS.md)
+G-SESSION COMPLETE f5d8d38 - every G1/G2/G3 item integrated, built, and verified; all four static
+checks plus the screen-connectivity script run once green (see the 2026-10-28 Session G continuation entry
+below). ONE CAVEAT: the final `git push` could not run from this sandbox (no GitHub credentials available -
+push requires auth, reads work anonymously). 24 local commits sit on closeout/batch-a-to-6 awaiting the
+owner (or a credentialed environment) to run: git push origin closeout/batch-a-to-6
+
+T-SESSION COMPLETE (all batches T0/T0.6/T1-T5 done) - base ff50813, merged to 2ee9890, verdict NO-GO (unchanged, see docs/LAUNCH_READINESS.md)
+
+
+# 2026-10-28 - Session G continuation: G1.2 + G2 finished, in-flight work integrated - COMPLETE (push pending owner credentials)
+
+Working on `closeout/batch-a-to-6`, base `6c48808` (the continuation prompt). Integrated all three backup
+branches, built the two unbuilt G2 pieces, and finished G1.2 (batches 0076-0083 on top of the cherry-picked
+0075). Everything below is real command output; nothing is claimed that was not run.
+
+## Environment note (differs from previous sessions)
+
+- The working tree arrived with ~159 files CRLF-modified (line-endings only; `git diff --ignore-cr-at-eol`
+  was empty) - restored with `git restore .` before integrating, zero content loss.
+- **No PostgreSQL exists in this sandbox** (no psql binaries, no docker daemon, no root for apt). The
+  throwaway DB was recreated as an in-memory **PostgreSQL 18.6 via PGlite 0.5.12** (real Postgres in WASM)
+  exposed over the PG wire protocol on 127.0.0.1:5433 (`@electric-sql/pglite-socket`), so the repo's own
+  migration runner ran unchanged: `DB_HOST=127.0.0.1 DB_PORT=5433 DB_NAME=construction_erp ... node
+  src/scripts/run-all-migrations.js` -> `[migrate] all migrations completed (145 applied, 0 already applied)`
+  (re-run idempotent: `0 applied, 145 already applied`). Live `information_schema` derivation was done on
+  that instance: 106 status-ish columns, 69 without a CHECK before this session's migrations, 61 of them
+  plain `status` columns across 61 tables (the handoff said ~63; live is authoritative).
+- **git push is blocked**: no GitHub token/gh/credential-helper in the environment (fetch works because the
+  repo is publicly readable). 24 local commits await `git push origin closeout/batch-a-to-6`.
+
+## DONE, per scope item
+
+- **G1.1** - already done (0074, commit 3943b91). Not touched.
+- **G1.2** - complete: 0075 cherry-picked from `wip/g1-2-status-checks-batch1` (commit `3d1f886`), then 8 new
+  batches written from a 4-agent writer-derivation sweep (every writer of every status column, with
+  file:line citations): `9dfb7d8` 0076 commercial/finance (11), `c9d6870` 0077 QA/HSE (15), `ddcd5fe` 0078
+  doc control (8), `bde75c4` 0079 handover/maintenance (5), `7f993c3` 0080 HR (4), `a6e95ce` 0081
+  schedule/work (2), `e74bd9d` 0082 inventory/materials (5), `5ce88d6` 0083 workflow-engine/misc/infra (11)
+  = all 61 remaining tables. Filter-only/uncertain values included per the task rule (each flagged in the
+  SQL comments); mirror columns (activity_log old/new_status, observation_status_history.from_status)
+  deliberately unconstrained (union-by-design), agent telemetry execution/response_status left open this
+  batch. **3 paired route fixes** where a PUT schema accepted any status string and would violate the CHECK:
+  payroll (7f993c3), assets + maintenance (bde75c4). `be2ab4a`: backend/scripts/validate-status-constraints.sql
+  (70 VALIDATE lines, grouped by batch) + docs/MIGRATIONS.md subsection.
+  - Focused test `status-check-vocab.test.js` (parses each migration, asserts exact vocabulary + NOT VALID +
+    NULL tolerance), extended and run once per batch: green each time, final run 9/9 suites.
+  - Live on PGlite: 145 migrations applied; 86 status CHECK constraints exist, exactly 70 NOT VALID (all
+    G1.2 ones); all 70 VALIDATE lines ran green (0 failed, 0 still NOT VALID).
+- **G1.3-G1.6** - integrated from `wip/g1-3-to-6-notifications-boq-audit-rfi`:
+  - `c6809d7` (6259e08) SMTP adapter; STAGING.md conflict resolved so BOTH "Feature flags" and "Notification
+    adapters" sections exist; nodemailer installed; test 3/3.
+  - `232632e` (0c4f626) BOQ.js error display; test 1/1 (via `react-scripts test`, raw jest lacks the CRA JSX
+    transform).
+  - `2ef7e78` (ae4451e) audit fixes; lockfiles auto-merged (nodemailer/playwright-core/pdfjs-dist all coexist;
+    `npm ci --dry-run` clean). SECURITY_REVIEW_PREP.md merged (original file unchanged since the stale base,
+    so the pick applied clean and kept both).
+  - `e3de4d4` (e78e52f) doccontrol Deprecation/Sunset headers re-applied BY HAND onto the current
+    routeFail-converted handlers (doccontrol.js + documentMutation kept); POST_LAUNCH_BACKLOG.md hand-merged
+    (real 11 rows kept, PLB-001 added as row 12 with the 2027-01-26 sunset). Test 3/3.
+- **G2** - integrated from `wip/g2-screens-7-of-8`: 7 commits `bea6c59`, `15d7085`, `7fa983e`, `7696466`,
+  `fdba563`, `5049662`, `86b669d` cherry-picked clean (all 11 files verified against the real tip first);
+  AdminWorkspace.test.js run once after: 120/120. Then the 2 unbuilt pieces:
+  - `0424cbc` workflow-template editor (G2.2, 8th screen): new router backend/src/routes/workflowTemplates.js
+    mounted at /api/workflow-templates (policy module 'approvals' via MODULE_OVERRIDES, owner/admin only, 4
+    endpoints: GET list+step_count, GET /:id template+ordered steps, PUT /:id/steps/:stepId resolver_value/
+    sla_hours only with resolver_type_immutable rejection + role validation, PUT /:id is_active toggle; audit
+    event in the same transaction, FOR UPDATE locks). New ADMIN_AREAS entry + steps dialog + i18n (en/ar).
+    UI accuracy note CONFIRMED, not asserted: the handoff's "changes apply only to NEW instances" is only
+    half true - workflowEngine.js loadSteps is called live at startWorkflow:184 AND per-decision :280/:334,
+    so the dialog note says deactivation blocks new instances only, while step resolver/SLA edits also apply
+    to in-flight instances. Focused test: 124/124.
+  - `dcf1717` G2.9 connectivity script frontend/scripts/check-screen-connectivity.js (static): per-screen
+    route/gating/API-mounts/EN-AR-i18n assertions + no dead sidebar entries. First real run found ONE genuine
+    gap: admin.fields.end_date missing in both locales (commercial-contracts + subcontractor-contracts) -
+    fixed in the same commit. Final: ALL CONNECTIVITY CHECKS PASSED (20 screens, 52 backend mounts, 41 app
+    routes, 23 sidebar entries), exit 0.
+- **G3** - already done (d84a8c3/3f39942/e06851d/bc0967c + 832c634). Not touched, except the handoff's
+  STAGING.md both-sections check which passed.
+- **Integration fallout fixed**: `f5d8d38` - the 7 cherry-picked G2 commits carried 4 raw
+  `res.status(500).json({error: e.message})` catches (written pre-routeFail on the stale base) that failed
+  `lint:guards` (costing 2, subcontractors 1, users 1); converted to routeFail; lint-guards: ok.
+
+## END-OF-SESSION GATES (run exactly once each, after everything else)
+
+| Gate | Result |
+|---|---|
+| `npm --prefix backend run lint:guards` | first run FAILED (4 raw-error catches from the G2 cherry-picks) -> fixed in f5d8d38 -> rerun (post-fix, code changed): `lint-guards: ok` |
+| `npm run i18n:check` (frontend) | `i18n:check ok`, exit 0 |
+| `npm run i18n:parity` (frontend) | `i18n parity ok: 37 namespaces, 3157 English keys`, exit 0 |
+| `npm run i18n:inventory -- --check` (frontend) | `i18n:check ok`, exit 0 |
+| `node scripts/check-screen-connectivity.js` (frontend) | `ALL CONNECTIVITY CHECKS PASSED - 20 screens checked, 52 backend mounts, 41 app routes, 23 sidebar entries.`, exit 0 |
+
+No full suites, no full builds, no per-batch gates were run (TEST-RUN DISCIPLINE). Per-slice focused tests
+run exactly once each: notification-smtp 3/3, BOQ 1/1, doccontrol-legacy-headers 3/3, AdminWorkspace 120/120
+then 124/124, status-check-vocab 2/2 growing to 9/9.
+
+## Not done / blocked
+
+- `git push origin closeout/batch-a-to-6` - BLOCKED: no GitHub credentials in this sandbox (no token, no gh
+  CLI, no credential helper; anonymous fetch works, push does not). Next action: owner runs the push or
+  provides credentials. 24 commits, HEAD f5d8d38.
+- The three `wip/*` backup branches were NOT deleted on origin - per the handoff they may only be deleted
+  after their content is safely integrated AND pushed. Integration is complete; deletion is safe after the
+  push (wip/g1-3-to-6-... all 4 commits in; wip/g2-screens-7-of-8 all 7 in; wip/g1-2-status-checks-batch1
+  its 1 commit in).
+- G4 remains out of scope, untouched.
 
 # 2026-10-28 - Session G (in progress, stopped by owner before completion)
 
