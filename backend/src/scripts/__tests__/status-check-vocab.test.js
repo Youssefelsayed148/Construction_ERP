@@ -68,6 +68,10 @@ const EXPECTED = {
     leave_requests: ['pending', 'approved', 'rejected'],
     payroll_periods: ['draft', 'approved', 'rejected', 'paid'],
   },
+  '0081_schedule_work_status_checks.sql': {
+    schedule_activities: ['planned', 'in_progress', 'completed', 'suspended'],
+    work_packages: ['planned', 'in_progress', 'completed', 'on_hold', 'cancelled'],
+  },
 };
 
 describe('G1.2 status CHECK vocabularies', () => {
