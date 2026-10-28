@@ -24,7 +24,9 @@
   "commercialContracts": { "title": "Client contracts" },
   "subcontractorContracts": { "title": "Subcontracts" },
   "subcontractorVerifications": { "title": "Subcontract work verifications" },
+  "notificationRules": { "title": "Notification rules", "note": "This view is read-only: it shows the event types and roles coded into the notification engine. Per-user channel preferences (email/push/in-app) are set separately on each user's Notification preferences screen (/notification-preferences)." },
   "fields": {
+    "rule_type": "Rule type", "key": "Event", "label": "Label", "roles": "Notified roles",
     "parent_id": "Parent cost code ID", "level": "Level",
     "client_id": "Client ID", "original_value": "Original value", "retention_percent": "Retention %", "advance_percent": "Advance %", "advance_amount": "Advance amount", "contract_date": "Contract date", "start_date": "Start date", "contract_number": "Contract number",
     "subcontractor_id": "Subcontractor ID", "contract_value": "Contract value", "sub_contract_id": "Sub-contract ID", "period_from": "Period from", "period_to": "Period to", "quantity_claimed": "Quantity claimed", "quantity_verified": "Quantity verified", "sub_name": "Subcontractor",

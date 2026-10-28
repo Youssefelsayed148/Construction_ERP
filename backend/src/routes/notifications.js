@@ -8,6 +8,27 @@ const { logActivity } = require('../utils/activity');
 const { auditedMutation } = require('../utils/auditedMutation');
 const Joi = require('joi');
 const { typedFail, routeFail } = require('../utils/typedRoute');
+const { NOTIFY_RULES, PATTERN_RULES } = require('../services/eventDispatcher');
+
+// GET /api/notifications/rules — read-only admin view of the code-defined
+// event -> notified-roles routing (services/eventDispatcher.js NOTIFY_RULES
+// and PATTERN_RULES). There is no persisted per-role override table for this
+// (deliberately, per the closeout decision log); per-user channel overrides
+// already exist at GET/PUT /api/notifications/preferences. Registered before
+// '/:id/read' is irrelevant here since this is its own path, not a param.
+router.get('/rules', authenticate, authorize('owner', 'admin'), async (req, res) => {
+  try {
+    const rows = [
+      ...Object.entries(NOTIFY_RULES).map(([eventType, rule]) => ({
+        id: `event:${eventType}`, rule_type: 'event', key: eventType, label: rule.label, roles: (rule.roles || []).join(', '),
+      })),
+      ...PATTERN_RULES.map(([prefix, rule]) => ({
+        id: `pattern:${prefix}`, rule_type: 'pattern', key: `${prefix}*`, label: rule.label, roles: (rule.roles || []).join(', '),
+      })),
+    ];
+    res.json({ success: true, data: rows });
+  } catch (e) { return routeFail(res, e, 'NOTIFICATIONS', req); }
+});
 
 // GET /api/notifications — the in-app inbox (frontend polls).
 router.get('/', authenticate, authorize(), async (req, res) => {
