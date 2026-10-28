@@ -33,7 +33,32 @@ killed between this entry being written and the next session starting) before tr
   integrates the G1.3 worktree's commit must check `docs/STAGING.md` lands with BOTH sections present,
   not just one overwriting the other.
 
-## IN FLIGHT - local git worktrees, NOT integrated/pushed - CONFIRMED built on a STALE base, read this first
+## IN FLIGHT - pushed as backup branches, NOT integrated into closeout/batch-a-to-6 - CONFIRMED built on a STALE base, read this first
+
+**Update**: the three worktrees described below only existed in this sandbox's local filesystem
+(`.claude/worktrees/`), which does not survive a new session in a fresh container. Before stopping, this
+session pushed each one to `origin` as a plain backup branch so the work is not lost:
+`wip/g1-3-to-6-notifications-boq-audit-rfi`, `wip/g2-screens-7-of-8`, `wip/g1-2-status-checks-batch1`. No
+PRs were opened. A fresh session should `git fetch origin` and work from these branch names, not from
+`.claude/worktrees/`, which will not exist in a new container.
+
+**File-overlap risk, checked directly (`git diff --stat c8242b5 2301d5a -- <file>`) rather than assumed:**
+most touched files turned out to be byte-identical between the stale base and the real tip, so a cherry-pick
+of those commits is low-risk despite the stale base. The real risk is narrower than "the whole batch is
+suspect": `backend/src/routes/doccontrol.js` changed substantially on the real branch since `c8242b5` (97
+insertions/56 deletions, converting raw `error.message` responses to `routeFail(...)` across the whole
+file) and the `wip/g1-3-to-6-...` branch's commit `e78e52f` also edits that same file's `GET /rfis`/`GET
+/submittals` handlers - treat this one as a real, likely-conflicting overlap, not a clean cherry-pick.
+Everything else checked this way came back either unchanged on the real branch (clean) or changed by only
+a handful of unrelated lines (low risk, verify but don't assume a conflict): `notificationService.js`
+(unchanged), `AdminWorkspace.js`/`AdminWorkspace.test.js`/both `admin.json` locale files/`commercial.js`/
+`notifications.js` route (all unchanged), `BOQ.js`/`package.json`/`costing.js`/`maintenance.js`/
+`materials.js`/`subcontractors.js`/`users.js` routes (each changed by 5-14 unrelated lines). `App.js` was
+NOT touched by the G2 branch at all (it used the existing `ADMIN_AREAS` config pattern instead of new
+routes, as instructed), so the fact that `App.js` itself changed on the real branch is irrelevant. The
+`docs/POST_LAUNCH_BACKLOG.md` conflict (described below) is confirmed and structural, not a guess - the
+stale-base branch created a from-scratch 1-row file that must be merged with the real 11-row file, never
+copied over it.
 
 Three background agents were dispatched (via the `Agent` tool, `isolation: "worktree"`, each told to
 commit locally and never push). **Critical, confirmed finding**: all three worktrees were created from a
@@ -49,8 +74,8 @@ integration step that should not be rushed right before a handoff. Re-run `git w
 repo root first - state below is accurate as of this writing but agents may still be live.
 
 1. **G1.3-G1.6 (notifications SMTP adapter, BOQ.js error display, npm audit fixes, RFI/submittal
-   deprecation header) - COMPLETE per the agent's own report, 4 commits, NOT integrated.** Worktree
-   `.claude/worktrees/agent-a58ba9bb21608c4b5`, branch `worktree-agent-a58ba9bb21608c4b5`, commits (oldest
+   deprecation header) - COMPLETE per the agent's own report, 4 commits, NOT integrated.** Pushed to
+   `origin/wip/g1-3-to-6-notifications-boq-audit-rfi`. Commits (oldest
    first) `6259e08` (SMTP adapter + `nodemailer` dep + audit-on-dispatch-failure + `docs/STAGING.md`
    section + new test, 3/3 passing per its report), `0c4f626` (BOQ.js error display + new test, 1/1
    passing), `ae4451e` (npm audit fixes in both backend/frontend lockfiles + new `docs/SECURITY_REVIEW_PREP.md`
@@ -66,8 +91,7 @@ repo root first - state below is accurate as of this writing but agents may stil
    come up (these files plausibly changed between `c8242b5` and now) - do not cherry-pick onto the stale
    base and hope for the best.
 2. **G2 (8 missing screens + connectivity script) - 7 of 8 screens done, connectivity script NOT started.**
-   Worktree `.claude/worktrees/agent-afa4be0395b61422f`, branch `worktree-agent-afa4be0395b61422f`, 7
-   commits: `94f07da` (recipes), `29d77a9` (maintenance), `708ab4e` (costing + cost-code CRUD endpoints),
+   Pushed to `origin/wip/g2-screens-7-of-8`. 7 commits: `94f07da` (recipes), `29d77a9` (maintenance), `708ab4e` (costing + cost-code CRUD endpoints),
    `76a755e` (commercial contracts + contract-header PUT endpoint), `63c7ad8` (subcontractor
    contracts/verification), `1c606db` (notification-rules read-only view), `faaf0d6` (roles x permissions
    matrix). The agent was cut off by an account-wide rate limit right after committing `faaf0d6` (its last
@@ -80,8 +104,7 @@ repo root first - state below is accurate as of this writing but agents may stil
    all - see this session's original dispatch brief for the `workflow_templates`/`workflow_steps` schema
    and suggested route shape) and the connectivity script before integrating.
 3. **G1.2 (DB-level status CHECK constraints, migrations `0075`+) - 1 of ~9-11 planned batches done,
-   rate-limited mid-batch-2.** Worktree `.claude/worktrees/agent-a48ecf8743a390ecb`, branch
-   `worktree-agent-a48ecf8743a390ecb`, 1 commit: `88e6265` "G1.2: add NOT VALID status CHECK constraints —
+   rate-limited mid-batch-2.** Pushed to `origin/wip/g1-2-status-checks-batch1`. 1 commit: `88e6265` "G1.2: add NOT VALID status CHECK constraints —
    procurement batch (9 tables)" (covers roughly `purchase_orders`/`purchase_requests`/`rfqs`/`rfq_vendors`/
    `goods_receipt_notes`/`supplier_invoices`/`supplier_quotations`/`supplier_returns`/`deliveries` - verify
    the exact 9 by reading the migration file, don't assume). An uncommitted new file,
