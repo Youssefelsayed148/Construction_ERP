@@ -49,7 +49,7 @@ router.get('/preview/matrix', authenticate, authorize('owner', 'admin'), async (
     );
     res.json({ success: true, data: result.rows.map((row, index) => ({ id: index + 1, ...row })) });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    return routeFail(res, error, 'users', req);
   }
 });
 

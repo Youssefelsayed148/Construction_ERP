@@ -47,7 +47,7 @@ router.post('/codes', authenticate, authorize('owner', 'admin'), async (req, res
     res.status(201).json({ success: true, data: created });
   } catch (e) {
     if (e.code === '23505') return res.status(409).json({ success: false, error: 'A cost code with this code already exists', error_code: 'database_conflict' });
-    res.status(500).json({ success: false, error: e.message });
+    return routeFail(res, e, 'costing', req);
   }
 });
 
@@ -81,7 +81,7 @@ router.put('/codes/:id', authenticate, authorize('owner', 'admin'), async (req, 
     res.json({ success: true, data: updated });
   } catch (e) {
     if (e.code === '23505') return res.status(409).json({ success: false, error: 'A cost code with this code already exists', error_code: 'database_conflict' });
-    res.status(500).json({ success: false, error: e.message });
+    return routeFail(res, e, 'costing', req);
   }
 });
 

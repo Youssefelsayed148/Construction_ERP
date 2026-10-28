@@ -164,7 +164,7 @@ router.get('/verifications', authenticate, authorize(), async (req, res) => {
       params: p, orderBy: [{ column: 'swv.period_from', direction: 'DESC' }],
     });
     res.json({ success: true, data: data.rows });
-  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+  } catch (e) { return routeFail(res, e, 'subcontractors', req); }
 });
 
 // -- Work Verifications --
