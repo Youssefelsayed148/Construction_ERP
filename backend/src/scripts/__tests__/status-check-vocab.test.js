@@ -79,6 +79,19 @@ const EXPECTED = {
     material_inspection_requests: ['pending', 'accepted', 'partially_accepted', 'rejected', 'approved'],
     replenishment_alerts: ['open', 'resolved'],
   },
+  '0083_misc_infra_status_checks.sql': {
+    action_items: ['open', 'in_progress', 'completed', 'cancelled'],
+    background_sweep_runs: ['running', 'ok', 'failed', 'skipped'],
+    idempotency_keys: ['in_flight', 'completed'],
+    notifications: ['unread', 'read'],
+    portal_submissions: ['submitted'],
+    scheduled_report_runs: ['generated', 'notified', 'failed'],
+    webhook_deliveries: ['pending', 'retrying', 'delivered', 'dead_letter'],
+    project_workflows: ['active'],
+    workflow_instances: ['active', 'approved', 'rejected', 'cancelled'],
+    workflow_step_instances: ['pending', 'waiting', 'skipped', 'done', 'rejected', 'cancelled'],
+    approval_requests: ['pending', 'approved', 'rejected', 'cancelled'],
+  },
 };
 
 describe('G1.2 status CHECK vocabularies', () => {
