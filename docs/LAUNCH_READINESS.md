@@ -48,7 +48,7 @@ Blockers/Majors, see `docs/CLOSEOUT_LOG.md`'s T1 entry) are not counted above.
 7. Phase 11: no dry-run migration against a real/production-shaped data copy.
 8. Phase 11: no per-project feature-flag/rollout mechanism beyond ad hoc env toggles.
 9. Phase 11: dependency audit findings (2 high) not triaged.
-10. Phase 11: no load/performance test exists anywhere in the repo.
+10. ~~Phase 11: no load/performance test exists anywhere in the repo.~~ **STALE, corrected by Session G**: `backend/src/scripts/load-profiling.js` is a real, runnable latency-percentile profiling script (not k6/autocannon, but a working equivalent — see its own header comment for the exact `CONFIRM_THROWAWAY_DB=true LOAD_TAG=<label> node src/scripts/load-profiling.js` invocation), already executed with results recorded in `docs/LOAD_BASELINES.md` and `docs/LOAD_BASELINE_2026-10-04.json`. Not re-run this session (TEST-RUN DISCIPLINE forbids it); the command is now also cross-referenced from `docs/OPERATOR_RUNBOOK.md`.
 11. Phase 11: no operator runbook, admin guide, or training notes document; no versioned/Sunset-header OpenAPI artifact.
 12. T0.6: no admin roles/permission-matrix screen.
 13. T0.6: no workflow-template editor screen.
