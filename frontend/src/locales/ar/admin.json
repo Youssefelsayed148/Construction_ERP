@@ -30,7 +30,7 @@
   "fields": {
     "rule_type": "نوع القاعدة", "key": "الحدث", "label": "التسمية", "roles": "الأدوار المُبلَّغة", "role_name": "اسم الدور", "module": "الوحدة",
     "parent_id": "معرّف رمز التكلفة الأصل", "level": "المستوى",
-    "client_id": "معرّف العميل", "original_value": "القيمة الأصلية", "retention_percent": "نسبة الاحتجاز %", "advance_percent": "نسبة الدفعة المقدمة %", "advance_amount": "مبلغ الدفعة المقدمة", "contract_date": "تاريخ العقد", "start_date": "تاريخ البدء", "contract_number": "رقم العقد",
+    "client_id": "معرّف العميل", "original_value": "القيمة الأصلية", "retention_percent": "نسبة الاحتجاز %", "advance_percent": "نسبة الدفعة المقدمة %", "advance_amount": "مبلغ الدفعة المقدمة", "contract_date": "تاريخ العقد", "start_date": "تاريخ البدء", "end_date": "تاريخ الانتهاء", "contract_number": "رقم العقد",
     "subcontractor_id": "معرّف المقاول من الباطن", "contract_value": "قيمة العقد", "sub_contract_id": "معرّف العقد الفرعي", "period_from": "الفترة من", "period_to": "الفترة إلى", "quantity_claimed": "الكمية المطالب بها", "quantity_verified": "الكمية المعتمدة", "sub_name": "المقاول من الباطن",
     "boq_item_id": "معرّف بند جدول الكميات", "activity_type": "نوع النشاط", "output_description": "وصف المخرجات", "output_unit": "وحدة المخرجات",
     "asset_id": "معرّف المعدة", "maintenance_type": "نوع الصيانة", "priority": "الأولوية", "scheduled_date": "تاريخ الجدولة", "next_due_date": "تاريخ الاستحقاق التالي", "interval_value": "الفترة", "interval_unit": "وحدة الفترة", "estimated_hours": "الساعات المقدرة", "estimated_cost": "التكلفة المقدرة", "assigned_tech": "الفني المكلّف", "actual_hours": "الساعات الفعلية", "actual_cost": "التكلفة الفعلية", "completion_date": "تاريخ الإنجاز", "completion_notes": "ملاحظات الإنجاز",
