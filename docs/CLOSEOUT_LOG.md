@@ -3168,3 +3168,11 @@ Throwaway `postgres:16-alpine` container, fresh database, `TEST_PG=1`, `npm run 
 - Final full run on a fresh database: 102/102 suites, 2190 passed, 1 skipped, exit 0 (423 s).
 - Also green: backend mock jest (92 suites), `lint:guards`, frontend 51 suites / 493 tests, i18n check/parity, `lint:api`.
 - Not run here: remote CI (Actions tab), the pilot Docker stack smoke.
+
+# 2026-10-28 - Phase 1 local run: role walk found the approvals inbox closed to owner_ceo / coo
+
+Backend (:5001) and frontend dev server (:3001) run on a fresh `erp_staging` database (145 migrations, `seed:staging` 38 users /
+33 canonical roles, `seed:pilot-data`). API walk: every seeded account logs in, 17 core endpoints probed per role, 0 server errors.
+Found: `GET /api/approvals/pending` was guarded by a hard-coded legacy role list, so `owner_ceo` and `coo` (both hold
+`approvals.approve`) got 403. Now policy-driven `authorize()`; the details view's privileged list includes both roles.
+Regression test in `approvals-atomic.pg.test.js`. Mutation audit + approvals suites re-run green on a fresh database.

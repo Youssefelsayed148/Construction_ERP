@@ -261,9 +261,9 @@ router.post('/request', authenticate, authorize(), async (req, res) => {
 });
 
 // GET /api/approvals/pending
-router.get('/pending', authenticate, authorize(
-  'owner', 'admin', 'finance_manager', 'purchasing_mgr', 'project_manager', 'legal_mgr', 'maintenance_mgr'
-), async (req, res) => {
+// Policy-driven (like /approve): a canonical approver such as owner_ceo or coo holds approvals.approve but is not in the
+// legacy role list this route used to hard-code. What each caller sees is decided from their grants below.
+router.get('/pending', authenticate, authorize(), async (req, res) => {
   try {
     const { role } = req.user;
     let result;
@@ -539,7 +539,7 @@ const SOURCE_DETAIL_QUERIES = {
                 WHERE m.id = $1`,
 };
 
-const PRIVILEGED_APPROVAL_ROLES = ['owner', 'admin', 'finance_manager', 'purchasing_mgr', 'project_manager', 'legal_mgr', 'maintenance_mgr'];
+const PRIVILEGED_APPROVAL_ROLES = ['owner', 'admin', 'owner_ceo', 'coo', 'finance_manager', 'purchasing_mgr', 'project_manager', 'legal_mgr', 'maintenance_mgr'];
 
 function buildApprovalTimeline(ar) {
   const directToOwner = DIRECT_TO_OWNER_MODULES.includes(ar.module_name);

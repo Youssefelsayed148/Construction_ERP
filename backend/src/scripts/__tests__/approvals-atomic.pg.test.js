@@ -14,7 +14,7 @@ const enabled = process.env.TEST_PG === '1';
 const describePg = enabled ? describe : describe.skip;
 
 describePg('2.8 approvals (real PostgreSQL, real app)', () => {
-  let app; let server; let base; let db; let engine; let owner; let manager;
+  let app; let server; let base; let db; let engine; let owner; let manager; let ceo;
   const tag = String(Date.now()).slice(-7);
   const made = [];
   const one = async (sql, params) => (await db.query(sql, params)).rows[0];
@@ -46,9 +46,10 @@ describePg('2.8 approvals (real PostgreSQL, real app)', () => {
     base = `http://127.0.0.1:${server.address().port}`;
     owner = await mkUser('owner', 'owner');
     manager = await mkUser('manager', 'finance_manager');
+    ceo = await mkUser('ceo', 'owner_ceo');
   });
   afterAll(async () => {
-    for (const u of [owner, manager]) {
+    for (const u of [owner, manager, ceo]) {
       await db.query('DELETE FROM user_project_roles WHERE user_id = $1', [u.id]);
       await db.query('UPDATE users SET is_active = false WHERE id = $1', [u.id]);
     }
@@ -103,6 +104,12 @@ describePg('2.8 approvals (real PostgreSQL, real app)', () => {
     expect(checked.body).toMatchObject({ requires_approval: false, approved: true });
     const audit = await call(owner, 'GET', '/api/approvals/audit?status=approved&limit=200');
     expect(audit.body.records.some((item) => item.id === id && item.status === 'approved')).toBe(true);
+  });
+
+  test('canonical approvers (owner_ceo, coo) can open the pending inbox, not only the legacy role list', async () => {
+    const pending = await call(ceo, 'GET', '/api/approvals/pending');
+    expect(pending.status).toBe(200);
+    expect(Array.isArray(pending.body.requests)).toBe(true);
   });
 
   test('workflow remains authoritative when legacy decision-status mirroring is disabled', async () => {
