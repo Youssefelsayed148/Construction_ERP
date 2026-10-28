@@ -244,7 +244,7 @@ async function main() {
     ensure(invoiceRegister.some((row) => Number(row.id) === Number(invoice.id)), 'supplier invoice register did not return the new project invoice');
     expectStatus(await api('GET', `/api/procurement/invoices?project_id=${otherProjectRow.id}`, { token: requester.token }), 403, 'deny supplier invoice register outside project scope');
     const invoiceApproval = expectStatus(await api('POST', `/api/procurement/invoices/${invoice.id}/approve`, {
-      token: finance.token, body: {},
+      token: procurementManager.token, body: {},
     }), 200, 'approve three-way matched invoice');
     const payment = expectStatus(await api('POST', '/api/payments', {
       token: finance.token,

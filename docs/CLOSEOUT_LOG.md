@@ -3210,3 +3210,15 @@ Findings (not fixed here):
 - `e2e/scenario-golden.js` (saved scripted scenario): 52/52 with real roles; the consultant certificate step is skipped (external, deferred).
 - Verification: full `test:pg` on a fresh PostgreSQL 16 database 103/103 suites (2192 passed, 1 skipped); backend mock 92/92; lint:guards,
   i18n check/parity, lint:api ok.
+
+# 2026-10-28 - VPS redeploy (pilot) at a3c96e6
+
+Deployed to the pilot VPS (https://construction-erp.theosirislabs.com, Traefik -> frontend container): 146 migrations applied (0084 included),
+`/api/health` ready, `seed:staging` + `seed:pilot-data` ran (38 accounts), owner_ceo GET /api/approvals/pending 200, procurement_manager issued a
+draft PO (200, so 0084 is live). No backup taken (no data). Two Docker test-gate defects found on the way and fixed (304ccdf, a3c96e6): two suites
+read repo-root files; a CLI `--testPathIgnorePatterns` replaces package.json's list, un-ignoring the `.pg` suites.
+`smoke:staging` ran with everything green except one step: `finance_manager` approving a three-way-matched supplier invoice got 403, because the route
+needs `procurement.approve` (not held by finance_manager). The smoke step now uses `procurement_manager`; the question of whether finance should approve
+supplier invoices is an owner decision (below). `.env.docker.example` now lists APP_ENV and WEBHOOK_ENCRYPTION_KEY, which compose requires.
+OPEN DECISION: who approves supplier invoices? Today procurement_manager / owner_ceo / coo / project_manager. Giving finance_manager the same
+`procurement.approve` would also let it approve PRs and POs (same action), so a finer split needs a code change, not just a grant.
