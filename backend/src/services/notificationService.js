@@ -2,10 +2,18 @@
 
 const crypto = require('crypto');
 const { query: defaultQuery } = require('../config/database');
+const policy = require('./policy');
 
 const CHANNELS = ['in_app', 'email', 'push', 'sms', 'whatsapp'];
 const MAX_ATTEMPTS = 5;
 const BACKOFF_BASE_SECONDS = 30;
+
+// Loaded lazily/defensively: the smtp path below is only reachable when an
+// operator has explicitly set NOTIFICATION_EMAIL_PROVIDER=smtp AND
+// NOTIFICATION_LIVE_SEND_ENABLED=true, so a missing module must not crash
+// module load for every other deployment that keeps email off (the default).
+let nodemailer = null;
+try { nodemailer = require('nodemailer'); } catch (error) { nodemailer = null; }
 
 function clientFor(opts = {}) {
   return opts.client || { query: opts.query || defaultQuery };
@@ -41,8 +49,27 @@ const inAppProvider = {
   },
 };
 
-// These providers intentionally do not send externally. They give operators a
-// truthful, visible result until a real provider and credentials are approved.
+// SMTP transport config is read from env vars only; values are never logged.
+// Existence checks only (host/from address) — the actual host/user/password
+// values never appear in a log line or thrown error message.
+function smtpTransportConfig() {
+  const port = Number(process.env.SMTP_PORT);
+  const auth = process.env.SMTP_USER
+    ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD }
+    : undefined;
+  return {
+    host: process.env.SMTP_HOST,
+    port: Number.isFinite(port) && port > 0 ? port : 587,
+    secure: process.env.SMTP_SECURE === 'true',
+    auth,
+  };
+}
+
+// These providers intentionally do not send externally by default. They give
+// operators a truthful, visible result until a real provider and credentials
+// are approved. Email gains a real SMTP adapter, but it only ever dispatches
+// when BOTH NOTIFICATION_EMAIL_PROVIDER=smtp AND NOTIFICATION_LIVE_SEND_ENABLED=true
+// are set; any other configuration keeps today's undelivered/stub behavior unchanged.
 const emailProvider = {
   async send(msg) {
     const configured = configuredProviderName('email');
@@ -52,6 +79,25 @@ const emailProvider = {
     }
     if (configured === 'smtp' && process.env.NOTIFICATION_LIVE_SEND_ENABLED !== 'true') {
       return { ok: false, status: 'undelivered', errorCode: 'live_delivery_disabled' };
+    }
+    if (configured === 'smtp' && process.env.NOTIFICATION_LIVE_SEND_ENABLED === 'true') {
+      if (!process.env.SMTP_HOST || !process.env.SMTP_FROM_ADDRESS || !nodemailer) {
+        return { ok: false, status: 'undelivered', errorCode: 'smtp_not_configured' };
+      }
+      const to = msg.user?.email;
+      if (!to) return { ok: false, status: 'undelivered', errorCode: 'recipient_email_missing' };
+      try {
+        const transport = nodemailer.createTransport(smtpTransportConfig());
+        const fromAddress = process.env.SMTP_FROM_ADDRESS;
+        const fromName = process.env.SMTP_FROM_NAME;
+        const from = fromName ? `"${fromName}" <${fromAddress}>` : fromAddress;
+        await transport.sendMail({ from, to, subject: msg.title, text: msg.body || msg.title });
+        return { ok: true, status: 'sent' };
+      } catch (error) {
+        // Do not log the error: nodemailer rejection messages can include the
+        // recipient address or server banner text.
+        return { ok: false, status: 'failed', errorCode: 'smtp_send_failed' };
+      }
     }
     return { ok: false, status: 'undelivered', errorCode: configured === 'off' ? 'provider_unconfigured' : 'provider_unavailable' };
   },
@@ -193,6 +239,18 @@ async function attemptDelivery(delivery, message, opts = {}) {
     ? Math.min(3600, BACKOFF_BASE_SECONDS * (2 ** attempts)) : null;
   const nextRetryAt = retrySeconds == null ? null : new Date(Date.now() + retrySeconds * 1000);
   const finished = await finishDelivery(delivery.id, status, errorCode, nextRetryAt, opts, result.notificationId);
+  // A genuine send attempt happened above (this path is never reached for a
+  // 'suppressed' preference-disabled delivery). Record the failure in the
+  // same transaction/client as the delivery-row update so it is atomic with it.
+  if (!sent) {
+    await policy.recordAuditEvent({
+      entity: 'notification_delivery',
+      entityId: delivery.id,
+      action: 'dispatch_failed',
+      after: { channel: delivery.channel, errorCode, attempts: finished ? finished.attempts : attempts + 1 },
+      userId: delivery.user_id,
+    }, { query: client.query.bind(client) });
+  }
   return deliveryResponse(finished);
 }
 

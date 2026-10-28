@@ -145,3 +145,34 @@ The fixture is idempotent and provisions 96 units, a 120 m3 C35 BOQ line at EGP
 Its supplier price is fictional fixture data. These values validate the demo
 chain only; the separate commercial assumptions in `GOLDEN_VALUES.md` remain
 unapproved.
+
+## Notification adapters
+
+`backend/src/services/notificationService.js` sends every channel through a
+provider keyed by `NOTIFICATION_<CHANNEL>_PROVIDER` (default `off`). Email is
+the only channel with a real adapter (SMTP, via `nodemailer`); push, sms, and
+whatsapp stay explicit stubs that always report `undelivered` until a real
+adapter and credentials are approved for them, same as email was before this
+adapter existed.
+
+Email only ever attempts a live SMTP send when **both**
+`NOTIFICATION_EMAIL_PROVIDER=smtp` **and** `NOTIFICATION_LIVE_SEND_ENABLED=true`
+are set — any other value (including the default `off`, or `smtp` alone) keeps
+today's behavior: no network call, a truthful `undelivered` status, and no
+secrets ever read into a log line. The SMTP env vars (names only — values are
+never logged or printed by this app):
+
+- `SMTP_HOST` — SMTP server hostname. Required for a live send; missing it
+  (even with the two flags above set) fails closed with `smtp_not_configured`.
+- `SMTP_PORT` — SMTP server port. Defaults to `587` if unset.
+- `SMTP_SECURE` — `"true"` to connect over implicit TLS; otherwise STARTTLS/plain
+  per the configured port.
+- `SMTP_USER` — SMTP auth username. Omit for an unauthenticated relay.
+- `SMTP_PASSWORD` — SMTP auth password, paired with `SMTP_USER`.
+- `SMTP_FROM_ADDRESS` — the `From:` address on outgoing mail. Required for a
+  live send, same fail-closed rule as `SMTP_HOST`.
+- `SMTP_FROM_NAME` — optional display name paired with `SMTP_FROM_ADDRESS`.
+
+This pilot/staging compose keeps `NOTIFICATION_LIVE_SEND_ENABLED: "false"`, so
+no SMTP env vars above need to be set here at all, and no notification email
+ever leaves this environment.
