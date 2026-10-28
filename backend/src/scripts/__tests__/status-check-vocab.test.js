@@ -28,6 +28,23 @@ const EXPECTED = {
     project_budgets: ['draft', 'approved', 'rejected'],
     organizations: ['active', 'inactive'],
   },
+  '0077_qa_hse_status_checks.sql': {
+    ncrs: ['open', 'in_progress', 'resolved', 'closed', 'verification'],
+    near_misses: ['open', 'closed'],
+    observations: ['raised', 'acknowledged', 'assigned', 'rectification_in_progress', 'submitted_for_verification', 'accepted', 'rejected', 'closed'],
+    corrective_actions: ['open', 'in_progress', 'completed', 'verified'],
+    preventive_actions: ['open', 'in_progress', 'completed', 'verified'],
+    hse_inspections: ['pending', 'passed', 'failed'],
+    jsas: ['draft', 'reviewed', 'approved', 'superseded'],
+    risk_assessments: ['draft', 'reviewed', 'approved', 'superseded'],
+    inductions: ['completed', 'pending', 'expired'],
+    incidents: ['open', 'investigating', 'closed'],
+    permits: ['draft', 'pending_approval', 'approved', 'active', 'rejected', 'suspended', 'closed', 'expired'],
+    itps: ['draft', 'active', 'archived'],
+    mock_ups: ['proposed', 'under_review', 'approved', 'rejected', 'rework'],
+    punch_items: ['open', 'assigned', 'rectified', 'verified', 'closed'],
+    wirs: ['draft', 'submitted', 'qa_qc_review', 'pm_review', 'consultant_review', 'approved', 'approved_with_comments', 'rejected'],
+  },
 };
 
 describe('G1.2 status CHECK vocabularies', () => {
