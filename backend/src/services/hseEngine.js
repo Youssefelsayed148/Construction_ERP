@@ -41,7 +41,7 @@ const PERMIT_STEP_FOR_STATE = {
 
 // Who may act at each stage — mirrors the 'permit' template resolvers.
 const PERMIT_STAGE_ROLES = {
-  hse_review: ['engineer'],
+  hse_review: ['engineer', 'hse_manager'],
   pm_approval: ['project_manager'],
 };
 
@@ -99,7 +99,7 @@ async function submitPermit(q, permitId, user) {
   if (!permit) throw svcError(404, 'record_not_found', 'Permit not found');
   if (permit.status !== 'draft') throw svcError(409, 'invalid_state', `Permit is already ${permit.status}`);
   const allowed = user.role === 'owner' || user.role === 'admin' ||
-    ['engineer', 'site_supervisor'].includes(user.role);
+    ['engineer', 'site_supervisor', 'site_manager', 'site_engineer', 'construction_manager', 'hse_manager'].includes(user.role);
   if (!allowed) throw svcError(403, 'not_authorized_for_action', 'Not authorized to submit this permit');
 
   await q(`UPDATE permits SET status = 'pending_approval', updated_at = $1 WHERE id = $2`, [new Date(), permitId]);
@@ -133,9 +133,7 @@ async function permitStageDecision(q, permitId, user, decision, { comment = null
   const step = stage === 'hse_review' ? 'hse_review' : 'pm_approval';
   const allowed = user.role === 'owner' || user.role === 'admin' || PERMIT_STAGE_ROLES[stage].includes(user.role);
   if (!allowed) {
-    const err = new Error(`Not authorized to decide the ${stage} stage`);
-    err.statusCode = 403;
-    throw err;
+    throw svcError(403, 'not_authorized_for_action', `Not authorized to decide the ${stage} stage`);
   }
 
   const now = new Date();
@@ -173,7 +171,7 @@ async function transitionPermit(q, permitId, toState, user, { comment = null } =
     throw svcError(409, 'invalid_state', `Cannot transition permit from '${permit.status}' to '${toState}'`);
   }
   const allowed = user.role === 'owner' || user.role === 'admin' ||
-    ['project_manager', 'engineer', 'site_supervisor'].includes(user.role);
+    ['project_manager', 'engineer', 'site_supervisor', 'hse_manager', 'site_manager', 'construction_manager'].includes(user.role);
   if (!allowed) throw svcError(403, 'not_authorized_for_action', 'Not authorized for this permit transition');
 
   const now = new Date();

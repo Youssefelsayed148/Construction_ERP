@@ -3222,3 +3222,10 @@ needs `procurement.approve` (not held by finance_manager). The smoke step now us
 supplier invoices is an owner decision (below). `.env.docker.example` now lists APP_ENV and WEBHOOK_ENCRYPTION_KEY, which compose requires.
 OPEN DECISION: who approves supplier invoices? Today procurement_manager / owner_ceo / coo / project_manager. Giving finance_manager the same
 `procurement.approve` would also let it approve PRs and POs (same action), so a finer split needs a code change, not just a grant.
+
+# 2026-11-02 - Live role testing and DEMO data (partial)
+
+- Harness `e2e/role-testing/` (API-only seeding as real roles; backup `test-run/pre-e2e-20261102-005336.dump`). Results: `TEST_REPORT.md`, `results.json`.
+- Seed 536 PASS / 23 FAIL / 28 FINDING; forbidden actions 105/105; value-visibility probes 180/180. Access matrix invalid (all 401) and UI pass not run - recorded NOT RUN, not claimed passed.
+- Fixes: wizard date + participant legacy ids; qaqc/hse/consultant engines accept canonical roles and throw typed errors; consultant routes accept canonical roles; migrations 0085 (quantities review/approve grants), 0086 (handover project_manager grants).
+- Gates (lint, backend suites, pg suites) were NOT run in this session; do not treat the fixes as gate-verified.

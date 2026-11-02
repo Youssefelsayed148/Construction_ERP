@@ -1,0 +1,5271 @@
+[
+ {
+  "mount": "/api/auth",
+  "method": "POST",
+  "path": "/register",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/auth",
+  "method": "POST",
+  "path": "/login",
+  "guarded": false,
+  "roles": []
+ },
+ {
+  "mount": "/api/auth",
+  "method": "GET",
+  "path": "/me",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/auth",
+  "method": "POST",
+  "path": "/change-password",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/auth",
+  "method": "POST",
+  "path": "/logout-all",
+  "guarded": false,
+  "roles": []
+ },
+ {
+  "mount": "/api/users",
+  "method": "GET",
+  "path": "/",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/users",
+  "method": "GET",
+  "path": "/preview/roles",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/users",
+  "method": "GET",
+  "path": "/preview/matrix",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/users",
+  "method": "GET",
+  "path": "/:id",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/users",
+  "method": "PUT",
+  "path": "/:id",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/users",
+  "method": "DELETE",
+  "path": "/:id",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/users",
+  "method": "POST",
+  "path": "/preview/:role",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/approvals",
+  "method": "POST",
+  "path": "/request",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/approvals",
+  "method": "GET",
+  "path": "/pending",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/approvals",
+  "method": "PUT",
+  "path": "/:id/approve",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/approvals",
+  "method": "PUT",
+  "path": "/:id/cancel",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/approvals",
+  "method": "GET",
+  "path": "/stale",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/approvals",
+  "method": "PUT",
+  "path": "/:id/reject",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/approvals",
+  "method": "GET",
+  "path": "/my-requests",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/approvals",
+  "method": "GET",
+  "path": "/audit",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/approvals",
+  "method": "GET",
+  "path": "/check/:module/:requestId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/approvals",
+  "method": "GET",
+  "path": "/:id/details",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/workflow-templates",
+  "method": "GET",
+  "path": "/",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/workflow-templates",
+  "method": "GET",
+  "path": "/:id",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/workflow-templates",
+  "method": "PUT",
+  "path": "/:id/steps/:stepId",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/workflow-templates",
+  "method": "PUT",
+  "path": "/:id",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/approval-limits",
+  "method": "GET",
+  "path": "/",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/approval-limits",
+  "method": "PUT",
+  "path": "/",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/activity",
+  "method": "GET",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/dashboard",
+  "method": "GET",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/dashboard",
+  "method": "GET",
+  "path": "/portfolio",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/dashboard",
+  "method": "GET",
+  "path": "/project/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/dashboard",
+  "method": "GET",
+  "path": "/alerts",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/dashboard",
+  "method": "GET",
+  "path": "/overview",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/dashboard",
+  "method": "GET",
+  "path": "/role",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/items",
+  "method": "GET",
+  "path": "/categories",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/items",
+  "method": "GET",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/items",
+  "method": "GET",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/items",
+  "method": "GET",
+  "path": "/:id/suppliers",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/items",
+  "method": "POST",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/items",
+  "method": "PUT",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/items",
+  "method": "DELETE",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/items",
+  "method": "POST",
+  "path": "/:id/restore",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/suppliers",
+  "method": "GET",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/suppliers",
+  "method": "GET",
+  "path": "/specialties",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/suppliers",
+  "method": "GET",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/suppliers",
+  "method": "POST",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/suppliers",
+  "method": "PUT",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/suppliers",
+  "method": "DELETE",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/suppliers",
+  "method": "POST",
+  "path": "/:id/restore",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/suppliers",
+  "method": "GET",
+  "path": "/:id/materials",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/suppliers",
+  "method": "POST",
+  "path": "/:id/materials",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/suppliers",
+  "method": "DELETE",
+  "path": "/:id/materials/:material_id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/clients",
+  "method": "GET",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/clients",
+  "method": "GET",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/clients",
+  "method": "POST",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/clients",
+  "method": "PUT",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/clients",
+  "method": "DELETE",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/legal",
+  "method": "GET",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/legal",
+  "method": "GET",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/legal",
+  "method": "POST",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/legal",
+  "method": "PUT",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/legal",
+  "method": "DELETE",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/expenses",
+  "method": "GET",
+  "path": "/categories",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/expenses",
+  "method": "GET",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/expenses",
+  "method": "GET",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/expenses",
+  "method": "POST",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/expenses",
+  "method": "PUT",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/expenses",
+  "method": "DELETE",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/invoices",
+  "method": "GET",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/invoices",
+  "method": "GET",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/invoices",
+  "method": "POST",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/invoices",
+  "method": "PUT",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/invoices",
+  "method": "DELETE",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/payments",
+  "method": "GET",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/payments",
+  "method": "POST",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/payments",
+  "method": "DELETE",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance",
+  "method": "GET",
+  "path": "/project/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance",
+  "method": "GET",
+  "path": "/summary",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/assets",
+  "method": "GET",
+  "path": "/categories",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/assets",
+  "method": "GET",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/assets",
+  "method": "GET",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/assets",
+  "method": "POST",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/assets",
+  "method": "PUT",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/assets",
+  "method": "DELETE",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/assets",
+  "method": "GET",
+  "path": "/:id/assignments",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/assets",
+  "method": "POST",
+  "path": "/:id/assignments",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/assets",
+  "method": "GET",
+  "path": "/:id/usage-logs",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/assets",
+  "method": "POST",
+  "path": "/:id/usage-logs",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/maintenance",
+  "method": "GET",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/maintenance",
+  "method": "GET",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/maintenance",
+  "method": "POST",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/maintenance",
+  "method": "PUT",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/maintenance",
+  "method": "DELETE",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hr",
+  "method": "GET",
+  "path": "/employees",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hr",
+  "method": "GET",
+  "path": "/employees/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hr",
+  "method": "POST",
+  "path": "/employees",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "hr_manager"
+  ]
+ },
+ {
+  "mount": "/api/hr",
+  "method": "PUT",
+  "path": "/employees/:id",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "hr_manager"
+  ]
+ },
+ {
+  "mount": "/api/hr",
+  "method": "DELETE",
+  "path": "/employees/:id",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/hr",
+  "method": "GET",
+  "path": "/attendance",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hr",
+  "method": "POST",
+  "path": "/attendance",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hr",
+  "method": "GET",
+  "path": "/leaves",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hr",
+  "method": "POST",
+  "path": "/leaves",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hr",
+  "method": "PUT",
+  "path": "/leaves/:id",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "hr_manager"
+  ]
+ },
+ {
+  "mount": "/api/hr",
+  "method": "GET",
+  "path": "/laborers",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hr",
+  "method": "GET",
+  "path": "/laborers/skills",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hr",
+  "method": "GET",
+  "path": "/laborers/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hr",
+  "method": "POST",
+  "path": "/laborers",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hr",
+  "method": "PUT",
+  "path": "/laborers/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hr",
+  "method": "DELETE",
+  "path": "/laborers/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hr",
+  "method": "GET",
+  "path": "/labor-payments",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hr",
+  "method": "POST",
+  "path": "/labor-payments",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hr",
+  "method": "DELETE",
+  "path": "/labor-payments/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/payroll",
+  "method": "GET",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/payroll",
+  "method": "GET",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/payroll",
+  "method": "POST",
+  "path": "/",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "finance_manager"
+  ]
+ },
+ {
+  "mount": "/api/payroll",
+  "method": "PUT",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/payroll",
+  "method": "DELETE",
+  "path": "/:id",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/projects",
+  "method": "GET",
+  "path": "/portfolio",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "GET",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "GET",
+  "path": "/templates",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "GET",
+  "path": "/templates/:key",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "POST",
+  "path": "/wizard",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "GET",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "POST",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "PUT",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "POST",
+  "path": "/:id/phases",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "PUT",
+  "path": "/:projectId/phases/:phaseId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "DELETE",
+  "path": "/:projectId/phases/:phaseId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "POST",
+  "path": "/:id/team",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "DELETE",
+  "path": "/:projectId/team/:teamId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "POST",
+  "path": "/:id/milestones",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "PUT",
+  "path": "/:projectId/milestones/:milestoneId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "DELETE",
+  "path": "/:projectId/milestones/:milestoneId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/warehouses",
+  "method": "GET",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/warehouses",
+  "method": "GET",
+  "path": "/:id/movements",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/warehouses",
+  "method": "POST",
+  "path": "/:id/movements",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/warehouses",
+  "method": "POST",
+  "path": "/movements/:id/reverse",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/warehouses",
+  "method": "POST",
+  "path": "/movements/:id/mir",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/warehouses",
+  "method": "GET",
+  "path": "/transfers",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/warehouses",
+  "method": "POST",
+  "path": "/transfers",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/warehouses",
+  "method": "PUT",
+  "path": "/transfers/:id/complete",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/warehouses",
+  "method": "GET",
+  "path": "/reservations",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/warehouses",
+  "method": "POST",
+  "path": "/reservations",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/warehouses",
+  "method": "POST",
+  "path": "/reservations/:id/release",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/warehouses",
+  "method": "POST",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/warehouses",
+  "method": "PUT",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/warehouses",
+  "method": "PUT",
+  "path": "/:id/stock/:itemId/reorder-level",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/warehouses",
+  "method": "GET",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "GET",
+  "path": "/lots/expiring",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "GET",
+  "path": "/lots",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "GET",
+  "path": "/lots/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "POST",
+  "path": "/lots",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "PUT",
+  "path": "/lots/:id/status",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "GET",
+  "path": "/conversions/convert",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "GET",
+  "path": "/conversions",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "POST",
+  "path": "/conversions",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "PUT",
+  "path": "/conversions/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "DELETE",
+  "path": "/conversions/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "GET",
+  "path": "/issues",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "GET",
+  "path": "/issues/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "POST",
+  "path": "/issues",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "PUT",
+  "path": "/issues/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "POST",
+  "path": "/issues/:id/post",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "POST",
+  "path": "/issues/:id/void",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "GET",
+  "path": "/returns",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "GET",
+  "path": "/returns/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "POST",
+  "path": "/returns",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "PUT",
+  "path": "/returns/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "POST",
+  "path": "/returns/:id/post",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "POST",
+  "path": "/returns/:id/void",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "GET",
+  "path": "/adjustments",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "GET",
+  "path": "/adjustments/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "POST",
+  "path": "/adjustments",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "PUT",
+  "path": "/adjustments/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "POST",
+  "path": "/adjustments/:id/post",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/inventory",
+  "method": "POST",
+  "path": "/adjustments/:id/void",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/boq",
+  "method": "GET",
+  "path": "/sections/:projectId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/boq",
+  "method": "POST",
+  "path": "/sections",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/boq",
+  "method": "PUT",
+  "path": "/sections/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/boq",
+  "method": "DELETE",
+  "path": "/sections/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/boq",
+  "method": "GET",
+  "path": "/items/:projectId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/boq",
+  "method": "POST",
+  "path": "/items",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/boq",
+  "method": "PUT",
+  "path": "/items/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/boq",
+  "method": "DELETE",
+  "path": "/items/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/boq",
+  "method": "GET",
+  "path": "/summary/:projectId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/work-orders",
+  "method": "GET",
+  "path": "/project/:projectId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/work-orders",
+  "method": "GET",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/work-orders",
+  "method": "POST",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/work-orders",
+  "method": "PUT",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/work-orders",
+  "method": "DELETE",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/work-orders",
+  "method": "GET",
+  "path": "/:id/materials",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/work-orders",
+  "method": "POST",
+  "path": "/:id/materials",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/work-orders",
+  "method": "GET",
+  "path": "/:id/labor",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/work-orders",
+  "method": "POST",
+  "path": "/:id/labor",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/work-orders",
+  "method": "GET",
+  "path": "/:id/equipment",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/work-orders",
+  "method": "POST",
+  "path": "/:id/equipment",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/work-orders",
+  "method": "GET",
+  "path": "/:id/completions",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/work-orders",
+  "method": "POST",
+  "path": "/:id/completions",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/work-orders",
+  "method": "PUT",
+  "path": "/:woId/completions/:compId/verify",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/subcontractors",
+  "method": "GET",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/subcontractors",
+  "method": "GET",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/subcontractors",
+  "method": "POST",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/subcontractors",
+  "method": "PUT",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/subcontractors",
+  "method": "GET",
+  "path": "/contracts/:projectId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/subcontractors",
+  "method": "POST",
+  "path": "/contracts",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/subcontractors",
+  "method": "GET",
+  "path": "/verifications",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/subcontractors",
+  "method": "GET",
+  "path": "/verifications/:contractId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/subcontractors",
+  "method": "POST",
+  "path": "/verifications",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/subcontractors",
+  "method": "PUT",
+  "path": "/verifications/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/subcontractors",
+  "method": "GET",
+  "path": "/certificates/:contractId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/subcontractors",
+  "method": "POST",
+  "path": "/certificates",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/subcontractors",
+  "method": "PUT",
+  "path": "/certificates/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/costing",
+  "method": "GET",
+  "path": "/codes",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/costing",
+  "method": "POST",
+  "path": "/codes",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/costing",
+  "method": "PUT",
+  "path": "/codes/:id",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/costing",
+  "method": "GET",
+  "path": "/project/:projectId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/costing",
+  "method": "GET",
+  "path": "/project/:projectId/summary",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/costing",
+  "method": "GET",
+  "path": "/project/:projectId/profitability",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/documents",
+  "method": "POST",
+  "path": "/upload",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "GET",
+  "path": "/:projectId/site-reports",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "GET",
+  "path": "/:projectId/site-reports/:date",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "POST",
+  "path": "/:projectId/site-reports",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "PUT",
+  "path": "/:projectId/site-reports/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "GET",
+  "path": "/:projectId/instructions",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "POST",
+  "path": "/:projectId/instructions",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "PUT",
+  "path": "/:projectId/instructions/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "POST",
+  "path": "/:projectId/instructions/:id/:action(acknowledge|implement|close)",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "GET",
+  "path": "/:projectId/site-visits",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "POST",
+  "path": "/:projectId/site-visits",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "PUT",
+  "path": "/:projectId/site-visits/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "DELETE",
+  "path": "/:projectId/site-visits/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "GET",
+  "path": "/:projectId/workspace",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "POST",
+  "path": "/:projectId/site-reports/assemble",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "POST",
+  "path": "/:projectId/photos",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "GET",
+  "path": "/:projectId/photos",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "GET",
+  "path": "/:projectId/sticky-notes",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "POST",
+  "path": "/:projectId/sticky-notes",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "POST",
+  "path": "/:projectId/sticky-notes/:id/convert-to-action",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "GET",
+  "path": "/:id/settings",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "PUT",
+  "path": "/:id/settings",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "GET",
+  "path": "/:id/calendars",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "POST",
+  "path": "/:id/calendars",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "PUT",
+  "path": "/:id/calendars/:calendarId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "DELETE",
+  "path": "/:id/calendars/:calendarId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "GET",
+  "path": "/:id/wbs",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "POST",
+  "path": "/:id/wbs",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "PUT",
+  "path": "/:id/wbs/:nodeId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "DELETE",
+  "path": "/:id/wbs/:nodeId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "GET",
+  "path": "/:id/work-packages",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "POST",
+  "path": "/:id/work-packages",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "PUT",
+  "path": "/:id/work-packages/:workPackageId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/projects",
+  "method": "DELETE",
+  "path": "/:id/work-packages/:workPackageId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/quality-tests",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/quality-tests",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "PUT",
+  "path": "/quality-tests/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "DELETE",
+  "path": "/quality-tests/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/ncrs",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/ncrs",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/ncrs/:id/status",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "PUT",
+  "path": "/ncrs/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/inspections",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/inspections",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "PUT",
+  "path": "/inspections/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/incidents",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/incidents",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "PUT",
+  "path": "/incidents/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/itps",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/itps/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/itps",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/itps/:id/points",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "PUT",
+  "path": "/itps/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/itps/:id/pdf",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/wirs",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/wirs/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/wirs",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/wirs/:id/submit",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/wirs/:id/decision",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/wirs/:id/result",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/wirs/:id/pdf",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/checklists/templates",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/checklists/templates",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/checklists/instances",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/checklists/instances",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "PUT",
+  "path": "/checklists/instances/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/checklists/instances/:id/pdf",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/actions",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/actions",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/actions/:id/status",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/actions/:id/pdf",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/mock-ups",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/mock-ups",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/mock-ups/:id/status",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/calibration-records",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/calibration-records",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/punch-items",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/punch-items",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/punch-items/:id/status",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/punch-items/pdf",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/ncrs/:id/verify",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/ncrs/:id/pdf",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/quality-tests/:id/pdf",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/certificates",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/certificates",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "PUT",
+  "path": "/certificates/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "GET",
+  "path": "/mirs",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "PUT",
+  "path": "/mirs/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/mirs/:id/workflow",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/qhse",
+  "method": "POST",
+  "path": "/mirs/:id/workflow/decision",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "GET",
+  "path": "/dashboard",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "GET",
+  "path": "/incidents",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "POST",
+  "path": "/incidents",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "PUT",
+  "path": "/incidents/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "POST",
+  "path": "/incidents/:id/status",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "GET",
+  "path": "/incidents/:id/pdf",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "GET",
+  "path": "/inspections",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "POST",
+  "path": "/inspections",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "PUT",
+  "path": "/inspections/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "GET",
+  "path": "/inspections/:id/pdf",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "GET",
+  "path": "/permits",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "POST",
+  "path": "/permits",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "POST",
+  "path": "/permits/:id/submit",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "POST",
+  "path": "/permits/:id/decision",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "POST",
+  "path": "/permits/:id/status",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "GET",
+  "path": "/permits/:id/pdf",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "GET",
+  "path": "/jsas",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "POST",
+  "path": "/jsas",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "POST",
+  "path": "/jsas/:id/status",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "GET",
+  "path": "/jsas/:id/pdf",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "GET",
+  "path": "/risk-assessments",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "POST",
+  "path": "/risk-assessments",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "POST",
+  "path": "/risk-assessments/:id/status",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "GET",
+  "path": "/risk-assessments/:id/pdf",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "GET",
+  "path": "/inductions",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "POST",
+  "path": "/inductions",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "GET",
+  "path": "/toolbox-talks",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "POST",
+  "path": "/toolbox-talks",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "GET",
+  "path": "/near-misses",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "POST",
+  "path": "/near-misses",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "POST",
+  "path": "/near-misses/:id/status",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "GET",
+  "path": "/near-misses/:id/pdf",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "GET",
+  "path": "/ppe-records",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "POST",
+  "path": "/ppe-records",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "GET",
+  "path": "/equipment-inspections",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "POST",
+  "path": "/equipment-inspections",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "GET",
+  "path": "/emergency-drills",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/hse",
+  "method": "POST",
+  "path": "/emergency-drills",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "GET",
+  "path": "/resource-load",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "GET",
+  "path": "/calendars",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "POST",
+  "path": "/calendars",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "GET",
+  "path": "/activities",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "GET",
+  "path": "/activities/export",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "GET",
+  "path": "/activities/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "POST",
+  "path": "/activities",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "PUT",
+  "path": "/activities/:id/budgeted-cost",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "project_manager",
+   "planning_engineer",
+   "projects_director",
+   "construction_manager",
+   "site_manager",
+   "site_engineer"
+  ]
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "PUT",
+  "path": "/activities/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "DELETE",
+  "path": "/activities/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "POST",
+  "path": "/activities/:id/progress",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "project_manager",
+   "planning_engineer"
+  ]
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "GET",
+  "path": "/activities/:id/progress-history",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "GET",
+  "path": "/resources",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "GET",
+  "path": "/activities/:id/assignments",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "POST",
+  "path": "/activities/:id/assignments",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "project_manager",
+   "planning_engineer"
+  ]
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "PUT",
+  "path": "/assignments/:id/status",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "project_manager",
+   "planning_engineer",
+   "projects_director",
+   "construction_manager",
+   "site_manager",
+   "site_engineer"
+  ]
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "GET",
+  "path": "/relationships",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "POST",
+  "path": "/relationships",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "DELETE",
+  "path": "/relationships/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "GET",
+  "path": "/schedule/cpm",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "GET",
+  "path": "/schedule/lookahead",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "GET",
+  "path": "/schedule/delayed",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "GET",
+  "path": "/schedule/kpis",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "GET",
+  "path": "/schedule/s-curve",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "GET",
+  "path": "/schedule/alerts",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "GET",
+  "path": "/schedule/milestones",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "POST",
+  "path": "/schedule/milestones/:id/link",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "GET",
+  "path": "/baselines",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "POST",
+  "path": "/baselines",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/schedule",
+  "method": "POST",
+  "path": "/activities/import",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "project_manager",
+   "planning_engineer"
+  ]
+ },
+ {
+  "mount": "/api/reports",
+  "method": "GET",
+  "path": "/catalog",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/reports",
+  "method": "GET",
+  "path": "/data/:reportKey",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/reports",
+  "method": "GET",
+  "path": "/export/:reportKey",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/reports",
+  "method": "GET",
+  "path": "/saved-views",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/reports",
+  "method": "POST",
+  "path": "/saved-views",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/reports",
+  "method": "DELETE",
+  "path": "/saved-views/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/reports",
+  "method": "GET",
+  "path": "/scheduled",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/reports",
+  "method": "POST",
+  "path": "/scheduled",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/reports",
+  "method": "DELETE",
+  "path": "/scheduled/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/reports",
+  "method": "GET",
+  "path": "/project-report/:projectId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/reports",
+  "method": "GET",
+  "path": "/project-report/:projectId/pdf",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/handover",
+  "method": "GET",
+  "path": "/process/:projectId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/handover",
+  "method": "POST",
+  "path": "/process/:projectId/start",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/handover",
+  "method": "POST",
+  "path": "/process/:id/transition",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "project_manager"
+  ]
+ },
+ {
+  "mount": "/api/handover",
+  "method": "GET",
+  "path": "/package/:projectId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/handover",
+  "method": "POST",
+  "path": "/package/:projectId/items",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/handover",
+  "method": "PUT",
+  "path": "/package/items/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/handover",
+  "method": "POST",
+  "path": "/package/items/:id/verify",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "project_manager",
+   "consultant"
+  ]
+ },
+ {
+  "mount": "/api/handover",
+  "method": "GET",
+  "path": "/assets",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/handover",
+  "method": "POST",
+  "path": "/assets",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/handover",
+  "method": "GET",
+  "path": "/assets/:id/documents",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/handover",
+  "method": "POST",
+  "path": "/assets/:id/documents",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/handover",
+  "method": "GET",
+  "path": "/warranties",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/handover",
+  "method": "POST",
+  "path": "/warranties",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/handover",
+  "method": "PUT",
+  "path": "/warranties/:id/status",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/handover",
+  "method": "GET",
+  "path": "/claims",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/handover",
+  "method": "POST",
+  "path": "/claims",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/handover",
+  "method": "POST",
+  "path": "/claims/:id/status",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "project_manager",
+   "consultant",
+   "client"
+  ]
+ },
+ {
+  "mount": "/api/handover",
+  "method": "GET",
+  "path": "/claims/:id/sla",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/handover",
+  "method": "GET",
+  "path": "/checklist/:projectId/pdf",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/handover",
+  "method": "GET",
+  "path": "/assets/:projectId/pdf",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/handover",
+  "method": "GET",
+  "path": "/warranty-register/:projectId/pdf",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/handover",
+  "method": "GET",
+  "path": "/certificate/:projectId/pdf",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "GET",
+  "path": "/categories",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "POST",
+  "path": "/categories",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "GET",
+  "path": "/documents",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "GET",
+  "path": "/documents/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "POST",
+  "path": "/documents",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "POST",
+  "path": "/documents/:id/versions",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "PUT",
+  "path": "/documents/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "POST",
+  "path": "/documents/:id/submit",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "POST",
+  "path": "/documents/:id/:action(approve|reject)",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "DELETE",
+  "path": "/documents/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "GET",
+  "path": "/rfis",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "POST",
+  "path": "/rfis",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "POST",
+  "path": "/rfis/:id/respond",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "POST",
+  "path": "/rfis/:id/close",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "GET",
+  "path": "/submittals",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "POST",
+  "path": "/submittals",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "POST",
+  "path": "/submittals/:id/respond",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "GET",
+  "path": "/registers",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "POST",
+  "path": "/documents/:id/register",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "POST",
+  "path": "/documents/:id/supersede",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "GET",
+  "path": "/documents/:id/revisions",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "GET",
+  "path": "/transmittal-recipients",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "GET",
+  "path": "/transmittals",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "POST",
+  "path": "/transmittals",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "GET",
+  "path": "/transmittals/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "POST",
+  "path": "/transmittals/:id/items",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "POST",
+  "path": "/transmittals/:id/status",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "GET",
+  "path": "/transmittals/:id/pdf",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "GET",
+  "path": "/correspondence",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "POST",
+  "path": "/correspondence",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "GET",
+  "path": "/correspondence/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "POST",
+  "path": "/correspondence/:id/status",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "POST",
+  "path": "/correspondence/:id/amend",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "GET",
+  "path": "/correspondence/:id/pdf",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "GET",
+  "path": "/numbering/:project_id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "PUT",
+  "path": "/numbering/:project_id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/docs",
+  "method": "GET",
+  "path": "/search",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/sales",
+  "method": "GET",
+  "path": "/buildings",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/sales",
+  "method": "POST",
+  "path": "/buildings",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/sales",
+  "method": "PUT",
+  "path": "/buildings/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/sales",
+  "method": "DELETE",
+  "path": "/buildings/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/sales",
+  "method": "GET",
+  "path": "/buildings/:buildingId/units",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/sales",
+  "method": "POST",
+  "path": "/buildings/:buildingId/units",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/sales",
+  "method": "POST",
+  "path": "/buildings/:buildingId/bulk-units",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/sales",
+  "method": "PUT",
+  "path": "/units/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/sales",
+  "method": "POST",
+  "path": "/units/:id/status",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/sales",
+  "method": "DELETE",
+  "path": "/units/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/sales",
+  "method": "GET",
+  "path": "/summary",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/actions",
+  "method": "GET",
+  "path": "/:id/comments",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/actions",
+  "method": "POST",
+  "path": "/:id/comments",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/actions",
+  "method": "GET",
+  "path": "/my",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/actions",
+  "method": "POST",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/actions",
+  "method": "POST",
+  "path": "/:id/acknowledge",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/actions",
+  "method": "POST",
+  "path": "/:id/complete",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/actions",
+  "method": "POST",
+  "path": "/:id/delegate",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/notifications",
+  "method": "GET",
+  "path": "/rules",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/notifications",
+  "method": "GET",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/notifications",
+  "method": "POST",
+  "path": "/:id/read",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/notifications",
+  "method": "GET",
+  "path": "/deliveries",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/notifications",
+  "method": "POST",
+  "path": "/deliveries/:id/retry",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/notifications",
+  "method": "GET",
+  "path": "/preferences",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/notifications",
+  "method": "PUT",
+  "path": "/preferences",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/locations",
+  "method": "GET",
+  "path": "/project/:projectId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/locations",
+  "method": "GET",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/locations",
+  "method": "POST",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/locations",
+  "method": "PUT",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/locations",
+  "method": "DELETE",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/quantities",
+  "method": "GET",
+  "path": "/allocations/:boqItemId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/quantities",
+  "method": "POST",
+  "path": "/allocations",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/quantities",
+  "method": "PUT",
+  "path": "/allocations/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/quantities",
+  "method": "GET",
+  "path": "/measurements",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/quantities",
+  "method": "POST",
+  "path": "/measurements",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/quantities",
+  "method": "POST",
+  "path": "/measurements/:id/review",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/quantities",
+  "method": "GET",
+  "path": "/progress/project/:projectId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/quantities",
+  "method": "GET",
+  "path": "/progress/location/:locationId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/quantities",
+  "method": "GET",
+  "path": "/locations/:locationId/dashboard",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/materials",
+  "method": "GET",
+  "path": "/recipes",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/materials",
+  "method": "GET",
+  "path": "/recipes/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/materials",
+  "method": "POST",
+  "path": "/recipes",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/materials",
+  "method": "PUT",
+  "path": "/recipes/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/materials",
+  "method": "POST",
+  "path": "/recipes/:id/lines",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/materials",
+  "method": "DELETE",
+  "path": "/recipes/:id/lines/:lineId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/materials",
+  "method": "GET",
+  "path": "/requirements",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/materials",
+  "method": "GET",
+  "path": "/replenishment/alerts",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/materials",
+  "method": "GET",
+  "path": "/replenishment/policies",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/materials",
+  "method": "PUT",
+  "path": "/replenishment/policies",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/materials",
+  "method": "DELETE",
+  "path": "/replenishment/policies",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/materials",
+  "method": "POST",
+  "path": "/replenishment/sweep",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/materials",
+  "method": "GET",
+  "path": "/replenishment/open-requirements",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "GET",
+  "path": "/project/:projectId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/pr",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/pr/:id/submit",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/pr/:id/decide",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/rfq",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/rfq/:id/vendors",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/rfq/:id/quotations",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "GET",
+  "path": "/rfq/:id/comparison",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "GET",
+  "path": "/rfq/:id/quotations/vendor/:supplierId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/rfq/:id/award",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "GET",
+  "path": "/rfq",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "GET",
+  "path": "/rfq/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "GET",
+  "path": "/award-recommendations",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "GET",
+  "path": "/award-recommendations/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/rfq/:id/award-recommendations",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/award-recommendations/:id/submit",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/award-recommendations/:id/decide",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/award-recommendations/:id/withdraw",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "GET",
+  "path": "/invoices/:id/workflow",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "GET",
+  "path": "/invoices",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/invoices/:id/workflow/start",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/invoices/:id/workflow/decide",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "GET",
+  "path": "/pr/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "PUT",
+  "path": "/pr/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/pr/:id/cancel",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "GET",
+  "path": "/po/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "PUT",
+  "path": "/po/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/po/:id/cancel",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "GET",
+  "path": "/analytics/spend",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "GET",
+  "path": "/analytics/vendor-performance",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/po",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/po/:id/issue",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/po/:id/decide",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/deliveries",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/deliveries/:id/mir",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/mir/:id/decide",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/mir/:id/supplier-collection",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/mir/:id/grn",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/grn/:id/returns",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/invoices",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "POST",
+  "path": "/invoices/:id/approve",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "GET",
+  "path": "/documents/pr/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "GET",
+  "path": "/documents/po/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "GET",
+  "path": "/documents/grn/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/procurement",
+  "method": "GET",
+  "path": "/documents/:kind/:id",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "purchasing_mgr",
+   "project_manager"
+  ]
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "GET",
+  "path": "/contracts/:projectId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/contracts",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "PUT",
+  "path": "/contracts/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "GET",
+  "path": "/variations/:projectId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/variations",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/variations/:id/start",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/variations/:id/decide",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "GET",
+  "path": "/project/:projectId/commercial",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "GET",
+  "path": "/project/:projectId/legacy-snapshots",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "PUT",
+  "path": "/variations/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "GET",
+  "path": "/contracts/:contractId/parties",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/contracts/:contractId/parties",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "GET",
+  "path": "/subcontracts/:contractId/parties",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/subcontracts/:contractId/parties",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "PUT",
+  "path": "/parties/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "GET",
+  "path": "/guarantees",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/guarantees",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "GET",
+  "path": "/guarantees/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "PUT",
+  "path": "/guarantees/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/guarantees/:id/close",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "GET",
+  "path": "/insurances",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/insurances",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "GET",
+  "path": "/insurances/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "PUT",
+  "path": "/insurances/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/insurances/:id/cancel",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "GET",
+  "path": "/currency-rates/convert",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "GET",
+  "path": "/currency-rates",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/currency-rates",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "GET",
+  "path": "/payment-applications",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/payment-applications",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "GET",
+  "path": "/payment-applications/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/payment-applications/:id/submit",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/payment-applications/:id/certify",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/payment-applications/:id/reject",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/payment-applications/:id/withdraw",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "GET",
+  "path": "/payment-certificates",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/payment-certificates/:id/start",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/payment-certificates/:id/decide",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/payment-certificates/:id/void",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "finance_manager"
+  ]
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "GET",
+  "path": "/project/:projectId/budget-versions",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/budget-versions",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "GET",
+  "path": "/budget-versions/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "PUT",
+  "path": "/budget-versions/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/budget-versions/:id/submit",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/budget-versions/:id/decide",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "GET",
+  "path": "/project/:projectId/forecast-versions",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/forecast-versions",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "GET",
+  "path": "/forecast-versions/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/forecast-versions/:id/approve",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "GET",
+  "path": "/project/:projectId/commitments",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "GET",
+  "path": "/commitments/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/commercial",
+  "method": "POST",
+  "path": "/commitments/:id/adjust",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "POST",
+  "path": "/valuations",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "POST",
+  "path": "/invoices/:id/transition",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "POST",
+  "path": "/payments/:id/allocate",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "POST",
+  "path": "/retention",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "GET",
+  "path": "/retention/releases",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "POST",
+  "path": "/retention/releases",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "POST",
+  "path": "/retention/releases/:id/void",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "GET",
+  "path": "/retention",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "GET",
+  "path": "/ap-review",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "POST",
+  "path": "/ap-review/:id/resolve",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "GET",
+  "path": "/cash-flow",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "GET",
+  "path": "/company-dashboard",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "GET",
+  "path": "/tax-codes",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "GET",
+  "path": "/audit/:entityType/:entityId",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "GET",
+  "path": "/credit-notes",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "POST",
+  "path": "/credit-notes",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "GET",
+  "path": "/credit-notes/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "POST",
+  "path": "/credit-notes/:id/issue",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "POST",
+  "path": "/credit-notes/:id/void",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "GET",
+  "path": "/payment-batches",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "POST",
+  "path": "/payment-batches",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "GET",
+  "path": "/payment-batches/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "POST",
+  "path": "/payment-batches/:id/submit",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "POST",
+  "path": "/payment-batches/:id/approve",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "POST",
+  "path": "/payment-batches/:id/release",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "POST",
+  "path": "/payment-batches/:id/cancel",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "GET",
+  "path": "/account-mappings/",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "PUT",
+  "path": "/account-mappings/:key",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/finance-ledger",
+  "method": "POST",
+  "path": "/account-mappings/:key/confirm",
+  "guarded": true,
+  "roles": [
+   "owner"
+  ]
+ },
+ {
+  "mount": "/api/consultant",
+  "method": "GET",
+  "path": "/projects",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/consultant",
+  "method": "GET",
+  "path": "/dashboard",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/consultant",
+  "method": "GET",
+  "path": "/reviews",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/consultant",
+  "method": "POST",
+  "path": "/wirs/:id/result",
+  "guarded": true,
+  "roles": [
+   "consultant"
+  ]
+ },
+ {
+  "mount": "/api/consultant",
+  "method": "POST",
+  "path": "/variations/:id/recommendation",
+  "guarded": true,
+  "roles": [
+   "consultant"
+  ]
+ },
+ {
+  "mount": "/api/consultant",
+  "method": "POST",
+  "path": "/payment-certificates/:id/recommendation",
+  "guarded": true,
+  "roles": [
+   "consultant"
+  ]
+ },
+ {
+  "mount": "/api/consultant",
+  "method": "POST",
+  "path": "/instructions/:id/recommendation",
+  "guarded": true,
+  "roles": [
+   "consultant"
+  ]
+ },
+ {
+  "mount": "/api/consultant",
+  "method": "POST",
+  "path": "/observations",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/consultant",
+  "method": "POST",
+  "path": "/observations/:id/comments",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/consultant",
+  "method": "POST",
+  "path": "/observations/:id/advance",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/consultant",
+  "method": "GET",
+  "path": "/rfis/:id/responses",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/consultant",
+  "method": "GET",
+  "path": "/submittals/:id/revisions",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/consultant",
+  "method": "POST",
+  "path": "/rfis/:id/response",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/consultant",
+  "method": "POST",
+  "path": "/rfis/:id/close",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/consultant",
+  "method": "POST",
+  "path": "/submittals/:id/response",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/client-portal",
+  "method": "GET",
+  "path": "/projects",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/client-portal",
+  "method": "GET",
+  "path": "/portfolio",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/client-portal",
+  "method": "GET",
+  "path": "/dashboard",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/client-portal",
+  "method": "GET",
+  "path": "/action-center",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/client-portal",
+  "method": "POST",
+  "path": "/variations/:id/response",
+  "guarded": true,
+  "roles": [
+   "client"
+  ]
+ },
+ {
+  "mount": "/api/client-portal",
+  "method": "POST",
+  "path": "/documents/:id/acknowledgement",
+  "guarded": true,
+  "roles": [
+   "client"
+  ]
+ },
+ {
+  "mount": "/api/client-portal",
+  "method": "POST",
+  "path": "/preview",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "project_manager"
+  ]
+ },
+ {
+  "mount": "/api/portal",
+  "method": "GET",
+  "path": "/subcontractor/dashboard",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/portal",
+  "method": "GET",
+  "path": "/subcontractor/contracts/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/portal",
+  "method": "POST",
+  "path": "/subcontractor/contracts/:id/acknowledge",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/portal",
+  "method": "POST",
+  "path": "/subcontractor/instructions/:id/acknowledge",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/portal",
+  "method": "POST",
+  "path": "/subcontractor/quantities",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/portal",
+  "method": "POST",
+  "path": "/subcontractor/payment-applications",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/portal",
+  "method": "POST",
+  "path": "/subcontractor/rfis",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/portal",
+  "method": "POST",
+  "path": "/subcontractor/submittals",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/portal",
+  "method": "POST",
+  "path": "/subcontractor/rfis/:id/acknowledge",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/portal",
+  "method": "POST",
+  "path": "/subcontractor/submittals/:id/resubmit",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/portal",
+  "method": "GET",
+  "path": "/subcontractor/submissions",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/portal",
+  "method": "POST",
+  "path": "/subcontractor/submissions/:kind",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/portal",
+  "method": "GET",
+  "path": "/supplier/dashboard",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/portal",
+  "method": "GET",
+  "path": "/supplier/rfqs/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/portal",
+  "method": "GET",
+  "path": "/supplier/purchase-orders/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/portal",
+  "method": "POST",
+  "path": "/supplier/rfqs/:id/quotations",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/portal",
+  "method": "POST",
+  "path": "/supplier/rfqs/:id/clarifications",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/portal",
+  "method": "POST",
+  "path": "/supplier/purchase-orders/:id/acknowledge",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/portal",
+  "method": "POST",
+  "path": "/supplier/purchase-orders/:id/propose-delivery",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/portal",
+  "method": "POST",
+  "path": "/supplier/deliveries/:id/certificates",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/portal",
+  "method": "POST",
+  "path": "/supplier/invoices",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "GET",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "POST",
+  "path": "/",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "owner_ceo",
+   "coo"
+  ]
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "PUT",
+  "path": "/:id",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "owner_ceo",
+   "coo"
+  ]
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "POST",
+  "path": "/:id/deactivate",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "owner_ceo",
+   "coo"
+  ]
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "GET",
+  "path": "/company",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "POST",
+  "path": "/company",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "GET",
+  "path": "/departments",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "POST",
+  "path": "/departments",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "owner_ceo",
+   "coo",
+   "hr_manager"
+  ]
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "PUT",
+  "path": "/departments/:id",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "owner_ceo",
+   "coo",
+   "hr_manager"
+  ]
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "GET",
+  "path": "/job-positions",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "POST",
+  "path": "/job-positions",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "owner_ceo",
+   "coo",
+   "hr_manager"
+  ]
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "PUT",
+  "path": "/job-positions/:id",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "owner_ceo",
+   "coo",
+   "hr_manager"
+  ]
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "GET",
+  "path": "/qualifications",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "POST",
+  "path": "/qualifications",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "DELETE",
+  "path": "/qualifications/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "GET",
+  "path": "/bank-accounts",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "POST",
+  "path": "/bank-accounts",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "owner_ceo",
+   "coo",
+   "finance_manager",
+   "accountant_ap"
+  ]
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "PUT",
+  "path": "/bank-accounts/:id",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "owner_ceo",
+   "coo",
+   "finance_manager",
+   "accountant_ap"
+  ]
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "POST",
+  "path": "/bank-accounts/:id/make-primary",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "owner_ceo",
+   "coo",
+   "finance_manager",
+   "accountant_ap"
+  ]
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "GET",
+  "path": "/performance-scores",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "POST",
+  "path": "/performance-scores",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "owner_ceo",
+   "coo",
+   "commercial_manager"
+  ]
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "GET",
+  "path": "/team",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "GET",
+  "path": "/:id",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "POST",
+  "path": "/team",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "owner_ceo",
+   "coo",
+   "projects_director",
+   "project_manager",
+   "construction_manager",
+   "hr_manager"
+  ]
+ },
+ {
+  "mount": "/api/organizations",
+  "method": "DELETE",
+  "path": "/team/:userProjectRoleId",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "owner_ceo",
+   "coo",
+   "projects_director",
+   "project_manager",
+   "construction_manager",
+   "hr_manager"
+  ]
+ },
+ {
+  "mount": "/api/delegations",
+  "method": "GET",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/delegations",
+  "method": "POST",
+  "path": "/",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "owner_ceo",
+   "coo"
+  ]
+ },
+ {
+  "mount": "/api/delegations",
+  "method": "POST",
+  "path": "/:id/deactivate",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/delegations",
+  "method": "POST",
+  "path": "/lookup",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/team",
+  "method": "GET",
+  "path": "/",
+  "guarded": true,
+  "roles": []
+ },
+ {
+  "mount": "/api/team",
+  "method": "POST",
+  "path": "/",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "owner_ceo",
+   "coo",
+   "projects_director",
+   "project_manager",
+   "construction_manager",
+   "hr_manager"
+  ]
+ },
+ {
+  "mount": "/api/team",
+  "method": "DELETE",
+  "path": "/:userProjectRoleId",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "owner_ceo",
+   "coo",
+   "projects_director",
+   "project_manager",
+   "construction_manager",
+   "hr_manager"
+  ]
+ },
+ {
+  "mount": "/api/mcp",
+  "method": "POST",
+  "path": "/",
+  "guarded": false,
+  "roles": []
+ },
+ {
+  "mount": "/api/mcp",
+  "method": "GET",
+  "path": "/",
+  "guarded": false,
+  "roles": []
+ },
+ {
+  "mount": "/api/agent",
+  "method": "GET",
+  "path": "/tokens",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/agent",
+  "method": "POST",
+  "path": "/tokens",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/agent",
+  "method": "POST",
+  "path": "/tokens/:id/revoke",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/agent",
+  "method": "GET",
+  "path": "/sessions",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/agent",
+  "method": "POST",
+  "path": "/sessions/:id/status",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/agent",
+  "method": "GET",
+  "path": "/activity",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin"
+  ]
+ },
+ {
+  "mount": "/api/agent",
+  "method": "GET",
+  "path": "/requests",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "finance_manager"
+  ]
+ },
+ {
+  "mount": "/api/agent",
+  "method": "POST",
+  "path": "/requests/:id/decision",
+  "guarded": true,
+  "roles": [
+   "owner",
+   "admin",
+   "finance_manager"
+  ]
+ }
+]

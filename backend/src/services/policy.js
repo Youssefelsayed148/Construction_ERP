@@ -280,6 +280,8 @@ const ACTION_OVERRIDES = Object.freeze([
   ['subcontractors', 'PUT', /^\/certificates\/:id$/, 'approve'],
   ['work-orders', 'PUT', /^\/:woId\/completions\/:compId\/verify$/, 'approve'],
   ['reports', 'GET', /^\/export\//, 'export'],
+  // Reviewing (approving / rejecting) a measurement is not the same permission as recording one.
+  ['quantities', 'POST', /^\/measurements\/:id\/review$/, 'approve'],
 ]);
 
 function routePathOf(req) {

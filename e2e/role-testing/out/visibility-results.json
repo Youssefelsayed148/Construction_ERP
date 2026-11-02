@@ -1,0 +1,1802 @@
+[
+ {
+  "role": "owner_ceo",
+  "account": "owner_ceo",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "owner_ceo",
+  "account": "owner_ceo",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "owner_ceo",
+  "account": "owner_ceo",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "owner_ceo",
+  "account": "owner_ceo",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "owner_ceo",
+  "account": "owner_ceo",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "coo",
+  "account": "coo",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "coo",
+  "account": "coo",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "coo",
+  "account": "coo",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "coo",
+  "account": "coo",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "coo",
+  "account": "coo",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "projects_director",
+  "account": "projects_director",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "projects_director",
+  "account": "projects_director",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "projects_director",
+  "account": "projects_director",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "projects_director",
+  "account": "projects_director",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "projects_director",
+  "account": "projects_director",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "construction_manager",
+  "account": "construction_manager",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "construction_manager",
+  "account": "construction_manager",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "construction_manager",
+  "account": "construction_manager",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "construction_manager",
+  "account": "construction_manager",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "construction_manager",
+  "account": "construction_manager",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "project_manager",
+  "account": "project_manager",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "project_manager",
+  "account": "project_manager",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "project_manager",
+  "account": "project_manager",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "project_manager",
+  "account": "project_manager",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "project_manager",
+  "account": "project_manager",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "site_manager",
+  "account": "site_manager",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "site_manager",
+  "account": "site_manager",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "site_manager",
+  "account": "site_manager",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "site_manager",
+  "account": "site_manager",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "site_manager",
+  "account": "site_manager",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "site_engineer",
+  "account": "site_engineer",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "site_engineer",
+  "account": "site_engineer",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "site_engineer",
+  "account": "site_engineer",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "site_engineer",
+  "account": "site_engineer",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "site_engineer",
+  "account": "site_engineer",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "planning_engineer",
+  "account": "planning_engineer",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "planning_engineer",
+  "account": "planning_engineer",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "planning_engineer",
+  "account": "planning_engineer",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "planning_engineer",
+  "account": "planning_engineer",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "planning_engineer",
+  "account": "planning_engineer",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "technical_office_engineer",
+  "account": "technical_office_engineer",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "technical_office_engineer",
+  "account": "technical_office_engineer",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "technical_office_engineer",
+  "account": "technical_office_engineer",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "technical_office_engineer",
+  "account": "technical_office_engineer",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "technical_office_engineer",
+  "account": "technical_office_engineer",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "quantity_surveyor",
+  "account": "quantity_surveyor",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "quantity_surveyor",
+  "account": "quantity_surveyor",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "quantity_surveyor",
+  "account": "quantity_surveyor",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "quantity_surveyor",
+  "account": "quantity_surveyor",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "quantity_surveyor",
+  "account": "quantity_surveyor",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "commercial_manager",
+  "account": "commercial_manager",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "commercial_manager",
+  "account": "commercial_manager",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "commercial_manager",
+  "account": "commercial_manager",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "commercial_manager",
+  "account": "commercial_manager",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "commercial_manager",
+  "account": "commercial_manager",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "contracts_manager",
+  "account": "contracts_manager",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "contracts_manager",
+  "account": "contracts_manager",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "contracts_manager",
+  "account": "contracts_manager",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "contracts_manager",
+  "account": "contracts_manager",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "contracts_manager",
+  "account": "contracts_manager",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "procurement_manager",
+  "account": "procurement_manager",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "procurement_manager",
+  "account": "procurement_manager",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "procurement_manager",
+  "account": "procurement_manager",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "procurement_manager",
+  "account": "procurement_manager",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "procurement_manager",
+  "account": "procurement_manager",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "procurement_officer",
+  "account": "procurement_officer",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "procurement_officer",
+  "account": "procurement_officer",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "procurement_officer",
+  "account": "procurement_officer",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "procurement_officer",
+  "account": "procurement_officer",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "procurement_officer",
+  "account": "procurement_officer",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "finance_manager",
+  "account": "finance_manager",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "finance_manager",
+  "account": "finance_manager",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "finance_manager",
+  "account": "finance_manager",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "finance_manager",
+  "account": "finance_manager",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "finance_manager",
+  "account": "finance_manager",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "accountant_ar",
+  "account": "accountant_ar",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "accountant_ar",
+  "account": "accountant_ar",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "accountant_ar",
+  "account": "accountant_ar",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "accountant_ar",
+  "account": "accountant_ar",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "accountant_ar",
+  "account": "accountant_ar",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "accountant_ap",
+  "account": "accountant_ap",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "accountant_ap",
+  "account": "accountant_ap",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "accountant_ap",
+  "account": "accountant_ap",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "accountant_ap",
+  "account": "accountant_ap",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "accountant_ap",
+  "account": "accountant_ap",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "storekeeper",
+  "account": "storekeeper",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "storekeeper",
+  "account": "storekeeper",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "storekeeper",
+  "account": "storekeeper",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "storekeeper",
+  "account": "storekeeper",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "storekeeper",
+  "account": "storekeeper",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "qa_qc_manager",
+  "account": "qa_qc_manager",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "qa_qc_manager",
+  "account": "qa_qc_manager",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "qa_qc_manager",
+  "account": "qa_qc_manager",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "qa_qc_manager",
+  "account": "qa_qc_manager",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "qa_qc_manager",
+  "account": "qa_qc_manager",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "hse_manager",
+  "account": "hse_manager",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "hse_manager",
+  "account": "hse_manager",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "hse_manager",
+  "account": "hse_manager",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "hse_manager",
+  "account": "hse_manager",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "hse_manager",
+  "account": "hse_manager",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "document_controller",
+  "account": "document_controller",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "document_controller",
+  "account": "document_controller",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "document_controller",
+  "account": "document_controller",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "document_controller",
+  "account": "document_controller",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "document_controller",
+  "account": "document_controller",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "equipment_manager",
+  "account": "equipment_manager",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "equipment_manager",
+  "account": "equipment_manager",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "equipment_manager",
+  "account": "equipment_manager",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "equipment_manager",
+  "account": "equipment_manager",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "equipment_manager",
+  "account": "equipment_manager",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "hr_manager",
+  "account": "hr_manager",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "hr_manager",
+  "account": "hr_manager",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "hr_manager",
+  "account": "hr_manager",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "hr_manager",
+  "account": "hr_manager",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "hr_manager",
+  "account": "hr_manager",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "business_development",
+  "account": "business_development",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "business_development",
+  "account": "business_development",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "business_development",
+  "account": "business_development",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "business_development",
+  "account": "business_development",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "business_development",
+  "account": "business_development",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "client_executive",
+  "account": "client_executive",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "client_executive",
+  "account": "client_executive",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "client_executive",
+  "account": "client_executive",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "client_executive",
+  "account": "client_executive",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "client_executive",
+  "account": "client_executive",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "client_reviewer",
+  "account": "client_reviewer",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "client_reviewer",
+  "account": "client_reviewer",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "client_reviewer",
+  "account": "client_reviewer",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "client_reviewer",
+  "account": "client_reviewer",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "client_reviewer",
+  "account": "client_reviewer",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "pmc_manager",
+  "account": "pmc_manager",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "pmc_manager",
+  "account": "pmc_manager",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "pmc_manager",
+  "account": "pmc_manager",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "pmc_manager",
+  "account": "pmc_manager",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "pmc_manager",
+  "account": "pmc_manager",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "consultant_coordinator",
+  "account": "consultant_coordinator",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "consultant_coordinator",
+  "account": "consultant_coordinator",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "consultant_coordinator",
+  "account": "consultant_coordinator",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "consultant_coordinator",
+  "account": "consultant_coordinator",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "consultant_coordinator",
+  "account": "consultant_coordinator",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "consultant_reviewer",
+  "account": "consultant_reviewer",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "consultant_reviewer",
+  "account": "consultant_reviewer",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "consultant_reviewer",
+  "account": "consultant_reviewer",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "consultant_reviewer",
+  "account": "consultant_reviewer",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "consultant_reviewer",
+  "account": "consultant_reviewer",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "subcontractor_manager",
+  "account": "subcontractor_manager",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "subcontractor_manager",
+  "account": "subcontractor_manager",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "subcontractor_manager",
+  "account": "subcontractor_manager",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "subcontractor_manager",
+  "account": "subcontractor_manager",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "subcontractor_manager",
+  "account": "subcontractor_manager",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "subcontractor_site_engineer",
+  "account": "subcontractor_site_engineer",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "subcontractor_site_engineer",
+  "account": "subcontractor_site_engineer",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "subcontractor_site_engineer",
+  "account": "subcontractor_site_engineer",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "subcontractor_site_engineer",
+  "account": "subcontractor_site_engineer",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "subcontractor_site_engineer",
+  "account": "subcontractor_site_engineer",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "supplier_sales",
+  "account": "supplier_sales",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "supplier_sales",
+  "account": "supplier_sales",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "supplier_sales",
+  "account": "supplier_sales",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "supplier_sales",
+  "account": "supplier_sales",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "supplier_sales",
+  "account": "supplier_sales",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "testing_lab",
+  "account": "testing_lab",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "testing_lab",
+  "account": "testing_lab",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "hidden (see_client_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "testing_lab",
+  "account": "testing_lab",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "hidden (see_subcontractor_price=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "testing_lab",
+  "account": "testing_lab",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "testing_lab",
+  "account": "testing_lab",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "hidden (see_internal_cost=false)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "owner",
+  "account": "workflow_owner",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "owner",
+  "account": "workflow_owner",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "owner",
+  "account": "workflow_owner",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "owner",
+  "account": "workflow_owner",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "owner",
+  "account": "workflow_owner",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "purchasing_mgr",
+  "account": "workflow_checker",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "purchasing_mgr",
+  "account": "workflow_checker",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "purchasing_mgr",
+  "account": "workflow_checker",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "purchasing_mgr",
+  "account": "workflow_checker",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "purchasing_mgr",
+  "account": "workflow_checker",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "accountant",
+  "account": "workflow_budget",
+  "module": "visibility",
+  "action": "GET /api/invoices -> client invoice amount 97,200",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "accountant",
+  "account": "workflow_budget",
+  "module": "visibility",
+  "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "accountant",
+  "account": "workflow_budget",
+  "module": "visibility",
+  "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
+  "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "accountant",
+  "account": "workflow_budget",
+  "module": "visibility",
+  "action": "GET /api/boq/items/6 -> BOQ unit rates",
+  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "actual": "HTTP 401, hidden",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "accountant",
+  "account": "workflow_budget",
+  "module": "visibility",
+  "action": "GET /api/costing/summary -> project cost 480,000",
+  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "actual": "HTTP 404, hidden",
+  "result": "PASS",
+  "evidence": ""
+ }
+]

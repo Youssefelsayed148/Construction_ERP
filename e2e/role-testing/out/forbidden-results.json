@@ -1,0 +1,1052 @@
+[
+ {
+  "role": "owner_ceo",
+  "account": "owner_ceo",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "owner_ceo",
+  "account": "owner_ceo",
+  "module": "invoices",
+  "action": "POST /api/invoices (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no invoices.create grant"
+ },
+ {
+  "role": "owner_ceo",
+  "account": "owner_ceo",
+  "module": "payments",
+  "action": "POST /api/payments (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no payments.create grant"
+ },
+ {
+  "role": "coo",
+  "account": "coo",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "coo",
+  "account": "coo",
+  "module": "invoices",
+  "action": "POST /api/invoices (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no invoices.create grant"
+ },
+ {
+  "role": "coo",
+  "account": "coo",
+  "module": "payments",
+  "action": "POST /api/payments (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no payments.create grant"
+ },
+ {
+  "role": "projects_director",
+  "account": "projects_director",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "projects_director",
+  "account": "projects_director",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "projects_director",
+  "account": "projects_director",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "construction_manager",
+  "account": "construction_manager",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "construction_manager",
+  "account": "construction_manager",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "construction_manager",
+  "account": "construction_manager",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "project_manager",
+  "account": "project_manager",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "project_manager",
+  "account": "project_manager",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "project_manager",
+  "account": "project_manager",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "site_manager",
+  "account": "site_manager",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "site_manager",
+  "account": "site_manager",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "site_manager",
+  "account": "site_manager",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "site_engineer",
+  "account": "site_engineer",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "site_engineer",
+  "account": "site_engineer",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "site_engineer",
+  "account": "site_engineer",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "planning_engineer",
+  "account": "planning_engineer",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "planning_engineer",
+  "account": "planning_engineer",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "planning_engineer",
+  "account": "planning_engineer",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "technical_office_engineer",
+  "account": "technical_office_engineer",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "technical_office_engineer",
+  "account": "technical_office_engineer",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "technical_office_engineer",
+  "account": "technical_office_engineer",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "quantity_surveyor",
+  "account": "quantity_surveyor",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "quantity_surveyor",
+  "account": "quantity_surveyor",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "quantity_surveyor",
+  "account": "quantity_surveyor",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "commercial_manager",
+  "account": "commercial_manager",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "commercial_manager",
+  "account": "commercial_manager",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "commercial_manager",
+  "account": "commercial_manager",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "contracts_manager",
+  "account": "contracts_manager",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "contracts_manager",
+  "account": "contracts_manager",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "contracts_manager",
+  "account": "contracts_manager",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "procurement_manager",
+  "account": "procurement_manager",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "procurement_manager",
+  "account": "procurement_manager",
+  "module": "invoices",
+  "action": "POST /api/invoices (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no invoices.create grant"
+ },
+ {
+  "role": "procurement_manager",
+  "account": "procurement_manager",
+  "module": "payments",
+  "action": "POST /api/payments (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no payments.create grant"
+ },
+ {
+  "role": "procurement_officer",
+  "account": "procurement_officer",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "procurement_officer",
+  "account": "procurement_officer",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "procurement_officer",
+  "account": "procurement_officer",
+  "module": "invoices",
+  "action": "POST /api/invoices (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no invoices.create grant"
+ },
+ {
+  "role": "finance_manager",
+  "account": "finance_manager",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "finance_manager",
+  "account": "finance_manager",
+  "module": "hr",
+  "action": "POST /api/hr/employees (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no hr.create grant"
+ },
+ {
+  "role": "finance_manager",
+  "account": "finance_manager",
+  "module": "assets",
+  "action": "POST /api/assets (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no assets.create grant"
+ },
+ {
+  "role": "accountant_ar",
+  "account": "accountant_ar",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "accountant_ar",
+  "account": "accountant_ar",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "accountant_ar",
+  "account": "accountant_ar",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "accountant_ap",
+  "account": "accountant_ap",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "accountant_ap",
+  "account": "accountant_ap",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "accountant_ap",
+  "account": "accountant_ap",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "storekeeper",
+  "account": "storekeeper",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "storekeeper",
+  "account": "storekeeper",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "storekeeper",
+  "account": "storekeeper",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "qa_qc_manager",
+  "account": "qa_qc_manager",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "qa_qc_manager",
+  "account": "qa_qc_manager",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "qa_qc_manager",
+  "account": "qa_qc_manager",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "hse_manager",
+  "account": "hse_manager",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "hse_manager",
+  "account": "hse_manager",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "hse_manager",
+  "account": "hse_manager",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "document_controller",
+  "account": "document_controller",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "document_controller",
+  "account": "document_controller",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "document_controller",
+  "account": "document_controller",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "equipment_manager",
+  "account": "equipment_manager",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "equipment_manager",
+  "account": "equipment_manager",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "equipment_manager",
+  "account": "equipment_manager",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "hr_manager",
+  "account": "hr_manager",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "hr_manager",
+  "account": "hr_manager",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "hr_manager",
+  "account": "hr_manager",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "business_development",
+  "account": "business_development",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "business_development",
+  "account": "business_development",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "business_development",
+  "account": "business_development",
+  "module": "invoices",
+  "action": "POST /api/invoices (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no invoices.create grant"
+ },
+ {
+  "role": "client_executive",
+  "account": "client_executive",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "client_executive",
+  "account": "client_executive",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "client_executive",
+  "account": "client_executive",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "client_reviewer",
+  "account": "client_reviewer",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "client_reviewer",
+  "account": "client_reviewer",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "client_reviewer",
+  "account": "client_reviewer",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "pmc_manager",
+  "account": "pmc_manager",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "pmc_manager",
+  "account": "pmc_manager",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "pmc_manager",
+  "account": "pmc_manager",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "consultant_coordinator",
+  "account": "consultant_coordinator",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "consultant_coordinator",
+  "account": "consultant_coordinator",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "consultant_coordinator",
+  "account": "consultant_coordinator",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "consultant_reviewer",
+  "account": "consultant_reviewer",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "consultant_reviewer",
+  "account": "consultant_reviewer",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "consultant_reviewer",
+  "account": "consultant_reviewer",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "subcontractor_manager",
+  "account": "subcontractor_manager",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "subcontractor_manager",
+  "account": "subcontractor_manager",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "subcontractor_manager",
+  "account": "subcontractor_manager",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "subcontractor_site_engineer",
+  "account": "subcontractor_site_engineer",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "subcontractor_site_engineer",
+  "account": "subcontractor_site_engineer",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "subcontractor_site_engineer",
+  "account": "subcontractor_site_engineer",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "supplier_sales",
+  "account": "supplier_sales",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "supplier_sales",
+  "account": "supplier_sales",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "supplier_sales",
+  "account": "supplier_sales",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "testing_lab",
+  "account": "testing_lab",
+  "module": "clients",
+  "action": "POST /api/clients (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no clients.create grant"
+ },
+ {
+  "role": "testing_lab",
+  "account": "testing_lab",
+  "module": "suppliers",
+  "action": "POST /api/suppliers (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no suppliers.create grant"
+ },
+ {
+  "role": "testing_lab",
+  "account": "testing_lab",
+  "module": "items",
+  "action": "POST /api/items (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no items.create grant"
+ },
+ {
+  "role": "purchasing_mgr",
+  "account": "workflow_checker",
+  "module": "hr",
+  "action": "POST /api/hr/employees (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no hr.create grant"
+ },
+ {
+  "role": "purchasing_mgr",
+  "account": "workflow_checker",
+  "module": "payroll",
+  "action": "POST /api/payroll (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no payroll.create grant"
+ },
+ {
+  "role": "purchasing_mgr",
+  "account": "workflow_checker",
+  "module": "organizations",
+  "action": "POST /api/organizations (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no organizations.create grant"
+ },
+ {
+  "role": "accountant",
+  "account": "workflow_budget",
+  "module": "hr",
+  "action": "POST /api/hr/employees (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no hr.create grant"
+ },
+ {
+  "role": "accountant",
+  "account": "workflow_budget",
+  "module": "payroll",
+  "action": "POST /api/payroll (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no payroll.create grant"
+ },
+ {
+  "role": "accountant",
+  "account": "workflow_budget",
+  "module": "organizations",
+  "action": "POST /api/organizations (forbidden)",
+  "expected": "HTTP 403",
+  "actual": "HTTP 403",
+  "result": "PASS",
+  "evidence": "no organizations.create grant"
+ }
+]

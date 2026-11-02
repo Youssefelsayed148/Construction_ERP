@@ -1,0 +1,78 @@
+[
+ {
+  "role": "quantity_surveyor",
+  "module": "boq",
+  "action": "neutralise duplicate BOQ item 5",
+  "expected": "HTTP 200/201",
+  "actual": "HTTP 200",
+  "result": "PASS",
+  "evidence": "",
+  "section": "cleanup duplicates from first stage-2 run",
+  "forbidden": false
+ },
+ {
+  "role": "quantity_surveyor",
+  "module": "boq",
+  "action": "neutralise duplicate BOQ item 7",
+  "expected": "HTTP 200/201",
+  "actual": "HTTP 200",
+  "result": "PASS",
+  "evidence": "",
+  "section": "cleanup duplicates from first stage-2 run",
+  "forbidden": false
+ },
+ {
+  "role": "quantity_surveyor",
+  "module": "boq",
+  "action": "neutralise duplicate BOQ item 9",
+  "expected": "HTTP 200/201",
+  "actual": "HTTP 200",
+  "result": "PASS",
+  "evidence": "",
+  "section": "cleanup duplicates from first stage-2 run",
+  "forbidden": false
+ },
+ {
+  "role": "quantity_surveyor",
+  "module": "boq",
+  "action": "neutralise duplicate BOQ item 11",
+  "expected": "HTTP 200/201",
+  "actual": "HTTP 200",
+  "result": "PASS",
+  "evidence": "",
+  "section": "cleanup duplicates from first stage-2 run",
+  "forbidden": false
+ },
+ {
+  "role": "quantity_surveyor",
+  "module": "boq",
+  "action": "neutralise duplicate BOQ section 2",
+  "expected": "HTTP 200/201",
+  "actual": "HTTP 200",
+  "result": "PASS",
+  "evidence": "",
+  "section": "cleanup duplicates from first stage-2 run",
+  "forbidden": false
+ },
+ {
+  "role": "project_manager",
+  "module": "locations",
+  "action": "neutralise duplicate location 2",
+  "expected": "HTTP 2xx (logical owner of this step)",
+  "actual": "HTTP 403",
+  "result": "FINDING",
+  "evidence": "logical role cannot perform step; used workflow_owner instead",
+  "section": "cleanup duplicates from first stage-2 run"
+ },
+ {
+  "role": "workflow_owner",
+  "module": "locations",
+  "action": "neutralise duplicate location 2",
+  "expected": "HTTP 200/201",
+  "actual": "HTTP 200",
+  "result": "PASS",
+  "evidence": "",
+  "section": "cleanup duplicates from first stage-2 run",
+  "forbidden": false
+ }
+]

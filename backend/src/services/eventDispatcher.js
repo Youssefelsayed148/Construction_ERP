@@ -187,13 +187,13 @@ const NOTIFY_RULES = {
   'invoice.created': { roles: ['finance_manager', 'accountant'], label: 'Invoice created' },
   'variation.approved': { roles: ['project_manager', 'finance_manager', 'quantity_surveyor'], label: 'Variation approved' },
   'handover.advanced': { roles: ['project_manager', 'owner'], label: 'Handover advanced' },
-  'wir.submitted': { roles: ['engineer', 'project_manager'], label: 'Work inspection request submitted' },
+  'wir.submitted': { roles: ['engineer', 'qa_qc_manager', 'project_manager'], label: 'Work inspection request submitted' },
 };
 // Families of events named by prefix (the state is the suffix): permit.*, instruction.*, mir.*, transmittal.*.
 const PATTERN_RULES = [
-  ['permit.', { roles: ['project_manager', 'site_supervisor'], label: 'Permit' }],
-  ['instruction.', { roles: ['site_supervisor', 'project_manager'], label: 'Instruction' }],
-  ['mir.', { roles: ['storekeeper', 'engineer'], label: 'Material inspection' }],
+  ['permit.', { roles: ['project_manager', 'site_supervisor', 'hse_manager', 'site_manager'], label: 'Permit' }],
+  ['instruction.', { roles: ['site_supervisor', 'site_manager', 'project_manager'], label: 'Instruction' }],
+  ['mir.', { roles: ['storekeeper', 'engineer', 'qa_qc_manager'], label: 'Material inspection' }],
   ['transmittal.', { roles: ['document_controller', 'project_manager'], label: 'Transmittal' }],
 ];
 

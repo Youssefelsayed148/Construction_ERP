@@ -49,11 +49,12 @@ const WIR_STEP_FOR_STATE = {
 
 // Which role may act at each transition — mirrors the 'wir' template steps.
 const WIR_ALLOWED_ROLES = {
-  submit: ['site_supervisor', 'engineer'],
-  qa_qc: ['engineer'],
+  // Canonical roles sit beside the legacy keys: the legacy-only lists locked site_engineer / site_manager / qa_qc_manager out of the WIR flow.
+  submit: ['site_supervisor', 'engineer', 'site_manager', 'site_engineer', 'construction_manager', 'qa_qc_manager'],
+  qa_qc: ['engineer', 'qa_qc_manager'],
   pm: ['project_manager'],
-  consultant: ['consultant'],
-  result: ['consultant'],
+  consultant: ['consultant', 'consultant_coordinator'],
+  result: ['consultant', 'consultant_coordinator'],
 };
 
 const PUNCH_STEP_FOR_STATE = {
@@ -65,8 +66,8 @@ const PUNCH_STEP_FOR_STATE = {
 };
 
 const PUNCH_ALLOWED_ROLES = {
-  assign: ['project_manager', 'site_supervisor'],
-  rectify: ['site_supervisor', 'subcontractor'],
+  assign: ['project_manager', 'site_supervisor', 'site_manager', 'construction_manager'],
+  rectify: ['site_supervisor', 'subcontractor', 'site_manager', 'site_engineer', 'subcontractor_manager', 'subcontractor_site_engineer'],
   verify: ['consultant'],
   close: ['project_manager'],
 };
@@ -163,9 +164,7 @@ async function wirStepDecision(q, wirId, stepKey, user, decision, comment) {
   const step = stage === 'pm' ? 'pm_optional' : 'qa_qc';
   const allowed = user.role === 'owner' || user.role === 'admin' || WIR_ALLOWED_ROLES[stage].includes(user.role);
   if (!allowed) {
-    const err = new Error(`Not authorized to decide the ${stage} stage`);
-    err.statusCode = 403;
-    throw err;
+    throw svcError(403, 'not_authorized_for_action', `Not authorized to decide the ${stage} stage`);
   }
 
   const now = new Date();
@@ -205,9 +204,7 @@ async function decideWir(q, wirId, user, result, { comment = null } = {}) {
   }
   const allowed = user.role === 'owner' || user.role === 'admin' || WIR_ALLOWED_ROLES.result.includes(user.role);
   if (!allowed) {
-    const err = new Error('Not authorized to record the WIR result');
-    err.statusCode = 403;
-    throw err;
+    throw svcError(403, 'not_authorized_for_action', 'Not authorized to record the WIR result');
   }
 
   const now = new Date();

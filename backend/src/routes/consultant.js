@@ -46,7 +46,7 @@ router.get('/reviews', authenticate, authorize(), async (req, res) => {
 
 // Record the consultant's final WIR inspection result through the formal QA/QC
 // workflow. Project assignment is checked again inside the audited transaction.
-router.post('/wirs/:id/result', authenticate, authorize('consultant'), async (req, res) => {
+router.post('/wirs/:id/result', authenticate, authorize('consultant', 'consultant_coordinator'), async (req, res) => {
   const value = typedBody(Joi.object({
     result: Joi.string().valid('approved', 'approved_with_comments', 'rejected', 'reinspect').required(),
     comment: Joi.string().max(4000).allow('', null).optional(),
@@ -61,7 +61,7 @@ router.post('/wirs/:id/result', authenticate, authorize('consultant'), async (re
   } catch (error) { return typedFail(res, error, 'CONSULTANT_WIR_RESULT', req); }
 });
 
-router.post('/variations/:id/recommendation', authenticate, authorize('consultant'), async (req, res) => {
+router.post('/variations/:id/recommendation', authenticate, authorize('consultant', 'consultant_coordinator'), async (req, res) => {
   const value = typedBody(Joi.object({
     decision: Joi.string().valid('approve', 'reject').required(),
     comment: Joi.string().max(4000).allow('', null).optional(),
@@ -76,7 +76,7 @@ router.post('/variations/:id/recommendation', authenticate, authorize('consultan
   } catch (error) { return typedFail(res, error, 'CONSULTANT_VARIATION_RECOMMENDATION', req); }
 });
 
-router.post('/payment-certificates/:id/recommendation', authenticate, authorize('consultant'), async (req, res) => {
+router.post('/payment-certificates/:id/recommendation', authenticate, authorize('consultant', 'consultant_coordinator'), async (req, res) => {
   const value = typedBody(Joi.object({
     decision: Joi.string().valid('approve', 'reject').required(),
     comment: Joi.string().max(4000).allow('', null).optional(),
@@ -91,7 +91,7 @@ router.post('/payment-certificates/:id/recommendation', authenticate, authorize(
   } catch (error) { return typedFail(res, error, 'CONSULTANT_CERTIFICATE_RECOMMENDATION', req); }
 });
 
-router.post('/instructions/:id/recommendation', authenticate, authorize('consultant'), async (req, res) => {
+router.post('/instructions/:id/recommendation', authenticate, authorize('consultant', 'consultant_coordinator'), async (req, res) => {
   const id = Joi.number().integer().positive().validate(Number(req.params.id));
   if (id.error) return typedFail(res, Object.assign(new Error('Invalid engineer instruction id'), { status: 400, error_code: 'invalid_id' }), 'CONSULTANT_INSTRUCTION_RECOMMENDATION', req);
   const value = typedBody(Joi.object({

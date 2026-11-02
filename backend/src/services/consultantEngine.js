@@ -49,6 +49,17 @@ const OBSERVATION_STAMP_COLUMN = {
   closed: 'closed_at',
 };
 
+// Every guard in this engine used to be a bare Error, which the route layer answers with HTTP 500. The message stays the
+// same; this maps it to the typed status a client can act on (404 missing, 403 not allowed, 409 wrong state, 400 bad input).
+const { svcError: _svcError } = require('../utils/serviceErrors');
+function typedError(message) {
+  const m = String(message);
+  if (/not found/i.test(m)) return _svcError(404, 'record_not_found', m);
+  if (/^Role .* cannot |role required|not assigned to this project|Only the RFI requester|Authentication required|not available in the consultant portal|uploaded by the current user/i.test(m)) return _svcError(403, 'not_authorized_for_action', m);
+  if (/cannot follow|Cannot move|must be acknowledged|not awaiting|does not require|does not match|already/i.test(m)) return _svcError(409, 'invalid_state', m);
+  return _svcError(400, 'invalid_input', m);
+}
+
 function toNum(v) {
   if (v == null) return 0;
   const n = typeof v === 'number' ? v : parseFloat(v);
@@ -106,10 +117,10 @@ async function resolveConsultantProjects(q, userId) {
 }
 
 async function assertConsultantProject(q, user, projectId) {
-  if (!user) throw new Error('Authentication required');
+  if (!user) throw typedError('Authentication required');
   if (user.role !== 'consultant') return true;
   const projects = await resolveConsultantProjects(q, user.id);
-  if (!projects.includes(toNum(projectId))) throw new Error('Consultant is not assigned to this project');
+  if (!projects.includes(toNum(projectId))) throw typedError('Consultant is not assigned to this project');
   return true;
 }
 
@@ -131,7 +142,7 @@ async function consultantIdentity(q, user, projectId) {
       return { organization_id: toNum(link.organization_id), organization_name: org?.name || org?.name_en || org?.name_ar || null };
     }
   }
-  throw new Error('Consultant is not assigned to this project');
+  throw typedError('Consultant is not assigned to this project');
 }
 
 // ---------------------------------------------------------------------------
@@ -147,13 +158,13 @@ async function createObservation(q, {
   if (portalFamily(user.role) === 'consultant') organization_id = (await consultantIdentity(q, user, project_id)).organization_id;
   if (location_id != null) {
     const location = (await q('SELECT project_id FROM project_locations WHERE id = $1', [location_id])).rows[0];
-    if (!location || toNum(location.project_id) !== toNum(project_id)) throw new Error('Observation location must belong to the same project');
+    if (!location || toNum(location.project_id) !== toNum(project_id)) throw typedError('Observation location must belong to the same project');
   }
   if (drawing_document_id != null) {
     const drawing = (await q('SELECT * FROM project_documents WHERE id = $1', [drawing_document_id])).rows[0];
-    if (!drawing || toNum(drawing.project_id) !== toNum(project_id) || drawing.document_type !== 'drawing') throw new Error('Reference drawing must belong to the same project');
+    if (!drawing || toNum(drawing.project_id) !== toNum(project_id) || drawing.document_type !== 'drawing') throw typedError('Reference drawing must belong to the same project');
     if (portalFamily(user.role) === 'consultant' && (drawing.status !== 'approved' || !canExternalViewDocument(drawing, 'consultant'))) {
-      throw new Error('Reference drawing is not available in the consultant portal');
+      throw typedError('Reference drawing is not available in the consultant portal');
     }
   }
   const observationNumber = await nextNumber(q, { table: 'observations', column: 'observation_number', prefix: 'OBS', pad: 4 });
@@ -174,10 +185,10 @@ async function createObservation(q, {
       const fileName = String(file.file_name || '');
       const extension = fileName.slice(fileName.lastIndexOf('.')).toLowerCase();
       if (!/^[a-zA-Z0-9_.-]+$/.test(fileName) || fileName === '.' || fileName === '..' || !OBSERVATION_IMAGE_EXTENSIONS.has(extension) || file.file_url !== `/uploads/${fileName}`) {
-        throw new Error('Observation evidence must reference an uploaded image file');
+        throw typedError('Observation evidence must reference an uploaded image file');
       }
       const ownedFile = (await q('SELECT file_name FROM uploaded_files WHERE file_name = $1 AND uploaded_by = $2', [fileName, user.id])).rows[0];
-      if (!ownedFile) throw new Error('Observation evidence must be uploaded by the current user');
+      if (!ownedFile) throw typedError('Observation evidence must be uploaded by the current user');
       await q(
         `INSERT INTO photos (project_id, linked_entity_type, linked_entity_id, file_name, file_url, uploader_user_id, organization_id, caption)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
@@ -238,9 +249,9 @@ async function createObservation(q, {
 }
 
 async function addObservationComment(q, { observation_id, user, organization_id = null, comment_type = 'comment', body }) {
-  if (!body || !String(body).trim()) throw new Error('Comment body is required');
+  if (!body || !String(body).trim()) throw typedError('Comment body is required');
   const observation = (await q('SELECT project_id FROM observations WHERE id = $1', [observation_id])).rows[0];
-  if (!observation) throw new Error(`Observation #${observation_id} not found`);
+  if (!observation) throw typedError(`Observation #${observation_id} not found`);
   await assertConsultantProject(q, user, observation.project_id);
   if (portalFamily(user.role) === 'consultant') organization_id = (await consultantIdentity(q, user, observation.project_id)).organization_id;
   const r = await q(
@@ -255,20 +266,20 @@ async function addObservationComment(q, { observation_id, user, organization_id 
 // submit_for_verification | accept | reject | close.
 async function advanceObservation(q, observationId, user, action, opts = {}) {
   const observation = (await q('SELECT * FROM observations WHERE id = $1', [observationId])).rows[0];
-  if (!observation) throw new Error(`Observation #${observationId} not found`);
+  if (!observation) throw typedError(`Observation #${observationId} not found`);
   await assertConsultantProject(q, user, observation.project_id);
   const actorOrganizationId = portalFamily(user.role) === 'consultant'
     ? (await consultantIdentity(q, user, observation.project_id)).organization_id : null;
   const allowedRoles = {
     acknowledge: ['consultant', 'project_manager', 'owner', 'admin'],
     assign: ['project_manager', 'owner', 'admin'],
-    start_rectification: ['engineer', 'site_supervisor', 'project_manager', 'owner', 'admin'],
-    submit_for_verification: ['engineer', 'site_supervisor', 'project_manager', 'owner', 'admin'],
+    start_rectification: ['engineer', 'site_supervisor', 'site_manager', 'site_engineer', 'construction_manager', 'project_manager', 'owner', 'admin'],
+    submit_for_verification: ['engineer', 'site_supervisor', 'site_manager', 'site_engineer', 'construction_manager', 'project_manager', 'owner', 'admin'],
     accept: ['consultant', 'owner', 'admin'],
     reject: ['consultant', 'owner', 'admin'],
     close: ['consultant', 'project_manager', 'owner', 'admin'],
   };
-  if (!(allowedRoles[action] || []).includes(user.role)) throw new Error(`Role ${user.role} cannot ${action} an observation`);
+  if (!(allowedRoles[action] || []).includes(user.role)) throw typedError(`Role ${user.role} cannot ${action} an observation`);
 
   const actionToStatus = {
     acknowledge: 'acknowledged',
@@ -285,7 +296,7 @@ async function advanceObservation(q, observationId, user, action, opts = {}) {
     || (from === 'rejected' && to === 'rectification_in_progress')
     || (from === 'accepted' && to === 'closed')
     || (OBSERVATION_TRANSITIONS[from] || []).includes(to);
-  if (!allowed) throw new Error(`Cannot move observation from '${from}' to '${to}'`);
+  if (!allowed) throw typedError(`Cannot move observation from '${from}' to '${to}'`);
 
   const stampColumn = OBSERVATION_STAMP_COLUMN[to];
   const params = [to, new Date()];
@@ -391,11 +402,11 @@ async function advanceObservation(q, observationId, user, action, opts = {}) {
 // Official consultant RFI response — user, organization, date/time, revision,
 // comments and attachments recorded (the dispute audit trail).
 async function recordRfiResponse(q, { rfi_id, stage = 'official_response', user, organization_id = null, organization_name = null, body, attachments = [], revision = 1 }) {
-  if (!body || !String(body).trim()) throw new Error('Response body is required');
+  if (!body || !String(body).trim()) throw typedError('Response body is required');
   const rfi = (await q('SELECT * FROM project_rfis WHERE id = $1', [rfi_id])).rows[0];
-  if (!rfi) throw new Error(`RFI #${rfi_id} not found`);
-  if (!['coordinator', 'discipline_review', 'official_response', 'acknowledgement'].includes(stage)) throw new Error('Invalid RFI stage');
-  if (toNum(revision) !== toNum(rfi.revision || 1)) throw new Error('RFI revision does not match the current record');
+  if (!rfi) throw typedError(`RFI #${rfi_id} not found`);
+  if (!['coordinator', 'discipline_review', 'official_response', 'acknowledgement'].includes(stage)) throw typedError('Invalid RFI stage');
+  if (toNum(revision) !== toNum(rfi.revision || 1)) throw typedError('RFI revision does not match the current record');
   const prior = (await q('SELECT * FROM rfi_responses WHERE rfi_id = $1', [rfi_id])).rows
     .filter((r) => toNum(r.revision) === toNum(revision)).sort((a, b) => toNum(a.id) - toNum(b.id));
   const previousStage = prior.at(-1)?.stage || null;
@@ -403,13 +414,13 @@ async function recordRfiResponse(q, { rfi_id, stage = 'official_response', user,
     : previousStage === 'coordinator' ? ['discipline_review']
       : previousStage === 'discipline_review' ? ['discipline_review', 'official_response']
         : previousStage === 'official_response' ? ['acknowledgement'] : [];
-  if (!expected.includes(stage)) throw new Error(`RFI stage ${stage} cannot follow ${previousStage || 'submission'}`);
+  if (!expected.includes(stage)) throw typedError(`RFI stage ${stage} cannot follow ${previousStage || 'submission'}`);
   if (stage === 'acknowledgement') {
     if (toNum(rfi.raised_by) !== toNum(user.id) && !['owner', 'admin'].includes(user.role)) {
-      throw new Error('Only the RFI requester can acknowledge the response');
+      throw typedError('Only the RFI requester can acknowledge the response');
     }
   } else {
-    if (!['consultant', 'owner', 'admin', 'project_manager'].includes(user.role)) throw new Error('Consultant review role required');
+    if (!['consultant', 'consultant_coordinator', 'consultant_reviewer', 'owner', 'admin', 'project_manager'].includes(user.role)) throw typedError('Consultant review role required');
     await assertConsultantProject(q, user, rfi.project_id);
     if (portalFamily(user.role) === 'consultant') ({ organization_id, organization_name } = await consultantIdentity(q, user, rfi.project_id));
   }
@@ -439,9 +450,9 @@ async function recordRfiResponse(q, { rfi_id, stage = 'official_response', user,
 
 async function closeRfi(q, rfiId, user) {
   const rfi = (await q('SELECT * FROM project_rfis WHERE id = $1', [rfiId])).rows[0];
-  if (!rfi) throw new Error(`RFI #${rfiId} not found`);
-  if (rfi.status !== 'acknowledged') throw new Error('RFI must be acknowledged before closing');
-  if (!['consultant', 'project_manager', 'owner', 'admin'].includes(user.role)) throw new Error('Consultant or PM role required');
+  if (!rfi) throw typedError(`RFI #${rfiId} not found`);
+  if (rfi.status !== 'acknowledged') throw typedError('RFI must be acknowledged before closing');
+  if (!['consultant', 'consultant_coordinator', 'consultant_reviewer', 'project_manager', 'owner', 'admin'].includes(user.role)) throw typedError('Consultant or PM role required');
   await assertConsultantProject(q, user, rfi.project_id);
   await q("UPDATE project_rfis SET status = 'closed', updated_at = $1 WHERE id = $2", [new Date(), rfiId]);
   return (await q('SELECT * FROM project_rfis WHERE id = $1', [rfiId])).rows[0];
@@ -449,11 +460,11 @@ async function closeRfi(q, rfiId, user) {
 
 async function recordSubmittalResponse(q, { submittal_id, stage = 'response', user, organization_id = null, organization_name = null, response_code, comments, attachments = [], revision = 1 }) {
   const submittal = (await q('SELECT * FROM project_submittals WHERE id = $1', [submittal_id])).rows[0];
-  if (!submittal) throw new Error(`Submittal #${submittal_id} not found`);
+  if (!submittal) throw typedError(`Submittal #${submittal_id} not found`);
   if (submittal.status !== 'submitted' && !['internal_technical_review', 'pm', 'consultant_coordinator', 'reviewer'].includes(submittal.status)) {
-    throw new Error('Submittal is not awaiting review');
+    throw typedError('Submittal is not awaiting review');
   }
-  if (toNum(revision) !== toNum(submittal.revision_number || 1)) throw new Error('Submittal revision does not match the current record');
+  if (toNum(revision) !== toNum(submittal.revision_number || 1)) throw typedError('Submittal revision does not match the current record');
   const prior = (await q('SELECT * FROM submittal_revisions WHERE submittal_id = $1', [submittal_id])).rows
     .filter((r) => toNum(r.revision_number) === toNum(revision) && r.stage !== 'resubmitted')
     .sort((a, b) => toNum(a.id) - toNum(b.id));
@@ -463,17 +474,17 @@ async function recordSubmittalResponse(q, { submittal_id, stage = 'response', us
       : previousStage === 'pm' ? ['consultant_coordinator']
         : previousStage === 'consultant_coordinator' ? ['reviewer']
           : previousStage === 'reviewer' ? ['reviewer', 'response'] : [];
-  if (!expected.includes(stage)) throw new Error(`Submittal stage ${stage} cannot follow ${previousStage || 'submission'}`);
-  if (stage === 'response' && !['A', 'B', 'C', 'D'].includes(response_code)) throw new Error('Response code must be A, B, C or D');
-  if (stage !== 'response' && response_code != null) throw new Error('Response code is only valid at the final stage');
+  if (!expected.includes(stage)) throw typedError(`Submittal stage ${stage} cannot follow ${previousStage || 'submission'}`);
+  if (stage === 'response' && !['A', 'B', 'C', 'D'].includes(response_code)) throw typedError('Response code must be A, B, C or D');
+  if (stage !== 'response' && response_code != null) throw typedError('Response code is only valid at the final stage');
   const allowedRoles = {
-    internal_technical_review: ['engineer', 'site_supervisor', 'project_manager', 'owner', 'admin'],
+    internal_technical_review: ['engineer', 'site_supervisor', 'technical_office_engineer', 'qa_qc_manager', 'project_manager', 'owner', 'admin'],
     pm: ['project_manager', 'owner', 'admin'],
-    consultant_coordinator: ['consultant', 'owner', 'admin'],
-    reviewer: ['consultant', 'owner', 'admin'],
-    response: ['consultant', 'owner', 'admin'],
+    consultant_coordinator: ['consultant', 'consultant_coordinator', 'owner', 'admin'],
+    reviewer: ['consultant', 'consultant_reviewer', 'consultant_coordinator', 'owner', 'admin'],
+    response: ['consultant', 'consultant_coordinator', 'owner', 'admin'],
   };
-  if (!allowedRoles[stage].includes(user.role)) throw new Error(`Role ${user.role} cannot complete ${stage}`);
+  if (!allowedRoles[stage].includes(user.role)) throw typedError(`Role ${user.role} cannot complete ${stage}`);
   if (portalFamily(user.role) === 'consultant') await assertConsultantProject(q, user, submittal.project_id);
   if (portalFamily(user.role) === 'consultant') ({ organization_id, organization_name } = await consultantIdentity(q, user, submittal.project_id));
   const r = await q(
@@ -496,8 +507,8 @@ async function recordSubmittalResponse(q, { submittal_id, stage = 'response', us
 
 async function resubmitSubmittal(q, submittalId, user, { comments = null, attachments = [] } = {}) {
   const submittal = (await q('SELECT * FROM project_submittals WHERE id = $1', [submittalId])).rows[0];
-  if (!submittal) throw new Error(`Submittal #${submittalId} not found`);
-  if (submittal.status !== 'resubmit_required') throw new Error('Submittal does not require resubmission');
+  if (!submittal) throw typedError(`Submittal #${submittalId} not found`);
+  if (submittal.status !== 'resubmit_required') throw typedError('Submittal does not require resubmission');
   const revision = toNum(submittal.revision_number || 1) + 1;
   await q('UPDATE project_submittals SET status = $1, revision_number = $2, updated_at = $3 WHERE id = $4', ['submitted', revision, new Date(), submittalId]);
   return (await q(

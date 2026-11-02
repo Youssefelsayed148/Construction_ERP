@@ -1954,3 +1954,5 @@ Implementation 854e8bd and LF checkpoint 855ee52 committed. Pilot migrate exited
 - F4: production Arabic PDF (Chromium + bundled fonts, fails closed), CSV hygiene tested; inlineBranches 53->0 and rawEnumRendering 1->0 via shared helpers/enum keys; ARABIC_REVIEW_PACK regenerated (NOT a native sign-off).
 - Final static checks run once: lint:guards --update (baseline wrote; raw-error-message {} ), i18n:inventory (baseline), i18n:parity ok (37 namespaces, 3072 keys); i18n:check ok (run mid-F4, not at the very end).
 - NOT RUN: all suites and build (deferred to Session T).
+
+- 2026-11-02: role testing + DEMO data partially done (see TEST_REPORT.md). Remaining: access matrix run, UI pass, open items 1-7, gates.

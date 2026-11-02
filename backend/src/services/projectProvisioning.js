@@ -92,6 +92,13 @@ function str(v) {
   return v == null || String(v).trim() === '' ? null : String(v);
 }
 
+// Joi's .date().iso() hands back a JS Date; String(Date) is "Sun Nov 01 2026 ..." which PostgreSQL rejects as a DATE.
+function dateStr(v) {
+  if (v == null || v === '') return null;
+  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v.toISOString().slice(0, 10);
+  return String(v);
+}
+
 async function insertProject(client, payload, code) {
   const r = await client.query(
     `INSERT INTO projects (
@@ -115,7 +122,7 @@ async function insertProject(client, payload, code) {
       payload.client_id == null ? null : num(payload.client_id),
       payload.project_manager_id == null ? null : num(payload.project_manager_id),
       num(payload.contract_value) ?? 0, num(payload.budget) ?? 0,
-      str(payload.start_date), str(payload.expected_completion), str(payload.status) || 'planning',
+      dateStr(payload.start_date), dateStr(payload.expected_completion), str(payload.status) || 'planning',
       str(payload.project_number) || code,
       str(payload.country), num(payload.gps_latitude), num(payload.gps_longitude),
       str(payload.timezone) || 'Africa/Cairo', str(payload.currency) || 'EGP',
@@ -302,12 +309,21 @@ async function provisionParticipants(client, project, payload) {
   }
   const addOrgParticipant = async (organizationId, participantType, portalAccess) => {
     if (organizationId == null) return;
+    // The portal engines resolve a participant's supplier/subcontractor/client through the legacy_*_id columns, so a
+    // participant created without them is invisible to its own portal. Copy them from the organization row.
+    const legacy = await client.query(
+      'SELECT legacy_client_id, legacy_supplier_id, legacy_subcontractor_id FROM organizations WHERE id = $1', [organizationId]);
+    const lg = (legacy && legacy.rows && legacy.rows[0]) || {};
     await client.query(
-      `INSERT INTO project_participants (project_id, organization_id, participant_type, role_label, active_from, portal_access_enabled, visibility_policy)
-       VALUES ($1, $2, $3, $4, NOW(), $5, $6)`,
+      `INSERT INTO project_participants (project_id, organization_id, participant_type, role_label, active_from, portal_access_enabled, visibility_policy,
+         legacy_client_id, legacy_supplier_id, legacy_subcontractor_id)
+       VALUES ($1, $2, $3, $4, NOW(), $5, $6, $7, $8, $9)`,
       [
         project.id, organizationId, participantType, participantType,
         portalAccess === true, str(payload.visibility_policy) || 'standard',
+        participantType === 'client' ? (lg.legacy_client_id ?? null) : null,
+        participantType === 'supplier' ? (lg.legacy_supplier_id ?? null) : null,
+        participantType === 'subcontractor' ? (lg.legacy_subcontractor_id ?? null) : null,
       ]
     );
     count++;

@@ -1,0 +1,83 @@
+{
+ "client": 2,
+ "emp": {
+  "project_manager": 1,
+  "site_engineer": 2,
+  "qs": 3,
+  "safety_officer": 4
+ },
+ "cc": {
+  "mat": 16,
+  "lab": 18,
+  "sub": 20
+ },
+ "superseded_project": 5,
+ "project": 6,
+ "loc": {
+  "bldg": 9,
+  "f1": 10,
+  "f2": 11
+ },
+ "boqSec": 4,
+ "boq": {
+  "conc": 12,
+  "steel": 13,
+  "lab": 14,
+  "sub": 15
+ },
+ "cal": 3,
+ "act": {
+  "exc": 4,
+  "cols": 5,
+  "mep": 6
+ },
+ "supplier": 3,
+ "item": {
+  "rebar": 9,
+  "cement": 10
+ },
+ "wh": 2,
+ "pr": 3,
+ "rfq": 3,
+ "award": 3,
+ "po": 4,
+ "issue": 1,
+ "pr2": 4,
+ "sub": 1,
+ "subc": 1,
+ "wo": 1,
+ "alloc": 1,
+ "meas": [
+  1,
+  2
+ ],
+ "scert": 1,
+ "qt": 1,
+ "qt2": 2,
+ "ncr": 1,
+ "wirA": 1,
+ "wirR": 2,
+ "inc": 1,
+ "hins": 1,
+ "permA": 1,
+ "permR": 2,
+ "wirConsultant": true,
+ "doc": 2,
+ "docR": 3,
+ "rfi": 1,
+ "subA": 1,
+ "subR": 2,
+ "cc2": 1,
+ "pap": 1,
+ "cert": 1,
+ "inv": 1,
+ "sinv": 3,
+ "sinv2": 4,
+ "lab": 1,
+ "asset": 1,
+ "mnt": 1,
+ "pkg": [
+  10,
+  11
+ ]
+}
