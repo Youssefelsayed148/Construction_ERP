@@ -3235,3 +3235,10 @@ OPEN DECISION: who approves supplier invoices? Today procurement_manager / owner
 - valueMasking (default-deny) in authorize(); quantities self-approval blocked; NCR/incident audit+events; PR-rejected notification; migration 0087; credential files gitignored.
 - Gates: lint:guards ok, i18n:parity ok, lint:api ok, i18n:check NOT RUN (typescript missing); backend mock 93/93 (1344 tests); real-PG 103/103 on a throwaway PG16 after fixing 3 fixtures (self-approval) and 1 expired hard-coded RFQ date.
 - Live: access matrix 1745 PASS/3 scope-adjusted, UI 38/38, forbidden 105/105, visibility baseline 9 leaks (pre-fix). Rebuild of the live backend was blocked, so the new code is NOT live. See TEST_REPORT.md.
+
+# 2026-11-02 - Owner decisions: masking scope, CEO/COO view, consultant_reviewer, participants endpoint
+- valueMasking now covers 14 mounts (HR salaries, payroll, finance-ledger, finance, payments, expenses, dashboard, project budgets added); frontend formatter hidden marker; dashboard empty state for unassigned accounts (EN/AR keys).
+- Migrations 0088 (accountant_ap flag, over-granted), 0089 (CEO/COO view; consultant_reviewer approve/reject), 0090 (revokes the 0088 grant: ONE row delete, flagged for review). 0087 locations/work-order create.
+- Consultant engine: canonical roles accepted and project assignment enforced for the whole consultant family.
+- POST /api/projects/:id/participants with legacy portal ids; real-PG suite added.
+- Gates: see TEST_REPORT.md (targeted suites re-run; full suites not re-run after the last changes; i18n:check and frontend page tests not runnable here).

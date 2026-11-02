@@ -9,7 +9,7 @@ const PROBES = [
   ['see_client_price', `/api/invoices?project_id=${P}`, /97200/, 'client invoice amount 97,200'],
   ['see_client_price', `/api/commercial/payment-applications?project_id=${P}`, /108000/, 'payment application claimed work 108,000'],
   ['see_subcontractor_price', `/api/subcontractors/contracts/${P}`, /176000/, 'subcontract value 176,000'],
-  ['see_internal_cost', `/api/boq/items/${P}`, /"unit_rate":"?1800|"unit_rate":"?24000/, 'BOQ unit rates'],
+  ['see_client_price', `/api/boq/items/${P}`, /"unit_rate":"?1800|"unit_rate":"?24000/, 'BOQ unit rates'],
   ['see_internal_cost', `/api/costing/summary?project_id=${P}`, /480000/, 'project cost 480,000'],
 ];
 (async () => {

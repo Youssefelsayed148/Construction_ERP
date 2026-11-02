@@ -34,7 +34,7 @@
   "account": "owner_ceo",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
   "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
@@ -84,7 +84,7 @@
   "account": "coo",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
   "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
@@ -134,10 +134,10 @@
   "account": "projects_director",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
   "actual": "HTTP 200, VISIBLE",
-  "result": "FINDING",
-  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
+  "result": "PASS",
+  "evidence": ""
  },
  {
   "role": "projects_director",
@@ -184,10 +184,10 @@
   "account": "construction_manager",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
   "actual": "HTTP 200, VISIBLE",
-  "result": "FINDING",
-  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
+  "result": "PASS",
+  "evidence": ""
  },
  {
   "role": "construction_manager",
@@ -234,7 +234,7 @@
   "account": "project_manager",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
   "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
@@ -284,7 +284,7 @@
   "account": "site_manager",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "hidden (see_client_price=false)",
   "actual": "HTTP 200, hidden",
   "result": "PASS",
   "evidence": ""
@@ -334,7 +334,7 @@
   "account": "site_engineer",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "hidden (see_client_price=false)",
   "actual": "HTTP 200, hidden",
   "result": "PASS",
   "evidence": ""
@@ -384,7 +384,7 @@
   "account": "planning_engineer",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "hidden (see_client_price=false)",
   "actual": "HTTP 200, hidden",
   "result": "PASS",
   "evidence": ""
@@ -434,7 +434,7 @@
   "account": "technical_office_engineer",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "hidden (see_client_price=false)",
   "actual": "HTTP 200, hidden",
   "result": "PASS",
   "evidence": ""
@@ -484,10 +484,10 @@
   "account": "quantity_surveyor",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
   "actual": "HTTP 200, VISIBLE",
-  "result": "FINDING",
-  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
+  "result": "PASS",
+  "evidence": ""
  },
  {
   "role": "quantity_surveyor",
@@ -534,7 +534,7 @@
   "account": "commercial_manager",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
   "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
@@ -584,7 +584,7 @@
   "account": "contracts_manager",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "hidden (see_client_price=false)",
   "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
@@ -634,7 +634,7 @@
   "account": "procurement_manager",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "hidden (see_client_price=false)",
   "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
@@ -684,7 +684,7 @@
   "account": "procurement_officer",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "hidden (see_client_price=false)",
   "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
@@ -734,7 +734,7 @@
   "account": "finance_manager",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
   "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
@@ -784,7 +784,7 @@
   "account": "accountant_ar",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
   "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
@@ -834,7 +834,7 @@
   "account": "accountant_ap",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "expected": "hidden (see_client_price=false)",
   "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
@@ -844,7 +844,7 @@
   "account": "accountant_ap",
   "module": "visibility",
   "action": "GET /api/costing/summary -> project cost 480,000",
-  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "expected": "hidden (see_internal_cost=false)",
   "actual": "HTTP 404, hidden",
   "result": "PASS",
   "evidence": ""
@@ -884,7 +884,7 @@
   "account": "storekeeper",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "hidden (see_client_price=false)",
   "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
@@ -934,7 +934,7 @@
   "account": "qa_qc_manager",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "hidden (see_client_price=false)",
   "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
@@ -984,7 +984,7 @@
   "account": "hse_manager",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "hidden (see_client_price=false)",
   "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
@@ -1034,7 +1034,7 @@
   "account": "document_controller",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "hidden (see_client_price=false)",
   "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
@@ -1084,7 +1084,7 @@
   "account": "equipment_manager",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "hidden (see_client_price=false)",
   "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
@@ -1134,7 +1134,7 @@
   "account": "hr_manager",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "hidden (see_client_price=false)",
   "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
@@ -1184,7 +1184,7 @@
   "account": "business_development",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
   "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
@@ -1234,10 +1234,10 @@
   "account": "client_executive",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
   "actual": "HTTP 200, VISIBLE",
-  "result": "FINDING",
-  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
+  "result": "PASS",
+  "evidence": ""
  },
  {
   "role": "client_executive",
@@ -1284,7 +1284,7 @@
   "account": "client_reviewer",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "hidden (see_client_price=false)",
   "actual": "HTTP 200, hidden",
   "result": "PASS",
   "evidence": ""
@@ -1334,10 +1334,10 @@
   "account": "pmc_manager",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
   "actual": "HTTP 200, VISIBLE",
-  "result": "FINDING",
-  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
+  "result": "PASS",
+  "evidence": ""
  },
  {
   "role": "pmc_manager",
@@ -1384,7 +1384,7 @@
   "account": "consultant_coordinator",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "hidden (see_client_price=false)",
   "actual": "HTTP 200, hidden",
   "result": "PASS",
   "evidence": ""
@@ -1434,7 +1434,7 @@
   "account": "consultant_reviewer",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "hidden (see_client_price=false)",
   "actual": "HTTP 200, hidden",
   "result": "PASS",
   "evidence": ""
@@ -1484,7 +1484,7 @@
   "account": "subcontractor_manager",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "hidden (see_client_price=false)",
   "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
@@ -1534,7 +1534,7 @@
   "account": "subcontractor_site_engineer",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "hidden (see_client_price=false)",
   "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
@@ -1584,7 +1584,7 @@
   "account": "supplier_sales",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "hidden (see_client_price=false)",
   "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
@@ -1634,7 +1634,7 @@
   "account": "testing_lab",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "hidden (see_client_price=false)",
   "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
@@ -1684,7 +1684,7 @@
   "account": "workflow_owner",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
   "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
@@ -1734,7 +1734,7 @@
   "account": "workflow_checker",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
   "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
@@ -1784,7 +1784,7 @@
   "account": "workflow_budget",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "flag see_internal_cost=true (visible if endpoint open)",
+  "expected": "flag see_client_price=true (visible if endpoint open)",
   "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""

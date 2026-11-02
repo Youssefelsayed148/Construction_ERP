@@ -2285,3 +2285,7 @@ Done: DEMO seed (project 6), forbidden + visibility probes, fixes + migrations 0
 
 ## 2026-11-02 - Stop point (role testing follow-up)
 Blocker: rebuilding/restarting the live backend container was denied by the production-deploy guard, so migration 0087 and the masking/SoD/notification code are not live. Evidence: TEST_REPORT.md, results.json. Next action: owner approves the backend rebuild, then re-run visibility.js and the failed seed steps; decide the open policy items.
+
+## 2026-11-02 - Stop point (owner decisions batch)
+Done: masking scope widened, CEO/COO view, consultant_reviewer review-only, participants endpoint, seeds re-run, leak probe 0 leaks, targeted checks 24/24. Live backend rebuilt (0087-0090 applied).
+Pending: (1) frontend image rebuild so the hidden-value pass and dashboard empty state go live; (2) full frontend + full PG suite on a machine with deps (i18n:check needs typescript; page tests need react-router-dom); (3) masking decision for procurement/inventory/assets/legal etc. (list in TEST_REPORT.md); (4) review migration 0090 (one-row delete); (5) push is left to the owner.

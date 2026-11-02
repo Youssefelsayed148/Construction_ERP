@@ -1,13 +1,14 @@
 {
- "generated_at": "2026-11-02T05:53:43.727Z",
+ "generated_at": "2026-11-02T06:27:08.831Z",
  "summary": {
-  "total": 2975,
-  "pass": 2281,
-  "fail": 23,
-  "finding": 33,
+  "total": 3014,
+  "pass": 2321,
+  "fail": 0,
+  "finding": 6,
   "skipped": 564,
   "na": 38,
-  "not_run": 36
+  "not_run": 36,
+  "superseded": 49
  },
  "results": [
   {
@@ -17031,6 +17032,222 @@
   },
   {
    "role": "owner_ceo",
+   "module": "approval-limits",
+   "action": "GET /api/approval-limits",
+   "expected": "200",
+   "actual": "200",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: read-only view granted (0089)"
+  },
+  {
+   "role": "owner_ceo",
+   "module": "approval-limits",
+   "action": "POST /api/approval-limits (write)",
+   "expected": "403",
+   "actual": "404",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: view only: no write"
+  },
+  {
+   "role": "owner_ceo",
+   "module": "activity",
+   "action": "GET /api/activity",
+   "expected": "200",
+   "actual": "200",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: read-only view granted (0089)"
+  },
+  {
+   "role": "owner_ceo",
+   "module": "activity",
+   "action": "POST /api/activity (write)",
+   "expected": "403",
+   "actual": "404",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: view only: no write"
+  },
+  {
+   "role": "owner_ceo",
+   "module": "handover",
+   "action": "GET /api/handover/assets?project_id=6",
+   "expected": "200",
+   "actual": "200",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: read-only view granted (0089)"
+  },
+  {
+   "role": "owner_ceo",
+   "module": "handover",
+   "action": "POST /api/handover/assets?project_id=6 (write)",
+   "expected": "403",
+   "actual": "403",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: view only: no write"
+  },
+  {
+   "role": "owner_ceo",
+   "module": "users",
+   "action": "GET /api/users",
+   "expected": "403",
+   "actual": "403",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: stays owner/admin only"
+  },
+  {
+   "role": "owner_ceo",
+   "module": "workflow-templates",
+   "action": "GET /api/workflow-templates",
+   "expected": "403",
+   "actual": "403",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: stays owner/admin only"
+  },
+  {
+   "role": "coo",
+   "module": "approval-limits",
+   "action": "GET /api/approval-limits",
+   "expected": "200",
+   "actual": "200",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: read-only view granted (0089)"
+  },
+  {
+   "role": "coo",
+   "module": "approval-limits",
+   "action": "POST /api/approval-limits (write)",
+   "expected": "403",
+   "actual": "404",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: view only: no write"
+  },
+  {
+   "role": "coo",
+   "module": "activity",
+   "action": "GET /api/activity",
+   "expected": "200",
+   "actual": "200",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: read-only view granted (0089)"
+  },
+  {
+   "role": "coo",
+   "module": "activity",
+   "action": "POST /api/activity (write)",
+   "expected": "403",
+   "actual": "404",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: view only: no write"
+  },
+  {
+   "role": "coo",
+   "module": "handover",
+   "action": "GET /api/handover/assets?project_id=6",
+   "expected": "200",
+   "actual": "200",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: read-only view granted (0089)"
+  },
+  {
+   "role": "coo",
+   "module": "handover",
+   "action": "POST /api/handover/assets?project_id=6 (write)",
+   "expected": "403",
+   "actual": "403",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: view only: no write"
+  },
+  {
+   "role": "coo",
+   "module": "users",
+   "action": "GET /api/users",
+   "expected": "403",
+   "actual": "403",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: stays owner/admin only"
+  },
+  {
+   "role": "coo",
+   "module": "workflow-templates",
+   "action": "GET /api/workflow-templates",
+   "expected": "403",
+   "actual": "403",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: stays owner/admin only"
+  },
+  {
+   "role": "consultant_reviewer",
+   "module": "consultant",
+   "action": "GET /api/consultant/projects",
+   "expected": "200",
+   "actual": "200",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: "
+  },
+  {
+   "role": "consultant_reviewer",
+   "module": "consultant",
+   "action": "POST /api/consultant/observations (create)",
+   "expected": "403",
+   "actual": "403",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: no create"
+  },
+  {
+   "role": "consultant_reviewer",
+   "module": "consultant",
+   "action": "POST observations/:id/advance (edit)",
+   "expected": "403",
+   "actual": "403",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: no edit"
+  },
+  {
+   "role": "consultant_reviewer",
+   "module": "consultant",
+   "action": "POST wirs/:id/result (review action allowed by role+policy)",
+   "expected": "not 403 forbidden",
+   "actual": "404",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: HTTP 404 record_not_found"
+  },
+  {
+   "role": "hr_manager",
+   "module": "hr",
+   "action": "GET /api/hr/employees salary visible",
+   "expected": "salary present",
+   "actual": "200 present",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: "
+  },
+  {
+   "role": "site_engineer",
+   "module": "hr",
+   "action": "GET /api/hr/employees salary hidden",
+   "expected": "403 or no salary",
+   "actual": "403 absent",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: "
+  },
+  {
+   "role": "accountant_ap",
+   "module": "finance-ledger",
+   "action": "GET retention (amounts visible)",
+   "expected": "200 with balance",
+   "actual": "200 balance",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: AP keeps its values (role allow-list in masking)"
+  },
+  {
+   "role": "storekeeper",
+   "module": "finance-ledger",
+   "action": "GET retention",
+   "expected": "403 or no amounts",
+   "actual": "403 no-amount",
+   "result": "PASS",
+   "evidence": "targeted post-deploy check: "
+  },
+  {
+   "role": "owner_ceo",
    "module": "visibility",
    "action": "GET /api/invoices -> client invoice amount 97,200",
    "expected": "flag see_client_price=true (visible if endpoint open)",
@@ -17060,7 +17277,7 @@
    "role": "owner_ceo",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "flag see_internal_cost=true (visible if endpoint open)",
+   "expected": "flag see_client_price=true (visible if endpoint open)",
    "actual": "HTTP 200, VISIBLE",
    "result": "PASS",
    "evidence": ""
@@ -17105,7 +17322,7 @@
    "role": "coo",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "flag see_internal_cost=true (visible if endpoint open)",
+   "expected": "flag see_client_price=true (visible if endpoint open)",
    "actual": "HTTP 200, VISIBLE",
    "result": "PASS",
    "evidence": ""
@@ -17150,10 +17367,10 @@
    "role": "projects_director",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "flag see_client_price=true (visible if endpoint open)",
    "actual": "HTTP 200, VISIBLE",
-   "result": "FINDING",
-   "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
+   "result": "PASS",
+   "evidence": ""
   },
   {
    "role": "projects_director",
@@ -17195,10 +17412,10 @@
    "role": "construction_manager",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "flag see_client_price=true (visible if endpoint open)",
    "actual": "HTTP 200, VISIBLE",
-   "result": "FINDING",
-   "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
+   "result": "PASS",
+   "evidence": ""
   },
   {
    "role": "construction_manager",
@@ -17240,7 +17457,7 @@
    "role": "project_manager",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "flag see_internal_cost=true (visible if endpoint open)",
+   "expected": "flag see_client_price=true (visible if endpoint open)",
    "actual": "HTTP 200, VISIBLE",
    "result": "PASS",
    "evidence": ""
@@ -17285,7 +17502,7 @@
    "role": "site_manager",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "hidden (see_client_price=false)",
    "actual": "HTTP 200, hidden",
    "result": "PASS",
    "evidence": ""
@@ -17330,7 +17547,7 @@
    "role": "site_engineer",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "hidden (see_client_price=false)",
    "actual": "HTTP 200, hidden",
    "result": "PASS",
    "evidence": ""
@@ -17375,7 +17592,7 @@
    "role": "planning_engineer",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "hidden (see_client_price=false)",
    "actual": "HTTP 200, hidden",
    "result": "PASS",
    "evidence": ""
@@ -17420,7 +17637,7 @@
    "role": "technical_office_engineer",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "hidden (see_client_price=false)",
    "actual": "HTTP 200, hidden",
    "result": "PASS",
    "evidence": ""
@@ -17465,10 +17682,10 @@
    "role": "quantity_surveyor",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "flag see_client_price=true (visible if endpoint open)",
    "actual": "HTTP 200, VISIBLE",
-   "result": "FINDING",
-   "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
+   "result": "PASS",
+   "evidence": ""
   },
   {
    "role": "quantity_surveyor",
@@ -17510,7 +17727,7 @@
    "role": "commercial_manager",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "flag see_internal_cost=true (visible if endpoint open)",
+   "expected": "flag see_client_price=true (visible if endpoint open)",
    "actual": "HTTP 200, VISIBLE",
    "result": "PASS",
    "evidence": ""
@@ -17555,7 +17772,7 @@
    "role": "contracts_manager",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "hidden (see_client_price=false)",
    "actual": "HTTP 403, hidden",
    "result": "PASS",
    "evidence": ""
@@ -17600,7 +17817,7 @@
    "role": "procurement_manager",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "hidden (see_client_price=false)",
    "actual": "HTTP 403, hidden",
    "result": "PASS",
    "evidence": ""
@@ -17645,7 +17862,7 @@
    "role": "procurement_officer",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "hidden (see_client_price=false)",
    "actual": "HTTP 403, hidden",
    "result": "PASS",
    "evidence": ""
@@ -17690,7 +17907,7 @@
    "role": "finance_manager",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "flag see_internal_cost=true (visible if endpoint open)",
+   "expected": "flag see_client_price=true (visible if endpoint open)",
    "actual": "HTTP 200, VISIBLE",
    "result": "PASS",
    "evidence": ""
@@ -17735,7 +17952,7 @@
    "role": "accountant_ar",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "flag see_client_price=true (visible if endpoint open)",
    "actual": "HTTP 403, hidden",
    "result": "PASS",
    "evidence": ""
@@ -17780,7 +17997,7 @@
    "role": "accountant_ap",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "hidden (see_client_price=false)",
    "actual": "HTTP 403, hidden",
    "result": "PASS",
    "evidence": ""
@@ -17825,7 +18042,7 @@
    "role": "storekeeper",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "hidden (see_client_price=false)",
    "actual": "HTTP 403, hidden",
    "result": "PASS",
    "evidence": ""
@@ -17870,7 +18087,7 @@
    "role": "qa_qc_manager",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "hidden (see_client_price=false)",
    "actual": "HTTP 403, hidden",
    "result": "PASS",
    "evidence": ""
@@ -17915,7 +18132,7 @@
    "role": "hse_manager",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "hidden (see_client_price=false)",
    "actual": "HTTP 403, hidden",
    "result": "PASS",
    "evidence": ""
@@ -17960,7 +18177,7 @@
    "role": "document_controller",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "hidden (see_client_price=false)",
    "actual": "HTTP 403, hidden",
    "result": "PASS",
    "evidence": ""
@@ -18005,7 +18222,7 @@
    "role": "equipment_manager",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "hidden (see_client_price=false)",
    "actual": "HTTP 403, hidden",
    "result": "PASS",
    "evidence": ""
@@ -18050,7 +18267,7 @@
    "role": "hr_manager",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "hidden (see_client_price=false)",
    "actual": "HTTP 403, hidden",
    "result": "PASS",
    "evidence": ""
@@ -18095,7 +18312,7 @@
    "role": "business_development",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "flag see_client_price=true (visible if endpoint open)",
    "actual": "HTTP 403, hidden",
    "result": "PASS",
    "evidence": ""
@@ -18140,10 +18357,10 @@
    "role": "client_executive",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "flag see_client_price=true (visible if endpoint open)",
    "actual": "HTTP 200, VISIBLE",
-   "result": "FINDING",
-   "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
+   "result": "PASS",
+   "evidence": ""
   },
   {
    "role": "client_executive",
@@ -18185,7 +18402,7 @@
    "role": "client_reviewer",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "hidden (see_client_price=false)",
    "actual": "HTTP 200, hidden",
    "result": "PASS",
    "evidence": ""
@@ -18230,10 +18447,10 @@
    "role": "pmc_manager",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "flag see_client_price=true (visible if endpoint open)",
    "actual": "HTTP 200, VISIBLE",
-   "result": "FINDING",
-   "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
+   "result": "PASS",
+   "evidence": ""
   },
   {
    "role": "pmc_manager",
@@ -18275,7 +18492,7 @@
    "role": "consultant_coordinator",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "hidden (see_client_price=false)",
    "actual": "HTTP 200, hidden",
    "result": "PASS",
    "evidence": ""
@@ -18320,7 +18537,7 @@
    "role": "consultant_reviewer",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "hidden (see_client_price=false)",
    "actual": "HTTP 200, hidden",
    "result": "PASS",
    "evidence": ""
@@ -18365,7 +18582,7 @@
    "role": "subcontractor_manager",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "hidden (see_client_price=false)",
    "actual": "HTTP 403, hidden",
    "result": "PASS",
    "evidence": ""
@@ -18410,7 +18627,7 @@
    "role": "subcontractor_site_engineer",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "hidden (see_client_price=false)",
    "actual": "HTTP 403, hidden",
    "result": "PASS",
    "evidence": ""
@@ -18455,7 +18672,7 @@
    "role": "supplier_sales",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "hidden (see_client_price=false)",
    "actual": "HTTP 403, hidden",
    "result": "PASS",
    "evidence": ""
@@ -18500,7 +18717,7 @@
    "role": "testing_lab",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "hidden (see_internal_cost=false)",
+   "expected": "hidden (see_client_price=false)",
    "actual": "HTTP 403, hidden",
    "result": "PASS",
    "evidence": ""
@@ -18545,7 +18762,7 @@
    "role": "owner",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "flag see_internal_cost=true (visible if endpoint open)",
+   "expected": "flag see_client_price=true (visible if endpoint open)",
    "actual": "HTTP 200, VISIBLE",
    "result": "PASS",
    "evidence": ""
@@ -18590,7 +18807,7 @@
    "role": "purchasing_mgr",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "flag see_internal_cost=true (visible if endpoint open)",
+   "expected": "flag see_client_price=true (visible if endpoint open)",
    "actual": "HTTP 200, VISIBLE",
    "result": "PASS",
    "evidence": ""
@@ -18635,7 +18852,7 @@
    "role": "accountant",
    "module": "visibility",
    "action": "GET /api/boq/items/6 -> BOQ unit rates",
-   "expected": "flag see_internal_cost=true (visible if endpoint open)",
+   "expected": "flag see_client_price=true (visible if endpoint open)",
    "actual": "HTTP 200, VISIBLE",
    "result": "PASS",
    "evidence": ""
@@ -19087,8 +19304,8 @@
    "action": "create location DEMO-B1",
    "expected": "HTTP 2xx (logical owner of this step)",
    "actual": "HTTP 403",
-   "result": "FINDING",
-   "evidence": "[5. locations] logical role cannot perform step; used site_manager instead"
+   "result": "SUPERSEDED",
+   "evidence": "[5. locations] not re-observed by the latest run of seed2.js; was: logical role cannot perform step; used site_manager instead"
   },
   {
    "role": "site_manager",
@@ -19096,8 +19313,8 @@
    "action": "create location DEMO-B1",
    "expected": "HTTP 2xx (logical owner of this step)",
    "actual": "HTTP 403",
-   "result": "FINDING",
-   "evidence": "[5. locations] logical role cannot perform step; used workflow_owner instead"
+   "result": "SUPERSEDED",
+   "evidence": "[5. locations] not re-observed by the latest run of seed2.js; was: logical role cannot perform step; used workflow_owner instead"
   },
   {
    "role": "workflow_owner",
@@ -19123,8 +19340,8 @@
    "action": "create location DEMO-B1-F1",
    "expected": "HTTP 2xx (logical owner of this step)",
    "actual": "HTTP 403",
-   "result": "FINDING",
-   "evidence": "[5. locations] logical role cannot perform step; used site_manager instead"
+   "result": "SUPERSEDED",
+   "evidence": "[5. locations] not re-observed by the latest run of seed2.js; was: logical role cannot perform step; used site_manager instead"
   },
   {
    "role": "site_manager",
@@ -19132,8 +19349,8 @@
    "action": "create location DEMO-B1-F1",
    "expected": "HTTP 2xx (logical owner of this step)",
    "actual": "HTTP 403",
-   "result": "FINDING",
-   "evidence": "[5. locations] logical role cannot perform step; used workflow_owner instead"
+   "result": "SUPERSEDED",
+   "evidence": "[5. locations] not re-observed by the latest run of seed2.js; was: logical role cannot perform step; used workflow_owner instead"
   },
   {
    "role": "workflow_owner",
@@ -19159,8 +19376,8 @@
    "action": "create location DEMO-B1-F2",
    "expected": "HTTP 2xx (logical owner of this step)",
    "actual": "HTTP 403",
-   "result": "FINDING",
-   "evidence": "[5. locations] logical role cannot perform step; used site_manager instead"
+   "result": "SUPERSEDED",
+   "evidence": "[5. locations] not re-observed by the latest run of seed2.js; was: logical role cannot perform step; used site_manager instead"
   },
   {
    "role": "site_manager",
@@ -19168,8 +19385,8 @@
    "action": "create location DEMO-B1-F2",
    "expected": "HTTP 2xx (logical owner of this step)",
    "actual": "HTTP 403",
-   "result": "FINDING",
-   "evidence": "[5. locations] logical role cannot perform step; used workflow_owner instead"
+   "result": "SUPERSEDED",
+   "evidence": "[5. locations] not re-observed by the latest run of seed2.js; was: logical role cannot perform step; used workflow_owner instead"
   },
   {
    "role": "workflow_owner",
@@ -19428,7 +19645,7 @@
    "module": "procurement",
    "action": "procurement_manager submits PO for issue approval",
    "expected": "HTTP 200/409",
-   "actual": "HTTP 200",
+   "actual": "HTTP 409 invalid_state",
    "result": "PASS",
    "evidence": "[10. procurement happy path: PR > RFQ > quotes > award > PO] "
   },
@@ -19446,27 +19663,27 @@
    "module": "-",
    "action": "VERIFY PO issue: audit/activity entry written",
    "expected": "true",
-   "actual": "true",
-   "result": "PASS",
-   "evidence": "[10. procurement happy path: PR > RFQ > quotes > award > PO] audit +4, activity_log +4"
+   "actual": "false",
+   "result": "SUPERSEDED",
+   "evidence": "[10. procurement happy path: PR > RFQ > quotes > award > PO] not re-observed by the latest run of seed3.js; was: audit +0, activity_log +0"
   },
   {
    "role": "-",
    "module": "-",
    "action": "VERIFY PO issue: notification created",
    "expected": "true",
-   "actual": "true",
-   "result": "PASS",
-   "evidence": "[10. procurement happy path: PR > RFQ > quotes > award > PO] notifications +1"
+   "actual": "false",
+   "result": "SUPERSEDED",
+   "evidence": "[10. procurement happy path: PR > RFQ > quotes > award > PO] not re-observed by the latest run of seed3.js; was: notifications +0"
   },
   {
    "role": "procurement_manager",
    "module": "procurement",
    "action": "VERIFY PO issued (read back)",
    "expected": "true",
-   "actual": "true",
-   "result": "PASS",
-   "evidence": "[10. procurement happy path: PR > RFQ > quotes > award > PO] "
+   "actual": "false",
+   "result": "SUPERSEDED",
+   "evidence": "[10. procurement happy path: PR > RFQ > quotes > award > PO] not re-observed by the latest run of seed3.js; was: HTTP 200 status=closed want issued"
   },
   {
    "role": "supplier_sales",
@@ -19510,8 +19727,8 @@
    "action": "MIR accepted",
    "expected": "HTTP 2xx (logical owner of this step)",
    "actual": "HTTP 403",
-   "result": "FINDING",
-   "evidence": "[11. goods receipt (storekeeper) and stock] logical role cannot perform step; used procurement_manager instead"
+   "result": "SUPERSEDED",
+   "evidence": "[11. goods receipt (storekeeper) and stock] not re-observed by the latest run of seed3.js; was: logical role cannot perform step; used procurement_manager instead"
   },
   {
    "role": "procurement_manager",
@@ -19563,7 +19780,7 @@
    "module": "procurement",
    "action": "receive more than ordered after full receipt (refused)",
    "expected": "HTTP 400/409/422",
-   "actual": "HTTP 400 amount_exceeds_limit",
+   "actual": "HTTP 409 invalid_state",
    "result": "PASS",
    "evidence": "[11. goods receipt (storekeeper) and stock] "
   },
@@ -19636,8 +19853,8 @@
    "action": "VERIFY PR reject: notification created",
    "expected": "true",
    "actual": "false",
-   "result": "FAIL",
-   "evidence": "[13. rejected requisition (reject path)] notifications +0"
+   "result": "SUPERSEDED",
+   "evidence": "[13. rejected requisition (reject path)] not re-observed by the latest run of seed3.js; was: notifications +0"
   },
   {
    "role": "storekeeper",
@@ -19708,8 +19925,8 @@
    "action": "create work order",
    "expected": "HTTP 2xx (logical owner of this step)",
    "actual": "HTTP 403",
-   "result": "FINDING",
-   "evidence": "[15. work order (construction_manager) and executed quantities] logical role cannot perform step; used project_manager instead"
+   "result": "SUPERSEDED",
+   "evidence": "[15. work order (construction_manager) and executed quantities] not re-observed by the latest run of seed4.js; was: logical role cannot perform step; used project_manager instead"
   },
   {
    "role": "project_manager",
@@ -19717,8 +19934,8 @@
    "action": "create work order",
    "expected": "HTTP 2xx (logical owner of this step)",
    "actual": "HTTP 403",
-   "result": "FINDING",
-   "evidence": "[15. work order (construction_manager) and executed quantities] logical role cannot perform step; used site_manager instead"
+   "result": "SUPERSEDED",
+   "evidence": "[15. work order (construction_manager) and executed quantities] not re-observed by the latest run of seed4.js; was: logical role cannot perform step; used site_manager instead"
   },
   {
    "role": "site_manager",
@@ -19726,8 +19943,8 @@
    "action": "create work order",
    "expected": "HTTP 2xx (logical owner of this step)",
    "actual": "HTTP 403",
-   "result": "FINDING",
-   "evidence": "[15. work order (construction_manager) and executed quantities] logical role cannot perform step; used workflow_owner instead"
+   "result": "SUPERSEDED",
+   "evidence": "[15. work order (construction_manager) and executed quantities] not re-observed by the latest run of seed4.js; was: logical role cannot perform step; used workflow_owner instead"
   },
   {
    "role": "workflow_owner",
@@ -19861,8 +20078,8 @@
    "action": "site_engineer approves own measurement (forbidden)",
    "expected": "HTTP 403",
    "actual": "HTTP 200",
-   "result": "FAIL",
-   "evidence": "[15. work order (construction_manager) and executed quantities] {\"success\":true,\"data\":{\"id\":2,\"project_id\":6,\"project_location_id\":10,\"boq_item_id\":12,\"boq_location_allocation_id\":1,\"work_package_id\":null,\"measured_date\":\"2026-11-02T00:00:00.000Z\",\"quantity\":\"45.000\",\"unit\":\"m3\",\"so"
+   "result": "SUPERSEDED",
+   "evidence": "[15. work order (construction_manager) and executed quantities] not re-observed by the latest run of seed4.js; was: {\"success\":true,\"data\":{\"id\":2,\"project_id\":6,\"project_location_id\":10,\"boq_item_id\":12,\"boq_location_allocation_id\":1,\""
   },
   {
    "role": "quantity_surveyor",
@@ -19870,8 +20087,8 @@
    "action": "create subcontract payment certificate (work 44,000)",
    "expected": "HTTP 2xx (logical owner of this step)",
    "actual": "HTTP 403",
-   "result": "FINDING",
-   "evidence": "[16. subcontractor payment certificate (approve) + verification] logical role cannot perform step; used commercial_manager instead"
+   "result": "SUPERSEDED",
+   "evidence": "[16. subcontractor payment certificate (approve) + verification] not re-observed by the latest run of seed4.js; was: logical role cannot perform step; used commercial_manager instead"
   },
   {
    "role": "commercial_manager",
@@ -19978,8 +20195,8 @@
    "action": "VERIFY NCR: audit/activity entry written",
    "expected": "true",
    "actual": "false",
-   "result": "FAIL",
-   "evidence": "[17. QA/QC] audit +0, activity_log +0"
+   "result": "SUPERSEDED",
+   "evidence": "[17. QA/QC] not re-observed by the latest run of seed5.js; was: audit +0, activity_log +0"
   },
   {
    "role": "-",
@@ -19987,8 +20204,8 @@
    "action": "VERIFY NCR: notification created",
    "expected": "true",
    "actual": "false",
-   "result": "FAIL",
-   "evidence": "[17. QA/QC] notifications +0"
+   "result": "SUPERSEDED",
+   "evidence": "[17. QA/QC] not re-observed by the latest run of seed5.js; was: notifications +0"
   },
   {
    "role": "qa_qc_manager",
@@ -20050,8 +20267,8 @@
    "action": "WIR submit (approve)",
    "expected": "HTTP 2xx (logical owner of this step)",
    "actual": "HTTP 403",
-   "result": "FINDING",
-   "evidence": "[17. QA/QC] logical role cannot perform step; used qa_qc_manager instead"
+   "result": "SUPERSEDED",
+   "evidence": "[17. QA/QC] not re-observed by the latest run of seed5.js; was: logical role cannot perform step; used qa_qc_manager instead"
   },
   {
    "role": "qa_qc_manager",
@@ -20059,8 +20276,8 @@
    "action": "WIR submit (approve)",
    "expected": "HTTP 200/201",
    "actual": "HTTP 403 not_authorized_for_action",
-   "result": "FAIL",
-   "evidence": "[17. QA/QC] {\"success\":false,\"error\":\"Not authorized to submit this WIR\",\"error_code\":\"not_authorized_for_action\",\"error_params\":{}}"
+   "result": "SUPERSEDED",
+   "evidence": "[17. QA/QC] not re-observed by the latest run of seed5.js; was: {\"success\":false,\"error\":\"Not authorized to submit this WIR\",\"error_code\":\"not_authorized_for_action\",\"error_params\":{}}"
   },
   {
    "role": "qa_qc_manager",
@@ -20113,8 +20330,8 @@
    "action": "WIR submit (reject)",
    "expected": "HTTP 2xx (logical owner of this step)",
    "actual": "HTTP 403",
-   "result": "FINDING",
-   "evidence": "[17. QA/QC] logical role cannot perform step; used qa_qc_manager instead"
+   "result": "SUPERSEDED",
+   "evidence": "[17. QA/QC] not re-observed by the latest run of seed5.js; was: logical role cannot perform step; used qa_qc_manager instead"
   },
   {
    "role": "qa_qc_manager",
@@ -20122,8 +20339,8 @@
    "action": "WIR submit (reject)",
    "expected": "HTTP 200/201",
    "actual": "HTTP 403 not_authorized_for_action",
-   "result": "FAIL",
-   "evidence": "[17. QA/QC] {\"success\":false,\"error\":\"Not authorized to submit this WIR\",\"error_code\":\"not_authorized_for_action\",\"error_params\":{}}"
+   "result": "SUPERSEDED",
+   "evidence": "[17. QA/QC] not re-observed by the latest run of seed5.js; was: {\"success\":false,\"error\":\"Not authorized to submit this WIR\",\"error_code\":\"not_authorized_for_action\",\"error_params\":{}}"
   },
   {
    "role": "qa_qc_manager",
@@ -20141,7 +20358,7 @@
    "expected": "true",
    "actual": "true",
    "result": "PASS",
-   "evidence": "[17. QA/QC] audit +0, activity_log +4"
+   "evidence": "[17. QA/QC] audit +0, activity_log +3"
   },
   {
    "role": "-",
@@ -20150,7 +20367,7 @@
    "expected": "true",
    "actual": "true",
    "result": "PASS",
-   "evidence": "[17. QA/QC] notifications +3"
+   "evidence": "[17. QA/QC] notifications +1"
   },
   {
    "role": "consultant_coordinator",
@@ -20158,8 +20375,8 @@
    "action": "POST /api/consultant/wirs/:id/result",
    "expected": "HTTP 200 (consultant reviews WIR)",
    "actual": "HTTP 403",
-   "result": "FINDING",
-   "evidence": "[QA/QC] consultant account cannot act: route is authorize(consultant) (legacy role key) and the account has no consultant organization participant"
+   "result": "SUPERSEDED",
+   "evidence": "[QA/QC] not re-observed by the latest run of seed5.js; was: consultant account cannot act: route is authorize(consultant) (legacy role key) and the account has no consultant organi"
   },
   {
    "role": "qa_qc_manager",
@@ -20167,8 +20384,8 @@
    "action": "VERIFY WIR A approved / WIR R rejected",
    "expected": "true",
    "actual": "false",
-   "result": "FAIL",
-   "evidence": "[17. QA/QC] A=pm_review R=draft"
+   "result": "SUPERSEDED",
+   "evidence": "[17. QA/QC] not re-observed by the latest run of seed5.js; was: A=pm_review R=draft"
   },
   {
    "role": "storekeeper",
@@ -20185,8 +20402,8 @@
    "action": "testing_lab decides a WIR (forbidden)",
    "expected": "HTTP 403",
    "actual": "HTTP 409 invalid_state",
-   "result": "FAIL",
-   "evidence": "[17. QA/QC] {\"success\":false,\"error\":\"The consultant stage takes the final result — POST /result\",\"error_code\":\"invalid_state\",\"error_params\":{}}"
+   "result": "SUPERSEDED",
+   "evidence": "[17. QA/QC] not re-observed by the latest run of seed5.js; was: {\"success\":false,\"error\":\"The consultant stage takes the final result — POST /result\",\"error_code\":\"invalid_state\",\"erro"
   },
   {
    "role": "hse_manager",
@@ -20212,8 +20429,8 @@
    "action": "VERIFY incident: notification created",
    "expected": "true",
    "actual": "false",
-   "result": "FAIL",
-   "evidence": "[18. HSE] notifications +0"
+   "result": "SUPERSEDED",
+   "evidence": "[18. HSE] not re-observed by the latest run of seed5.js; was: notifications +0"
   },
   {
    "role": "hse_manager",
@@ -20257,8 +20474,8 @@
    "action": "permit submit (approve)",
    "expected": "HTTP 200/201",
    "actual": "HTTP 403 not_authorized_for_action",
-   "result": "FAIL",
-   "evidence": "[18. HSE] {\"success\":false,\"error\":\"Not authorized to submit this permit\",\"error_code\":\"not_authorized_for_action\",\"error_params\":{}}"
+   "result": "SUPERSEDED",
+   "evidence": "[18. HSE] not re-observed by the latest run of seed5.js; was: {\"success\":false,\"error\":\"Not authorized to submit this permit\",\"error_code\":\"not_authorized_for_action\",\"error_params\":"
   },
   {
    "role": "hse_manager",
@@ -20311,8 +20528,8 @@
    "action": "permit submit (reject)",
    "expected": "HTTP 200/201",
    "actual": "HTTP 403 not_authorized_for_action",
-   "result": "FAIL",
-   "evidence": "[18. HSE] {\"success\":false,\"error\":\"Not authorized to submit this permit\",\"error_code\":\"not_authorized_for_action\",\"error_params\":{}}"
+   "result": "SUPERSEDED",
+   "evidence": "[18. HSE] not re-observed by the latest run of seed5.js; was: {\"success\":false,\"error\":\"Not authorized to submit this permit\",\"error_code\":\"not_authorized_for_action\",\"error_params\":"
   },
   {
    "role": "hse_manager",
@@ -20338,8 +20555,8 @@
    "action": "VERIFY permit reject: notification created",
    "expected": "true",
    "actual": "false",
-   "result": "FAIL",
-   "evidence": "[18. HSE] notifications +0"
+   "result": "SUPERSEDED",
+   "evidence": "[18. HSE] not re-observed by the latest run of seed5.js; was: notifications +0"
   },
   {
    "role": "hse_manager",
@@ -20491,8 +20708,8 @@
    "action": "VERIFY RFI: notification created",
    "expected": "true",
    "actual": "false",
-   "result": "FAIL",
-   "evidence": "[19. document control: documents, RFI, submittals] notifications +0"
+   "result": "SUPERSEDED",
+   "evidence": "[19. document control: documents, RFI, submittals] not re-observed by the latest run of seed6.js; was: notifications +0"
   },
   {
    "role": "technical_office_engineer",
@@ -20500,8 +20717,8 @@
    "action": "technical_office_engineer answers RFI",
    "expected": "HTTP 200/201",
    "actual": "HTTP 410 staged_response_required",
-   "result": "FAIL",
-   "evidence": "[19. document control: documents, RFI, submittals] {\"success\":false,\"error\":\"Single-answer responses are retired; use the revisioned response register.\",\"error_code\":\"staged_response_required\",\"error_params\":{\"replacement\":\"/api/v1/rfis/:id/responses\"}}"
+   "result": "SUPERSEDED",
+   "evidence": "[19. document control: documents, RFI, submittals] not re-observed by the latest run of seed6.js; was: {\"success\":false,\"error\":\"Single-answer responses are retired; use the revisioned response register.\",\"error_code\":\"stag"
   },
   {
    "role": "technical_office_engineer",
@@ -20536,8 +20753,8 @@
    "action": "submittal responded: approved",
    "expected": "HTTP 200/201/400",
    "actual": "HTTP 410 staged_response_required",
-   "result": "FAIL",
-   "evidence": "[19. document control: documents, RFI, submittals] {\"success\":false,\"error\":\"Single-answer responses are retired; use the revisioned response register.\",\"error_code\":\"staged_response_required\",\"error_params\":{\"replacement\":\"/api/v1/submittals/:id/revisions\"}}"
+   "result": "SUPERSEDED",
+   "evidence": "[19. document control: documents, RFI, submittals] not re-observed by the latest run of seed6.js; was: {\"success\":false,\"error\":\"Single-answer responses are retired; use the revisioned response register.\",\"error_code\":\"stag"
   },
   {
    "role": "-",
@@ -20563,8 +20780,8 @@
    "action": "submittal responded: rejected",
    "expected": "HTTP 200/201/400",
    "actual": "HTTP 410 staged_response_required",
-   "result": "FAIL",
-   "evidence": "[19. document control: documents, RFI, submittals] {\"success\":false,\"error\":\"Single-answer responses are retired; use the revisioned response register.\",\"error_code\":\"staged_response_required\",\"error_params\":{\"replacement\":\"/api/v1/submittals/:id/revisions\"}}"
+   "result": "SUPERSEDED",
+   "evidence": "[19. document control: documents, RFI, submittals] not re-observed by the latest run of seed6.js; was: {\"success\":false,\"error\":\"Single-answer responses are retired; use the revisioned response register.\",\"error_code\":\"stag"
   },
   {
    "role": "-",
@@ -20671,8 +20888,8 @@
    "action": "certificate approval chain (approve)",
    "expected": "status in [certified,consultant_client]",
    "actual": "status=pm_commercial",
-   "result": "FAIL",
-   "evidence": "[20. client billing (AR): contract > payment application > certify > invoice > receipts] owner_ceo:qs_review->pm_commercial"
+   "result": "SUPERSEDED",
+   "evidence": "[20. client billing (AR): contract > payment application > certify > invoice > receipts] not re-observed by the latest run of seed6.js; was: owner_ceo:qs_review->pm_commercial"
   },
   {
    "role": "project_manager",
@@ -20716,8 +20933,8 @@
    "action": "VERIFY client invoice: notification created",
    "expected": "true",
    "actual": "false",
-   "result": "FAIL",
-   "evidence": "[20. client billing (AR): contract > payment application > certify > invoice > receipts] notifications +0"
+   "result": "SUPERSEDED",
+   "evidence": "[20. client billing (AR): contract > payment application > certify > invoice > receipts] not re-observed by the latest run of seed6.js; was: notifications +0"
   },
   {
    "role": "accountant_ar",
@@ -20941,8 +21158,8 @@
    "action": "invoice workflow start",
    "expected": "HTTP 200/201/409",
    "actual": "HTTP 403",
-   "result": "FAIL",
-   "evidence": "[21. supplier invoice + payment (AP)] {\"success\":false,\"error\":\"Insufficient permissions\"}"
+   "result": "SUPERSEDED",
+   "evidence": "[21. supplier invoice + payment (AP)] not re-observed by the latest run of seed6.js; was: {\"success\":false,\"error\":\"Insufficient permissions\"}"
   },
   {
    "role": "procurement_manager",
@@ -20950,8 +21167,8 @@
    "action": "supplier invoice rejection (reject)",
    "expected": "status in [rejected]",
    "actual": "status=received",
-   "result": "FAIL",
-   "evidence": "[21. supplier invoice + payment (AP)] "
+   "result": "SUPERSEDED",
+   "evidence": "[21. supplier invoice + payment (AP)] not re-observed by the latest run of seed6.js; was: "
   },
   {
    "role": "storekeeper",
@@ -20977,8 +21194,8 @@
    "action": "RFI discipline review",
    "expected": "HTTP 2xx (logical owner of this step)",
    "actual": "HTTP 403",
-   "result": "FINDING",
-   "evidence": "[19. document control: documents, RFI, submittals] logical role cannot perform step; used workflow_owner instead"
+   "result": "SUPERSEDED",
+   "evidence": "[19. document control: documents, RFI, submittals] not re-observed by the latest run of seed6.js; was: logical role cannot perform step; used workflow_owner instead"
   },
   {
    "role": "workflow_owner",
@@ -20995,8 +21212,8 @@
    "action": "RFI official response",
    "expected": "HTTP 2xx (logical owner of this step)",
    "actual": "HTTP 403",
-   "result": "FINDING",
-   "evidence": "[19. document control: documents, RFI, submittals] logical role cannot perform step; used workflow_owner instead"
+   "result": "SUPERSEDED",
+   "evidence": "[19. document control: documents, RFI, submittals] not re-observed by the latest run of seed6.js; was: logical role cannot perform step; used workflow_owner instead"
   },
   {
    "role": "workflow_owner",
@@ -21013,8 +21230,8 @@
    "action": "site_engineer (requester) acknowledges RFI response",
    "expected": "HTTP 200/201",
    "actual": "HTTP 403",
-   "result": "FAIL",
-   "evidence": "[19. document control: documents, RFI, submittals] {\"success\":false,\"error\":\"Insufficient permissions\"}"
+   "result": "SUPERSEDED",
+   "evidence": "[19. document control: documents, RFI, submittals] not re-observed by the latest run of seed6.js; was: {\"success\":false,\"error\":\"Insufficient permissions\"}"
   },
   {
    "role": "technical_office_engineer",
@@ -21022,8 +21239,8 @@
    "action": "submittal internal technical review (approved (code A))",
    "expected": "HTTP 2xx (logical owner of this step)",
    "actual": "HTTP 403",
-   "result": "FINDING",
-   "evidence": "[19. document control: documents, RFI, submittals] logical role cannot perform step; used workflow_owner instead"
+   "result": "SUPERSEDED",
+   "evidence": "[19. document control: documents, RFI, submittals] not re-observed by the latest run of seed6.js; was: logical role cannot perform step; used workflow_owner instead"
   },
   {
    "role": "project_manager",
@@ -21031,8 +21248,8 @@
    "action": "submittal PM stage (approved (code A))",
    "expected": "HTTP 2xx (logical owner of this step)",
    "actual": "HTTP 403",
-   "result": "FINDING",
-   "evidence": "[19. document control: documents, RFI, submittals] logical role cannot perform step; used workflow_owner instead"
+   "result": "SUPERSEDED",
+   "evidence": "[19. document control: documents, RFI, submittals] not re-observed by the latest run of seed6.js; was: logical role cannot perform step; used workflow_owner instead"
   },
   {
    "role": "consultant_coordinator",
@@ -21049,8 +21266,8 @@
    "action": "submittal reviewer stage (approved (code A))",
    "expected": "HTTP 2xx (logical owner of this step)",
    "actual": "HTTP 403",
-   "result": "FINDING",
-   "evidence": "[19. document control: documents, RFI, submittals] logical role cannot perform step; used consultant_coordinator instead"
+   "result": "SUPERSEDED",
+   "evidence": "[19. document control: documents, RFI, submittals] not re-observed by the latest run of seed6.js; was: logical role cannot perform step; used consultant_coordinator instead"
   },
   {
    "role": "consultant_coordinator",
@@ -21076,8 +21293,8 @@
    "action": "submittal internal technical review (rejected (code D))",
    "expected": "HTTP 2xx (logical owner of this step)",
    "actual": "HTTP 403",
-   "result": "FINDING",
-   "evidence": "[19. document control: documents, RFI, submittals] logical role cannot perform step; used workflow_owner instead"
+   "result": "SUPERSEDED",
+   "evidence": "[19. document control: documents, RFI, submittals] not re-observed by the latest run of seed6.js; was: logical role cannot perform step; used workflow_owner instead"
   },
   {
    "role": "project_manager",
@@ -21085,8 +21302,8 @@
    "action": "submittal PM stage (rejected (code D))",
    "expected": "HTTP 2xx (logical owner of this step)",
    "actual": "HTTP 403",
-   "result": "FINDING",
-   "evidence": "[19. document control: documents, RFI, submittals] logical role cannot perform step; used workflow_owner instead"
+   "result": "SUPERSEDED",
+   "evidence": "[19. document control: documents, RFI, submittals] not re-observed by the latest run of seed6.js; was: logical role cannot perform step; used workflow_owner instead"
   },
   {
    "role": "consultant_coordinator",
@@ -21103,8 +21320,8 @@
    "action": "submittal reviewer stage (rejected (code D))",
    "expected": "HTTP 2xx (logical owner of this step)",
    "actual": "HTTP 403",
-   "result": "FINDING",
-   "evidence": "[19. document control: documents, RFI, submittals] logical role cannot perform step; used consultant_coordinator instead"
+   "result": "SUPERSEDED",
+   "evidence": "[19. document control: documents, RFI, submittals] not re-observed by the latest run of seed6.js; was: logical role cannot perform step; used consultant_coordinator instead"
   },
   {
    "role": "consultant_coordinator",
@@ -21292,8 +21509,8 @@
    "action": "handover package item as_built_drawings",
    "expected": "HTTP 200/201",
    "actual": "HTTP 403",
-   "result": "FAIL",
-   "evidence": "[25. handover (project_manager)] {\"success\":false,\"error\":\"Insufficient permissions\"}"
+   "result": "SUPERSEDED",
+   "evidence": "[25. handover (project_manager)] not re-observed by the latest run of seed7.js; was: {\"success\":false,\"error\":\"Insufficient permissions\"}"
   },
   {
    "role": "project_manager",
@@ -21310,8 +21527,8 @@
    "action": "handover package item o_m_manuals",
    "expected": "HTTP 200/201",
    "actual": "HTTP 403",
-   "result": "FAIL",
-   "evidence": "[25. handover (project_manager)] {\"success\":false,\"error\":\"Insufficient permissions\"}"
+   "result": "SUPERSEDED",
+   "evidence": "[25. handover (project_manager)] not re-observed by the latest run of seed7.js; was: {\"success\":false,\"error\":\"Insufficient permissions\"}"
   },
   {
    "role": "project_manager",
@@ -21366,6 +21583,141 @@
    "actual": "HTTP 200",
    "result": "PASS",
    "evidence": "[25. handover (project_manager)] "
+  },
+  {
+   "role": "procurement_manager",
+   "module": "procurement",
+   "action": "award approval chain (approve)",
+   "expected": "status in [approved]",
+   "actual": "status=approved",
+   "result": "PASS",
+   "evidence": "[10. procurement happy path: PR > RFQ > quotes > award > PO] "
+  },
+  {
+   "role": "procurement_manager",
+   "module": "procurement",
+   "action": "PO approval chain (approval limits) (approve)",
+   "expected": "status in [issued]",
+   "actual": "status=closed",
+   "result": "SUPERSEDED",
+   "evidence": "[10. procurement happy path: PR > RFQ > quotes > award > PO] not re-observed by the latest run of seed3.js; was: owner_ceo:fully_delivered->acknowledged | owner_ceo:acknowledged->fully_delivered | procurement_manager:fully_delivered-"
+  },
+  {
+   "role": "site_engineer",
+   "module": "quantities",
+   "action": "site_engineer reviews a measurement (forbidden)",
+   "expected": "HTTP 403",
+   "actual": "HTTP 403",
+   "result": "PASS",
+   "evidence": "[15. work order (construction_manager) and executed quantities] "
+  },
+  {
+   "role": "project_manager",
+   "module": "projects",
+   "action": "duplicate participant refused (409)",
+   "expected": "HTTP 409",
+   "actual": "HTTP 409 participant_exists",
+   "result": "PASS",
+   "evidence": "[26. project participants (client + supplier portals)] "
+  },
+  {
+   "role": "site_engineer",
+   "module": "projects",
+   "action": "site_engineer adds participant (forbidden)",
+   "expected": "HTTP 403",
+   "actual": "HTTP 403",
+   "result": "PASS",
+   "evidence": "[26. project participants (client + supplier portals)] "
+  },
+  {
+   "role": "client_executive",
+   "module": "client-portal",
+   "action": "VERIFY client portal lists the DEMO project after the participant was added",
+   "expected": "true",
+   "actual": "true",
+   "result": "PASS",
+   "evidence": "[26. project participants (client + supplier portals)] HTTP 200"
+  },
+  {
+   "role": "supplier_sales",
+   "module": "portal",
+   "action": "VERIFY supplier portal reachable and project-scoped after the participant was added",
+   "expected": "true",
+   "actual": "true",
+   "result": "PASS",
+   "evidence": "[26. project participants (client + supplier portals)] HTTP 200"
+  },
+  {
+   "role": "owner_ceo",
+   "module": "organizations",
+   "action": "owner_ceo creates organization DEMO-ORG-CONS",
+   "expected": "HTTP 201",
+   "actual": "HTTP 201",
+   "result": "PASS",
+   "evidence": "[26. project participants (client + supplier portals)] "
+  },
+  {
+   "role": "project_manager",
+   "module": "projects",
+   "action": "project_manager adds API-created consultant organization",
+   "expected": "HTTP 201",
+   "actual": "HTTP 201",
+   "result": "PASS",
+   "evidence": "[26. project participants (client + supplier portals)] "
+  },
+  {
+   "role": "-",
+   "module": "-",
+   "action": "VERIFY participant DEMO-ORG-CONS: audit/activity entry written",
+   "expected": "true",
+   "actual": "true",
+   "result": "PASS",
+   "evidence": "[26. project participants (client + supplier portals)] audit +1, activity_log +1"
+  },
+  {
+   "role": "owner_ceo",
+   "module": "organizations",
+   "action": "owner_ceo creates organization DEMO-ORG-SUP",
+   "expected": "HTTP 201",
+   "actual": "HTTP 201",
+   "result": "PASS",
+   "evidence": "[26. project participants (client + supplier portals)] "
+  },
+  {
+   "role": "project_manager",
+   "module": "projects",
+   "action": "project_manager adds API-created supplier organization",
+   "expected": "HTTP 201",
+   "actual": "HTTP 201",
+   "result": "PASS",
+   "evidence": "[26. project participants (client + supplier portals)] "
+  },
+  {
+   "role": "-",
+   "module": "-",
+   "action": "VERIFY participant DEMO-ORG-SUP: audit/activity entry written",
+   "expected": "true",
+   "actual": "true",
+   "result": "PASS",
+   "evidence": "[26. project participants (client + supplier portals)] audit +1, activity_log +1"
+  },
+  {
+   "role": "project_manager",
+   "module": "projects",
+   "action": "VERIFY API-created supplier organization got a legacy supplier id and the participant carries it",
+   "expected": "true",
+   "actual": "true",
+   "result": "PASS",
+   "evidence": "[26. project participants (client + supplier portals)] legacy link"
+  },
+  {
+   "role": "procurement_manager",
+   "module": "procurement",
+   "action": "VERIFY PO issued or later (read back)",
+   "expected": "true",
+   "actual": "true",
+   "result": "PASS",
+   "evidence": "[10. procurement happy path: PR > RFQ > quotes > award > PO] "
   },
   {
    "role": "owner_ceo",

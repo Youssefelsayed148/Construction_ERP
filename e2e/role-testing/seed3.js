@@ -58,9 +58,10 @@ module.exports = async function stage3() {
   await act('procurement_officer', 'POST', `/api/procurement/po/${S.po}/issue`, undefined, { expect: 403, forbidden: true, label: 'procurement_officer issues PO (forbidden: manager only)' });
   const s1 = snap();
   await act('procurement_manager', 'POST', `/api/procurement/po/${S.po}/issue`, undefined, { expect: [200, 409], label: 'procurement_manager submits PO for issue approval' });
-  await approveUntil(`/api/procurement/po/${S.po}/decide`, `select status from purchase_orders where id=${S.po}`, ['issued'], APPROVERS, { decision: 'approve', comment: 'DEMO' }, 'PO approval chain (approval limits)');
-  evidenceSince(s1, 'PO issue', { notif: true });
-  const poRead = await readBack('procurement_manager', `/api/procurement/po/${S.po}`, { status: 'issued' }, 'PO issued (read back)');
+  const poAhead = ['issued', 'partially_delivered', 'fully_delivered', 'closed'].includes(sql(`select status from purchase_orders where id=${S.po}`));
+  if (!poAhead) await approveUntil(`/api/procurement/po/${S.po}/decide`, `select status from purchase_orders where id=${S.po}`, ['issued'], APPROVERS, { decision: 'approve', comment: 'DEMO' }, 'PO approval chain (approval limits)');
+  if (!poAhead) evidenceSince(s1, 'PO issue', { notif: true }); // nothing was issued in this run when the PO had already progressed
+  const poRead = await readBack('procurement_manager', `/api/procurement/po/${S.po}`, poAhead ? {} : { status: 'issued' }, 'PO issued or later (read back)');
   const spo = await call('supplier_sales', 'GET', '/api/portal/supplier/dashboard');
   check('supplier portal shows the issued PO to supplier_sales', spo.status === 200 && JSON.stringify(spo.data || {}).includes(String(S.po)), `HTTP ${spo.status}`, 'supplier_sales', 'portal');
   await act('supplier_sales', 'POST', `/api/portal/supplier/purchase-orders/${S.po}/acknowledge`, {}, { expect: [200, 201], module: 'portal', label: 'supplier_sales acknowledges PO via portal' });
