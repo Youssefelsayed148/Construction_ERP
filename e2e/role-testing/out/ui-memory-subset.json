@@ -1,0 +1,18 @@
+{
+ "min_available_mb_threshold": 500,
+ "memLog": [
+  {
+   "before": "start",
+   "available_mb": 4005
+  },
+  {
+   "after_roles": 5,
+   "available_mb": 3490
+  },
+  {
+   "after": "end",
+   "available_mb": 3560
+  }
+ ],
+ "stopped": null
+}

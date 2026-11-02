@@ -1,0 +1,1682 @@
+{
+ "captured_at": "2026-11-02T07:10:16.253Z",
+ "payloads": [
+  {
+   "endpoint": "/api/dashboard/overview",
+   "mount": "dashboard",
+   "body": {
+    "success": true,
+    "data": {
+     "health": {
+      "projects_active": 3,
+      "projects_total": 3,
+      "projects_at_risk": 0,
+      "portfolio_budget": 3250000,
+      "portfolio_actual": 487620,
+      "portfolio_variance": 2762380,
+      "revenue_collected": 97200,
+      "net_profit": 97200,
+      "total_outstanding": 0,
+      "pending_approvals": 0
+     },
+     "modules": {
+      "projects": {
+       "active": 3,
+       "planning": 0,
+       "completed": 0,
+       "at_risk": 0,
+       "avg_completion": 2
+      },
+      "finance": {
+       "revenue_collected": 97200,
+       "total_invoiced": 97200,
+       "total_expenses": 0,
+       "outstanding": 0,
+       "net_profit": 97200,
+       "overdue_invoices": 0
+      },
+      "invoices": {
+       "total": 1,
+       "sent": 0,
+       "paid": 1,
+       "overdue": 0
+      },
+      "expenses": {
+       "pending": 0,
+       "month_total": 0
+      },
+      "inventory": {
+       "items": 10,
+       "warehouses": 2,
+       "low_stock": 0
+      },
+      "hr": {
+       "active_employees": 4,
+       "present_today": 0,
+       "pending_leaves": 0
+      },
+      "assets": {
+       "total": 1,
+       "active": 1,
+       "down": 0,
+       "maintenance_due": 0
+      },
+      "approvals": {
+       "pending": 0,
+       "awaiting_owner": 0,
+       "oldest_days": 0
+      },
+      "suppliers": {
+       "suppliers": 1,
+       "subcontractors": 1
+      },
+      "clients": {
+       "total": 2
+      },
+      "legal": {
+       "total": 0,
+       "pending": 0
+      }
+     }
+    }
+   }
+  },
+  {
+   "endpoint": "/api/dashboard/role",
+   "mount": "dashboard",
+   "body": {
+    "success": true,
+    "data": {
+     "role": "owner",
+     "widgets": [
+      {
+       "key": "portfolio",
+       "title": "Portfolio",
+       "title_key": "dashboard.widgets.portfolio.title",
+       "data": {
+        "projects": 3,
+        "active": 3,
+        "avg_completion": 2
+       }
+      },
+      {
+       "key": "procurement_exposure",
+       "title": "Procurement exposure",
+       "title_key": "dashboard.widgets.procurement_exposure.title",
+       "data": {
+        "issued_pos": 0,
+        "open_commitment": 0
+       }
+      },
+      {
+       "key": "quality_safety_risks",
+       "title": "Quality & safety risks",
+       "title_key": "dashboard.widgets.quality_safety_risks.title",
+       "data": {
+        "open_ncrs": 0,
+        "open_punch": 0,
+        "open_incidents": 0,
+        "active_permits": 0
+       }
+      },
+      {
+       "key": "financial_position",
+       "title": "Financial position",
+       "title_key": "dashboard.widgets.financial_position.title",
+       "data": {
+        "invoiced": 97200,
+        "collected": 97200,
+        "outstanding": 0
+       }
+      }
+     ],
+     "sticky_notes": [],
+     "location_dashboard": null
+    }
+   }
+  },
+  {
+   "endpoint": "/api/dashboard/alerts",
+   "mount": "dashboard",
+   "body": {
+    "success": true,
+    "data": {
+     "low_stock": [],
+     "overdue_milestones": [],
+     "budget_overruns": [],
+     "stale_site_reports": [
+      {
+       "id": 1,
+       "name": "مشروع المشتريات التجريبي",
+       "code": "PILOT-PTP-001",
+       "last_report_date": null
+      },
+      {
+       "id": 5,
+       "name": "DEMO-برج النخيل السكني",
+       "code": "DEMO-PRJ-002",
+       "last_report_date": null
+      },
+      {
+       "id": 6,
+       "name": "DEMO-برج النخيل الرئيسي",
+       "code": "DEMO-PRJ-003",
+       "last_report_date": null
+      }
+     ],
+     "overdue_rfis": []
+    }
+   }
+  },
+  {
+   "endpoint": "/api/finance/summary",
+   "mount": "finance",
+   "body": {
+    "success": true,
+    "data": {
+     "total_revenue_collected": 97200,
+     "total_invoiced": 97200,
+     "total_expenses": 0,
+     "total_outstanding": 0,
+     "net_profit": 97200,
+     "overdue_count": 0
+    }
+   }
+  },
+  {
+   "endpoint": "/api/invoices",
+   "mount": "invoices",
+   "body": {
+    "success": true,
+    "data": [
+     {
+      "id": 1,
+      "invoice_number": "INV-0001",
+      "project_id": 6,
+      "client_id": 2,
+      "amount": "97200.00",
+      "issue_date": "2026-11-02T00:00:00.000Z",
+      "due_date": "2026-12-02T00:00:00.000Z",
+      "status": "paid",
+      "description": "DEMO-Invoice 1 (net of retention)",
+      "created_at": "2026-11-02T00:26:34.109Z",
+      "updated_at": "2026-11-02T00:26:35.786Z",
+      "client_contract_id": null,
+      "payment_certificate_id": null,
+      "gross_current_work": "0.00",
+      "approved_variations_period": "0.00",
+      "certified_gross": "0.00",
+      "retention_amount": "0.00",
+      "advance_recovery": "0.00",
+      "other_deductions": "0.00",
+      "tax_pct": "0.000",
+      "tax_amount": "0.00",
+      "net_amount": "0.00",
+      "previous_cumulative": "0.00",
+      "cumulative_certified": "0.00",
+      "voided_at": null,
+      "credited_amount": "0.00",
+      "company_id": null,
+      "cost_code_id": null,
+      "department": null,
+      "approved_by": null,
+      "created_by": 16,
+      "voided_by": null,
+      "void_reason": null,
+      "project_name_ar": "DEMO-برج النخيل الرئيسي",
+      "project_name_en": "DEMO-Palm Tower Main",
+      "project_code": "DEMO-PRJ-003",
+      "client_name_ar": "DEMO-شركة النيل للتطوير",
+      "client_name_en": "DEMO-Nile Developments",
+      "client_code": "DEMO-CL-001",
+      "total_paid": "97200.00"
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "/api/commercial/payment-applications",
+   "mount": "commercial",
+   "body": {
+    "success": true,
+    "data": [
+     {
+      "id": 3,
+      "application_number": "PAP-00003",
+      "party_type": "client",
+      "project_id": 6,
+      "client_contract_id": 1,
+      "sub_contract_id": null,
+      "period_from": "2026-12-01T00:00:00.000Z",
+      "period_to": "2026-12-31T00:00:00.000Z",
+      "claimed_work": "500000.00",
+      "claimed_variations": "0.00",
+      "claimed_materials": "0.00",
+      "certified_work": null,
+      "certified_variations": null,
+      "certified_materials": null,
+      "status": "rejected",
+      "submitted_by": 11,
+      "submitted_at": "2026-11-02T00:30:32.888Z",
+      "reviewed_by": 11,
+      "reviewed_at": "2026-11-02T00:30:32.911Z",
+      "review_notes": "DEMO claim exceeds approved quantities",
+      "certificate_id": null,
+      "notes": null,
+      "created_by": 11,
+      "created_at": "2026-11-02T00:30:32.854Z",
+      "updated_at": "2026-11-02T00:30:32.911Z",
+      "valuation_basis": "manual"
+     },
+     {
+      "id": 2,
+      "application_number": "PAP-00002",
+      "party_type": "client",
+      "project_id": 6,
+      "client_contract_id": 1,
+      "sub_contract_id": null,
+      "period_from": "2026-12-01T00:00:00.000Z",
+      "period_to": "2026-12-31T00:00:00.000Z",
+      "claimed_work": "500000.00",
+      "claimed_variations": "0.00",
+      "claimed_materials": "0.00",
+      "certified_work": null,
+      "certified_variations": null,
+      "certified_materials": null,
+      "status": "submitted",
+      "submitted_by": 11,
+      "submitted_at": "2026-11-02T00:26:36.544Z",
+      "reviewed_by": null,
+      "reviewed_at": null,
+      "review_notes": null,
+      "certificate_id": null,
+      "notes": null,
+      "created_by": 11,
+      "created_at": "2026-11-02T00:26:36.497Z",
+      "updated_at": "2026-11-02T00:26:36.544Z",
+      "valuation_basis": "manual"
+     },
+     {
+      "id": 1,
+      "application_number": "PAP-00001",
+      "party_type": "client",
+      "project_id": 6,
+      "client_contract_id": 1,
+      "sub_contract_id": null,
+      "period_from": "2026-11-01T00:00:00.000Z",
+      "period_to": "2026-11-30T00:00:00.000Z",
+      "claimed_work": "108000.00",
+      "claimed_variations": "0.00",
+      "claimed_materials": "0.00",
+      "certified_work": "108000.00",
+      "certified_variations": "0.00",
+      "certified_materials": "0.00",
+      "status": "certified",
+      "submitted_by": 11,
+      "submitted_at": "2026-11-02T00:26:29.540Z",
+      "reviewed_by": 11,
+      "reviewed_at": "2026-11-02T00:26:29.564Z",
+      "review_notes": null,
+      "certificate_id": 1,
+      "notes": null,
+      "created_by": 11,
+      "created_at": "2026-11-02T00:26:29.506Z",
+      "updated_at": "2026-11-02T00:26:29.564Z",
+      "valuation_basis": "manual"
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "/api/boq/items/6",
+   "mount": "boq",
+   "body": {
+    "success": true,
+    "data": [
+     {
+      "id": 12,
+      "project_id": 6,
+      "section_id": 4,
+      "code": "DEMO-1.1",
+      "description": "DEMO-Reinforced concrete C30",
+      "description_en": "DEMO-Reinforced concrete C30",
+      "description_ar": "DEMO-Reinforced concrete C30",
+      "unit": "m3",
+      "quantity": "400.000",
+      "unit_rate": "1800.00",
+      "total_price": "720000.00",
+      "item_master_id": null,
+      "type": "material",
+      "completed_quantity": "60.000",
+      "completion_percentage": "15.00",
+      "created_at": "2026-11-02T00:12:34.321Z",
+      "updated_at": "2026-11-02T00:16:49.816Z",
+      "work_package_id": null,
+      "section_name": "DEMO-الهيكل الإنشائي",
+      "material_name_en": null,
+      "material_name_ar": null,
+      "completed_quantity_derived": "60.000",
+      "completion_percentage_derived": "15.00000000000000000000"
+     },
+     {
+      "id": 13,
+      "project_id": 6,
+      "section_id": 4,
+      "code": "DEMO-1.2",
+      "description": "DEMO-Rebar supply and fix",
+      "description_en": "DEMO-Rebar supply and fix",
+      "description_ar": "DEMO-Rebar supply and fix",
+      "unit": "ton",
+      "quantity": "60.000",
+      "unit_rate": "24000.00",
+      "total_price": "1440000.00",
+      "item_master_id": null,
+      "type": "material",
+      "completed_quantity": "0.000",
+      "completion_percentage": "0.00",
+      "created_at": "2026-11-02T00:12:35.470Z",
+      "updated_at": "2026-11-02T00:12:35.470Z",
+      "work_package_id": null,
+      "section_name": "DEMO-الهيكل الإنشائي",
+      "material_name_en": null,
+      "material_name_ar": null,
+      "completed_quantity_derived": "0",
+      "completion_percentage_derived": "0.00000000000000000000"
+     },
+     {
+      "id": 14,
+      "project_id": 6,
+      "section_id": 4,
+      "code": "DEMO-1.3",
+      "description": "DEMO-Formwork labour",
+      "description_en": "DEMO-Formwork labour",
+      "description_ar": "DEMO-Formwork labour",
+      "unit": "m2",
+      "quantity": "1200.000",
+      "unit_rate": "150.00",
+      "total_price": "180000.00",
+      "item_master_id": null,
+      "type": "labor",
+      "completed_quantity": "0.000",
+      "completion_percentage": "0.00",
+      "created_at": "2026-11-02T00:12:36.612Z",
+      "updated_at": "2026-11-02T00:12:36.612Z",
+      "work_package_id": null,
+      "section_name": "DEMO-الهيكل الإنشائي",
+      "material_name_en": null,
+      "material_name_ar": null,
+      "completed_quantity_derived": "0",
+      "completion_percentage_derived": "0.00000000000000000000"
+     },
+     {
+      "id": 15,
+      "project_id": 6,
+      "section_id": 4,
+      "code": "DEMO-1.4",
+      "description": "DEMO-Waterproofing subcontract",
+      "description_en": "DEMO-Waterproofing subcontract",
+      "description_ar": "DEMO-Waterproofing subcontract",
+      "unit": "m2",
+      "quantity": "800.000",
+      "unit_rate": "220.00",
+      "total_price": "176000.00",
+      "item_master_id": null,
+      "type": "subcontract",
+      "completed_quantity": "0.000",
+      "completion_percentage": "0.00",
+      "created_at": "2026-11-02T00:12:37.660Z",
+      "updated_at": "2026-11-02T00:12:37.660Z",
+      "work_package_id": null,
+      "section_name": "DEMO-الهيكل الإنشائي",
+      "material_name_en": null,
+      "material_name_ar": null,
+      "completed_quantity_derived": "0",
+      "completion_percentage_derived": "0.00000000000000000000"
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "/api/boq/summary/6",
+   "mount": "boq",
+   "body": {
+    "success": true,
+    "data": {
+     "by_type": [
+      {
+       "type": "labor",
+       "item_count": "1",
+       "total_value": "180000.00",
+       "total_qty": "1200.000"
+      },
+      {
+       "type": "material",
+       "item_count": "2",
+       "total_value": "2160000.00",
+       "total_qty": "460.000"
+      },
+      {
+       "type": "subcontract",
+       "item_count": "1",
+       "total_value": "176000.00",
+       "total_qty": "800.000"
+      }
+     ],
+     "grand_total": 2516000
+    }
+   }
+  },
+  {
+   "endpoint": "/api/subcontractors/contracts/6",
+   "mount": "subcontractors",
+   "body": {
+    "success": true,
+    "data": [
+     {
+      "id": 1,
+      "contract_number": "SC-0001",
+      "project_id": 6,
+      "subcontractor_id": 1,
+      "boq_item_id": 15,
+      "scope": "DEMO waterproofing of basement",
+      "contract_value": "176000.00",
+      "start_date": "2026-11-15T00:00:00.000Z",
+      "end_date": "2027-01-15T00:00:00.000Z",
+      "retention_percent": "10.00",
+      "status": "draft",
+      "created_at": "2026-11-02T00:16:10.000Z",
+      "updated_at": "2026-11-02T00:16:10.000Z",
+      "revised_amount": "0.00",
+      "acknowledged_at": null,
+      "advance_percent": "0.000",
+      "advance_amount": "0.00",
+      "sub_name": "DEMO-شركة الخليج للعزل",
+      "sub_name_en": "DEMO-Gulf Waterproofing Co",
+      "boq_item_name": "DEMO-Waterproofing subcontract"
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "/api/work-orders/project/6",
+   "mount": "work-orders",
+   "body": {
+    "success": true,
+    "data": [
+     {
+      "id": 1,
+      "project_id": 6,
+      "phase_id": null,
+      "boq_section_id": 4,
+      "title": "DEMO-عزل القبو",
+      "title_en": "DEMO-WO Waterproofing basement",
+      "title_ar": "DEMO-عزل القبو",
+      "description": "DEMO",
+      "status": "planned",
+      "planned_start_date": "2026-11-15T00:00:00.000Z",
+      "planned_end_date": "2026-12-15T00:00:00.000Z",
+      "actual_start_date": null,
+      "actual_end_date": null,
+      "assigned_to": null,
+      "completion_percentage": "0.00",
+      "notes": null,
+      "created_at": "2026-11-02T00:16:29.731Z",
+      "updated_at": "2026-11-02T00:16:29.731Z",
+      "sub_contract_id": null,
+      "cancelled_at": null,
+      "cancelled_by": null,
+      "cancel_reason": null,
+      "assigned_to_name": null,
+      "phase_name": null,
+      "phase_name_ar": null,
+      "phase_name_en": null,
+      "phase_code": null,
+      "boq_section_name_ar": "DEMO-الهيكل الإنشائي",
+      "boq_section_name_en": "DEMO-Structure",
+      "boq_section_code": "DEMO-S1"
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "/api/costing/codes",
+   "mount": "costing",
+   "body": {
+    "success": true,
+    "data": [
+     {
+      "id": 1,
+      "code": "01",
+      "name": "General Requirements",
+      "name_en": "General Requirements",
+      "name_ar": "المتطلبات العامة",
+      "parent_id": null,
+      "level": 1,
+      "type": "overhead",
+      "created_at": "2026-10-28T08:34:51.140Z",
+      "wbs_node_id": null
+     },
+     {
+      "id": 2,
+      "code": "02",
+      "name": "Site Work",
+      "name_en": "Site Work",
+      "name_ar": "أعمال الموقع",
+      "parent_id": null,
+      "level": 1,
+      "type": "material",
+      "created_at": "2026-10-28T08:34:51.140Z",
+      "wbs_node_id": null
+     },
+     {
+      "id": 3,
+      "code": "03",
+      "name": "Concrete",
+      "name_en": "Concrete",
+      "name_ar": "الخرسانة",
+      "parent_id": null,
+      "level": 1,
+      "type": "material",
+      "created_at": "2026-10-28T08:34:51.140Z",
+      "wbs_node_id": null
+     },
+     {
+      "id": 4,
+      "code": "04",
+      "name": "Masonry",
+      "name_en": "Masonry",
+      "name_ar": "أعمال المباني",
+      "parent_id": null,
+      "level": 1,
+      "type": "material",
+      "created_at": "2026-10-28T08:34:51.140Z",
+      "wbs_node_id": null
+     },
+     {
+      "id": 5,
+      "code": "05",
+      "name": "Metals",
+      "name_en": "Metals",
+      "name_ar": "المعادن",
+      "parent_id": null,
+      "level": 1,
+      "type": "material",
+      "created_at": "2026-10-28T08:34:51.140Z",
+      "wbs_node_id": null
+     },
+     {
+      "id": 6,
+      "code": "06",
+      "name": "Wood & Plastics",
+      "name_en": "Wood & Plastics",
+      "name_ar": "الأخشاب والبلاستيك",
+      "parent_id": null,
+      "level": 1,
+      "type": "material",
+      "created_at": "2026-10-28T08:34:51.140Z",
+      "wbs_node_id": null
+     },
+     {
+      "id": 7,
+      "code": "07",
+      "name": "Thermal & Moisture",
+      "name_en": "Thermal & Moisture Protection",
+      "name_ar": "العزل الحراري والرطوبة",
+      "parent_id": null,
+      "level": 1,
+      "type": "material",
+      "created_at": "2026-10-28T08:34:51.140Z",
+      "wbs_node_id": null
+     },
+     {
+      "id": 8,
+      "code": "08",
+      "name": "Doors & Windows",
+      "name_en": "Doors & Windows",
+      "name_ar": "الأبواب والنوافذ",
+      "parent_id": null,
+      "level": 1,
+      "type": "material",
+      "created_at": "2026-10-28T08:34:51.140Z",
+      "wbs_node_id": null
+     },
+     {
+      "id": 9,
+      "code": "09",
+      "name": "Finishes",
+      "name_en": "Finishes",
+      "name_ar": "التشطيبات",
+      "parent_id": null,
+      "level": 1,
+      "type": "material",
+      "created_at": "2026-10-28T08:34:51.140Z",
+      "wbs_node_id": null
+     },
+     {
+      "id": 10,
+      "code": "10",
+      "name": "Equipment",
+      "name_en": "Equipment",
+      "name_ar": "المعدات",
+      "parent_id": null,
+      "level": 1,
+      "type": "equipment",
+      "created_at": "2026-10-28T08:34:51.140Z",
+      "wbs_node_id": null
+     },
+     {
+      "id": 11,
+      "code": "11",
+      "name": "Labor",
+      "name_en": "Labor",
+      "name_ar": "العمالة",
+      "parent_id": null,
+      "level": 1,
+      "type": "labor",
+      "created_at": "2026-10-28T08:34:51.140Z",
+      "wbs_node_id": null
+     },
+     {
+      "id": 12,
+      "code": "12",
+      "name": "Subcontractors",
+      "name_en": "Subcontractors",
+      "name_ar": "المقاولين الفرعيين",
+      "parent_id": null,
+      "level": 1,
+      "type": "subcontract",
+      "created_at": "2026-10-28T08:34:51.140Z",
+      "wbs_node_id": null
+     },
+     {
+      "id": 18,
+      "code": "DEMO-CC-LAB",
+      "name": "DEMO-Labour",
+      "name_en": "DEMO-Labour",
+      "name_ar": "DEMO-Labour",
+      "parent_id": null,
+      "level": 1,
+      "type": "labour",
+      "created_at": "2026-11-02T00:05:03.562Z",
+      "wbs_node_id": null
+     },
+     {
+      "id": 16,
+      "code": "DEMO-CC-MAT",
+      "name": "DEMO-Materials",
+      "name_en": "DEMO-Materials",
+      "name_ar": "DEMO-Materials",
+      "parent_id": null,
+      "level": 1,
+      "type": "material",
+      "created_at": "2026-11-02T00:05:02.520Z",
+      "wbs_node_id": null
+     },
+     {
+      "id": 20,
+      "code": "DEMO-CC-SUB",
+      "name": "DEMO-Subcontract",
+      "name_en": "DEMO-Subcontract",
+      "name_ar": "DEMO-Subcontract",
+      "parent_id": null,
+      "level": 1,
+      "type": "subcontract",
+      "created_at": "2026-11-02T00:05:04.617Z",
+      "wbs_node_id": null
+     },
+     {
+      "id": 15,
+      "code": "PILOT-CC-FINISH",
+      "name": "Finishes",
+      "name_en": "Finishes",
+      "name_ar": "التشطيبات",
+      "parent_id": null,
+      "level": 1,
+      "type": "material",
+      "created_at": "2026-10-28T08:36:14.703Z",
+      "wbs_node_id": null
+     },
+     {
+      "id": 13,
+      "code": "PILOT-CC-MAT",
+      "name": "Materials",
+      "name_en": "Materials",
+      "name_ar": "مواد",
+      "parent_id": null,
+      "level": 1,
+      "type": "material",
+      "created_at": "2026-10-28T08:36:14.703Z",
+      "wbs_node_id": null
+     },
+     {
+      "id": 14,
+      "code": "PILOT-CC-STEEL",
+      "name": "Reinforcement Steel",
+      "name_en": "Reinforcement Steel",
+      "name_ar": "حديد التسليح",
+      "parent_id": null,
+      "level": 1,
+      "type": "material",
+      "created_at": "2026-10-28T08:36:14.703Z",
+      "wbs_node_id": null
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "/api/hr/employees",
+   "mount": "hr",
+   "body": {
+    "success": true,
+    "data": [
+     {
+      "id": 1,
+      "code": "DEMO-E-PROJ",
+      "name": "DEMO-مدير مشروع",
+      "name_en": "DEMO-Project Manager",
+      "name_ar": "DEMO-مدير مشروع",
+      "phone": null,
+      "email": "demo-project_manager@example.com",
+      "national_id": null,
+      "department": "Projects",
+      "designation": "project_manager",
+      "hire_date": "2026-01-15T00:00:00.000Z",
+      "salary": "18000.00",
+      "bank_name": null,
+      "bank_account": null,
+      "status": "active",
+      "created_at": "2026-11-02T00:02:37.659Z",
+      "updated_at": "2026-11-02T00:02:37.659Z",
+      "is_manager": false
+     },
+     {
+      "id": 4,
+      "code": "DEMO-E-SAFE",
+      "name": "DEMO-مسؤول سلامة",
+      "name_en": "DEMO-Safety Officer",
+      "name_ar": "DEMO-مسؤول سلامة",
+      "phone": null,
+      "email": "demo-safety_officer@example.com",
+      "national_id": null,
+      "department": "Projects",
+      "designation": "safety_officer",
+      "hire_date": "2026-01-15T00:00:00.000Z",
+      "salary": "18000.00",
+      "bank_name": null,
+      "bank_account": null,
+      "status": "active",
+      "created_at": "2026-11-02T00:02:41.038Z",
+      "updated_at": "2026-11-02T00:02:41.038Z",
+      "is_manager": false
+     },
+     {
+      "id": 3,
+      "code": "DEMO-E-QS",
+      "name": "DEMO-مهندس كميات",
+      "name_en": "DEMO-Quantity Surveyor",
+      "name_ar": "DEMO-مهندس كميات",
+      "phone": null,
+      "email": "demo-qs@example.com",
+      "national_id": null,
+      "department": "Projects",
+      "designation": "qs",
+      "hire_date": "2026-01-15T00:00:00.000Z",
+      "salary": "18000.00",
+      "bank_name": null,
+      "bank_account": null,
+      "status": "active",
+      "created_at": "2026-11-02T00:02:39.974Z",
+      "updated_at": "2026-11-02T00:02:39.974Z",
+      "is_manager": false
+     },
+     {
+      "id": 2,
+      "code": "DEMO-E-SITE",
+      "name": "DEMO-مهندس موقع",
+      "name_en": "DEMO-Site Engineer",
+      "name_ar": "DEMO-مهندس موقع",
+      "phone": null,
+      "email": "demo-site_engineer@example.com",
+      "national_id": null,
+      "department": "Projects",
+      "designation": "site_engineer",
+      "hire_date": "2026-01-15T00:00:00.000Z",
+      "salary": "18000.00",
+      "bank_name": null,
+      "bank_account": null,
+      "status": "active",
+      "created_at": "2026-11-02T00:02:38.883Z",
+      "updated_at": "2026-11-02T00:02:38.883Z",
+      "is_manager": false
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "/api/payroll",
+   "mount": "payroll",
+   "body": {
+    "success": true,
+    "data": []
+   }
+  },
+  {
+   "endpoint": "/api/finance-ledger/retention",
+   "mount": "finance-ledger",
+   "body": {
+    "success": true,
+    "data": {
+     "held": 0,
+     "released": 0,
+     "balance": 0
+    }
+   }
+  },
+  {
+   "endpoint": "/api/payments",
+   "mount": "payments",
+   "body": {
+    "success": true,
+    "data": [
+     {
+      "id": 4,
+      "invoice_id": null,
+      "project_id": 6,
+      "client_id": null,
+      "amount": "480000.00",
+      "payment_date": "2026-11-02T00:00:00.000Z",
+      "payment_method": "bank_transfer",
+      "reference_number": null,
+      "notes": null,
+      "created_at": "2026-11-02T00:26:40.522Z",
+      "direction": "ap",
+      "supplier_id": 1,
+      "purchase_order_id": null,
+      "company_id": null,
+      "cost_code_id": null,
+      "department": null,
+      "tax_amount": "0.00",
+      "approved_by": null,
+      "created_by": null,
+      "voided_at": null,
+      "voided_by": null,
+      "void_reason": null,
+      "client_name_ar": null,
+      "client_name_en": null,
+      "client_code": null,
+      "project_name_ar": "DEMO-برج النخيل الرئيسي",
+      "project_name_en": "DEMO-Palm Tower Main",
+      "project_code": "DEMO-PRJ-003",
+      "invoice_number": ""
+     },
+     {
+      "id": 3,
+      "invoice_id": 1,
+      "project_id": 6,
+      "client_id": 2,
+      "amount": "57200.00",
+      "payment_date": "2026-11-02T00:00:00.000Z",
+      "payment_method": "bank_transfer",
+      "reference_number": null,
+      "notes": null,
+      "created_at": "2026-11-02T00:26:35.763Z",
+      "direction": "ar",
+      "supplier_id": null,
+      "purchase_order_id": null,
+      "company_id": null,
+      "cost_code_id": null,
+      "department": null,
+      "tax_amount": "0.00",
+      "approved_by": null,
+      "created_by": null,
+      "voided_at": null,
+      "voided_by": null,
+      "void_reason": null,
+      "client_name_ar": "DEMO-شركة النيل للتطوير",
+      "client_name_en": "DEMO-Nile Developments",
+      "client_code": "DEMO-CL-001",
+      "project_name_ar": "DEMO-برج النخيل الرئيسي",
+      "project_name_en": "DEMO-Palm Tower Main",
+      "project_code": "DEMO-PRJ-003",
+      "invoice_number": "INV-0001"
+     },
+     {
+      "id": 2,
+      "invoice_id": 1,
+      "project_id": 6,
+      "client_id": 2,
+      "amount": "40000.00",
+      "payment_date": "2026-11-02T00:00:00.000Z",
+      "payment_method": "bank_transfer",
+      "reference_number": null,
+      "notes": null,
+      "created_at": "2026-11-02T00:26:35.307Z",
+      "direction": "ar",
+      "supplier_id": null,
+      "purchase_order_id": null,
+      "company_id": null,
+      "cost_code_id": null,
+      "department": null,
+      "tax_amount": "0.00",
+      "approved_by": null,
+      "created_by": null,
+      "voided_at": null,
+      "voided_by": null,
+      "void_reason": null,
+      "client_name_ar": "DEMO-شركة النيل للتطوير",
+      "client_name_en": "DEMO-Nile Developments",
+      "client_code": "DEMO-CL-001",
+      "project_name_ar": "DEMO-برج النخيل الرئيسي",
+      "project_name_en": "DEMO-Palm Tower Main",
+      "project_code": "DEMO-PRJ-003",
+      "invoice_number": "INV-0001"
+     },
+     {
+      "id": 1,
+      "invoice_id": null,
+      "project_id": 1,
+      "client_id": null,
+      "amount": "1110.00",
+      "payment_date": "2026-10-28T00:00:00.000Z",
+      "payment_method": "bank_transfer",
+      "reference_number": null,
+      "notes": null,
+      "created_at": "2026-10-28T08:51:38.872Z",
+      "direction": "ap",
+      "supplier_id": 1,
+      "purchase_order_id": null,
+      "company_id": null,
+      "cost_code_id": null,
+      "department": null,
+      "tax_amount": "0.00",
+      "approved_by": null,
+      "created_by": null,
+      "voided_at": null,
+      "voided_by": null,
+      "void_reason": null,
+      "client_name_ar": null,
+      "client_name_en": null,
+      "client_code": null,
+      "project_name_ar": "مشروع المشتريات التجريبي",
+      "project_name_en": "Procure-to-Pay Pilot",
+      "project_code": "PILOT-PTP-001",
+      "invoice_number": ""
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "/api/expenses",
+   "mount": "expenses",
+   "body": {
+    "success": true,
+    "data": []
+   }
+  },
+  {
+   "endpoint": "/api/projects",
+   "mount": "projects",
+   "body": {
+    "success": true,
+    "data": [
+     {
+      "id": 6,
+      "name": "DEMO-برج النخيل الرئيسي",
+      "name_en": "DEMO-Palm Tower Main",
+      "name_ar": "DEMO-برج النخيل الرئيسي",
+      "code": "DEMO-PRJ-003",
+      "project_type": "residential",
+      "client_id": 2,
+      "project_manager_id": null,
+      "contract_value": "2000000.00",
+      "budget": "1500000.00",
+      "start_date": "2026-11-01T00:00:00.000Z",
+      "expected_completion": "2027-10-31T00:00:00.000Z",
+      "actual_completion": null,
+      "status": "active",
+      "completion_percentage": "4.29",
+      "created_at": "2026-11-02T00:12:13.174Z",
+      "updated_at": "2026-11-02T00:16:49.806Z",
+      "address": "DEMO New Cairo",
+      "city": "Cairo",
+      "organization_id": null,
+      "project_number": "DEMO-PRJ-003",
+      "country": null,
+      "gps_latitude": null,
+      "gps_longitude": null,
+      "timezone": "Africa/Cairo",
+      "currency": "EGP",
+      "tax_profile": "standard_vat",
+      "original_contract_value": "2000000.00",
+      "original_budget": "1500000.00",
+      "dlp_period_months": null,
+      "warranty_period_months": null,
+      "retention_percentage": "10.00",
+      "retention_cap_amount": null,
+      "advance_payment_amount": null,
+      "advance_payment_percentage": null,
+      "liquidated_damages_rate": null,
+      "liquidated_damages_cap": null,
+      "earned_value_enabled": false,
+      "client_name": "DEMO-شركة النيل للتطوير",
+      "client_name_en": "DEMO-Nile Developments",
+      "project_manager_name": null,
+      "project_manager_name_en": null
+     },
+     {
+      "id": 5,
+      "name": "DEMO-برج النخيل السكني",
+      "name_en": "DEMO-Palm Tower Residence",
+      "name_ar": "DEMO-برج النخيل السكني",
+      "code": "DEMO-PRJ-002",
+      "project_type": "residential",
+      "client_id": 2,
+      "project_manager_id": null,
+      "contract_value": "2000000.00",
+      "budget": "1500000.00",
+      "start_date": "2026-11-01T00:00:00.000Z",
+      "expected_completion": "2027-10-31T00:00:00.000Z",
+      "actual_completion": null,
+      "status": "active",
+      "completion_percentage": "0.00",
+      "created_at": "2026-11-02T00:03:29.284Z",
+      "updated_at": "2026-11-02T00:03:30.587Z",
+      "address": "DEMO New Cairo",
+      "city": "Cairo",
+      "organization_id": null,
+      "project_number": "DEMO-PRJ-002",
+      "country": null,
+      "gps_latitude": null,
+      "gps_longitude": null,
+      "timezone": "Africa/Cairo",
+      "currency": "EGP",
+      "tax_profile": "standard_vat",
+      "original_contract_value": "2000000.00",
+      "original_budget": "1500000.00",
+      "dlp_period_months": null,
+      "warranty_period_months": null,
+      "retention_percentage": "10.00",
+      "retention_cap_amount": null,
+      "advance_payment_amount": null,
+      "advance_payment_percentage": null,
+      "liquidated_damages_rate": null,
+      "liquidated_damages_cap": null,
+      "earned_value_enabled": false,
+      "client_name": "DEMO-شركة النيل للتطوير",
+      "client_name_en": "DEMO-Nile Developments",
+      "project_manager_name": null,
+      "project_manager_name_en": null
+     },
+     {
+      "id": 1,
+      "name": "مشروع المشتريات التجريبي",
+      "name_en": "Procure-to-Pay Pilot",
+      "name_ar": "مشروع المشتريات التجريبي",
+      "code": "PILOT-PTP-001",
+      "project_type": "commercial",
+      "client_id": 1,
+      "project_manager_id": null,
+      "contract_value": "300000.00",
+      "budget": "250000.00",
+      "start_date": null,
+      "expected_completion": null,
+      "actual_completion": null,
+      "status": "active",
+      "completion_percentage": "0.00",
+      "created_at": "2026-10-28T08:35:54.559Z",
+      "updated_at": "2026-10-28T08:35:54.559Z",
+      "address": null,
+      "city": null,
+      "organization_id": null,
+      "project_number": null,
+      "country": null,
+      "gps_latitude": null,
+      "gps_longitude": null,
+      "timezone": "Africa/Cairo",
+      "currency": "EGP",
+      "tax_profile": "standard_vat",
+      "original_contract_value": null,
+      "original_budget": null,
+      "dlp_period_months": null,
+      "warranty_period_months": null,
+      "retention_percentage": null,
+      "retention_cap_amount": null,
+      "advance_payment_amount": null,
+      "advance_payment_percentage": null,
+      "liquidated_damages_rate": null,
+      "liquidated_damages_cap": null,
+      "earned_value_enabled": false,
+      "client_name": "عميل أوسيريس التجريبي",
+      "client_name_en": "Osiris Pilot Client",
+      "project_manager_name": null,
+      "project_manager_name_en": null
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "/api/projects/6",
+   "mount": "projects",
+   "body": {
+    "success": true,
+    "data": {
+     "id": 6,
+     "name": "DEMO-برج النخيل الرئيسي",
+     "name_en": "DEMO-Palm Tower Main",
+     "name_ar": "DEMO-برج النخيل الرئيسي",
+     "code": "DEMO-PRJ-003",
+     "project_type": "residential",
+     "client_id": 2,
+     "project_manager_id": null,
+     "contract_value": "2000000.00",
+     "budget": "1500000.00",
+     "start_date": "2026-11-01T00:00:00.000Z",
+     "expected_completion": "2027-10-31T00:00:00.000Z",
+     "actual_completion": null,
+     "status": "active",
+     "completion_percentage": "4.29",
+     "created_at": "2026-11-02T00:12:13.174Z",
+     "updated_at": "2026-11-02T00:16:49.806Z",
+     "address": "DEMO New Cairo",
+     "city": "Cairo",
+     "organization_id": null,
+     "project_number": "DEMO-PRJ-003",
+     "country": null,
+     "gps_latitude": null,
+     "gps_longitude": null,
+     "timezone": "Africa/Cairo",
+     "currency": "EGP",
+     "tax_profile": "standard_vat",
+     "original_contract_value": "2000000.00",
+     "original_budget": "1500000.00",
+     "dlp_period_months": null,
+     "warranty_period_months": null,
+     "retention_percentage": "10.00",
+     "retention_cap_amount": null,
+     "advance_payment_amount": null,
+     "advance_payment_percentage": null,
+     "liquidated_damages_rate": null,
+     "liquidated_damages_cap": null,
+     "earned_value_enabled": false,
+     "client_name": "DEMO-شركة النيل للتطوير",
+     "client_name_en": "DEMO-Nile Developments",
+     "project_manager_name": null,
+     "project_manager_name_en": null,
+     "phases": [],
+     "team": [
+      {
+       "id": 5,
+       "project_id": 6,
+       "role": "project_manager",
+       "assigned_at": "2026-11-02T00:12:13.174Z",
+       "employee_id": 1,
+       "work_package_id": null,
+       "employee_name": "DEMO-مدير مشروع",
+       "employee_name_ar": "DEMO-مدير مشروع",
+       "employee_name_en": "DEMO-Project Manager",
+       "designation": "project_manager",
+       "department": "Projects"
+      },
+      {
+       "id": 6,
+       "project_id": 6,
+       "role": "site_engineer",
+       "assigned_at": "2026-11-02T00:12:13.174Z",
+       "employee_id": 2,
+       "work_package_id": null,
+       "employee_name": "DEMO-مهندس موقع",
+       "employee_name_ar": "DEMO-مهندس موقع",
+       "employee_name_en": "DEMO-Site Engineer",
+       "designation": "site_engineer",
+       "department": "Projects"
+      },
+      {
+       "id": 7,
+       "project_id": 6,
+       "role": "qs",
+       "assigned_at": "2026-11-02T00:12:13.174Z",
+       "employee_id": 3,
+       "work_package_id": null,
+       "employee_name": "DEMO-مهندس كميات",
+       "employee_name_ar": "DEMO-مهندس كميات",
+       "employee_name_en": "DEMO-Quantity Surveyor",
+       "designation": "qs",
+       "department": "Projects"
+      },
+      {
+       "id": 8,
+       "project_id": 6,
+       "role": "safety_officer",
+       "assigned_at": "2026-11-02T00:12:13.174Z",
+       "employee_id": 4,
+       "work_package_id": null,
+       "employee_name": "DEMO-مسؤول سلامة",
+       "employee_name_ar": "DEMO-مسؤول سلامة",
+       "employee_name_en": "DEMO-Safety Officer",
+       "designation": "safety_officer",
+       "department": "Projects"
+      }
+     ],
+     "milestones": []
+    }
+   }
+  }
+ ],
+ "roles": [
+  {
+   "account": "owner_ceo",
+   "flags": {
+    "see_internal_cost": true,
+    "see_client_price": true,
+    "see_subcontractor_price": true
+   },
+   "role_keys": [
+    "owner_ceo"
+   ]
+  },
+  {
+   "account": "coo",
+   "flags": {
+    "see_internal_cost": true,
+    "see_client_price": true,
+    "see_subcontractor_price": true
+   },
+   "role_keys": [
+    "coo"
+   ]
+  },
+  {
+   "account": "projects_director",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": true,
+    "see_subcontractor_price": true
+   },
+   "role_keys": [
+    "projects_director"
+   ]
+  },
+  {
+   "account": "construction_manager",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": true,
+    "see_subcontractor_price": true
+   },
+   "role_keys": [
+    "construction_manager"
+   ]
+  },
+  {
+   "account": "project_manager",
+   "flags": {
+    "see_internal_cost": true,
+    "see_client_price": true,
+    "see_subcontractor_price": true
+   },
+   "role_keys": [
+    "project_manager"
+   ]
+  },
+  {
+   "account": "site_manager",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "site_manager"
+   ]
+  },
+  {
+   "account": "site_engineer",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "site_engineer"
+   ]
+  },
+  {
+   "account": "planning_engineer",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "planning_engineer"
+   ]
+  },
+  {
+   "account": "technical_office_engineer",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "technical_office_engineer"
+   ]
+  },
+  {
+   "account": "quantity_surveyor",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": true,
+    "see_subcontractor_price": true
+   },
+   "role_keys": [
+    "quantity_surveyor"
+   ]
+  },
+  {
+   "account": "commercial_manager",
+   "flags": {
+    "see_internal_cost": true,
+    "see_client_price": true,
+    "see_subcontractor_price": true
+   },
+   "role_keys": [
+    "commercial_manager"
+   ]
+  },
+  {
+   "account": "contracts_manager",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "contracts_manager"
+   ]
+  },
+  {
+   "account": "procurement_manager",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "procurement_manager"
+   ]
+  },
+  {
+   "account": "procurement_officer",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "procurement_officer"
+   ]
+  },
+  {
+   "account": "finance_manager",
+   "flags": {
+    "see_internal_cost": true,
+    "see_client_price": true,
+    "see_subcontractor_price": true
+   },
+   "role_keys": [
+    "finance_manager"
+   ]
+  },
+  {
+   "account": "accountant_ar",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": true,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "accountant_ar"
+   ]
+  },
+  {
+   "account": "accountant_ap",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "accountant_ap"
+   ]
+  },
+  {
+   "account": "storekeeper",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "storekeeper"
+   ]
+  },
+  {
+   "account": "qa_qc_manager",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "qa_qc_manager"
+   ]
+  },
+  {
+   "account": "hse_manager",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "hse_manager"
+   ]
+  },
+  {
+   "account": "document_controller",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "document_controller"
+   ]
+  },
+  {
+   "account": "equipment_manager",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "equipment_manager"
+   ]
+  },
+  {
+   "account": "hr_manager",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "hr_manager"
+   ]
+  },
+  {
+   "account": "business_development",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": true,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "business_development"
+   ]
+  },
+  {
+   "account": "client_executive",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": true,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "client_executive"
+   ]
+  },
+  {
+   "account": "client_reviewer",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "client_reviewer"
+   ]
+  },
+  {
+   "account": "pmc_manager",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": true,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "pmc_manager"
+   ]
+  },
+  {
+   "account": "consultant_coordinator",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "consultant_coordinator"
+   ]
+  },
+  {
+   "account": "consultant_reviewer",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "consultant_reviewer"
+   ]
+  },
+  {
+   "account": "subcontractor_manager",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": true
+   },
+   "role_keys": [
+    "subcontractor_manager"
+   ]
+  },
+  {
+   "account": "subcontractor_site_engineer",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "subcontractor_site_engineer"
+   ]
+  },
+  {
+   "account": "supplier_sales",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "supplier_sales"
+   ]
+  },
+  {
+   "account": "testing_lab",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": false
+   },
+   "role_keys": [
+    "testing_lab"
+   ]
+  },
+  {
+   "account": "unassigned",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": false
+   },
+   "role_keys": []
+  },
+  {
+   "account": "expired_assignment",
+   "flags": {
+    "see_internal_cost": false,
+    "see_client_price": false,
+    "see_subcontractor_price": false
+   },
+   "role_keys": []
+  },
+  {
+   "account": "workflow_owner",
+   "flags": {
+    "see_internal_cost": true,
+    "see_client_price": true,
+    "see_subcontractor_price": true
+   },
+   "role_keys": [
+    "owner"
+   ]
+  },
+  {
+   "account": "workflow_checker",
+   "flags": {
+    "see_internal_cost": true,
+    "see_client_price": true,
+    "see_subcontractor_price": true
+   },
+   "role_keys": [
+    "purchasing_mgr",
+    "procurement_manager"
+   ]
+  },
+  {
+   "account": "workflow_budget",
+   "flags": {
+    "see_internal_cost": true,
+    "see_client_price": true,
+    "see_subcontractor_price": true
+   },
+   "role_keys": [
+    "accountant"
+   ]
+  }
+ ]
+}

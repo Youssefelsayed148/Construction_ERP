@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-11-02T06:51:30.321Z",
+ "generated_at": "2026-11-02T07:11:06.419Z",
  "summary": {
   "total": 3014,
-  "pass": 2312,
-  "fail": 9,
+  "pass": 2321,
+  "fail": 0,
   "finding": 6,
   "skipped": 564,
   "na": 38,
@@ -21767,11 +21767,11 @@
   {
    "role": "site_manager",
    "module": "ui",
-   "action": "sidebar",
+   "action": "sidebar shows exactly the allowed modules",
    "expected": "/dashboard /projects /reservations /my-actions /notification-preferences",
-   "actual": "error",
-   "result": "FAIL",
-   "evidence": "page.waitForSelector: Timeout 15000ms exceeded."
+   "actual": "/dashboard /projects /reservations /my-actions /notification-preferences",
+   "result": "PASS",
+   "evidence": "screenshots/site_manager.png"
   },
   {
    "role": "site_engineer",
@@ -21785,11 +21785,11 @@
   {
    "role": "planning_engineer",
    "module": "ui",
-   "action": "sidebar",
+   "action": "sidebar shows exactly the allowed modules",
    "expected": "/dashboard /projects /my-actions /notification-preferences",
-   "actual": "error",
-   "result": "FAIL",
-   "evidence": "page.waitForSelector: Timeout 15000ms exceeded."
+   "actual": "/dashboard /projects /my-actions /notification-preferences",
+   "result": "PASS",
+   "evidence": "screenshots/planning_engineer.png"
   },
   {
    "role": "technical_office_engineer",
@@ -21821,20 +21821,20 @@
   {
    "role": "contracts_manager",
    "module": "ui",
-   "action": "sidebar",
+   "action": "sidebar shows exactly the allowed modules",
    "expected": "/dashboard /projects /clients /invoices /legal /my-actions /notification-preferences",
-   "actual": "error",
-   "result": "FAIL",
-   "evidence": "page.waitForSelector: Timeout 15000ms exceeded."
+   "actual": "/dashboard /projects /clients /invoices /legal /my-actions /notification-preferences",
+   "result": "PASS",
+   "evidence": "screenshots/contracts_manager.png"
   },
   {
    "role": "procurement_manager",
    "module": "ui",
-   "action": "sidebar",
+   "action": "sidebar shows exactly the allowed modules",
    "expected": "/dashboard /projects /inventory /reservations /procurement/comparison /suppliers /invoices /my-actions /notification-preferences",
-   "actual": "error",
-   "result": "FAIL",
-   "evidence": "page.waitForSelector: Timeout 15000ms exceeded."
+   "actual": "/dashboard /projects /inventory /reservations /procurement/comparison /suppliers /invoices /my-actions /notification-preferences",
+   "result": "PASS",
+   "evidence": "screenshots/procurement_manager.png"
   },
   {
    "role": "procurement_officer",
@@ -21866,11 +21866,11 @@
   {
    "role": "accountant_ap",
    "module": "ui",
-   "action": "sidebar",
+   "action": "sidebar shows exactly the allowed modules",
    "expected": "/dashboard /inventory /procurement/comparison /suppliers /expenses /cash-flow /approvals /my-actions /notification-preferences",
-   "actual": "error",
-   "result": "FAIL",
-   "evidence": "page.waitForSelector: Timeout 15000ms exceeded."
+   "actual": "/dashboard /inventory /procurement/comparison /suppliers /expenses /cash-flow /approvals /my-actions /notification-preferences",
+   "result": "PASS",
+   "evidence": "screenshots/accountant_ap.png"
   },
   {
    "role": "storekeeper",
@@ -21884,20 +21884,20 @@
   {
    "role": "qa_qc_manager",
    "module": "ui",
-   "action": "sidebar",
+   "action": "sidebar shows exactly the allowed modules",
    "expected": "/dashboard /projects /my-actions /notification-preferences",
-   "actual": "error",
-   "result": "FAIL",
-   "evidence": "page.waitForSelector: Timeout 15000ms exceeded."
+   "actual": "/dashboard /projects /my-actions /notification-preferences",
+   "result": "PASS",
+   "evidence": "screenshots/qa_qc_manager.png"
   },
   {
    "role": "hse_manager",
    "module": "ui",
-   "action": "sidebar",
+   "action": "sidebar shows exactly the allowed modules",
    "expected": "/dashboard /projects /my-actions /notification-preferences",
-   "actual": "error",
-   "result": "FAIL",
-   "evidence": "page.waitForSelector: Timeout 15000ms exceeded."
+   "actual": "/dashboard /projects /my-actions /notification-preferences",
+   "result": "PASS",
+   "evidence": "screenshots/hse_manager.png"
   },
   {
    "role": "document_controller",
@@ -21911,20 +21911,20 @@
   {
    "role": "equipment_manager",
    "module": "ui",
-   "action": "sidebar",
+   "action": "sidebar shows exactly the allowed modules",
    "expected": "/dashboard /projects /inventory /reservations /procurement/comparison /assets /my-actions /notification-preferences",
-   "actual": "error",
-   "result": "FAIL",
-   "evidence": "page.waitForSelector: Timeout 15000ms exceeded."
+   "actual": "/dashboard /projects /inventory /reservations /procurement/comparison /assets /my-actions /notification-preferences",
+   "result": "PASS",
+   "evidence": "screenshots/equipment_manager.png"
   },
   {
    "role": "hr_manager",
    "module": "ui",
-   "action": "sidebar",
+   "action": "sidebar shows exactly the allowed modules",
    "expected": "/dashboard /projects /hr /my-actions /notification-preferences",
-   "actual": "error",
-   "result": "FAIL",
-   "evidence": "page.waitForSelector: Timeout 15000ms exceeded."
+   "actual": "/dashboard /projects /hr /my-actions /notification-preferences",
+   "result": "PASS",
+   "evidence": "screenshots/hr_manager.png"
   },
   {
    "role": "business_development",

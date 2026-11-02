@@ -3,39 +3,39 @@
  "memLog": [
   {
    "before": "start",
-   "available_mb": 3984
+   "available_mb": 3645
   },
   {
    "after_roles": 5,
-   "available_mb": 4110
+   "available_mb": 3514
   },
   {
    "after_roles": 10,
-   "available_mb": 4020
+   "available_mb": 3488
   },
   {
    "after_roles": 15,
-   "available_mb": 3973
+   "available_mb": 3740
   },
   {
    "after_roles": 20,
-   "available_mb": 3866
+   "available_mb": 3420
   },
   {
    "after_roles": 25,
-   "available_mb": 3874
+   "available_mb": 3389
   },
   {
    "after_roles": 30,
-   "available_mb": 3837
+   "available_mb": 3455
   },
   {
    "after_roles": 35,
-   "available_mb": 3857
+   "available_mb": 3293
   },
   {
    "after": "end",
-   "available_mb": 3921
+   "available_mb": 3451
   }
  ],
  "stopped": null

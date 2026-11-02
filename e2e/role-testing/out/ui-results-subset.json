@@ -1,0 +1,101 @@
+[
+ {
+  "role": "site_manager",
+  "account": "site_manager",
+  "module": "ui",
+  "action": "sidebar shows exactly the allowed modules",
+  "expected": "/dashboard /projects /reservations /my-actions /notification-preferences",
+  "actual": "/dashboard /projects /reservations /my-actions /notification-preferences",
+  "result": "PASS",
+  "evidence": "",
+  "screenshot": "screenshots/site_manager.png"
+ },
+ {
+  "role": "planning_engineer",
+  "account": "planning_engineer",
+  "module": "ui",
+  "action": "sidebar shows exactly the allowed modules",
+  "expected": "/dashboard /projects /my-actions /notification-preferences",
+  "actual": "/dashboard /projects /my-actions /notification-preferences",
+  "result": "PASS",
+  "evidence": "",
+  "screenshot": "screenshots/planning_engineer.png"
+ },
+ {
+  "role": "contracts_manager",
+  "account": "contracts_manager",
+  "module": "ui",
+  "action": "sidebar shows exactly the allowed modules",
+  "expected": "/dashboard /projects /clients /invoices /legal /my-actions /notification-preferences",
+  "actual": "/dashboard /projects /clients /invoices /legal /my-actions /notification-preferences",
+  "result": "PASS",
+  "evidence": "",
+  "screenshot": "screenshots/contracts_manager.png"
+ },
+ {
+  "role": "procurement_manager",
+  "account": "procurement_manager",
+  "module": "ui",
+  "action": "sidebar shows exactly the allowed modules",
+  "expected": "/dashboard /projects /inventory /reservations /procurement/comparison /suppliers /invoices /my-actions /notification-preferences",
+  "actual": "/dashboard /projects /inventory /reservations /procurement/comparison /suppliers /invoices /my-actions /notification-preferences",
+  "result": "PASS",
+  "evidence": "",
+  "screenshot": "screenshots/procurement_manager.png"
+ },
+ {
+  "role": "accountant_ap",
+  "account": "accountant_ap",
+  "module": "ui",
+  "action": "sidebar shows exactly the allowed modules",
+  "expected": "/dashboard /inventory /procurement/comparison /suppliers /expenses /cash-flow /approvals /my-actions /notification-preferences",
+  "actual": "/dashboard /inventory /procurement/comparison /suppliers /expenses /cash-flow /approvals /my-actions /notification-preferences",
+  "result": "PASS",
+  "evidence": "",
+  "screenshot": "screenshots/accountant_ap.png"
+ },
+ {
+  "role": "qa_qc_manager",
+  "account": "qa_qc_manager",
+  "module": "ui",
+  "action": "sidebar shows exactly the allowed modules",
+  "expected": "/dashboard /projects /my-actions /notification-preferences",
+  "actual": "/dashboard /projects /my-actions /notification-preferences",
+  "result": "PASS",
+  "evidence": "",
+  "screenshot": "screenshots/qa_qc_manager.png"
+ },
+ {
+  "role": "hse_manager",
+  "account": "hse_manager",
+  "module": "ui",
+  "action": "sidebar shows exactly the allowed modules",
+  "expected": "/dashboard /projects /my-actions /notification-preferences",
+  "actual": "/dashboard /projects /my-actions /notification-preferences",
+  "result": "PASS",
+  "evidence": "",
+  "screenshot": "screenshots/hse_manager.png"
+ },
+ {
+  "role": "equipment_manager",
+  "account": "equipment_manager",
+  "module": "ui",
+  "action": "sidebar shows exactly the allowed modules",
+  "expected": "/dashboard /projects /inventory /reservations /procurement/comparison /assets /my-actions /notification-preferences",
+  "actual": "/dashboard /projects /inventory /reservations /procurement/comparison /assets /my-actions /notification-preferences",
+  "result": "PASS",
+  "evidence": "",
+  "screenshot": "screenshots/equipment_manager.png"
+ },
+ {
+  "role": "hr_manager",
+  "account": "hr_manager",
+  "module": "ui",
+  "action": "sidebar shows exactly the allowed modules",
+  "expected": "/dashboard /projects /hr /my-actions /notification-preferences",
+  "actual": "/dashboard /projects /hr /my-actions /notification-preferences",
+  "result": "PASS",
+  "evidence": "",
+  "screenshot": "screenshots/hr_manager.png"
+ }
+]

@@ -24,7 +24,8 @@ const memLog = [];
   let browser = null;
   const results = [];
   fs.mkdirSync(path.join(__dirname, 'screenshots'), { recursive: true });
-  const targets = accounts.filter((a) => users.find((x) => x.email === a.email));
+  const ONLY = process.env.ONLY ? process.env.ONLY.split(',').map((x) => x.trim()) : null; // e.g. ONLY=site_manager,hr_manager re-runs just those accounts
+  const targets = accounts.filter((a) => users.find((x) => x.email === a.email) && (!ONLY || ONLY.includes(a.email.split('@')[0].replace('pilot-', ''))));
   let stopped = null; let done = 0;
   const m0 = availableMb(); memLog.push({ before: 'start', available_mb: m0 }); console.log('MemAvailable at start:', m0, 'MB');
   if (m0 >= 0 && m0 < MIN_AVAILABLE_MB) stopped = `MemAvailable ${m0} MB below ${MIN_AVAILABLE_MB} MB at start`;
@@ -74,8 +75,8 @@ const memLog = [];
     if (browser) await browser.close().catch(() => {});
   }
   const mEnd = availableMb(); memLog.push({ after: 'end', available_mb: mEnd }); console.log('MemAvailable at end:', mEnd, 'MB');
-  fs.writeFileSync(path.join(__dirname, 'out/ui-results.json'), JSON.stringify(results, null, 1));
-  fs.writeFileSync(path.join(__dirname, 'out/ui-memory.json'), JSON.stringify({ min_available_mb_threshold: MIN_AVAILABLE_MB, memLog, stopped }, null, 1));
+  fs.writeFileSync(path.join(__dirname, ONLY ? 'out/ui-results-subset.json' : 'out/ui-results.json'), JSON.stringify(results, null, 1));
+  fs.writeFileSync(path.join(__dirname, ONLY ? 'out/ui-memory-subset.json' : 'out/ui-memory.json'), JSON.stringify({ min_available_mb_threshold: MIN_AVAILABLE_MB, memLog, stopped }, null, 1));
   const f = results.filter((r) => r.result === 'FAIL'); const nr = results.filter((r) => r.result === 'NOT RUN');
   console.log('ui checks', results.length, 'pass', results.filter((r) => r.result === 'PASS').length, 'fail', f.length, 'not run', nr.length);
   f.forEach((x) => console.log('FAIL', x.role, x.account, x.evidence)); nr.forEach((x) => console.log('NOT RUN', x.role, x.account, x.evidence));
