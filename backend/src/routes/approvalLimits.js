@@ -18,7 +18,7 @@ const updateSchema = Joi.object({
   enabled: Joi.boolean().default(true),
 });
 
-router.get('/', authenticate, authorize('owner', 'admin'), async (req, res) => {
+router.get('/', authenticate, authorize('owner', 'admin', 'owner_ceo', 'coo'), async (req, res) => {
   const { error, value } = filterSchema.validate(req.query, { convert: true });
   if (error) return res.status(400).json({ success: false, error: 'Invalid approval limit filter', error_code: 'validation_error' });
   try {

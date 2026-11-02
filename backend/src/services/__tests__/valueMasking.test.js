@@ -41,4 +41,10 @@ describe('valueMasking (default-deny)', () => {
     expect(maskPayload(row, 'finance-ledger', {}, []).data[0]).toEqual({ id: 3, status: 'open', due_date: '2026-01-01' });
     expect(maskPayload(row, 'finance-ledger', { see_client_price: true }, []).data[0].amount).toBe(50);
   });
+
+  test('accountant_ap keeps ledger/payment values without any visibility flag', () => {
+    const row = { data: [{ id: 3, amount: 50 }] };
+    expect(maskPayload(row, 'payments', {}, ['accountant_ap']).data[0].amount).toBe(50);
+    expect(maskPayload(row, 'payments', {}, ['storekeeper']).data[0]).toEqual({ id: 3 });
+  });
 });

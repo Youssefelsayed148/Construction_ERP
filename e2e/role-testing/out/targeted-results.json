@@ -1,0 +1,218 @@
+[
+ {
+  "role": "owner_ceo",
+  "module": "approval-limits",
+  "action": "GET /api/approval-limits",
+  "expected": "200",
+  "actual": "403",
+  "result": "FAIL",
+  "evidence": "read-only view granted (0089)"
+ },
+ {
+  "role": "owner_ceo",
+  "module": "approval-limits",
+  "action": "POST /api/approval-limits (write)",
+  "expected": "403",
+  "actual": "404",
+  "result": "PASS",
+  "evidence": "view only: no write"
+ },
+ {
+  "role": "owner_ceo",
+  "module": "activity",
+  "action": "GET /api/activity",
+  "expected": "200",
+  "actual": "200",
+  "result": "PASS",
+  "evidence": "read-only view granted (0089)"
+ },
+ {
+  "role": "owner_ceo",
+  "module": "activity",
+  "action": "POST /api/activity (write)",
+  "expected": "403",
+  "actual": "404",
+  "result": "PASS",
+  "evidence": "view only: no write"
+ },
+ {
+  "role": "owner_ceo",
+  "module": "handover",
+  "action": "GET /api/handover/assets",
+  "expected": "200",
+  "actual": "400",
+  "result": "FAIL",
+  "evidence": "read-only view granted (0089)"
+ },
+ {
+  "role": "owner_ceo",
+  "module": "handover",
+  "action": "POST /api/handover/assets (write)",
+  "expected": "403",
+  "actual": "403",
+  "result": "PASS",
+  "evidence": "view only: no write"
+ },
+ {
+  "role": "owner_ceo",
+  "module": "users",
+  "action": "GET /api/users",
+  "expected": "403",
+  "actual": "403",
+  "result": "PASS",
+  "evidence": "stays owner/admin only"
+ },
+ {
+  "role": "owner_ceo",
+  "module": "workflow-templates",
+  "action": "GET /api/workflow-templates",
+  "expected": "403",
+  "actual": "403",
+  "result": "PASS",
+  "evidence": "stays owner/admin only"
+ },
+ {
+  "role": "coo",
+  "module": "approval-limits",
+  "action": "GET /api/approval-limits",
+  "expected": "200",
+  "actual": "403",
+  "result": "FAIL",
+  "evidence": "read-only view granted (0089)"
+ },
+ {
+  "role": "coo",
+  "module": "approval-limits",
+  "action": "POST /api/approval-limits (write)",
+  "expected": "403",
+  "actual": "404",
+  "result": "PASS",
+  "evidence": "view only: no write"
+ },
+ {
+  "role": "coo",
+  "module": "activity",
+  "action": "GET /api/activity",
+  "expected": "200",
+  "actual": "200",
+  "result": "PASS",
+  "evidence": "read-only view granted (0089)"
+ },
+ {
+  "role": "coo",
+  "module": "activity",
+  "action": "POST /api/activity (write)",
+  "expected": "403",
+  "actual": "404",
+  "result": "PASS",
+  "evidence": "view only: no write"
+ },
+ {
+  "role": "coo",
+  "module": "handover",
+  "action": "GET /api/handover/assets",
+  "expected": "200",
+  "actual": "400",
+  "result": "FAIL",
+  "evidence": "read-only view granted (0089)"
+ },
+ {
+  "role": "coo",
+  "module": "handover",
+  "action": "POST /api/handover/assets (write)",
+  "expected": "403",
+  "actual": "403",
+  "result": "PASS",
+  "evidence": "view only: no write"
+ },
+ {
+  "role": "coo",
+  "module": "users",
+  "action": "GET /api/users",
+  "expected": "403",
+  "actual": "403",
+  "result": "PASS",
+  "evidence": "stays owner/admin only"
+ },
+ {
+  "role": "coo",
+  "module": "workflow-templates",
+  "action": "GET /api/workflow-templates",
+  "expected": "403",
+  "actual": "403",
+  "result": "PASS",
+  "evidence": "stays owner/admin only"
+ },
+ {
+  "role": "consultant_reviewer",
+  "module": "consultant",
+  "action": "GET /api/consultant/projects",
+  "expected": "200",
+  "actual": "200",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "consultant_reviewer",
+  "module": "consultant",
+  "action": "POST /api/consultant/observations (create)",
+  "expected": "403",
+  "actual": "403",
+  "result": "PASS",
+  "evidence": "no create"
+ },
+ {
+  "role": "consultant_reviewer",
+  "module": "consultant",
+  "action": "POST observations/:id/advance (edit)",
+  "expected": "403",
+  "actual": "403",
+  "result": "PASS",
+  "evidence": "no edit"
+ },
+ {
+  "role": "consultant_reviewer",
+  "module": "consultant",
+  "action": "POST wirs/:id/result (review action)",
+  "expected": "not 403 by policy",
+  "actual": "403",
+  "result": "PASS",
+  "evidence": "HTTP 403 forbidden"
+ },
+ {
+  "role": "hr_manager",
+  "module": "hr",
+  "action": "GET /api/hr/employees salary visible",
+  "expected": "salary present",
+  "actual": "200 present",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "site_engineer",
+  "module": "hr",
+  "action": "GET /api/hr/employees salary hidden",
+  "expected": "403 or no salary",
+  "actual": "403 absent",
+  "result": "PASS",
+  "evidence": ""
+ },
+ {
+  "role": "accountant_ap",
+  "module": "finance-ledger",
+  "action": "GET retention (amounts visible)",
+  "expected": "200 with amount",
+  "actual": "200 no-amount",
+  "result": "FAIL",
+  "evidence": "AP keeps its values (0088)"
+ },
+ {
+  "role": "storekeeper",
+  "module": "finance-ledger",
+  "action": "GET retention",
+  "expected": "403 or no amounts",
+  "actual": "403 no-amount",
+  "result": "PASS",
+  "evidence": ""
+ }
+]

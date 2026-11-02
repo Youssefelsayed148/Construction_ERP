@@ -834,7 +834,7 @@
   "account": "accountant_ap",
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "flag see_internal_cost=true (visible if endpoint open)",
   "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
@@ -844,7 +844,7 @@
   "account": "accountant_ap",
   "module": "visibility",
   "action": "GET /api/costing/summary -> project cost 480,000",
-  "expected": "hidden (see_internal_cost=false)",
+  "expected": "flag see_internal_cost=true (visible if endpoint open)",
   "actual": "HTTP 404, hidden",
   "result": "PASS",
   "evidence": ""

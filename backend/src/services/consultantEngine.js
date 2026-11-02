@@ -93,6 +93,9 @@ async function safeAll(q, sql, params) {
 // A consultant sees exactly the projects where their organization is an
 // active consultant participant with portal access enabled. (Filtering in JS
 // keeps the query parseable by the test MockDb.)
+// Canonical consultant roles may decide (the route and the policy already limit reviewer to approve/reject); the legacy key stays valid.
+const CONSULTANT_DECIDER_ROLES = ['consultant', 'consultant_coordinator', 'consultant_reviewer'];
+
 async function resolveConsultantProjects(q, userId) {
   const orgLinks = (await safeAll(q, 'SELECT organization_id, is_active FROM organization_users WHERE user_id = $1', [userId]))
     .filter((link) => link.is_active !== false);
@@ -118,14 +121,14 @@ async function resolveConsultantProjects(q, userId) {
 
 async function assertConsultantProject(q, user, projectId) {
   if (!user) throw typedError('Authentication required');
-  if (user.role !== 'consultant') return true;
+  if (!CONSULTANT_DECIDER_ROLES.includes(user.role)) return true; // internal roles are scoped by policy; every consultant-family role must be assigned
   const projects = await resolveConsultantProjects(q, user.id);
   if (!projects.includes(toNum(projectId))) throw typedError('Consultant is not assigned to this project');
   return true;
 }
 
 async function consultantIdentity(q, user, projectId) {
-  if (user.role !== 'consultant') return { organization_id: null, organization_name: null };
+  if (!CONSULTANT_DECIDER_ROLES.includes(user.role)) return { organization_id: null, organization_name: null };
   await assertConsultantProject(q, user, projectId);
   const links = (await q('SELECT organization_id, is_active FROM organization_users WHERE user_id = $1', [user.id])).rows
     .filter((l) => l.is_active !== false);
@@ -521,7 +524,7 @@ async function resubmitSubmittal(q, submittalId, user, { comments = null, attach
 async function decideConsultantWir(q, wirId, user, result, { comment = null } = {}) {
   const wir = (await q('SELECT * FROM wirs WHERE id = $1 FOR UPDATE', [wirId])).rows[0];
   if (!wir) throw Object.assign(new Error('WIR not found'), { status: 404, error_code: 'record_not_found' });
-  if (user.role !== 'consultant') {
+  if (!CONSULTANT_DECIDER_ROLES.includes(user.role)) {
     throw Object.assign(new Error('Consultant role required'), { status: 403, error_code: 'forbidden' });
   }
   const projectIds = await resolveConsultantProjects(q, user.id);
@@ -541,7 +544,7 @@ async function decideConsultantWir(q, wirId, user, result, { comment = null } = 
 async function decideConsultantVariation(q, variationId, user, decision, comment = null) {
   const row = (await q('SELECT * FROM variations WHERE id = $1 FOR UPDATE', [variationId])).rows[0];
   if (!row) throw Object.assign(new Error('Variation not found'), { status: 404, error_code: 'record_not_found' });
-  if (user.role !== 'consultant') throw Object.assign(new Error('Consultant role required'), { status: 403, error_code: 'forbidden' });
+  if (!CONSULTANT_DECIDER_ROLES.includes(user.role)) throw Object.assign(new Error('Consultant role required'), { status: 403, error_code: 'forbidden' });
   if (!(await resolveConsultantProjects(q, user.id)).includes(toNum(row.project_id))) {
     throw Object.assign(new Error('Variation not found'), { status: 404, error_code: 'record_not_found' });
   }
@@ -558,7 +561,7 @@ async function decideConsultantVariation(q, variationId, user, decision, comment
 async function decideConsultantCertificate(q, certificateId, user, decision, comment = null) {
   const row = (await q('SELECT * FROM payment_certificates WHERE id = $1 FOR UPDATE', [certificateId])).rows[0];
   if (!row) throw Object.assign(new Error('Payment certificate not found'), { status: 404, error_code: 'record_not_found' });
-  if (user.role !== 'consultant') throw Object.assign(new Error('Consultant role required'), { status: 403, error_code: 'forbidden' });
+  if (!CONSULTANT_DECIDER_ROLES.includes(user.role)) throw Object.assign(new Error('Consultant role required'), { status: 403, error_code: 'forbidden' });
   if (!(await resolveConsultantProjects(q, user.id)).includes(toNum(row.project_id))) {
     throw Object.assign(new Error('Payment certificate not found'), { status: 404, error_code: 'record_not_found' });
   }
@@ -573,7 +576,7 @@ async function decideConsultantCertificate(q, certificateId, user, decision, com
 }
 
 async function recommendEngineerInstruction(q, instructionId, user, decision, comment = null) {
-  if (user.role !== 'consultant') throw Object.assign(new Error('Consultant role required'), { status: 403, error_code: 'forbidden' });
+  if (!CONSULTANT_DECIDER_ROLES.includes(user.role)) throw Object.assign(new Error('Consultant role required'), { status: 403, error_code: 'forbidden' });
   const found = await q('SELECT * FROM engineer_instructions WHERE id = $1 FOR UPDATE', [instructionId]);
   if (!found.rows.length) throw Object.assign(new Error('Engineer instruction not found'), { status: 404, error_code: 'record_not_found' });
   const instruction = found.rows[0];

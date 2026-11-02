@@ -8,6 +8,8 @@
 const set = (...k) => new Set(k);
 const NON_VALUE = /(^|_)id$|percent|pct|count|status|date|number|_no$|code|currency|type|name|method|reference|notes?$|month|year|days/i;
 const MONEY = (re) => (k) => re.test(k) && !NON_VALUE.test(k);
+// The AP clerk works the payable side and holds no visibility flag (granting see_internal_cost would also open commercial budgets): allow it by role here.
+const AP_ROLES = ['accountant_ap'];
 const ANY_FINANCE = ['see_client_price', 'see_subcontractor_price', 'see_internal_cost'];
 // A rule hides its fields unless the caller holds `flag`, or any of `anyOf`, or one of `allowRoles` (explicit allow-list, default-deny otherwise).
 const RULES = Object.freeze({
@@ -21,12 +23,12 @@ const RULES = Object.freeze({
   hr: [{ flag: 'see_internal_cost', allowRoles: ['hr_manager'], keys: set('salary', 'basic_salary', 'net_salary', 'gross_salary', 'daily_rate', 'hourly_rate', 'allowances', 'bonus') }],
   payroll: [{ flag: 'see_internal_cost', allowRoles: ['hr_manager'], test: MONEY(/(salary|wage|pay|deduction|allowance|overtime|bonus|net|gross|advance|total|amount|rate)/i) }],
   // Finance ledger and money-moving summaries: any finance flag is enough (AR sees client side, AP/finance see internal cost); no flag = no values.
-  'finance-ledger': [{ anyOf: ANY_FINANCE, test: MONEY(/(amount|balance|debit|credit|total|retention|advance|paid|outstanding|net|gross|tax|value|cash|inflow|outflow)/i) }],
-  finance: [{ anyOf: ANY_FINANCE, test: MONEY(/(amount|balance|debit|credit|total|revenue|profit|cost|paid|outstanding|net|gross|tax|value|cash|income|expense|receivable|payable)/i) }],
+  'finance-ledger': [{ anyOf: ANY_FINANCE, allowRoles: AP_ROLES, test: MONEY(/(held|released|retained|amount|balance|debit|credit|total|retention|advance|paid|outstanding|net|gross|tax|value|cash|inflow|outflow)/i) }],
+  finance: [{ anyOf: ANY_FINANCE, allowRoles: AP_ROLES, test: MONEY(/(amount|balance|debit|credit|total|revenue|profit|cost|paid|outstanding|net|gross|tax|value|cash|income|expense|receivable|payable)/i) }],
   dashboard: [{ anyOf: ANY_FINANCE, test: MONEY(/(revenue|profit|receivable|payable|outstanding|cost|budget|amount|balance|income|expense|value|collected|billed|invoiced)/i) }],
   projects: [{ anyOf: ANY_FINANCE, keys: set('budget', 'budget_amount', 'contract_value', 'estimated_cost', 'actual_cost', 'total_budget', 'contract_amount') }],
-  payments: [{ anyOf: ANY_FINANCE, keys: set('amount', 'total_amount', 'allocated_amount', 'unallocated_amount', 'base_amount') }],
-  expenses: [{ anyOf: ANY_FINANCE, keys: set('amount', 'total_amount', 'tax_amount', 'base_amount') }],
+  payments: [{ anyOf: ANY_FINANCE, allowRoles: AP_ROLES, keys: set('amount', 'total_amount', 'allocated_amount', 'unallocated_amount', 'base_amount') }],
+  expenses: [{ anyOf: ANY_FINANCE, allowRoles: AP_ROLES, keys: set('amount', 'total_amount', 'tax_amount', 'base_amount') }],
 });
 
 function ruleKeyTest(rule, key) { return rule.keys ? rule.keys.has(key) : rule.test(key); }
