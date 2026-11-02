@@ -285,9 +285,9 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 200, VISIBLE",
-  "result": "FINDING",
-  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
+  "actual": "HTTP 200, hidden",
+  "result": "PASS",
+  "evidence": ""
  },
  {
   "role": "site_manager",
@@ -335,9 +335,9 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 200, VISIBLE",
-  "result": "FINDING",
-  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
+  "actual": "HTTP 200, hidden",
+  "result": "PASS",
+  "evidence": ""
  },
  {
   "role": "site_engineer",
@@ -385,9 +385,9 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 200, VISIBLE",
-  "result": "FINDING",
-  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
+  "actual": "HTTP 200, hidden",
+  "result": "PASS",
+  "evidence": ""
  },
  {
   "role": "planning_engineer",
@@ -415,9 +415,9 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 200, VISIBLE",
-  "result": "FAIL",
-  "evidence": "LEAK: payment application claimed work 108,000 visible without see_client_price"
+  "actual": "HTTP 200, hidden",
+  "result": "PASS",
+  "evidence": ""
  },
  {
   "role": "technical_office_engineer",
@@ -425,9 +425,9 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 200, VISIBLE",
-  "result": "FAIL",
-  "evidence": "LEAK: subcontract value 176,000 visible without see_subcontractor_price"
+  "actual": "HTTP 200, hidden",
+  "result": "PASS",
+  "evidence": ""
  },
  {
   "role": "technical_office_engineer",
@@ -435,9 +435,9 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 200, VISIBLE",
-  "result": "FINDING",
-  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
+  "actual": "HTTP 200, hidden",
+  "result": "PASS",
+  "evidence": ""
  },
  {
   "role": "technical_office_engineer",
@@ -555,9 +555,9 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 200, VISIBLE",
-  "result": "FAIL",
-  "evidence": "LEAK: client invoice amount 97,200 visible without see_client_price"
+  "actual": "HTTP 200, hidden",
+  "result": "PASS",
+  "evidence": ""
  },
  {
   "role": "contracts_manager",
@@ -565,9 +565,9 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 200, VISIBLE",
-  "result": "FAIL",
-  "evidence": "LEAK: payment application claimed work 108,000 visible without see_client_price"
+  "actual": "HTTP 200, hidden",
+  "result": "PASS",
+  "evidence": ""
  },
  {
   "role": "contracts_manager",
@@ -575,9 +575,9 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 200, VISIBLE",
-  "result": "FAIL",
-  "evidence": "LEAK: subcontract value 176,000 visible without see_subcontractor_price"
+  "actual": "HTTP 200, hidden",
+  "result": "PASS",
+  "evidence": ""
  },
  {
   "role": "contracts_manager",
@@ -605,9 +605,9 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 200, VISIBLE",
-  "result": "FAIL",
-  "evidence": "LEAK: client invoice amount 97,200 visible without see_client_price"
+  "actual": "HTTP 200, hidden",
+  "result": "PASS",
+  "evidence": ""
  },
  {
   "role": "procurement_manager",
@@ -615,9 +615,9 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 200, VISIBLE",
-  "result": "FAIL",
-  "evidence": "LEAK: payment application claimed work 108,000 visible without see_client_price"
+  "actual": "HTTP 200, hidden",
+  "result": "PASS",
+  "evidence": ""
  },
  {
   "role": "procurement_manager",
@@ -625,9 +625,9 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 200, VISIBLE",
-  "result": "FAIL",
-  "evidence": "LEAK: subcontract value 176,000 visible without see_subcontractor_price"
+  "actual": "HTTP 200, hidden",
+  "result": "PASS",
+  "evidence": ""
  },
  {
   "role": "procurement_manager",
@@ -1285,9 +1285,9 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 200, VISIBLE",
-  "result": "FINDING",
-  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
+  "actual": "HTTP 200, hidden",
+  "result": "PASS",
+  "evidence": ""
  },
  {
   "role": "client_reviewer",
@@ -1385,9 +1385,9 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 200, VISIBLE",
-  "result": "FINDING",
-  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
+  "actual": "HTTP 200, hidden",
+  "result": "PASS",
+  "evidence": ""
  },
  {
   "role": "consultant_coordinator",
@@ -1435,9 +1435,9 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 200, VISIBLE",
-  "result": "FINDING",
-  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
+  "actual": "HTTP 200, hidden",
+  "result": "PASS",
+  "evidence": ""
  },
  {
   "role": "consultant_reviewer",
@@ -1525,9 +1525,9 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 200, VISIBLE",
-  "result": "FAIL",
-  "evidence": "LEAK: subcontract value 176,000 visible without see_subcontractor_price"
+  "actual": "HTTP 200, hidden",
+  "result": "PASS",
+  "evidence": ""
  },
  {
   "role": "subcontractor_site_engineer",

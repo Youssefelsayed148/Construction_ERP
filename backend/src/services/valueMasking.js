@@ -7,7 +7,7 @@
 //   see_internal_cost        internal cost: costing ledger / cost summaries
 const set = (...k) => new Set(k);
 const RULES = Object.freeze({
-  invoices: [{ flag: 'see_client_price', keys: set('amount', 'total_amount', 'paid_amount', 'amount_paid', 'balance', 'balance_due', 'outstanding', 'gross_current_work', 'approved_variations_period', 'certified_gross', 'retention_amount', 'advance_recovery', 'other_deductions', 'tax_amount', 'net_amount', 'previous_cumulative', 'cumulative_certified', 'credited_amount') }],
+  invoices: [{ flag: 'see_client_price', keys: set('amount', 'total_paid', 'total_received', 'paid_total', 'open_balance', 'remaining', 'total_amount', 'paid_amount', 'amount_paid', 'balance', 'balance_due', 'outstanding', 'gross_current_work', 'approved_variations_period', 'certified_gross', 'retention_amount', 'advance_recovery', 'other_deductions', 'tax_amount', 'net_amount', 'previous_cumulative', 'cumulative_certified', 'credited_amount') }],
   commercial: [{ flag: 'see_client_price', keys: set('claimed_work', 'claimed_variations', 'claimed_materials', 'certified_work', 'certified_variations', 'certified_materials', 'original_value', 'revised_value', 'advance_amount') }],
   boq: [{ flag: 'see_client_price', keys: set('unit_rate', 'total_price', 'amount') }],
   subcontractors: [{ flag: 'see_subcontractor_price', keys: set('contract_value', 'revised_amount', 'advance_amount', 'net_payable', 'work_value', 'retention_deduction', 'previous_paid', 'penalties', 'materials_deducted', 'total_value', 'amount', 'unit_rate') }],

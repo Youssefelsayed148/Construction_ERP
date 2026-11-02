@@ -2,7 +2,7 @@
 const { maskPayload, deniedRules, RULES } = require('../valueMasking');
 
 describe('valueMasking (default-deny)', () => {
-  const invoice = { id: 1, invoice_number: 'INV-1', status: 'issued', net_amount: '97200', tax_amount: '4630', client_id: 2 };
+  const invoice = { id: 1, invoice_number: 'INV-1', status: 'issued', net_amount: '97200', tax_amount: '4630', total_paid: '97200', client_id: 2 };
   test('removes client price fields when see_client_price is not held', () => {
     const out = maskPayload({ success: true, data: [invoice] }, 'invoices', { see_client_price: false });
     expect(out.data[0]).toEqual({ id: 1, invoice_number: 'INV-1', status: 'issued', client_id: 2 });
