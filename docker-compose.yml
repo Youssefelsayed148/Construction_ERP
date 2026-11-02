@@ -51,6 +51,13 @@ services:
         condition: service_completed_successfully
     volumes:
       - uploads_data:/app/uploads
+    # The frontend also joins the shared proxy network, where other stacks have services named `backend`. nginx therefore addresses this
+    # stack's backend by a name nobody else uses (see frontend/nginx.conf); the generic `backend` alias is kept for the other services.
+    networks:
+      default:
+        aliases:
+          - backend
+          - construction-erp-backend
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 10s
@@ -64,6 +71,9 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    networks:
+      - default
+      - dokploy-proxy
     ports:
       - "127.0.0.1:8090:80"
     healthcheck:
@@ -75,3 +85,8 @@ services:
 volumes:
   db_data:
   uploads_data:
+
+networks:
+  dokploy-proxy:
+    external: true
+    name: dokploy-network
