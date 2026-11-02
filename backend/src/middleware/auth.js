@@ -233,6 +233,16 @@ const authorize = (...roles) => {
       projectIds: decision.scoped_project_ids || [],
     };
 
+    // Default-deny value masking (see services/valueMasking.js): strips client price / subcontract / internal cost fields the caller's flags do not cover.
+    {
+      const valueMasking = require('../services/valueMasking');
+      const mount = policy.moduleFromRequest(req);
+      if (valueMasking.deniedRules(mount, decision.flags).length) {
+        const maskJson = res.json.bind(res);
+        res.json = (payload) => maskJson(valueMasking.maskPayload(payload, mount, decision.flags));
+      }
+    }
+
     if (!decision.company_wide && decision.project_id == null && decision.scoped_project_ids?.length) {
       const originalJson = res.json.bind(res);
       res.json = (payload) => originalJson(filterScopedPayload(payload, decision.scoped_project_ids));

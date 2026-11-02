@@ -24,3 +24,9 @@ db_dump/
 # Local review copies are preserved but must never be staged.
 /docs/REVIEW_REPORT_2026-10-14.md
 /docs/CODEX_AUDIT_REPORT.md
+
+# role-testing credentials and session caches
+/.live-users.json
+/.users-hash-backup.json
+/.staging-users.json
+/e2e/role-testing/out/.tokens.json

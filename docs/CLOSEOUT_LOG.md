@@ -3229,3 +3229,9 @@ OPEN DECISION: who approves supplier invoices? Today procurement_manager / owner
 - Seed 536 PASS / 23 FAIL / 28 FINDING; forbidden actions 105/105; value-visibility probes 180/180. Access matrix invalid (all 401) and UI pass not run - recorded NOT RUN, not claimed passed.
 - Fixes: wizard date + participant legacy ids; qaqc/hse/consultant engines accept canonical roles and throw typed errors; consultant routes accept canonical roles; migrations 0085 (quantities review/approve grants), 0086 (handover project_manager grants).
 - Gates (lint, backend suites, pg suites) were NOT run in this session; do not treat the fixes as gate-verified.
+
+# 2026-11-02 - Role testing follow-up: masking, SoD, gates
+
+- valueMasking (default-deny) in authorize(); quantities self-approval blocked; NCR/incident audit+events; PR-rejected notification; migration 0087; credential files gitignored.
+- Gates: lint:guards ok, i18n:parity ok, lint:api ok, i18n:check NOT RUN (typescript missing); backend mock 93/93 (1344 tests); real-PG 103/103 on a throwaway PG16 after fixing 3 fixtures (self-approval) and 1 expired hard-coded RFQ date.
+- Live: access matrix 1745 PASS/3 scope-adjusted, UI 38/38, forbidden 105/105, visibility baseline 9 leaks (pre-fix). Rebuild of the live backend was blocked, so the new code is NOT live. See TEST_REPORT.md.

@@ -20,6 +20,7 @@ module.exports = {
   ...group(['PUT /api/quantities/allocations/:id', 'PUT /api/v1/quantities/allocations/:id'], async ctx => ({ params: { id: (await allocation(ctx)).id }, body: { planned_quantity: 20 } })),
   ...group(['POST /api/quantities/measurements', 'POST /api/v1/quantities/measurements'], async ctx => ({ body: await measurementBody(ctx), status: 201 })),
   ...group(['POST /api/quantities/measurements/:id/review', 'POST /api/v1/quantities/measurements/:id/review'], async ctx => ({
-    params: { id: (await measurement(ctx)).id }, body: { state: 'approved' },
+    // Segregation of duties: the reviewer must not be the recorder, so the fixture's measurement is attributed to nobody in particular.
+    params: { id: await (async () => { const m = await measurement(ctx); await ctx.db.query('UPDATE quantity_measurements SET measured_by = NULL WHERE id = $1', [m.id]); return m.id; })() }, body: { state: 'approved' },
   })),
 };

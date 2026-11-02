@@ -21,7 +21,7 @@ module.exports = async function stage5() {
     if (!S[key]) { const w = await actAs(['site_engineer', 'site_manager'], 'POST', '/api/qhse/wirs', { project_id: P, boq_item_id: S.boq.steel, project_location_id: S.loc.f1, inspection_date: today, notes: note }, { label: `site_engineer creates WIR (${decision} path)` }); S[key] = w.data?.id; }
     if (sql(`select status from wirs where id=${S[key]}`) === 'draft') {
       const s0 = snap();
-      await actAs(['site_engineer', 'site_manager', 'qa_qc_manager'], 'POST', `/api/qhse/wirs/${S[key]}/submit`, {}, { label: `WIR submit (${decision})` });
+      await actAs(['site_engineer'], 'POST', `/api/qhse/wirs/${S[key]}/submit`, {}, { label: `WIR submit (${decision})` });
       await actAs(['qa_qc_manager'], 'POST', `/api/qhse/wirs/${S[key]}/decision`, { decision, comment: 'DEMO ' + decision }, { label: `qa_qc_manager ${decision}s WIR` });
       evidenceSince(s0, `WIR ${decision}`, { notif: true });
     }
@@ -46,7 +46,7 @@ module.exports = async function stage5() {
     if (!S[key]) { const p = await actAs(['site_engineer', 'site_manager'], 'POST', '/api/hse/permits', { project_id: P, permit_type: decision === 'approve' ? 'hot_work' : 'excavation', title, description: 'DEMO', precautions: ['fire watch'], valid_from: today, valid_to: '2026-11-03' }, { label: `permit requested (${decision} path)` }); S[key] = p.data?.id; }
     if (sql(`select status from permits where id=${S[key]}`) === 'draft') {
       const s0 = snap();
-      await actAs(['site_engineer', 'site_manager'], 'POST', `/api/hse/permits/${S[key]}/submit`, {}, { label: `permit submit (${decision})` });
+      await actAs(['site_engineer'], 'POST', `/api/hse/permits/${S[key]}/submit`, {}, { label: `permit submit (${decision})` });
       await actAs(['hse_manager'], 'POST', `/api/hse/permits/${S[key]}/decision`, { decision, comment: 'DEMO' }, { label: `hse_manager ${decision}s permit` });
       evidenceSince(s0, `permit ${decision}`, { notif: true });
     }

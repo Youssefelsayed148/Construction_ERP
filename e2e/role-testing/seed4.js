@@ -20,7 +20,7 @@ module.exports = async function stage4() {
 
   section('15. work order (construction_manager) and executed quantities');
   S.wo = idOf('work_orders', 'title_en', 'DEMO-WO Waterproofing basement', `and project_id=${P}`);
-  if (!S.wo) { const s0 = snap(); const r = await actAs(['construction_manager', 'project_manager', 'site_manager', 'workflow_owner'], 'POST', '/api/work-orders', { project_id: P, boq_section_id: S.boqSec, title_ar: 'DEMO-عزل القبو', title_en: 'DEMO-WO Waterproofing basement', description: 'DEMO', planned_start_date: '2026-11-15', planned_end_date: '2026-12-15' }, { label: 'create work order' }); S.wo = r.data?.id; evidenceSince(s0, 'work order'); }
+  if (!S.wo) { const s0 = snap(); const r = await actAs(['construction_manager'], 'POST', '/api/work-orders', { project_id: P, boq_section_id: S.boqSec, title_ar: 'DEMO-عزل القبو', title_en: 'DEMO-WO Waterproofing basement', description: 'DEMO', planned_start_date: '2026-11-15', planned_end_date: '2026-12-15' }, { label: 'create work order' }); S.wo = r.data?.id; evidenceSince(s0, 'work order'); }
   await readBack('project_manager', `/api/work-orders/${S.wo}`, {}, 'work order exists');
   // allocation + measurements
   S.alloc = Number(sql(`select id from boq_location_allocations where boq_item_id=${S.boq.conc} limit 1`)) || null;

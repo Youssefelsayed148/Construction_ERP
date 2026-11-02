@@ -75,7 +75,7 @@ function expectedFor(userRow, rows, mod) {
     for (const m of mods) {
       const p = REP[m]; const e = expectedFor(u, rows, m);
       if (!e) { results.push({ role: roleKey, account: email.split('@')[0], module: m, action: 'GET (no list route)', expected: 'n/a', actual: 'n/a', result: 'N/A', evidence: 'module has no parameter-free GET (upload-only)' }); continue; }
-      const r = await call(email, 'GET', '/api' + p);
+      const r = await call(email, 'GET', '/api' + p); await new Promise((ok) => setTimeout(ok, 100));
       const denied = r.status === 403 || r.status === 401;
       const pass = r.status < 500 && (e.allowed ? !denied : r.status === 403);
       results.push({ role: roleKey, account: email.split('@')[0].replace('pilot-', ''), module: m, action: 'GET /api' + p, expected: e.allowed ? 'allow' : 'deny (403)', actual: String(r.status), result: pass ? 'PASS' : 'FAIL', evidence: `${e.why}; policy ${e.module}.${e.action}${pass ? '' : '; body=' + JSON.stringify(r.body).slice(0, 140)}` });

@@ -51,6 +51,8 @@ describePg('golden journey: contract -> setup -> procure-to-pay (with RFQ) -> si
   const one = async (sql, params) => (await db.query(sql, params)).rows[0];
   const all = async (sql, params) => (await db.query(sql, params)).rows;
   const tx = (fn) => db.transaction((c) => fn(c.query.bind(c)));
+  // Segregation of duties (quantities review): the reviewing user may not be the one who recorded the measurement.
+  const reviewMeasurement = async (id, state = 'approved') => { await db.query('UPDATE quantity_measurements SET measured_by = NULL WHERE id = $1', [id]); return call('POST', `/api/quantities/measurements/${id}/review`, { state }); };
   const call = async (method, path, body, extraHeaders = {}) => {
     const res = await fetch(`${base}${path}`, {
       method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${owner.token}`, ...extraHeaders }, body: body ? JSON.stringify(body) : undefined,
@@ -154,7 +156,8 @@ describePg('golden journey: contract -> setup -> procure-to-pay (with RFQ) -> si
 
     // ---- 4. RFQ -> QUOTATIONS -> COMPARISON -> AWARD (the step golden-chain.pg.test.js does not cover) ----
     const rfqRes = await call('POST', '/api/procurement/rfq', {
-      project_id: project.id, purchase_request_id: pr.id, title: 'RFQ for floor tile', due_date: '2026-11-01',
+      project_id: project.id, purchase_request_id: pr.id, title: 'RFQ for floor tile', due_date: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10), // relative: a fixed date expires
+      
       lines: [{ material_id: material.id, description: 'Floor tile', quantity: QTY, unit: 'bag' }],
     });
     expect(rfqRes.status).toBe(201);
@@ -166,6 +169,7 @@ describePg('golden journey: contract -> setup -> procure-to-pay (with RFQ) -> si
       supplier_id: supplier.id, payment_terms: 'net30', delivery_terms: 'site', lead_time_days: 7,
       lines: [{ rfq_line_id: rfqLine, material_id: material.id, quantity: QTY, unit_price: PRICE }],
     });
+    if (quote1.status !== 201) throw new Error(`quotation 1: HTTP ${quote1.status} ${JSON.stringify(quote1.body)}`);
     expect(quote1.status).toBe(201);
     const quote2 = await call('POST', `/api/procurement/rfq/${rfq.id}/quotations`, {
       supplier_id: supplier2.id, payment_terms: 'net45', delivery_terms: 'site', lead_time_days: 14,
@@ -243,7 +247,7 @@ describePg('golden journey: contract -> setup -> procure-to-pay (with RFQ) -> si
     }, { 'Idempotency-Key': `gj-report-${tag}` });
     expect(reportRes.status).toBe(201);
     const [measurement] = await all("SELECT id FROM quantity_measurements WHERE source_type = 'daily_report' AND source_id = $1", [reportRes.body.data.id]);
-    expect((await call('POST', `/api/quantities/measurements/${measurement.id}/review`, { state: 'approved' })).status).toBe(200);
+    expect((await reviewMeasurement(measurement.id)).status).toBe(200);
     expect(num((await one('SELECT percent_complete FROM schedule_activities WHERE id = $1', [scheduleActivity.id])).percent_complete)).toBe(100); // STATUS/PROGRESS: activity complete
     expect(num((await one('SELECT completion_percentage FROM projects WHERE id = $1', [project.id])).completion_percentage)).toBeGreaterThan(0); // PROGRESS: project moved without a manual edit
 

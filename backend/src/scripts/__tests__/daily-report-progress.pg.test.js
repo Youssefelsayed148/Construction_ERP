@@ -28,6 +28,8 @@ describePg('A2.6 daily-report measurements and weighted progress (real PostgreSQ
   let reportSeq = 0;
   const one = async (sql, params) => (await db.query(sql, params)).rows[0];
   const all = async (sql, params) => (await db.query(sql, params)).rows;
+  // Segregation of duties (quantities review): the reviewing user may not be the one who recorded the measurement.
+  const reviewMeasurement = async (id, state = 'approved') => { await db.query('UPDATE quantity_measurements SET measured_by = NULL WHERE id = $1', [id]); return call('POST', `/api/quantities/measurements/${id}/review`, { state }); };
   const call = async (method, path, body, extraHeaders = {}) => {
     const res = await fetch(`${base}${path}`, {
       method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${owner.token}`, ...extraHeaders }, body: body ? JSON.stringify(body) : undefined,
@@ -152,7 +154,7 @@ describePg('A2.6 daily-report measurements and weighted progress (real PostgreSQ
       { project_location_id: w.location.id, boq_item_id: w.itemA.id, quantity: 100, unit: 'm2' },     // A complete
     ] });
     const [m] = await all("SELECT id FROM quantity_measurements WHERE source_type = 'daily_report' AND source_id = $1", [created.body.data.id]);
-    expect((await call('POST', `/api/quantities/measurements/${m.id}/review`, { state: 'approved' })).status).toBe(200);
+    expect((await reviewMeasurement(m.id)).status).toBe(200);
     expect(await percent('schedule_activities', w.actA.id)).toBe(100);
     expect(await percent('schedule_activities', w.actB.id)).toBe(0);
     // A is 1000 of the 10000 BOQ value: the project is 10%, not the 50% mean of its two activities.
@@ -184,7 +186,7 @@ describePg('A2.6 daily-report measurements and weighted progress (real PostgreSQ
     expect(rows.map((r) => Number(r.quantity))).toEqual([25]);
     // Once a reviewer has acted on one, the report's quantities are fixed.
     const [m] = await all("SELECT id FROM quantity_measurements WHERE source_type = 'daily_report' AND source_id = $1", [id]);
-    await call('POST', `/api/quantities/measurements/${m.id}/review`, { state: 'approved' });
+    await reviewMeasurement(m.id);
     const locked = await call('PUT', `/api/projects/${w.project.id}/site-reports/${id}`, { measurements: [{ project_location_id: w.location.id, boq_item_id: w.itemA.id, quantity: 99 }] });
     expect(locked.status).toBe(409);
     expect(locked.body.error_code).toBe('measurements_already_reviewed');
@@ -214,7 +216,7 @@ describePg('A2.6 daily-report measurements and weighted progress (real PostgreSQ
     const w = await world();
     const created = await report(w, { measurements: [{ project_location_id: w.location.id, boq_item_id: w.itemA.id, quantity: 100 }] });
     const [m] = await all("SELECT id FROM quantity_measurements WHERE source_type = 'daily_report' AND source_id = $1", [created.body.data.id]);
-    await call('POST', `/api/quantities/measurements/${m.id}/review`, { state: 'approved' });
+    await reviewMeasurement(m.id);
     const dash = await widgets.roleDashboard(db.query, { id: owner.id, role: 'project_manager' }, { projectId: w.project.id });
     const progress = dash.widgets.find((x) => x.key === 'progress');
     expect(progress.data.avg_percent).toBe(10);          // the plain mean of the activities (100 and 0) would be 50

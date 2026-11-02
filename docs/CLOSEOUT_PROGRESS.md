@@ -1956,3 +1956,5 @@ Implementation 854e8bd and LF checkpoint 855ee52 committed. Pilot migrate exited
 - NOT RUN: all suites and build (deferred to Session T).
 
 - 2026-11-02: role testing + DEMO data partially done (see TEST_REPORT.md). Remaining: access matrix run, UI pass, open items 1-7, gates.
+
+- 2026-11-02: role-testing follow-up done except live deploy of the new code (blocked) and re-running failed seed steps; see TEST_REPORT.md.

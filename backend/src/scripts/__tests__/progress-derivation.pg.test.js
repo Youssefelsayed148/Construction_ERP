@@ -23,6 +23,8 @@ describePg('3.5 derived progress (real PostgreSQL, real app)', () => {
   const one = async (sql, params) => (await db.query(sql, params)).rows[0];
   const users = {};
   const ids = {};
+  // Segregation of duties (quantities review): the reviewing user may not be the one who recorded the measurement.
+  const reviewMeasurement = async (id, state = 'approved') => { await db.query('UPDATE quantity_measurements SET measured_by = NULL WHERE id = $1', [id]); return call('POST', `/api/quantities/measurements/${id}/review`, { state }); };
   const call = async (method, path, body, token) => {
     const res = await fetch(`${base}${path}`, {
       method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token || users.owner.token}` }, body: body ? JSON.stringify(body) : undefined,
@@ -66,7 +68,7 @@ describePg('3.5 derived progress (real PostgreSQL, real app)', () => {
         project_id: project, project_location_id: loc, boq_item_id: boqItemId,
         measured_date: '2026-06-01', quantity: executed, unit: 'm2',
       });
-      await call('POST', `/api/quantities/measurements/${r.body.data.id}/review`, { state: 'approved' });
+      await reviewMeasurement(r.body.data.id);
     }
     return { project, loc, itemA, itemB };
   };
@@ -156,7 +158,7 @@ describePg('3.5 derived progress (real PostgreSQL, real app)', () => {
       measured_date: '2026-06-02', quantity: 20, unit: 'm2',
     });
     expect(r.status).toBe(201);
-    await call('POST', `/api/quantities/measurements/${r.body.data.id}/review`, { state: 'approved' });
+    await reviewMeasurement(r.body.data.id);
     const activityRow = await one('SELECT percent_complete FROM schedule_activities WHERE id = $1', [activity]);
     expect(Number(activityRow.percent_complete)).toBeCloseTo(30, 5); // 30 of planned 100 approved, no PUT happened
     // ...and the project progress followed.

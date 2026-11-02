@@ -2282,3 +2282,6 @@ R2b.17 committed `5e4b086`; STATE updated after commit. Next: remaining CRUD, sc
 
 ## 2026-11-02 - Role testing stop point
 Done: DEMO seed (project 6), forbidden + visibility probes, fixes + migrations 0085/0086 (committed). Blocker: access-matrix run returned 401 for all calls (session/login), UI pass never ran; earlier session was stopped by process overload. Evidence: e2e/role-testing/out/access-results.json, TEST_REPORT.md. Next: run access.js and ui.js once, serially, with a login delay; run gates; decide open items.
+
+## 2026-11-02 - Stop point (role testing follow-up)
+Blocker: rebuilding/restarting the live backend container was denied by the production-deploy guard, so migration 0087 and the masking/SoD/notification code are not live. Evidence: TEST_REPORT.md, results.json. Next action: owner approves the backend rebuild, then re-run visibility.js and the failed seed steps; decide the open policy items.

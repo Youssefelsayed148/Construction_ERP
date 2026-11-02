@@ -239,6 +239,10 @@ router.post('/measurements/:id/review', authenticate, authorize(), async (req, r
     const out = await auditedMutation(req, { action: 'review', module: 'quantities', entityType: 'quantity_measurement' }, async (q) => {
       const existing = (await q('SELECT * FROM quantity_measurements WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
       if (!existing) return { skipAudit: true };
+      // Segregation of duties: whoever recorded a measurement cannot approve/reject it (decision 2026-11-02).
+      if (existing.measured_by != null && Number(existing.measured_by) === Number(req.user.id)) {
+        throw Object.assign(new Error('You cannot review a measurement you recorded'), { status: 403, error_code: 'self_approval_forbidden', error_params: {} });
+      }
       const r = await q(
         `UPDATE quantity_measurements SET approval_state = $1, reviewed_by = $2, updated_at = NOW() WHERE id = $3 RETURNING *`,
         [value.state, req.user.id, req.params.id]

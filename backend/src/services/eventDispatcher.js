@@ -112,6 +112,16 @@ async function routePurchaseRequisitionApproved(evt, opts) {
   }, opts);
 }
 
+async function routePurchaseRequisitionRejected(evt, opts) {
+  // The requester must learn the outcome (the approved route already tells them); procurement is told it will not proceed.
+  const payload = evt.payload || {};
+  const title = `Purchase requisition rejected: #${evt.entityId}`;
+  if (payload.requester_id != null) {
+    await notificationService.notify({ userId: payload.requester_id, title, body: 'Your requisition was rejected.', eventType: evt.eventType, entityType: evt.entityType, entityId: evt.entityId }, opts);
+  }
+  await notificationService.notifyRoles(['procurement_manager', 'purchasing_mgr'], { title, body: 'Not proceeding to procurement.', eventType: evt.eventType, entityType: evt.entityType, entityId: evt.entityId, excludeUserId: evt.userId }, opts);
+}
+
 // invoice.overdue (reminder stages overdue_7/14/30) and invoice.due (due_soon, due_today), emitted by the
 // receivable reminder sweep through the outbox. The stage's escalation roles ride in the payload.
 async function routeInvoiceOverdue(evt, opts) {
@@ -187,6 +197,8 @@ const NOTIFY_RULES = {
   'invoice.created': { roles: ['finance_manager', 'accountant'], label: 'Invoice created' },
   'variation.approved': { roles: ['project_manager', 'finance_manager', 'quantity_surveyor'], label: 'Variation approved' },
   'handover.advanced': { roles: ['project_manager', 'owner'], label: 'Handover advanced' },
+  'ncr.raised': { roles: ['qa_qc_manager', 'project_manager', 'site_manager'], label: 'Non-conformance raised' },
+  'incident.reported': { roles: ['hse_manager', 'project_manager', 'site_manager'], label: 'Incident reported' },
   'wir.submitted': { roles: ['engineer', 'qa_qc_manager', 'project_manager'], label: 'Work inspection request submitted' },
 };
 // Families of events named by prefix (the state is the suffix): permit.*, instruction.*, mir.*, transmittal.*.
@@ -216,6 +228,7 @@ const EVENT_ROUTES = {
   // The RFI route used to emit rfi.created; rows enqueued under that name before the rename still deliver.
   'rfi.created': routeRfiSubmitted,
   'purchase_requisition.approved': routePurchaseRequisitionApproved,
+  'purchase_requisition.rejected': routePurchaseRequisitionRejected,
   'invoice.overdue': routeInvoiceOverdue,
   'invoice.due': routeInvoiceOverdue,
   'action.overdue': routeActionOverdue,

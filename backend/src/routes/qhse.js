@@ -9,6 +9,7 @@ const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 const { auditedMutation } = require('../utils/auditedMutation');
+const { fireEvent } = require('../utils/activity');
 const { dateOnly } = require('../utils/validation');
 const { normalizeDateFields } = require('../utils/dateOnly');
 const { routeFail } = require('../utils/typedRoute');
@@ -135,15 +136,19 @@ router.post('/ncrs', authenticate, authorize(), async (req, res) => {
     authorizeProjectPayload(req, value);
 
     const year = new Date().getFullYear();
-    const result = await auditedTransaction(async (q) => {
+    const out = await auditedMutation(req, { action: 'create', module: 'qhse', entityType: 'ncr' }, async (q) => {
       const ncrNumber = await nextNumber(q, { table: 'ncrs', column: 'ncr_number', prefix: `NCR-${year}`, pad: 4 });
       const inserted = await q(
       `INSERT INTO ncrs (ncr_number, project_id, boq_item_id, quality_test_id, description, severity, raised_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
       [ncrNumber, authorizedProjectId(req, value), value.boq_item_id, value.quality_test_id, value.description, value.severity, req.user.id]
       );
-      return { ...inserted, ncrNumber };
-    }, (r) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'qhse', description: `Raised ${r.ncrNumber} (${value.severity})`, entityId: r.rows[0].id, entityType: 'ncr' }));
+      const row = inserted.rows[0];
+      // Same transaction: the outbox event that becomes the QA/QC + project manager notification.
+      await fireEvent({ eventType: 'ncr.raised', entityType: 'ncr', entityId: row.id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: row.project_id, title: `${ncrNumber} (${value.severity})` } }, { query: q });
+      return { data: row, entityId: row.id, projectId: row.project_id, after: row, newStatus: row.status, description: `Raised ${ncrNumber} (${value.severity})` };
+    });
+    const result = { rows: [out.data] };
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) { routeFail(res, error, 'qhse.POST /ncrs', req); }
 });

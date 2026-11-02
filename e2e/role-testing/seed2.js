@@ -9,7 +9,7 @@ module.exports = async function stage2() {
     S.loc[key] = idOf('project_locations', 'code', code, `and project_id=${P}`);
     if (S.loc[key]) continue;
     const s0 = snap();
-    const r = await actAs(['project_manager', 'site_manager', 'workflow_owner'], 'POST', '/api/locations', { project_id: P, location_type_code: type, code, name, name_en: name, name_ar: 'DEMO-' + name.slice(5), ...(parent ? { parent_id: S.loc[parent] } : {}) }, { label: `create location ${code}` });
+    const r = await actAs(['project_manager'], 'POST', '/api/locations', { project_id: P, location_type_code: type, code, name, name_en: name, name_ar: 'DEMO-' + name.slice(5), ...(parent ? { parent_id: S.loc[parent] } : {}) }, { label: `create location ${code}` });
     S.loc[key] = r.data?.id; evidenceSince(s0, 'location ' + code);
   }
   await readBack('project_manager', `/api/locations/${S.loc.f1}`, { code: 'DEMO-B1-F1' }, 'location exists');

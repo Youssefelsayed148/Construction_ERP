@@ -5,7 +5,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -15,7 +15,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -25,7 +25,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -35,7 +35,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "flag see_internal_cost=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -55,7 +55,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -65,7 +65,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -75,7 +75,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -85,7 +85,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "flag see_internal_cost=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -105,7 +105,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -115,7 +115,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -125,7 +125,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -135,9 +135,9 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
-  "result": "PASS",
-  "evidence": ""
+  "actual": "HTTP 200, VISIBLE",
+  "result": "FINDING",
+  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
  },
  {
   "role": "projects_director",
@@ -155,7 +155,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -165,7 +165,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -175,7 +175,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -185,9 +185,9 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
-  "result": "PASS",
-  "evidence": ""
+  "actual": "HTTP 200, VISIBLE",
+  "result": "FINDING",
+  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
  },
  {
   "role": "construction_manager",
@@ -205,7 +205,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -215,7 +215,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -225,7 +225,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -235,7 +235,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "flag see_internal_cost=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -255,7 +255,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -265,7 +265,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -275,7 +275,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -285,9 +285,9 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
-  "result": "PASS",
-  "evidence": ""
+  "actual": "HTTP 200, VISIBLE",
+  "result": "FINDING",
+  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
  },
  {
   "role": "site_manager",
@@ -305,7 +305,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -315,7 +315,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -325,7 +325,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -335,9 +335,9 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
-  "result": "PASS",
-  "evidence": ""
+  "actual": "HTTP 200, VISIBLE",
+  "result": "FINDING",
+  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
  },
  {
   "role": "site_engineer",
@@ -355,7 +355,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -365,7 +365,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -375,7 +375,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -385,9 +385,9 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
-  "result": "PASS",
-  "evidence": ""
+  "actual": "HTTP 200, VISIBLE",
+  "result": "FINDING",
+  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
  },
  {
   "role": "planning_engineer",
@@ -405,7 +405,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -415,9 +415,9 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
-  "result": "PASS",
-  "evidence": ""
+  "actual": "HTTP 200, VISIBLE",
+  "result": "FAIL",
+  "evidence": "LEAK: payment application claimed work 108,000 visible without see_client_price"
  },
  {
   "role": "technical_office_engineer",
@@ -425,9 +425,9 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
-  "result": "PASS",
-  "evidence": ""
+  "actual": "HTTP 200, VISIBLE",
+  "result": "FAIL",
+  "evidence": "LEAK: subcontract value 176,000 visible without see_subcontractor_price"
  },
  {
   "role": "technical_office_engineer",
@@ -435,9 +435,9 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
-  "result": "PASS",
-  "evidence": ""
+  "actual": "HTTP 200, VISIBLE",
+  "result": "FINDING",
+  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
  },
  {
   "role": "technical_office_engineer",
@@ -455,7 +455,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -465,7 +465,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -475,7 +475,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -485,9 +485,9 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
-  "result": "PASS",
-  "evidence": ""
+  "actual": "HTTP 200, VISIBLE",
+  "result": "FINDING",
+  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
  },
  {
   "role": "quantity_surveyor",
@@ -505,7 +505,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -515,7 +515,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -525,7 +525,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -535,7 +535,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "flag see_internal_cost=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -555,9 +555,9 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
-  "result": "PASS",
-  "evidence": ""
+  "actual": "HTTP 200, VISIBLE",
+  "result": "FAIL",
+  "evidence": "LEAK: client invoice amount 97,200 visible without see_client_price"
  },
  {
   "role": "contracts_manager",
@@ -565,9 +565,9 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
-  "result": "PASS",
-  "evidence": ""
+  "actual": "HTTP 200, VISIBLE",
+  "result": "FAIL",
+  "evidence": "LEAK: payment application claimed work 108,000 visible without see_client_price"
  },
  {
   "role": "contracts_manager",
@@ -575,9 +575,9 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
-  "result": "PASS",
-  "evidence": ""
+  "actual": "HTTP 200, VISIBLE",
+  "result": "FAIL",
+  "evidence": "LEAK: subcontract value 176,000 visible without see_subcontractor_price"
  },
  {
   "role": "contracts_manager",
@@ -585,7 +585,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -605,9 +605,9 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
-  "result": "PASS",
-  "evidence": ""
+  "actual": "HTTP 200, VISIBLE",
+  "result": "FAIL",
+  "evidence": "LEAK: client invoice amount 97,200 visible without see_client_price"
  },
  {
   "role": "procurement_manager",
@@ -615,9 +615,9 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
-  "result": "PASS",
-  "evidence": ""
+  "actual": "HTTP 200, VISIBLE",
+  "result": "FAIL",
+  "evidence": "LEAK: payment application claimed work 108,000 visible without see_client_price"
  },
  {
   "role": "procurement_manager",
@@ -625,9 +625,9 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
-  "result": "PASS",
-  "evidence": ""
+  "actual": "HTTP 200, VISIBLE",
+  "result": "FAIL",
+  "evidence": "LEAK: subcontract value 176,000 visible without see_subcontractor_price"
  },
  {
   "role": "procurement_manager",
@@ -635,7 +635,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -655,7 +655,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -665,7 +665,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -675,7 +675,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -685,7 +685,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -705,7 +705,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -715,7 +715,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -725,7 +725,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -735,7 +735,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "flag see_internal_cost=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -755,7 +755,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -765,7 +765,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -775,7 +775,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -785,7 +785,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -805,7 +805,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -815,7 +815,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -825,7 +825,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -835,7 +835,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -855,7 +855,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -865,7 +865,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -875,7 +875,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -885,7 +885,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -905,7 +905,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -915,7 +915,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -925,7 +925,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -935,7 +935,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -955,7 +955,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -965,7 +965,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -975,7 +975,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -985,7 +985,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1005,7 +1005,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1015,7 +1015,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1025,7 +1025,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1035,7 +1035,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1055,7 +1055,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1065,7 +1065,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1075,7 +1075,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1085,7 +1085,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1105,7 +1105,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1115,7 +1115,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1125,7 +1125,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1135,7 +1135,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1155,7 +1155,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1165,7 +1165,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -1175,7 +1175,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1185,7 +1185,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1205,7 +1205,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1215,7 +1215,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1225,7 +1225,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1235,9 +1235,9 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
-  "result": "PASS",
-  "evidence": ""
+  "actual": "HTTP 200, VISIBLE",
+  "result": "FINDING",
+  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
  },
  {
   "role": "client_executive",
@@ -1255,7 +1255,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1265,7 +1265,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1275,7 +1275,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1285,9 +1285,9 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
-  "result": "PASS",
-  "evidence": ""
+  "actual": "HTTP 200, VISIBLE",
+  "result": "FINDING",
+  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
  },
  {
   "role": "client_reviewer",
@@ -1305,7 +1305,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1315,7 +1315,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1325,7 +1325,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1335,9 +1335,9 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
-  "result": "PASS",
-  "evidence": ""
+  "actual": "HTTP 200, VISIBLE",
+  "result": "FINDING",
+  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
  },
  {
   "role": "pmc_manager",
@@ -1355,7 +1355,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1365,7 +1365,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1375,7 +1375,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1385,9 +1385,9 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
-  "result": "PASS",
-  "evidence": ""
+  "actual": "HTTP 200, VISIBLE",
+  "result": "FINDING",
+  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
  },
  {
   "role": "consultant_coordinator",
@@ -1405,7 +1405,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1415,7 +1415,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1425,7 +1425,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1435,9 +1435,9 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
-  "result": "PASS",
-  "evidence": ""
+  "actual": "HTTP 200, VISIBLE",
+  "result": "FINDING",
+  "evidence": "LEAK: BOQ unit rates visible without see_internal_cost"
  },
  {
   "role": "consultant_reviewer",
@@ -1455,7 +1455,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1465,7 +1465,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1475,7 +1475,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -1485,7 +1485,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1505,7 +1505,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1515,7 +1515,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1525,9 +1525,9 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
-  "result": "PASS",
-  "evidence": ""
+  "actual": "HTTP 200, VISIBLE",
+  "result": "FAIL",
+  "evidence": "LEAK: subcontract value 176,000 visible without see_subcontractor_price"
  },
  {
   "role": "subcontractor_site_engineer",
@@ -1535,7 +1535,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1555,7 +1555,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1565,7 +1565,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1575,7 +1575,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1585,7 +1585,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1605,7 +1605,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1615,7 +1615,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "hidden (see_client_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1625,7 +1625,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "hidden (see_subcontractor_price=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1635,7 +1635,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "hidden (see_internal_cost=false)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 403, hidden",
   "result": "PASS",
   "evidence": ""
  },
@@ -1655,7 +1655,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -1665,7 +1665,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -1675,7 +1675,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -1685,7 +1685,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "flag see_internal_cost=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -1705,7 +1705,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -1715,7 +1715,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -1725,7 +1725,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -1735,7 +1735,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "flag see_internal_cost=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -1755,7 +1755,7 @@
   "module": "visibility",
   "action": "GET /api/invoices -> client invoice amount 97,200",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -1765,7 +1765,7 @@
   "module": "visibility",
   "action": "GET /api/commercial/payment-applications -> payment application claimed work 108,000",
   "expected": "flag see_client_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -1775,7 +1775,7 @@
   "module": "visibility",
   "action": "GET /api/subcontractors/contracts/6 -> subcontract value 176,000",
   "expected": "flag see_subcontractor_price=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },
@@ -1785,7 +1785,7 @@
   "module": "visibility",
   "action": "GET /api/boq/items/6 -> BOQ unit rates",
   "expected": "flag see_internal_cost=true (visible if endpoint open)",
-  "actual": "HTTP 401, hidden",
+  "actual": "HTTP 200, VISIBLE",
   "result": "PASS",
   "evidence": ""
  },

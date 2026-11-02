@@ -52,7 +52,7 @@ module.exports = async function stage7() {
   S.pkg = S.pkg || [];
   S.pkg = S.pkg.filter(Boolean); if (S.pkg.length === 0) for (const [t, title] of [['as_built_drawings', 'DEMO as-built drawings'], ['o_m_manuals', 'DEMO O&M manuals']]) { const r = await actAs(['project_manager', 'document_controller'], 'POST', `/api/handover/package/${P}/items`, { item_type: t, title, required: true }, { label: `handover package item ${t}` }); S.pkg.push(r.data?.id); }
   if (S.pkg[0]) {
-    await actAs(['project_manager', 'document_controller'], 'PUT', `/api/handover/package/items/${S.pkg[0]}`, { status: 'uploaded', notes: 'DEMO' }, { expect: [200, 400], label: 'package item uploaded' });
+    await actAs(['project_manager'], 'PUT', `/api/handover/package/items/${S.pkg[0]}`, { status: 'uploaded', notes: 'DEMO' }, { expect: [200, 400], label: 'package item uploaded' });
     await actAs(['project_manager'], 'POST', `/api/handover/package/items/${S.pkg[0]}/verify`, { status: 'approved', notes: 'DEMO verified' }, { expect: [200, 400, 409], label: 'project_manager verifies package item (approve)' });
     await actAs(['project_manager'], 'POST', `/api/handover/package/items/${S.pkg[1]}/verify`, { status: 'pending', notes: 'DEMO incomplete - rejected' }, { expect: [200, 400, 409], label: 'project_manager returns package item as pending (reject path)' });
   }

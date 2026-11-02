@@ -19,6 +19,7 @@ const { queryPaginated } = require('../utils/pagination');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditedTransaction } = require('../utils/auditedTransaction');
 const { auditedMutation } = require('../utils/auditedMutation');
+const { fireEvent } = require('../utils/activity');
 const hseEngine = require('../services/hseEngine');
 const { renderDocument } = require('../utils/procurementPdf');
 const { routeFail } = require('../utils/typedRoute');
@@ -88,13 +89,19 @@ router.post('/incidents', authenticate, authorize(), async (req, res) => {
     const { error, value } = INCIDENT_SCHEMA.validate(req.body);
     if (error) return res.status(400).json({ success: false, error: error.details[0].message });
     authorizeProjectPayload(req, value);
-    const r = await auditedTransaction((q) => q(
+    const out = await auditedMutation(req, { action: 'create', module: 'hse', entityType: 'incident' }, async (q) => {
+      const ins = await q(
       `INSERT INTO incidents (project_id, incident_date, incident_type, incident_category, severity, description,
          injured_party, is_lti, lost_days, corrective_action, investigation_notes, root_cause, reported_by)
        VALUES ($1,COALESCE($2, CURRENT_DATE),$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
       [authorizedProjectId(req, value), value.incident_date || null, value.incident_type || null, value.incident_category,
        value.severity, value.description, value.injured_party || null, value.is_lti, value.lost_days,
-       value.corrective_action || null, value.investigation_notes || null, value.root_cause || null, req.user.id]), (result) => ({ userId: req.user.id, userName: req.user.name, userRole: req.user.role, action: 'create', module: 'hse', description: `Reported incident (${value.severity}${value.is_lti ? ', LTI' : ''})`, entityId: result.rows[0].id, entityType: 'incident' }));
+       value.corrective_action || null, value.investigation_notes || null, value.root_cause || null, req.user.id]);
+      const row = ins.rows[0];
+      await fireEvent({ eventType: 'incident.reported', entityType: 'incident', entityId: row.id, userId: req.user.id, userName: req.user.name, userRole: req.user.role, payload: { project_id: row.project_id, title: `${value.severity}${value.is_lti ? ', LTI' : ''}` } }, { query: q });
+      return { data: row, entityId: row.id, projectId: row.project_id, after: row, description: `Reported incident (${value.severity}${value.is_lti ? ', LTI' : ''})` };
+    });
+    const r = { rows: [out.data] };
     res.status(201).json({ success: true, data: r.rows[0] });
   } catch (error) { routeFail(res, error, 'hse.POST /incidents', req); }
 });

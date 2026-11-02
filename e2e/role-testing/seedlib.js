@@ -69,7 +69,9 @@ async function readBack(role, p, expectFields = {}, name) {
 // activity/audit/notification evidence since a snapshot
 const snap = () => ({ audit: Number(sql('select count(*) from audit_events')), act: Number(sql('select count(*) from activity_log')), notif: Number(sql('select count(*) from notifications')) });
 function evidenceSince(s0, name, { notif = false } = {}) {
-  const s1 = snap();
+  let s1 = snap();
+  // notifications are delivered asynchronously (event_outbox dispatcher), so wait for them: bounded, sequential, 6 x 1.5 s at most
+  for (let i = 0; notif && s1.notif <= s0.notif && i < 6; i++) { require('child_process').execFileSync('sleep', ['1.5']); s1 = snap(); }
   check(`${name}: audit/activity entry written`, s1.audit > s0.audit || s1.act > s0.act, `audit +${s1.audit - s0.audit}, activity_log +${s1.act - s0.act}`);
   if (notif) check(`${name}: notification created`, s1.notif > s0.notif, `notifications +${s1.notif - s0.notif}`);
   return s1;

@@ -118,5 +118,6 @@
   "invalid_input": "Some of the submitted values are missing or invalid.",
   "amount_exceeds_limit": "The amount or quantity exceeds the permitted limit.",
   "not_authorized_for_action": "You are not authorized to perform this action.",
-  "upload_rejected": "This file could not be uploaded. Check its type and size and try again."
+  "upload_rejected": "This file could not be uploaded. Check its type and size and try again.",
+  "self_approval_forbidden": "You cannot approve or reject a measurement you recorded yourself."
 }

@@ -23,23 +23,34 @@ const num = (v) => Math.round(Number(v) * 100) / 100;
 const TOKEN_FILE = path.join(__dirname, 'out/.tokens.json');
 const tokens = (() => { try { return JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf8')); } catch { return {}; } })();
 const persistTokens = () => { try { fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens)); } catch { /* cache is optional */ } };
-async function login(key) {
-  if (tokens[key]) return tokens[key];
+// Logins are serialised and spaced (LOGIN_GAP_MS) so the login rate limiter is never tripped and nothing runs in parallel.
+const LOGIN_GAP_MS = Number(process.env.LOGIN_GAP_MS || 1500);
+let lastLoginAt = 0;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function login(key, { force = false } = {}) {
+  if (!force && tokens[key]) return tokens[key];
   const email = key.includes('@') ? key : `pilot-${key}@pilot.example.com`;
   const a = accounts.find((x) => x.email === email);
   if (!a) return null;
+  const wait = lastLoginAt + LOGIN_GAP_MS - Date.now(); if (wait > 0) await sleep(wait);
+  lastLoginAt = Date.now();
   const r = await fetch(BASE + '/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: a.email, password: a.password }) });
   const b = await r.json().catch(() => ({}));
-  tokens[key] = b.data?.token || null;
-  if (b.data?.user) tokens['__user:' + key] = b.data.user;
-  if (tokens[key]) persistTokens(); else if (r.status === 429) { console.error('LOGIN RATE LIMITED for', key); }
-  return tokens[key];
+  if (b.data?.token) { tokens[key] = b.data.token; if (b.data.user) tokens['__user:' + key] = b.data.user; persistTokens(); return tokens[key]; }
+  delete tokens[key]; // never cache a failed login
+  if (r.status === 429) { console.error('LOGIN RATE LIMITED for', key, '- backing off 20 s'); await sleep(20000); }
+  return null;
 }
 async function call(key, method, p, body, extra = {}) {
-  const token = await login(key);
-  const r = await fetch(BASE + p, { method, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra }, body: body !== undefined ? JSON.stringify(body) : undefined });
-  const text = await r.text(); let j = null; try { j = JSON.parse(text); } catch { /* not json */ }
-  return { status: r.status, body: j, data: j?.data, code: j?.error_code || j?.error?.error_code, headers: r.headers, text };
+  const once = async () => {
+    const token = await login(key);
+    const r = await fetch(BASE + p, { method, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra }, body: body !== undefined ? JSON.stringify(body) : undefined });
+    const text = await r.text(); let j = null; try { j = JSON.parse(text); } catch { /* not json */ }
+    return { status: r.status, body: j, data: j?.data, code: j?.error_code || j?.error?.error_code, headers: r.headers, text };
+  };
+  let res = await once();
+  if (res.status === 401 && key) { await login(key, { force: true }); res = await once(); } // expired/revoked session: one re-login, once
+  return res;
 }
 const results = [];
 function rec(r) { results.push(r); return r; }
