@@ -5,7 +5,12 @@ const activeLocale = (locale) => {
   return 'en-US';
 };
 
+// Placeholder for a value the server withheld (the field is absent from the payload: the caller's role lacks the visibility flag).
+// null still means "zero/unknown" for older screens; only `undefined` is treated as hidden.
+const HIDDEN_VALUE = '\u2022\u2022\u2022\u2022';
+
 const formatCurrency = (amount, currency = 'EGP', locale) => {
+  if (amount === undefined) return HIDDEN_VALUE;
   const language = activeLocale(locale);
   const num = amount === null || amount === undefined || isNaN(amount) ? 0 : Number(amount);
   const formatted = new Intl.NumberFormat(language, {
@@ -82,4 +87,4 @@ function pickByLocale(locale, en, ar) {
   return activeLocale(locale).startsWith('ar') ? (ar || en) : (en || ar);
 }
 
-export { formatCurrency, formatNumber, formatDate, formatDateTime, formatPercent, localizedName, pickByLocale };
+export { HIDDEN_VALUE, formatCurrency, formatNumber, formatDate, formatDateTime, formatPercent, localizedName, pickByLocale };

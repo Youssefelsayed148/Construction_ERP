@@ -298,5 +298,8 @@
     "outstanding3": "Outstanding",
     "noFinancialDataYet": "No financial data yet.",
     "noSiteReport": "no site report filed in 2+ days"
-  }
+  },
+  "noAccessTitle": "Nothing to show yet",
+  "noAccessBody": "Your account has no project or module access assigned. Ask an administrator to assign a role.",
+  "hiddenValue": "Hidden: your role cannot see this value"
 }

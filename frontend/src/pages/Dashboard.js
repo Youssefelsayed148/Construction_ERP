@@ -20,6 +20,7 @@ function Dashboard() {
   const [overview, setOverview] = useState(null);
   const [roleDash, setRoleDash] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [noAccess, setNoAccess] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -41,6 +42,8 @@ function Dashboard() {
         if (financeRes?.success) setFinanceSummary(financeRes.data);
         if (overviewRes?.success) setOverview(overviewRes.data);
         if (roleRes?.success) setRoleDash(roleRes.data);
+        // every dashboard call refused (no assignment): show an empty state, not zeroed cards
+        setNoAccess(![statsRes?.success, alertsRes?.success, financeRes?.success, overviewRes?.success, roleRes?.success].some(Boolean));
       })
       .finally(() => setLoading(false));
   }, []);
@@ -192,6 +195,11 @@ function Dashboard() {
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '60px' }}>
           <span className="spinner" />
+        </div>
+      ) : noAccess ? (
+        <div className="empty-state" role="status" style={{ textAlign: 'center', padding: '60px 16px' }}>
+          <h2>{t('dashboard.noAccessTitle')}</h2>
+          <p style={{ color: 'var(--color-text-secondary)' }}>{t('dashboard.noAccessBody')}</p>
         </div>
       ) : (
         <>

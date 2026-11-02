@@ -1,6 +1,10 @@
-import { formatCurrency, formatDate, formatDateTime, formatNumber, formatPercent, localizedName } from './formatters';
+import { HIDDEN_VALUE, formatCurrency, formatDate, formatDateTime, formatNumber, formatPercent, localizedName } from './formatters';
 
 describe('shared formatters', () => {
+  it('shows a hidden-value marker, not zero, when the server withheld the field', () => {
+    expect(formatCurrency(undefined)).toBe(HIDDEN_VALUE);
+    expect(formatCurrency(null)).toBe('0.00 EGP');
+  });
   test('formats financial and progress values consistently', () => {
     expect(formatCurrency(1234.5)).toBe('1,234.50 EGP');
     expect(formatNumber(1234.56, { decimals: 1 })).toBe('1,234.6');

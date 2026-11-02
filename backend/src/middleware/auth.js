@@ -237,9 +237,9 @@ const authorize = (...roles) => {
     {
       const valueMasking = require('../services/valueMasking');
       const mount = policy.moduleFromRequest(req);
-      if (valueMasking.deniedRules(mount, decision.flags).length) {
+      if (valueMasking.deniedRules(mount, decision.flags, decision.role_keys).length) {
         const maskJson = res.json.bind(res);
-        res.json = (payload) => maskJson(valueMasking.maskPayload(payload, mount, decision.flags));
+        res.json = (payload) => maskJson(valueMasking.maskPayload(payload, mount, decision.flags, decision.role_keys));
       }
     }
 

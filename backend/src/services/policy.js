@@ -206,6 +206,11 @@ const ACTION_OVERRIDES = Object.freeze([
     const decision = req.body && (req.body.decision || req.body.result);
     return decision === 'reject' || decision === 'rejected' ? 'reject' : 'approve';
   }],
+  // consultant_reviewer holds review actions only (approve/reject/comment), never create/edit: its stage responses are judged as
+  // approve/reject and its observation comments as submit; every other role keeps the default (create).
+  ['consultant', 'POST', /^\/(?:rfis|submittals)\/:id\/response$/, (req) => (req.user && req.user.role === 'consultant_reviewer'
+    ? (['C', 'D'].includes(req.body && req.body.response_code) ? 'reject' : 'approve') : 'create')],
+  ['consultant', 'POST', /^\/observations\/:id\/comments$/, (req) => (req.user && req.user.role === 'consultant_reviewer' ? 'submit' : 'create')],
   ['client-portal', 'POST', /^\/variations\/:id\/response$/, (req) => req.body?.decision === 'reject' ? 'reject' : 'approve'],
   ['client-portal', 'POST', /^\/documents\/:id\/acknowledgement$/, 'approve'],
   // A user's own notification feed: marking read / retrying a delivery is an edit of their own record, not a

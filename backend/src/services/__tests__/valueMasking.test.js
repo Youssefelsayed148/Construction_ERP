@@ -24,8 +24,21 @@ describe('valueMasking (default-deny)', () => {
     const cost = { data: { cost_code_id: 4, actual_cost: 480000, status: 'open', cost_percent: 5 } };
     expect(maskPayload(cost, 'costing', {}).data).toEqual({ cost_code_id: 4, status: 'open', cost_percent: 5 });
   });
-  test('mounts without rules pass through; every rule names a known flag', () => {
-    expect(deniedRules('hr', {})).toEqual([]);
-    for (const rules of Object.values(RULES)) for (const r of rules) expect(['see_client_price', 'see_subcontractor_price', 'see_internal_cost']).toContain(r.flag);
+  test('mounts without rules pass through; every rule names known flags', () => {
+    expect(deniedRules('qhse', {})).toEqual([]);
+    const known = ['see_client_price', 'see_subcontractor_price', 'see_internal_cost'];
+    for (const rules of Object.values(RULES)) for (const r of rules) for (const f of [].concat(r.flag || [], r.anyOf || [])) expect(known).toContain(f);
+  });
+
+  test('HR salaries: internal-cost holders and hr_manager see them, others do not', () => {
+    const emp = { data: [{ id: 1, name: 'A', salary: 9000 }] };
+    expect(maskPayload(emp, 'hr', {}, ['site_engineer']).data[0]).toEqual({ id: 1, name: 'A' });
+    expect(maskPayload(emp, 'hr', {}, ['hr_manager']).data[0].salary).toBe(9000);
+    expect(maskPayload(emp, 'hr', { see_internal_cost: true }, ['finance_manager']).data[0].salary).toBe(9000);
+  });
+  test('finance ledger: any finance flag unlocks; none hides amounts but keeps ids, status, dates', () => {
+    const row = { data: [{ id: 3, status: 'open', amount: 50, retention_amount: 5, due_date: '2026-01-01' }] };
+    expect(maskPayload(row, 'finance-ledger', {}, []).data[0]).toEqual({ id: 3, status: 'open', due_date: '2026-01-01' });
+    expect(maskPayload(row, 'finance-ledger', { see_client_price: true }, []).data[0].amount).toBe(50);
   });
 });

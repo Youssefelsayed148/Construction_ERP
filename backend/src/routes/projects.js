@@ -8,6 +8,7 @@ const { logActivity, fireEvent } = require('../utils/activity');
 const { auditedMutation } = require('../utils/auditedMutation');
 const { queryPaginated } = require('../utils/pagination');
 const provisioning = require('../services/projectProvisioning');
+const participants = require('../services/projectParticipants');
 const { routeFail } = require('../utils/typedRoute');
 
 const PROJECT_TYPES = ['residential', 'commercial', 'industrial', 'infrastructure', 'mixed'];
@@ -351,6 +352,30 @@ router.delete('/:projectId/phases/:phaseId', authenticate, authorize(), async (r
 });
 
 // -- Team --
+// POST /api/projects/:id/participants — add an organization (client/supplier/subcontractor/consultant) to an existing project and link its portal
+// records. Judged as projects.create on the project (project-scoped): project_manager, projects_director, owner_ceo, coo.
+router.post('/:id/participants', authenticate, authorize(), async (req, res) => {
+  try {
+    const schema = Joi.object({
+      organization_id: Joi.number().integer().required(),
+      participant_type: Joi.string().valid(...participants.PARTICIPANT_TYPES).required(),
+      role_label: Joi.string().max(100).allow(null, ''),
+      contract_reference: Joi.string().max(100).allow(null, ''),
+      active_from: Joi.date().iso().allow(null),
+      portal_access_enabled: Joi.boolean().default(true),
+      visibility_policy: Joi.object().default({}),
+    });
+    const { error, value } = schema.validate(req.body);
+    if (error) return res.status(400).json({ success: false, error: error.details[0].message, error_code: 'validation_error', error_params: { field: error.details[0].path.join('.') } });
+    const projectId = parseInt(req.params.id, 10);
+    const out = await auditedMutation(req, { action: 'create', module: 'projects', entityType: 'project_participant' }, async (q) => {
+      const row = await participants.addParticipant(q, projectId, { ...value, active_from: value.active_from ? value.active_from.toISOString().slice(0, 10) : null });
+      return { data: row, entityId: row.id, projectId, after: row, description: `Added ${value.participant_type} participant (organization ${value.organization_id}) to project ${projectId}` };
+    });
+    res.status(201).json({ success: true, data: out.data });
+  } catch (e) { routeFail(res, e, 'projects.POST /:id/participants', req); }
+});
+
 router.post('/:id/team', authenticate, authorize(), async (req, res) => {
   try {
     const schema = Joi.object({
