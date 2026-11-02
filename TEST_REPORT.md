@@ -5,11 +5,18 @@ Demo records are prefixed `DEMO-` (project id 6). No users were created, edited 
 Rows: `results.json` (role, module, action, expected, actual, result, evidence). Screenshots: `e2e/role-testing/screenshots/` (38).
 
 ## Summary (results.json, 3014 rows)
-PASS 2321 | FAIL 0 | FINDING 6 (known gaps, below) | SUPERSEDED 49 (first-run rows not re-observed by the latest run of their script) | SKIPPED: ACCOUNT NOT FOUND 564 | N/A 38 | NOT RUN 36 (probe paths that answer 404: costing summary)
+PASS 2312 | FAIL 9 (all 9 = the live dashboard regression below) | FINDING 6 (known gaps) | SUPERSEDED 49 | SKIPPED: ACCOUNT NOT FOUND 564 | N/A 38 | NOT RUN 36 (costing-summary probes, path answers 404)
+
+## URGENT - live regression found by the UI pass (fix is committed, NOT deployed)
+UI pass on the live app (one Chromium, one role at a time; MemAvailable 3984 MB at start, lowest 3837 MB, 3921 MB at end; no leftover processes): **29 PASS, 9 FAIL, 0 NOT RUN.**
+The 9 failing roles (site_manager, planning_engineer, contracts_manager, procurement_manager, accountant_ap, qa_qc_manager, hse_manager, equipment_manager, hr_manager) get a **blank app**: the dashboard throws `Cannot read properties of undefined (reading 'month_total')`.
+Cause: the dashboard masking rule matched the KEY `expenses` and deleted the whole `modules.expenses` object for roles without a finance flag; `Dashboard.js` then read `mods.expenses.month_total`.
+Fix (commit after this report): masking now strips only leaf values and recurses into objects; `month_total`/`total_*` are treated as money on the dashboard; `Dashboard.js` reads `mods.expenses?.` / `mods.finance?.`. New unit test covers it (9/9).
+**The live backend still runs the old masking, so these 9 roles currently get a blank dashboard until the backend is rebuilt and restarted** (no frontend recreate is needed for the fix itself). Screenshots in `screenshots/` for these 9 are stale (from the earlier 38/38 run); the harness now saves a screenshot and the page error on failure.
 
 ## Deployed state (live app)
 Backend + migrate images rebuilt from this branch and restarted (`docker compose --env-file .env.docker`, backend/migrate only; frontend image, DB container and `docker-compose.yml` untouched). Migrations 0087, 0088, 0089, 0090 are applied on the live DB.
-**The frontend image was NOT rebuilt**: the hidden-value rendering and the empty dashboard are in the repo but not live until the frontend is rebuilt.
+The frontend image WAS rebuilt and recreated (new bundle live). That recreate resolved `backend` to other stacks' containers on the shared `dokploy-network` (502 on /api); you applied a runtime nginx patch, and commit 18ae2ee adds the unique alias `construction-erp-backend` in docker-compose.yml and points nginx at it (not yet applied: needs a backend recreate + frontend rebuild/recreate, awaiting your approval).
 
 ## Owner decisions implemented
 1. **owner_ceo / coo read-only view** of approval-limits, activity, handover (migration 0089; `GET /api/approval-limits` route list widened, PUT stays owner/admin). users and workflow-templates stay owner/admin. Verified live: 200 on the three, 403 on writes, 403 on users/workflow-templates.
@@ -34,7 +41,7 @@ Frontend caveat: screens that SUM masked fields (reduce over undefined) can show
 
 ## Results by part (live)
 - **Access matrix (serial, 1.5 s between logins): 1745 PASS, 3 scope-adjusted (purchasing_mgr is procurement_manager on project 1), 38 N/A.** owner_ceo/coo denials as listed in the earlier report were run BEFORE 0089; the targeted check after 0089 supersedes them for the three modules (full matrix not re-run).
-- **UI (one browser, one context at a time): 38/38 PASS**, run before the frontend changes.
+- **UI**: the earlier 38/38 run predates masking of the dashboard; the re-run after the deploy is 29/38 (see URGENT).
 - **Forbidden actions 105/105**; **targeted post-deploy checks 24/24** (CEO/COO view-only, reviewer create/edit denied, HR salary hidden from site_engineer and visible to hr_manager, ledger values for accountant_ap, storekeeper denied).
 - **Value visibility: 0 leaks in 144 valid probes** (was 9 before masking). BOQ rates are `see_client_price`; the probe now expects that flag (it used to expect see_internal_cost, which was wrong). 36 probes (costing summary path) answer 404: NOT RUN.
 - **Seed re-run (2..8, serial, idempotent)**: all steps pass; seed8 (participants) 11/11. 6 FINDING rows remain, all known gaps: supplier record-scope reads (2), subcontractor / consultant portals empty because those pilot accounts have no organization link (users cannot be edited), consultant certificate recommendation (consultant_coordinator is not assigned to the project: the new fail-closed check), client portal row from the first run.

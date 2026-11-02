@@ -105,10 +105,10 @@ function Dashboard() {
     {
       to: '/invoices', icon: DollarSign, label: t('dashboard.system.finance'),
       metrics: [
-        { label: t('dashboard.system.collected'), value: formatCurrency(mods.finance.revenue_collected) },
-        { label: t('dashboard.system.expenses'), value: formatCurrency(mods.finance.total_expenses) },
-        { label: t('dashboard.system.outstanding2'), value: formatCurrency(mods.finance.outstanding) },
-        { label: t('dashboard.system.overdueInv'), value: mods.finance.overdue_invoices, warn: mods.finance.overdue_invoices > 0 },
+        { label: t('dashboard.system.collected'), value: formatCurrency(mods.finance?.revenue_collected) },
+        { label: t('dashboard.system.expenses'), value: formatCurrency(mods.finance?.total_expenses) },
+        { label: t('dashboard.system.outstanding2'), value: formatCurrency(mods.finance?.outstanding) },
+        { label: t('dashboard.system.overdueInv'), value: mods.finance?.overdue_invoices, warn: mods.finance?.overdue_invoices > 0 },
       ],
     },
     {
@@ -123,8 +123,8 @@ function Dashboard() {
     {
       to: '/expenses', icon: DollarSign, label: t('common.nav.expenses'),
       metrics: [
-        { label: t('dashboard.system.thisMonth'), value: formatCurrency(mods.expenses.month_total) },
-        { label: t('dashboard.system.pending'), value: mods.expenses.pending, warn: mods.expenses.pending > 0 },
+        { label: t('dashboard.system.thisMonth'), value: formatCurrency(mods.expenses?.month_total) },
+        { label: t('dashboard.system.pending'), value: mods.expenses?.pending, warn: mods.expenses?.pending > 0 },
       ],
     },
     {

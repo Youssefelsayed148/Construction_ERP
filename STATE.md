@@ -2289,3 +2289,6 @@ Blocker: rebuilding/restarting the live backend container was denied by the prod
 ## 2026-11-02 - Stop point (owner decisions batch)
 Done: masking scope widened, CEO/COO view, consultant_reviewer review-only, participants endpoint, seeds re-run, leak probe 0 leaks, targeted checks 24/24. Live backend rebuilt (0087-0090 applied).
 Pending: (1) frontend image rebuild so the hidden-value pass and dashboard empty state go live; (2) full frontend + full PG suite on a machine with deps (i18n:check needs typescript; page tests need react-router-dom); (3) masking decision for procurement/inventory/assets/legal etc. (list in TEST_REPORT.md); (4) review migration 0090 (one-row delete); (5) push is left to the owner.
+
+## 2026-11-02 - Stop point (UI pass after deploy)
+Blocker: live dashboard blank for 9 roles (masking deleted `modules.expenses`); fix committed, needs a backend rebuild + restart (not done: no container restarts allowed in the UI-pass instructions). Also pending: apply 18ae2ee (backend alias + nginx upstream) via backend recreate, frontend rebuild and recreate; runtime nginx patch currently in place. Evidence: e2e/role-testing/out/ui-results.json, ui-memory.json, TEST_REPORT.md. Next action: owner approves the commands below; then re-run the UI pass.

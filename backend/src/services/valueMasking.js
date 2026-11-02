@@ -25,7 +25,8 @@ const RULES = Object.freeze({
   // Finance ledger and money-moving summaries: any finance flag is enough (AR sees client side, AP/finance see internal cost); no flag = no values.
   'finance-ledger': [{ anyOf: ANY_FINANCE, allowRoles: AP_ROLES, test: MONEY(/(held|released|retained|amount|balance|debit|credit|total|retention|advance|paid|outstanding|net|gross|tax|value|cash|inflow|outflow)/i) }],
   finance: [{ anyOf: ANY_FINANCE, allowRoles: AP_ROLES, test: MONEY(/(amount|balance|debit|credit|total|revenue|profit|cost|paid|outstanding|net|gross|tax|value|cash|income|expense|receivable|payable)/i) }],
-  dashboard: [{ anyOf: ANY_FINANCE, test: MONEY(/(revenue|profit|receivable|payable|outstanding|cost|budget|amount|balance|income|expense|value|collected|billed|invoiced)/i) }],
+  // `month_total` / `total_*` are money here (`total` alone and `*_count` are counts); NON_VALUE's month/year exclusion does not apply to dashboard cards.
+  dashboard: [{ anyOf: ANY_FINANCE, test: (k) => /(revenue|profit|receivable|payable|outstanding|cost|budget|amount|balance|income|expense|value|collected|billed|invoiced|_total$|^total_)/i.test(k) && !/(^|_)id$|percent|pct|count|status|projects|items|invoices_|employees/i.test(k) }],
   projects: [{ anyOf: ANY_FINANCE, keys: set('budget', 'budget_amount', 'contract_value', 'estimated_cost', 'actual_cost', 'total_budget', 'contract_amount') }],
   payments: [{ anyOf: ANY_FINANCE, allowRoles: AP_ROLES, keys: set('amount', 'total_amount', 'allocated_amount', 'unallocated_amount', 'base_amount') }],
   expenses: [{ anyOf: ANY_FINANCE, allowRoles: AP_ROLES, keys: set('amount', 'total_amount', 'tax_amount', 'base_amount') }],
@@ -37,8 +38,11 @@ function maskValue(node, denied) {
   if (Array.isArray(node)) { for (const n of node) maskValue(n, denied); return node; }
   if (!node || typeof node !== 'object' || node instanceof Date) return node;
   for (const key of Object.keys(node)) {
-    if (denied.some((r) => ruleKeyTest(r, key))) delete node[key];
-    else maskValue(node[key], denied);
+    const v = node[key];
+    // Only LEAF values are withheld. A matching key that holds an object/array (e.g. dashboard `expenses: { ... }`) is recursed into, never deleted,
+    // otherwise screens that read `modules.expenses.month_total` crash on the missing section.
+    if (v !== null && typeof v === 'object' && !(v instanceof Date)) maskValue(v, denied);
+    else if (denied.some((r) => ruleKeyTest(r, key))) delete node[key];
   }
   return node;
 }

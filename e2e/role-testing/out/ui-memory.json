@@ -1,0 +1,42 @@
+{
+ "min_available_mb_threshold": 500,
+ "memLog": [
+  {
+   "before": "start",
+   "available_mb": 3984
+  },
+  {
+   "after_roles": 5,
+   "available_mb": 4110
+  },
+  {
+   "after_roles": 10,
+   "available_mb": 4020
+  },
+  {
+   "after_roles": 15,
+   "available_mb": 3973
+  },
+  {
+   "after_roles": 20,
+   "available_mb": 3866
+  },
+  {
+   "after_roles": 25,
+   "available_mb": 3874
+  },
+  {
+   "after_roles": 30,
+   "available_mb": 3837
+  },
+  {
+   "after_roles": 35,
+   "available_mb": 3857
+  },
+  {
+   "after": "end",
+   "available_mb": 3921
+  }
+ ],
+ "stopped": null
+}

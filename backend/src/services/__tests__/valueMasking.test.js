@@ -47,4 +47,11 @@ describe('valueMasking (default-deny)', () => {
     expect(maskPayload(row, 'payments', {}, ['accountant_ap']).data[0].amount).toBe(50);
     expect(maskPayload(row, 'payments', {}, ['storekeeper']).data[0]).toEqual({ id: 3 });
   });
+
+  test('a matching key that holds an object keeps the object and masks only the money leaves inside it', () => {
+    const dash = { data: { modules: { expenses: { month_total: 10, count: 4 }, finance: { revenue_collected: 5, open_count: 2 } } } };
+    const out = maskPayload(dash, 'dashboard', {}, []);
+    expect(out.data.modules.expenses).toEqual({ count: 4 });
+    expect(out.data.modules.finance).toEqual({ open_count: 2 });
+  });
 });
